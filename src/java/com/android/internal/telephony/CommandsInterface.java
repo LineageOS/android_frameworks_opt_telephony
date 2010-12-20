@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -110,6 +111,17 @@ public interface CommandsInterface {
     RadioState getRadioState();
 
     /**
+     * response.obj.result is an int[2]
+     *
+     * response.obj.result[0] is registration state
+     *                        0 - Not registered
+     *                        1 - Registered
+     * response.obj.result[1] is of type const RIL_IMS_SMS_Format,
+     *                        corresponds to sms format used for SMS over IMS.
+     */
+    void getImsRegistrationState(Message result);
+
+    /**
      * Fires on any RadioState transition
      * Always fires immediately as well
      *
@@ -122,6 +134,8 @@ public interface CommandsInterface {
 
     void registerForVoiceRadioTechChanged(Handler h, int what, Object obj);
     void unregisterForVoiceRadioTechChanged(Handler h);
+    void registerForImsNetworkStateChanged(Handler h, int what, Object obj);
+    void unregisterForImsNetworkStateChanged(Handler h);
 
     /**
      * Fires on any transition into RadioState.isOn()
@@ -998,6 +1012,31 @@ public interface CommandsInterface {
      * @param response sent when operation completes
      */
     void sendCdmaSms(byte[] pdu, Message response);
+
+    /**
+     * send SMS over IMS with 3GPP/GSM SMS format
+     * @param smscPDU is smsc address in PDU form GSM BCD format prefixed
+     *      by a length byte (as expected by TS 27.005) or NULL for default SMSC
+     * @param pdu is SMS in PDU format as an ASCII hex string
+     *      less the SMSC address
+     * @param retry indicates if this is a retry; 0 == not retry, nonzero = retry
+     * @param messageRef valid field if retry is set to nonzero.
+     *        Contains messageRef from RIL_SMS_Response corresponding to failed MO SMS
+     * @param response sent when operation completes
+     */
+    void sendImsGsmSms (String smscPDU, String pdu, int retry, int messageRef,
+            Message response);
+
+    /**
+     * send SMS over IMS with 3GPP2/CDMA SMS format
+     * @param pdu is CDMA-SMS in internal pseudo-PDU format
+     * @param response sent when operation completes
+     * @param retry indicates if this is a retry; 0 == not retry, nonzero = retry
+     * @param messageRef valid field if retry is set to nonzero.
+     *        Contains messageRef from RIL_SMS_Response corresponding to failed MO SMS
+     * @param response sent when operation completes
+     */
+    void sendImsCdmaSms(byte[] pdu, int retry, int messageRef, Message response);
 
     /**
      * Deletes the specified SMS record from SIM memory (EF_SMS).
