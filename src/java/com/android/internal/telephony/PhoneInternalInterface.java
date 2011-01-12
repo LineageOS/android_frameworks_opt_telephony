@@ -592,6 +592,35 @@ public interface PhoneInternalInterface {
                                  Message onComplete);
 
     /**
+     * Gets a call barring option. The return value of ((AsyncResult) onComplete.obj) will be an
+     * Integer representing the sum of enabled serivice classes (sum of SERVICE_CLASS_*)
+     *
+     * @param facility is one of CB_FACILTY_*
+     * @param password is password or "" if not required
+     * @param serviceClass is a sum of SERVICE_CLASS_*
+     * @param onComplete is callback message when the action is completed.
+     */
+    public void getCallBarring(String facility,
+            String password,
+            Message onComplete,
+            int serviceClass);
+
+    /**
+     * Sets a call barring option.
+     *
+     * @param facility is one of CB_FACILTY_*
+     * @param lockState is true means lock, false means unlock
+     * @param password is password or "" if not required
+     * @param serviceClass is a sum of SERVICE_CLASS_*
+     * @param onComplete is callback message when the action is completed.
+     */
+    public void setCallBarring(String facility,
+            boolean lockState,
+            String password,
+            Message onComplete,
+            int serviceClass);
+
+    /**
      * getOutgoingCallerIdDisplay
      * gets outgoing caller id display. The return value of
      * ((AsyncResult)onComplete.obj) is an array of int, with a length of 2.
