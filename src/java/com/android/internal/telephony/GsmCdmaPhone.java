@@ -2541,7 +2541,7 @@ public class GsmCdmaPhone extends Phone {
             } else {
                 found.onUssdFinished(ussdMessage, isUssdRequest);
             }
-        } else if (!isUssdError && ussdMessage != null) {
+        } else if (!isUssdError && !TextUtils.isEmpty(ussdMessage)) {
             // pending USSD not found
             // The network may initiate its own USSD request
 
