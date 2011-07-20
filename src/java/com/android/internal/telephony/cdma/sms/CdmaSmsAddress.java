@@ -17,12 +17,14 @@
 package com.android.internal.telephony.cdma.sms;
 
 import android.util.SparseBooleanArray;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.SmsAddress;
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.util.HexDump;
 
 public class CdmaSmsAddress extends SmsAddress {
+    private final static String TAG = "CdmaSmsAddress";
 
     /**
      * Digit Mode Indicator is a 1-bit value that indicates whether
@@ -103,7 +105,11 @@ public class CdmaSmsAddress extends SmsAddress {
         builder.append(", numberOfDigits=" + numberOfDigits);
         builder.append(", ton=" + ton);
         builder.append(", address=\"" + address + "\"");
-        builder.append(", origBytes=" + HexDump.toHexString(origBytes));
+        if (origBytes != null) {
+            builder.append(", origBytes=" + HexDump.toHexString(origBytes));
+        } else {
+            builder.append(", origBytes=null");
+        }
         builder.append(" }");
         return builder.toString();
     }
@@ -194,32 +200,51 @@ public class CdmaSmsAddress extends SmsAddress {
      * up by removing whitespace.
      */
     public static CdmaSmsAddress parse(String address) {
+        if (address == null) {
+            Rlog.e(TAG, "address==null");
+            return null;
+        }
+
         CdmaSmsAddress addr = new CdmaSmsAddress();
         addr.address = address;
-        addr.ton = CdmaSmsAddress.TON_UNKNOWN;
+        addr.ton = TON_UNKNOWN;
+        addr.numberPlan = NUMBERING_PLAN_UNKNOWN;
+
         byte[] origBytes = null;
         String filteredAddr = filterNumericSugar(address);
-        if (filteredAddr != null) {
-            origBytes = parseToDtmf(filteredAddr);
+
+        if (address.indexOf('+') != -1) {
+            // This is international phone number
+            addr.ton = TON_INTERNATIONAL_OR_IP;
+            addr.numberPlan = NUMBERING_PLAN_ISDN_TELEPHONY;
+        } else if (address.indexOf('@') != -1) {
+            // This is email address
+            addr.ton = TON_NATIONAL_OR_EMAIL;
+        } else {
+            if (filteredAddr != null) {
+                origBytes = parseToDtmf(filteredAddr);
+            }
         }
         if (origBytes != null) {
             addr.digitMode = DIGIT_MODE_4BIT_DTMF;
             addr.numberMode = NUMBER_MODE_NOT_DATA_NETWORK;
-            if (address.indexOf('+') != -1) {
-                addr.ton = TON_INTERNATIONAL_OR_IP;
-            }
         } else {
-            filteredAddr = filterWhitespace(address);
-            origBytes = UserData.stringToAscii(filteredAddr);
-            if (origBytes == null) {
-                return null;
-            }
             addr.digitMode = DIGIT_MODE_8BIT_CHAR;
             addr.numberMode = NUMBER_MODE_DATA_NETWORK;
-            if (address.indexOf('@') != -1) {
-                addr.ton = TON_NATIONAL_OR_EMAIL;
+            // A.S0014-C 4.2.40 states: "Prefix or escape digits shall
+            // not be included"; filterNumericSugar removes prefix and
+            // filterWhitespace removes escape, whitespaces, etc.
+            if (filteredAddr == null) {
+                filteredAddr = filterWhitespace(address);
             }
+            origBytes = UserData.stringToAscii(filteredAddr);
         }
+
+        if (origBytes == null) {
+            Rlog.d(TAG, "origBytes==null");
+            return null;
+        }
+
         addr.origBytes = origBytes;
         addr.numberOfDigits = origBytes.length;
         return addr;

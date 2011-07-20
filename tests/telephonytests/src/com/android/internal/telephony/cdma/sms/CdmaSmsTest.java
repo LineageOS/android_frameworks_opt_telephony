@@ -19,6 +19,7 @@ package com.android.internal.telephony.cdma.sms;
 import android.telephony.TelephonyManager;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.SmsHeader;
@@ -986,5 +987,32 @@ public class CdmaSmsTest extends AndroidTestCase {
                 encodeDecodeAssertEquals(fragments.get(i), header2, -1);
             }
         }
+    }
+
+
+    @SmallTest
+    public void testCdmaSmsAddressDigitalMode() throws Exception {
+        String str_test;
+        CdmaSmsAddress sms_addr;
+
+        str_test = "+00123456789";
+        sms_addr = CdmaSmsAddress.parse(str_test);
+        assertEquals(CdmaSmsAddress.DIGIT_MODE_8BIT_CHAR, sms_addr.digitMode);
+
+        str_test = "test@test.com";
+        sms_addr = CdmaSmsAddress.parse(str_test);
+        assertEquals(CdmaSmsAddress.DIGIT_MODE_8BIT_CHAR, sms_addr.digitMode);
+
+        str_test = "123456789";
+        sms_addr = CdmaSmsAddress.parse(str_test);
+        assertEquals(CdmaSmsAddress.DIGIT_MODE_4BIT_DTMF, sms_addr.digitMode);
+
+        str_test = "test_123@test.com";
+        sms_addr = CdmaSmsAddress.parse(str_test);
+        assertEquals(CdmaSmsAddress.DIGIT_MODE_8BIT_CHAR, sms_addr.digitMode);
+
+        str_test = " \t";
+        sms_addr = CdmaSmsAddress.parse(str_test);
+        assertEquals(CdmaSmsAddress.DIGIT_MODE_8BIT_CHAR, sms_addr.digitMode);
     }
 }
