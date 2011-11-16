@@ -184,6 +184,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     // Key used to read/write "disable DNS server check" pref (used for testing)
     public static final String DNS_SERVER_CHECK_DISABLED_KEY = "dns_server_check_disabled_key";
 
+   //Telephony System Property used to indicate a multimode target
+    public static final String PROPERTY_MULTIMODE_CDMA = "ro.config.multimode_cdma";
+
     /**
      * Small container class used to hold information relevant to
      * the carrier selection process. operatorNumeric can be ""
@@ -1791,6 +1794,12 @@ public abstract class PhoneBase extends Handler implements Phone {
                     + " mCallRingContinueToken=" + mCallRingContinueToken
                     + " mIsVoiceCapable=" + mIsVoiceCapable);
         }
+    }
+
+    public boolean isManualNetSelAllowed() {
+        // This function should be overridden in GsmPhone.
+        // Not implemented by default.
+        return false;
     }
 
     @Override

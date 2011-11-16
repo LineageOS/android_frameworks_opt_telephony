@@ -54,6 +54,7 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.MmiCode;
+import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
@@ -509,6 +510,20 @@ public class CDMAPhone extends PhoneBase {
     }
 
     @Override
+    public void
+    setNetworkSelectionModeAutomatic(Message response) {
+        Rlog.e(LOG_TAG, "method setNetworkSelectionModeAutomatic is NOT supported in CDMA!");
+        if (response != null) {
+            Rlog.e(LOG_TAG,
+                    "setNetworkSelectionModeAutomatic: not possible in CDMA- Posting exception");
+            CommandException ce = new CommandException(
+                    CommandException.Error.REQUEST_NOT_SUPPORTED);
+            AsyncResult.forMessage(response).exception = ce;
+            response.sendToTarget();
+        }
+    }
+
+    @Override
     public void unregisterForSuppServiceNotification(Handler h) {
         Rlog.e(LOG_TAG, "method unregisterForSuppServiceNotification is NOT supported in CDMA!");
     }
@@ -662,6 +677,19 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public CdmaCall getForegroundCall() {
         return mCT.mForegroundCall;
+    }
+
+    @Override
+    public void
+    selectNetworkManually(OperatorInfo network,
+            Message response) {
+        Rlog.e(LOG_TAG, "selectNetworkManually: not possible in CDMA");
+        if (response != null) {
+            CommandException ce = new CommandException(
+                    CommandException.Error.REQUEST_NOT_SUPPORTED);
+            AsyncResult.forMessage(response).exception = ce;
+            response.sendToTarget();
+        }
     }
 
     @Override
@@ -879,6 +907,12 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public void getAvailableNetworks(Message response) {
         Rlog.e(LOG_TAG, "getAvailableNetworks: not possible in CDMA");
+        if (response != null) {
+            CommandException ce = new CommandException(
+                    CommandException.Error.REQUEST_NOT_SUPPORTED);
+            AsyncResult.forMessage(response).exception = ce;
+            response.sendToTarget();
+        }
     }
 
     @Override
