@@ -840,6 +840,16 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 case EVENT_POLL_STATE_NETWORK_SELECTION_MODE: {
                     ints = (int[])ar.result;
                     mNewSS.setIsManualSelection(ints[0] == 1);
+                    if ((ints[0] == 1) && (!mPhone.isManualNetSelAllowed())) {
+                        /*
+                         * modem is currently in manual selection but manual
+                         * selection is not allowed in the current mode so
+                         * switch to automatic registration
+                         */
+                        mPhone.setNetworkSelectionModeAutomatic (null);
+                        log(" Forcing Automatic Network Selection, " +
+                                "manual selection is not allowed");
+                    }
                     break;
                 }
             }

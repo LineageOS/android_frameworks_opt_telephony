@@ -70,6 +70,7 @@ import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.PhoneSubInfo;
@@ -126,7 +127,6 @@ public class GSMPhone extends PhoneBase {
     ArrayList <GsmMmiCode> mPendingMMIs = new ArrayList<GsmMmiCode>();
     protected SimPhoneBookInterfaceManager mSimPhoneBookIntManager;
     PhoneSubInfo mSubInfo;
-
 
     Registrant mPostDialHandler;
 
@@ -1941,6 +1941,34 @@ public class GSMPhone extends PhoneBase {
     public boolean isCspPlmnEnabled() {
         IccRecords r = mIccRecords.get();
         return (r != null) ? r.isCspPlmnEnabled() : false;
+    }
+
+    public boolean isManualNetSelAllowed() {
+
+        int nwMode = Phone.PREFERRED_NT_MODE;
+
+        nwMode = PhoneFactory.calculatePreferredNetworkType(mContext, mPhoneId);
+
+        Rlog.d(LOG_TAG, "isManualNetSelAllowed in mode = " + nwMode);
+        /*
+         *  For multimode targets in global mode manual network
+         *  selection is disallowed
+         */
+        if (SystemProperties.getBoolean(PhoneBase.PROPERTY_MULTIMODE_CDMA, false)
+                && ((nwMode == Phone.NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA)
+                        || (nwMode == Phone.NT_MODE_GLOBAL)) ){
+            Rlog.d(LOG_TAG, "Manual selection not supported in mode = " + nwMode);
+            return false;
+        }
+
+        /*
+         *  Single mode phone with - GSM network modes/global mode
+         *  LTE only for 3GPP
+         *  LTE centric + 3GPP Legacy
+         *  Note: the actual enabling/disabling manual selection for these
+         *  cases will be controlled by csp
+         */
+        return true;
     }
 
     private void registerForSimRecordEvents() {
