@@ -408,6 +408,14 @@ public class CDMAPhone extends PhoneBase {
     public void
     setNetworkSelectionModeAutomatic(Message response) {
         Rlog.e(LOG_TAG, "method setNetworkSelectionModeAutomatic is NOT supported in CDMA!");
+        if (response != null) {
+            Rlog.e(LOG_TAG,
+                    "setNetworkSelectionModeAutomatic: not possible in CDMA- Posting exception");
+            CommandException ce = new CommandException(
+                    CommandException.Error.REQUEST_NOT_SUPPORTED);
+            AsyncResult.forMessage(response).exception = ce;
+            response.sendToTarget();
+        }
     }
 
     @Override
@@ -529,6 +537,12 @@ public class CDMAPhone extends PhoneBase {
     selectNetworkManually(OperatorInfo network,
             Message response) {
         Rlog.e(LOG_TAG, "selectNetworkManually: not possible in CDMA");
+        if (response != null) {
+            CommandException ce = new CommandException(
+                    CommandException.Error.REQUEST_NOT_SUPPORTED);
+            AsyncResult.forMessage(response).exception = ce;
+            response.sendToTarget();
+        }
     }
 
     @Override
@@ -746,6 +760,12 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public void getAvailableNetworks(Message response) {
         Rlog.e(LOG_TAG, "getAvailableNetworks: not possible in CDMA");
+        if (response != null) {
+            CommandException ce = new CommandException(
+                    CommandException.Error.REQUEST_NOT_SUPPORTED);
+            AsyncResult.forMessage(response).exception = ce;
+            response.sendToTarget();
+        }
     }
 
     @Override

@@ -137,6 +137,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     // Key used to read/write the ID for storing the voice mail
     public static final String VM_ID = "vm_id_key";
 
+    //Telephony System Property used to indicate a multimode target
+    public static final String PROPERTY_MULTIMODE_CDMA = "ro.config.multimode_cdma";
+
     /* Instance Variables */
     public CommandsInterface mCi;
     private int mVmCount = 0;
@@ -1309,6 +1312,12 @@ public abstract class PhoneBase extends Handler implements Phone {
                     + " mCallRingContinueToken=" + mCallRingContinueToken
                     + " mIsVoiceCapable=" + mIsVoiceCapable);
         }
+    }
+
+    public boolean isManualNetSelAllowed() {
+        // This function should be overridden in GsmPhone.
+        // Not implemented in CdmaPhone and SIPPhone.
+        return false;
     }
 
     @Override
