@@ -101,6 +101,16 @@ public final class DcTracker extends DcTrackerBase {
     static final Uri PREFERAPN_NO_UPDATE_URI =
                         Uri.parse("content://telephony/carriers/preferapn_no_update");
     static final String APN_ID = "apn_id";
+    /*
+     * If this property is set to true then android assumes that multiple PDN is
+     * going to be supported in modem/nw. However if second PDN requests fails,
+     * then behavior is going to be determined by the
+     * SUPPORT_SERVICE_ARBITRATION property below. If MPDN is set to false, then
+     * android will ensure that the higher priority service is active. Low
+     * priority data calls may be pro-actively torn down to ensure this.
+     */
+    private static final boolean SUPPORT_MPDN = SystemProperties.getBoolean(
+            "persist.telephony.mpdn", true);
 
     private boolean mCanSetPreferApn = false;
 
@@ -141,6 +151,8 @@ public final class DcTracker extends DcTrackerBase {
 
         initApnContextsAndDataConnection();
 
+
+        log("SUPPORT_MPDN = " + SUPPORT_MPDN);
         for (ApnContext apnContext : mApnContexts.values()) {
             // Register the reconnect and restart actions.
             IntentFilter filter = new IntentFilter();
@@ -584,7 +596,10 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private void setupDataOnConnectableApns(String reason) {
-        for (ApnContext apnContext : mApnContexts.values()) {
+        log("setupDataOnReadyApns: " + reason);
+
+        for (ApnContext apnContext :
+                    getPrioritySortedApnContextList().toArray(new ApnContext[0])) {
             if (apnContext.getState() == DctConstants.State.FAILED) {
                 apnContext.setState(DctConstants.State.IDLE);
             }
@@ -636,6 +651,25 @@ public final class DcTracker extends DcTrackerBase {
         }
 
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
+
+        // If MPDN is disabled and if the current active ApnContext cannot handle the
+        // requested apnType, then
+        //  - Disconnect one active low priority data call if there is any, and after
+        //    disconnect setup up the new requested connection.
+        //  - Do not bring up the requested connection, if there is any high priority
+        //    data connection is active.
+        if (SUPPORT_MPDN == false
+                && !isAnyActiveApnContextHandlesType(apnContext.getDataProfileType())) {
+            if (disconnectOneLowerPriorityCall(apnContext.getDataProfileType())) {
+                log("Lower/Equal priority call disconnected.");
+                return false;
+            }
+
+            if (isHigherPriorityDataCallActive(apnContext.getDataProfileType())) {
+                log("Higher priority call active. Ignoring setup data call request.");
+                return false;
+            }
+        }
 
         if (apnContext.isConnectable() &&
                 isDataAllowed(apnContext) && getAnyDataEnabled() && !isEmergency()) {
@@ -1170,7 +1204,62 @@ public final class DcTracker extends DcTrackerBase {
         mActiveDp = null;
     }
 
+    private boolean isAnyActiveApnContextHandlesType(String apnType) {
+        for (ApnContext apnContext : mApnContexts.values()) {
+            if (!apnContext.isDisconnected()) {
+                // If the ApnContext can handle the request apnType, do not disconnect
+                DataProfile apnSetting = apnContext.getDataProfile();
+                if (apnSetting != null && apnSetting.canHandleType(apnType)) {
+                    // Found a ApnContext, which can handle the required apn type
+                    log("isAnyActiveApnContextHandlesType:  - apnContext = [" + apnContext + "]"
+                            + " can handle apnType=" + apnType);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isHigherPriorityDataCallActive(String apnType) {
+        boolean result = false;
+        ApnContext apnContext = mApnContexts.get(apnType);
+
+        for (ApnContext apnContextEntry :
+                getPrioritySortedApnContextList().toArray(new ApnContext[0])) {
+            if (apnContextEntry.isHigherPriority(apnContext)
+                    && (apnContextEntry.getState() == DctConstants.State.CONNECTED
+                        || apnContextEntry.getState() == DctConstants.State.CONNECTING)) {
+                result = true;
+                break;
+            }
+        }
+        return result;
+    }
+
     @Override
+    protected boolean disconnectOneLowerPriorityCall(String apnType) {
+        boolean disconnect = false;
+
+        ApnContext apnContext = mApnContexts.get(apnType);
+
+        for (ApnContext apnContextEntry :
+                getPrioritySortedApnContextList().toArray(new ApnContext[0])) {
+            if (!apnContextEntry.isDisconnected() &&
+                    apnContextEntry.isLowerPriority(apnContext)) {
+                disconnect = true;
+
+                // Found a lower priority call, disconnect it.
+                apnContextEntry.setReason(Phone.REASON_SINGLE_PDN_ARBITRATION);
+                cleanUpConnection(true, apnContextEntry);
+                break;
+            }
+        }
+
+        log("disconnectOneLowerPriorityCall:" + apnContext.getDataProfileType() + " " + disconnect);
+
+        return disconnect;
+    }
+
     protected void restartRadio() {
         if (DBG) log("restartRadio: ************TURN OFF RADIO**************");
         cleanUpAllConnections(true, Phone.REASON_RADIO_TURNED_OFF);
@@ -1197,7 +1286,8 @@ public final class DcTracker extends DcTrackerBase {
     private boolean retryAfterDisconnected(String reason) {
         boolean retry = true;
 
-        if ( Phone.REASON_RADIO_TURNED_OFF.equals(reason) ) {
+        if (( Phone.REASON_RADIO_TURNED_OFF.equals(reason) )
+                || (!SUPPORT_MPDN && Phone.REASON_SINGLE_PDN_ARBITRATION.equals(reason)) ) {
             retry = false;
         }
         return retry;
@@ -1688,6 +1778,10 @@ public final class DcTracker extends DcTrackerBase {
         } else {
             apnContext.setDataProfile(null);
             apnContext.setDataConnectionAc(null);
+        }
+
+        if (SUPPORT_MPDN == false) {
+            setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION);
         }
     }
 

@@ -102,7 +102,10 @@ public interface Phone {
     static final String REASON_DATA_DEPENDENCY_MET = "dependencyMet";
     static final String REASON_DATA_DEPENDENCY_UNMET = "dependencyUnmet";
     static final String REASON_LOST_DATA_CONNECTION = "lostDataConnection";
+    static final String REASON_LINK_PROPERTIES_CHANGED = "linkPropertiesChanged";
     static final String REASON_CONNECTED = "connected";
+    static final String REASON_TETHERED_MODE_STATE_CHANGED = "tetheredModeStateChanged";
+    static final String REASON_SINGLE_PDN_ARBITRATION = "SinglePdnArbitration";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = 0; // selected by baseband automatically
