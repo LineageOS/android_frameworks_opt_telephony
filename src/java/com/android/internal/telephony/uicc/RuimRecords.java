@@ -133,7 +133,6 @@ public final class RuimRecords extends IccRecords {
     }
 
     protected void resetRecords() {
-        mCountVoiceMessages = 0;
         mMncLength = UNINITIALIZED;
         mIccId = null;
 
@@ -734,23 +733,18 @@ public final class RuimRecords extends IccRecords {
     }
 
     @Override
-    public void setVoiceMessageWaiting(int line, int countWaiting) {
-        if (line != 1) {
-            // only profile 1 is supported
-            return;
-        }
+    public void setVoiceMessageWaiting(int line, int countWaiting, Message onComplete) {
+        //Will be used in future to store voice mail count in UIM
+        //C.S0023-D_v1.0 does not have a file id in UIM for MWI
+        Rlog.d(LOG_TAG, "RuimRecords:setVoiceMessageWaiting - NOP for CDMA");
+    }
 
-        // range check
-        if (countWaiting < 0) {
-            countWaiting = -1;
-        } else if (countWaiting > 0xff) {
-            // C.S0015-B v2, 4.5.12
-            // range: 0-99
-            countWaiting = 0xff;
-        }
-        mCountVoiceMessages = countWaiting;
-
-        mRecordsEventsRegistrants.notifyResult(EVENT_MWI);
+    @Override
+    public int getVoiceMessageCount() {
+        //Will be used in future to retrieve voice mail count for UIM
+        //C.S0023-D_v1.0 does not have a file id in UIM for MWI
+        Rlog.d(LOG_TAG, "RuimRecords:getVoiceMessageCount - NOP for CDMA");
+        return 0;
     }
 
     private void handleRuimRefresh(IccRefreshResponse refreshResponse) {

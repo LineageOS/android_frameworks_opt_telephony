@@ -179,14 +179,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                 (SmsEnvelope.TELESERVICE_MWI == teleService)) {
             // handling Voicemail
             int voicemailCount = sms.getNumOfVoicemails();
-            Rlog.d(TAG, "Voicemail count=" + voicemailCount);
-            // Store the voicemail count in preferences.
-            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
-                    mContext);
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putInt(CDMAPhone.VM_COUNT_CDMA, voicemailCount);
-            editor.apply();
-            mPhone.setVoiceMessageWaiting(1, voicemailCount);
+            updateMessageWaitingIndicator(sms.getNumOfVoicemails());
             handled = true;
         } else if (((SmsEnvelope.TELESERVICE_WMT == teleService) ||
                 (SmsEnvelope.TELESERVICE_WEMT == teleService)) &&
@@ -230,6 +223,25 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         }
 
         return dispatchNormalMessage(smsb);
+    }
+
+    /*
+     * This function is overloaded to send number of voicemails instead of
+     * sending true/false
+     */
+    /* package */void updateMessageWaitingIndicator(int mwi) {
+        // range check
+        if (mwi < 0) {
+            mwi = -1;
+        } else if (mwi > 99) {
+            // C.S0015-B v2, 4.5.12
+            // range: 0-99
+            mwi = 99;
+        }
+        // update voice mail count in phone
+        ((PhoneBase)mPhone).setVoiceMessageCount(mwi);
+        // store voice mail count in preferences
+        storeVoiceMailCount();
     }
 
     /**

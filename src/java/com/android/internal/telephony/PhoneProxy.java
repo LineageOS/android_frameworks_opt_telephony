@@ -1148,11 +1148,6 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
-    public void setVoiceMessageWaiting(int line, int countWaiting) {
-        mActivePhone.setVoiceMessageWaiting(line, countWaiting);
-    }
-
-    @Override
     public UsimServiceTable getUsimServiceTable() {
         return mActivePhone.getUsimServiceTable();
     }

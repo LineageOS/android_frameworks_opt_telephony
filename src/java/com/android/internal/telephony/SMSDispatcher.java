@@ -33,6 +33,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.ContentObserver;
 import android.database.SQLException;
@@ -44,6 +45,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.SystemProperties;
 import android.provider.Settings;
+import android.preference.PreferenceManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.PhoneNumberUtils;
@@ -179,6 +181,7 @@ public abstract class SMSDispatcher extends Handler {
     /** Message sending queue limit */
     private static final int MO_MSG_QUEUE_LIMIT = 5;
 
+    static final protected int EVENT_UPDATE_ICC_MWI = 20;
     /**
      * Message reference for a CONCATENATED_8_BIT_REFERENCE or
      * CONCATENATED_16_BIT_REFERENCE message set.  Should be
@@ -379,7 +382,15 @@ public abstract class SMSDispatcher extends Handler {
             mPendingTrackerCount--;
             break;
         }
-
+        case EVENT_UPDATE_ICC_MWI:
+            ar = (AsyncResult) msg.obj;
+            if ( ar == null)
+                break;
+            if (ar.exception != null) {
+                Rlog.v(TAG, " MWI update on card failed " + ar.exception );
+                storeVoiceMailCount();
+            }
+            break;
         case EVENT_STOP_SENDING:
         {
             SmsTracker tracker = (SmsTracker) msg.obj;
@@ -610,6 +621,23 @@ public abstract class SMSDispatcher extends Handler {
                     concatRef.refNumber, concatRef.seqNumber, concatRef.msgCount,
                     sms.getTimestampMillis(), (portAddrs != null ? portAddrs.destPort : -1), false);
         }
+    }
+
+    protected void storeVoiceMailCount() {
+        // Store the voice mail count in persistent memory.
+        String imsi = mPhone.getSubscriberId();
+        int mwi = mPhone.getVoiceMessageCount();
+
+        Rlog.d(TAG, " Storing Voice Mail Count = " + mwi
+                    + " for imsi = " + imsi
+                    + " in preferences.");
+
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putInt(((PhoneBase)mPhone).VM_COUNT, mwi);
+        editor.putString(((PhoneBase)mPhone).VM_ID, imsi);
+        editor.commit();
+
     }
 
     /**

@@ -232,13 +232,13 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         // Special case the message waiting indicator messages
         boolean handled = false;
         if (sms.isMWISetMessage()) {
-            mPhone.setVoiceMessageWaiting(1, -1);  // line 1: unknown number of msgs waiting
+            updateMessageWaitingIndicator(sms.getNumOfVoicemails());
             handled = sms.isMwiDontStore();
             if (VDBG) {
                 Rlog.d(TAG, "Received voice mail indicator set SMS shouldStore=" + !handled);
             }
         } else if (sms.isMWIClearMessage()) {
-            mPhone.setVoiceMessageWaiting(1, 0);   // line 1: no msgs waiting
+            updateMessageWaitingIndicator(0);
             handled = sms.isMwiDontStore();
             if (VDBG) {
                 Rlog.d(TAG, "Received voice mail indicator clear SMS shouldStore=" + !handled);
@@ -257,6 +257,27 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         }
 
         return dispatchNormalMessage(smsb);
+    }
+
+    /* package */void updateMessageWaitingIndicator(int mwi) {
+        Message onComplete;
+        // range check
+        if (mwi < 0) {
+            mwi = -1;
+        } else if (mwi > 0xff) {
+            // TS 23.040 9.2.3.24.2
+            // "The value 255 shall be taken to mean 255 or greater"
+            mwi = 0xff;
+        }
+        // update voice mail count in GsmPhone
+        ((PhoneBase)mPhone).setVoiceMessageCount(mwi);
+        // store voice mail count in SIM/preferences
+        if (mIccRecords.get() != null) {
+            onComplete = obtainMessage(EVENT_UPDATE_ICC_MWI);
+            mIccRecords.get().setVoiceMessageWaiting(1, mwi, onComplete);
+        } else {
+            Rlog.d(TAG, "SIM Records not found, MWI not updated");
+        }
     }
 
     /** {@inheritDoc} */

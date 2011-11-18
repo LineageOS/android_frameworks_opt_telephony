@@ -345,21 +345,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
      *                     -1 to indicate that an unknown number of
      *                      messages are waiting
      */
-    public abstract void setVoiceMessageWaiting(int line, int countWaiting);
-
-    /** @return  true if there are messages waiting, false otherwise. */
-    public boolean getVoiceMessageWaiting() {
-        return mCountVoiceMessages != 0;
-    }
+    public abstract void setVoiceMessageWaiting(int line, int countWaiting, Message onComplete );
 
     /**
      * Returns number of voice messages waiting, if available
      * If not available (eg, on an older CPHS SIM) -1 is returned if
      * getVoiceMessageWaiting() is true
      */
-    public int getVoiceMessageCount() {
-        return mCountVoiceMessages;
-    }
+    public abstract int getVoiceMessageCount();
 
     /**
      * Called by STK Service when REFRESH is received.

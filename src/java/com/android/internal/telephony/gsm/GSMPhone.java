@@ -268,6 +268,21 @@ public class GSMPhone extends PhoneBase {
         return mCT;
     }
 
+    // pending voice mail count updated after phone creation
+    private void updateVoiceMail() {
+        int countVoiceMessages = 0;
+        IccRecords r = mIccRecords.get();
+        if (r != null) {
+            // get voice mail count from SIM
+            countVoiceMessages = r.getVoiceMessageCount();
+        }
+        if (countVoiceMessages == 0) {
+            countVoiceMessages = getStoredVoiceMessageCount();
+        }
+        setVoiceMessageCount(countVoiceMessages);
+    }
+
+
     @Override
     public List<? extends MmiCode>
     getPendingMmiCodes() {
@@ -1244,7 +1259,7 @@ public class GSMPhone extends PhoneBase {
                     storeVoiceMailNumber(null);
                     setVmSimImsi(null);
                 }
-
+                updateVoiceMail();
             break;
 
             case EVENT_GET_BASEBAND_VERSION_DONE:
@@ -1616,4 +1631,24 @@ public class GSMPhone extends PhoneBase {
     protected void log(String s) {
         Rlog.d(LOG_TAG, "[GSMPhone] " + s);
     }
+
+    /** gets the voice mail count from preferences */
+    private int getStoredVoiceMessageCount() {
+        int countVoiceMessages = 0;
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        String imsi = sp.getString(VM_ID, null);
+        String currentImsi = getSubscriberId();
+
+        Rlog.d(LOG_TAG, "Voicemail count retrieval for Imsi = " + imsi +
+                " current Imsi = " + currentImsi );
+
+        if ((imsi != null) && (currentImsi != null)
+                && (currentImsi.equals(imsi))) {
+            // get voice mail count from preferences
+            countVoiceMessages = sp.getInt(VM_COUNT, 0);
+            Rlog.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages );
+        }
+        return countVoiceMessages;
+    }
+
 }
