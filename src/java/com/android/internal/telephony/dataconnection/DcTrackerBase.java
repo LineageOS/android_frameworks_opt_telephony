@@ -1425,8 +1425,8 @@ public abstract class DcTrackerBase extends Handler {
             intent.putExtra(DATA_STALL_ALARM_TAG_EXTRA, mDataStallAlarmTag);
             mDataStallAlarmIntent = PendingIntent.getBroadcast(mPhone.getContext(), 0, intent,
                     PendingIntent.FLAG_UPDATE_CURRENT);
-            mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                    SystemClock.elapsedRealtime() + delayInMs, mDataStallAlarmIntent);
+            mAlarmManager.set(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + delayInMs,
+                    mDataStallAlarmIntent);
         } else {
             if (VDBG_STALL) {
                 log("startDataStallAlarm: NOT started, no connection tag=" + mDataStallAlarmTag);
