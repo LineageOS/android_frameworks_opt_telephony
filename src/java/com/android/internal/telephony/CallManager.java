@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Not a Contribution, Apache license notifications and license are retained
+ * for attribution purposes only.
+ *
  * Copyright (C) 2010 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +29,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.Registrant;
+import android.os.SystemProperties;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.Rlog;
@@ -227,6 +232,14 @@ public final class CallManager {
     }
 
     /**
+     * Returns true if Android supports VoLTE/VT calls on IMS
+     */
+    public static boolean isCallOnImsEnabled() {
+        return SystemProperties.getBoolean(
+                TelephonyProperties.CALLS_ON_IMS_ENABLED_PROPERTY, false);
+    }
+
+    /**
      * Returns all the registered phone objects.
      * @return all the registered phone objects.
      */
@@ -373,6 +386,22 @@ public final class CallManager {
         return getFirstActiveRingingCall().getPhone();
     }
 
+    /**
+     * @return the phone associated with any call
+     */
+    public Phone getPhoneInCall() {
+        Phone phone = null;
+        if (!getFirstActiveRingingCall().isIdle()) {
+            phone = getFirstActiveRingingCall().getPhone();
+        } else if (!getActiveFgCall().isIdle()) {
+            phone = getActiveFgCall().getPhone();
+        } else {
+            // If BG call is idle, we return default phone
+            phone = getFirstActiveBgCall().getPhone();
+        }
+        return phone;
+    }
+
     public void setAudioMode() {
         Context context = getContext();
         if (context == null) return;
@@ -456,7 +485,8 @@ public final class CallManager {
         phone.registerForMmiComplete(mHandler, EVENT_MMI_COMPLETE, null);
         phone.registerForSuppServiceFailed(mHandler, EVENT_SUPP_SERVICE_FAILED, null);
         phone.registerForServiceStateChanged(mHandler, EVENT_SERVICE_STATE_CHANGED, null);
-        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
+        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM ||
+                phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             phone.registerForSuppServiceNotification(mHandler, EVENT_SUPP_SERVICE_NOTIFY, null);
         }
 
@@ -471,6 +501,10 @@ public final class CallManager {
             phone.registerForCdmaOtaStatusChange(mHandler, EVENT_CDMA_OTA_STATUS_CHANGE, null);
             phone.registerForSubscriptionInfoReady(mHandler, EVENT_SUBSCRIPTION_INFO_READY, null);
             phone.registerForCallWaiting(mHandler, EVENT_CALL_WAITING, null);
+            phone.registerForEcmTimerReset(mHandler, EVENT_ECM_TIMER_RESET, null);
+        }
+
+        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             phone.registerForEcmTimerReset(mHandler, EVENT_ECM_TIMER_RESET, null);
         }
     }
@@ -507,6 +541,10 @@ public final class CallManager {
             phone.unregisterForCallWaiting(mHandler);
             phone.unregisterForEcmTimerReset(mHandler);
         }
+
+        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
+            phone.unregisterForEcmTimerReset(mHandler);
+        }
     }
 
     /**
@@ -523,11 +561,30 @@ public final class CallManager {
      * @exception CallStateException when call is not ringing or waiting
      */
     public void acceptCall(Call ringingCall) throws CallStateException {
+        acceptCall(ringingCall, CallDetails.CALL_TYPE_VOICE);
+    }
+
+    /**
+     * Answers a ringing or waiting call, with an option to downgrade a Video
+     * call Active call, if any, go on hold. If active call can't be held, i.e.,
+     * a background call of the same channel exists, the active call will be
+     * hang up. Answering occurs asynchronously, and final notification occurs
+     * via
+     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int, java.lang.Object)
+     * registerForPreciseCallStateChanged()}.
+     *
+     * @param ringingCall The call to answer
+     * @param callType The call type to use to answer the call. Values from
+     *            CallDetails.RIL_CALL_TYPE
+     * @exception CallStateException when call is not ringing or waiting
+     */
+    public void acceptCall(Call ringingCall, int callType) throws CallStateException {
         Phone ringingPhone = ringingCall.getPhone();
 
         if (VDBG) {
+            Rlog.d(LOG_TAG, "acceptCall api with calltype " + callType);
             Rlog.d(LOG_TAG, "acceptCall(" +ringingCall + " from " + ringingCall.getPhone() + ")");
-            Rlog.d(LOG_TAG, toString());
+            Rlog.d(LOG_TAG, this.toString());
         }
 
         if ( hasActiveFgCall() ) {
@@ -565,11 +622,16 @@ public final class CallManager {
             }
         }
 
-        ringingPhone.acceptCall();
+        if (ringingPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
+            ringingPhone.acceptCall(callType);
+        } else {
+            ringingPhone.acceptCall();
+        }
 
         if (VDBG) {
+            Rlog.d(LOG_TAG, "Call type in acceptCall " +callType);
             Rlog.d(LOG_TAG, "End acceptCall(" +ringingCall + ")");
-            Rlog.d(LOG_TAG, toString());
+            Rlog.d(LOG_TAG, this.toString());
         }
     }
 
@@ -748,6 +810,26 @@ public final class CallManager {
      * handled asynchronously.
      */
     public Connection dial(Phone phone, String dialString) throws CallStateException {
+        return dial(phone, dialString, CallDetails.CALL_TYPE_VOICE, null);
+    }
+
+    /**
+     * Initiate a new connection. This happens asynchronously, so you cannot
+     * assume the audio path is connected (or a call index has been assigned)
+     * until PhoneStateChanged notification has occurred.
+     *
+     * @exception CallStateException if a new outgoing call is not currently
+     *                possible because no more call slots exist or a call exists
+     *                that is dialing, alerting, ringing, or waiting. Other
+     *                errors are handled asynchronously.
+     * @param phone The phone to use to place the call
+     * @param dialString The phone number or URI that identifies the remote
+     *            party
+     * @param calldetails
+     */
+    public Connection dial(Phone phone, String dialString, int callType, String[] extras)
+            throws CallStateException {
+
         Phone basePhone = getPhoneBase(phone);
         Connection result;
 
@@ -779,7 +861,11 @@ public final class CallManager {
             }
         }
 
-        result = basePhone.dial(dialString);
+        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
+            result = basePhone.dial(dialString, callType, extras);
+        } else {
+            result = basePhone.dial(dialString);
+        }
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End dial(" + basePhone + ", "+ dialString + ")");
@@ -1759,6 +1845,34 @@ public final class CallManager {
         for (Call call : mRingingCalls) {
             if (call.getState().isRinging()) {
                 if (++count > 1) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @return true if the IMS phone has any active calls. ie. there are active
+     *         IMS calls at present
+     */
+    public boolean isImsPhoneActive() {
+        for (Phone phone : mPhones) {
+            if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS
+                    && phone.getState() != PhoneConstants.State.IDLE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @return true if IMS Phone is in idle state ie. there are no IMS calls
+     *         active at present
+     */
+    public boolean isImsPhoneIdle() {
+        for (Phone phone : mPhones) {
+            if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS &&
+                    phone.getState() == PhoneConstants.State.IDLE) {
+                return true;
             }
         }
         return false;

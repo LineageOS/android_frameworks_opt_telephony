@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2012-13, The Linux Foundation. All rights reserved.
+ * Not a Contribution, Apache license notifications and license are retained
+ * for attribution purposes only.
+ *
  * Copyright (C) 2008 The Android Open Source Project
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
@@ -41,6 +45,7 @@ import com.android.internal.telephony.uicc.UsimServiceTable;
 import com.android.internal.telephony.CallManager;
 
 import java.util.List;
+import java.util.Map;
 
 public class PhoneProxy extends Handler implements Phone {
     public final static Object lockForRadioTechnologyChange = new Object();
@@ -552,6 +557,21 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public void acceptCall(int callType) throws CallStateException {
+        mActivePhone.acceptCall(callType);
+    }
+
+    @Override
+    public int getCallType(Call call) throws CallStateException {
+        return mActivePhone.getCallType(call);
+    }
+
+    @Override
+    public int getCallDomain(Call call) throws CallStateException {
+        return mActivePhone.getCallDomain(call);
+    }
+
+    @Override
     public void rejectCall() throws CallStateException {
         mActivePhone.rejectCall();
     }
@@ -619,6 +639,12 @@ public class PhoneProxy extends Handler implements Phone {
     @Override
     public Connection dial(String dialString, UUSInfo uusInfo) throws CallStateException {
         return mActivePhone.dial(dialString, uusInfo);
+    }
+
+    @Override
+    public Connection dial(String dialString, int callType, String[] extras)
+            throws CallStateException {
+        return mActivePhone.dial(dialString, callType, extras);
     }
 
     @Override
@@ -1164,4 +1190,5 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone = null;
         mCommandsInterface = null;
     }
+
 }

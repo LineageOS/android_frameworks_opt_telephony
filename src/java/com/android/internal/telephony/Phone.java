@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2012-13, The Linux Foundation. All rights reserved.
+ * Not a Contribution, Apache license notifications and license are retained
+ * for attribution purposes only.
+ *
  * Copyright (C) 2007 The Android Open Source Project
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
@@ -35,6 +39,7 @@ import com.android.internal.telephony.uicc.UsimServiceTable;
 import com.android.internal.telephony.PhoneConstants.*; // ???? 
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Internal interface used to control the phone; SDK developers cannot
@@ -621,6 +626,32 @@ public interface Phone {
     void acceptCall() throws CallStateException;
 
     /**
+     * Answers a ringing or waiting call. Active calls, if any, go on hold.
+     * Answering occurs asynchronously, and final notification occurs via
+     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
+     * java.lang.Object) registerForPreciseCallStateChanged()}.
+     *
+     * @exception CallStateException when no call is ringing or waiting
+     */
+    void acceptCall(int callType) throws CallStateException;
+
+    /**
+     * Gets call type for IMS calls.
+     *
+     * @return one of the call types in {@link CallDetails}
+     * @throws CallStateException
+     */
+    int getCallType(Call call) throws CallStateException;
+
+    /**
+     * Gets call domain for IMS calls.
+     *
+     * @return one of the call domains in {@link CallDetails}
+     * @throws CallStateException
+     */
+    int getCallDomain(Call call) throws CallStateException;
+
+    /**
      * Reject (ignore) a ringing call. In GSM, this means UDUB
      * (User Determined User Busy). Reject occurs asynchronously,
      * and final notification occurs via
@@ -779,6 +810,20 @@ public interface Phone {
      *                errors are handled asynchronously.
      */
     Connection dial(String dialString, UUSInfo uusInfo) throws CallStateException;
+
+    /**
+     * Initiate a new voice connection with call type and extras for IMS calls.
+     * This happens asynchronously, so you cannot assume the audio path is
+     * connected (or a call index has been assigned) until PhoneStateChanged
+     * notification has occurred.
+     *
+     * @exception CallStateException if a new outgoing call is not currently
+     *                possible because no more call slots exist or a call exists
+     *                that is dialing, alerting, ringing, or waiting. Other
+     *                errors are handled asynchronously.
+     */
+    public Connection dial(String dialString, int callType, String[] extras)
+            throws CallStateException;
 
     /**
      * Handles PIN MMI commands (PIN/PIN2/PUK/PUK2), which are initiated
@@ -1710,4 +1755,5 @@ public interface Phone {
      * Remove references to external object stored in this object.
      */
     void removeReferences();
+
 }
