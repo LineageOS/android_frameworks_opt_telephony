@@ -907,6 +907,14 @@ public abstract class BaseCommands implements CommandsInterface {
       }
     }
 
+    /**
+     * @hide
+     */
+    @Override
+    public int getLteOnGsmMode() {
+        return TelephonyManager.getLteOnGsmModeStatic();
+    }
+
     @Override
     public void registerForAdnInitDone(Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);
