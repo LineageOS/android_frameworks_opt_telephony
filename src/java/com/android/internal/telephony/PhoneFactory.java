@@ -103,6 +103,9 @@ public class PhoneFactory {
                 if (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE) {
                     preferredNetworkMode = Phone.NT_MODE_GLOBAL;
                 }
+                if (TelephonyManager.getLteOnGsmModeStatic() != 0) {
+                    preferredNetworkMode = Phone.NT_MODE_LTE_GSM_WCDMA;
+                }
                 int networkMode = Settings.Global.getInt(context.getContentResolver(),
                         Settings.Global.PREFERRED_NETWORK_MODE, preferredNetworkMode);
                 Rlog.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkMode));

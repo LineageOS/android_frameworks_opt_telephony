@@ -738,4 +738,13 @@ public abstract class BaseCommands implements CommandsInterface {
     public int getRilVersion() {
         return mRilVersion;
     }
+
+    /**
+     * @hide
+     */
+    @Override
+    public int getLteOnGsmMode() {
+        return TelephonyManager.getLteOnGsmModeStatic();
+    }
+
 }
