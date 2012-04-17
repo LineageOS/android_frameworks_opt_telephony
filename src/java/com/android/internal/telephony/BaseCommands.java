@@ -908,6 +908,14 @@ public abstract class BaseCommands implements CommandsInterface {
       }
     }
 
+    /**
+     * @hide
+     */
+    @Override
+    public int getLteOnGsmMode() {
+        return TelephonyManager.getLteOnGsmModeStatic();
+    }
+
     @Override
     public void registerForPcoData(Handler h, int what, Object obj) {
         mPcoDataRegistrants.add(new Registrant(h, what, obj));
