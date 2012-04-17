@@ -927,4 +927,13 @@ public abstract class BaseCommands implements CommandsInterface {
 
     public void setLocalCallHold(int lchStatus) {
     }
+
+    /**
+     * @hide
+     */
+    @Override
+    public int getLteOnGsmMode() {
+        return TelephonyManager.getLteOnGsmModeStatic();
+    }
+
 }

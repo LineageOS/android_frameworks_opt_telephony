@@ -1887,6 +1887,22 @@ public abstract class PhoneBase extends Handler implements Phone {
         return mCi.getLteOnCdmaMode();
     }
 
+    /**
+     * {@hide}
+     */
+    @Override
+    public int getLteOnGsmMode() {
+        return mCi.getLteOnGsmMode();
+    }
+
+    /**
+     * Sets the SIM voice message waiting indicator records.
+     * @param line GSM Subscriber Profile Number, one-based. Only '1' is supported
+     * @param countWaiting The number of messages waiting, if known. Use
+     *                     -1 to indicate that an unknown number of
+     *                      messages are waiting
+     */
+    @Override
     public void setVoiceMessageWaiting(int line, int countWaiting) {
         // This function should be overridden by class GSMPhone and CDMAPhone.
         Rlog.e(LOG_TAG, "Error! This function should never be executed, inactive Phone.");
