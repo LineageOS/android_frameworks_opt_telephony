@@ -924,4 +924,13 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void getAtr(Message response) {}
+
+    /**
+     * @hide
+     */
+    @Override
+    public int getLteOnGsmMode() {
+        return TelephonyManager.getLteOnGsmModeStatic();
+    }
+
 }
