@@ -125,6 +125,9 @@ public class PhoneFactory {
                 if (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE) {
                     preferredNetworkMode = Phone.NT_MODE_GLOBAL;
                 }
+                if (TelephonyManager.getLteOnGsmModeStatic() != 0) {
+                    preferredNetworkMode = Phone.NT_MODE_LTE_GSM_WCDMA;
+                }
 
                 int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
