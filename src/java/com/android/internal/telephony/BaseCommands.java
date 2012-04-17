@@ -836,4 +836,13 @@ public abstract class BaseCommands implements CommandsInterface {
 
     public void setDataSubscription(Message response) {
     }
+
+    /**
+     * @hide
+     */
+    @Override
+    public int getLteOnGsmMode() {
+        return TelephonyManager.getLteOnGsmModeStatic();
+    }
+
 }
