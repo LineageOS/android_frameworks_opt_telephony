@@ -97,7 +97,7 @@ public class CatService extends Handler implements AppInterface {
     private static final int DEV_ID_KEYPAD      = 0x01;
     private static final int DEV_ID_UICC        = 0x81;
     private static final int DEV_ID_TERMINAL    = 0x82;
-    static final String STK_DEFAULT = "Defualt Message";
+    static final String STK_DEFAULT = "Default Message";
 
     /* Intentionally private for singleton */
     private CatService(CommandsInterface ci, UiccCardApplication ca, IccRecords ir,
@@ -291,11 +291,24 @@ public class CatService extends Handler implements AppInterface {
             case RECEIVE_DATA:
             case SEND_DATA:
                 BIPClientParams cmd = (BIPClientParams) cmdParams;
-                if (cmd.mHasAlphaId && (cmd.mTextMsg.text == null)) {
+                /*
+                 * If the text mesg is null, need to send the response
+                 * back to the card in the following scenarios
+                 * - It has alpha ID tag with no Text Msg (or)
+                 * - If alphaUsrCnf is not set. In the above cases
+                 *   there should be no UI indication given to the user.
+                 */
+                boolean alphaUsrCnf = SystemProperties.getBoolean(
+                         "persist.atel.noalpha.usrcnf", false);
+                CatLog.d(this, "alphaUsrCnf: " + alphaUsrCnf + ", mHasAlphaId: " + cmd.mHasAlphaId);
+
+                if (( cmd.mTextMsg.text == null) && ( cmd.mHasAlphaId || !alphaUsrCnf)) {
                     CatLog.d(this, "cmd " + cmdParams.getCommandType() + " with null alpha id");
                     // If alpha length is zero, we just respond with OK.
                     if (isProactiveCmd) {
                         sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
+                    } else if (cmdParams.getCommandType() == CommandType.OPEN_CHANNEL) {
+                        mCmdIf.handleCallSetupRequestFromSim(true, null);
                     }
                     return;
                 }
