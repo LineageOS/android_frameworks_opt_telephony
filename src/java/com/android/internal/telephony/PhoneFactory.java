@@ -30,6 +30,7 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.sip.SipPhone;
 import com.android.internal.telephony.sip.SipPhoneFactory;
+import com.android.internal.telephony.uicc.UiccController;
 
 /**
  * {@hide}
@@ -137,6 +138,9 @@ public class PhoneFactory {
 
                 //reads the system properties and makes commandsinterface
                 sCommandsInterface = new RIL(context, networkMode, cdmaSubscription);
+
+                // Instantiate UiccController so that all other classes can just call getInstance()
+                UiccController.make(context, sCommandsInterface);
 
                 int phoneType = TelephonyManager.getPhoneType(networkMode);
                 if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {

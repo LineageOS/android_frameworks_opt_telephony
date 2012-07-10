@@ -23,6 +23,8 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.ServiceManager;
 
+import com.android.internal.telephony.IccCardApplicationStatus.AppType;
+
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -291,7 +293,7 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
     private int updateEfForIccType(int efid) {
         // Check if we are trying to read ADN records
         if (efid == IccConstants.EF_ADN) {
-            if (phone.getIccCard().isApplicationOnIcc(IccCardApplication.AppType.APPTYPE_USIM)) {
+            if (phone.getIccCard().isApplicationOnIcc(AppType.APPTYPE_USIM)) {
                 return IccConstants.EF_PBR;
             }
         }
