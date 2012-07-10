@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.cdma;
 
+import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.EventLogTags;
@@ -124,13 +125,6 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         } else {
             super.handlePollStateResultMessage(what, ar);
         }
-    }
-
-    @Override
-    protected void setSignalStrengthDefaultValues() {
-        // TODO Make a constructor only has boolean gsm as parameter
-        mSignalStrength = new SignalStrength(99, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, SignalStrength.INVALID_SNR, -1, false);
     }
 
     @Override
@@ -441,53 +435,11 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     }
 
     @Override
-    protected void onSignalStrengthResult(AsyncResult ar) {
-        SignalStrength oldSignalStrength = mSignalStrength;
-
-        if (ar.exception != null) {
-            // Most likely radio is resetting/disconnected change to default
-            // values.
-            setSignalStrengthDefaultValues();
-        } else {
-            int[] ints = (int[])ar.result;
-
-            int lteRssi = -1;
-            int lteRsrp = -1;
-            int lteRsrq = -1;
-            int lteRssnr = SignalStrength.INVALID_SNR;
-            int lteCqi = -1;
-
-            int offset = 2;
-            int cdmaDbm = (ints[offset] > 0) ? -ints[offset] : -120;
-            int cdmaEcio = (ints[offset + 1] > 0) ? -ints[offset + 1] : -160;
-            int evdoRssi = (ints[offset + 2] > 0) ? -ints[offset + 2] : -120;
-            int evdoEcio = (ints[offset + 3] > 0) ? -ints[offset + 3] : -1;
-            int evdoSnr = ((ints[offset + 4] > 0) && (ints[offset + 4] <= 8)) ? ints[offset + 4]
-                    : -1;
-
-            if (mRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
-                lteRssi = ints[offset+5];
-                lteRsrp = ints[offset+6];
-                lteRsrq = ints[offset+7];
-                lteRssnr = ints[offset+8];
-                lteCqi = ints[offset+9];
-            }
-
-            if (mRilRadioTechnology != ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
-                mSignalStrength = new SignalStrength(99, -1, cdmaDbm, cdmaEcio, evdoRssi, evdoEcio,
-                        evdoSnr, false);
-            } else {
-                mSignalStrength = new SignalStrength(99, -1, cdmaDbm, cdmaEcio, evdoRssi, evdoEcio,
-                        evdoSnr, lteRssi, lteRsrp, lteRsrq, lteRssnr, lteCqi, true);
-            }
+    protected void onSignalStrengthResult(AsyncResult ar, PhoneBase phone, boolean isGsm) {
+        if (mRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+            isGsm = true;
         }
-
-        try {
-            phone.notifySignalStrength();
-        } catch (NullPointerException ex) {
-            loge("onSignalStrengthResult() Phone already destroyed: " + ex
-                    + "SignalStrength not notified");
-        }
+        super.onSignalStrengthResult(ar, phone, isGsm);
     }
 
     @Override
