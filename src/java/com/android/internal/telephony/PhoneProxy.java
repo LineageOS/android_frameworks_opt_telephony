@@ -26,6 +26,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -254,6 +255,14 @@ public class PhoneProxy extends Handler implements Phone {
 
     public CellLocation getCellLocation() {
         return mActivePhone.getCellLocation();
+    }
+
+    /**
+     * @return all available cell information or null if none.
+     */
+    @Override
+    public List<CellInfo> getAllCellInfo() {
+        return mActivePhone.getAllCellInfo();
     }
 
     public PhoneConstants.DataState getDataConnectionState() {

@@ -22,6 +22,7 @@ import android.net.LinkProperties;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
@@ -174,6 +175,11 @@ public interface Phone {
      * Get the current CellLocation.
      */
     CellLocation getCellLocation();
+
+    /**
+     * @return all available cell information or null if none.
+     */
+    public List<CellInfo> getAllCellInfo();
 
     /**
      * Get the current for the default apn DataState. No change notification

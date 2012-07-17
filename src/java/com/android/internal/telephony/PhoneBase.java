@@ -32,7 +32,9 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.telephony.CellInfo;
 import android.telephony.ServiceState;
+import android.telephony.SignalStrength;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -44,6 +46,7 @@ import com.android.internal.telephony.gsm.SIMRecords;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -189,9 +192,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     /**
      * Constructs a PhoneBase in normal (non-unit test) mode.
      *
-     * @param context Context object from hosting application
      * @param notifier An instance of DefaultPhoneNotifier,
+     * @param context Context object from hosting application
      * unless unit testing.
+     * @param ci the CommandsInterface
      */
     protected PhoneBase(PhoneNotifier notifier, Context context, CommandsInterface ci) {
         this(notifier, context, ci, false);
@@ -200,9 +204,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     /**
      * Constructs a PhoneBase in normal (non-unit test) mode.
      *
-     * @param context Context object from hosting application
      * @param notifier An instance of DefaultPhoneNotifier,
+     * @param context Context object from hosting application
      * unless unit testing.
+     * @param ci is CommandsInterface
      * @param unitTestMode when true, prevents notifications
      * of state change events
      */
@@ -675,6 +680,14 @@ public abstract class PhoneBase extends Handler implements Phone {
         return mIccRecords.getRecordsLoaded();
     }
 
+    /**
+     * @return all available cell information or null if none.
+     */
+    @Override
+    public List<CellInfo> getAllCellInfo() {
+        return getServiceStateTracker().getAllCellInfo();
+    }
+
     @Override
     public boolean getMessageWaitingIndicator() {
         return mIccRecords.getVoiceMessageWaiting();
@@ -690,6 +703,19 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     public void queryCdmaRoamingPreference(Message response) {
         mCM.queryCdmaRoamingPreference(response);
+    }
+
+    /**
+     * Get the signal strength
+     */
+    @Override
+    public SignalStrength getSignalStrength() {
+        ServiceStateTracker sst = getServiceStateTracker();
+        if (sst == null) {
+            return new SignalStrength();
+        } else {
+            return sst.getSignalStrength();
+        }
     }
 
     /**
@@ -790,6 +816,14 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     public void notifyOtaspChanged(int otaspMode) {
         mNotifier.notifyOtaspChanged(this, otaspMode);
+    }
+
+    public void notifySignalStrength() {
+        mNotifier.notifySignalStrength(this);
+    }
+
+    public void notifyCellInfo(List<CellInfo> cellInfo) {
+        mNotifier.notifyCellInfo(this, cellInfo);
     }
 
     /**
