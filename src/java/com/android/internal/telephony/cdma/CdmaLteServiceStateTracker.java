@@ -54,7 +54,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     private final CellInfoLte mCellInfoLte;
 
     private ServiceState  mLteSS;  // The last LTE state from Voice Registration
-
+    private boolean getSVDO = SystemProperties.getBoolean(TelephonyProperties.PROPERTY_SVDATA, false);
     private CellIdentityLte mNewCellIdentityLte = new CellIdentityLte();
     private CellIdentityLte mLasteCellIdentityLte = new CellIdentityLte();
 
@@ -562,11 +562,13 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     @Override
     public boolean isConcurrentVoiceAndDataAllowed() {
         // For non-LTE, look at the CSS indicator to check on SV capability
-        if (mRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+        if (mRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_LTE)
             return true;
-        } else {
+        else if ((getSVDO) && (mLteSS.getRadioTechnology() !=
+                    ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT))
+            return true;
+        else
             return ss.getCssIndicator() == 1;
-        }
     }
 
     /**
