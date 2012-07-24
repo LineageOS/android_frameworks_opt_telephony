@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccCardStatus;
 
@@ -1523,11 +1524,10 @@ public interface CommandsInterface {
     /**
      * Configure cdma cell broadcast SMS.
      *
-     * @param result
+     * @param response
      *            Callback message is empty on completion
      */
-    // TODO: Change the configValuesArray to a RIL_BroadcastSMSConfig
-    public void setCdmaBroadcastConfig(int[] configValuesArray, Message result);
+    public void setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs, Message response);
 
     /**
      * Query the current configuration of cdma cell broadcast SMS.
