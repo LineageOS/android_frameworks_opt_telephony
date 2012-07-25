@@ -21,12 +21,15 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.SystemClock;
+import android.telephony.CellInfo;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.util.TimeUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.List;
 
 /**
  * {@hide}
@@ -35,12 +38,20 @@ public abstract class ServiceStateTracker extends Handler {
 
     protected CommandsInterface cm;
 
-    public ServiceState ss;
-    protected ServiceState newSS;
+    protected PhoneBase mPhoneBase;
 
-    public SignalStrength mSignalStrength;
+    public ServiceState ss = new ServiceState();
+    protected ServiceState newSS = new ServiceState();
 
-    // TODO - this should not be public
+    protected CellInfo mLastCellInfo = null;
+
+    // This is final as subclasses alias to a more specific type
+    // so we don't want the reference to change.
+    protected final CellInfo mCellInfo;
+
+    protected SignalStrength mSignalStrength = new SignalStrength();
+
+    // TODO - this should not be public, right now used externally GsmConnetion.
     public RestrictedState mRestrictedState = new RestrictedState();
 
     /* The otaspMode passed to PhoneStateListener#onOtaspChanged */
@@ -121,7 +132,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final int EVENT_GET_SIGNAL_STRENGTH_CDMA          = 29;
     protected static final int EVENT_NETWORK_STATE_CHANGED_CDMA        = 30;
     protected static final int EVENT_GET_LOC_DONE_CDMA                 = 31;
-    protected static final int EVENT_SIGNAL_STRENGTH_UPDATE_CDMA       = 32;
+    //protected static final int EVENT_UNUSED                            = 32;
     protected static final int EVENT_NV_LOADED                         = 33;
     protected static final int EVENT_POLL_STATE_CDMA_SUBSCRIPTION      = 34;
     protected static final int EVENT_NV_READY                          = 35;
@@ -168,12 +179,57 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final String REGISTRATION_DENIED_GEN  = "General";
     protected static final String REGISTRATION_DENIED_AUTH = "Authentication Failure";
 
-    public ServiceStateTracker() {
+    protected ServiceStateTracker(PhoneBase phoneBase, CellInfo cellInfo) {
+        mPhoneBase = phoneBase;
+        mCellInfo = cellInfo;
+        cm = mPhoneBase.mCM;
+        cm.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
+    }
+
+    public void dispose() {
+        cm.unSetOnSignalStrengthUpdate(this);
     }
 
     public boolean getDesiredPowerState() {
         return mDesiredPowerState;
     }
+
+    private SignalStrength mLastSignalStrength = null;
+    protected boolean notifySignalStrength() {
+        boolean notified = false;
+        synchronized(mCellInfo) {
+            if (!mSignalStrength.equals(mLastSignalStrength)) {
+                try {
+                    mPhoneBase.notifySignalStrength();
+                    notified = true;
+                } catch (NullPointerException ex) {
+                    loge("updateSignalStrength() Phone already destroyed: " + ex
+                            + "SignalStrength not notified");
+                }
+            }
+        }
+        return notified;
+    }
+
+    /**
+     * Set the mCellInfo.signalStrength to its default values
+     */
+    protected void setSignalStrengthDefaultValues() {
+        setSignalStrengthDefaultValues(mSignalStrength);
+    }
+
+    /**
+     * Set the signal strength default values
+     */
+    protected void setSignalStrengthDefaultValues(SignalStrength signalStrength) {
+        signalStrength.initialize(99, -1, -1, -1, -1, -1, -1,
+                -1, -1, -1, SignalStrength.INVALID_SNR, -1, isGsmSignalStrength());
+    }
+
+    /**
+     * Return true if this SST is a GSM category device.
+     */
+    protected abstract boolean isGsmSignalStrength();
 
     /**
      * Registration point for combined roaming on
@@ -521,11 +577,27 @@ public abstract class ServiceStateTracker extends Handler {
         return retVal;
     }
 
+    /**
+     * @return all available cell information or null if none.
+     */
+    public List<CellInfo> getAllCellInfo() {
+        return null;
+    }
+
+    /**
+     * @return signal strength
+     */
+    public SignalStrength getSignalStrength() {
+        synchronized(mCellInfo) {
+            return mSignalStrength;
+        }
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("ServiceStateTracker:");
         pw.println(" ss=" + ss);
         pw.println(" newSS=" + newSS);
-        pw.println(" mSignalStrength=" + mSignalStrength);
+        pw.println(" mCellInfo=" + mCellInfo);
         pw.println(" mRestrictedState=" + mRestrictedState);
         pw.println(" pollingContext=" + pollingContext);
         pw.println(" mDesiredPowerState=" + mDesiredPowerState);

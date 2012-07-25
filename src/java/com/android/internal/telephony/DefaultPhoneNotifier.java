@@ -28,6 +28,8 @@ import android.util.Log;
 
 import com.android.internal.telephony.ITelephonyRegistry;
 
+import java.util.List;
+
 /**
  * broadcast intents
  */
@@ -157,7 +159,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
-    public void notifyCellInfo(Phone sender, CellInfo cellInfo) {
+    public void notifyCellInfo(Phone sender, List<CellInfo> cellInfo) {
         try {
             mRegistry.notifyCellInfo(cellInfo);
         } catch (RemoteException ex) {

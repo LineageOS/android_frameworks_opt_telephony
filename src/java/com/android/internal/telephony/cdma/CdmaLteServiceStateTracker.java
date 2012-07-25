@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (C) 2012 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,12 +22,17 @@ import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.IccCard;
 
-import android.content.Intent;
+import android.telephony.CellInfo;
+import android.telephony.CellInfoLte;
+import android.telephony.CellSignalStrengthLte;
+import android.telephony.CellIdentityLte;
 import android.telephony.SignalStrength;
 import android.telephony.ServiceState;
 import android.telephony.cdma.CdmaCellLocation;
+import android.text.TextUtils;
 import android.os.AsyncResult;
 import android.os.Message;
+import android.os.SystemClock;
 import android.os.SystemProperties;
 
 import android.text.TextUtils;
@@ -39,17 +44,27 @@ import com.android.internal.telephony.IccCardConstants;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
-    CDMALTEPhone mCdmaLtePhone;
+    private CDMALTEPhone mCdmaLtePhone;
+    private final CellInfoLte mCellInfoLte;
 
     private ServiceState  mLteSS;  // The last LTE state from Voice Registration
 
+    private CellIdentityLte mNewCellIdentityLte = new CellIdentityLte();
+    private CellIdentityLte mLasteCellIdentityLte = new CellIdentityLte();
+
     public CdmaLteServiceStateTracker(CDMALTEPhone phone) {
-        super(phone);
+        super(phone, new CellInfoLte());
         mCdmaLtePhone = phone;
+        mCellInfoLte = (CellInfoLte) mCellInfo;
 
         mLteSS = new ServiceState();
+        ((CellInfoLte)mCellInfo).setCellSignalStrength(new CellSignalStrengthLte());
+        ((CellInfoLte)mCellInfo).setCellIdentity(new CellIdentityLte());
+
         if (DBG) log("CdmaLteServiceStateTracker Constructors");
     }
 
@@ -100,8 +115,11 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     @Override
     protected void handlePollStateResultMessage(int what, AsyncResult ar) {
         if (what == EVENT_POLL_STATE_GPRS) {
-            if (DBG) log("handlePollStateResultMessage: EVENT_POLL_STATE_GPRS");
             String states[] = (String[])ar.result;
+            if (DBG) {
+                log("handlePollStateResultMessage: EVENT_POLL_STATE_GPRS states.length=" +
+                        states.length + " states=" + states);
+            }
 
             int type = 0;
             int regState = -1;
@@ -117,6 +135,71 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                     loge("handlePollStateResultMessage: error parsing GprsRegistrationState: "
                                     + ex);
                 }
+                if (states.length >= 10) {
+                    int mcc;
+                    int mnc;
+                    int tac;
+                    int pci;
+                    int eci;
+                    int csgid;
+                    String operatorNumeric = null;
+
+                    try {
+                        operatorNumeric = mLteSS.getOperatorNumeric();
+                        mcc = Integer.parseInt(operatorNumeric.substring(0,3));
+                    } catch (Exception e) {
+                        try {
+                            operatorNumeric = ss.getOperatorNumeric();
+                            mcc = Integer.parseInt(operatorNumeric.substring(0,3));
+                        } catch (Exception ex) {
+                            loge("handlePollStateResultMessage: bad mcc operatorNumeric=" +
+                                    operatorNumeric + " ex=" + ex);
+                            operatorNumeric = "";
+                            mcc = Integer.MAX_VALUE;
+                        }
+                    }
+                    try {
+                        mnc = Integer.parseInt(operatorNumeric.substring(3));
+                    } catch (Exception e) {
+                        loge("handlePollStateResultMessage: bad mnc operatorNumeric=" +
+                                operatorNumeric + " e=" + e);
+                        mnc = Integer.MAX_VALUE;
+                    }
+                    try {
+                        tac = Integer.parseInt(states[6], 16);
+                    } catch (Exception e) {
+                        loge("handlePollStateResultMessage: bad tac states[6]=" +
+                                states[6] + " e=" + e);
+                        tac = Integer.MAX_VALUE;
+                    }
+                    try {
+                        pci = Integer.parseInt(states[7], 16);
+                    } catch (Exception e) {
+                        loge("handlePollStateResultMessage: bad pci states[7]=" +
+                                states[7] + " e=" + e);
+                        pci = Integer.MAX_VALUE;
+                    }
+                    try {
+                        eci = Integer.parseInt(states[8], 16);
+                    } catch (Exception e) {
+                        loge("handlePollStateResultMessage: bad eci states[8]=" +
+                                states[8] + " e=" + e);
+                        eci = Integer.MAX_VALUE;
+                    }
+                    try {
+                        csgid = Integer.parseInt(states[9], 16);
+                    } catch (Exception e) {
+                        // FIX: Always bad so don't pollute the logs
+                        // loge("handlePollStateResultMessage: bad csgid states[9]=" +
+                        //        states[9] + " e=" + e);
+                        csgid = Integer.MAX_VALUE;
+                    }
+                    mNewCellIdentityLte = new CellIdentityLte(mcc, mnc, eci, pci, tac);
+                    if (DBG) {
+                        log("handlePollStateResultMessage: mNewLteCellIdentity=" +
+                                mNewCellIdentityLte);
+                    }
+                }
             }
 
             mLteSS.setRadioTechnology(type);
@@ -127,10 +210,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     }
 
     @Override
-    protected void setSignalStrengthDefaultValues() {
-        // TODO Make a constructor only has boolean gsm as parameter
-        mSignalStrength = new SignalStrength(99, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, SignalStrength.INVALID_SNR, -1, false);
+    protected boolean isGsmSignalStrength() {
+        return false;
     }
 
     @Override
@@ -171,18 +252,10 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 cm.getVoiceRegistrationState(obtainMessage(EVENT_POLL_STATE_REGISTRATION_CDMA,
                         pollingContext));
 
-                int networkMode = android.provider.Settings.Secure.getInt(phone.getContext()
-                        .getContentResolver(),
-                        android.provider.Settings.Secure.PREFERRED_NETWORK_MODE,
-                        RILConstants.PREFERRED_NETWORK_MODE);
-                if (DBG) log("pollState: network mode here is = " + networkMode);
-                if ((networkMode == RILConstants.NETWORK_MODE_GLOBAL)
-                        || (networkMode == RILConstants.NETWORK_MODE_LTE_ONLY)) {
-                    pollingContext[0]++;
-                    // RIL_REQUEST_DATA_REGISTRATION_STATE
-                    cm.getDataRegistrationState(obtainMessage(EVENT_POLL_STATE_GPRS,
-                                                pollingContext));
-                }
+                pollingContext[0]++;
+                // RIL_REQUEST_DATA_REGISTRATION_STATE
+                cm.getDataRegistrationState(obtainMessage(EVENT_POLL_STATE_GPRS,
+                                            pollingContext));
                 break;
         }
     }
@@ -438,15 +511,36 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         if (hasLocationChanged) {
             phone.notifyLocationChanged();
         }
+
+        ArrayList<CellInfo> arrayCi = new ArrayList<CellInfo>();
+        synchronized(mCellInfo) {
+            CellInfoLte cil = (CellInfoLte)mCellInfo;
+
+            boolean cidChanged = ! mNewCellIdentityLte.equals(mLasteCellIdentityLte);
+            if (hasRegistered || hasDeregistered || cidChanged) {
+                // TODO: Handle the absence of LteCellIdentity
+                long timeStamp = SystemClock.elapsedRealtime() * 1000;
+                boolean registered = ss.getState() == ServiceState.STATE_IN_SERVICE;
+                mLasteCellIdentityLte = mNewCellIdentityLte;
+
+                cil.setRegisterd(registered);
+                cil.setCellIdentity(mLasteCellIdentityLte);
+                if (DBG) {
+                    log("pollStateDone: hasRegistered=" + hasRegistered +
+                            " hasDeregistered=" + hasDeregistered +
+                            " cidChanged=" + cidChanged +
+                            " mCellInfo=" + mCellInfo);
+                }
+                arrayCi.add(mCellInfo);
+            }
+            phone.notifyCellInfo(arrayCi);
+        }
     }
 
     @Override
     protected void onSignalStrengthResult(AsyncResult ar) {
-        SignalStrength oldSignalStrength = mSignalStrength;
-
         if (ar.exception != null) {
-            // Most likely radio is resetting/disconnected change to default
-            // values.
+            // Most likely radio is resetting/disconnected change to default values.
             setSignalStrengthDefaultValues();
         } else {
             int[] ints = (int[])ar.result;
@@ -473,20 +567,45 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 lteCqi = ints[offset+9];
             }
 
-            if (mRilRadioTechnology != ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
-                mSignalStrength = new SignalStrength(99, -1, cdmaDbm, cdmaEcio, evdoRssi, evdoEcio,
-                        evdoSnr, false);
-            } else {
-                mSignalStrength = new SignalStrength(99, -1, cdmaDbm, cdmaEcio, evdoRssi, evdoEcio,
-                        evdoSnr, lteRssi, lteRsrp, lteRsrq, lteRssnr, lteCqi, true);
+            synchronized (mCellInfo) {
+                if (mRilRadioTechnology != ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+                    mSignalStrength.initialize(99, -1, cdmaDbm, cdmaEcio, evdoRssi,
+                            evdoEcio, evdoSnr, false);
+                } else {
+                    mCellInfoLte.setTimeStamp(SystemClock.elapsedRealtime() * 1000);
+                    mCellInfoLte.setTimeStampType(CellInfo.TIMESTAMP_TYPE_JAVA_RIL);
+                    mCellInfoLte.getCellSignalStrength().initialize(lteRssi, lteRsrp, lteRsrq,
+                            lteRssnr, lteCqi, Integer.MAX_VALUE);
+                    mSignalStrength.initialize(99, -1, cdmaDbm, cdmaEcio, evdoRssi,
+                            evdoEcio, evdoSnr, lteRssi, lteRsrp, lteRsrq, lteRssnr, lteCqi, true);
+                }
             }
         }
 
-        try {
-            phone.notifySignalStrength();
-        } catch (NullPointerException ex) {
-            loge("onSignalStrengthResult() Phone already destroyed: " + ex
-                    + "SignalStrength not notified");
+        boolean ssChanged = notifySignalStrength();
+        if (ssChanged) {
+            synchronized(mCellInfo) {
+                if (mCellInfoLte.getCellIdentity() != null) {
+                    ArrayList<CellInfo> arrayCi = new ArrayList<CellInfo>();
+                    arrayCi.add(mCellInfoLte);
+                    phone.notifyCellInfo(arrayCi);
+                }
+            }
+        }
+    }
+
+    /**
+     * Set the mCellInfo.signalStrength to its default values
+     */
+    @Override
+    protected void setSignalStrengthDefaultValues() {
+        super.setSignalStrengthDefaultValues();
+        synchronized(mCellInfo) {
+            if (mCellInfoLte != null) {
+                mCellInfoLte.getCellSignalStrength().setDefaultValues();
+                mCellInfoLte.setTimeStamp(Long.MAX_VALUE);
+                mCellInfoLte.setTimeStampType(CellInfo.TIMESTAMP_TYPE_UNKNOWN);
+            }
         }
     }
 
@@ -524,6 +643,20 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         }
         // SID/NID are not in the list. So device is not in home network
         return false;
+    }
+
+    /**
+     * @return all available cell information, the returned List maybe empty but never null.
+     */
+    @Override
+    public List<CellInfo> getAllCellInfo() {
+        ArrayList<CellInfo> arrayList = new ArrayList<CellInfo>();
+        CellInfo ci;
+        synchronized(mCellInfo) {
+            arrayList.add(mCellInfoLte);
+        }
+        if (DBG) log ("getAllCellInfo: arrayList=" + arrayList);
+        return arrayList;
     }
 
     @Override

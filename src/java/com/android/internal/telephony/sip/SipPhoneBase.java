@@ -24,6 +24,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
+import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -118,6 +119,14 @@ abstract class SipPhoneBase extends PhoneBase {
         ServiceState s = new ServiceState();
         s.setState(ServiceState.STATE_IN_SERVICE);
         return s;
+    }
+
+    /**
+     * @return all available cell information or null if none.
+     */
+    @Override
+    public List<CellInfo> getAllCellInfo() {
+        return getServiceStateTracker().getAllCellInfo();
     }
 
     public CellLocation getCellLocation() {
