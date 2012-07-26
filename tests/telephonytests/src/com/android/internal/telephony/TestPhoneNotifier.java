@@ -20,6 +20,8 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import android.telephony.CellInfo;
 
+import java.util.List;
+
 /**
  * Stub class used for unit tests
  */
@@ -62,6 +64,6 @@ public class TestPhoneNotifier implements PhoneNotifier {
     public void notifyOtaspChanged(Phone sender, int otaspMode) {
     }
 
-    public void notifyCellInfo(Phone sender, CellInfo cellInfo) {
+    public void notifyCellInfo(Phone sender, List<CellInfo> cellInfo) {
     }
 }

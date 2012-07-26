@@ -52,6 +52,8 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
+import android.telephony.CellInfo;
+import android.telephony.CellInfoGsm;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.gsm.GsmCellLocation;
@@ -193,15 +195,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     };
 
     public GsmServiceStateTracker(GSMPhone phone) {
-        super();
+        super(phone, new CellInfoGsm());
 
         this.phone = phone;
-        cm = phone.mCM;
-        ss = new ServiceState();
-        newSS = new ServiceState();
         cellLoc = new GsmCellLocation();
         newCellLoc = new GsmCellLocation();
-        mSignalStrength = new SignalStrength();
 
         PowerManager powerManager =
                 (PowerManager)phone.getContext().getSystemService(Context.POWER_SERVICE);
@@ -212,7 +210,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         cm.registerForVoiceNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED, null);
         cm.setOnNITZTime(this, EVENT_NITZ_TIME, null);
-        cm.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
         cm.setOnRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
         phone.getIccCard().registerForReady(this, EVENT_SIM_READY, null);
 
@@ -242,6 +239,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         phone.notifyOtaspChanged(OTASP_NOT_NEEDED);
     }
 
+    @Override
     public void dispose() {
         // Unregister for all events.
         cm.unregisterForAvailable(this);
@@ -249,11 +247,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         cm.unregisterForVoiceNetworkStateChanged(this);
         phone.getIccCard().unregisterForReady(this);
         phone.mIccRecords.unregisterForRecordsLoaded(this);
-        cm.unSetOnSignalStrengthUpdate(this);
         cm.unSetOnRestrictedStateChanged(this);
         cm.unSetOnNITZTime(this);
         cr.unregisterContentObserver(this.mAutoTimeObserver);
         cr.unregisterContentObserver(this.mAutoTimeZoneObserver);
+        super.dispose();
     }
 
     protected void finalize() {
@@ -682,10 +680,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
     }
 
-    private void setSignalStrengthDefaultValues() {
-        // TODO Make a constructor only has boolean gsm as parameter
-        mSignalStrength = new SignalStrength(99, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, SignalStrength.INVALID_SNR, -1, true);
+    @Override
+    protected boolean isGsmSignalStrength() {
+        return true;
     }
 
     /**
@@ -1017,6 +1014,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         } else {
             mReportedGprsNoReg = false;
         }
+        // TODO: Add GsmCellIdenity updating, see CdmaLteServiceStateTracker.
     }
 
     /**
@@ -1087,7 +1085,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
      *  Called both for solicited and unsolicited signal strength updates.
      */
     private void onSignalStrengthResult(AsyncResult ar) {
-        SignalStrength oldSignalStrength = mSignalStrength;
+        SignalStrength signalStrength = new SignalStrength();
         int rssi = 99;
         int lteSignalStrength = -1;
         int lteRsrp = -1;
@@ -1098,7 +1096,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         if (ar.exception != null) {
             // -1 = unknown
             // most likely radio is resetting/disconnected
-            setSignalStrengthDefaultValues();
+            setSignalStrengthDefaultValues(signalStrength);
         } else {
             int[] ints = (int[])ar.result;
 
@@ -1114,20 +1112,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 loge("Bogus signal strength response");
                 rssi = 99;
             }
+            synchronized(mCellInfo) {
+                mSignalStrength.initialize(rssi, -1, -1, -1,
+                        -1, -1, -1, lteSignalStrength, lteRsrp, lteRsrq, lteRssnr, lteCqi, true);
+            }
         }
 
-        mSignalStrength = new SignalStrength(rssi, -1, -1, -1,
-                -1, -1, -1, lteSignalStrength, lteRsrp, lteRsrq, lteRssnr, lteCqi, true);
-
-        if (!mSignalStrength.equals(oldSignalStrength)) {
-            try { // This takes care of delayed EVENT_POLL_SIGNAL_STRENGTH (scheduled after
-                  // POLL_PERIOD_MILLIS) during Radio Technology Change)
-                phone.notifySignalStrength();
-           } catch (NullPointerException ex) {
-                log("onSignalStrengthResult() Phone already destroyed: " + ex
-                        + "SignalStrength not notified");
-           }
-        }
+        notifySignalStrength();
     }
 
     /**

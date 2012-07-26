@@ -196,7 +196,6 @@ class RILRequest {
 
 /**
  * RIL implementation of the CommandsInterface.
- * FIXME public only for testing
  *
  * {@hide}
  */

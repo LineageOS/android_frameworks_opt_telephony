@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (C) 2012 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,8 @@ import android.os.SystemProperties;
 import android.provider.Settings;
 import android.provider.Settings.Secure;
 import android.provider.Settings.SettingNotFoundException;
+import android.telephony.CellInfo;
+import android.telephony.CellInfoCdma;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.cdma.CdmaCellLocation;
@@ -60,6 +62,7 @@ import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.TimeZone;
 
 /**
@@ -163,16 +166,16 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     };
 
     public CdmaServiceStateTracker(CDMAPhone phone) {
-        super();
+        this(phone, new CellInfoCdma());
+    }
+
+    protected CdmaServiceStateTracker(CDMAPhone phone, CellInfo cellInfo) {
+        super(phone, cellInfo);
 
         this.phone = phone;
         cr = phone.getContext().getContentResolver();
-        cm = phone.mCM;
-        ss = new ServiceState();
-        newSS = new ServiceState();
         cellLoc = new CdmaCellLocation();
         newCellLoc = new CdmaCellLocation();
-        mSignalStrength = new SignalStrength();
 
         mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(phone.getContext(), cm, this,
                 EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
@@ -187,7 +190,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
         cm.registerForVoiceNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED_CDMA, null);
         cm.setOnNITZTime(this, EVENT_NITZ_TIME, null);
-        cm.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
 
         cm.registerForCdmaPrlChanged(this, EVENT_CDMA_PRL_VERSION_CHANGED, null);
         phone.registerForEriFileLoaded(this, EVENT_ERI_FILE_LOADED, null);
@@ -208,6 +210,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         mNeedToRegForRuimLoaded = true;
     }
 
+    @Override
     public void dispose() {
         // Unregister for all events.
         cm.unregisterForRadioStateChanged(this);
@@ -216,12 +219,12 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         cm.unregisterForCdmaOtaProvision(this);
         phone.unregisterForEriFileLoaded(this);
         phone.mIccRecords.unregisterForRecordsLoaded(this);
-        cm.unSetOnSignalStrengthUpdate(this);
         cm.unSetOnNITZTime(this);
         cr.unregisterContentObserver(mAutoTimeObserver);
         cr.unregisterContentObserver(mAutoTimeZoneObserver);
         mCdmaSSM.dispose(this);
         cm.unregisterForCdmaPrlChanged(this);
+        super.dispose();
     }
 
     @Override
@@ -814,8 +817,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
     }
 
-    protected void setSignalStrengthDefaultValues() {
-        mSignalStrength = new SignalStrength(99, -1, -1, -1, -1, -1, -1, false);
+    @Override
+    protected boolean isGsmSignalStrength() {
+        return false;
     }
 
     /**
@@ -1077,6 +1081,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         if (hasLocationChanged) {
             phone.notifyLocationChanged();
         }
+        // TODO: Add CdmaCellIdenity updating, see CdmaLteServiceStateTracker.
     }
 
     /**
@@ -1139,10 +1144,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
      *  send signal-strength-changed notification if changed
      *  Called both for solicited and unsolicited signal strength updates
      */
-    protected void
-    onSignalStrengthResult(AsyncResult ar) {
-        SignalStrength oldSignalStrength = mSignalStrength;
-
+    protected void onSignalStrengthResult(AsyncResult ar) {
         if (ar.exception != null) {
             // Most likely radio is resetting/disconnected change to default values.
             setSignalStrengthDefaultValues();
@@ -1155,18 +1157,13 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             int evdoEcio = (ints[offset+3] > 0) ? -ints[offset+3] : -1;
             int evdoSnr  = ((ints[offset+4] > 0) && (ints[offset+4] <= 8)) ? ints[offset+4] : -1;
 
-            //log(String.format("onSignalStrengthResult cdmaDbm=%d cdmaEcio=%d evdoRssi=%d evdoEcio=%d evdoSnr=%d",
-            //        cdmaDbm, cdmaEcio, evdoRssi, evdoEcio, evdoSnr));
-            mSignalStrength = new SignalStrength(99, -1, cdmaDbm, cdmaEcio,
-                    evdoRssi, evdoEcio, evdoSnr, false);
+            synchronized(mCellInfo) {
+                mSignalStrength.initialize(99, -1, cdmaDbm, cdmaEcio, evdoRssi, evdoEcio, evdoSnr,
+                        false);
+            }
         }
 
-        try {
-            phone.notifySignalStrength();
-        } catch (NullPointerException ex) {
-            loge("onSignalStrengthResult() Phone already destroyed: " + ex
-                    + "SignalStrength not notified");
-        }
+        notifySignalStrength();
     }
 
 
@@ -1699,6 +1696,14 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             }
             phone.notifyOtaspChanged(mCurrentOtaspMode);
         }
+    }
+
+    /**
+     * @return all available cell information or null if none.
+     */
+    @Override
+    public List<CellInfo> getAllCellInfo() {
+        return null;
     }
 
     @Override

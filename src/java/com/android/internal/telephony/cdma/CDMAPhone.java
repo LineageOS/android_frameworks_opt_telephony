@@ -356,11 +356,6 @@ public class CDMAPhone extends PhoneBase {
         return ret;
     }
 
-    /*package*/ void
-    notifySignalStrength() {
-        mNotifier.notifySignalStrength(this);
-    }
-
     public Connection
     dial (String dialString) throws CallStateException {
         // Need to make sure dialString gets parsed properly
@@ -370,10 +365,6 @@ public class CDMAPhone extends PhoneBase {
 
     public Connection dial(String dialString, UUSInfo uusInfo) throws CallStateException {
         throw new CallStateException("Sending UUS information NOT supported in CDMA!");
-    }
-
-    public SignalStrength getSignalStrength() {
-        return mSST.mSignalStrength;
     }
 
     public boolean
