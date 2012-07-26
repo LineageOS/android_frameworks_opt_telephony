@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.os.AsyncResult;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
@@ -28,12 +29,17 @@ import android.util.TimeUtils;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
+import com.android.internal.telephony.uicc.UiccController;
+
 /**
  * {@hide}
  */
 public abstract class ServiceStateTracker extends Handler {
 
     protected CommandsInterface cm;
+    protected UiccController mUiccController = null;
+    protected IccCard mIccCard = null;
+    protected IccRecords mIccRecords = null;
 
     public ServiceState ss;
     protected ServiceState newSS;
@@ -131,7 +137,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED  = 39;
     protected static final int EVENT_CDMA_PRL_VERSION_CHANGED          = 40;
     protected static final int EVENT_RADIO_ON                          = 41;
-
+    protected static final int EVENT_ICC_CHANGED                       = 42;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -168,7 +174,10 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final String REGISTRATION_DENIED_GEN  = "General";
     protected static final String REGISTRATION_DENIED_AUTH = "Authentication Failure";
 
-    public ServiceStateTracker() {
+    public ServiceStateTracker(PhoneBase p, CommandsInterface ci) {
+        cm = ci;
+        mUiccController = UiccController.getInstance();
+        mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
     }
 
     public boolean getDesiredPowerState() {
@@ -295,6 +304,10 @@ public abstract class ServiceStateTracker extends Handler {
                 }
                 break;
 
+            case EVENT_ICC_CHANGED:
+                onUpdateIccAvailability();
+                break;
+
             default:
                 log("Unhandled message with number: " + msg.what);
                 break;
@@ -305,6 +318,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected abstract void handlePollStateResult(int what, AsyncResult ar);
     protected abstract void updateSpnDisplay();
     protected abstract void setPowerStateToDesired();
+    protected abstract void onUpdateIccAvailability();
     protected abstract void log(String s);
     protected abstract void loge(String s);
 
@@ -534,5 +548,20 @@ public abstract class ServiceStateTracker extends Handler {
         pw.println(" dontPollSignalStrength=" + dontPollSignalStrength);
         pw.println(" mPendingRadioPowerOffAfterDataOff=" + mPendingRadioPowerOffAfterDataOff);
         pw.println(" mPendingRadioPowerOffAfterDataOffTag=" + mPendingRadioPowerOffAfterDataOffTag);
+    }
+
+    /**
+     * Verifies the current thread is the same as the thread originally
+     * used in the initialization of this instance. Throws RuntimeException
+     * if not.
+     *
+     * @exception RuntimeException if the current thread is not
+     * the thread that originally obtained this PhoneBase instance.
+     */
+    protected void checkCorrectThread() {
+        if (Thread.currentThread() != getLooper().getThread()) {
+            throw new RuntimeException(
+                    "ServiceStateTracker must be used from within one thread");
+        }
     }
 }
