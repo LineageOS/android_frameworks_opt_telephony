@@ -170,7 +170,7 @@ public class CatService extends Handler implements AppInterface {
                 // for error handling : cast exception
                 CatLog.d(this, "Fail to parse proactive command");
                 // Don't send Terminal Resp if command detail is not available
-                if (mCurrentCmd != null) {
+                if (mCurrntCmd != null) {
                     sendTerminalResponse(mCurrntCmd.mCmdDet, ResultCode.CMD_DATA_NOT_UNDERSTOOD,
                                      false, 0x00, null);
                 }
