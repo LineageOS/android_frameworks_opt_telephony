@@ -462,4 +462,8 @@ abstract class SipPhoneBase extends PhoneBase {
             notifyPhoneStateChanged();
         }
     }
+
+    @Override
+    protected void onUpdateIccAvailability() {
+    }
 }

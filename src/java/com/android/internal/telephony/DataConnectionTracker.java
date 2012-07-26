@@ -47,6 +47,7 @@ import android.util.Log;
 import com.android.internal.R;
 import com.android.internal.telephony.DataConnection.FailCause;
 import com.android.internal.telephony.DctConstants;
+import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.AsyncChannel;
 
 import java.io.FileDescriptor;
@@ -57,6 +58,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * {@hide}
@@ -166,10 +168,11 @@ public abstract class DataConnectionTracker extends Handler {
 
     // member variables
     protected PhoneBase mPhone;
+    protected UiccController mUiccController;
+    protected AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
     protected DctConstants.Activity mActivity = DctConstants.Activity.NONE;
     protected DctConstants.State mState = DctConstants.State.IDLE;
     protected Handler mDataConnectionTracker = null;
-
 
     protected long mTxPkts;
     protected long mRxPkts;
@@ -419,6 +422,8 @@ public abstract class DataConnectionTracker extends Handler {
         super();
         if (DBG) log("DCT.constructor");
         mPhone = phone;
+        mUiccController = UiccController.getInstance();
+        mUiccController.registerForIccChanged(this, DctConstants.EVENT_ICC_CHANGED, null);
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(getActionIntentReconnectAlarm());
@@ -461,6 +466,7 @@ public abstract class DataConnectionTracker extends Handler {
         mIsDisposed = true;
         mPhone.getContext().unregisterReceiver(this.mIntentReceiver);
         mDataRoamingSettingObserver.unregister(mPhone.getContext());
+        mUiccController.unregisterForIccChanged(this);
     }
 
     protected void broadcastMessenger() {
@@ -583,6 +589,7 @@ public abstract class DataConnectionTracker extends Handler {
     protected abstract void onCleanUpConnection(boolean tearDown, int apnId, String reason);
     protected abstract void onCleanUpAllConnections(String cause);
     protected abstract boolean isDataPossible(String apnType);
+    protected abstract void onUpdateIcc();
 
     protected void onDataStallAlarm(int tag) {
         loge("onDataStallAlarm: not impleted tag=" + tag);
@@ -693,6 +700,10 @@ public abstract class DataConnectionTracker extends Handler {
                 onSetPolicyDataEnabled(enabled);
                 break;
             }
+            case DctConstants.EVENT_ICC_CHANGED:
+                onUpdateIcc();
+                break;
+
             default:
                 Log.e("DATA", "Unidentified event msg=" + msg);
                 break;

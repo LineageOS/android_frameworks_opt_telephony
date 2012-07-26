@@ -29,6 +29,7 @@ import android.util.Log;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCard;
+import com.android.internal.telephony.IccRecords;
 import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
@@ -67,7 +68,6 @@ public class CDMALTEPhone extends CDMAPhone {
     public CDMALTEPhone(Context context, CommandsInterface ci, PhoneNotifier notifier) {
         super(context, ci, notifier, false);
         m3gppSMS = new GsmSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
-        mIccRecords.registerForNewSms(this, EVENT_NEW_ICC_SMS, null);
     }
 
     @Override
@@ -89,10 +89,6 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     protected void initSstIcc() {
-        mIccCard.set(UiccController.getInstance(this).getIccCard());
-        mIccRecords = mIccCard.get().getIccRecords();
-        // CdmaLteServiceStateTracker registers with IccCard to know
-        // when the card is ready. So create mIccCard before the ServiceStateTracker
         mSST = new CdmaLteServiceStateTracker(this);
     }
 
@@ -101,7 +97,6 @@ public class CDMALTEPhone extends CDMAPhone {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
             super.dispose();
             m3gppSMS.dispose();
-            mIccRecords.unregisterForNewSms(this);
         }
     }
 
@@ -205,11 +200,12 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     public boolean updateCurrentCarrierInProvider() {
-        if (mIccRecords != null) {
+        IccRecords r = mIccRecords.get();
+        if (r != null) {
             try {
                 Uri uri = Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "current");
                 ContentValues map = new ContentValues();
-                String operatorNumeric = mIccRecords.getOperatorNumeric();
+                String operatorNumeric = r.getOperatorNumeric();
                 map.put(Telephony.Carriers.NUMERIC, operatorNumeric);
                 if (DBG) log("updateCurrentCarrierInProvider from UICC: numeric=" +
                         operatorNumeric);
@@ -227,7 +223,8 @@ public class CDMALTEPhone extends CDMAPhone {
     // return IMSI from USIM as subscriber ID.
     @Override
     public String getSubscriberId() {
-        return mIccRecords.getIMSI();
+        IccRecords r = mIccRecords.get();
+        return (r != null) ? r.getIMSI() : "";
     }
 
     @Override
@@ -242,12 +239,14 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     public IsimRecords getIsimRecords() {
-        return mIccRecords.getIsimRecords();
+        IccRecords r = mIccRecords.get();
+        return (r != null) ? r.getIsimRecords() : null;
     }
 
     @Override
     public String getMsisdn() {
-        return mIccRecords.getMsisdnNumber();
+        IccRecords r = mIccRecords.get();
+        return (r != null) ? r.getMsisdnNumber() : null;
     }
 
     @Override
@@ -258,6 +257,26 @@ public class CDMALTEPhone extends CDMAPhone {
     @Override
     public void requestIsimAuthentication(String nonce, Message result) {
         mCM.requestIsimAuthentication(nonce, result);
+    }
+
+    @Override
+    protected void registerForRuimRecordEvents() {
+        IccRecords r = mIccRecords.get();
+        if (r == null) {
+            return;
+        }
+        r.registerForNewSms(this, EVENT_NEW_ICC_SMS, null);
+        super.registerForRuimRecordEvents();
+    }
+
+    @Override
+    protected void unregisterForRuimRecordEvents() {
+        IccRecords r = mIccRecords.get();
+        if (r == null) {
+            return;
+        }
+        r.unregisterForNewSms(this);
+        super.unregisterForRuimRecordEvents();
     }
 
     @Override
