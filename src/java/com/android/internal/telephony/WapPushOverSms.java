@@ -28,6 +28,8 @@ import android.telephony.Rlog;
 import android.os.IBinder;
 import android.os.RemoteException;
 
+import com.android.internal.telephony.uicc.IccUtils;
+
 /**
  * WAP push handler class.
  *

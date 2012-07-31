@@ -24,7 +24,7 @@ import android.os.Binder;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 
-import com.android.internal.telephony.ims.IsimRecords;
+import com.android.internal.telephony.uicc.IsimRecords;
 
 public class PhoneSubInfo extends IPhoneSubInfo.Stub {
     static final String LOG_TAG = "PHONE";

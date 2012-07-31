@@ -29,8 +29,9 @@ import android.telephony.ServiceState;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.*;
-import com.android.internal.telephony.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 /**
  * {@hide}

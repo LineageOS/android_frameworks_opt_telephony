@@ -20,6 +20,9 @@ import android.os.Handler;
 import android.os.Message;
 
 import com.android.internal.telephony.IccCardConstants.State;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus;
+import com.android.internal.telephony.uicc.IccFileHandler;
+import com.android.internal.telephony.uicc.IccRecords;
 
 /**
  * {@hide}

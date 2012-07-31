@@ -50,16 +50,13 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDI
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_BASEBAND_VERSION;
 
-import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.cat.CatService;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
-import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
-import com.android.internal.telephony.IccRecords;
 import com.android.internal.telephony.IccSmsInterfaceManager;
 import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.OperatorInfo;
@@ -71,11 +68,14 @@ import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.UiccCard;
-import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.test.SimulatedRadioControl;
+import com.android.internal.telephony.uicc.IccFileHandler;
+import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.IccVmNotSupportedException;
+import com.android.internal.telephony.uicc.UiccCard;
+import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.IccVmNotSupportedException;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.ServiceStateTracker;
 
 import java.io.FileDescriptor;

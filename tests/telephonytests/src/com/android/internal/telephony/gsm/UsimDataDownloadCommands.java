@@ -23,8 +23,8 @@ import android.os.SystemClock;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.BaseCommands;
-import com.android.internal.telephony.IccIoResult;
 import com.android.internal.telephony.UUSInfo;
+import com.android.internal.telephony.uicc.IccIoResult;
 
 import junit.framework.Assert;
 

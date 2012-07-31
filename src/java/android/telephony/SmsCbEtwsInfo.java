@@ -20,7 +20,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.format.Time;
 
-import com.android.internal.telephony.IccUtils;
+import com.android.internal.telephony.uicc.IccUtils;
 
 import java.util.Arrays;
 

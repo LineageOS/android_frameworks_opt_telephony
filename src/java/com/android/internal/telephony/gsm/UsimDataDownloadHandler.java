@@ -24,9 +24,9 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccIoResult;
-import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.cat.ComprehensionTlvTag;
+import com.android.internal.telephony.uicc.IccIoResult;
+import com.android.internal.telephony.uicc.IccUtils;
 
 /**
  * Handler for SMS-PP data download messages.

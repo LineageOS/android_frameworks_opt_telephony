@@ -24,12 +24,12 @@ import android.os.Handler;
 import android.os.Message;
 import android.telephony.Rlog;
 
-import com.android.internal.telephony.IccConstants;
 import com.android.internal.telephony.IccSmsInterfaceManager;
-import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.IntRangeManager;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsRawData;
+import com.android.internal.telephony.uicc.IccConstants;
+import com.android.internal.telephony.uicc.IccUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
