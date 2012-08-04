@@ -65,6 +65,13 @@ public abstract class DataConnectionTracker extends Handler {
     protected static final boolean DBG = true;
     protected static final boolean VDBG = false;
 
+    /**
+     * Constants for the data connection activity:
+     * physical link down/up
+     */
+    protected static final int DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE = 0;
+    protected static final int DATA_CONNECTION_ACTIVE_PH_LINK_DOWN = 1;
+    protected static final int DATA_CONNECTION_ACTIVE_PH_LINK_UP = 2;
 
     /** Delay between APN attempts.
         Note the property override mechanism is there just for testing purpose only. */
