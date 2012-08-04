@@ -116,7 +116,8 @@ public final class CdmaLteUiccRecords extends SIMRecords {
             int encoding = data[1];
             int language = data[2];
             byte[] spnData = new byte[32];
-            System.arraycopy(data, 3, spnData, 0, (data.length < 32) ? data.length : 32);
+            int len = ((data.length - 3) < 32) ? (data.length - 3) : 32;
+            System.arraycopy(data, 3, spnData, 0, len);
 
             int numBytes;
             for (numBytes = 0; numBytes < spnData.length; numBytes++) {
