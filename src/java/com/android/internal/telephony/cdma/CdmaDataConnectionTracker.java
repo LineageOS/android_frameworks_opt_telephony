@@ -80,14 +80,6 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
         "com.android.internal.telephony.cdma-data-stall";
 
 
-    /**
-     * Constants for the data connection activity:
-     * physical link down/up
-     */
-     private static final int DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE = 0;
-     private static final int DATA_CONNECTION_ACTIVE_PH_LINK_DOWN = 1;
-     private static final int DATA_CONNECTION_ACTIVE_PH_LINK_UP = 2;
-
     private static final String[] mSupportedApnTypes = {
             PhoneConstants.APN_TYPE_DEFAULT,
             PhoneConstants.APN_TYPE_MMS,
