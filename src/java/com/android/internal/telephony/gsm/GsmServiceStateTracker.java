@@ -127,12 +127,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     long mSavedTime;
     long mSavedAtTime;
 
-    /**
-     * We can't register for SIM_RECORDS_LOADED immediately because the
-     * SIMRecords object may not be instantiated yet.
-     */
-    private boolean mNeedToRegForSimLoaded;
-
     /** Started the recheck process after finding gprs should registered but not. */
     private boolean mStartedGprsRegCheck = false;
 
@@ -195,7 +189,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     };
 
     public GsmServiceStateTracker(GSMPhone phone) {
-        super(phone, new CellInfoGsm());
+        super(phone, phone.mCM, new CellInfoGsm());
 
         this.phone = phone;
         cellLoc = new GsmCellLocation();
@@ -211,7 +205,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         cm.registerForVoiceNetworkStateChanged(this, EVENT_NETWORK_STATE_CHANGED, null);
         cm.setOnNITZTime(this, EVENT_NITZ_TIME, null);
         cm.setOnRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
-        phone.getIccCard().registerForReady(this, EVENT_SIM_READY, null);
 
         // system setting property AIRPLANE_MODE_ON is set in Settings.
         int airplaneMode = Settings.System.getInt(
@@ -228,7 +221,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 mAutoTimeZoneObserver);
 
         setSignalStrengthDefaultValues();
-        mNeedToRegForSimLoaded = true;
 
         // Monitor locale change
         IntentFilter filter = new IntentFilter();
@@ -241,12 +233,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
     @Override
     public void dispose() {
+        checkCorrectThread();
         // Unregister for all events.
         cm.unregisterForAvailable(this);
         cm.unregisterForRadioStateChanged(this);
         cm.unregisterForVoiceNetworkStateChanged(this);
-        phone.getIccCard().unregisterForReady(this);
-        phone.mIccRecords.unregisterForRecordsLoaded(this);
+        if (mIccCard != null) {mIccCard.unregisterForReady(this);}
+        if (mIccRecords != null) {mIccRecords.unregisterForRecordsLoaded(this);}
         cm.unSetOnRestrictedStateChanged(this);
         cm.unSetOnNITZTime(this);
         cr.unregisterContentObserver(this.mAutoTimeObserver);
@@ -283,15 +276,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             case EVENT_SIM_READY:
                 // Set the network type, in case the radio does not restore it.
                 cm.setCurrentPreferredNetworkType();
-
-                // The SIM is now ready i.e if it was locked
-                // it has been unlocked. At this stage, the radio is already
-                // powered on.
-                if (mNeedToRegForSimLoaded) {
-                    phone.mIccRecords.registerForRecordsLoaded(this,
-                            EVENT_SIM_RECORDS_LOADED, null);
-                    mNeedToRegForSimLoaded = false;
-                }
 
                 boolean skipRestoringSelection = phone.getContext().getResources().getBoolean(
                         com.android.internal.R.bool.skip_restoring_network_selection);
@@ -494,8 +478,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     }
 
     protected void updateSpnDisplay() {
-        int rule = phone.mIccRecords.getDisplayRule(ss.getOperatorNumeric());
-        String spn = phone.mIccRecords.getServiceProviderName();
+        if (mIccRecords == null) {
+            return;
+        }
+        int rule = mIccRecords.getDisplayRule(ss.getOperatorNumeric());
+        String spn = mIccRecords.getServiceProviderName();
         String plmn = ss.getOperatorAlphaLong();
 
         // For emergency calls only, pass the EmergencyCallsOnly string via EXTRA_PLMN
@@ -1141,7 +1128,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     ((state & RILConstants.RIL_RESTRICTED_STATE_CS_EMERGENCY) != 0) ||
                     ((state & RILConstants.RIL_RESTRICTED_STATE_CS_ALL) != 0) );
             //ignore the normal call and data restricted state before SIM READY
-            if (phone.getIccCard().getState() == IccCardConstants.State.READY) {
+            if (mIccCard.getState() == IccCardConstants.State.READY) {
                 newRs.setCsNormalRestricted(
                         ((state & RILConstants.RIL_RESTRICTED_STATE_CS_NORMAL) != 0) ||
                         ((state & RILConstants.RIL_RESTRICTED_STATE_CS_ALL) != 0) );
@@ -1668,6 +1655,35 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     }
 
     @Override
+    protected void onUpdateIccAvailability() {
+        if (mUiccController == null ) {
+            return;
+        }
+
+        IccCard newIccCard = mUiccController.getIccCard();
+
+        if (mIccCard != newIccCard) {
+            if (mIccCard != null) {
+                log("Removing stale icc objects.");
+                mIccCard.unregisterForReady(this);
+                if (mIccRecords != null) {
+                    mIccRecords.unregisterForRecordsLoaded(this);
+                }
+                mIccRecords = null;
+                mIccCard = null;
+            }
+            if (newIccCard != null) {
+                log("New card found");
+                mIccCard = newIccCard;
+                mIccRecords = mIccCard.getIccRecords();
+                mIccCard.registerForReady(this, EVENT_SIM_READY, null);
+                if (mIccRecords != null) {
+                    mIccRecords.registerForRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
+                }
+            }
+        }
+    }
+    @Override
     protected void log(String s) {
         Log.d(LOG_TAG, "[GsmSST] " + s);
     }
@@ -1707,7 +1723,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         pw.println(" mSavedTimeZone=" + mSavedTimeZone);
         pw.println(" mSavedTime=" + mSavedTime);
         pw.println(" mSavedAtTime=" + mSavedAtTime);
-        pw.println(" mNeedToRegForSimLoaded=" + mNeedToRegForSimLoaded);
         pw.println(" mStartedGprsRegCheck=" + mStartedGprsRegCheck);
         pw.println(" mReportedGprsNoReg=" + mReportedGprsNoReg);
         pw.println(" mNotification=" + mNotification);

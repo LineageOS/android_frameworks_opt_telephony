@@ -119,12 +119,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     long mSavedTime;
     long mSavedAtTime;
 
-    /**
-     * We can't register for SIM_RECORDS_LOADED immediately because the
-     * SIMRecords object may not be instantiated yet.
-     */
-    private boolean mNeedToRegForRuimLoaded = false;
-
     /** Wake lock used while setting time of day. */
     private PowerManager.WakeLock mWakeLock;
     private static final String WAKELOCK_TAG = "ServiceStateTracker";
@@ -170,7 +164,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     }
 
     protected CdmaServiceStateTracker(CDMAPhone phone, CellInfo cellInfo) {
-        super(phone, cellInfo);
+        super(phone, phone.mCM, cellInfo);
 
         this.phone = phone;
         cr = phone.getContext().getContentResolver();
@@ -206,19 +200,18 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             Settings.System.getUriFor(Settings.System.AUTO_TIME_ZONE), true,
             mAutoTimeZoneObserver);
         setSignalStrengthDefaultValues();
-
-        mNeedToRegForRuimLoaded = true;
     }
 
     @Override
     public void dispose() {
+        checkCorrectThread();
         // Unregister for all events.
         cm.unregisterForRadioStateChanged(this);
         cm.unregisterForVoiceNetworkStateChanged(this);
-        phone.getIccCard().unregisterForReady(this);
         cm.unregisterForCdmaOtaProvision(this);
         phone.unregisterForEriFileLoaded(this);
-        phone.mIccRecords.unregisterForRecordsLoaded(this);
+        if (mIccCard != null) {mIccCard.unregisterForReady(this);}
+        if (mIccRecords != null) {mIccRecords.unregisterForRecordsLoaded(this);}
         cm.unSetOnNITZTime(this);
         cr.unregisterContentObserver(mAutoTimeObserver);
         cr.unregisterContentObserver(mAutoTimeZoneObserver);
@@ -289,14 +282,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         case EVENT_RUIM_READY:
             // TODO: Consider calling setCurrentPreferredNetworkType as we do in GsmSST.
             // cm.setCurrentPreferredNetworkType();
-
-            // The RUIM is now ready i.e if it was locked it has been
-            // unlocked. At this stage, the radio is already powered on.
-            if (mNeedToRegForRuimLoaded) {
-                phone.mIccRecords.registerForRecordsLoaded(this,
-                        EVENT_RUIM_RECORDS_LOADED, null);
-                mNeedToRegForRuimLoaded = false;
-            }
 
             if (phone.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {
                 // Subscription will be read from SIM I/O
@@ -416,8 +401,19 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     mIsMinInfoReady = true;
 
                     updateOtaspState();
-                    phone.getIccCard().broadcastIccStateChangedIntent(
-                            IccCardConstants.INTENT_VALUE_ICC_IMSI, null);
+                    if (mIccCard != null) {
+                        if (DBG) {
+                            log("GET_CDMA_SUBSCRIPTION broadcast Icc state changed");
+                        }
+                        mIccCard.broadcastIccStateChangedIntent(
+                                IccCardConstants.INTENT_VALUE_ICC_IMSI,
+                                null);
+                    } else {
+                        if (DBG) {
+                            log("GET_CDMA_SUBSCRIPTION mIccCard is null (probably NV type device)" +
+                                    " can't broadcast Icc state changed");
+                        }
+                    }
                 } else {
                     if (DBG) {
                         log("GET_CDMA_SUBSCRIPTION: error parsing cdmaSubscription params num="
@@ -509,8 +505,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         if (!isSubscriptionFromRuim) {
             // NV is ready when subscription source is NV
             sendMessage(obtainMessage(EVENT_NV_READY));
-        } else {
-            phone.getIccCard().registerForReady(this, EVENT_RUIM_READY, null);
         }
     }
 
@@ -1699,6 +1693,38 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         }
     }
 
+    @Override
+    protected void onUpdateIccAvailability() {
+        if (mUiccController == null ) {
+            return;
+        }
+
+        IccCard newIccCard = mUiccController.getIccCard();
+
+        if (mIccCard != newIccCard) {
+            if (mIccCard != null) {
+                log("Removing stale icc objects.");
+                mIccCard.unregisterForReady(this);
+                if (mIccRecords != null) {
+                    mIccRecords.unregisterForRecordsLoaded(this);
+                }
+                mIccRecords = null;
+                mIccCard = null;
+            }
+            if (newIccCard != null) {
+                log("New card found");
+                mIccCard = newIccCard;
+                mIccRecords = mIccCard.getIccRecords();
+                if (isSubscriptionFromRuim) {
+                    mIccCard.registerForReady(this, EVENT_RUIM_READY, null);
+                    if (mIccRecords != null) {
+                        mIccRecords.registerForRecordsLoaded(this, EVENT_RUIM_RECORDS_LOADED, null);
+                    }
+                }
+            }
+        }
+    }
+
     /**
      * @return all available cell information or null if none.
      */
@@ -1740,7 +1766,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         pw.println(" mSavedTimeZone=" + mSavedTimeZone);
         pw.println(" mSavedTime=" + mSavedTime);
         pw.println(" mSavedAtTime=" + mSavedAtTime);
-        pw.println(" mNeedToRegForRuimLoaded=" + mNeedToRegForRuimLoaded);
         pw.println(" mWakeLock=" + mWakeLock);
         pw.println(" mCurPlmn=" + mCurPlmn);
         pw.println(" mMdn=" + mMdn);
