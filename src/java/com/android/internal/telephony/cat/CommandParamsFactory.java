@@ -150,6 +150,7 @@ class CommandParamsFactory extends Handler {
              case SEND_USSD:
                  cmdPending = processEventNotify(cmdDet, ctlvs);
                  break;
+             case GET_CHANNEL_STATUS:
              case SET_UP_CALL:
                  cmdPending = processSetupCall(cmdDet, ctlvs);
                  break;
