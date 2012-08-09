@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 #
+ifneq ($(TARGET_BUILD_PDK),true)
 
 LOCAL_PATH:=$(call my-dir)
 
@@ -28,3 +29,5 @@ LOCAL_STATIC_JAVA_LIBRARIES := librilproto-java
 LOCAL_MODULE := mockrilcontroller
 
 include $(BUILD_STATIC_JAVA_LIBRARY)
+
+endif # !PDK
