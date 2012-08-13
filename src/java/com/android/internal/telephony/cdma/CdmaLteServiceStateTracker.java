@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.cdma;
 
+import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.EventLogTags;
@@ -207,11 +208,6 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         } else {
             super.handlePollStateResultMessage(what, ar);
         }
-    }
-
-    @Override
-    protected boolean isGsmSignalStrength() {
-        return false;
     }
 
     @Override
@@ -535,80 +531,31 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 }
                 arrayCi.add(mCellInfo);
             }
-            phone.notifyCellInfo(arrayCi);
+            mPhoneBase.notifyCellInfo(arrayCi);
         }
     }
 
     @Override
-    protected void onSignalStrengthResult(AsyncResult ar) {
-        if (ar.exception != null) {
-            // Most likely radio is resetting/disconnected change to default values.
-            setSignalStrengthDefaultValues();
-        } else {
-            int[] ints = (int[])ar.result;
+    protected boolean onSignalStrengthResult(AsyncResult ar, boolean isGsm) {
+        if (mRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+            isGsm = true;
+        }
+        boolean ssChanged = super.onSignalStrengthResult(ar, isGsm);
 
-            int lteRssi = -1;
-            int lteRsrp = -1;
-            int lteRsrq = -1;
-            int lteRssnr = SignalStrength.INVALID_SNR;
-            int lteCqi = -1;
-
-            int offset = 2;
-            int cdmaDbm = (ints[offset] > 0) ? -ints[offset] : -120;
-            int cdmaEcio = (ints[offset + 1] > 0) ? -ints[offset + 1] : -160;
-            int evdoRssi = (ints[offset + 2] > 0) ? -ints[offset + 2] : -120;
-            int evdoEcio = (ints[offset + 3] > 0) ? -ints[offset + 3] : -1;
-            int evdoSnr = ((ints[offset + 4] > 0) && (ints[offset + 4] <= 8)) ? ints[offset + 4]
-                    : -1;
-
+        synchronized (mCellInfo) {
             if (mRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
-                lteRssi = ints[offset+5];
-                lteRsrp = ints[offset+6];
-                lteRsrq = ints[offset+7];
-                lteRssnr = ints[offset+8];
-                lteCqi = ints[offset+9];
+                mCellInfoLte.setTimeStamp(SystemClock.elapsedRealtime() * 1000);
+                mCellInfoLte.setTimeStampType(CellInfo.TIMESTAMP_TYPE_JAVA_RIL);
+                mCellInfoLte.getCellSignalStrength()
+                                .initialize(mSignalStrength,SignalStrength.INVALID);
             }
-
-            synchronized (mCellInfo) {
-                if (mRilRadioTechnology != ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
-                    mSignalStrength.initialize(99, -1, cdmaDbm, cdmaEcio, evdoRssi,
-                            evdoEcio, evdoSnr, false);
-                } else {
-                    mCellInfoLte.setTimeStamp(SystemClock.elapsedRealtime() * 1000);
-                    mCellInfoLte.setTimeStampType(CellInfo.TIMESTAMP_TYPE_JAVA_RIL);
-                    mCellInfoLte.getCellSignalStrength().initialize(lteRssi, lteRsrp, lteRsrq,
-                            lteRssnr, lteCqi, Integer.MAX_VALUE);
-                    mSignalStrength.initialize(99, -1, cdmaDbm, cdmaEcio, evdoRssi,
-                            evdoEcio, evdoSnr, lteRssi, lteRsrp, lteRsrq, lteRssnr, lteCqi, true);
-                }
+            if (mCellInfoLte.getCellIdentity() != null) {
+                ArrayList<CellInfo> arrayCi = new ArrayList<CellInfo>();
+                arrayCi.add(mCellInfoLte);
+                mPhoneBase.notifyCellInfo(arrayCi);
             }
         }
-
-        boolean ssChanged = notifySignalStrength();
-        if (ssChanged) {
-            synchronized(mCellInfo) {
-                if (mCellInfoLte.getCellIdentity() != null) {
-                    ArrayList<CellInfo> arrayCi = new ArrayList<CellInfo>();
-                    arrayCi.add(mCellInfoLte);
-                    phone.notifyCellInfo(arrayCi);
-                }
-            }
-        }
-    }
-
-    /**
-     * Set the mCellInfo.signalStrength to its default values
-     */
-    @Override
-    protected void setSignalStrengthDefaultValues() {
-        super.setSignalStrengthDefaultValues();
-        synchronized(mCellInfo) {
-            if (mCellInfoLte != null) {
-                mCellInfoLte.getCellSignalStrength().setDefaultValues();
-                mCellInfoLte.setTimeStamp(Long.MAX_VALUE);
-                mCellInfoLte.setTimeStampType(CellInfo.TIMESTAMP_TYPE_UNKNOWN);
-            }
-        }
+        return ssChanged;
     }
 
     @Override

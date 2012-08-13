@@ -220,26 +220,6 @@ public abstract class ServiceStateTracker extends Handler {
     }
 
     /**
-     * Set the mCellInfo.signalStrength to its default values
-     */
-    protected void setSignalStrengthDefaultValues() {
-        setSignalStrengthDefaultValues(mSignalStrength);
-    }
-
-    /**
-     * Set the signal strength default values
-     */
-    protected void setSignalStrengthDefaultValues(SignalStrength signalStrength) {
-        signalStrength.initialize(99, -1, -1, -1, -1, -1, -1,
-                -1, -1, -1, SignalStrength.INVALID_SNR, -1, isGsmSignalStrength());
-    }
-
-    /**
-     * Return true if this SST is a GSM category device.
-     */
-    protected abstract boolean isGsmSignalStrength();
-
-    /**
      * Registration point for combined roaming on
      * combined roaming is true when roaming is true and ONS differs SPN
      *
@@ -520,6 +500,30 @@ public abstract class ServiceStateTracker extends Handler {
             }
             return false;
         }
+    }
+
+    /**
+     * send signal-strength-changed notification if changed Called both for
+     * solicited and unsolicited signal strength updates
+     *
+     * @return true if the signal strength changed and a notification was sent.
+     */
+    protected boolean onSignalStrengthResult(AsyncResult ar, boolean isGsm) {
+        SignalStrength oldSignalStrength = mSignalStrength;
+
+        // This signal is used for both voice and data radio signal so parse
+        // all fields
+
+        if ((ar.exception == null) && (ar.result != null)) {
+            mSignalStrength = (SignalStrength) ar.result;
+            mSignalStrength.validateInput();
+            mSignalStrength.setGsm(isGsm);
+        } else {
+            log("onSignalStrengthResult() Exception from RIL : " + ar.exception);
+            mSignalStrength = new SignalStrength(isGsm);
+        }
+
+        return notifySignalStrength();
     }
 
     /**
