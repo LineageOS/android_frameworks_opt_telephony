@@ -468,6 +468,38 @@ public abstract class ServiceStateTracker extends Handler {
     }
 
     /**
+     * send signal-strength-changed notification if changed Called both for
+     * solicited and unsolicited signal strength updates
+     */
+    protected void onSignalStrengthResult(AsyncResult ar, PhoneBase phone, boolean isGsm) {
+        SignalStrength oldSignalStrength = mSignalStrength;
+
+        // This signal is used for both voice and data radio signal so parse
+        // all fields
+
+        if ((ar.exception == null) && (ar.result != null)) {
+            mSignalStrength = (SignalStrength) ar.result;
+            mSignalStrength.validateInput();
+            mSignalStrength.setGsm(isGsm);
+        } else {
+            log("onSignalStrengthResult() Exception from RIL : " + ar.exception);
+            mSignalStrength = new SignalStrength(isGsm);
+        }
+
+        if (!mSignalStrength.equals(oldSignalStrength)) {
+            try {
+                // This takes care of delayed EVENT_POLL_SIGNAL_STRENGTH
+                // (scheduled after POLL_PERIOD_MILLIS) during Radio Technology
+                // Change)
+                phone.notifySignalStrength();
+            } catch (NullPointerException ex) {
+                log("onSignalStrengthResult() Phone already destroyed: " + ex
+                        + "SignalStrength not notified");
+            }
+        }
+    }
+
+    /**
      * Hang up all voice call and turn off radio. Implemented by derived class.
      */
     protected abstract void hangupAndPowerOff();
