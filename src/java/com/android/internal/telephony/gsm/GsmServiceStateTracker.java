@@ -309,7 +309,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     return;
                 }
                 ar = (AsyncResult) msg.obj;
-                onSignalStrengthResult(ar);
+                onSignalStrengthResult(ar, true);
                 queueNextSignalStrengthPoll();
 
                 break;
@@ -376,7 +376,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 // we don't have to ask it
                 dontPollSignalStrength = true;
 
-                onSignalStrengthResult(ar);
+                onSignalStrengthResult(ar, true);
                 break;
 
             case EVENT_SIM_RECORDS_LOADED:
@@ -667,9 +667,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
     }
 
-    @Override
-    protected boolean isGsmSignalStrength() {
-        return true;
+    private void setSignalStrengthDefaultValues() {
+        mSignalStrength = new SignalStrength(true);
     }
 
     /**
@@ -1065,47 +1064,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         // TODO Don't poll signal strength if screen is off
         sendMessageDelayed(msg, POLL_PERIOD_MILLIS);
-    }
-
-    /**
-     *  Send signal-strength-changed notification if changed.
-     *  Called both for solicited and unsolicited signal strength updates.
-     */
-    private void onSignalStrengthResult(AsyncResult ar) {
-        SignalStrength signalStrength = new SignalStrength();
-        int rssi = 99;
-        int lteSignalStrength = -1;
-        int lteRsrp = -1;
-        int lteRsrq = -1;
-        int lteRssnr = SignalStrength.INVALID_SNR;
-        int lteCqi = -1;
-
-        if (ar.exception != null) {
-            // -1 = unknown
-            // most likely radio is resetting/disconnected
-            setSignalStrengthDefaultValues(signalStrength);
-        } else {
-            int[] ints = (int[])ar.result;
-
-            // bug 658816 seems to be a case where the result is 0-length
-            if (ints.length != 0) {
-                rssi = ints[0];
-                lteSignalStrength = ints[7];
-                lteRsrp = ints[8];
-                lteRsrq = ints[9];
-                lteRssnr = ints[10];
-                lteCqi = ints[11];
-            } else {
-                loge("Bogus signal strength response");
-                rssi = 99;
-            }
-            synchronized(mCellInfo) {
-                mSignalStrength.initialize(rssi, -1, -1, -1,
-                        -1, -1, -1, lteSignalStrength, lteRsrp, lteRsrq, lteRssnr, lteCqi, true);
-            }
-        }
-
-        notifySignalStrength();
     }
 
     /**
