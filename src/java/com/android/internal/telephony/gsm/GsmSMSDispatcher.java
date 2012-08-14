@@ -393,9 +393,17 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
 
             SmsCbHeader header = new SmsCbHeader(receivedPdu);
             String plmn = SystemProperties.get(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC);
-            GsmCellLocation cellLocation = (GsmCellLocation) mPhone.getCellLocation();
-            int lac = cellLocation.getLac();
-            int cid = cellLocation.getCid();
+            int lac = -1;
+            int cid = -1;
+            android.telephony.CellLocation cl = mPhone.getCellLocation();
+            // Check if cell location is GsmCellLocation.  This is required to support
+            // dual-mode devices such as CDMA/LTE devices that require support for
+            // both 3GPP and 3GPP2 format messages
+            if (cl instanceof GsmCellLocation) {
+                GsmCellLocation cellLocation = (GsmCellLocation)cl;
+                lac = cellLocation.getLac();
+                cid = cellLocation.getCid();
+            }
 
             SmsCbLocation location;
             switch (header.getGeographicalScope()) {
