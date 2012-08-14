@@ -1327,7 +1327,12 @@ public final class BearerData {
     private static boolean decodeCallbackNumber(BearerData bData, BitwiseInputStream inStream)
         throws BitwiseInputStream.AccessException, CodingException
     {
+        final int EXPECTED_PARAM_SIZE = 1 * 8; //at least
         int paramBits = inStream.read(8) * 8;
+        if (paramBits < EXPECTED_PARAM_SIZE) {
+            inStream.skip(paramBits);
+            return false;
+        }
         CdmaSmsAddress addr = new CdmaSmsAddress();
         addr.digitMode = inStream.read(1);
         byte fieldBits = 4;
