@@ -21,6 +21,7 @@ import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardStatus;
 import com.android.internal.telephony.IccCardStatus.CardState;
 import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.sip.SipPhone;
 
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -132,6 +133,12 @@ public class UiccController extends Handler {
         }
 
         if (DBG) log("setNewPhone");
+        // TODO: remove this
+        if (phone instanceof SipPhone) {
+            if (DBG) log("Got SipPhone. Ignore.");
+            return;
+        }
+
         if (mCurrentPhone != phone) {
             if (mIccCard != null) {
                 // Refresh card if phone changed
