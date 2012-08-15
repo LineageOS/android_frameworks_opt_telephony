@@ -112,18 +112,12 @@ public class UiccController extends Handler {
         IccCardStatus status = (IccCardStatus)ar.result;
 
         //Update already existing card
-        if (mIccCard != null && status.getCardState() == CardState.CARDSTATE_PRESENT) {
+        if (mIccCard != null) {
             mIccCard.update(mCurrentPhone, status);
         }
 
-        //Dispose of removed card
-        if (mIccCard != null && status.getCardState() != CardState.CARDSTATE_PRESENT) {
-            mIccCard.dispose();
-            mIccCard = null;
-        }
-
         //Create new card
-        if (mIccCard == null && status.getCardState() == CardState.CARDSTATE_PRESENT) {
+        if (mIccCard == null) {
             mIccCard = new IccCard(mCurrentPhone, status, mCurrentPhone.getPhoneName(), true);
         }
 
