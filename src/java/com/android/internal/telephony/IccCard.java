@@ -136,7 +136,6 @@ public class IccCard {
 
     public void dispose() {
         if (mDbg) log("Disposing card type " + (is3gpp ? "3gpp" : "3gpp2"));
-        mPhone.mCM.unregisterForIccStatusChanged(mHandler);
         mPhone.mCM.unregisterForOffOrNotAvailable(mHandler);
         mPhone.mCM.unregisterForOn(mHandler);
         mCatService.dispose();
