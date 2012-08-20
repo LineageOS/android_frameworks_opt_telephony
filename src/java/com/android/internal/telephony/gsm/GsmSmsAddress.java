@@ -17,7 +17,7 @@
 package com.android.internal.telephony.gsm;
 
 import android.telephony.PhoneNumberUtils;
-
+import java.text.ParseException;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.SmsAddress;
 
@@ -35,9 +35,10 @@ public class GsmSmsAddress extends SmsAddress {
      * @param offset the offset of the Address-Length byte
      * @param length the length in bytes rounded up, e.g. "2 +
      *        (addressLength + 1) / 2"
+     * @throws ParseException
      */
 
-    public GsmSmsAddress(byte[] data, int offset, int length) {
+    public GsmSmsAddress(byte[] data, int offset, int length) throws ParseException {
         origBytes = new byte[length];
         System.arraycopy(data, offset, origBytes, 0, length);
 
@@ -49,7 +50,8 @@ public class GsmSmsAddress extends SmsAddress {
 
         // TOA must have its high bit set
         if ((toa & 0x80) != 0x80) {
-            throw new RuntimeException("Invalid TOA - high bit must be set");
+            throw new ParseException("Invalid TOA - high bit must be set. toa = " + toa,
+                    offset + OFFSET_TOA);
         }
 
         if (isAlphanumeric()) {
