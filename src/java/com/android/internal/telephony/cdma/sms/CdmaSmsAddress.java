@@ -173,6 +173,9 @@ public class CdmaSmsAddress extends SmsAddress {
      * including CR/LF.
      */
     private static String filterWhitespace(String address) {
+        if (address == null) {
+            return null;
+        }
         StringBuilder builder = new StringBuilder();
         int len = address.length();
         for (int i = 0; i < len; i++) {
@@ -230,6 +233,9 @@ public class CdmaSmsAddress extends SmsAddress {
 
         if (addr.digitMode == DIGIT_MODE_8BIT_CHAR) {
             filteredAddr = filterWhitespace(filteredAddr);
+            if (filteredAddr == null) {
+                filteredAddr = filterWhitespace(address);
+            }
             origBytes = UserData.stringToAscii(filteredAddr);
             if (origBytes == null) {
                 return null;
