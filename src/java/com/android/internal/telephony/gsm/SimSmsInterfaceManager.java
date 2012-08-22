@@ -17,28 +17,16 @@
 package com.android.internal.telephony.gsm;
 
 import android.content.Context;
-import android.content.pm.PackageManager;
-import android.os.AsyncResult;
 import android.os.Binder;
-import android.os.Handler;
 import android.os.Message;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.IccSmsInterfaceManager;
 import com.android.internal.telephony.IntRangeManager;
 import com.android.internal.telephony.SMSDispatcher;
-import com.android.internal.telephony.SmsRawData;
-import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccUtils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import static android.telephony.SmsManager.STATUS_ON_ICC_FREE;
 
 /**
  * SimSmsInterfaceManager to provide an inter-process communication to
@@ -48,59 +36,11 @@ public class SimSmsInterfaceManager extends IccSmsInterfaceManager {
     static final String LOG_TAG = "GSM";
     static final boolean DBG = true;
 
-    private final Object mLock = new Object();
-    private boolean mSuccess;
-    private List<SmsRawData> mSms;
-    private HashMap<Integer, HashSet<String>> mCellBroadcastSubscriptions =
-            new HashMap<Integer, HashSet<String>>();
-
     private CellBroadcastRangeManager mCellBroadcastRangeManager =
             new CellBroadcastRangeManager();
 
-    private static final int EVENT_LOAD_DONE = 1;
-    private static final int EVENT_UPDATE_DONE = 2;
-    private static final int EVENT_SET_BROADCAST_ACTIVATION_DONE = 3;
-    private static final int EVENT_SET_BROADCAST_CONFIG_DONE = 4;
     private static final int SMS_CB_CODE_SCHEME_MIN = 0;
     private static final int SMS_CB_CODE_SCHEME_MAX = 255;
-
-    Handler mHandler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            AsyncResult ar;
-
-            switch (msg.what) {
-                case EVENT_UPDATE_DONE:
-                    ar = (AsyncResult) msg.obj;
-                    synchronized (mLock) {
-                        mSuccess = (ar.exception == null);
-                        mLock.notifyAll();
-                    }
-                    break;
-                case EVENT_LOAD_DONE:
-                    ar = (AsyncResult)msg.obj;
-                    synchronized (mLock) {
-                        if (ar.exception == null) {
-                            mSms  = buildValidRawData((ArrayList<byte[]>) ar.result);
-                        } else {
-                            if(DBG) log("Cannot load Sms records");
-                            if (mSms != null)
-                                mSms.clear();
-                        }
-                        mLock.notifyAll();
-                    }
-                    break;
-                case EVENT_SET_BROADCAST_ACTIVATION_DONE:
-                case EVENT_SET_BROADCAST_CONFIG_DONE:
-                    ar = (AsyncResult) msg.obj;
-                    synchronized (mLock) {
-                        mSuccess = (ar.exception == null);
-                        mLock.notifyAll();
-                    }
-                    break;
-            }
-        }
-    };
 
     public SimSmsInterfaceManager(GSMPhone phone, SMSDispatcher dispatcher) {
         super(phone);
@@ -120,100 +60,13 @@ public class SimSmsInterfaceManager extends IccSmsInterfaceManager {
         if(DBG) Rlog.d(LOG_TAG, "SimSmsInterfaceManager finalized");
     }
 
-    /**
-     * Update the specified message on the SIM.
-     *
-     * @param index record index of message to update
-     * @param status new message status (STATUS_ON_ICC_READ,
-     *                  STATUS_ON_ICC_UNREAD, STATUS_ON_ICC_SENT,
-     *                  STATUS_ON_ICC_UNSENT, STATUS_ON_ICC_FREE)
-     * @param pdu the raw PDU to store
-     * @return success or not
-     *
-     */
-    public boolean
-    updateMessageOnIccEf(int index, int status, byte[] pdu) {
-        if (DBG) log("updateMessageOnIccEf: index=" + index +
-                " status=" + status + " ==> " +
-                "("+ Arrays.toString(pdu) + ")");
-        enforceReceiveAndSend("Updating message on SIM");
-        synchronized(mLock) {
-            mSuccess = false;
-            Message response = mHandler.obtainMessage(EVENT_UPDATE_DONE);
-
-            if (status == STATUS_ON_ICC_FREE) {
-                // Special case FREE: call deleteSmsOnSim instead of
-                // manipulating the SIM record
-                mPhone.mCM.deleteSmsOnSim(index, response);
-            } else {
-                byte[] record = makeSmsRecordData(status, pdu);
-                mPhone.getIccFileHandler().updateEFLinearFixed(
-                        IccConstants.EF_SMS,
-                        index, record, null, response);
-            }
-            try {
-                mLock.wait();
-            } catch (InterruptedException e) {
-                log("interrupted while trying to update by index");
-            }
-        }
-        return mSuccess;
+    protected void deleteSms(int index, Message response) {
+        mPhone.mCM.deleteSmsOnSim(index, response);
     }
 
-    /**
-     * Copy a raw SMS PDU to the SIM.
-     *
-     * @param pdu the raw PDU to store
-     * @param status message status (STATUS_ON_ICC_READ, STATUS_ON_ICC_UNREAD,
-     *               STATUS_ON_ICC_SENT, STATUS_ON_ICC_UNSENT)
-     * @return success or not
-     *
-     */
-    public boolean copyMessageToIccEf(int status, byte[] pdu, byte[] smsc) {
-        if (DBG) log("copyMessageToIccEf: status=" + status + " ==> " +
-                "pdu=("+ Arrays.toString(pdu) +
-                "), smsm=(" + Arrays.toString(smsc) +")");
-        enforceReceiveAndSend("Copying message to SIM");
-        synchronized(mLock) {
-            mSuccess = false;
-            Message response = mHandler.obtainMessage(EVENT_UPDATE_DONE);
-
-            mPhone.mCM.writeSmsToSim(status, IccUtils.bytesToHexString(smsc),
-                    IccUtils.bytesToHexString(pdu), response);
-
-            try {
-                mLock.wait();
-            } catch (InterruptedException e) {
-                log("interrupted while trying to update by index");
-            }
-        }
-        return mSuccess;
-    }
-
-    /**
-     * Retrieves all messages currently stored on ICC.
-     *
-     * @return list of SmsRawData of all sms on ICC
-     */
-    public List<SmsRawData> getAllMessagesFromIccEf() {
-        if (DBG) log("getAllMessagesFromEF");
-
-        Context context = mPhone.getContext();
-
-        context.enforceCallingPermission(
-                "android.permission.RECEIVE_SMS",
-                "Reading messages from SIM");
-        synchronized(mLock) {
-            Message response = mHandler.obtainMessage(EVENT_LOAD_DONE);
-            mPhone.getIccFileHandler().loadEFLinearFixedAll(IccConstants.EF_SMS, response);
-
-            try {
-                mLock.wait();
-            } catch (InterruptedException e) {
-                log("interrupted while trying to load from the SIM");
-            }
-        }
-        return mSms;
+    protected void writeSms(int status, byte[] pdu, byte[] smsc, Message response) {
+        mPhone.mCM.writeSmsToSim(status, IccUtils.bytesToHexString(smsc),
+                IccUtils.bytesToHexString(pdu), response);
     }
 
     public boolean enableCellBroadcast(int messageIdentifier) {
