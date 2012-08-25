@@ -140,7 +140,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
 
     @Override
     public void dispose() {
-        cleanUpConnection(false, null, false);
+        cleanUpConnection(true, null, false);
 
         super.dispose();
 
