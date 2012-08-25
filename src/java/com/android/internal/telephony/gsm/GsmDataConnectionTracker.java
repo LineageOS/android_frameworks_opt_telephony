@@ -229,7 +229,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     @Override
     public void dispose() {
         if (DBG) log("GsmDCT.dispose");
-        cleanUpAllConnections(false, null);
+        cleanUpAllConnections(true, null);
 
         super.dispose();
 
