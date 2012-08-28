@@ -82,7 +82,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class GsmDataConnectionTracker extends DataConnectionTracker {
     protected final String LOG_TAG = "GSM";
-    private static final boolean RADIO_TESTS = false;
 
     /**
      * Handles changes to the APN db.
@@ -101,35 +100,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     //***** Instance Variables
 
     private boolean mReregisterOnReconnectFailure = false;
-    private ContentResolver mResolver;
 
-    // Recovery action taken in case of data stall
-    private static class RecoveryAction {
-        public static final int GET_DATA_CALL_LIST      = 0;
-        public static final int CLEANUP                 = 1;
-        public static final int REREGISTER              = 2;
-        public static final int RADIO_RESTART           = 3;
-        public static final int RADIO_RESTART_WITH_PROP = 4;
-
-        private static boolean isAggressiveRecovery(int value) {
-            return ((value == RecoveryAction.CLEANUP) ||
-                    (value == RecoveryAction.REREGISTER) ||
-                    (value == RecoveryAction.RADIO_RESTART) ||
-                    (value == RecoveryAction.RADIO_RESTART_WITH_PROP));
-        }
-    }
-
-    public int getRecoveryAction() {
-        int action = Settings.System.getInt(mPhone.getContext().getContentResolver(),
-                "radio.data.stall.recovery.action", RecoveryAction.GET_DATA_CALL_LIST);
-        if (VDBG) log("getRecoveryAction: " + action);
-        return action;
-    }
-    public void putRecoveryAction(int action) {
-        Settings.System.putInt(mPhone.getContext().getContentResolver(),
-                "radio.data.stall.recovery.action", action);
-        if (VDBG) log("putRecoveryAction: " + action);
-    }
 
     //***** Constants
 
@@ -210,13 +181,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         p.getServiceStateTracker().registerForPsRestrictedDisabled(this,
                 DctConstants.EVENT_PS_RESTRICT_DISABLED, null);
 
-        // install reconnect intent filter for this data connection.
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(INTENT_DATA_STALL_ALARM);
-        p.getContext().registerReceiver(mIntentReceiver, filter, null, p);
-
         mDataConnectionTracker = this;
-        mResolver = mPhone.getContext().getContentResolver();
 
         mApnObserver = new ApnChangeObserver();
         p.getContext().getContentResolver().registerContentObserver(
@@ -1408,85 +1373,6 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         mActiveApn = null;
     }
 
-    private void resetPollStats() {
-        mTxPkts = -1;
-        mRxPkts = -1;
-        mNetStatPollPeriod = POLL_NETSTAT_MILLIS;
-    }
-
-    private void doRecovery() {
-        if (getOverallState() == DctConstants.State.CONNECTED) {
-            // Go through a series of recovery steps, each action transitions to the next action
-            int recoveryAction = getRecoveryAction();
-            switch (recoveryAction) {
-            case RecoveryAction.GET_DATA_CALL_LIST:
-                EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_GET_DATA_CALL_LIST,
-                        mSentSinceLastRecv);
-                if (DBG) log("doRecovery() get data call list");
-                mPhone.mCM.getDataCallList(obtainMessage(DctConstants.EVENT_DATA_STATE_CHANGED));
-                putRecoveryAction(RecoveryAction.CLEANUP);
-                break;
-            case RecoveryAction.CLEANUP:
-                EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_CLEANUP, mSentSinceLastRecv);
-                if (DBG) log("doRecovery() cleanup all connections");
-                cleanUpAllConnections(true, Phone.REASON_PDP_RESET);
-                putRecoveryAction(RecoveryAction.REREGISTER);
-                break;
-            case RecoveryAction.REREGISTER:
-                EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_REREGISTER,
-                        mSentSinceLastRecv);
-                if (DBG) log("doRecovery() re-register");
-                mPhone.getServiceStateTracker().reRegisterNetwork(null);
-                putRecoveryAction(RecoveryAction.RADIO_RESTART);
-                break;
-            case RecoveryAction.RADIO_RESTART:
-                EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_RADIO_RESTART,
-                        mSentSinceLastRecv);
-                if (DBG) log("restarting radio");
-                putRecoveryAction(RecoveryAction.RADIO_RESTART_WITH_PROP);
-                restartRadio();
-                break;
-            case RecoveryAction.RADIO_RESTART_WITH_PROP:
-                // This is in case radio restart has not recovered the data.
-                // It will set an additional "gsm.radioreset" property to tell
-                // RIL or system to take further action.
-                // The implementation of hard reset recovery action is up to OEM product.
-                // Once gsm.radioreset property is consumed, it is expected to set back
-                // to false by RIL.
-                EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_RADIO_RESTART_WITH_PROP, -1);
-                if (DBG) log("restarting radio with gsm.radioreset to true");
-                SystemProperties.set("gsm.radioreset", "true");
-                // give 1 sec so property change can be notified.
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {}
-                restartRadio();
-                putRecoveryAction(RecoveryAction.GET_DATA_CALL_LIST);
-                break;
-            default:
-                throw new RuntimeException("doRecovery: Invalid recoveryAction=" +
-                    recoveryAction);
-            }
-        }
-    }
-
-    @Override
-    protected void startNetStatPoll() {
-        if (getOverallState() == DctConstants.State.CONNECTED && mNetStatPollEnabled == false) {
-            if (DBG) log("startNetStatPoll");
-            resetPollStats();
-            mNetStatPollEnabled = true;
-            mPollNetStat.run();
-        }
-    }
-
-    @Override
-    protected void stopNetStatPoll() {
-        mNetStatPollEnabled = false;
-        removeCallbacks(mPollNetStat);
-        if (DBG) log("stopNetStatPoll");
-    }
-
     @Override
     protected void restartRadio() {
         if (DBG) log("restartRadio: ************TURN OFF RADIO**************");
@@ -1503,141 +1389,6 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         int reset = Integer.parseInt(SystemProperties.get("net.ppp.reset-by-timeout", "0"));
         SystemProperties.set("net.ppp.reset-by-timeout", String.valueOf(reset+1));
     }
-
-
-    private void updateDataStallInfo() {
-        long sent, received;
-
-        TxRxSum preTxRxSum = new TxRxSum(mDataStallTxRxSum);
-        mDataStallTxRxSum.updateTxRxSum();
-
-        if (VDBG) {
-            log("updateDataStallInfo: mDataStallTxRxSum=" + mDataStallTxRxSum +
-                    " preTxRxSum=" + preTxRxSum);
-        }
-
-        sent = mDataStallTxRxSum.txPkts - preTxRxSum.txPkts;
-        received = mDataStallTxRxSum.rxPkts - preTxRxSum.rxPkts;
-
-        if (RADIO_TESTS) {
-            if (SystemProperties.getBoolean("radio.test.data.stall", false)) {
-                log("updateDataStallInfo: radio.test.data.stall true received = 0;");
-                received = 0;
-            }
-        }
-        if ( sent > 0 && received > 0 ) {
-            if (VDBG) log("updateDataStallInfo: IN/OUT");
-            mSentSinceLastRecv = 0;
-            putRecoveryAction(RecoveryAction.GET_DATA_CALL_LIST);
-        } else if (sent > 0 && received == 0) {
-            if (mPhone.getState() == PhoneConstants.State.IDLE) {
-                mSentSinceLastRecv += sent;
-            } else {
-                mSentSinceLastRecv = 0;
-            }
-            if (DBG) {
-                log("updateDataStallInfo: OUT sent=" + sent +
-                        " mSentSinceLastRecv=" + mSentSinceLastRecv);
-            }
-        } else if (sent == 0 && received > 0) {
-            if (VDBG) log("updateDataStallInfo: IN");
-            mSentSinceLastRecv = 0;
-            putRecoveryAction(RecoveryAction.GET_DATA_CALL_LIST);
-        } else {
-            if (VDBG) log("updateDataStallInfo: NONE");
-        }
-    }
-
-    @Override
-    protected void onDataStallAlarm(int tag) {
-        if (mDataStallAlarmTag != tag) {
-            if (DBG) {
-                log("onDataStallAlarm: ignore, tag=" + tag + " expecting " + mDataStallAlarmTag);
-            }
-            return;
-        }
-        updateDataStallInfo();
-
-        int hangWatchdogTrigger = Settings.Secure.getInt(mResolver,
-                Settings.Secure.PDP_WATCHDOG_TRIGGER_PACKET_COUNT,
-                NUMBER_SENT_PACKETS_OF_HANG);
-
-        boolean suspectedStall = DATA_STALL_NOT_SUSPECTED;
-        if (mSentSinceLastRecv >= hangWatchdogTrigger) {
-            if (DBG) {
-                log("onDataStallAlarm: tag=" + tag + " do recovery action=" + getRecoveryAction());
-            }
-            suspectedStall = DATA_STALL_SUSPECTED;
-            sendMessage(obtainMessage(DctConstants.EVENT_DO_RECOVERY));
-        } else {
-            if (VDBG) {
-                log("onDataStallAlarm: tag=" + tag + " Sent " + String.valueOf(mSentSinceLastRecv) +
-                    " pkts since last received, < watchdogTrigger=" + hangWatchdogTrigger);
-            }
-        }
-        startDataStallAlarm(suspectedStall);
-    }
-
-
-    private void updateDataActivity() {
-        long sent, received;
-
-        DctConstants.Activity newActivity;
-
-        TxRxSum preTxRxSum = new TxRxSum(mTxPkts, mRxPkts);
-        TxRxSum curTxRxSum = new TxRxSum();
-        curTxRxSum.updateTxRxSum();
-        mTxPkts = curTxRxSum.txPkts;
-        mRxPkts = curTxRxSum.rxPkts;
-
-        if (VDBG) {
-            log("updateDataActivity: curTxRxSum=" + curTxRxSum + " preTxRxSum=" + preTxRxSum);
-        }
-
-        if (mNetStatPollEnabled && (preTxRxSum.txPkts > 0 || preTxRxSum.rxPkts > 0)) {
-            sent = mTxPkts - preTxRxSum.txPkts;
-            received = mRxPkts - preTxRxSum.rxPkts;
-
-            if (VDBG) log("updateDataActivity: sent=" + sent + " received=" + received);
-            if ( sent > 0 && received > 0 ) {
-                newActivity = DctConstants.Activity.DATAINANDOUT;
-            } else if (sent > 0 && received == 0) {
-                newActivity = DctConstants.Activity.DATAOUT;
-            } else if (sent == 0 && received > 0) {
-                newActivity = DctConstants.Activity.DATAIN;
-            } else {
-                newActivity = (mActivity == DctConstants.Activity.DORMANT) ?
-                                            mActivity : DctConstants.Activity.NONE;
-            }
-
-            if (mActivity != newActivity && mIsScreenOn) {
-                if (VDBG) log("updateDataActivity: newActivity=" + newActivity);
-                mActivity = newActivity;
-                mPhone.notifyDataActivity();
-            }
-        }
-    }
-
-    private Runnable mPollNetStat = new Runnable()
-    {
-        @Override
-        public void run() {
-            updateDataActivity();
-
-            if (mIsScreenOn) {
-                mNetStatPollPeriod = Settings.Secure.getInt(mResolver,
-                        Settings.Secure.PDP_WATCHDOG_POLL_INTERVAL_MS, POLL_NETSTAT_MILLIS);
-            } else {
-                mNetStatPollPeriod = Settings.Secure.getInt(mResolver,
-                        Settings.Secure.PDP_WATCHDOG_LONG_POLL_INTERVAL_MS,
-                        POLL_NETSTAT_SCREEN_OFF_MILLIS);
-            }
-
-            if (mNetStatPollEnabled) {
-                mDataConnectionTracker.postDelayed(this, mNetStatPollPeriod);
-            }
-        }
-    };
 
     /**
      * Returns true if the last fail cause is something that
@@ -1761,68 +1512,6 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 SystemClock.elapsedRealtime() + delay, alarmIntent);
 
-    }
-
-    private void startDataStallAlarm(boolean suspectedStall) {
-        int nextAction = getRecoveryAction();
-        int delayInMs;
-
-        // If screen is on or data stall is currently suspected, set the alarm
-        // with an aggresive timeout.
-        if (mIsScreenOn || suspectedStall || RecoveryAction.isAggressiveRecovery(nextAction)) {
-            delayInMs = Settings.Secure.getInt(mResolver,
-                                       Settings.Secure.DATA_STALL_ALARM_AGGRESSIVE_DELAY_IN_MS,
-                                       DATA_STALL_ALARM_AGGRESSIVE_DELAY_IN_MS_DEFAULT);
-        } else {
-            delayInMs = Settings.Secure.getInt(mResolver,
-                                       Settings.Secure.DATA_STALL_ALARM_NON_AGGRESSIVE_DELAY_IN_MS,
-                                       DATA_STALL_ALARM_NON_AGGRESSIVE_DELAY_IN_MS_DEFAULT);
-        }
-
-        mDataStallAlarmTag += 1;
-        if (VDBG) {
-            log("startDataStallAlarm: tag=" + mDataStallAlarmTag +
-                    " delay=" + (delayInMs / 1000) + "s");
-        }
-        AlarmManager am =
-            (AlarmManager) mPhone.getContext().getSystemService(Context.ALARM_SERVICE);
-
-        Intent intent = new Intent(INTENT_DATA_STALL_ALARM);
-        intent.putExtra(DATA_STALL_ALARM_TAG_EXTRA, mDataStallAlarmTag);
-        mDataStallAlarmIntent = PendingIntent.getBroadcast(mPhone.getContext(), 0, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
-        am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                SystemClock.elapsedRealtime() + delayInMs, mDataStallAlarmIntent);
-    }
-
-    private void stopDataStallAlarm() {
-        AlarmManager am =
-            (AlarmManager) mPhone.getContext().getSystemService(Context.ALARM_SERVICE);
-
-        if (VDBG) {
-            log("stopDataStallAlarm: current tag=" + mDataStallAlarmTag +
-                    " mDataStallAlarmIntent=" + mDataStallAlarmIntent);
-        }
-        mDataStallAlarmTag += 1;
-        if (mDataStallAlarmIntent != null) {
-            am.cancel(mDataStallAlarmIntent);
-            mDataStallAlarmIntent = null;
-        }
-    }
-
-    @Override
-    protected void restartDataStallAlarm() {
-        if (isConnected() == false) return;
-        // To be called on screen status change.
-        // Do not cancel the alarm if it is set with aggressive timeout.
-        int nextAction = getRecoveryAction();
-
-        if (RecoveryAction.isAggressiveRecovery(nextAction)) {
-            if (DBG) log("data stall recovery action is pending. not resetting the alarm.");
-            return;
-        }
-        stopDataStallAlarm();
-        startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
     }
 
     private void notifyNoData(GsmDataConnection.FailCause lastFailCauseCode,
@@ -2710,9 +2399,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("GsmDataConnectionTracker extends:");
         super.dump(fd, pw, args);
-        pw.println(" RADIO_TESTS=" + RADIO_TESTS);
         pw.println(" mReregisterOnReconnectFailure=" + mReregisterOnReconnectFailure);
-        pw.println(" mResolver=" + mResolver);
         pw.println(" canSetPreferApn=" + canSetPreferApn);
         pw.println(" mApnObserver=" + mApnObserver);
         pw.println(" getOverallState=" + getOverallState());
