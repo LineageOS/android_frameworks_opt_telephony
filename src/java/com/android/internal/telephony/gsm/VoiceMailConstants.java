@@ -110,6 +110,12 @@ class VoiceMailConstants {
             Log.w(LOG_TAG, "Exception in Voicemail parser " + e);
         } catch (IOException e) {
             Log.w(LOG_TAG, "Exception in Voicemail parser " + e);
+        } finally {
+            try {
+                if (vmReader != null) {
+                    vmReader.close();
+                }
+            } catch (IOException e) {}
         }
     }
 }
