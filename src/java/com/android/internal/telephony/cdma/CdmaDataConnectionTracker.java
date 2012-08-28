@@ -20,7 +20,6 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.net.TrafficStats;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
@@ -80,7 +79,6 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
 
     private static final String INTENT_DATA_STALL_ALARM =
         "com.android.internal.telephony.cdma-data-stall";
-
 
     private static final String[] mSupportedApnTypes = {
             PhoneConstants.APN_TYPE_DEFAULT,
@@ -196,6 +194,11 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
     }
 
     @Override
+    public DctConstants.State getOverallState() {
+        return mState;
+    }
+
+    @Override
     protected boolean isApnTypeAvailable(String type) {
         for (String s : mSupportedApnTypes) {
             if (TextUtils.equals(type, s)) {
@@ -299,6 +302,8 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
      *
      * @param tearDown true if the underlying DataConnection should be disconnected.
      * @param reason for the clean up.
+     * @param doAll Set RefCount to 0 and tear down data call even if
+     *              multiple APN types are associated with it.
      */
     private void cleanUpConnection(boolean tearDown, String reason, boolean doAll) {
         if (DBG) log("cleanUpConnection: reason: " + reason);
@@ -341,6 +346,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
         }
 
         stopNetStatPoll();
+        stopDataStallAlarm();
 
         if (!notificationDeferred) {
             if (DBG) log("cleanupConnection: !notificationDeferred");
@@ -396,32 +402,8 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
         setState(DctConstants.State.CONNECTED);
         notifyDataConnection(reason);
         startNetStatPoll();
+        startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
         mDataConnections.get(0).resetRetryCount();
-    }
-
-    private void resetPollStats() {
-        mTxPkts = -1;
-        mRxPkts = -1;
-        mSentSinceLastRecv = 0;
-        mNetStatPollPeriod = POLL_NETSTAT_MILLIS;
-        mNoRecvPollCount = 0;
-    }
-
-    @Override
-    protected void startNetStatPoll() {
-        if (mState == DctConstants.State.CONNECTED && mNetStatPollEnabled == false) {
-            log("[DataConnection] Start poll NetStat");
-            resetPollStats();
-            mNetStatPollEnabled = true;
-            mPollNetStat.run();
-        }
-    }
-
-    @Override
-    protected void stopNetStatPoll() {
-        mNetStatPollEnabled = false;
-        removeCallbacks(mPollNetStat);
-        log("[DataConnection] Stop poll NetStat");
     }
 
     @Override
@@ -432,87 +414,6 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
         sendEmptyMessageDelayed(DctConstants.EVENT_RESTART_RADIO, TIME_DELAYED_TO_RESTART_RADIO);
         mPendingRestartRadio = true;
     }
-
-    private Runnable mPollNetStat = new Runnable() {
-
-        public void run() {
-            long sent, received;
-            long preTxPkts = -1, preRxPkts = -1;
-
-            DctConstants.Activity newActivity;
-
-            preTxPkts = mTxPkts;
-            preRxPkts = mRxPkts;
-
-            mTxPkts = TrafficStats.getMobileTxPackets();
-            mRxPkts = TrafficStats.getMobileRxPackets();
-
-            //log("rx " + String.valueOf(rxPkts) + " tx " + String.valueOf(txPkts));
-
-            if (mNetStatPollEnabled && (preTxPkts > 0 || preRxPkts > 0)) {
-                sent = mTxPkts - preTxPkts;
-                received = mRxPkts - preRxPkts;
-
-                if ( sent > 0 && received > 0 ) {
-                    mSentSinceLastRecv = 0;
-                    newActivity = DctConstants.Activity.DATAINANDOUT;
-                } else if (sent > 0 && received == 0) {
-                    if (mPhone.getState()  ==PhoneConstants.State.IDLE) {
-                        mSentSinceLastRecv += sent;
-                    } else {
-                        mSentSinceLastRecv = 0;
-                    }
-                    newActivity = DctConstants.Activity.DATAOUT;
-                } else if (sent == 0 && received > 0) {
-                    mSentSinceLastRecv = 0;
-                    newActivity = DctConstants.Activity.DATAIN;
-                } else if (sent == 0 && received == 0) {
-                    newActivity = (mActivity == DctConstants.Activity.DORMANT) ?
-                            mActivity : DctConstants.Activity.NONE;
-                } else {
-                    mSentSinceLastRecv = 0;
-                    newActivity = (mActivity == DctConstants.Activity.DORMANT) ?
-                            mActivity : DctConstants.Activity.NONE;
-                }
-
-                if (mActivity != newActivity && mIsScreenOn) {
-                    mActivity = newActivity;
-                    mPhone.notifyDataActivity();
-                }
-            }
-
-            if (mSentSinceLastRecv >= NUMBER_SENT_PACKETS_OF_HANG) {
-                // Packets sent without ack exceeded threshold.
-
-                if (mNoRecvPollCount == 0) {
-                    EventLog.writeEvent(
-                            EventLogTags.PDP_RADIO_RESET_COUNTDOWN_TRIGGERED,
-                            mSentSinceLastRecv);
-                }
-
-                if (mNoRecvPollCount < NO_RECV_POLL_LIMIT) {
-                    mNoRecvPollCount++;
-                    // Slow down the poll interval to let things happen
-                    mNetStatPollPeriod = POLL_NETSTAT_SLOW_MILLIS;
-                } else {
-                    if (DBG) log("Sent " + String.valueOf(mSentSinceLastRecv) +
-                                        " pkts since last received");
-                    // We've exceeded the threshold.  Restart the radio.
-                    mNetStatPollEnabled = false;
-                    stopNetStatPoll();
-                    restartRadio();
-                    EventLog.writeEvent(EventLogTags.PDP_RADIO_RESET, NO_RECV_POLL_LIMIT);
-                }
-            } else {
-                mNoRecvPollCount = 0;
-                mNetStatPollPeriod = POLL_NETSTAT_MILLIS;
-            }
-
-            if (mNetStatPollEnabled) {
-                mDataConnectionTracker.postDelayed(this, mNetStatPollPeriod);
-            }
-        }
-    };
 
     /**
      * Returns true if the last fail cause is something that
@@ -770,6 +671,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
         if (mState == DctConstants.State.CONNECTED &&
                 !mCdmaPhone.mSST.isConcurrentVoiceAndDataAllowed()) {
             stopNetStatPoll();
+            stopDataStallAlarm();
             notifyDataConnection(Phone.REASON_VOICE_CALL_STARTED);
             notifyOffApnsOfAvailability(Phone.REASON_VOICE_CALL_STARTED);
         }
@@ -783,6 +685,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
         if (mState == DctConstants.State.CONNECTED) {
             if (!mCdmaPhone.mSST.isConcurrentVoiceAndDataAllowed()) {
                 startNetStatPoll();
+                startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
                 notifyDataConnection(Phone.REASON_VOICE_CALL_ENDED);
             } else {
                 // clean slate after call end.
@@ -848,6 +751,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
     private void onCdmaDataDetached() {
         if (mState == DctConstants.State.CONNECTED) {
             startNetStatPoll();
+            startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
             notifyDataConnection(Phone.REASON_CDMA_DATA_DETACHED);
         } else {
             if (mState == DctConstants.State.FAILED) {
@@ -940,6 +844,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
                     mActivity = DctConstants.Activity.NONE;
                     mPhone.notifyDataActivity();
                     startNetStatPoll();
+                    startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
                     break;
 
                 case DATA_CONNECTION_ACTIVE_PH_LINK_DOWN:
@@ -947,6 +852,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
                     mActivity = DctConstants.Activity.DORMANT;
                     mPhone.notifyDataActivity();
                     stopNetStatPoll();
+                    stopDataStallAlarm();
                     break;
 
                 default:
@@ -1040,6 +946,11 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
     @Override
     public boolean isDisconnected() {
         return ((mState == DctConstants.State.IDLE) || (mState == DctConstants.State.FAILED));
+    }
+
+    @Override
+    protected boolean isConnected() {
+        return (mState == DctConstants.State.CONNECTED);
     }
 
     @Override
