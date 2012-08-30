@@ -31,6 +31,7 @@ import android.os.PowerManager.WakeLock;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
+import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Telephony;
 import android.telephony.CellLocation;
@@ -847,7 +848,7 @@ public class CDMAPhone extends PhoneBase {
         //Send an Intent
         Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
         intent.putExtra(PhoneConstants.PHONE_IN_ECM_STATE, mIsPhoneInEcmState);
-        ActivityManagerNative.broadcastStickyIntent(intent,null);
+        ActivityManagerNative.broadcastStickyIntent(intent,null,UserHandle.USER_ALL);
         if (DBG) Log.d(LOG_TAG, "sendEmergencyCallbackModeChange");
     }
 

@@ -29,6 +29,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.UserHandle;
 import android.util.Log;
 import android.view.WindowManager;
 
@@ -638,7 +639,7 @@ public class IccCard {
         intent.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
         if(mDbg) log("Broadcasting intent ACTION_SIM_STATE_CHANGED " +  value
                 + " reason " + reason);
-        ActivityManagerNative.broadcastStickyIntent(intent, READ_PHONE_STATE);
+        ActivityManagerNative.broadcastStickyIntent(intent, READ_PHONE_STATE, UserHandle.USER_ALL);
     }
 
     protected Handler mHandler = new Handler() {
