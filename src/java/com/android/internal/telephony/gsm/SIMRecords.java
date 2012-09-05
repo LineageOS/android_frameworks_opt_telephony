@@ -1519,8 +1519,7 @@ public class SIMRecords extends IccRecords {
             case READ_SPN_CPHS:
                 if (ar != null && ar.exception == null) {
                     data = (byte[]) ar.result;
-                    spn = IccUtils.adnStringFieldToString(
-                            data, 0, data.length - 1 );
+                    spn = IccUtils.adnStringFieldToString(data, 0, data.length);
 
                     if (DBG) log("Load EF_SPN_CPHS: " + spn);
                     SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, spn);
@@ -1537,8 +1536,7 @@ public class SIMRecords extends IccRecords {
             case READ_SPN_SHORT_CPHS:
                 if (ar != null && ar.exception == null) {
                     data = (byte[]) ar.result;
-                    spn = IccUtils.adnStringFieldToString(
-                            data, 0, data.length - 1);
+                    spn = IccUtils.adnStringFieldToString(data, 0, data.length);
 
                     if (DBG) log("Load EF_SPN_SHORT_CPHS: " + spn);
                     SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, spn);
