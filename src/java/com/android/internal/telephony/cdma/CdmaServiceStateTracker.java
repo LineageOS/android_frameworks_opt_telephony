@@ -832,6 +832,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         switch (cm.getRadioState()) {
         case RADIO_UNAVAILABLE:
             newSS.setStateOutOfService();
+            mNewDataConnectionState = ServiceState.STATE_OUT_OF_SERVICE;
             newCellLoc.setStateInvalid();
             setSignalStrengthDefaultValues();
             mGotCountryCode = false;
@@ -841,6 +842,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
         case RADIO_OFF:
             newSS.setStateOff();
+            mNewDataConnectionState = ServiceState.STATE_POWER_OFF;
             newCellLoc.setStateInvalid();
             setSignalStrengthDefaultValues();
             mGotCountryCode = false;
