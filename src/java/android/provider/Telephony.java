@@ -746,6 +746,12 @@ public final class Telephony {
         public static final String SEEN = "seen";
 
         /**
+         * Indicates whether this message has only a text part (can also have a subject) and
+         * no picture, slideshow, or sound, etc., parts. The value is a boolean, 1 or 0.
+         */
+        public static final String TEXT_ONLY = "text_only";
+
+        /**
          * The Message-ID of the message.
          * <P>Type: TEXT</P>
          */
