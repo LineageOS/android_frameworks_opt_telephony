@@ -29,6 +29,8 @@ import android.telephony.ServiceState;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.*;
+import com.android.internal.telephony.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.uicc.UiccController;
 
 /**
  * {@hide}
@@ -371,13 +373,16 @@ public class GsmConnection extends Connection {
             default:
                 GSMPhone phone = owner.phone;
                 int serviceState = phone.getServiceState().getState();
+                AppState uiccAppState = UiccController
+                        .getInstance()
+                        .getUiccCardApplication(UiccController.APP_FAM_3GPP)
+                        .getState();
                 if (serviceState == ServiceState.STATE_POWER_OFF) {
                     return DisconnectCause.POWER_OFF;
                 } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE
                         || serviceState == ServiceState.STATE_EMERGENCY_ONLY ) {
                     return DisconnectCause.OUT_OF_SERVICE;
-                } else if (phone.getIccCard() != null &&
-                        phone.getIccCard().getState() != IccCardConstants.State.READY) {
+                } else if (uiccAppState != AppState.APPSTATE_READY) {
                     return DisconnectCause.ICC_ERROR;
                 } else if (causeCode == CallFailCause.ERROR_UNSPECIFIED) {
                     if (phone.mSST.mRestrictedState.isCsRestricted()) {

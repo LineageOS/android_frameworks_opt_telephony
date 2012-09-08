@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
@@ -32,6 +33,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.List;
 
+import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.UiccController;
 
 /**
@@ -41,7 +43,7 @@ public abstract class ServiceStateTracker extends Handler {
 
     protected CommandsInterface cm;
     protected UiccController mUiccController = null;
-    protected IccCard mIccCard = null;
+    protected UiccCardApplication mUiccApplcation = null;
     protected IccRecords mIccRecords = null;
 
     protected PhoneBase mPhoneBase;
@@ -575,16 +577,16 @@ public abstract class ServiceStateTracker extends Handler {
         }
 
         // Determine if the Icc card exists
-        IccCard iccCard = phoneBase.getIccCard();
-        boolean iccCardExist = (iccCard != null) && iccCard.getState().iccCardExist();
+        boolean iccCardExist = false;
+        if (mUiccApplcation != null) {
+            iccCardExist = mUiccApplcation.getState() != AppState.APPSTATE_UNKNOWN;
+        }
 
         // Determine retVal
         boolean retVal = ((iccCardExist && (mcc != prevMcc)) || needToFixTimeZone);
         if (DBG) {
             long ctm = System.currentTimeMillis();
             log("shouldFixTimeZoneNow: retVal=" + retVal +
-                    " iccCard=" + iccCard +
-                    " iccCard.state=" + (iccCard == null ? "null" : iccCard.getState().toString()) +
                     " iccCardExist=" + iccCardExist +
                     " operatorNumeric=" + operatorNumeric + " mcc=" + mcc +
                     " prevOperatorNumeric=" + prevOperatorNumeric + " prevMcc=" + prevMcc +
