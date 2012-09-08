@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (C) 2006, 2012 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,39 +14,24 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.cdma;
+package com.android.internal.telephony;
 
-import android.os.*;
 import android.util.Log;
 
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.IccConstants;
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.UiccCardApplication;
 
 /**
  * {@hide}
+ * This class should be used to access files in CSIM ADF
  */
-public final class RuimFileHandler extends IccFileHandler {
-    static final String LOG_TAG = "CDMA";
+public final class CsimFileHandler extends IccFileHandler implements IccConstants {
+    static final String LOG_TAG = "RIL_CsimFH";
 
-    //***** Instance Variables
-
-    //***** Constructor
-    public RuimFileHandler(UiccCardApplication app, String aid, CommandsInterface ci) {
+    public CsimFileHandler(UiccCardApplication app, String aid, CommandsInterface ci) {
         super(app, aid, ci);
-    }
-
-    //***** Overridden from IccFileHandler
-
-    @Override
-    public void loadEFImgTransparent(int fileid, int highOffset, int lowOffset,
-            int length, Message onLoaded) {
-        Message response = obtainMessage(EVENT_READ_ICON_DONE, fileid, 0,
-                onLoaded);
-
-        mCi.iccIOForApp(COMMAND_GET_RESPONSE, fileid, "img", 0, 0,
-                GET_RESPONSE_EF_IMG_SIZE_BYTES, null, null,
-                mAid, response);
     }
 
     @Override
@@ -54,25 +39,33 @@ public final class RuimFileHandler extends IccFileHandler {
         switch(efid) {
         case EF_SMS:
         case EF_CST:
+        case EF_FDN:
+        case EF_MSISDN:
         case EF_RUIM_SPN:
         case EF_CSIM_LI:
         case EF_CSIM_MDN:
         case EF_CSIM_IMSIM:
         case EF_CSIM_CDMAHOME:
         case EF_CSIM_EPRL:
-            return MF_SIM + DF_CDMA;
+            return MF_SIM + DF_ADF;
         }
-        return getCommonIccEFPath(efid);
+        String path = getCommonIccEFPath(efid);
+        if (path == null) {
+            // The EFids in UICC phone book entries are decided by the card manufacturer.
+            // So if we don't match any of the cases above and if its a UICC return
+            // the global 3g phone book path.
+            return MF_SIM + DF_TELECOM + DF_PHONEBOOK;
+        }
+        return path;
     }
 
     @Override
     protected void logd(String msg) {
-        Log.d(LOG_TAG, "[RuimFileHandler] " + msg);
+        Log.d(LOG_TAG, msg);
     }
 
     @Override
     protected void loge(String msg) {
-        Log.e(LOG_TAG, "[RuimFileHandler] " + msg);
+        Log.e(LOG_TAG, msg);
     }
-
 }

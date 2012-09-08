@@ -64,7 +64,10 @@ import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.UiccCard;
+import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.UUSInfo;
+import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.cat.CatService;
 import com.android.internal.telephony.uicc.UiccController;
 
@@ -1066,29 +1069,26 @@ public class CDMAPhone extends PhoneBase {
             return;
         }
 
-        IccCard newIccCard = mUiccController.getIccCard();
+        UiccCardApplication newUiccApplication =
+                mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP2);
 
-        IccCard c = mIccCard.get();
-        if (c != newIccCard) {
-            if (c != null) {
+        UiccCardApplication app = mUiccApplication.get();
+        if (app != newUiccApplication) {
+            if (app != null) {
                 log("Removing stale icc objects.");
                 if (mIccRecords.get() != null) {
                     unregisterForRuimRecordEvents();
-                    if (mRuimPhoneBookInterfaceManager != null) {
-                        mRuimPhoneBookInterfaceManager.updateIccRecords(null);
-                    }
+                    mRuimPhoneBookInterfaceManager.updateIccRecords(null);
                 }
                 mIccRecords.set(null);
-                mIccCard.set(null);
+                mUiccApplication.set(null);
             }
-            if (newIccCard != null) {
-                log("New card found");
-                mIccCard.set(newIccCard);
-                mIccRecords.set(newIccCard.getIccRecords());
+            if (newUiccApplication != null) {
+                log("New Uicc application found");
+                mUiccApplication.set(newUiccApplication);
+                mIccRecords.set(newUiccApplication.getIccRecords());
                 registerForRuimRecordEvents();
-                if (mRuimPhoneBookInterfaceManager != null) {
-                    mRuimPhoneBookInterfaceManager.updateIccRecords(mIccRecords.get());
-                }
+                mRuimPhoneBookInterfaceManager.updateIccRecords(mIccRecords.get());
             }
         }
     }
