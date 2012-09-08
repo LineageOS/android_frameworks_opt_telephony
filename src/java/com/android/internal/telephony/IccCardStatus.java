@@ -57,19 +57,13 @@ public class IccCardStatus {
         }
     }
 
-    private CardState  mCardState;
-    private PinState   mUniversalPinState;
-    private int        mGsmUmtsSubscriptionAppIndex;
-    private int        mCdmaSubscriptionAppIndex;
-    private int        mImsSubscriptionAppIndex;
-    private int        mNumApplications;
+    public CardState  mCardState;
+    public PinState   mUniversalPinState;
+    public int        mGsmUmtsSubscriptionAppIndex;
+    public int        mCdmaSubscriptionAppIndex;
+    public int        mImsSubscriptionAppIndex;
 
-    private ArrayList<IccCardApplication> mApplications =
-            new ArrayList<IccCardApplication>(CARD_MAX_APPS);
-
-    public CardState getCardState() {
-        return mCardState;
-    }
+    public IccCardApplicationStatus[] mApplications;
 
     public void setCardState(int state) {
         switch(state) {
@@ -85,10 +79,6 @@ public class IccCardStatus {
         default:
             throw new RuntimeException("Unrecognized RIL_CardState: " + state);
         }
-    }
-
-    public PinState getUniversalPinState() {
-        return mUniversalPinState;
     }
 
     public void setUniversalPinState(int state) {
@@ -116,69 +106,34 @@ public class IccCardStatus {
         }
     }
 
-    public int getGsmUmtsSubscriptionAppIndex() {
-        return mGsmUmtsSubscriptionAppIndex;
-    }
-
-    public void setGsmUmtsSubscriptionAppIndex(int gsmUmtsSubscriptionAppIndex) {
-        mGsmUmtsSubscriptionAppIndex = gsmUmtsSubscriptionAppIndex;
-    }
-
-    public int getCdmaSubscriptionAppIndex() {
-        return mCdmaSubscriptionAppIndex;
-    }
-
-    public void setCdmaSubscriptionAppIndex(int cdmaSubscriptionAppIndex) {
-        mCdmaSubscriptionAppIndex = cdmaSubscriptionAppIndex;
-    }
-
-    public int getImsSubscriptionAppIndex() {
-        return mImsSubscriptionAppIndex;
-    }
-
-    public void setImsSubscriptionAppIndex(int imsSubscriptionAppIndex) {
-        mImsSubscriptionAppIndex = imsSubscriptionAppIndex;
-    }
-
-    public int getNumApplications() {
-        return mNumApplications;
-    }
-
-    public void setNumApplications(int numApplications) {
-        mNumApplications = numApplications;
-    }
-
-    public void addApplication(IccCardApplication application) {
-        mApplications.add(application);
-    }
-
-    public IccCardApplication getApplication(int index) {
-        return mApplications.get(index);
-    }
-
     @Override
     public String toString() {
-        IccCardApplication app;
+        IccCardApplicationStatus app;
 
         StringBuilder sb = new StringBuilder();
         sb.append("IccCardState {").append(mCardState).append(",")
         .append(mUniversalPinState)
-        .append(",num_apps=").append(mNumApplications)
+        .append(",num_apps=").append(mApplications.length)
         .append(",gsm_id=").append(mGsmUmtsSubscriptionAppIndex);
         if (mGsmUmtsSubscriptionAppIndex >=0
                 && mGsmUmtsSubscriptionAppIndex <CARD_MAX_APPS) {
-            app = getApplication(mGsmUmtsSubscriptionAppIndex);
+            app = mApplications[mGsmUmtsSubscriptionAppIndex];
             sb.append(app == null ? "null" : app);
         }
 
         sb.append(",cmda_id=").append(mCdmaSubscriptionAppIndex);
         if (mCdmaSubscriptionAppIndex >=0
                 && mCdmaSubscriptionAppIndex <CARD_MAX_APPS) {
-            app = getApplication(mCdmaSubscriptionAppIndex);
+            app = mApplications[mCdmaSubscriptionAppIndex];
             sb.append(app == null ? "null" : app);
         }
 
-        sb.append(",ism_id=").append(mImsSubscriptionAppIndex);
+        sb.append(",ims_id=").append(mImsSubscriptionAppIndex);
+        if (mImsSubscriptionAppIndex >=0
+                && mImsSubscriptionAppIndex <CARD_MAX_APPS) {
+            app = mApplications[mImsSubscriptionAppIndex];
+            sb.append(app == null ? "null" : app);
+        }
 
         sb.append("}");
 
