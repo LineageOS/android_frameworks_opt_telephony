@@ -91,8 +91,8 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
 
      // member variables
     protected final CommandsInterface mCi;
-    protected final IccCard mParentCard;
-    protected String mAid;
+    protected final UiccCardApplication mParentApp;
+    protected final String mAid;
 
     static class LoadLinearFixedContext {
 
@@ -122,8 +122,8 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
     /**
      * Default constructor
      */
-    protected IccFileHandler(IccCard card, String aid, CommandsInterface ci) {
-        mParentCard = card;
+    protected IccFileHandler(UiccCardApplication app, String aid, CommandsInterface ci) {
+        mParentApp = app;
         mAid = aid;
         mCi = ci;
     }
@@ -222,6 +222,24 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
 
         mCi.iccIOForApp(COMMAND_GET_RESPONSE, fileid, getEFPath(fileid),
                         0, 0, GET_RESPONSE_EF_SIZE_BYTES, null, null, mAid, response);
+    }
+
+    /**
+     * Load first @size bytes from SIM Transparent EF
+     *
+     * @param fileid EF id
+     * @param size
+     * @param onLoaded
+     *
+     * ((AsyncResult)(onLoaded.obj)).result is the byte[]
+     *
+     */
+    public void loadEFTransparent(int fileid, int size, Message onLoaded) {
+        Message response = obtainMessage(EVENT_READ_BINARY_DONE,
+                        fileid, 0, onLoaded);
+
+        mCi.iccIOForApp(COMMAND_READ_BINARY, fileid, getEFPath(fileid),
+                        0, 0, size, null, null, mAid, response);
     }
 
     /**
@@ -534,6 +552,9 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
         case EF_ICCID:
         case EF_PL:
             return MF_SIM;
+        case EF_PBR:
+            // we only support global phonebook.
+            return MF_SIM + DF_TELECOM + DF_PHONEBOOK;
         case EF_IMG:
             return MF_SIM + DF_TELECOM + DF_GRAPHICS;
         }
@@ -544,8 +565,5 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
     protected abstract void logd(String s);
 
     protected abstract void loge(String s);
-    protected void setAid(String aid) {
-        mAid = aid;
-    }
 
 }
