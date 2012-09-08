@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
@@ -29,6 +30,7 @@ import android.util.TimeUtils;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
+import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.UiccController;
 
 /**
@@ -38,7 +40,7 @@ public abstract class ServiceStateTracker extends Handler {
 
     protected CommandsInterface cm;
     protected UiccController mUiccController = null;
-    protected IccCard mIccCard = null;
+    protected UiccCardApplication mUiccApplcation = null;
     protected IccRecords mIccRecords = null;
 
     public ServiceState ss;
@@ -174,7 +176,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final String REGISTRATION_DENIED_GEN  = "General";
     protected static final String REGISTRATION_DENIED_AUTH = "Authentication Failure";
 
-    public ServiceStateTracker(PhoneBase p, CommandsInterface ci) {
+    public ServiceStateTracker(Context c, CommandsInterface ci) {
         cm = ci;
         mUiccController = UiccController.getInstance();
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
@@ -548,16 +550,16 @@ public abstract class ServiceStateTracker extends Handler {
         }
 
         // Determine if the Icc card exists
-        IccCard iccCard = phoneBase.getIccCard();
-        boolean iccCardExist = (iccCard != null) && iccCard.getState().iccCardExist();
+        boolean iccCardExist = false;
+        if (mUiccApplcation != null) {
+            iccCardExist = mUiccApplcation.getState() != AppState.APPSTATE_UNKNOWN;
+        }
 
         // Determine retVal
         boolean retVal = ((iccCardExist && (mcc != prevMcc)) || needToFixTimeZone);
         if (DBG) {
             long ctm = System.currentTimeMillis();
             log("shouldFixTimeZoneNow: retVal=" + retVal +
-                    " iccCard=" + iccCard +
-                    " iccCard.state=" + (iccCard == null ? "null" : iccCard.getState().toString()) +
                     " iccCardExist=" + iccCardExist +
                     " operatorNumeric=" + operatorNumeric + " mcc=" + mcc +
                     " prevOperatorNumeric=" + prevOperatorNumeric + " prevMcc=" + prevMcc +

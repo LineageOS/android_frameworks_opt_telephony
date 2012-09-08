@@ -20,7 +20,6 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.EventLogTags;
-import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.PhoneConstants;
@@ -29,7 +28,10 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.UiccCard;
+import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.CommandsInterface.RadioState;
+import com.android.internal.telephony.uicc.UiccController;
 
 import android.app.AlarmManager;
 import android.content.ContentResolver;
@@ -157,7 +159,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     };
 
     public CdmaServiceStateTracker(CDMAPhone phone) {
-        super(phone, phone.mCM);
+        super(phone.getContext(), phone.mCM);
 
         this.phone = phone;
         cr = phone.getContext().getContentResolver();
@@ -206,7 +208,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         cm.unregisterForVoiceNetworkStateChanged(this);
         cm.unregisterForCdmaOtaProvision(this);
         phone.unregisterForEriFileLoaded(this);
-        if (mIccCard != null) {mIccCard.unregisterForReady(this);}
+        if (mUiccApplcation != null) {mUiccApplcation.unregisterForReady(this);}
         if (mIccRecords != null) {mIccRecords.unregisterForRecordsLoaded(this);}
         cm.unSetOnSignalStrengthUpdate(this);
         cm.unSetOnNITZTime(this);
@@ -397,17 +399,15 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     mIsMinInfoReady = true;
 
                     updateOtaspState();
-                    if (mIccCard != null) {
+                    if (!isSubscriptionFromRuim && mIccRecords != null) {
                         if (DBG) {
-                            log("GET_CDMA_SUBSCRIPTION broadcast Icc state changed");
+                            log("GET_CDMA_SUBSCRIPTION set imsi in mIccRecords");
                         }
-                        mIccCard.broadcastIccStateChangedIntent(
-                                IccCardConstants.INTENT_VALUE_ICC_IMSI,
-                                null);
+                        mIccRecords.setImsi(getImsi());
                     } else {
                         if (DBG) {
-                            log("GET_CDMA_SUBSCRIPTION mIccCard is null (probably NV type device)" +
-                                    " can't broadcast Icc state changed");
+                            log("GET_CDMA_SUBSCRIPTION either mIccRecords is null  or NV type device" +
+                                    " - not setting Imsi in mIccRecords");
                         }
                     }
                 } else {
@@ -1665,24 +1665,25 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             return;
         }
 
-        IccCard newIccCard = mUiccController.getIccCard();
+        UiccCardApplication newUiccApplication =
+                mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP2);
 
-        if (mIccCard != newIccCard) {
-            if (mIccCard != null) {
+        if (mUiccApplcation != newUiccApplication) {
+            if (mUiccApplcation != null) {
                 log("Removing stale icc objects.");
-                mIccCard.unregisterForReady(this);
+                mUiccApplcation.unregisterForReady(this);
                 if (mIccRecords != null) {
                     mIccRecords.unregisterForRecordsLoaded(this);
                 }
                 mIccRecords = null;
-                mIccCard = null;
+                mUiccApplcation = null;
             }
-            if (newIccCard != null) {
+            if (newUiccApplication != null) {
                 log("New card found");
-                mIccCard = newIccCard;
-                mIccRecords = mIccCard.getIccRecords();
+                mUiccApplcation = newUiccApplication;
+                mIccRecords = mUiccApplcation.getIccRecords();
                 if (isSubscriptionFromRuim) {
-                    mIccCard.registerForReady(this, EVENT_RUIM_READY, null);
+                    mUiccApplcation.registerForReady(this, EVENT_RUIM_READY, null);
                     if (mIccRecords != null) {
                         mIccRecords.registerForRecordsLoaded(this, EVENT_RUIM_RECORDS_LOADED, null);
                     }
