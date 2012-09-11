@@ -24,7 +24,7 @@ import com.android.internal.telephony.IccCardStatus.PinState;
  *
  * {@hide}
  */
-public class IccCardApplication {
+public class IccCardApplicationStatus {
     public enum AppType{
         APPTYPE_UNKNOWN,
         APPTYPE_SIM,
