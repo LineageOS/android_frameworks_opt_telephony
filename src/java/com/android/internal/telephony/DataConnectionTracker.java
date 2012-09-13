@@ -305,11 +305,11 @@ public abstract class DataConnectionTracker extends Handler {
             updateDataActivity();
 
             if (mIsScreenOn) {
-                mNetStatPollPeriod = Settings.Secure.getInt(mResolver,
-                        Settings.Secure.PDP_WATCHDOG_POLL_INTERVAL_MS, POLL_NETSTAT_MILLIS);
+                mNetStatPollPeriod = Settings.Global.getInt(mResolver,
+                        Settings.Global.PDP_WATCHDOG_POLL_INTERVAL_MS, POLL_NETSTAT_MILLIS);
             } else {
-                mNetStatPollPeriod = Settings.Secure.getInt(mResolver,
-                        Settings.Secure.PDP_WATCHDOG_LONG_POLL_INTERVAL_MS,
+                mNetStatPollPeriod = Settings.Global.getInt(mResolver,
+                        Settings.Global.PDP_WATCHDOG_LONG_POLL_INTERVAL_MS,
                         POLL_NETSTAT_SCREEN_OFF_MILLIS);
             }
 
@@ -327,7 +327,7 @@ public abstract class DataConnectionTracker extends Handler {
         public void register(Context context) {
             final ContentResolver resolver = context.getContentResolver();
             resolver.registerContentObserver(
-                    Settings.Secure.getUriFor(Settings.Secure.DATA_ROAMING), false, this);
+                    Settings.Global.getUriFor(Settings.Global.DATA_ROAMING), false, this);
         }
 
         public void unregister(Context context) {
@@ -439,8 +439,8 @@ public abstract class DataConnectionTracker extends Handler {
         filter.addAction(INTENT_SET_FAIL_DATA_SETUP_COUNTER);
         filter.addAction(getActionIntentDataStallAlarm());
 
-        mUserDataEnabled = Settings.Secure.getInt(
-                mPhone.getContext().getContentResolver(), Settings.Secure.MOBILE_DATA, 1) == 1;
+        mUserDataEnabled = Settings.Global.getInt(
+                mPhone.getContext().getContentResolver(), Settings.Global.MOBILE_DATA, 1) == 1;
 
         // TODO: Why is this registering the phone as the receiver of the intent
         //       and not its own handler?
@@ -458,7 +458,7 @@ public abstract class DataConnectionTracker extends Handler {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
         mAutoAttachOnCreation = sp.getBoolean(PhoneBase.DATA_DISABLED_ON_BOOT_KEY, false);
 
-        // watch for changes to Settings.Secure.DATA_ROAMING
+        // watch for changes to Settings.Global.DATA_ROAMING
         mDataRoamingSettingObserver = new DataRoamingSettingObserver(mPhone);
         mDataRoamingSettingObserver.register(mPhone.getContext());
 
@@ -504,11 +504,11 @@ public abstract class DataConnectionTracker extends Handler {
             return null;
         }
         Context c = mPhone.getContext();
-        String apnData = Settings.Secure.getString(c.getContentResolver(),
-                Settings.Secure.TETHER_DUN_APN);
+        String apnData = Settings.Global.getString(c.getContentResolver(),
+                Settings.Global.TETHER_DUN_APN);
         ApnSetting dunSetting = ApnSetting.fromString(apnData);
         if (dunSetting != null) {
-            if (VDBG) log("fetchDunApn: secure TETHER_DUN_APN dunSetting=" + dunSetting);
+            if (VDBG) log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
             return dunSetting;
         }
 
@@ -539,23 +539,23 @@ public abstract class DataConnectionTracker extends Handler {
     }
 
     /**
-     * Modify {@link Settings.Secure#DATA_ROAMING} value.
+     * Modify {@link Settings.Global#DATA_ROAMING} value.
      */
     public void setDataOnRoamingEnabled(boolean enabled) {
         if (getDataOnRoamingEnabled() != enabled) {
             final ContentResolver resolver = mPhone.getContext().getContentResolver();
-            Settings.Secure.putInt(resolver, Settings.Secure.DATA_ROAMING, enabled ? 1 : 0);
+            Settings.Global.putInt(resolver, Settings.Global.DATA_ROAMING, enabled ? 1 : 0);
             // will trigger handleDataOnRoamingChange() through observer
         }
     }
 
     /**
-     * Return current {@link Settings.Secure#DATA_ROAMING} value.
+     * Return current {@link Settings.Global#DATA_ROAMING} value.
      */
     public boolean getDataOnRoamingEnabled() {
         try {
             final ContentResolver resolver = mPhone.getContext().getContentResolver();
-            return Settings.Secure.getInt(resolver, Settings.Secure.DATA_ROAMING) != 0;
+            return Settings.Global.getInt(resolver, Settings.Global.DATA_ROAMING) != 0;
         } catch (SettingNotFoundException snfe) {
             return false;
         }
@@ -1073,8 +1073,8 @@ public abstract class DataConnectionTracker extends Handler {
             final boolean prevEnabled = getAnyDataEnabled();
             if (mUserDataEnabled != enabled) {
                 mUserDataEnabled = enabled;
-                Settings.Secure.putInt(mPhone.getContext().getContentResolver(),
-                        Settings.Secure.MOBILE_DATA, enabled ? 1 : 0);
+                Settings.Global.putInt(mPhone.getContext().getContentResolver(),
+                        Settings.Global.MOBILE_DATA, enabled ? 1 : 0);
                 if (getDataOnRoamingEnabled() == false &&
                         mPhone.getServiceState().getRoaming() == true) {
                     if (enabled) {
@@ -1349,8 +1349,8 @@ public abstract class DataConnectionTracker extends Handler {
         }
         updateDataStallInfo();
 
-        int hangWatchdogTrigger = Settings.Secure.getInt(mResolver,
-                Settings.Secure.PDP_WATCHDOG_TRIGGER_PACKET_COUNT,
+        int hangWatchdogTrigger = Settings.Global.getInt(mResolver,
+                Settings.Global.PDP_WATCHDOG_TRIGGER_PACKET_COUNT,
                 NUMBER_SENT_PACKETS_OF_HANG);
 
         boolean suspectedStall = DATA_STALL_NOT_SUSPECTED;
@@ -1376,12 +1376,12 @@ public abstract class DataConnectionTracker extends Handler {
         // If screen is on or data stall is currently suspected, set the alarm
         // with an aggresive timeout.
         if (mIsScreenOn || suspectedStall || RecoveryAction.isAggressiveRecovery(nextAction)) {
-            delayInMs = Settings.Secure.getInt(mResolver,
-                                       Settings.Secure.DATA_STALL_ALARM_AGGRESSIVE_DELAY_IN_MS,
+            delayInMs = Settings.Global.getInt(mResolver,
+                                       Settings.Global.DATA_STALL_ALARM_AGGRESSIVE_DELAY_IN_MS,
                                        DATA_STALL_ALARM_AGGRESSIVE_DELAY_IN_MS_DEFAULT);
         } else {
-            delayInMs = Settings.Secure.getInt(mResolver,
-                                       Settings.Secure.DATA_STALL_ALARM_NON_AGGRESSIVE_DELAY_IN_MS,
+            delayInMs = Settings.Global.getInt(mResolver,
+                                       Settings.Global.DATA_STALL_ALARM_NON_AGGRESSIVE_DELAY_IN_MS,
                                        DATA_STALL_ALARM_NON_AGGRESSIVE_DELAY_IN_MS_DEFAULT);
         }
 
