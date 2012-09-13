@@ -71,3 +71,7 @@ option java_package com.android.internal.telephony;
 
 # Data Stall Recovery mode DATA_STALL_RECOVERY_RADIO_RESTART_WITH_PROP
 50122 data_stall_recovery_radio_restart_with_prop (out_packet_count|1|1)
+
+# SMS denied by user
+50125 sms_denied_by_user (app_signature|3)
+50128 sms_sent_by_user (app_signature|3)
