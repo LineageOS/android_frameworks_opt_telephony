@@ -27,6 +27,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.Cursor;
@@ -47,10 +48,12 @@ import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 import android.text.Html;
 import android.text.Spanned;
+import android.util.EventLog;
 import android.util.Log;
 import android.view.WindowManager;
 
 import com.android.internal.R;
+import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.util.HexDump;
@@ -930,11 +933,26 @@ public abstract class SMSDispatcher extends Handler {
             return;
         }
 
-        String appPackage = packageNames[0];
+        // Get package info via packagemanager
+        PackageInfo appInfo = null;
+        try {
+            // XXX this is lossy- apps can share a UID
+            appInfo = pm.getPackageInfo(packageNames[0], PackageManager.GET_SIGNATURES);
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.e(TAG, "Can't get calling app package info: refusing to send SMS");
+            if (sentIntent != null) {
+                try {
+                    sentIntent.send(RESULT_ERROR_GENERIC_FAILURE);
+                } catch (CanceledException ex) {
+                    Log.e(TAG, "failed to send error result");
+                }
+            }
+            return;
+        }
 
         // Strip non-digits from destination phone number before checking for short codes
         // and before displaying the number to the user if confirmation is required.
-        SmsTracker tracker = new SmsTracker(map, sentIntent, deliveryIntent, appPackage,
+        SmsTracker tracker = new SmsTracker(map, sentIntent, deliveryIntent, appInfo,
                 PhoneNumberUtils.extractNetworkPortion(destAddr));
 
         // checkDestination() returns true if the destination is not a premium short code or the
@@ -942,7 +960,7 @@ public abstract class SMSDispatcher extends Handler {
         // handler with the SmsTracker to request user confirmation before sending.
         if (checkDestination(tracker)) {
             // check for excessive outgoing SMS usage by this app
-            if (!mUsageMonitor.check(appPackage, SINGLE_PART_SMS)) {
+            if (!mUsageMonitor.check(appInfo.packageName, SINGLE_PART_SMS)) {
                 sendMessage(obtainMessage(EVENT_SEND_LIMIT_REACHED_CONFIRMATION, tracker));
                 return;
             }
@@ -1040,7 +1058,7 @@ public abstract class SMSDispatcher extends Handler {
             return;     // queue limit reached; error was returned to caller
         }
 
-        CharSequence appLabel = getAppLabel(tracker.mAppPackage);
+        CharSequence appLabel = getAppLabel(tracker.mAppInfo.packageName);
         Resources r = Resources.getSystem();
         Spanned messageText = Html.fromHtml(r.getString(R.string.sms_control_message, appLabel));
 
@@ -1079,7 +1097,7 @@ public abstract class SMSDispatcher extends Handler {
             titleId = R.string.sms_short_code_confirm_title;
         }
 
-        CharSequence appLabel = getAppLabel(tracker.mAppPackage);
+        CharSequence appLabel = getAppLabel(tracker.mAppInfo.packageName);
         Resources r = Resources.getSystem();
         Spanned messageText = Html.fromHtml(r.getString(messageId, appLabel, tracker.mDestAddress));
 
@@ -1184,16 +1202,16 @@ public abstract class SMSDispatcher extends Handler {
         public final PendingIntent mSentIntent;
         public final PendingIntent mDeliveryIntent;
 
-        public final String mAppPackage;
+        public final PackageInfo mAppInfo;
         public final String mDestAddress;
 
         public SmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
-                PendingIntent deliveryIntent, String appPackage, String destAddr) {
+                PendingIntent deliveryIntent, PackageInfo appInfo, String destAddr) {
             mData = data;
             mSentIntent = sentIntent;
             mDeliveryIntent = deliveryIntent;
             mRetryCount = 0;
-            mAppPackage = appPackage;
+            mAppInfo = appInfo;
             mDestAddress = destAddr;
         }
 
@@ -1223,9 +1241,15 @@ public abstract class SMSDispatcher extends Handler {
         public void onClick(DialogInterface dialog, int which) {
             if (which == DialogInterface.BUTTON_POSITIVE) {
                 Log.d(TAG, "CONFIRM sending SMS");
+                // XXX this is lossy- apps can have more than one signature
+                EventLog.writeEvent(EventLogTags.SMS_SENT_BY_USER,
+                                    mTracker.mAppInfo.signatures[0].toCharsString());
                 sendMessage(obtainMessage(EVENT_SEND_CONFIRMED_SMS, mTracker));
             } else if (which == DialogInterface.BUTTON_NEGATIVE) {
                 Log.d(TAG, "DENY sending SMS");
+                // XXX this is lossy- apps can have more than one signature
+                EventLog.writeEvent(EventLogTags.SMS_DENIED_BY_USER,
+                                    mTracker.mAppInfo.signatures[0].toCharsString());
                 sendMessage(obtainMessage(EVENT_STOP_SENDING, mTracker));
             }
         }
