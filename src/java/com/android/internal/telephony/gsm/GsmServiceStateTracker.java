@@ -995,9 +995,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             if (!mStartedGprsRegCheck && !mReportedGprsNoReg) {
                 mStartedGprsRegCheck = true;
 
-                int check_period = Settings.Secure.getInt(
+                int check_period = Settings.Global.getInt(
                         phone.getContext().getContentResolver(),
-                        Settings.Secure.GPRS_REGISTER_CHECK_PERIOD_MS,
+                        Settings.Global.GPRS_REGISTER_CHECK_PERIOD_MS,
                         DEFAULT_GPRS_CHECK_PERIOD_MILLIS);
                 sendMessageDelayed(obtainMessage(EVENT_CHECK_REPORT_GPRS),
                         check_period);
