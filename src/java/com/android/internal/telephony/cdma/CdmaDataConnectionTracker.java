@@ -261,7 +261,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
     @Override
     protected boolean isDataPossible(String apnType) {
         boolean possible = isDataAllowed() && !(getAnyDataEnabled() &&
-                (mState == DctConstants.State.FAILED || mState == DctConstants.State.IDLE));
+                mState == DctConstants.State.FAILED);
         if (!possible && DBG && isDataAllowed()) {
             log("Data not possible.  No coverage: dataState = " + mState);
         }
