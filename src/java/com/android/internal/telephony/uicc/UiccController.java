@@ -196,7 +196,7 @@ public class UiccController extends Handler {
         mCi = ci;
         mCi.registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, null);
         // TODO remove this once modem correctly notifies the unsols
-        //mCi.registerForOn(this, EVENT_ICC_STATUS_CHANGED, null);
+        mCi.registerForOn(this, EVENT_ICC_STATUS_CHANGED, null);
     }
 
     private synchronized void onGetIccCardStatusDone(AsyncResult ar) {
