@@ -16,27 +16,40 @@
 
 package com.android.internal.telephony;
 
+import android.app.AppGlobals;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.content.res.XmlResourceParser;
 import android.database.ContentObserver;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Process;
+import android.os.RemoteException;
+import android.os.UserHandle;
 import android.provider.Settings;
 import android.telephony.PhoneNumberUtils;
+import android.util.AtomicFile;
 import android.util.Log;
+import android.util.Xml;
 
+import com.android.internal.util.FastXmlSerializer;
 import com.android.internal.util.XmlUtils;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
+import org.xmlpull.v1.XmlSerializer;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -51,7 +64,6 @@ import java.util.regex.Pattern;
  */
 public class SmsUsageMonitor {
     private static final String TAG = "SmsUsageMonitor";
-    private static final boolean DBG = true;
     private static final boolean VDBG = false;
 
     /** Default checking period for SMS sent without user permission. */
@@ -75,6 +87,18 @@ public class SmsUsageMonitor {
     /** Return value from {@link #checkDestination} for premium short codes. */
     static final int CATEGORY_PREMIUM_SHORT_CODE = 4;
 
+    /** Premium SMS permission for a new package (ask user when first premium SMS sent). */
+    public static final int PREMIUM_SMS_PERMISSION_UNKNOWN = 0;
+
+    /** Default premium SMS permission (ask user for each premium SMS sent). */
+    public static final int PREMIUM_SMS_PERMISSION_ASK_USER = 1;
+
+    /** Premium SMS permission when the owner has denied the app from sending premium SMS. */
+    public static final int PREMIUM_SMS_PERMISSION_NEVER_ALLOW = 2;
+
+    /** Premium SMS permission when the owner has allowed the app to send premium SMS. */
+    public static final int PREMIUM_SMS_PERMISSION_ALWAYS_ALLOW = 3;
+
     private final int mCheckPeriod;
     private final int mMaxAllowed;
 
@@ -96,6 +120,15 @@ public class SmsUsageMonitor {
     /** Handler for responding to content observer updates. */
     private final SettingsObserverHandler mSettingsObserverHandler;
 
+    /** SMS short code blocking feature enabled (can be disabled in Gservices). */
+    private boolean mEnableShortCodeConfirmation = true;
+
+    /** Directory for per-app SMS permission XML file. */
+    private static final String SMS_POLICY_FILE_DIRECTORY = "/data/radio";
+
+    /** Per-app SMS permission XML filename. */
+    private static final String SMS_POLICY_FILE_NAME = "premium_sms_policy.xml";
+
     /** XML tag for root element. */
     private static final String TAG_SHORTCODES = "shortcodes";
 
@@ -116,6 +149,24 @@ public class SmsUsageMonitor {
 
     /** XML attribute for the standard rate short code regex pattern. */
     private static final String ATTR_STANDARD = "standard";
+
+    /** Stored copy of premium SMS package permissions. */
+    private AtomicFile mPolicyFile;
+
+    /** Loaded copy of premium SMS package permissions. */
+    private final HashMap<String, Integer> mPremiumSmsPolicy = new HashMap<String, Integer>();
+
+    /** XML tag for root element of premium SMS permissions. */
+    private static final String TAG_SMS_POLICY_BODY = "premium-sms-policy";
+
+    /** XML tag for a package. */
+    private static final String TAG_PACKAGE = "package";
+
+    /** XML attribute for the package name. */
+    private static final String ATTR_PACKAGE_NAME = "name";
+
+    /** XML attribute for the package's premium SMS permission (integer type). */
+    private static final String ATTR_PACKAGE_SMS_POLICY = "sms-policy";
 
     /**
      * SMS short code regex pattern matcher for a specific country.
@@ -190,7 +241,14 @@ public class SmsUsageMonitor {
         static final int OBSERVE_SETTING = 1;
 
         /** Handler event for updated secure settings. */
-        static final int SECURE_SETTINGS_CHANGED = 2;
+        static final int GLOBAL_SETTINGS_CHANGED = 2;
+
+        SettingsObserverHandler() {
+            ContentResolver resolver = mContext.getContentResolver();
+            ContentObserver globalObserver = new SettingsObserver(this, GLOBAL_SETTINGS_CHANGED);
+            resolver.registerContentObserver(Settings.Global.getUriFor(
+                    Settings.Global.SMS_SHORT_CODE_CONFIRMATION), false, globalObserver);
+        }
 
         /** Send a message to this handler requesting to observe the setting for a new country. */
         void observeSettingForCountry(String countryIso) {
@@ -211,14 +269,14 @@ public class SmsUsageMonitor {
                             resolver.unregisterContentObserver(mSettingsObserver);
                         }
 
-                        mSettingsObserver = new SettingsObserver(this, SECURE_SETTINGS_CHANGED);
+                        mSettingsObserver = new SettingsObserver(this, GLOBAL_SETTINGS_CHANGED);
                         resolver.registerContentObserver(
-                                Settings.Secure.getUriFor(settingName), false, mSettingsObserver);
+                                Settings.Global.getUriFor(settingName), false, mSettingsObserver);
                         if (VDBG) log("Registered content observer for " + settingName);
                     }
                     break;
 
-                case SECURE_SETTINGS_CHANGED:
+                case GLOBAL_SETTINGS_CHANGED:
                     loadPatternsFromSettings(mCountryIso);
                     break;
             }
@@ -233,15 +291,17 @@ public class SmsUsageMonitor {
         mContext = context;
         ContentResolver resolver = context.getContentResolver();
 
-        mMaxAllowed = Settings.Secure.getInt(resolver,
-                Settings.Secure.SMS_OUTGOING_CHECK_MAX_COUNT,
+        mMaxAllowed = Settings.Global.getInt(resolver,
+                Settings.Global.SMS_OUTGOING_CHECK_MAX_COUNT,
                 DEFAULT_SMS_MAX_COUNT);
 
-        mCheckPeriod = Settings.Secure.getInt(resolver,
-                Settings.Secure.SMS_OUTGOING_CHECK_INTERVAL_MS,
+        mCheckPeriod = Settings.Global.getInt(resolver,
+                Settings.Global.SMS_OUTGOING_CHECK_INTERVAL_MS,
                 DEFAULT_SMS_CHECK_PERIOD);
 
         mSettingsObserverHandler = new SettingsObserverHandler();
+
+        loadPremiumSmsPolicyDb();
     }
 
     /**
@@ -368,6 +428,10 @@ public class SmsUsageMonitor {
             if (PhoneNumberUtils.isEmergencyNumber(destAddress, countryIso)) {
                 return CATEGORY_NOT_SHORT_CODE;
             }
+            // always allow if the feature is disabled
+            if (!mEnableShortCodeConfirmation) {
+                return CATEGORY_NOT_SHORT_CODE;
+            }
 
             ShortCodePatternMatcher patternMatcher = null;
 
@@ -402,7 +466,7 @@ public class SmsUsageMonitor {
     }
 
     private static String getSettingNameForCountry(String countryIso) {
-        return Settings.Secure.SMS_SHORT_CODES_PREFIX + countryIso;
+        return Settings.Global.SMS_SHORT_CODES_PREFIX + countryIso;
     }
 
     /**
@@ -412,7 +476,13 @@ public class SmsUsageMonitor {
     void loadPatternsFromSettings(String countryIso) {
         synchronized (mSettingsObserverHandler) {
             if (VDBG) log("loadPatternsFromSettings(" + countryIso + ") called");
-            String settingsPatterns = Settings.Secure.getString(
+            mEnableShortCodeConfirmation = Settings.Global.getInt(mContext.getContentResolver(),
+                    Settings.Global.SMS_SHORT_CODE_CONFIRMATION, 1) != 0;
+            if (!mEnableShortCodeConfirmation) {
+                log("Short code blocking disabled: not loading patterns");
+                return;
+            }
+            String settingsPatterns = Settings.Global.getString(
                     mContext.getContentResolver(), getSettingNameForCountry(countryIso));
             if (settingsPatterns != null && !settingsPatterns.equals(
                     mSettingsShortCodePatterns)) {
@@ -430,6 +500,181 @@ public class SmsUsageMonitor {
                 mSettingsShortCodePatterns = null;
             }
         }
+    }
+
+    /**
+     * Load the premium SMS policy from an XML file.
+     * Based on code from NotificationManagerService.
+     */
+    private void loadPremiumSmsPolicyDb() {
+        synchronized (mPremiumSmsPolicy) {
+            if (mPolicyFile == null) {
+                File dir = new File(SMS_POLICY_FILE_DIRECTORY);
+                mPolicyFile = new AtomicFile(new File(dir, SMS_POLICY_FILE_NAME));
+
+                mPremiumSmsPolicy.clear();
+
+                FileInputStream infile = null;
+                try {
+                    infile = mPolicyFile.openRead();
+                    final XmlPullParser parser = Xml.newPullParser();
+                    parser.setInput(infile, null);
+
+                    XmlUtils.beginDocument(parser, TAG_SMS_POLICY_BODY);
+
+                    while (true) {
+                        XmlUtils.nextElement(parser);
+
+                        String element = parser.getName();
+                        if (element == null) break;
+
+                        if (element.equals(TAG_PACKAGE)) {
+                            String packageName = parser.getAttributeValue(null, ATTR_PACKAGE_NAME);
+                            String policy = parser.getAttributeValue(null, ATTR_PACKAGE_SMS_POLICY);
+                            if (packageName == null) {
+                                Log.e(TAG, "Error: missing package name attribute");
+                            } else if (policy == null) {
+                                Log.e(TAG, "Error: missing package policy attribute");
+                            } else try {
+                                mPremiumSmsPolicy.put(packageName, Integer.parseInt(policy));
+                            } catch (NumberFormatException e) {
+                                Log.e(TAG, "Error: non-numeric policy type " + policy);
+                            }
+                        } else {
+                            Log.e(TAG, "Error: skipping unknown XML tag " + element);
+                        }
+                    }
+                } catch (FileNotFoundException e) {
+                    // No data yet
+                } catch (IOException e) {
+                    Log.e(TAG, "Unable to read premium SMS policy database", e);
+                } catch (NumberFormatException e) {
+                    Log.e(TAG, "Unable to parse premium SMS policy database", e);
+                } catch (XmlPullParserException e) {
+                    Log.e(TAG, "Unable to parse premium SMS policy database", e);
+                } finally {
+                    if (infile != null) {
+                        try {
+                            infile.close();
+                        } catch (IOException ignored) {
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Persist the premium SMS policy to an XML file.
+     * Based on code from NotificationManagerService.
+     */
+    private void writePremiumSmsPolicyDb() {
+        synchronized (mPremiumSmsPolicy) {
+            FileOutputStream outfile = null;
+            try {
+                outfile = mPolicyFile.startWrite();
+
+                XmlSerializer out = new FastXmlSerializer();
+                out.setOutput(outfile, "utf-8");
+
+                out.startDocument(null, true);
+
+                out.startTag(null, TAG_SMS_POLICY_BODY);
+
+                for (Map.Entry<String, Integer> policy : mPremiumSmsPolicy.entrySet()) {
+                    out.startTag(null, TAG_PACKAGE);
+                    out.attribute(null, ATTR_PACKAGE_NAME, policy.getKey());
+                    out.attribute(null, ATTR_PACKAGE_SMS_POLICY, policy.getValue().toString());
+                    out.endTag(null, TAG_PACKAGE);
+                }
+
+                out.endTag(null, TAG_SMS_POLICY_BODY);
+                out.endDocument();
+
+                mPolicyFile.finishWrite(outfile);
+            } catch (IOException e) {
+                Log.e(TAG, "Unable to write premium SMS policy database", e);
+                if (outfile != null) {
+                    mPolicyFile.failWrite(outfile);
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns the premium SMS permission for the specified package. If the package has never
+     * been seen before, the default {@link #PREMIUM_SMS_PERMISSION_ASK_USER}
+     * will be returned.
+     * @param packageName the name of the package to query permission
+     * @return one of {@link #PREMIUM_SMS_PERMISSION_UNKNOWN},
+     *  {@link #PREMIUM_SMS_PERMISSION_ASK_USER},
+     *  {@link #PREMIUM_SMS_PERMISSION_NEVER_ALLOW}, or
+     *  {@link #PREMIUM_SMS_PERMISSION_ALWAYS_ALLOW}
+     * @throws SecurityException if the caller is not a system process
+     */
+    public int getPremiumSmsPermission(String packageName) {
+        checkCallerIsSystemOrSameApp(packageName);
+        synchronized (mPremiumSmsPolicy) {
+            Integer policy = mPremiumSmsPolicy.get(packageName);
+            if (policy == null) {
+                return PREMIUM_SMS_PERMISSION_UNKNOWN;
+            } else {
+                return policy;
+            }
+        }
+    }
+
+    /**
+     * Sets the premium SMS permission for the specified package and save the value asynchronously
+     * to persistent storage.
+     * @param packageName the name of the package to set permission
+     * @param permission one of {@link #PREMIUM_SMS_PERMISSION_ASK_USER},
+     *  {@link #PREMIUM_SMS_PERMISSION_NEVER_ALLOW}, or
+     *  {@link #PREMIUM_SMS_PERMISSION_ALWAYS_ALLOW}
+     * @throws SecurityException if the caller is not a system process
+     */
+    public void setPremiumSmsPermission(String packageName, int permission) {
+        checkCallerIsSystemOrPhoneApp();
+        if (permission < PREMIUM_SMS_PERMISSION_ASK_USER
+                || permission > PREMIUM_SMS_PERMISSION_ALWAYS_ALLOW) {
+            throw new IllegalArgumentException("invalid SMS permission type " + permission);
+        }
+        synchronized (mPremiumSmsPolicy) {
+            mPremiumSmsPolicy.put(packageName, permission);
+        }
+        // write policy file in the background
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                writePremiumSmsPolicyDb();
+            }
+        }).start();
+    }
+
+    private static void checkCallerIsSystemOrSameApp(String pkg) {
+        int uid = Binder.getCallingUid();
+        if (UserHandle.getAppId(uid) == Process.SYSTEM_UID || uid == 0) {
+            return;
+        }
+        try {
+            ApplicationInfo ai = AppGlobals.getPackageManager().getApplicationInfo(
+                    pkg, 0, UserHandle.getCallingUserId());
+            if (!UserHandle.isSameApp(ai.uid, uid)) {
+                throw new SecurityException("Calling uid " + uid + " gave package"
+                        + pkg + " which is owned by uid " + ai.uid);
+            }
+        } catch (RemoteException re) {
+            throw new SecurityException("Unknown package " + pkg + "\n" + re);
+        }
+    }
+
+    private static void checkCallerIsSystemOrPhoneApp() {
+        int uid = Binder.getCallingUid();
+        int appId = UserHandle.getAppId(uid);
+        if (appId == Process.SYSTEM_UID || appId == Process.PHONE_UID || uid == 0) {
+            return;
+        }
+        throw new SecurityException("Disallowed call for uid " + uid);
     }
 
     /**

@@ -198,4 +198,15 @@ interface ISms {
      */
     boolean disableCellBroadcastRange(int startMessageId, int endMessageId);
 
+    /**
+     * Returns the premium SMS send permission for the specified package.
+     * Requires system permission.
+     */
+    int getPremiumSmsPermission(String packageName);
+
+    /**
+     * Set the SMS send permission for the specified package.
+     * Requires system permission.
+     */
+    void setPremiumSmsPermission(String packageName, int permission);
 }

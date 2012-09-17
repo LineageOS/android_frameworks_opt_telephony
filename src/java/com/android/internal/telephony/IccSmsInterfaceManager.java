@@ -164,6 +164,14 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
                 (ArrayList<PendingIntent>) sentIntents, (ArrayList<PendingIntent>) deliveryIntents);
     }
 
+    public int getPremiumSmsPermission(String packageName) {
+        return mDispatcher.getPremiumSmsPermission(packageName);
+    }
+
+    public void setPremiumSmsPermission(String packageName, int permission) {
+        mDispatcher.setPremiumSmsPermission(packageName, permission);
+    }
+
     /**
      * create SmsRawData lists from all sms record byte[]
      * Use null to indicate "free" record
