@@ -122,8 +122,8 @@ public class UiccCardApplication {
             mPin2State = as.pin2;
 
             if (mAppType != oldAppType) {
-                mIccFh.dispose();
-                mIccRecords.dispose();
+                if (mIccFh != null) { mIccFh.dispose();}
+                if (mIccRecords != null) { mIccRecords.dispose();}
                 mIccFh = createIccFileHandler(as.app_type);
                 mIccRecords = createIccRecords(as.app_type, c, ci);
             }
