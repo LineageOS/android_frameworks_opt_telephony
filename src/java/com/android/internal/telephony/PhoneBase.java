@@ -38,6 +38,7 @@ import android.util.Log;
 
 import com.android.internal.R;
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.gsm.UsimServiceTable;
 import com.android.internal.telephony.ims.IsimRecords;
 import com.android.internal.telephony.test.SimulatedRadioControl;
@@ -679,6 +680,14 @@ public abstract class PhoneBase extends Handler implements Phone {
     */
     public CallTracker getCallTracker() {
         return null;
+    }
+
+    public AppType getCurrentUiccAppType() {
+        UiccCardApplication currentApp = mUiccApplication.get();
+        if (currentApp != null) {
+            return currentApp.getType();
+        }
+        return AppType.APPTYPE_UNKNOWN;
     }
 
     @Override
