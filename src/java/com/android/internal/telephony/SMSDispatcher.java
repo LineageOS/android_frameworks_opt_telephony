@@ -1357,7 +1357,7 @@ public abstract class SMSDispatcher extends Handler {
                 mNegativeButton.setText(R.string.sms_short_code_confirm_never_allow);
             } else {
                 mPositiveButton.setText(R.string.sms_short_code_confirm_allow);
-                mNegativeButton.setText(R.string.sms_short_code_confirm_allow);
+                mNegativeButton.setText(R.string.sms_short_code_confirm_deny);
             }
         }
     }
