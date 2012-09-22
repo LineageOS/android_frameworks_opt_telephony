@@ -87,6 +87,12 @@ public class SmsUsageMonitor {
     /** Return value from {@link #checkDestination} for premium short codes. */
     static final int CATEGORY_PREMIUM_SHORT_CODE = 4;
 
+    /** @hide */
+    public static int mergeShortCodeCategories(int type1, int type2) {
+        if (type1 > type2) return type1;
+        return type2;
+    }
+
     /** Premium SMS permission for a new package (ask user when first premium SMS sent). */
     public static final int PREMIUM_SMS_PERMISSION_UNKNOWN = 0;
 
