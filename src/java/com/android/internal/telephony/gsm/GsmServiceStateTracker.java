@@ -149,7 +149,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     /** Keep track of SPN display rules, so we only broadcast intent if something changes. */
     private String curSpn = null;
     private String curPlmn = null;
-    private int curSpnRule = 0;
+    private boolean curShowPlmn = false;
+    private boolean curShowSpn = false;
+
 
     /** waiting period before recheck gprs and voice registration. */
     static final int DEFAULT_GPRS_CHECK_PERIOD_MILLIS = 60 * 1000;
@@ -486,29 +488,73 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         if (mIccRecords == null) {
             return;
         }
-        int rule = mIccRecords.getDisplayRule(ss.getOperatorNumeric());
-        String spn = mIccRecords.getServiceProviderName();
-        String plmn = ss.getOperatorAlphaLong();
 
-        // For emergency calls only, pass the EmergencyCallsOnly string via EXTRA_PLMN
-        if (mEmergencyOnly && cm.getRadioState().isOn()) {
-            plmn = Resources.getSystem().
-                getText(com.android.internal.R.string.emergency_calls_only).toString();
-            if (DBG) log("updateSpnDisplay: emergency only and radio is on plmn='" + plmn + "'");
+        int rule = mIccRecords.getDisplayRule(ss.getOperatorNumeric());
+
+        // The values of plmn/showPlmn change in different scenarios.
+        // 1) No service but emergency call allowed -> expected
+        //    to show "Emergency call only"
+        //    EXTRA_SHOW_PLMN = true
+        //    EXTRA_PLMN = "Emergency call only"
+
+        // 2) No service at all --> expected to show "No service"
+        //    EXTRA_SHOW_PLMN = true
+        //    EXTRA_PLMN = "No service"
+
+        // 3) Normal operation in either home or roaming service
+        //    EXTRA_SHOW_PLMN = depending on IccRecords rule
+        //    EXTRA_PLMN = plmn
+
+        // 4) No service due to power off, aka airplane mode
+        //    EXTRA_SHOW_PLMN = false
+        //    EXTRA_PLMN = null
+
+        String plmn = null;
+        boolean showPlmn = false;
+        if (ss.getState() == ServiceState.STATE_OUT_OF_SERVICE
+                || ss.getState() == ServiceState.STATE_EMERGENCY_ONLY) {
+            showPlmn = true;
+            if (mEmergencyOnly) {
+                // No service but emergency call allowed
+                plmn = Resources.getSystem().
+                        getText(com.android.internal.R.string.emergency_calls_only).toString();
+            } else {
+                // No service at all
+                plmn = Resources.getSystem().
+                        getText(com.android.internal.R.string.lockscreen_carrier_default).toString();
+            }
+            if (DBG) log("updateSpnDisplay: radio is on but out " +
+                    "of service, set plmn='" + plmn + "'");
+        } else if (ss.getState() == ServiceState.STATE_IN_SERVICE) {
+            // In either home or roaming service
+            plmn = ss.getOperatorAlphaLong();
+            showPlmn = !TextUtils.isEmpty(plmn) &&
+                    ((rule & SIMRecords.SPN_RULE_SHOW_PLMN)
+                            == SIMRecords.SPN_RULE_SHOW_PLMN);
+        } else {
+            // Power off state, such as airplane mode
+            if (DBG) log("updateSpnDisplay: radio is off w/ showPlmn="
+                    + showPlmn + " plmn=" + plmn);
         }
 
-        if (rule != curSpnRule
+        // The value of spn/showSpn are same in different scenarios.
+        //    EXTRA_SHOW_SPN = depending on IccRecords rule
+        //    EXTRA_SPN = spn
+        String spn = mIccRecords.getServiceProviderName();
+        boolean showSpn = !TextUtils.isEmpty(spn)
+                && ((rule & SIMRecords.SPN_RULE_SHOW_SPN)
+                        == SIMRecords.SPN_RULE_SHOW_SPN);
+
+        // Update SPN_STRINGS_UPDATED_ACTION IFF any value changes
+        if (showPlmn != curShowPlmn
+                || showSpn != curShowSpn
                 || !TextUtils.equals(spn, curSpn)
                 || !TextUtils.equals(plmn, curPlmn)) {
-            boolean showSpn = !mEmergencyOnly && !TextUtils.isEmpty(spn)
-                && (rule & SIMRecords.SPN_RULE_SHOW_SPN) == SIMRecords.SPN_RULE_SHOW_SPN;
-            boolean showPlmn = !TextUtils.isEmpty(plmn) && (mEmergencyOnly ||
-                ((rule & SIMRecords.SPN_RULE_SHOW_PLMN) == SIMRecords.SPN_RULE_SHOW_PLMN));
-
             if (DBG) {
-                log(String.format("updateSpnDisplay: changed sending intent" + " rule=" + rule +
-                            " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s'",
-                            showPlmn, plmn, showSpn, spn));
+                log(String.format("updateSpnDisplay: changed" +
+                        " sending intent rule=" + rule +
+                        " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s'",
+                        showPlmn, plmn, showSpn, spn));
             }
             Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
             intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
@@ -519,7 +565,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             phone.getContext().sendStickyBroadcast(intent);
         }
 
-        curSpnRule = rule;
+        curShowSpn = showSpn;
+        curShowPlmn = showPlmn;
         curSpn = spn;
         curPlmn = plmn;
     }
@@ -1692,7 +1739,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         pw.println(" mNotification=" + mNotification);
         pw.println(" mWakeLock=" + mWakeLock);
         pw.println(" curSpn=" + curSpn);
+        pw.println(" curShowSpn=" + curShowSpn);
         pw.println(" curPlmn=" + curPlmn);
-        pw.println(" curSpnRule=" + curSpnRule);
+        pw.println(" curShowPlmn=" + curShowPlmn);
     }
 }
