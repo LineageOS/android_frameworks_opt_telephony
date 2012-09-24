@@ -31,6 +31,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.Cursor;
+import android.database.ContentObserver;
 import android.database.SQLException;
 import android.net.Uri;
 import android.os.AsyncResult;
@@ -39,6 +40,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.SystemProperties;
+import android.provider.Settings;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.PhoneNumberUtils;
@@ -67,6 +69,7 @@ import com.android.internal.util.HexDump;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.HashMap;
 import java.util.Random;
 
@@ -107,6 +110,12 @@ public abstract class SMSDispatcher extends Handler {
     private static final int PDU_COLUMN = 0;
     private static final int SEQUENCE_COLUMN = 1;
     private static final int DESTINATION_PORT_COLUMN = 2;
+
+    private static final int PREMIUM_RULE_USE_SIM = 1;
+    private static final int PREMIUM_RULE_USE_NETWORK = 2;
+    private static final int PREMIUM_RULE_USE_BOTH = 3;
+    private final AtomicInteger mPremiumSmsRule = new AtomicInteger(PREMIUM_RULE_USE_SIM);
+    private final SettingsObserver mSettingsObserver;
 
     /** New SMS received. */
     protected static final int EVENT_NEW_SMS = 1;
@@ -203,6 +212,9 @@ public abstract class SMSDispatcher extends Handler {
         mStorageMonitor = storageMonitor;
         mUsageMonitor = usageMonitor;
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
+        mSettingsObserver = new SettingsObserver(this, mPremiumSmsRule, mContext);
+        mContext.getContentResolver().registerContentObserver(Settings.Global.getUriFor(
+                Settings.Global.SMS_SHORT_CODE_RULE), false, mSettingsObserver);
 
         createWakelock();
 
@@ -215,6 +227,26 @@ public abstract class SMSDispatcher extends Handler {
         Log.d(TAG, "SMSDispatcher: ctor mSmsCapable=" + mSmsCapable + " format=" + getFormat()
                 + " mSmsReceiveDisabled=" + mSmsReceiveDisabled
                 + " mSmsSendDisabled=" + mSmsSendDisabled);
+    }
+
+    /**
+     * Observe the secure setting for updated premium sms determination rules
+     */
+    private static class SettingsObserver extends ContentObserver {
+        private final AtomicInteger mPremiumSmsRule;
+        private final Context mContext;
+        SettingsObserver(Handler handler, AtomicInteger premiumSmsRule, Context context) {
+            super(handler);
+            mPremiumSmsRule = premiumSmsRule;
+            mContext = context;
+            onChange(false); // load initial value;
+        }
+
+        @Override
+        public void onChange(boolean selfChange) {
+            mPremiumSmsRule.set(Settings.Global.getInt(mContext.getContentResolver(),
+                    Settings.Global.SMS_SHORT_CODE_RULE, PREMIUM_RULE_USE_SIM));
+        }
     }
 
     /** Unregister for incoming SMS events. */
@@ -993,16 +1025,31 @@ public abstract class SMSDispatcher extends Handler {
                 == PackageManager.PERMISSION_GRANTED) {
             return true;            // app is pre-approved to send to short codes
         } else {
-            String countryIso = mTelephonyManager.getSimCountryIso();
-            if (countryIso == null || countryIso.length() != 2) {
-                Log.e(TAG, "Can't get SIM country code: trying network country code");
-                countryIso = mTelephonyManager.getNetworkCountryIso();
+            int rule = mPremiumSmsRule.get();
+            int smsCategory = SmsUsageMonitor.CATEGORY_NOT_SHORT_CODE;
+            if (rule == PREMIUM_RULE_USE_SIM || rule == PREMIUM_RULE_USE_BOTH) {
+                String simCountryIso = mTelephonyManager.getSimCountryIso();
+                if (simCountryIso == null || simCountryIso.length() != 2) {
+                    Log.e(TAG, "Can't get SIM country Iso: trying network country Iso");
+                    simCountryIso = mTelephonyManager.getNetworkCountryIso();
+                }
+
+                smsCategory = mUsageMonitor.checkDestination(tracker.mDestAddress, simCountryIso);
+            }
+            if (rule == PREMIUM_RULE_USE_NETWORK || rule == PREMIUM_RULE_USE_BOTH) {
+                String networkCountryIso = mTelephonyManager.getNetworkCountryIso();
+                if (networkCountryIso == null || networkCountryIso.length() != 2) {
+                    Log.e(TAG, "Can't get Network country Iso: trying SIM country Iso");
+                    networkCountryIso = mTelephonyManager.getSimCountryIso();
+                }
+
+                smsCategory = mUsageMonitor.mergeShortCodeCategories(smsCategory,
+                        mUsageMonitor.checkDestination(tracker.mDestAddress, networkCountryIso));
             }
 
-            int destination = mUsageMonitor.checkDestination(tracker.mDestAddress, countryIso);
-            if (destination == SmsUsageMonitor.CATEGORY_NOT_SHORT_CODE
-                    || destination == SmsUsageMonitor.CATEGORY_FREE_SHORT_CODE
-                    || destination == SmsUsageMonitor.CATEGORY_STANDARD_SHORT_CODE) {
+            if (smsCategory == SmsUsageMonitor.CATEGORY_NOT_SHORT_CODE
+                    || smsCategory == SmsUsageMonitor.CATEGORY_FREE_SHORT_CODE
+                    || smsCategory == SmsUsageMonitor.CATEGORY_STANDARD_SHORT_CODE) {
                 return true;    // not a premium short code
             }
 
@@ -1027,7 +1074,7 @@ public abstract class SMSDispatcher extends Handler {
                 case SmsUsageMonitor.PREMIUM_SMS_PERMISSION_ASK_USER:
                 default:
                     int event;
-                    if (destination == SmsUsageMonitor.CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE) {
+                    if (smsCategory == SmsUsageMonitor.CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE) {
                         event = EVENT_CONFIRM_SEND_TO_POSSIBLE_PREMIUM_SHORT_CODE;
                     } else {
                         event = EVENT_CONFIRM_SEND_TO_PREMIUM_SHORT_CODE;
