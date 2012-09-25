@@ -135,7 +135,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     // See TS 22.030 6.5.2 "Structure of the MMI"
 
     static Pattern sPatternSuppService = Pattern.compile(
-        "((\\*|#|\\*#|\\*\\*|##)(\\d{2,3})(\\*([^*#]*)(\\*([^*#]*)(\\*([^*#]*)(\\*([^*#]*))?)?)?)?#)([^#]*)");
+        "((\\*|#|\\*#|\\*\\*|##)(\\d{2,3})(\\*([^*#]*)(\\*([^*#]*)(\\*([^*#]*)(\\*([^*#]*))?)?)?)?#)(.*)");
 /*       1  2                    3          4  5       6   7         8    9     10  11             12
 
          1 = Full string up to and including #
@@ -144,7 +144,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
          5 = SIA
          7 = SIB
          9 = SIC
-         10 = dialing number which must not include #, e.g. *SCn*SI#DN format
+         10 = dialing number
 */
 
     static final int MATCH_GROUP_POUND_STRING = 1;
@@ -193,7 +193,17 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             ret.sic = makeEmptyNull(m.group(MATCH_GROUP_SIC));
             ret.pwd = makeEmptyNull(m.group(MATCH_GROUP_PWD_CONFIRM));
             ret.dialingNumber = makeEmptyNull(m.group(MATCH_GROUP_DIALING_NUMBER));
-
+            // According to TS 22.030 6.5.2 "Structure of the MMI",
+            // the dialing number should not ending with #.
+            // The dialing number ending # is treated as unique USSD,
+            // eg, *400#16 digit number# to recharge the prepaid card
+            // in India operator(Mumbai MTNL)
+            if(ret.dialingNumber != null &&
+                    ret.dialingNumber.endsWith("#") &&
+                    dialString.endsWith("#")){
+                ret = new GsmMmiCode(phone, app);
+                ret.poundString = dialString;
+            }
         } else if (dialString.endsWith("#")) {
             // TS 22.030 sec 6.5.3.2
             // "Entry of any characters defined in the 3GPP TS 23.038 [8] Default Alphabet
