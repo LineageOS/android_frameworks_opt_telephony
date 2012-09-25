@@ -54,6 +54,7 @@ import android.util.EventLog;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -1134,7 +1135,7 @@ public abstract class SMSDispatcher extends Handler {
         Resources r = Resources.getSystem();
         Spanned messageText = Html.fromHtml(r.getString(R.string.sms_control_message, appLabel));
 
-        ConfirmDialogListener listener = new ConfirmDialogListener(tracker);
+        ConfirmDialogListener listener = new ConfirmDialogListener(tracker, null);
 
         AlertDialog d = new AlertDialog.Builder(mContext)
                 .setTitle(R.string.sms_control_title)
@@ -1171,16 +1172,18 @@ public abstract class SMSDispatcher extends Handler {
         Spanned messageText = Html.fromHtml(r.getString(R.string.sms_short_code_confirm_message,
                 appLabel, tracker.mDestAddress));
 
-        ConfirmDialogListener listener = new ConfirmDialogListener(tracker);
-
         LayoutInflater inflater = (LayoutInflater) mContext.getSystemService(
                 Context.LAYOUT_INFLATER_SERVICE);
         View layout = inflater.inflate(R.layout.sms_short_code_confirmation_dialog, null);
 
+        ConfirmDialogListener listener = new ConfirmDialogListener(tracker,
+                (TextView)layout.findViewById(R.id.sms_short_code_remember_undo_instruction));
+
+
         TextView messageView = (TextView) layout.findViewById(R.id.sms_short_code_confirm_message);
         messageView.setText(messageText);
 
-        LinearLayout detailsLayout = (LinearLayout) layout.findViewById(
+        ViewGroup detailsLayout = (ViewGroup) layout.findViewById(
                 R.id.sms_short_code_detail_layout);
         TextView detailsView = (TextView) detailsLayout.findViewById(
                 R.id.sms_short_code_detail_message);
@@ -1348,9 +1351,11 @@ public abstract class SMSDispatcher extends Handler {
         private Button mPositiveButton;
         private Button mNegativeButton;
         private boolean mRememberChoice;    // default is unchecked
+        private final TextView mRememberUndoInstruction;
 
-        ConfirmDialogListener(SmsTracker tracker) {
+        ConfirmDialogListener(SmsTracker tracker, TextView textView) {
             mTracker = tracker;
+            mRememberUndoInstruction = textView;
         }
 
         void setPositiveButton(Button button) {
@@ -1402,9 +1407,18 @@ public abstract class SMSDispatcher extends Handler {
             if (isChecked) {
                 mPositiveButton.setText(R.string.sms_short_code_confirm_always_allow);
                 mNegativeButton.setText(R.string.sms_short_code_confirm_never_allow);
+                if (mRememberUndoInstruction != null) {
+                    mRememberUndoInstruction.
+                            setText(R.string.sms_short_code_remember_undo_instruction);
+                    mRememberUndoInstruction.setPadding(0,0,0,32);
+                }
             } else {
                 mPositiveButton.setText(R.string.sms_short_code_confirm_allow);
                 mNegativeButton.setText(R.string.sms_short_code_confirm_deny);
+                if (mRememberUndoInstruction != null) {
+                    mRememberUndoInstruction.setText("");
+                    mRememberUndoInstruction.setPadding(0,0,0,0);
+                }
             }
         }
     }
