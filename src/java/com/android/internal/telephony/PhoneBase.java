@@ -633,8 +633,8 @@ public abstract class PhoneBase extends Handler implements Phone {
 
                 if (!country.isEmpty()) {
                     try {
-                        Settings.Secure.getInt(mContext.getContentResolver(),
-                                Settings.Secure.WIFI_COUNTRY_CODE);
+                        Settings.Global.getInt(mContext.getContentResolver(),
+                                Settings.Global.WIFI_COUNTRY_CODE);
                     } catch (Settings.SettingNotFoundException e) {
                         // note this is not persisting
                         WifiManager wM = (WifiManager)
