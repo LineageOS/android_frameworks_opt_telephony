@@ -138,8 +138,8 @@ public class CdmaSubscriptionSourceManager extends Handler {
      */
     private int getDefaultCdmaSubscriptionSource() {
         // Get the default value from the Settings
-        int subscriptionSource = Settings.Secure.getInt(mContext.getContentResolver(),
-                Settings.Secure.CDMA_SUBSCRIPTION_MODE, PREFERRED_CDMA_SUBSCRIPTION);
+        int subscriptionSource = Settings.Global.getInt(mContext.getContentResolver(),
+                Settings.Global.CDMA_SUBSCRIPTION_MODE, PREFERRED_CDMA_SUBSCRIPTION);
         return subscriptionSource;
     }
 
