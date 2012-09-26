@@ -252,8 +252,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
      */
     private void saveCdmaSubscriptionSource(int source) {
         log("Storing cdma subscription source: " + source);
-        Secure.putInt(phone.getContext().getContentResolver(),
-                Secure.CDMA_SUBSCRIPTION_MODE,
+        Settings.Global.putInt(phone.getContext().getContentResolver(),
+                Settings.Global.CDMA_SUBSCRIPTION_MODE,
                 source );
     }
 
@@ -1399,10 +1399,10 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                      */
                     long gained = c.getTimeInMillis() - System.currentTimeMillis();
                     long timeSinceLastUpdate = SystemClock.elapsedRealtime() - mSavedAtTime;
-                    int nitzUpdateSpacing = Settings.Secure.getInt(cr,
-                            Settings.Secure.NITZ_UPDATE_SPACING, mNitzUpdateSpacing);
-                    int nitzUpdateDiff = Settings.Secure.getInt(cr,
-                            Settings.Secure.NITZ_UPDATE_DIFF, mNitzUpdateDiff);
+                    int nitzUpdateSpacing = Settings.Global.getInt(cr,
+                            Settings.Global.NITZ_UPDATE_SPACING, mNitzUpdateSpacing);
+                    int nitzUpdateDiff = Settings.Global.getInt(cr,
+                            Settings.Global.NITZ_UPDATE_DIFF, mNitzUpdateDiff);
 
                     if ((mSavedAtTime == 0) || (timeSinceLastUpdate > nitzUpdateSpacing)
                             || (Math.abs(gained) > nitzUpdateDiff)) {
