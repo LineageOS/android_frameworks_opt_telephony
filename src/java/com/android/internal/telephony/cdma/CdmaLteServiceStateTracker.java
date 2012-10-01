@@ -286,9 +286,9 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         // To set in LTE only mode, sqlite3 /data/data/com.android.providers.settings/
         // databases/settings.db "update secure set value='11' where name='preferred_network_mode'"
         if (newSS.getState() == ServiceState.STATE_OUT_OF_SERVICE) {
-            int networkMode = android.provider.Settings.Secure.getInt(phone.getContext()
+            int networkMode = android.provider.Settings.Global.getInt(phone.getContext()
                                   .getContentResolver(),
-                                  android.provider.Settings.Secure.PREFERRED_NETWORK_MODE,
+                                  android.provider.Settings.Global.PREFERRED_NETWORK_MODE,
                                   RILConstants.PREFERRED_NETWORK_MODE);
             if (networkMode == RILConstants.NETWORK_MODE_LTE_ONLY) {
                 if (DBG) log("pollState: LTE Only mode");
