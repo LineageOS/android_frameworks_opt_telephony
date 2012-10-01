@@ -37,6 +37,7 @@ import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.gsm.SimTlv;
 import com.android.internal.telephony.gsm.SmsMessage;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1230,14 +1231,21 @@ public class SIMRecords extends IccRecords {
                 break;
             case IccRefreshResponse.REFRESH_RESULT_RESET:
                 if (DBG) log("handleSimRefresh with SIM_REFRESH_RESET");
-                mCi.setRadioPower(false, null);
-                /* Note: no need to call setRadioPower(true).  Assuming the desired
-                * radio power state is still ON (as tracked by ServiceStateTracker),
-                * ServiceStateTracker will call setRadioPower when it receives the
-                * RADIO_STATE_CHANGED notification for the power off.  And if the
-                * desired power state has changed in the interim, we don't want to
-                * override it with an unconditional power on.
-                */
+                if (powerOffOnSimReset()) {
+                    mCi.setRadioPower(false, null);
+                    /* Note: no need to call setRadioPower(true).  Assuming the desired
+                    * radio power state is still ON (as tracked by ServiceStateTracker),
+                    * ServiceStateTracker will call setRadioPower when it receives the
+                    * RADIO_STATE_CHANGED notification for the power off.  And if the
+                    * desired power state has changed in the interim, we don't want to
+                    * override it with an unconditional power on.
+                    */
+                } else {
+                    if (mParentApp.getState() == AppState.APPSTATE_READY) {
+                        log("handleSimRefresh APPSTATE_READY");
+                        fetchSimRecords();
+                    }
+                }
                 break;
             default:
                 // unknown refresh operation
