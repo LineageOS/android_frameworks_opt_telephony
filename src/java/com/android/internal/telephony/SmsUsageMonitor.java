@@ -323,10 +323,14 @@ public class SmsUsageMonitor {
             while (true) {
                 XmlUtils.nextElement(parser);
                 String element = parser.getName();
-                if (element == null) break;
+                if (element == null) {
+                    Log.e(TAG, "Parsing pattern data found null");
+                    break;
+                }
 
                 if (element.equals(TAG_SHORTCODE)) {
                     String currentCountry = parser.getAttributeValue(null, ATTR_COUNTRY);
+                    if (VDBG) Log.d(TAG, "Found country " + currentCountry);
                     if (country.equals(currentCountry)) {
                         String pattern = parser.getAttributeValue(null, ATTR_PATTERN);
                         String premium = parser.getAttributeValue(null, ATTR_PREMIUM);
@@ -343,6 +347,7 @@ public class SmsUsageMonitor {
         } catch (IOException e) {
             Log.e(TAG, "I/O exception reading short code patterns", e);
         }
+        if (DBG) Log.d(TAG, "Country (" + country + ") not found");
         return null;    // country not found
     }
 
@@ -393,32 +398,31 @@ public class SmsUsageMonitor {
         synchronized (mSettingsObserverHandler) {
             // always allow emergency numbers
             if (PhoneNumberUtils.isEmergencyNumber(destAddress, countryIso)) {
+                if (DBG) Log.d(TAG, "isEmergencyNumber");
                 return CATEGORY_NOT_SHORT_CODE;
             }
             // always allow if the feature is disabled
             if (!mCheckEnabled.get()) {
+                if (DBG) Log.e(TAG, "check disabled");
                 return CATEGORY_NOT_SHORT_CODE;
             }
-
-            ShortCodePatternMatcher patternMatcher = null;
 
             if (countryIso != null) {
                 if (mCurrentCountry == null || !countryIso.equals(mCurrentCountry) ||
                         mPatternFile.lastModified() != mPatternFileLastModified) {
                     if (mPatternFile.exists()) {
                         if (DBG) Log.d(TAG, "Loading SMS Short Code patterns from file");
-                        patternMatcher = getPatternMatcherFromFile(countryIso);
+                        mCurrentPatternMatcher = getPatternMatcherFromFile(countryIso);
                     } else {
                         if (DBG) Log.d(TAG, "Loading SMS Short Code patterns from resource");
-                        patternMatcher = getPatternMatcherFromResource(countryIso);
+                        mCurrentPatternMatcher = getPatternMatcherFromResource(countryIso);
                     }
                     mCurrentCountry = countryIso;
-                    mCurrentPatternMatcher = patternMatcher;    // may be null if not found
                 }
             }
 
-            if (patternMatcher != null) {
-                return patternMatcher.getNumberCategory(destAddress);
+            if (mCurrentPatternMatcher != null) {
+                return mCurrentPatternMatcher.getNumberCategory(destAddress);
             } else {
                 // Generic rule: numbers of 5 digits or less are considered potential short codes
                 Log.e(TAG, "No patterns for \"" + countryIso + "\": using generic short code rule");
