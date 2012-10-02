@@ -288,11 +288,40 @@ public class SmsUsageMonitor {
             patternReader = new FileReader(mPatternFile);
             parser = Xml.newPullParser();
             parser.setInput(patternReader);
+            return getPatternMatcherFromXmlParser(parser, country);
+        } catch (FileNotFoundException e) {
+            Log.e(TAG, "Short Code Pattern File not found");
+        } catch (XmlPullParserException e) {
+            Log.e(TAG, "XML parser exception reading short code pattern file", e);
+        } finally {
+            mPatternFileLastModified = mPatternFile.lastModified();
+            if (patternReader != null) {
+                try {
+                    patternReader.close();
+                } catch (IOException e) {}
+            }
+        }
+        return null;
+    }
+
+    private ShortCodePatternMatcher getPatternMatcherFromResource(String country) {
+        int id = com.android.internal.R.xml.sms_short_codes;
+        XmlResourceParser parser = null;
+        try {
+            parser = mContext.getResources().getXml(id);
+            return getPatternMatcherFromXmlParser(parser, country);
+        } finally {
+            if (parser != null) parser.close();
+        }
+    }
+
+    private ShortCodePatternMatcher getPatternMatcherFromXmlParser(XmlPullParser parser,
+            String country) {
+        try {
             XmlUtils.beginDocument(parser, TAG_SHORTCODES);
 
             while (true) {
                 XmlUtils.nextElement(parser);
-
                 String element = parser.getName();
                 if (element == null) break;
 
@@ -309,20 +338,10 @@ public class SmsUsageMonitor {
                     Log.e(TAG, "Error: skipping unknown XML tag " + element);
                 }
             }
-            return null;    // country not found
-        } catch (FileNotFoundException e) {
-            Log.e(TAG, "Short Code Pattern File not found");
         } catch (XmlPullParserException e) {
-            Log.e(TAG, "XML parser exception reading short code pattern resource", e);
+            Log.e(TAG, "XML parser exception reading short code patterns", e);
         } catch (IOException e) {
-            Log.e(TAG, "I/O exception reading short code pattern resource", e);
-        } finally {
-            mPatternFileLastModified = mPatternFile.lastModified();
-            if (patternReader != null) {
-                try {
-                    patternReader.close();
-                } catch (IOException e) {}
-            }
+            Log.e(TAG, "I/O exception reading short code patterns", e);
         }
         return null;    // country not found
     }
@@ -384,11 +403,15 @@ public class SmsUsageMonitor {
             ShortCodePatternMatcher patternMatcher = null;
 
             if (countryIso != null) {
-                // query secure settings and initialize content observer for updated regex patterns
                 if (mCurrentCountry == null || !countryIso.equals(mCurrentCountry) ||
                         mPatternFile.lastModified() != mPatternFileLastModified) {
-                    if (DBG) Log.d(TAG, "Loading SMS Short Code patterns from file");
-                    patternMatcher = getPatternMatcherFromFile(countryIso);
+                    if (mPatternFile.exists()) {
+                        if (DBG) Log.d(TAG, "Loading SMS Short Code patterns from file");
+                        patternMatcher = getPatternMatcherFromFile(countryIso);
+                    } else {
+                        if (DBG) Log.d(TAG, "Loading SMS Short Code patterns from resource");
+                        patternMatcher = getPatternMatcherFromResource(countryIso);
+                    }
                     mCurrentCountry = countryIso;
                     mCurrentPatternMatcher = patternMatcher;    // may be null if not found
                 }
