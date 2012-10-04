@@ -38,8 +38,8 @@ import com.android.internal.telephony.IccCardStatus.CardState;
 import com.android.internal.telephony.IccCardStatus.PinState;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.Phone;
 
-import static com.android.internal.telephony.Phone.CDMA_SUBSCRIPTION_NV;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_SIM_STATE;
 
 /**
@@ -90,9 +90,6 @@ public class IccCardProxy extends Handler implements IccCard {
     private IccRecords mIccRecords = null;
     private CdmaSubscriptionSourceManager mCdmaSSM = null;
     private boolean mRadioOn = false;
-    private boolean mCdmaSubscriptionFromNv = false;
-    private boolean mIsMultimodeCdmaPhone =
-            SystemProperties.getBoolean("ro.config.multimode_cdma", false);
     private boolean mQuietMode = false; // when set to true IccCardProxy will not broadcast
                                         // ACTION_SIM_STATE_CHANGED intents
     private boolean mInitialized = false;
@@ -143,27 +140,29 @@ public class IccCardProxy extends Handler implements IccCard {
 
     /**
      * In case of 3gpp2 we need to find out if subscription used is coming from
-     * NV in which case we shouldn't broadcast any sim states changes if at the
-     * same time ro.config.multimode_cdma property set to false.
+     * NV in which case we shouldn't broadcast any sim states changes.
      */
     private void updateQuietMode() {
         synchronized (mLock) {
-            if (DBG) log("Updating quiet mode");
             boolean oldQuietMode = mQuietMode;
             boolean newQuietMode;
+            int cdmaSource = Phone.CDMA_SUBSCRIPTION_UNKNOWN;
+            boolean isLteOnCdmaMode = TelephonyManager.getLteOnCdmaModeStatic()
+                    == PhoneConstants.LTE_ON_CDMA_TRUE;
             if (mCurrentAppType == UiccController.APP_FAM_3GPP) {
                 newQuietMode = false;
-                if (DBG) log("3GPP subscription -> QuietMode: " + newQuietMode);
+                if (DBG) log("updateQuietMode: 3GPP subscription -> newQuietMode=" + newQuietMode);
             } else {
-                int newSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
-                mCdmaSubscriptionFromNv = newSubscriptionSource == CDMA_SUBSCRIPTION_NV;
-                if (mCdmaSubscriptionFromNv && mIsMultimodeCdmaPhone) {
-                    log("Cdma multimode phone detected. Forcing IccCardProxy into 3gpp mode");
+                if (isLteOnCdmaMode) {
+                    log("updateQuietMode: is cdma/lte device, force IccCardProxy into 3gpp mode");
                     mCurrentAppType = UiccController.APP_FAM_3GPP;
                 }
-                newQuietMode = mCdmaSubscriptionFromNv
+                cdmaSource = mCdmaSSM != null ?
+                        mCdmaSSM.getCdmaSubscriptionSource() : Phone.CDMA_SUBSCRIPTION_UNKNOWN;
+
+                newQuietMode = (cdmaSource == Phone.CDMA_SUBSCRIPTION_NV)
                         && (mCurrentAppType == UiccController.APP_FAM_3GPP2)
-                        && !mIsMultimodeCdmaPhone;
+                        && !isLteOnCdmaMode;
             }
 
             if (mQuietMode == false && newQuietMode == true) {
@@ -173,13 +172,18 @@ public class IccCardProxy extends Handler implements IccCard {
                 setExternalState(State.READY);
                 mQuietMode = newQuietMode;
             } else if (mQuietMode == true && newQuietMode == false) {
-                if (DBG) log("Switching out from QuietMode. Force broadcast of current state:"
-                        + mExternalState);
+                if (DBG) {
+                    log("updateQuietMode: Switching out from QuietMode."
+                            + " Force broadcast of current state=" + mExternalState);
+                }
                 mQuietMode = newQuietMode;
                 setExternalState(mExternalState, true);
             }
-            if (DBG) log("QuietMode is " + mQuietMode + " (app_type: " + mCurrentAppType + " nv: "
-                    + mCdmaSubscriptionFromNv + " multimode: " + mIsMultimodeCdmaPhone + ")");
+            if (DBG) {
+                log("updateQuietMode: QuietMode is " + mQuietMode + " (app_type="
+                    + mCurrentAppType + " isLteOnCdmaMode=" + isLteOnCdmaMode
+                    + " cdmaSource=" + cdmaSource + ")");
+            }
             mInitialized = true;
             sendMessage(obtainMessage(EVENT_ICC_CHANGED));
         }
