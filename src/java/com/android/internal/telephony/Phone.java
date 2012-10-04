@@ -136,6 +136,7 @@ public interface Phone {
     static final int CDMA_RM_ANY         = 2;  // Roaming on Any Network, as defined in PRL
 
     // Used for CDMA subscription mode
+    static final int CDMA_SUBSCRIPTION_UNKNOWN  =-1; // Unknown
     static final int CDMA_SUBSCRIPTION_RUIM_SIM = 0; // RUIM/SIM (default)
     static final int CDMA_SUBSCRIPTION_NV       = 1; // NV -> non-volatile memory
 
