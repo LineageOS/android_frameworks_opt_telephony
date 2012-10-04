@@ -141,7 +141,7 @@ public class SmsUsageMonitor {
     private long mPatternFileLastModified = 0;
 
     /** Directory for per-app SMS permission XML file. */
-    private static final String SMS_POLICY_FILE_DIRECTORY = "/data/radio";
+    private static final String SMS_POLICY_FILE_DIRECTORY = "/data/misc/sms";
 
     /** Per-app SMS permission XML filename. */
     private static final String SMS_POLICY_FILE_NAME = "premium_sms_policy.xml";
