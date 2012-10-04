@@ -2347,6 +2347,25 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             }
         }
 
+        // Some devices do not send RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED so fake it.
+        // See b/7255789
+        switch (rr.mRequest) {
+            case RIL_REQUEST_ENTER_SIM_PIN:
+            case RIL_REQUEST_ENTER_SIM_PUK:
+            case RIL_REQUEST_ENTER_SIM_PIN2:
+            case RIL_REQUEST_ENTER_SIM_PUK2:
+            case RIL_REQUEST_CHANGE_SIM_PIN:
+            case RIL_REQUEST_CHANGE_SIM_PIN2:
+                if (RILJ_LOGD) {
+                    riljLog("fakeSimStatusChanged: reg count="
+                            + mIccStatusChangedRegistrants.size());
+                }
+                if (mIccStatusChangedRegistrants != null) {
+                    mIccStatusChangedRegistrants.notifyRegistrants();
+                }
+                break;
+        }
+
         if (error != 0) {
             rr.onError(error, ret);
             rr.release();
