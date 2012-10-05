@@ -476,6 +476,16 @@ public abstract class IccRecords extends Handler implements IccConstants {
     }
 
     /**
+     * Set the voice call forwarding flag for GSM/UMTS and the like SIMs
+     *
+     * @param line to enable/disable
+     * @param enable
+     * @param number to which CFU is enabled
+     */
+    public void setVoiceCallForwardingFlag(int line, boolean enable, String number) {
+    }
+
+    /**
      * Indicates wether SIM is in provisioned state or not.
      * Overridden only if SIM can be dynamically provisioned via OTA.
      *

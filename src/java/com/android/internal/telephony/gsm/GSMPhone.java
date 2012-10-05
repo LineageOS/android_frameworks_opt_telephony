@@ -124,7 +124,13 @@ public class GSMPhone extends PhoneBase {
     protected String mImeiSv;
     private String mVmNumber;
 
-
+    // Create Cfu (Call forward unconditional) so that dialling number &
+    // mOnComplete (Message object passed by client) can be packed &
+    // given as a single Cfu object as user data to RIL.
+    private class Cfu {
+        String mSetCfNumber;
+        Message mOnComplete;
+    }
     // Constructors
 
     public
@@ -1019,8 +1025,11 @@ public class GSMPhone extends PhoneBase {
 
             Message resp;
             if (commandInterfaceCFReason == CF_REASON_UNCONDITIONAL) {
+                Cfu cfu = new Cfu();
+                cfu.mSetCfNumber = dialingNumber;
+                cfu.mOnComplete = onComplete;
                 resp = obtainMessage(EVENT_SET_CALL_FORWARD_DONE,
-                        isCfEnable(commandInterfaceCFAction) ? 1 : 0, 0, onComplete);
+                        isCfEnable(commandInterfaceCFAction) ? 1 : 0, 0, cfu);
             } else {
                 resp = onComplete;
             }
@@ -1356,13 +1365,13 @@ public class GSMPhone extends PhoneBase {
             case EVENT_SET_CALL_FORWARD_DONE:
                 ar = (AsyncResult)msg.obj;
                 IccRecords r = mIccRecords.get();
+                Cfu cfu = (Cfu) ar.userObj;
                 if (ar.exception == null && r != null) {
-                    r.setVoiceCallForwardingFlag(1, msg.arg1 == 1);
+                    r.setVoiceCallForwardingFlag(1, msg.arg1 == 1, cfu.mSetCfNumber);
                 }
-                onComplete = (Message) ar.userObj;
-                if (onComplete != null) {
-                    AsyncResult.forMessage(onComplete, ar.result, ar.exception);
-                    onComplete.sendToTarget();
+                if (cfu.mOnComplete != null) {
+                    AsyncResult.forMessage(cfu.mOnComplete, ar.result, ar.exception);
+                    cfu.mOnComplete.sendToTarget();
                 }
                 break;
 
@@ -1568,7 +1577,8 @@ public class GSMPhone extends PhoneBase {
             } else {
                 for (int i = 0, s = infos.length; i < s; i++) {
                     if ((infos[i].serviceClass & SERVICE_CLASS_VOICE) != 0) {
-                        r.setVoiceCallForwardingFlag(1, (infos[i].status == 1));
+                        r.setVoiceCallForwardingFlag(1, (infos[i].status == 1),
+                            infos[i].number);
                         // should only have the one
                         break;
                     }
