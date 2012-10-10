@@ -23,7 +23,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
@@ -2128,20 +2127,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         String operator = (r != null) ? r.getOperatorNumeric() : "";
         int radioTech = mPhone.getServiceState().getRilRadioTechnology();
 
-        // This is a workaround for a bug (7305641) where we don't failover to other
-        // suitable APNs if our preferred APN fails.  On prepaid ATT sims we need to
-        // failover to a provisioning APN, but once we've used their default data
-        // connection we are locked to it for life.  This change allows ATT devices
-        // to say they don't want to use preferred at all.
-        boolean usePreferred = true;
-        try {
-            usePreferred = ! mPhone.getContext().getResources().getBoolean(com.android.
-                    internal.R.bool.config_dontPreferApn);
-        } catch (Resources.NotFoundException e) {
-            usePreferred = true;
-        }
-
-        if (usePreferred && canSetPreferApn && mPreferredApn != null &&
+        if (canSetPreferApn && mPreferredApn != null &&
                 mPreferredApn.canHandleType(requestedApnType)) {
             if (DBG) {
                 log("buildWaitingApns: Preferred APN:" + operator + ":"
