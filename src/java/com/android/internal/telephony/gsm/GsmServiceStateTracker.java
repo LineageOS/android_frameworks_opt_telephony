@@ -23,6 +23,7 @@ import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.IccCardStatus;
+import com.android.internal.telephony.IccRecords;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RestrictedState;
@@ -485,13 +486,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         cm.setRadioPower(false, null);
     }
 
+    @Override
     protected void updateSpnDisplay() {
-        if (mIccRecords == null) {
-            return;
-        }
-
-        int rule = mIccRecords.getDisplayRule(ss.getOperatorNumeric());
-
         // The values of plmn/showPlmn change in different scenarios.
         // 1) No service but emergency call allowed -> expected
         //    to show "Emergency call only"
@@ -510,8 +506,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         //    EXTRA_SHOW_PLMN = false
         //    EXTRA_PLMN = null
 
+        IccRecords iccRecords = mIccRecords;
         String plmn = null;
         boolean showPlmn = false;
+        int rule = (iccRecords != null) ? iccRecords.getDisplayRule(ss.getOperatorNumeric()) : 0;
         if (ss.getState() == ServiceState.STATE_OUT_OF_SERVICE
                 || ss.getState() == ServiceState.STATE_EMERGENCY_ONLY) {
             showPlmn = true;
@@ -541,7 +539,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         // The value of spn/showSpn are same in different scenarios.
         //    EXTRA_SHOW_SPN = depending on IccRecords rule
         //    EXTRA_SPN = spn
-        String spn = mIccRecords.getServiceProviderName();
+        String spn = (iccRecords != null) ? iccRecords.getServiceProviderName() : "";
         boolean showSpn = !TextUtils.isEmpty(spn)
                 && ((rule & SIMRecords.SPN_RULE_SHOW_SPN)
                         == SIMRecords.SPN_RULE_SHOW_SPN);
