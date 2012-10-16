@@ -136,17 +136,30 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
 
         if (DBG) {
             log("onActionIntentReconnectAlarm: mState=" + mState + " reason=" + reason +
-                    " connectionId=" + connectionId + " retryCount=" + retryCount);
+                    " connectionId=" + connectionId + " retryCount=" + retryCount + " dcac=" + dcac
+                    + " mDataConnectionAsyncChannels=" + mDataConnectionAsyncChannels);
         }
 
         if (dcac != null) {
             for (ApnContext apnContext : dcac.getApnListSync()) {
-                apnContext.setDataConnectionAc(null);
-                apnContext.setDataConnection(null);
                 apnContext.setReason(reason);
                 apnContext.setRetryCount(retryCount);
-                if (apnContext.getState() ==DctConstants.State.FAILED) {
+                DctConstants.State apnContextState = apnContext.getState();
+                if (DBG) {
+                    log("onActionIntentReconnectAlarm: apnContext state=" + apnContextState);
+                }
+                if ((apnContextState == DctConstants.State.FAILED)
+                        || (apnContextState == DctConstants.State.IDLE)) {
+                    if (DBG) {
+                        log("onActionIntentReconnectAlarm: state is FAILED|IDLE, disassociate");
+                    }
+                    apnContext.setDataConnectionAc(null);
+                    apnContext.setDataConnection(null);
                     apnContext.setState(DctConstants.State.IDLE);
+                } else {
+                    if (DBG) {
+                        log("onActionIntentReconnectAlarm: keep associated");
+                    }
                 }
                 sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, apnContext));
             }
@@ -2415,5 +2428,6 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         pw.println(" canSetPreferApn=" + canSetPreferApn);
         pw.println(" mApnObserver=" + mApnObserver);
         pw.println(" getOverallState=" + getOverallState());
+        pw.println(" mDataConnectionAsyncChannels=%s\n" + mDataConnectionAsyncChannels);
     }
 }
