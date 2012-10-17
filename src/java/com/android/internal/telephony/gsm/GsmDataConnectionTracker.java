@@ -692,7 +692,8 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
                 apnContext.setState(DctConstants.State.IDLE);
             }
             if (apnContext.isReady()) {
-                if (apnContext.getState() == DctConstants.State.IDLE) {
+                if (apnContext.getState() == DctConstants.State.IDLE ||
+                        apnContext.getState() == DctConstants.State.SCANNING) {
                     apnContext.setReason(reason);
                     trySetupData(apnContext);
                 }
