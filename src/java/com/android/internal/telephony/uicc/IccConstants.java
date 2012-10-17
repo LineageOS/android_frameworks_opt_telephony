@@ -84,6 +84,8 @@ public interface IccConstants {
 
     // SMS record length from TS 51.011 10.5.3
     static public final int SMS_RECORD_LENGTH = 176;
+    // SMS record length from C.S0023 3.4.27
+    static public final int CDMA_SMS_RECORD_LENGTH = 255;
 
     static final String MF_SIM = "3F00";
     static final String DF_TELECOM = "7F10";
