@@ -1766,7 +1766,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
             throw new RuntimeException("onDataSetupComplete: No apnContext");
         }
 
-        if (isDataSetupCompleteOk(ar)) {
+        if (ar.exception == null) {
             DataConnectionAc dcac = apnContext.getDataConnectionAc();
 
             if (RADIO_TESTS) {

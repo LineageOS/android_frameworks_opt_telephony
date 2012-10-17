@@ -160,18 +160,6 @@ public abstract class DataConnectionTracker extends Handler {
     protected static final String INTENT_RECONNECT_ALARM_EXTRA_REASON =
         "reconnect_alarm_extra_reason";
 
-    // Used for debugging. Send the INTENT with an optional counter value with the number
-    // of times the setup is to fail before succeeding. If the counter isn't passed the
-    // setup will fail once. Example fail two times with FailCause.SIGNAL_LOST(-3)
-    // adb shell am broadcast \
-    //  -a com.android.internal.telephony.dataconnectiontracker.intent_set_fail_data_setup_counter \
-    //  --ei fail_data_setup_counter 3 --ei fail_data_setup_fail_cause -3
-    protected static final String INTENT_SET_FAIL_DATA_SETUP_COUNTER =
-        "com.android.internal.telephony.dataconnectiontracker.intent_set_fail_data_setup_counter";
-    protected static final String FAIL_DATA_SETUP_COUNTER = "fail_data_setup_counter";
-    protected int mFailDataSetupCounter = 0;
-    protected static final String FAIL_DATA_SETUP_FAIL_CAUSE = "fail_data_setup_fail_cause";
-    protected FailCause mFailDataSetupFailCause = FailCause.ERROR_UNSPECIFIED;
 
     protected static final String DEFALUT_DATA_ON_BOOT_PROP = "net.def_data_on_boot";
 
@@ -286,13 +274,6 @@ public abstract class DataConnectionTracker extends Handler {
                     // quit and won't report disconnected until next enabling.
                     mIsWifiConnected = false;
                 }
-            } else if (action.equals(INTENT_SET_FAIL_DATA_SETUP_COUNTER)) {
-                mFailDataSetupCounter = intent.getIntExtra(FAIL_DATA_SETUP_COUNTER, 1);
-                mFailDataSetupFailCause = FailCause.fromInt(
-                        intent.getIntExtra(FAIL_DATA_SETUP_FAIL_CAUSE,
-                                                    FailCause.ERROR_UNSPECIFIED.getErrorCode()));
-                if (DBG) log("set mFailDataSetupCounter=" + mFailDataSetupCounter +
-                        " mFailDataSetupFailCause=" + mFailDataSetupFailCause);
             }
         }
     };
@@ -381,25 +362,6 @@ public abstract class DataConnectionTracker extends Handler {
         }
     }
 
-    protected boolean isDataSetupCompleteOk(AsyncResult ar) {
-        if (ar.exception != null) {
-            if (DBG) log("isDataSetupCompleteOk return false, ar.result=" + ar.result);
-            return false;
-        }
-        if (mFailDataSetupCounter <= 0) {
-            if (DBG) log("isDataSetupCompleteOk return true");
-            return true;
-        }
-        ar.result = mFailDataSetupFailCause;
-        if (DBG) {
-            log("isDataSetupCompleteOk return false" +
-                    " mFailDataSetupCounter=" + mFailDataSetupCounter +
-                    " mFailDataSetupFailCause=" + mFailDataSetupFailCause);
-        }
-        mFailDataSetupCounter -= 1;
-        return false;
-    }
-
     protected void onActionIntentReconnectAlarm(Intent intent) {
         String reason = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON);
         if (mState == DctConstants.State.FAILED) {
@@ -436,7 +398,6 @@ public abstract class DataConnectionTracker extends Handler {
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
-        filter.addAction(INTENT_SET_FAIL_DATA_SETUP_COUNTER);
         filter.addAction(getActionIntentDataStallAlarm());
 
         mUserDataEnabled = Settings.Global.getInt(

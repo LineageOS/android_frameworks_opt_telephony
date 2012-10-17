@@ -604,7 +604,7 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
             reason = (String) ar.userObj;
         }
 
-        if (isDataSetupCompleteOk(ar)) {
+        if (ar.exception == null) {
             // Everything is setup
             notifyDefaultData(reason);
         } else {
