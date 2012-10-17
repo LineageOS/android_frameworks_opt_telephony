@@ -34,6 +34,7 @@ import android.provider.Telephony;
 import android.text.TextUtils;
 import android.telephony.SubscriptionManager;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 
 import com.android.internal.telephony.CommandsInterface;
 
@@ -152,6 +153,10 @@ public class CDMALTEPhone extends CDMAPhone {
             // removeReferences() have already been called
 
             ret = PhoneConstants.DataState.DISCONNECTED;
+        } else if (mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE &&
+                            mOosIsDisconnect) {
+            ret = PhoneConstants.DataState.DISCONNECTED;
+            log("getDataConnectionState: Data is Out of Service. ret = " + ret);
         } else if (mDcTracker.isApnTypeEnabled(apnType) == false) {
             ret = PhoneConstants.DataState.DISCONNECTED;
         } else {

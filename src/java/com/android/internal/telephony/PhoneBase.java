@@ -114,6 +114,10 @@ public abstract class PhoneBase extends Handler implements Phone {
             }
         }
     };
+    /**
+     * Indicates whether Out Of Service is considered as data call disconnect.
+     */
+    public static final String PROPERTY_OOS_IS_DISCONNECT = "persist.telephony.oosisdc";
 
     // Key used to read and write the saved network selection numeric value
     public static final String NETWORK_SELECTION_KEY = "network_selection_key";
@@ -274,6 +278,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     public String getActionAttached() {
         return mActionAttached;
     }
+
+    // Flag that indicates that Out Of Service is considered as data call disconnect
+    protected boolean mOosIsDisconnect = SystemProperties.getBoolean(
+            PROPERTY_OOS_IS_DISCONNECT, true);
 
     /**
      * Set a system property, unless we're in unit test mode
@@ -474,6 +482,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         mCi.setOnUnsolOemHookRaw(this, EVENT_UNSOL_OEM_HOOK_RAW, null);
         mCi.startLceService(DEFAULT_REPORT_INTERVAL_MS, LCE_PULL_MODE,
                 obtainMessage(EVENT_CONFIG_LCE));
+        Rlog.d(LOG_TAG, "mOosIsDisconnect=" + mOosIsDisconnect);
     }
 
     @Override
