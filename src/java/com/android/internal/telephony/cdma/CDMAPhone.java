@@ -773,10 +773,12 @@ public class CDMAPhone extends PhoneBase {
              // already been called
 
              ret = PhoneConstants.DataState.DISCONNECTED;
-        } else if (mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE) {
+        } else if (mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE
+                && mOosIsDisconnect) {
             // If we're out of service, open TCP sockets may still work
             // but no data will flow
             ret = PhoneConstants.DataState.DISCONNECTED;
+            log("getDataConnectionState: Data is Out of Service. ret = " + ret);
         } else if (mDcTracker.isApnTypeEnabled(apnType) == false ||
                 mDcTracker.isApnTypeActive(apnType) == false) {
             ret = PhoneConstants.DataState.DISCONNECTED;
