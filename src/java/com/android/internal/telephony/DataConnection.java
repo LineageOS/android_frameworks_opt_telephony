@@ -254,6 +254,11 @@ public abstract class DataConnection extends StateMachine {
     @Override
     public abstract String toString();
 
+    // A Non recursive toString
+    public String toStringSimple() {
+        return toString();
+    }
+
     protected abstract void onConnect(ConnectionParams cp);
 
     protected abstract boolean isDnsOk(String[] domainNameServers);
@@ -654,6 +659,9 @@ public abstract class DataConnection extends StateMachine {
             boolean retVal = HANDLED;
             AsyncResult ar;
 
+            if (VDBG) {
+                log("DcDefault msg=0x" + Integer.toHexString(msg.what) + " RefCount=" + mRefCount);
+            }
             switch (msg.what) {
                 case AsyncChannel.CMD_CHANNEL_FULL_CONNECTION: {
                     if (mAc != null) {
@@ -728,7 +736,7 @@ public abstract class DataConnection extends StateMachine {
                     transitionTo(mInactiveState);
                     break;
                 case DataConnectionAc.REQ_GET_REFCOUNT: {
-                    if (VDBG) log("REQ_GET_REFCOUNT  refCount=" + mRefCount);
+                    if (VDBG) log("REQ_GET_REFCOUNT  RefCount=" + mRefCount);
                     mAc.replyToMessage(msg, DataConnectionAc.RSP_GET_REFCOUNT, mRefCount);
                     break;
                 }
@@ -775,14 +783,16 @@ public abstract class DataConnection extends StateMachine {
 
                 case EVENT_DISCONNECT:
                     if (DBG) {
-                        log("DcDefaultState deferring msg.what=EVENT_DISCONNECT" + mRefCount);
+                        log("DcDefaultState deferring msg.what=EVENT_DISCONNECT RefCount="
+                                + mRefCount);
                     }
                     deferMessage(msg);
                     break;
 
                 case EVENT_DISCONNECT_ALL:
                     if (DBG) {
-                        log("DcDefaultState deferring msg.what=EVENT_DISCONNECT_ALL" + mRefCount);
+                        log("DcDefaultState deferring msg.what=EVENT_DISCONNECT_ALL RefCount="
+                                + mRefCount);
                     }
                     deferMessage(msg);
                     break;
@@ -928,14 +938,19 @@ public abstract class DataConnection extends StateMachine {
 
             switch (msg.what) {
                 case EVENT_CONNECT:
-                    if (DBG) log("DcActivatingState deferring msg.what=EVENT_CONNECT refCount = "
-                            + mRefCount);
+                    if (DBG) {
+                        log("DcActivatingState deferring msg.what=EVENT_CONNECT RefCount="
+                                + mRefCount);
+                    }
                     deferMessage(msg);
                     retVal = HANDLED;
                     break;
 
                 case EVENT_SETUP_DATA_CONNECTION_DONE:
-                    if (DBG) log("DcActivatingState msg.what=EVENT_SETUP_DATA_CONNECTION_DONE");
+                    if (DBG) {
+                        log("DcActivatingState msg.what=EVENT_SETUP_DATA_CONNECTION_DONE"
+                                + " RefCount=" + mRefCount);
+                    }
 
                     ar = (AsyncResult) msg.obj;
                     cp = (ConnectionParams) ar.userObj;
@@ -986,7 +1001,10 @@ public abstract class DataConnection extends StateMachine {
                     FailCause cause = FailCause.UNKNOWN;
 
                     if (cp.tag == mTag) {
-                        if (DBG) log("DcActivatingState msg.what=EVENT_GET_LAST_FAIL_DONE");
+                        if (DBG) {
+                            log("DcActivatingState msg.what=EVENT_GET_LAST_FAIL_DONE"
+                                    + " RefCount=" + mRefCount);
+                        }
                         if (ar.exception == null) {
                             int rilFailCause = ((int[]) (ar.result))[0];
                             cause = FailCause.fromInt(rilFailCause);
@@ -998,7 +1016,7 @@ public abstract class DataConnection extends StateMachine {
                     } else {
                         if (DBG) {
                             log("DcActivatingState EVENT_GET_LAST_FAIL_DONE is stale cp.tag="
-                                + cp.tag + ", mTag=" + mTag);
+                                + cp.tag + ", mTag=" + mTag + " RefCount=" + mRefCount);
                         }
                     }
 
@@ -1008,7 +1026,7 @@ public abstract class DataConnection extends StateMachine {
                 default:
                     if (VDBG) {
                         log("DcActivatingState not handled msg.what=0x" +
-                                Integer.toHexString(msg.what));
+                                Integer.toHexString(msg.what) + " RefCount=" + mRefCount);
                     }
                     retVal = NOT_HANDLED;
                     break;
@@ -1084,7 +1102,8 @@ public abstract class DataConnection extends StateMachine {
 
                 case EVENT_DISCONNECT_ALL:
                     if (DBG) {
-                        log("DcActiveState msg.what=EVENT_DISCONNECT_ALL RefCount=" + mRefCount);
+                        log("DcActiveState msg.what=EVENT_DISCONNECT_ALL RefCount=" + mRefCount
+                                + " setting ot 0");
                     }
                     mRefCount = 0;
                     DisconnectParams dp = (DisconnectParams) msg.obj;
@@ -1124,7 +1143,8 @@ public abstract class DataConnection extends StateMachine {
                     break;
 
                 case EVENT_DEACTIVATE_DONE:
-                    if (DBG) log("DcDisconnectingState msg.what=EVENT_DEACTIVATE_DONE");
+                    if (DBG) log("DcDisconnectingState msg.what=EVENT_DEACTIVATE_DONE RefCount="
+                            + mRefCount);
                     AsyncResult ar = (AsyncResult) msg.obj;
                     DisconnectParams dp = (DisconnectParams) ar.userObj;
                     if (dp.tag == mTag) {
@@ -1211,6 +1231,7 @@ public abstract class DataConnection extends StateMachine {
      * @param apn is the Access Point Name to bring up a connection to
      */
     public void bringUp(Message onCompletedMsg, ApnSetting apn) {
+        if (DBG) log("bringUp: onCompletedMsg=" + onCompletedMsg + " apn=" + apn);
         sendMessage(obtainMessage(EVENT_CONNECT, new ConnectionParams(apn, onCompletedMsg)));
     }
 
@@ -1221,6 +1242,7 @@ public abstract class DataConnection extends StateMachine {
      *        With AsyncResult.userObj set to the original msg.obj.
      */
     public void tearDown(String reason, Message onCompletedMsg) {
+        if (DBG) log("tearDown: reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
         sendMessage(obtainMessage(EVENT_DISCONNECT, new DisconnectParams(reason, onCompletedMsg)));
     }
 
@@ -1232,6 +1254,7 @@ public abstract class DataConnection extends StateMachine {
      *        With AsyncResult.userObj set to the original msg.obj.
      */
     public void tearDownAll(String reason, Message onCompletedMsg) {
+        if (DBG) log("tearDownAll: reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
         sendMessage(obtainMessage(EVENT_DISCONNECT_ALL,
                 new DisconnectParams(reason, onCompletedMsg)));
     }

@@ -726,7 +726,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     private boolean trySetupData(ApnContext apnContext) {
         if (DBG) {
             log("trySetupData for type:" + apnContext.getApnType() +
-                    " due to " + apnContext.getReason());
+                    " due to " + apnContext.getReason() + " apnContext=" + apnContext);
             log("trySetupData with mIsPsRestricted=" + mIsPsRestricted);
         }
 
@@ -762,7 +762,8 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
             }
 
             if (DBG) {
-                log ("Setup watingApns : " + apnListToString(apnContext.getWaitingApns()));
+                log ("trySetupData: call setupData, waitingApns : "
+                        + apnListToString(apnContext.getWaitingApns()));
             }
             // apnContext.setReason(apnContext.getReason());
             boolean retValue = setupData(apnContext);
@@ -775,6 +776,9 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
                     || apnContext.getState() == DctConstants.State.SCANNING))
                 mPhone.notifyDataConnectionFailed(apnContext.getReason(), apnContext.getApnType());
             notifyOffApnsOfAvailability(apnContext.getReason());
+            if (DBG) {
+                log ("trySetupData apnContext not 'ready'");
+            }
             return false;
         }
     }
@@ -790,7 +794,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
                                             PhoneConstants.DataState.DISCONNECTED);
             } else {
                 if (DBG) {
-                    log("notifyOffApnsOfAvailability skipped apn due to isReady==false: " +
+                    log("notifyOffApnsOfAvailability skipped apn due to isReady==true: " +
                             apnContext.toString());
                 }
             }
@@ -1094,7 +1098,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         dc.setProfileId( profileId );  //  assumed no connection sharing on profiled types
 
         int refCount = dcac.getRefCountSync();
-        if (DBG) log("setupData: init dc and apnContext refCount=" + refCount);
+        if (DBG) log("setupData: init dc and apnContext RefCount=" + refCount);
 
         // configure retry count if no other Apn is using the same connection.
         if (refCount == 0) {

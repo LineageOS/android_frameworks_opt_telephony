@@ -257,7 +257,7 @@ public abstract class DataConnectionTracker extends Handler {
                 startNetStatPoll();
                 restartDataStallAlarm();
             } else if (action.startsWith(getActionIntentReconnectAlarm())) {
-                log("Reconnect alarm. Previous state was " + mState);
+                if (DBG) log("Reconnect alarm. Previous state was " + mState);
                 onActionIntentReconnectAlarm(intent);
             } else if (action.equals(getActionIntentDataStallAlarm())) {
                 onActionIntentDataStallAlarm(intent);
@@ -265,6 +265,7 @@ public abstract class DataConnectionTracker extends Handler {
                 final android.net.NetworkInfo networkInfo = (NetworkInfo)
                         intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
                 mIsWifiConnected = (networkInfo != null && networkInfo.isConnected());
+                if (DBG) log("NETWORK_STATE_CHANGED_ACTION: mIsWifiConnected=" + mIsWifiConnected);
             } else if (action.equals(WifiManager.WIFI_STATE_CHANGED_ACTION)) {
                 final boolean enabled = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE,
                         WifiManager.WIFI_STATE_UNKNOWN) == WifiManager.WIFI_STATE_ENABLED;
@@ -274,6 +275,8 @@ public abstract class DataConnectionTracker extends Handler {
                     // quit and won't report disconnected until next enabling.
                     mIsWifiConnected = false;
                 }
+                if (DBG) log("WIFI_STATE_CHANGED_ACTION: enabled=" + enabled
+                        + " mIsWifiConnected=" + mIsWifiConnected);
             }
         }
     };

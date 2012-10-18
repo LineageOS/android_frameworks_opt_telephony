@@ -116,12 +116,18 @@ public class GsmDataConnection extends DataConnection {
         return mProfileId;
     }
 
+    /** Doesn't print mApnList of ApnContext's which would be recursive */
+    @Override
+    public String toStringSimple() {
+        return getName() + ": State=" + getCurrentState().getName() +
+                " apnSetting=" + mApn + " RefCount=" + mRefCount +
+                " cid=" + cid + " create=" + createTime + " lastFail=" + lastFailTime +
+                " lastFailCause=" + lastFailCause;
+    }
+
     @Override
     public String toString() {
-        return "{" + getName() + ": State=" + getCurrentState().getName() +
-                " apnSetting=" + mApn + " apnList= " + mApnList + " RefCount=" + mRefCount +
-                " cid=" + cid + " create=" + createTime + " lastFail=" + lastFailTime +
-                " lastFailCause=" + lastFailCause + "}";
+        return "{" + toStringSimple() + " mApnList=" + mApnList + "}";
     }
 
     @Override
