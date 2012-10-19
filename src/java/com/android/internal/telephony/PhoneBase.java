@@ -156,7 +156,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_RADIO_NOT_AVAILABLE            = 33;
     protected static final int EVENT_UNSOL_OEM_HOOK_RAW             = 34;
     protected static final int EVENT_GET_RADIO_CAPABILITY           = 35;
-    protected static final int EVENT_LAST = EVENT_GET_RADIO_CAPABILITY;
+    protected static final int EVENT_SS                             = 36;
+    protected static final int EVENT_LAST                           = EVENT_SS;
+
+
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";
