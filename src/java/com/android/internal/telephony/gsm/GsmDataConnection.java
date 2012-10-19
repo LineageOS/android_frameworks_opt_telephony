@@ -75,9 +75,9 @@ public class GsmDataConnection extends DataConnection {
     void onConnect(ConnectionParams cp) {
         mApn = cp.apn;
 
-        if (DBG) log("Connecting to carrier: '" + mApn.carrier
-                + "' APN: '" + mApn.apn
-                + "' proxy: '" + mApn.proxy + "' port: '" + mApn.port);
+        if (DBG) log("onConnect: carrier='" + mApn.carrier
+                + "' APN='" + mApn.apn
+                + "' proxy='" + mApn.proxy + "' port='" + mApn.port + "'");
 
         createTime = -1;
         lastFailTime = -1;

@@ -1576,4 +1576,10 @@ public interface CommandsInterface {
      * Notifiy that we are testing an emergency call
      */
     public void testingEmergencyCall();
+
+
+    /**
+     * @return version of the ril.
+     */
+    int getRilVersion();
 }

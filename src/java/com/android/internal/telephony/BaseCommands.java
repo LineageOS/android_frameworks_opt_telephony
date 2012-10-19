@@ -644,4 +644,9 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void testingEmergencyCall() {}
+
+    @Override
+    public int getRilVersion() {
+        return mRilVersion;
+    }
 }

@@ -24,6 +24,10 @@ import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.LinkCapabilities;
 import android.net.LinkProperties;
 import android.net.ProxyProperties;
@@ -31,6 +35,7 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.TimeUtils;
 
 import java.io.FileDescriptor;
@@ -63,8 +68,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * The other public methods are provided for debugging.
  */
 public abstract class DataConnection extends StateMachine {
+    protected static final String GSM_TAG = "GSM";
     protected static final boolean DBG = true;
-    protected static final boolean VDBG = false;
+    protected static final boolean VDBG = true;
+    protected static final boolean DBG_FAILURE = SystemProperties.getInt("ro.debuggable", 0) == 1;
 
     protected static AtomicInteger mCount = new AtomicInteger(0);
     protected AsyncChannel mAc;
@@ -188,6 +195,173 @@ public abstract class DataConnection extends StateMachine {
         }
     }
 
+    /**
+     * Static logging for DataConnection
+     */
+    private static void sDcLog(String s) {
+        Log.d(GSM_TAG, "[DC] " + s);
+    }
+
+    // Debugging INTENT with are two targets, com.android.internal.telephony.DC which
+    // is for all DataConnections and com.android.internal.telephony.<NameDC-X> where
+    // NameDc-X is a particular DC such as GsmDC-1.
+    protected static final String INTENT_BASE = DataConnection.class.getPackage().getName();
+    protected static String sActionFailBringUp;
+    protected String mActionFailBringUp;
+
+    // The FailBringUp class
+    public static class FailBringUp {
+        protected static final String ACTION_FAIL_BRINGUP = "action_fail_bringup";
+
+        // counter with its --ei option name and default value
+        public static final String COUNTER = "counter";
+        public static final int DEFAULT_COUNTER = 1;
+        public int counter;
+
+        // failCause with its --ei option name and default value
+        public static final String FAIL_CAUSE = "fail_cause";
+        public static final FailCause DEFAULT_FAIL_CAUSE = FailCause.ERROR_UNSPECIFIED;
+        public FailCause failCause;
+
+        // suggestedRetryTime with its --ei option name and default value
+        public static final String SUGGESTED_RETRY_TIME = "suggested_retry_time";
+        public static final int DEFAULT_SUGGESTED_RETRY_TIME = -1;
+        public int suggestedRetryTime;
+
+        // Get the Extra Intent parameters
+        public void getEiParameters(Intent intent, String s) {
+            if (DBG) sDcLog(s + ".getEiParameters: action=" + intent.getAction());
+            counter = intent.getIntExtra(FailBringUp.COUNTER,
+                    FailBringUp.DEFAULT_COUNTER);
+            failCause = FailCause.fromInt(
+                    intent.getIntExtra(FailBringUp.FAIL_CAUSE,
+                            FailBringUp.DEFAULT_FAIL_CAUSE.getErrorCode()));
+            suggestedRetryTime =
+                    intent.getIntExtra(FailBringUp.SUGGESTED_RETRY_TIME,
+                            FailBringUp.DEFAULT_SUGGESTED_RETRY_TIME);
+            if (DBG) {
+                sDcLog(s + ".getEiParameters: " + this);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "{counter=" + counter +
+                    " failCause=" + failCause +
+                    " suggestedRetryTime=" + suggestedRetryTime + "}";
+
+        }
+    }
+
+    // This is the static FailBringUp used to cause all DC's to "fail" a bringUp.
+    // Here is an example that sets counter to 2 and cause to -3 for all instances:
+    //
+    // adb shell am broadcast \
+    //  -a com.android.internal.telephony.DC.action_fail_bringup \
+    //  --ei counter 2 --ei fail_cause -3
+    //
+    // Also you can add a suggested retry time if desired:
+    //  --ei suggested_retry_time 5000
+    protected static FailBringUp sFailBringUp = new FailBringUp();
+
+    // The static intent receiver one for all instances.
+    protected static BroadcastReceiver sIntentReceiver = new BroadcastReceiver ()
+    {
+        @Override
+        public void onReceive(Context context, Intent intent)
+        {
+            String action = intent.getAction();
+            if (DBG) sDcLog("sIntentReceiver.onReceive: action=" + action);
+            if (action.equals(sActionFailBringUp)) {
+                sFailBringUp.getEiParameters(intent, "sFailBringUp");
+            } else {
+                if (DBG) sDcLog("onReceive: unknown action=" + action);
+            }
+        }
+    };
+
+    // This is the per instance FailBringUP used to cause one DC to "fail" a bringUp.
+    // Here is an example that sets counter to 2 and cause to -3 for GsmDC-2:
+    //
+    // adb shell am broadcast \
+    //  -a com.android.internal.telephony.GsmDC-2.action_fail_bringup \
+    //  --ei counter 2 --ei fail_cause -3
+    //
+    // Also you can add a suggested retry time if desired:
+    //  --ei suggested_retry_time 5000
+    protected FailBringUp mFailBringUp = new FailBringUp();
+
+    protected BroadcastReceiver mIntentReceiver = new BroadcastReceiver ()
+    {
+        @Override
+        public void onReceive(Context context, Intent intent)
+        {
+            String action = intent.getAction();
+            if (DBG) log("mIntentReceiver.onReceive: action=" + action);
+            if (DBG_FAILURE && action.equals(mActionFailBringUp)) {
+                mFailBringUp.getEiParameters(intent, "mFailBringUp");
+            } else {
+                if (DBG) log("onReceive: unknown action=" + action);
+            }
+        }
+    };
+
+    /**
+     * Do the on connect or fake it if an error
+     */
+    protected void doOnConnect(ConnectionParams cp) {
+        // Check if we should fake an error.
+        if (sFailBringUp.counter  > 0) {
+            DataCallState response = new DataCallState();
+            response.version = phone.mCM.getRilVersion();
+            response.status = sFailBringUp.failCause.getErrorCode();
+            response.cid = 0;
+            response.active = 0;
+            response.type = "";
+            response.ifname = "";
+            response.addresses = new String[0];
+            response.dnses = new String[0];
+            response.gateways = new String[0];
+            response.suggestedRetryTime = sFailBringUp.suggestedRetryTime;
+
+            Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
+            AsyncResult.forMessage(msg, response, null);
+            sendMessage(msg);
+            if (DBG) {
+                log("doOnConnect: sFailBringUp.counter=" + sFailBringUp.counter +
+                        " send error response=" + response);
+            }
+            sFailBringUp.counter -= 1;
+            return;
+        }
+        if (mFailBringUp.counter > 0) {
+            DataCallState response = new DataCallState();
+            response.version = phone.mCM.getRilVersion();
+            response.status = mFailBringUp.failCause.getErrorCode();
+            response.cid = 0;
+            response.active = 0;
+            response.type = "";
+            response.ifname = "";
+            response.addresses = new String[0];
+            response.dnses = new String[0];
+            response.gateways = new String[0];
+            response.suggestedRetryTime = mFailBringUp.suggestedRetryTime;
+
+            Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
+            AsyncResult.forMessage(msg, response, null);
+            sendMessage(msg);
+            if (DBG) {
+                log("doOnConnect: mFailBringUp.counter=" + mFailBringUp.counter +
+                        " send error response=" + response);
+            }
+            mFailBringUp.counter -= 1;
+            return;
+        }
+
+        // Else do the normal onConnection
+        onConnect(cp);
+    }
+
     public static class CallSetupException extends Exception {
         private int mRetryOverride = -1;
 
@@ -276,6 +450,31 @@ public abstract class DataConnection extends StateMachine {
         mId = id;
         mRetryMgr = rm;
         this.cid = -1;
+
+        if (DBG_FAILURE) {
+            IntentFilter filter;
+
+            synchronized (DataConnection.class) {
+                // Register the static Intent receiver once
+                if (sActionFailBringUp == null) {
+                    sActionFailBringUp = INTENT_BASE + ".DC." +
+                            FailBringUp.ACTION_FAIL_BRINGUP;
+
+                    filter = new IntentFilter();
+                    filter.addAction(sActionFailBringUp);
+                    phone.getContext().registerReceiver(sIntentReceiver, filter, null, phone);
+                    log("DataConnection: register sActionFailBringUp=" + sActionFailBringUp);
+                }
+            }
+
+            // Register the per instance Intent receiver
+            mActionFailBringUp = INTENT_BASE + "." + getName() + "." +
+                    FailBringUp.ACTION_FAIL_BRINGUP;
+            filter = new IntentFilter();
+            filter.addAction(mActionFailBringUp);
+            phone.getContext().registerReceiver(mIntentReceiver, filter, null, phone);
+            log("DataConnection: register mActionFailBringUp=" + mActionFailBringUp);
+        }
 
         setDbg(false);
         addState(mDefaultState);
@@ -891,12 +1090,12 @@ public abstract class DataConnection extends StateMachine {
                 case EVENT_CONNECT:
                     ConnectionParams cp = (ConnectionParams) msg.obj;
                     cp.tag = mTag;
+                    mRefCount = 1;
                     if (DBG) {
-                        log("DcInactiveState msg.what=EVENT_CONNECT." + "RefCount = "
+                        log("DcInactiveState msg.what=EVENT_CONNECT " + "RefCount="
                                 + mRefCount);
                     }
-                    mRefCount = 1;
-                    onConnect(cp);
+                    doOnConnect(cp);
                     transitionTo(mActivatingState);
                     retVal = HANDLED;
                     break;
