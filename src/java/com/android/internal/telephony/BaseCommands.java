@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
+ *
  * Copyright (C) 2006 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,6 +90,8 @@ public abstract class BaseCommands implements CommandsInterface {
     protected Registrant mRingRegistrant;
     protected Registrant mRestrictedStateRegistrant;
     protected Registrant mGsmBroadcastSmsRegistrant;
+    protected Registrant mCatCcAlphaRegistrant;
+    protected Registrant mSsRegistrant;
 
     // Preferred network type received from PhoneFactory.
     // This is used when establishing a connection to the
@@ -490,6 +495,26 @@ public abstract class BaseCommands implements CommandsInterface {
             mRingRegistrant.clear();
             mRingRegistrant = null;
         }
+    }
+
+    @Override
+    public void setOnSs(Handler h, int what, Object obj) {
+        mSsRegistrant = new Registrant (h, what, obj);
+    }
+
+    @Override
+    public void unSetOnSs(Handler h) {
+        mSsRegistrant.clear();
+    }
+
+    @Override
+    public void setOnCatCcAlphaNotify(Handler h, int what, Object obj) {
+        mCatCcAlphaRegistrant = new Registrant (h, what, obj);
+    }
+
+    @Override
+    public void unSetOnCatCcAlphaNotify(Handler h) {
+        mCatCcAlphaRegistrant.clear();
     }
 
     @Override

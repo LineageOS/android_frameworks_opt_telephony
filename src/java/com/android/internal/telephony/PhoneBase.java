@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
+ *
  * Copyright (C) 2007 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -152,7 +155,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_SRVCC_STATE_CHANGED            = 31;
     protected static final int EVENT_INITIATE_SILENT_REDIAL         = 32;
     protected static final int EVENT_UNSOL_OEM_HOOK_RAW             = 33;
-    protected static final int EVENT_LAST                           = EVENT_UNSOL_OEM_HOOK_RAW;
+    protected static final int EVENT_SS                             = 34;
+    protected static final int EVENT_LAST                           = EVENT_SS;
+
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";
