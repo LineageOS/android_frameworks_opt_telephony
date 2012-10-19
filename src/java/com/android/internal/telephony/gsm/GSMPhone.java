@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
+ *
  * Copyright (C) 2006 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -176,6 +179,7 @@ public class GSMPhone extends PhoneBase {
         mCi.setOnUSSD(this, EVENT_USSD, null);
         mCi.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
+        mCi.setOnSs(this, EVENT_SS, null);
         setProperties();
     }
 
@@ -210,6 +214,7 @@ public class GSMPhone extends PhoneBase {
         mCi.setOnUSSD(this, EVENT_USSD, null);
         mCi.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
+        mCi.setOnSs(this, EVENT_SS, null);
         setProperties();
 
         log("GSMPhone: constructor: sub = " + mPhoneId);
@@ -235,6 +240,7 @@ public class GSMPhone extends PhoneBase {
             mSST.unregisterForNetworkAttached(this); //EVENT_REGISTERED_TO_NETWORK
             mCi.unSetOnUSSD(this);
             mCi.unSetOnSuppServiceNotification(this);
+            mCi.unSetOnSs(this);
 
             mPendingMMIs.clear();
 
@@ -1311,7 +1317,7 @@ public class GSMPhone extends PhoneBase {
          * The exception is cancellation of an incoming USSD-REQUEST, which is
          * not on the list.
          */
-        if (mPendingMMIs.remove(mmi) || mmi.isUssdRequest()) {
+        if (mPendingMMIs.remove(mmi) || mmi.isUssdRequest() || mmi.isSsInfo()) {
             mMmiCompleteRegistrants.notifyRegistrants(
                 new AsyncResult(null, mmi, null));
         }
@@ -1572,6 +1578,16 @@ public class GSMPhone extends PhoneBase {
             case EVENT_SUBSCRIPTION_DEACTIVATED:
                 log("EVENT_SUBSCRIPTION_DEACTIVATED");
                 onSubscriptionDeactivated();
+                break;
+
+            case EVENT_SS:
+                ar = (AsyncResult)msg.obj;
+                Rlog.d(LOG_TAG, "Event EVENT_SS received");
+                // SS data is already being handled through MMI codes.
+                // So, this result if processed as MMI response would help
+                // in re-using the existing functionality.
+                GsmMmiCode mmi = new GsmMmiCode(this, mUiccApplication.get());
+                mmi.processSsData(ar);
                 break;
 
              default:
