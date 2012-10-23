@@ -421,6 +421,12 @@ public class SIMRecords extends IccRecords {
         }
     }
 
+    // Validate data is !null and the MSP (Multiple Subscriber Profile)
+    // byte is between 1 and 4. See ETSI TS 131 102 v11.3.0 section 4.2.64.
+    private boolean validEfCfis(byte[] data) {
+        return ((data != null) && (data[0] >= 1) && (data[0] <= 4));
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -442,7 +448,7 @@ public class SIMRecords extends IccRecords {
         mRecordsEventsRegistrants.notifyResult(EVENT_CFI);
 
         try {
-            if (mEfCfis != null) {
+            if (validEfCfis(mEfCfis)) {
                 // lsb is of byte 1 is voice status
                 if (enable) {
                     mEfCfis[1] |= 1;
@@ -450,12 +456,18 @@ public class SIMRecords extends IccRecords {
                     mEfCfis[1] &= 0xfe;
                 }
 
+                log("setVoiceCallForwardingFlag: enable=" + enable
+                        + " mEfCfis=" + IccUtils.bytesToHexString(mEfCfis));
+
                 // TODO: Should really update other fields in EF_CFIS, eg,
                 // dialing number.  We don't read or use it right now.
 
                 mFh.updateEFLinearFixed(
                         EF_CFIS, 1, mEfCfis, null,
                         obtainMessage (EVENT_UPDATE_DONE, EF_CFIS));
+            } else {
+                log("setVoiceCallForwardingFlag: ignoring enable=" + enable
+                        + " invalid mEfCfis=" + IccUtils.bytesToHexString(mEfCfis));
             }
 
             if (mEfCff != null) {
@@ -867,11 +879,14 @@ public class SIMRecords extends IccRecords {
                 log("EF_CFF_CPHS: " + IccUtils.bytesToHexString(data));
                 mEfCff = data;
 
-                if (mEfCfis == null) {
+                if (validEfCfis(mEfCfis)) {
                     callForwardingEnabled =
                         ((data[0] & CFF_LINE1_MASK) == CFF_UNCONDITIONAL_ACTIVE);
 
                     mRecordsEventsRegistrants.notifyResult(EVENT_CFI);
+                } else {
+                    log("EVENT_GET_CFF_DONE: invalid mEfCfis="
+                            + IccUtils.bytesToHexString(mEfCfis));
                 }
                 break;
 
@@ -1065,12 +1080,17 @@ public class SIMRecords extends IccRecords {
 
                 log("EF_CFIS: " + IccUtils.bytesToHexString(data));
 
-                mEfCfis = data;
+                if (validEfCfis(data)) {
+                    mEfCfis = data;
 
-                // Refer TS 51.011 Section 10.3.46 for the content description
-                callForwardingEnabled = ((data[1] & 0x01) != 0);
+                    // Refer TS 51.011 Section 10.3.46 for the content description
+                    callForwardingEnabled = ((data[1] & 0x01) != 0);
+                    log("EF_CFIS: callFordwardingEnabled=" + callForwardingEnabled);
 
-                mRecordsEventsRegistrants.notifyResult(EVENT_CFI);
+                    mRecordsEventsRegistrants.notifyResult(EVENT_CFI);
+                } else {
+                    log("EF_CFIS: invalid data=" + IccUtils.bytesToHexString(data));
+                }
                 break;
 
             case EVENT_GET_CSP_CPHS_DONE:
