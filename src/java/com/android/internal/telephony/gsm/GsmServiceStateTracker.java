@@ -696,6 +696,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             loge("Exception while polling service state. Probably malformed RIL response." + ex);
         }
 
+        final boolean voice_capable = phone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_voice_capable);
+
+        if (!voice_capable && newGPRSState == ServiceState.STATE_IN_SERVICE) {
+            newSS.setState (newGPRSState);
+        }
+
         pollingContext[0]--;
 
         if (pollingContext[0] == 0) {
