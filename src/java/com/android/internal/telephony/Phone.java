@@ -659,6 +659,20 @@ public interface Phone {
     public void unregisterForSubscriptionInfoReady(Handler h);
 
     /**
+     * Registration point for Sim records loaded
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForSimRecordsLoaded(Handler h, int what, Object obj);
+
+    /**
+     * Unregister for notifications for Sim records loaded
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForSimRecordsLoaded(Handler h);
+
+    /**
      * Returns SIM record load state. Use
      * <code>getSimCard().registerForReady()</code> for change notification.
      *
