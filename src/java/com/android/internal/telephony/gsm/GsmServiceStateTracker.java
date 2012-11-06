@@ -215,17 +215,17 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         cm.setOnRestrictedStateChanged(this, EVENT_RESTRICTED_STATE_CHANGED, null);
 
         // system setting property AIRPLANE_MODE_ON is set in Settings.
-        int airplaneMode = Settings.System.getInt(
+        int airplaneMode = Settings.Global.getInt(
                 phone.getContext().getContentResolver(),
-                Settings.System.AIRPLANE_MODE_ON, 0);
+                Settings.Global.AIRPLANE_MODE_ON, 0);
         mDesiredPowerState = ! (airplaneMode > 0);
 
         cr = phone.getContext().getContentResolver();
         cr.registerContentObserver(
-                Settings.System.getUriFor(Settings.System.AUTO_TIME), true,
+                Settings.Global.getUriFor(Settings.Global.AUTO_TIME), true,
                 mAutoTimeObserver);
         cr.registerContentObserver(
-                Settings.System.getUriFor(Settings.System.AUTO_TIME_ZONE), true,
+                Settings.Global.getUriFor(Settings.Global.AUTO_TIME_ZONE), true,
                 mAutoTimeZoneObserver);
 
         setSignalStrengthDefaultValues();
@@ -1522,8 +1522,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
     private boolean getAutoTime() {
         try {
-            return Settings.System.getInt(phone.getContext().getContentResolver(),
-                    Settings.System.AUTO_TIME) > 0;
+            return Settings.Global.getInt(phone.getContext().getContentResolver(),
+                    Settings.Global.AUTO_TIME) > 0;
         } catch (SettingNotFoundException snfe) {
             return true;
         }
@@ -1531,8 +1531,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
     private boolean getAutoTimeZone() {
         try {
-            return Settings.System.getInt(phone.getContext().getContentResolver(),
-                    Settings.System.AUTO_TIME_ZONE) > 0;
+            return Settings.Global.getInt(phone.getContext().getContentResolver(),
+                    Settings.Global.AUTO_TIME_ZONE) > 0;
         } catch (SettingNotFoundException snfe) {
             return true;
         }
@@ -1584,8 +1584,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     }
 
     private void revertToNitzTime() {
-        if (Settings.System.getInt(phone.getContext().getContentResolver(),
-                Settings.System.AUTO_TIME, 0) == 0) {
+        if (Settings.Global.getInt(phone.getContext().getContentResolver(),
+                Settings.Global.AUTO_TIME, 0) == 0) {
             return;
         }
         if (DBG) {
@@ -1599,8 +1599,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     }
 
     private void revertToNitzTimeZone() {
-        if (Settings.System.getInt(phone.getContext().getContentResolver(),
-                Settings.System.AUTO_TIME_ZONE, 0) == 0) {
+        if (Settings.Global.getInt(phone.getContext().getContentResolver(),
+                Settings.Global.AUTO_TIME_ZONE, 0) == 0) {
             return;
         }
         if (DBG) log("Reverting to NITZ TimeZone: tz='" + mSavedTimeZone);
