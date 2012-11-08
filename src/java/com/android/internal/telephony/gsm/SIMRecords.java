@@ -24,6 +24,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.telephony.AdnRecord;
@@ -1407,13 +1408,14 @@ public class SIMRecords extends IccRecords {
      * specified plmn (currently-registered PLMN).  See TS 22.101 Annex A
      * and TS 51.011 10.3.11 for details.
      *
-     * If the SPN is not found on the SIM, the rule is always PLMN_ONLY.
+     * If the SPN is not found on the SIM or is empty, the rule is
+     * always PLMN_ONLY.
      */
     @Override
     public int getDisplayRule(String plmn) {
         int rule;
-        if (spn == null || spnDisplayCondition == -1) {
-            // EF_SPN was not found on the SIM, or not yet loaded.  Just show ONS.
+        if (TextUtils.isEmpty(spn) || spnDisplayCondition == -1) {
+            // No EF_SPN content was found on the SIM, or not yet loaded.  Just show ONS.
             rule = SPN_RULE_SHOW_PLMN;
         } else if (isOnMatchingPlmn(plmn)) {
             rule = SPN_RULE_SHOW_SPN;
