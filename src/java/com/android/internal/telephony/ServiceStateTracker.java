@@ -77,12 +77,6 @@ public abstract class ServiceStateTracker extends Handler {
     protected boolean mDesiredPowerState;
 
     /**
-     *  Values correspond to ServiceState.RIL_RADIO_TECHNOLOGY_ definitions.
-     */
-    protected int mRilRadioTechnology = 0;
-    protected int mNewRilRadioTechnology = 0;
-
-    /**
      * By default, strength polling is enabled.  However, if we're
      * getting unsolicited signal strength updates from the radio, set
      * value to true and don't bother polling any more.
@@ -408,7 +402,7 @@ public abstract class ServiceStateTracker extends Handler {
         Registrant r = new Registrant(h, what, obj);
 
         mNetworkAttachedRegistrants.add(r);
-        if (ss.getState() == ServiceState.STATE_IN_SERVICE) {
+        if (ss.getVoiceState() == ServiceState.STATE_IN_SERVICE) {
             r.notifyRegistrant();
         }
     }
@@ -620,8 +614,6 @@ public abstract class ServiceStateTracker extends Handler {
         pw.println(" mRestrictedState=" + mRestrictedState);
         pw.println(" pollingContext=" + pollingContext);
         pw.println(" mDesiredPowerState=" + mDesiredPowerState);
-        pw.println(" mRilRadioTechnology=" + mRilRadioTechnology);
-        pw.println(" mNewRilRadioTechnology=" + mNewRilRadioTechnology);
         pw.println(" dontPollSignalStrength=" + dontPollSignalStrength);
         pw.println(" mPendingRadioPowerOffAfterDataOff=" + mPendingRadioPowerOffAfterDataOff);
         pw.println(" mPendingRadioPowerOffAfterDataOffTag=" + mPendingRadioPowerOffAfterDataOffTag);
