@@ -90,6 +90,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     GsmCellLocation newCellLoc;
     int mPreferredNetworkType;
 
+    private int gprsState = ServiceState.STATE_OUT_OF_SERVICE;
+    private int newGPRSState = ServiceState.STATE_OUT_OF_SERVICE;
     private int mMaxDataCalls = 1;
     private int mNewMaxDataCalls = 1;
     private int mReasonDataDenied = -1;
@@ -430,7 +432,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 break;
 
             case EVENT_CHECK_REPORT_GPRS:
-                if (ss != null && !isGprsConsistent(ss.getDataRegState(), ss.getVoiceState())) {
+                if (ss != null && !isGprsConsistent(gprsState, ss.getState())) {
 
                     // Can't register data service while voice service is ok
                     // i.e. CREG is ok while CGREG is not
@@ -508,8 +510,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         String plmn = null;
         boolean showPlmn = false;
         int rule = (iccRecords != null) ? iccRecords.getDisplayRule(ss.getOperatorNumeric()) : 0;
-        if (ss.getVoiceState() == ServiceState.STATE_OUT_OF_SERVICE
-                || ss.getVoiceState() == ServiceState.STATE_EMERGENCY_ONLY) {
+        if (ss.getState() == ServiceState.STATE_OUT_OF_SERVICE
+                || ss.getState() == ServiceState.STATE_EMERGENCY_ONLY) {
             showPlmn = true;
             if (mEmergencyOnly) {
                 // No service but emergency call allowed
@@ -522,7 +524,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             }
             if (DBG) log("updateSpnDisplay: radio is on but out " +
                     "of service, set plmn='" + plmn + "'");
-        } else if (ss.getVoiceState() == ServiceState.STATE_IN_SERVICE) {
+        } else if (ss.getState() == ServiceState.STATE_IN_SERVICE) {
             // In either home or roaming service
             plmn = ss.getOperatorAlphaLong();
             showPlmn = !TextUtils.isEmpty(plmn) &&
@@ -571,7 +573,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     /**
      * Handle the result of one of the pollState()-related requests
      */
-    @Override
     protected void handlePollStateResult (int what, AsyncResult ar) {
         int ints[];
         String states[];
@@ -604,12 +605,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             }
         } else try {
             switch (what) {
-                case EVENT_POLL_STATE_REGISTRATION: {
+                case EVENT_POLL_STATE_REGISTRATION:
                     states = (String[])ar.result;
                     int lac = -1;
                     int cid = -1;
-                    int type = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
-                    int regState = ServiceState.RIL_REG_STATE_UNKNOWN;
+                    int regState = -1;
                     int reasonRegStateDenied = -1;
                     int psc = -1;
                     if (states.length > 0) {
@@ -621,11 +621,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                                 }
                                 if (states[2] != null && states[2].length() > 0) {
                                     cid = Integer.parseInt(states[2], 16);
-                                }
-
-                                // states[3] (if present) is the current radio technology
-                                if (states.length >= 4 && states[3] != null) {
-                                    type = Integer.parseInt(states[3]);
                                 }
                             }
                             if (states.length > 14) {
@@ -639,13 +634,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     }
 
                     mGsmRoaming = regCodeIsRoaming(regState);
-                    newSS.setState(regCodeToServiceState(regState));
-                    newSS.setRilVoiceRadioTechnology(type);
+                    newSS.setState (regCodeToServiceState(regState));
 
-                    if (regState == ServiceState.RIL_REG_STATE_DENIED_EMERGENCY_CALL_ENABLED
-                         || regState == ServiceState.RIL_REG_STATE_NOT_REG_EMERGENCY_CALL_ENABLED
-                         || regState == ServiceState.RIL_REG_STATE_SEARCHING_EMERGENCY_CALL_ENABLED
-                         || regState == ServiceState.RIL_REG_STATE_UNKNOWN_EMERGENCY_CALL_ENABLED) {
+                    if (regState == 10 || regState == 12 || regState == 13 || regState == 14) {
                         mEmergencyOnly = true;
                     } else {
                         mEmergencyOnly = false;
@@ -654,14 +645,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     // LAC and CID are -1 if not avail
                     newCellLoc.setLacAndCid(lac, cid);
                     newCellLoc.setPsc(psc);
-                    break;
-                }
+                break;
 
-                case EVENT_POLL_STATE_GPRS: {
+                case EVENT_POLL_STATE_GPRS:
                     states = (String[])ar.result;
 
                     int type = 0;
-                    int regState = ServiceState.RIL_REG_STATE_UNKNOWN;
+                    regState = -1;
                     mNewReasonDataDenied = -1;
                     mNewMaxDataCalls = 1;
                     if (states.length > 0) {
@@ -672,8 +662,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                             if (states.length >= 4 && states[3] != null) {
                                 type = Integer.parseInt(states[3]);
                             }
-                            if ((states.length >= 5 ) &&
-                                    (regState == ServiceState.RIL_REG_STATE_DENIED)) {
+                            if ((states.length >= 5 ) && (regState == 3)) {
                                 mNewReasonDataDenied = Integer.parseInt(states[4]);
                             }
                             if (states.length >= 6) {
@@ -683,36 +672,35 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                             loge("error parsing GprsRegistrationState: " + ex);
                         }
                     }
-                    int dataRegState = regCodeToServiceState(regState);
-                    newSS.setDataRegState(dataRegState);
+                    newGPRSState = regCodeToServiceState(regState);
                     mDataRoaming = regCodeIsRoaming(regState);
-                    newSS.setRilDataRadioTechnology(type);
-                    if (DBG) {
-                        log("handlPollStateResultMessage: GsmSST setDataRegState=" + dataRegState
-                                + " regState=" + regState
-                                + " dataRadioTechnology=" + type);
-                    }
-                    break;
-                }
+                    mNewRilRadioTechnology = type;
+                    newSS.setRadioTechnology(type);
+                break;
 
-                case EVENT_POLL_STATE_OPERATOR: {
+                case EVENT_POLL_STATE_OPERATOR:
                     String opNames[] = (String[])ar.result;
 
                     if (opNames != null && opNames.length >= 3) {
                          newSS.setOperatorName (opNames[0], opNames[1], opNames[2]);
                     }
-                    break;
-                }
+                break;
 
-                case EVENT_POLL_STATE_NETWORK_SELECTION_MODE: {
+                case EVENT_POLL_STATE_NETWORK_SELECTION_MODE:
                     ints = (int[])ar.result;
                     newSS.setIsManualSelection(ints[0] == 1);
-                    break;
-                }
+                break;
             }
 
         } catch (RuntimeException ex) {
             loge("Exception while polling service state. Probably malformed RIL response." + ex);
+        }
+
+        final boolean voice_capable = phone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_voice_capable);
+
+        if (!voice_capable && newGPRSState == ServiceState.STATE_IN_SERVICE) {
+            newSS.setState (newGPRSState);
         }
 
         pollingContext[0]--;
@@ -803,31 +791,33 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     private void pollStateDone() {
         if (DBG) {
             log("Poll ServiceState done: " +
-                " oldSS=[" + ss + "] newSS=[" + newSS + "]" +
+                " oldSS=[" + ss + "] newSS=[" + newSS +
+                "] oldGprs=" + gprsState + " newData=" + newGPRSState +
                 " oldMaxDataCalls=" + mMaxDataCalls +
                 " mNewMaxDataCalls=" + mNewMaxDataCalls +
                 " oldReasonDataDenied=" + mReasonDataDenied +
-                " mNewReasonDataDenied=" + mNewReasonDataDenied);
+                " mNewReasonDataDenied=" + mNewReasonDataDenied +
+                " oldType=" + ServiceState.rilRadioTechnologyToString(mRilRadioTechnology) +
+                " newType=" + ServiceState.rilRadioTechnologyToString(mNewRilRadioTechnology));
         }
 
         boolean hasRegistered =
-            ss.getVoiceState() != ServiceState.STATE_IN_SERVICE
-            && newSS.getVoiceState() == ServiceState.STATE_IN_SERVICE;
+            ss.getState() != ServiceState.STATE_IN_SERVICE
+            && newSS.getState() == ServiceState.STATE_IN_SERVICE;
 
         boolean hasDeregistered =
-            ss.getVoiceState() == ServiceState.STATE_IN_SERVICE
-            && newSS.getVoiceState() != ServiceState.STATE_IN_SERVICE;
+            ss.getState() == ServiceState.STATE_IN_SERVICE
+            && newSS.getState() != ServiceState.STATE_IN_SERVICE;
 
         boolean hasGprsAttached =
-                ss.getDataRegState() != ServiceState.STATE_IN_SERVICE
-                && newSS.getDataRegState() == ServiceState.STATE_IN_SERVICE;
+                gprsState != ServiceState.STATE_IN_SERVICE
+                && newGPRSState == ServiceState.STATE_IN_SERVICE;
 
         boolean hasGprsDetached =
-                ss.getDataRegState() == ServiceState.STATE_IN_SERVICE
-                && newSS.getDataRegState() != ServiceState.STATE_IN_SERVICE;
+                gprsState == ServiceState.STATE_IN_SERVICE
+                && newGPRSState != ServiceState.STATE_IN_SERVICE;
 
-        boolean hasRilVoiceRadioTechnologyChanged =
-                ss.getRilVoiceRadioTechnology() != newSS.getRilVoiceRadioTechnology();
+        boolean hasRadioTechnologyChanged = mRilRadioTechnology != mNewRilRadioTechnology;
 
         boolean hasChanged = !newSS.equals(ss);
 
@@ -838,11 +828,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         boolean hasLocationChanged = !newCellLoc.equals(cellLoc);
 
         // Add an event log when connection state changes
-        if (ss.getVoiceState() != newSS.getVoiceState()
-                || ss.getDataRegState() != newSS.getDataRegState()) {
+        if (ss.getState() != newSS.getState() || gprsState != newGPRSState) {
             EventLog.writeEvent(EventLogTags.GSM_SERVICE_STATE_CHANGE,
-                ss.getVoiceState(), ss.getDataRegState(),
-                newSS.getVoiceState(), newSS.getDataRegState());
+                ss.getState(), gprsState, newSS.getState(), newGPRSState);
         }
 
         ServiceState tss;
@@ -859,29 +847,32 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         // Add an event log when network type switched
         // TODO: we may add filtering to reduce the event logged,
         // i.e. check preferred network setting, only switch to 2G, etc
-        if (hasRilVoiceRadioTechnologyChanged) {
+        if (hasRadioTechnologyChanged) {
             int cid = -1;
             GsmCellLocation loc = ((GsmCellLocation)phone.getCellLocation());
             if (loc != null) cid = loc.getCid();
-            EventLog.writeEvent(EventLogTags.GSM_RAT_SWITCHED, cid, ss.getRilVoiceRadioTechnology(),
-                    newSS.getRilVoiceRadioTechnology());
+            EventLog.writeEvent(EventLogTags.GSM_RAT_SWITCHED, cid, mRilRadioTechnology,
+                    mNewRilRadioTechnology);
             if (DBG) {
-                log("RAT switched "
-                        + ServiceState.rilRadioTechnologyToString(ss.getRilVoiceRadioTechnology())
-                        + " -> "
-                        + ServiceState.rilRadioTechnologyToString(newSS.getRilVoiceRadioTechnology()) +
+                log("RAT switched " + ServiceState.rilRadioTechnologyToString(mRilRadioTechnology) +
+                        " -> " + ServiceState.rilRadioTechnologyToString(mNewRilRadioTechnology) +
                         " at cell " + cid);
             }
         }
 
+        gprsState = newGPRSState;
         mReasonDataDenied = mNewReasonDataDenied;
         mMaxDataCalls = mNewMaxDataCalls;
+        mRilRadioTechnology = mNewRilRadioTechnology;
+        // this new state has been applied - forget it until we get a new new state
+        mNewRilRadioTechnology = 0;
+
 
         newSS.setStateOutOfService(); // clean slate for next time
 
-        if (hasRilVoiceRadioTechnologyChanged) {
+        if (hasRadioTechnologyChanged) {
             phone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
-                    ServiceState.rilRadioTechnologyToString(ss.getRilVoiceRadioTechnology()));
+                    ServiceState.rilRadioTechnologyToString(mRilRadioTechnology));
         }
 
         if (hasRegistered) {
@@ -1037,7 +1028,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             mDetachedRegistrants.notifyRegistrants();
         }
 
-        if (hasRilVoiceRadioTechnologyChanged) {
+        if (hasRadioTechnologyChanged) {
             phone.notifyDataConnection(Phone.REASON_NW_TYPE_CHANGED);
         }
 
@@ -1053,7 +1044,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             phone.notifyLocationChanged();
         }
 
-        if (! isGprsConsistent(ss.getDataRegState(), ss.getVoiceState())) {
+        if (! isGprsConsistent(gprsState, ss.getState())) {
             if (!mStartedGprsRegCheck && !mReportedGprsNoReg) {
                 mStartedGprsRegCheck = true;
 
@@ -1073,13 +1064,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     /**
      * Check if GPRS got registered while voice is registered.
      *
-     * @param dataRegState, i.e. CGREG in GSM
-     * @param voiceRegState, i.e. CREG in GSM
+     * @param gprsState for GPRS registration state, i.e. CGREG in GSM
+     * @param serviceState for voice registration state, i.e. CREG in GSM
      * @return false if device only register to voice but not gprs
      */
-    private boolean isGprsConsistent(int dataRegState, int voiceRegState) {
-        return !((voiceRegState == ServiceState.STATE_IN_SERVICE) &&
-                (dataRegState != ServiceState.STATE_IN_SERVICE));
+    private boolean isGprsConsistent(int gprsState, int serviceState) {
+        return !((serviceState == ServiceState.STATE_IN_SERVICE) &&
+                (gprsState != ServiceState.STATE_IN_SERVICE));
     }
 
     /**
@@ -1261,7 +1252,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
      * returns true if registered roam, false otherwise
      */
     private boolean regCodeIsRoaming (int code) {
-        return ServiceState.RIL_REG_STATE_ROAMING == code;
+        // 5 is  "in service -- roam"
+        return 5 == code;
     }
 
     /**
@@ -1312,9 +1304,12 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
      * @return The current GPRS state. IN_SERVICE is the same as "attached"
      * and OUT_OF_SERVICE is the same as detached.
      */
-    @Override
+    int getCurrentGprsState() {
+        return gprsState;
+    }
+
     public int getCurrentDataConnectionState() {
-        return ss.getDataRegState();
+        return gprsState;
     }
 
     /**
@@ -1322,7 +1317,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
      * that could support voice and data simultaneously.
      */
     public boolean isConcurrentVoiceAndDataAllowed() {
-        return (ss.getRilVoiceRadioTechnology() >= ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
+        return (mRilRadioTechnology >= ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
     }
 
     /**
@@ -1724,11 +1719,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         pw.println("GsmServiceStateTracker extends:");
         super.dump(fd, pw, args);
         pw.println(" phone=" + phone);
-        pw.println(" ss=" + ss);
-        pw.println(" newSS=" + newSS);
         pw.println(" cellLoc=" + cellLoc);
         pw.println(" newCellLoc=" + newCellLoc);
         pw.println(" mPreferredNetworkType=" + mPreferredNetworkType);
+        pw.println(" gprsState=" + gprsState);
+        pw.println(" newGPRSState=" + newGPRSState);
         pw.println(" mMaxDataCalls=" + mMaxDataCalls);
         pw.println(" mNewMaxDataCalls=" + mNewMaxDataCalls);
         pw.println(" mReasonDataDenied=" + mReasonDataDenied);

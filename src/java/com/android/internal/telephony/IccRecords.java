@@ -89,38 +89,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     public static final int EVENT_GET_ICC_RECORD_DONE = 100;
 
-    @Override
-    public String toString() {
-        return "mDestroyed=" + mDestroyed
-                + " mContext=" + mContext
-                + " mCi=" + mCi
-                + " mFh=" + mFh
-                + " mParentApp=" + mParentApp
-                + " recordsLoadedRegistrants=" + recordsLoadedRegistrants
-                + " mImsiReadyRegistrants=" + mImsiReadyRegistrants
-                + " mRecordsEventsRegistrants=" + mRecordsEventsRegistrants
-                + " mNewSmsRegistrants=" + mNewSmsRegistrants
-                + " mNetworkSelectionModeAutomaticRegistrants="
-                        + mNetworkSelectionModeAutomaticRegistrants
-                + " recordsToLoad=" + recordsToLoad
-                + " adnCache=" + adnCache
-                + " recordsRequested=" + recordsRequested
-                + " iccid=" + iccid
-                + " msisdn=" + msisdn
-                + " msisdnTag=" + msisdnTag
-                + " voiceMailNum=" + voiceMailNum
-                + " voiceMailTag=" + voiceMailTag
-                + " newVoiceMailNum=" + newVoiceMailNum
-                + " newVoiceMailTag=" + newVoiceMailTag
-                + " isVoiceMailFixed=" + isVoiceMailFixed
-                + " countVoiceMessages=" + countVoiceMessages
-                + " mImsi=" + mImsi
-                + " mncLength=" + mncLength
-                + " mailboxIndex=" + mailboxIndex
-                + " spn=" + spn;
-
-    }
-
     /**
      * Generic ICC record loaded callback. Subclasses can call EF load methods on
      * {@link IccFileHandler} passing a Message for onLoaded with the what field set to

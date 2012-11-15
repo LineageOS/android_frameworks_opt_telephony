@@ -97,22 +97,6 @@ public class SIMRecords extends IccRecords {
 
     UsimServiceTable mUsimServiceTable;
 
-    @Override
-    public String toString() {
-        return "SimRecords: " + super.toString()
-                + " mVmConfig" + mVmConfig
-                + " mSpnOverride=" + "mSpnOverride"
-                + " callForwardingEnabled=" + callForwardingEnabled
-                + " spnState=" + spnState
-                + " mCphsInfo=" + mCphsInfo
-                + " mCspPlmnEnabled=" + mCspPlmnEnabled
-                + " efMWIS=" + efMWIS
-                + " efCPHS_MWI=" + efCPHS_MWI
-                + " mEfCff=" + mEfCff
-                + " mEfCfis=" + mEfCfis
-                + " getOperatorNumeric=" + getOperatorNumeric();
-    }
-
     // ***** Constants
 
     // Bitmasks for SPN display rules.
@@ -211,12 +195,11 @@ public class SIMRecords extends IccRecords {
         // Start off by setting empty state
         resetRecords();
         mParentApp.registerForReady(this, EVENT_APP_READY, null);
-        if (DBG) log("SIMRecords X ctor this=" + this);
     }
 
     @Override
     public void dispose() {
-        if (DBG) log("Disposing SIMRecords this=" + this);
+        if (DBG) log("Disposing SIMRecords " + this);
         //Unregister for all events
         mCi.unregisterForIccRefresh(this);
         mCi.unSetOnSmsOnSim(this);

@@ -80,22 +80,6 @@ public final class RuimRecords extends IccRecords {
     private String mHomeSystemId;
     private String mHomeNetworkId;
 
-    @Override
-    public String toString() {
-        return "RuimRecords: " + super.toString()
-                + " m_ota_commited" + m_ota_commited
-                + " mMyMobileNumber=" + "xxxx"
-                + " mMin2Min1=" + mMin2Min1
-                + " mPrlVersion=" + mPrlVersion
-                + " mEFpl=" + mEFpl
-                + " mEFli=" + mEFli
-                + " mCsimSpnDisplayCondition=" + mCsimSpnDisplayCondition
-                + " mMdn=" + mMdn
-                + " mMin=" + mMin
-                + " mHomeSystemId=" + mHomeSystemId
-                + " mHomeNetworkId=" + mHomeNetworkId;
-    }
-
     // ***** Event Constants
     private static final int EVENT_APP_READY = 1;
     private static final int EVENT_GET_IMSI_DONE = 3;
@@ -129,7 +113,6 @@ public final class RuimRecords extends IccRecords {
         resetRecords();
 
         mParentApp.registerForReady(this, EVENT_APP_READY, null);
-        if (DBG) log("RuimRecords X ctor this=" + this);
     }
 
     @Override

@@ -57,14 +57,6 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
 
     private static final int TAG_ISIM_VALUE = 0x80;     // From 3GPP TS 31.103
 
-    @Override
-    public String toString() {
-        return "IsimUiccRecords: " + super.toString()
-                + " mIsimImpi=" + mIsimImpi
-                + " mIsimDomain=" + mIsimDomain
-                + " mIsimImpu=" + mIsimImpu;
-    }
-
     public IsimUiccRecords(UiccCardApplication app, Context c, CommandsInterface ci) {
         super(app, c, ci);
 
@@ -74,7 +66,6 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
         recordsToLoad = 0;
 
         mParentApp.registerForReady(this, EVENT_APP_READY, null);
-        if (DBG) log("IsimUiccRecords X ctor this=" + this);
     }
 
     @Override

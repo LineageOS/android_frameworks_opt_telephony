@@ -285,7 +285,7 @@ public class GSMPhone extends PhoneBase {
             // already been called
 
             ret = PhoneConstants.DataState.DISCONNECTED;
-        } else if (mSST.getCurrentDataConnectionState()
+        } else if (mSST.getCurrentGprsState()
                 != ServiceState.STATE_IN_SERVICE) {
             // If we're out of service, open TCP sockets may still work
             // but no data will flow
@@ -327,7 +327,7 @@ public class GSMPhone extends PhoneBase {
     public DataActivityState getDataActivityState() {
         DataActivityState ret = DataActivityState.NONE;
 
-        if (mSST.getCurrentDataConnectionState() == ServiceState.STATE_IN_SERVICE) {
+        if (mSST.getCurrentGprsState() == ServiceState.STATE_IN_SERVICE) {
             switch (mDataConnectionTracker.getActivity()) {
                 case DATAIN:
                     ret = DataActivityState.DATAIN;
