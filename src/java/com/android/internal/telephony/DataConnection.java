@@ -52,8 +52,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * DataConnection StateMachine.
  *
  * This is an abstract base class for representing a single data connection.
- * Instances of this class such as <code>CdmaDataConnection</code> and
- * <code>GsmDataConnection</code>, * represent a connection via the cellular network.
+ * Instances of this class such represent a connection via the cellular network.
  * There may be multiple data connections and all of them are managed by the
  * <code>DataConnectionTracker</code>.
  *
@@ -605,12 +604,12 @@ public abstract class DataConnection extends StateMachine {
         if (DBG) log("NotifyDisconnectCompleted DisconnectParams=" + dp);
     }
 
-    protected int getRilRadioTechnology(int defaultRilRadioTechnology) {
+    protected int getRilRadioTechnology() {
         int rilRadioTechnology;
-        if (mRilVersion < 6) {
-            rilRadioTechnology = defaultRilRadioTechnology;
+        if (mApn.bearer > 0) {
+            rilRadioTechnology = mApn.bearer + 2;
         } else {
-            rilRadioTechnology = phone.getServiceState().getRilRadioTechnology() + 2;
+            rilRadioTechnology = phone.getServiceState().getRilDataRadioTechnology() + 2;
         }
         return rilRadioTechnology;
     }

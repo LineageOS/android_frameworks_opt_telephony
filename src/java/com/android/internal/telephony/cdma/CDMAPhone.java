@@ -70,6 +70,7 @@ import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.cat.CatService;
+import com.android.internal.telephony.gsm.GsmDataConnectionTracker;
 import com.android.internal.telephony.uicc.UiccController;
 
 import java.io.FileDescriptor;
@@ -167,7 +168,7 @@ public class CDMAPhone extends PhoneBase {
         mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context, mCM, this,
                 EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
         mSMS = new CdmaSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
-        mDataConnectionTracker = new CdmaDataConnectionTracker (this);
+        mDataConnectionTracker = new GsmDataConnectionTracker (this);
         mRuimPhoneBookInterfaceManager = new RuimPhoneBookInterfaceManager(this);
         mRuimSmsInterfaceManager = new RuimSmsInterfaceManager(this, mSMS);
         mSubInfo = new PhoneSubInfo(this);

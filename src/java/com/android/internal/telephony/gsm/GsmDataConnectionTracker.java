@@ -566,7 +566,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         synchronized (mDataEnabledLock) {
             if (!(mInternalDataEnabled && mUserDataEnabled && sPolicyDataEnabled)) return false;
             for (ApnContext apnContext : mApnContexts.values()) {
-                // Make sure we dont have a context that going down
+                // Make sure we don't have a context that is going down
                 // and is explicitly disabled.
                 if (isDataAllowed(apnContext)) {
                     return true;
@@ -736,7 +736,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
             apnContext.setState(DctConstants.State.CONNECTED);
             mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
 
-            log("trySetupData: (fix?) We're on the simulator; assuming data is connected");
+            log("trySetupData: X We're on the simulator; assuming connected retValue=true");
             return true;
         }
 
@@ -749,9 +749,9 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
             if (apnContext.getState() == DctConstants.State.IDLE) {
                 ArrayList<ApnSetting> waitingApns = buildWaitingApns(apnContext.getApnType());
                 if (waitingApns.isEmpty()) {
-                    if (DBG) log("trySetupData: No APN found");
                     notifyNoData(GsmDataConnection.FailCause.MISSING_UNKNOWN_APN, apnContext);
                     notifyOffApnsOfAvailability(apnContext.getReason());
+                    if (DBG) log("trySetupData: X No APN found retValue=false");
                     return false;
                 } else {
                     apnContext.setWaitingApns(waitingApns);
@@ -762,12 +762,14 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
             }
 
             if (DBG) {
-                log ("trySetupData: call setupData, waitingApns : "
+                log("trySetupData: call setupData, waitingApns : "
                         + apnListToString(apnContext.getWaitingApns()));
             }
             // apnContext.setReason(apnContext.getReason());
             boolean retValue = setupData(apnContext);
             notifyOffApnsOfAvailability(apnContext.getReason());
+
+            if (DBG) log("trySetupData: X retValue=" + retValue);
             return retValue;
         } else {
             // TODO: check the condition.
@@ -776,9 +778,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
                     || apnContext.getState() == DctConstants.State.SCANNING))
                 mPhone.notifyDataConnectionFailed(apnContext.getReason(), apnContext.getApnType());
             notifyOffApnsOfAvailability(apnContext.getReason());
-            if (DBG) {
-                log ("trySetupData apnContext not 'ready'");
-            }
+            if (DBG) log ("trySetupData: X apnContext not 'ready' retValue=false");
             return false;
         }
     }
@@ -1486,6 +1486,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
                                 + "-- likely transient error");
                 }
             } else {
+                apnContext.setState(DctConstants.State.FAILED);
                 notifyNoData(lastFailCauseCode, apnContext);
             }
         }
@@ -1538,7 +1539,6 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     private void notifyNoData(GsmDataConnection.FailCause lastFailCauseCode,
                               ApnContext apnContext) {
         if (DBG) log( "notifyNoData: type=" + apnContext.getApnType());
-        apnContext.setState(DctConstants.State.FAILED);
         if (lastFailCauseCode.isPermanentFail()
             && (!apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DEFAULT))) {
             mPhone.notifyDataConnectionFailed(apnContext.getReason(), apnContext.getApnType());
@@ -2131,6 +2131,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
      *          error when waitingApns.isEmpty()
      */
     private ArrayList<ApnSetting> buildWaitingApns(String requestedApnType) {
+        if (DBG) log("buildWaitingApns: E requestedApnType=" + requestedApnType);
         ArrayList<ApnSetting> apnList = new ArrayList<ApnSetting>();
 
         if (requestedApnType.equals(PhoneConstants.APN_TYPE_DUN)) {
@@ -2144,7 +2145,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
 
         IccRecords r = mIccRecords.get();
         String operator = (r != null) ? r.getOperatorNumeric() : "";
-        int radioTech = mPhone.getServiceState().getRilRadioTechnology();
+        int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
 
         // This is a workaround for a bug (7305641) where we don't failover to other
         // suitable APNs if our preferred APN fails.  On prepaid ATT sims we need to
@@ -2156,7 +2157,15 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
             usePreferred = ! mPhone.getContext().getResources().getBoolean(com.android.
                     internal.R.bool.config_dontPreferApn);
         } catch (Resources.NotFoundException e) {
+            if (DBG) log("buildWaitingApns: usePreferred NotFoundException set to true");
             usePreferred = true;
+        }
+        if (DBG) {
+            log("buildWaitingApns: usePreferred=" + usePreferred
+                    + " canSetPreferApn=" + canSetPreferApn
+                    + " mPreferredApn=" + mPreferredApn
+                    + " operator=" + operator + " radioTech=" + radioTech
+                    + " IccRecords r=" + r);
         }
 
         if (usePreferred && canSetPreferApn && mPreferredApn != null &&
@@ -2182,13 +2191,25 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
             }
         }
         if (mAllApns != null) {
+            if (DBG) log("buildWaitingApns: mAllApns=" + mAllApns);
             for (ApnSetting apn : mAllApns) {
+                if (DBG) log("buildWaitingApns: apn=" + apn);
                 if (apn.canHandleType(requestedApnType)) {
                     if (apn.bearer == 0 || apn.bearer == radioTech) {
-                        if (DBG) log("apn info : " +apn.toString());
+                        if (DBG) log("buildWaitingApns: adding apn=" + apn.toString());
                         apnList.add(apn);
+                    } else {
+                        if (DBG) {
+                            log("buildWaitingApns: bearer:" + apn.bearer + " != "
+                                    + "radioTech:" + radioTech);
+                        }
                     }
+                } else {
+                if (DBG) {
+                    log("buildWaitingApns: couldn't handle requesedApnType="
+                            + requestedApnType);
                 }
+            }
             }
         } else {
             loge("mAllApns is empty!");
@@ -2209,6 +2230,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
 
     private void startDelayedRetry(GsmDataConnection.FailCause cause,
                                    ApnContext apnContext, int retryOverride) {
+        apnContext.setState(DctConstants.State.FAILED);
         notifyNoData(cause, apnContext);
         reconnectAfterFail(cause, apnContext, retryOverride);
     }
@@ -2246,12 +2268,15 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         } else {
             canSetPreferApn = false;
         }
+        log("getPreferredApn: mRequestedApnType=" + mRequestedApnType + " cursor=" + cursor
+                + " cursor.count=" + ((cursor != null) ? cursor.getCount() : 0));
 
         if (canSetPreferApn && cursor.getCount() > 0) {
             int pos;
             cursor.moveToFirst();
             pos = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers._ID));
             for(ApnSetting p:mAllApns) {
+                log("getPreferredApn: apnSetting=" + p);
                 if (p.id == pos && p.canHandleType(mRequestedApnType)) {
                     log("getPreferredApn: X found apnSetting" + p);
                     cursor.close();
