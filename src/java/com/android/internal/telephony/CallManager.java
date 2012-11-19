@@ -25,6 +25,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.Registrant;
+import android.telephony.PhoneNumberUtils;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.Rlog;
@@ -749,7 +750,17 @@ public final class CallManager {
         }
 
         if (!canDial(phone)) {
-            throw new CallStateException("cannot dial in current state");
+            /*
+             * canDial function only checks whether the phone can make a new call.
+             * InCall MMI commmands are basically supplementary services
+             * within a call eg: call hold, call deflection, explicit call transfer etc.
+             */
+            String newDialString = PhoneNumberUtils.stripSeparators(dialString);
+            if (basePhone.handleInCallMmiCommands(newDialString)) {
+                return null;
+            } else {
+                throw new CallStateException("cannot dial in current state");
+            }
         }
 
         if ( hasActiveFgCall() ) {
