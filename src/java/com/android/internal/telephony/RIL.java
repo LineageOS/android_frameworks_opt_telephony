@@ -94,6 +94,7 @@ class RILRequest {
     //***** Instance Variables
     int mSerial;
     int mRequest;
+    long creationTime;
     Message mResult;
     Parcel mParcel;
     RILRequest mNext;
@@ -125,6 +126,7 @@ class RILRequest {
 
         rr.mRequest = request;
         rr.mResult = result;
+        rr.creationTime = System.currentTimeMillis();
         rr.mParcel = Parcel.obtain();
 
         if (result != null && result.getTarget() == null) {
