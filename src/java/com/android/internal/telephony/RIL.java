@@ -83,6 +83,7 @@ class RILRequest {
     //***** Instance Variables
     int mSerial;
     int mRequest;
+    long creationTime;
     Message mResult;
     Parcel mp;
     RILRequest mNext;
@@ -115,6 +116,7 @@ class RILRequest {
         }
         rr.mRequest = request;
         rr.mResult = result;
+        rr.creationTime = System.currentTimeMillis();
         rr.mp = Parcel.obtain();
 
         if (result != null && result.getTarget() == null) {
@@ -651,7 +653,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     //***** CommandsInterface implementation
-    public void getVoiceRadioTechnology(Message result) {
+    @Override public void 
+    getVoiceRadioTechnology(Message result) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_VOICE_RADIO_TECH, result);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
