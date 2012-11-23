@@ -2083,4 +2083,6 @@ public class SimulatedCommands extends BaseCommands
     public boolean isDataAllowed() {
         return mAllowed.get();
     }
+
+    public boolean needsOldRilFeature(String feature) { return false; }
 }
