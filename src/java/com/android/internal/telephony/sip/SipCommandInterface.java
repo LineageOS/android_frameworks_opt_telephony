@@ -556,4 +556,6 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     public void setInitialAttachApn(String apn, String protocol, int authType, String username,
             String password, Message result) {
     }
+
+    public boolean needsOldRilFeature(String feature) { return false; }
 }
