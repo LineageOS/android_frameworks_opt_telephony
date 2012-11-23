@@ -1292,8 +1292,7 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
-    public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
-                                    Message result) {
+    public void setUiccSubscription(int appIndex, boolean activate, Message result) {
 
     }
 
