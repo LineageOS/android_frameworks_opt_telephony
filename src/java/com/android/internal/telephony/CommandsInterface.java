@@ -1924,20 +1924,15 @@ public interface CommandsInterface {
    /**
      * Sets user selected subscription at Modem.
      *
-     * @param slotId
-     *          Slot.
      * @param appIndex
      *          Application index in the card.
-     * @param subId
-     *          Indicates subscription 0 or subscription 1.
-     * @param subStatus
-     *          Activation status, 1 = activate and 0 = deactivate.
+     * @param activate
+     *          Whether to activate or deactivate the subscription
      * @param result
      *          Callback message contains the information of SUCCESS/FAILURE.
      */
     // FIXME Update the doc and consider modifying the request to make more generic.
-    public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
-            Message result);
+    public void setUiccSubscription(int appIndex, boolean activate, Message result);
 
     /**
      * Tells the modem if data is allowed or not.
@@ -2088,4 +2083,12 @@ public interface CommandsInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForAdnRecordsInfo(Handler h);
+
+    /**
+     * @hide
+     * CM-specific: Ask the RIL about the presence of back-compat flags
+     *
+     * @param feature String of back-compat feature to be checked
+     */
+    public boolean needsOldRilFeature(String feature);
 }
