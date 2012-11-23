@@ -1770,6 +1770,7 @@ public interface CommandsInterface {
      * @return version of the ril.
      */
     int getRilVersion();
+
    /**
      * Sets user selected subscription at Modem.
      *
@@ -1822,4 +1823,10 @@ public interface CommandsInterface {
      * @param response is callback message
      */
     void setLocalCallHold(int lchStatus, Message response);
+
+    /**
+     * @hide
+     * CM-specific: Ask the RIL about the presence of back-compat flags
+     */
+    public boolean needsOldRilFeature(String feature);
 }
