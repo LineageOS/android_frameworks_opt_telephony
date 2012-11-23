@@ -1775,4 +1775,6 @@ public final class SimulatedCommands extends BaseCommands
     public void requestShutdown(Message result) {
         setRadioState(RadioState.RADIO_UNAVAILABLE);
     }
+
+    public boolean needsOldRilFeature(String feature) { return false; }
 }

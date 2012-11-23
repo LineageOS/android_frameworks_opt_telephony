@@ -143,7 +143,7 @@ public class DataCallResponse {
                         String [] ap = addr.split("/");
                         if (ap.length == 2) {
                             addr = ap[0];
-                            addrPrefixLen = Integer.parseInt(ap[1]);
+                            addrPrefixLen = Integer.parseInt(ap[1].replaceAll("[\\D]",""));
                         } else {
                             addrPrefixLen = 0;
                         }

@@ -1999,4 +1999,10 @@ public interface CommandsInterface {
 
     void registerForModemCapEvent(Handler h, int what, Object obj);
     void unregisterForModemCapEvent(Handler h);
+
+    /**
+     * @hide
+     * CM-specific: Ask the RIL about the presence of back-compat flags
+     */
+    public boolean needsOldRilFeature(String feature);
 }

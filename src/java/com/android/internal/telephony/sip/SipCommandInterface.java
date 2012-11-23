@@ -588,4 +588,6 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     @Override
     public void requestShutdown(Message result) {
     }
+
+    public boolean needsOldRilFeature(String feature) { return false; }
 }
