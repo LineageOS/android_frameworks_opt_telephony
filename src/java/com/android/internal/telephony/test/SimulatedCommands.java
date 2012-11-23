@@ -1792,4 +1792,6 @@ public final class SimulatedCommands extends BaseCommands
     public void getModemActivityInfo(Message result) {
         unimplemented(result);
     }
+
+    public boolean needsOldRilFeature(String feature) { return false; }
 }
