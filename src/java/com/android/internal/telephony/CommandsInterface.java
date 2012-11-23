@@ -2088,4 +2088,10 @@ public interface CommandsInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForAdnRecordsInfo(Handler h);
+
+    /**
+     * @hide
+     * CM-specific: Ask the RIL about the presence of back-compat flags
+     */
+    public boolean needsOldRilFeature(String feature);
 }
