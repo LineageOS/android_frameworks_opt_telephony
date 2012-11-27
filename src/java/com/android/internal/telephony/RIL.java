@@ -3214,11 +3214,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
     }
 
     protected DataCallState getDataCallState(Parcel p, int version) {
-        boolean oldRil = needsOldRilFeature("datacall");
-        int ver = (oldRil ? 3 : p.readInt());
-        int num = p.readInt();
-        if (RILJ_LOGV) riljLog("responseSetupDataCall ver=" + ver + " num=" + num);
-
         DataCallState dataCall = new DataCallState();
 
         dataCall.version = version;
