@@ -29,7 +29,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.view.WindowManager;
 
 import com.android.internal.telephony.PhoneBase;
@@ -349,10 +349,10 @@ public class UiccCard {
     }
 
     private void log(String msg) {
-        Log.d(LOG_TAG, msg);
+        Rlog.d(LOG_TAG, msg);
     }
 
     private void loge(String msg) {
-        Log.e(LOG_TAG, msg);
+        Rlog.e(LOG_TAG, msg);
     }
 }

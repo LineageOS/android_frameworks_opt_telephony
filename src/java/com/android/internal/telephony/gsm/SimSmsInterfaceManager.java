@@ -22,7 +22,7 @@ import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.IccConstants;
 import com.android.internal.telephony.IccSmsInterfaceManager;
@@ -115,9 +115,9 @@ public class SimSmsInterfaceManager extends IccSmsInterfaceManager {
         try {
             super.finalize();
         } catch (Throwable throwable) {
-            Log.e(LOG_TAG, "Error while finalizing:", throwable);
+            Rlog.e(LOG_TAG, "Error while finalizing:", throwable);
         }
-        if(DBG) Log.d(LOG_TAG, "SimSmsInterfaceManager finalized");
+        if(DBG) Rlog.d(LOG_TAG, "SimSmsInterfaceManager finalized");
     }
 
     /**
@@ -360,6 +360,6 @@ public class SimSmsInterfaceManager extends IccSmsInterfaceManager {
 
     @Override
     protected void log(String msg) {
-        Log.d(LOG_TAG, "[SimSmsInterfaceManager] " + msg);
+        Rlog.d(LOG_TAG, "[SimSmsInterfaceManager] " + msg);
     }
 }

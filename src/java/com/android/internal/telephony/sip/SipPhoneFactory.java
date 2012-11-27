@@ -20,7 +20,7 @@ import com.android.internal.telephony.PhoneNotifier;
 
 import android.content.Context;
 import android.net.sip.SipProfile;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.text.ParseException;
 
@@ -42,7 +42,7 @@ public class SipPhoneFactory {
             SipProfile profile = new SipProfile.Builder(sipUri).build();
             return new SipPhone(context, phoneNotifier, profile);
         } catch (ParseException e) {
-            Log.w("SipPhoneFactory", "makePhone", e);
+            Rlog.w("SipPhoneFactory", "makePhone", e);
             return null;
         }
     }

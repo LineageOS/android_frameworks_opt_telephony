@@ -65,7 +65,7 @@ import android.telephony.SignalStrength;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.util.TimeUtils;
 
 import java.io.FileDescriptor;
@@ -181,7 +181,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     private ContentObserver mAutoTimeObserver = new ContentObserver(new Handler()) {
         @Override
         public void onChange(boolean selfChange) {
-            Log.i("GsmServiceStateTracker", "Auto time state changed");
+            Rlog.i("GsmServiceStateTracker", "Auto time state changed");
             revertToNitzTime();
         }
     };
@@ -189,7 +189,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     private ContentObserver mAutoTimeZoneObserver = new ContentObserver(new Handler()) {
         @Override
         public void onChange(boolean selfChange) {
-            Log.i("GsmServiceStateTracker", "Auto time zone state changed");
+            Rlog.i("GsmServiceStateTracker", "Auto time zone state changed");
             revertToNitzTimeZone();
         }
     };
@@ -270,7 +270,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         Message message;
 
         if (!phone.mIsTheCurrentActivePhone) {
-            Log.e(LOG_TAG, "Received message " + msg +
+            Rlog.e(LOG_TAG, "Received message " + msg +
                     "[" + msg.what + "] while being destroyed. Ignoring.");
             return;
         }
@@ -337,7 +337,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                                 cid = Integer.parseInt(states[2], 16);
                             }
                         } catch (NumberFormatException ex) {
-                            Log.w(LOG_TAG, "error parsing location: " + ex);
+                            Rlog.w(LOG_TAG, "error parsing location: " + ex);
                         }
                     }
                     cellLoc.setLacAndCid(lac, cid);
@@ -1508,7 +1508,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     }
 
                     setAndBroadcastNetworkSetTime(c.getTimeInMillis());
-                    Log.i(LOG_TAG, "NITZ: after Setting time of day");
+                    Rlog.i(LOG_TAG, "NITZ: after Setting time of day");
                 }
                 SystemProperties.set("gsm.nitz.time", String.valueOf(c.getTimeInMillis()));
                 saveNitzTime(c.getTimeInMillis());
@@ -1707,16 +1707,16 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     }
     @Override
     protected void log(String s) {
-        Log.d(LOG_TAG, "[GsmSST] " + s);
+        Rlog.d(LOG_TAG, "[GsmSST] " + s);
     }
 
     @Override
     protected void loge(String s) {
-        Log.e(LOG_TAG, "[GsmSST] " + s);
+        Rlog.e(LOG_TAG, "[GsmSST] " + s);
     }
 
     private static void sloge(String s) {
-        Log.e(LOG_TAG, "[GsmSST] " + s);
+        Rlog.e(LOG_TAG, "[GsmSST] " + s);
     }
 
     @Override

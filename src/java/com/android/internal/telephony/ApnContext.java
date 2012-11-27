@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -239,7 +239,7 @@ public class ApnContext {
     }
 
     protected void log(String s) {
-        Log.d(LOG_TAG, "[ApnContext:" + mApnType + "] " + s);
+        Rlog.d(LOG_TAG, "[ApnContext:" + mApnType + "] " + s);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

@@ -17,7 +17,7 @@
 package com.android.internal.telephony.cdma;
 
 import android.os.*;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccFileHandler;
@@ -67,12 +67,12 @@ public final class RuimFileHandler extends IccFileHandler {
 
     @Override
     protected void logd(String msg) {
-        Log.d(LOG_TAG, "[RuimFileHandler] " + msg);
+        Rlog.d(LOG_TAG, "[RuimFileHandler] " + msg);
     }
 
     @Override
     protected void loge(String msg) {
-        Log.e(LOG_TAG, "[RuimFileHandler] " + msg);
+        Rlog.e(LOG_TAG, "[RuimFileHandler] " + msg);
     }
 
 }

@@ -25,7 +25,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
 import android.provider.Telephony.Sms.Intents;
-import android.util.Log;
+import android.telephony.Rlog;
 
 /**
  * Monitors the device and ICC storage, and sends the appropriate events.
@@ -107,7 +107,7 @@ public final class SmsStorageMonitor extends Handler {
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception != null) {
                     mReportMemoryStatusPending = true;
-                    Log.v(TAG, "Memory status report to modem pending : mStorageAvailable = "
+                    Rlog.v(TAG, "Memory status report to modem pending : mStorageAvailable = "
                             + mStorageAvailable);
                 } else {
                     mReportMemoryStatusPending = false;
@@ -116,7 +116,7 @@ public final class SmsStorageMonitor extends Handler {
 
             case EVENT_RADIO_ON:
                 if (mReportMemoryStatusPending) {
-                    Log.v(TAG, "Sending pending memory status report : mStorageAvailable = "
+                    Rlog.v(TAG, "Sending pending memory status report : mStorageAvailable = "
                             + mStorageAvailable);
                     mCm.reportSmsMemoryStatus(mStorageAvailable,
                             obtainMessage(EVENT_REPORT_MEMORY_STATUS_DONE));

@@ -17,7 +17,7 @@
 package com.android.internal.telephony.gsm;
 
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.util.Patterns;
 import android.text.TextUtils;
 
@@ -153,7 +153,7 @@ public class GsmDataConnection extends DataConnection {
 
     @Override
     protected void log(String s) {
-        Log.d(LOG_TAG, "[" + getName() + "] " + s);
+        Rlog.d(LOG_TAG, "[" + getName() + "] " + s);
     }
 
     private boolean isIpAddress(String address) {

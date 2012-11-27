@@ -49,7 +49,7 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.ApnContext;
 import com.android.internal.telephony.ApnSetting;
@@ -2442,12 +2442,12 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
 
     @Override
     protected void log(String s) {
-        Log.d(LOG_TAG, "[GsmDCT] "+ s);
+        Rlog.d(LOG_TAG, "[GsmDCT] "+ s);
     }
 
     @Override
     protected void loge(String s) {
-        Log.e(LOG_TAG, "[GsmDCT] " + s);
+        Rlog.e(LOG_TAG, "[GsmDCT] " + s);
     }
 
     @Override

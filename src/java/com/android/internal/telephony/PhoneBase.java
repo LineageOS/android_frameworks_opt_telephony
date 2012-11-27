@@ -36,7 +36,7 @@ import android.telephony.CellInfo;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.R;
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
@@ -253,11 +253,11 @@ public abstract class PhoneBase extends Handler implements Phone {
          */
         mDoesRilSendMultipleCallRing = SystemProperties.getBoolean(
                 TelephonyProperties.PROPERTY_RIL_SENDS_MULTIPLE_CALL_RING, true);
-        Log.d(LOG_TAG, "mDoesRilSendMultipleCallRing=" + mDoesRilSendMultipleCallRing);
+        Rlog.d(LOG_TAG, "mDoesRilSendMultipleCallRing=" + mDoesRilSendMultipleCallRing);
 
         mCallRingDelay = SystemProperties.getInt(
                 TelephonyProperties.PROPERTY_CALL_RING_DELAY, 3000);
-        Log.d(LOG_TAG, "mCallRingDelay=" + mCallRingDelay);
+        Rlog.d(LOG_TAG, "mCallRingDelay=" + mCallRingDelay);
 
         // Initialize device storage and outgoing SMS usage monitors for SMSDispatchers.
         mSmsStorageMonitor = new SmsStorageMonitor(this);
@@ -302,7 +302,7 @@ public abstract class PhoneBase extends Handler implements Phone {
 
         switch(msg.what) {
             case EVENT_CALL_RING:
-                Log.d(LOG_TAG, "Event EVENT_CALL_RING Received state=" + getState());
+                Rlog.d(LOG_TAG, "Event EVENT_CALL_RING Received state=" + getState());
                 ar = (AsyncResult)msg.obj;
                 if (ar.exception == null) {
                     PhoneConstants.State state = getState();
@@ -318,7 +318,7 @@ public abstract class PhoneBase extends Handler implements Phone {
                 break;
 
             case EVENT_CALL_RING_CONTINUE:
-                Log.d(LOG_TAG, "Event EVENT_CALL_RING_CONTINUE Received stat=" + getState());
+                Rlog.d(LOG_TAG, "Event EVENT_CALL_RING_CONTINUE Received stat=" + getState());
                 if (getState() == PhoneConstants.State.RINGING) {
                     sendIncomingCallRingNotification(msg.arg1);
                 }
@@ -1118,12 +1118,12 @@ public abstract class PhoneBase extends Handler implements Phone {
     private void sendIncomingCallRingNotification(int token) {
         if (mIsVoiceCapable && !mDoesRilSendMultipleCallRing &&
                 (token == mCallRingContinueToken)) {
-            Log.d(LOG_TAG, "Sending notifyIncomingRing");
+            Rlog.d(LOG_TAG, "Sending notifyIncomingRing");
             notifyIncomingRing();
             sendMessageDelayed(
                     obtainMessage(EVENT_CALL_RING_CONTINUE, token, 0), mCallRingDelay);
         } else {
-            Log.d(LOG_TAG, "Ignoring ring notification request,"
+            Rlog.d(LOG_TAG, "Ignoring ring notification request,"
                     + " mDoesRilSendMultipleCallRing=" + mDoesRilSendMultipleCallRing
                     + " token=" + token
                     + " mCallRingContinueToken=" + mCallRingContinueToken
@@ -1139,12 +1139,12 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     public IsimRecords getIsimRecords() {
-        Log.e(LOG_TAG, "getIsimRecords() is only supported on LTE devices");
+        Rlog.e(LOG_TAG, "getIsimRecords() is only supported on LTE devices");
         return null;
     }
 
     public void requestIsimAuthentication(String nonce, Message result) {
-        Log.e(LOG_TAG, "requestIsimAuthentication() is only supported on LTE devices");
+        Rlog.e(LOG_TAG, "requestIsimAuthentication() is only supported on LTE devices");
     }
 
     public String getMsisdn() {
@@ -1157,7 +1157,7 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     private static void logUnexpectedCdmaMethodCall(String name)
     {
-        Log.e(LOG_TAG, "Error! " + name + "() in PhoneBase should not be " +
+        Rlog.e(LOG_TAG, "Error! " + name + "() in PhoneBase should not be " +
                 "called, CDMAPhone inactive.");
     }
 
@@ -1169,14 +1169,14 @@ public abstract class PhoneBase extends Handler implements Phone {
      * Common error logger method for unexpected calls to GSM/WCDMA-only methods.
      */
     private static void logUnexpectedGsmMethodCall(String name) {
-        Log.e(LOG_TAG, "Error! " + name + "() in PhoneBase should not be " +
+        Rlog.e(LOG_TAG, "Error! " + name + "() in PhoneBase should not be " +
                 "called, GSMPhone inactive.");
     }
 
     // Called by SimRecords which is constructed with a PhoneBase instead of a GSMPhone.
     public void notifyCallForwardingIndicator() {
         // This function should be overridden by the class GSMPhone. Not implemented in CDMAPhone.
-        Log.e(LOG_TAG, "Error! This function should never be executed, inactive CDMAPhone.");
+        Rlog.e(LOG_TAG, "Error! This function should never be executed, inactive CDMAPhone.");
     }
 
     public void notifyDataConnectionFailed(String reason, String apnType) {

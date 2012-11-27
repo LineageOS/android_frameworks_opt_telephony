@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.app.PendingIntent;
 import android.content.Context;
+import android.telephony.Rlog;
 import android.util.Log;
 
 import com.android.internal.util.HexDump;
@@ -78,7 +79,7 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
         mPhone.getContext().enforceCallingPermission(
                 "android.permission.SEND_SMS",
                 "Sending SMS message");
-        if (Log.isLoggable("SMS", Log.VERBOSE)) {
+        if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("sendData: destAddr=" + destAddr + " scAddr=" + scAddr + " destPort=" +
                 destPort + " data='"+ HexDump.toHexString(data)  + "' sentIntent=" +
                 sentIntent + " deliveryIntent=" + deliveryIntent);
@@ -115,7 +116,7 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
         mPhone.getContext().enforceCallingPermission(
                 "android.permission.SEND_SMS",
                 "Sending SMS message");
-        if (Log.isLoggable("SMS", Log.VERBOSE)) {
+        if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("sendText: destAddr=" + destAddr + " scAddr=" + scAddr +
                 " text='"+ text + "' sentIntent=" +
                 sentIntent + " deliveryIntent=" + deliveryIntent);
@@ -153,7 +154,7 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
         mPhone.getContext().enforceCallingPermission(
                 "android.permission.SEND_SMS",
                 "Sending SMS message");
-        if (Log.isLoggable("SMS", Log.VERBOSE)) {
+        if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             int i = 0;
             for (String part : parts) {
                 log("sendMultipartText: destAddr=" + destAddr + ", srAddr=" + scAddr +

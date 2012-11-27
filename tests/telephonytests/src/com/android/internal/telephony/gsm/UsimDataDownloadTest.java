@@ -18,7 +18,7 @@ package com.android.internal.telephony.gsm;
 
 import android.os.HandlerThread;
 import android.test.AndroidTestCase;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.nio.charset.Charset;
 
@@ -67,7 +67,7 @@ public class UsimDataDownloadTest extends AndroidTestCase {
         mHandlerThread = new TestHandlerThread();
         mHandlerThread.start();
         mHandler = mHandlerThread.getHandler();
-        Log.d(TAG, "mHandler is constructed");
+        Rlog.d(TAG, "mHandler is constructed");
     }
 
     @Override

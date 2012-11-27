@@ -25,7 +25,7 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.preference.PreferenceManager;
 import android.provider.Telephony;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.OperatorInfo;
@@ -177,7 +177,7 @@ public class CDMALTEPhone extends CDMAPhone {
         // look for our wrapper within the asyncresult, skip the rest if it
         // is null.
         if (!(ar.userObj instanceof NetworkSelectMessage)) {
-            Log.e(LOG_TAG, "unexpected result from user object.");
+            Rlog.e(LOG_TAG, "unexpected result from user object.");
             return;
         }
 
@@ -200,7 +200,7 @@ public class CDMALTEPhone extends CDMAPhone {
 
         // commit and log the result.
         if (! editor.commit()) {
-            Log.e(LOG_TAG, "failed to commit network selection preference");
+            Rlog.e(LOG_TAG, "failed to commit network selection preference");
         }
 
     }
@@ -218,7 +218,7 @@ public class CDMALTEPhone extends CDMAPhone {
                 mContext.getContentResolver().insert(uri, map);
                 return true;
             } catch (SQLException e) {
-                Log.e(LOG_TAG, "[CDMALTEPhone] Can't store current operator ret false", e);
+                Rlog.e(LOG_TAG, "[CDMALTEPhone] Can't store current operator ret false", e);
             }
         } else {
             if (DBG) log("updateCurrentCarrierInProvider mIccRecords == null ret false");
@@ -302,7 +302,7 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     protected void log(String s) {
-            Log.d(LOG_TAG, "[CDMALTEPhone] " + s);
+            Rlog.d(LOG_TAG, "[CDMALTEPhone] " + s);
     }
 
     @Override

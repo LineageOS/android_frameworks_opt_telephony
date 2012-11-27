@@ -19,7 +19,7 @@ package com.android.internal.telephony;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.gsm.UsimPhoneBookManager;

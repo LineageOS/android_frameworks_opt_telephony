@@ -18,7 +18,7 @@ package com.android.internal.telephony.cdma;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.media.ToneGenerator;
 
 public class SignalToneUtil {

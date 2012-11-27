@@ -35,7 +35,7 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.util.TimeUtils;
 
 import java.io.FileDescriptor;
@@ -198,7 +198,7 @@ public abstract class DataConnection extends StateMachine {
      * Static logging for DataConnection
      */
     private static void sDcLog(String s) {
-        Log.d(GSM_TAG, "[DC] " + s);
+        Rlog.d(GSM_TAG, "[DC] " + s);
     }
 
     // Debugging INTENT with are two targets, com.android.internal.telephony.DC which

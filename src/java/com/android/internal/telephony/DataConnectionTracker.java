@@ -44,7 +44,7 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.EventLog;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.R;
 import com.android.internal.telephony.DataConnection.FailCause;
@@ -670,7 +670,7 @@ public abstract class DataConnectionTracker extends Handler {
                 break;
 
             default:
-                Log.e("DATA", "Unidentified event msg=" + msg);
+                Rlog.e("DATA", "Unidentified event msg=" + msg);
                 break;
         }
     }

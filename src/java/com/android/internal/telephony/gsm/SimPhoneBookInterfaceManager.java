@@ -19,7 +19,7 @@ package com.android.internal.telephony.gsm;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
@@ -46,9 +46,9 @@ public class SimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager {
         try {
             super.finalize();
         } catch (Throwable throwable) {
-            Log.e(LOG_TAG, "Error while finalizing:", throwable);
+            Rlog.e(LOG_TAG, "Error while finalizing:", throwable);
         }
-        if(DBG) Log.d(LOG_TAG, "SimPhoneBookInterfaceManager finalized");
+        if(DBG) Rlog.d(LOG_TAG, "SimPhoneBookInterfaceManager finalized");
     }
 
     public int[] getAdnRecordsSize(int efid) {
@@ -72,11 +72,11 @@ public class SimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager {
     }
 
     protected void logd(String msg) {
-        Log.d(LOG_TAG, "[SimPbInterfaceManager] " + msg);
+        Rlog.d(LOG_TAG, "[SimPbInterfaceManager] " + msg);
     }
 
     protected void loge(String msg) {
-        Log.e(LOG_TAG, "[SimPbInterfaceManager] " + msg);
+        Rlog.e(LOG_TAG, "[SimPbInterfaceManager] " + msg);
     }
 }
 

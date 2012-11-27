@@ -586,6 +586,6 @@ public class DataConnectionAc extends AsyncChannel {
     }
 
     private void log(String s) {
-        android.util.Log.d(mLogTag, "DataConnectionAc " + s);
+        android.telephony.Rlog.d(mLogTag, "DataConnectionAc " + s);
     }
 }

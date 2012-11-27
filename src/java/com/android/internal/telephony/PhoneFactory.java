@@ -21,7 +21,7 @@ import android.net.LocalServerSocket;
 import android.os.Looper;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.os.SystemProperties;
 
 import com.android.internal.telephony.cdma.CDMAPhone;
@@ -108,7 +108,7 @@ public class PhoneFactory {
                 }
                 int networkMode = Settings.Global.getInt(context.getContentResolver(),
                         Settings.Global.PREFERRED_NETWORK_MODE, preferredNetworkMode);
-                Log.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkMode));
+                Rlog.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkMode));
 
                 // Get cdmaSubscription
                 // TODO: Change when the ril will provides a way to know at runtime
@@ -119,11 +119,11 @@ public class PhoneFactory {
                 switch (lteOnCdma) {
                     case PhoneConstants.LTE_ON_CDMA_FALSE:
                         cdmaSubscription = CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV;
-                        Log.i(LOG_TAG, "lteOnCdma is 0 use SUBSCRIPTION_FROM_NV");
+                        Rlog.i(LOG_TAG, "lteOnCdma is 0 use SUBSCRIPTION_FROM_NV");
                         break;
                     case PhoneConstants.LTE_ON_CDMA_TRUE:
                         cdmaSubscription = CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM;
-                        Log.i(LOG_TAG, "lteOnCdma is 1 use SUBSCRIPTION_FROM_RUIM");
+                        Rlog.i(LOG_TAG, "lteOnCdma is 1 use SUBSCRIPTION_FROM_RUIM");
                         break;
                     case PhoneConstants.LTE_ON_CDMA_UNKNOWN:
                     default:
@@ -131,10 +131,10 @@ public class PhoneFactory {
                         cdmaSubscription = Settings.Global.getInt(context.getContentResolver(),
                                 Settings.Global.PREFERRED_CDMA_SUBSCRIPTION,
                                 preferredCdmaSubscription);
-                        Log.i(LOG_TAG, "lteOnCdma not set, using PREFERRED_CDMA_SUBSCRIPTION");
+                        Rlog.i(LOG_TAG, "lteOnCdma not set, using PREFERRED_CDMA_SUBSCRIPTION");
                         break;
                 }
-                Log.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
+                Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
 
                 //reads the system properties and makes commandsinterface
                 sCommandsInterface = new RIL(context, networkMode, cdmaSubscription);
@@ -144,19 +144,19 @@ public class PhoneFactory {
 
                 int phoneType = TelephonyManager.getPhoneType(networkMode);
                 if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
-                    Log.i(LOG_TAG, "Creating GSMPhone");
+                    Rlog.i(LOG_TAG, "Creating GSMPhone");
                     sProxyPhone = new PhoneProxy(new GSMPhone(context,
                             sCommandsInterface, sPhoneNotifier));
                 } else if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
                     switch (TelephonyManager.getLteOnCdmaModeStatic()) {
                         case PhoneConstants.LTE_ON_CDMA_TRUE:
-                            Log.i(LOG_TAG, "Creating CDMALTEPhone");
+                            Rlog.i(LOG_TAG, "Creating CDMALTEPhone");
                             sProxyPhone = new PhoneProxy(new CDMALTEPhone(context,
                                 sCommandsInterface, sPhoneNotifier));
                             break;
                         case PhoneConstants.LTE_ON_CDMA_FALSE:
                         default:
-                            Log.i(LOG_TAG, "Creating CDMAPhone");
+                            Rlog.i(LOG_TAG, "Creating CDMAPhone");
                             sProxyPhone = new PhoneProxy(new CDMAPhone(context,
                                     sCommandsInterface, sPhoneNotifier));
                             break;

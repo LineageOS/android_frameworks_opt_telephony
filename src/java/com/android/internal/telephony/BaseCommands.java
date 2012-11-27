@@ -24,7 +24,7 @@ import android.os.Handler;
 import android.os.AsyncResult;
 import android.os.SystemProperties;
 import android.telephony.TelephonyManager;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -555,11 +555,11 @@ public abstract class BaseCommands implements CommandsInterface {
      */
     @Override
     public void registerForRilConnected(Handler h, int what, Object obj) {
-        Log.d(LOG_TAG, "registerForRilConnected h=" + h + " w=" + what);
+        Rlog.d(LOG_TAG, "registerForRilConnected h=" + h + " w=" + what);
         Registrant r = new Registrant (h, what, obj);
         mRilConnectedRegistrants.add(r);
         if (mRilVersion != -1) {
-            Log.d(LOG_TAG, "Notifying: ril connected mRilVersion=" + mRilVersion);
+            Rlog.d(LOG_TAG, "Notifying: ril connected mRilVersion=" + mRilVersion);
             r.notifyRegistrant(new AsyncResult(null, new Integer(mRilVersion), null));
         }
     }
@@ -592,7 +592,7 @@ public abstract class BaseCommands implements CommandsInterface {
 
         synchronized (mStateMonitor) {
             if (false) {
-                Log.v(LOG_TAG, "setRadioState old: " + mState
+                Rlog.v(LOG_TAG, "setRadioState old: " + mState
                     + " new " + newState);
             }
 
@@ -607,25 +607,25 @@ public abstract class BaseCommands implements CommandsInterface {
             mRadioStateChangedRegistrants.notifyRegistrants();
 
             if (mState.isAvailable() && !oldState.isAvailable()) {
-                Log.d(LOG_TAG,"Notifying: radio available");
+                Rlog.d(LOG_TAG,"Notifying: radio available");
                 mAvailRegistrants.notifyRegistrants();
                 onRadioAvailable();
             }
 
             if (!mState.isAvailable() && oldState.isAvailable()) {
-                Log.d(LOG_TAG,"Notifying: radio not available");
+                Rlog.d(LOG_TAG,"Notifying: radio not available");
                 mNotAvailRegistrants.notifyRegistrants();
             }
 
             if (mState.isOn() && !oldState.isOn()) {
-                Log.d(LOG_TAG,"Notifying: Radio On");
+                Rlog.d(LOG_TAG,"Notifying: Radio On");
                 mOnRegistrants.notifyRegistrants();
             }
 
             if ((!mState.isOn() || !mState.isAvailable())
                 && !((!oldState.isOn() || !oldState.isAvailable()))
             ) {
-                Log.d(LOG_TAG,"Notifying: radio off or not available");
+                Rlog.d(LOG_TAG,"Notifying: radio off or not available");
                 mOffOrNotAvailRegistrants.notifyRegistrants();
             }
         }

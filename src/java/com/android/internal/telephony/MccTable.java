@@ -26,7 +26,7 @@ import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -180,11 +180,11 @@ public final class MccTable
                 mcc = Integer.parseInt(mccmnc.substring(0,3));
                 mnc = Integer.parseInt(mccmnc.substring(3));
             } catch (NumberFormatException e) {
-                Log.e(LOG_TAG, "Error parsing IMSI");
+                Rlog.e(LOG_TAG, "Error parsing IMSI");
                 return;
             }
 
-            Log.d(LOG_TAG, "updateMccMncConfiguration: mcc=" + mcc + ", mnc=" + mnc);
+            Rlog.d(LOG_TAG, "updateMccMncConfiguration: mcc=" + mcc + ", mnc=" + mnc);
 
             if (mcc != 0) {
                 setTimezoneFromMccIfNeeded(context, mcc);
@@ -201,7 +201,7 @@ public final class MccTable
                 }
                 ActivityManagerNative.getDefault().updateConfiguration(config);
             } catch (RemoteException e) {
-                Log.e(LOG_TAG, "Can't update configuration", e);
+                Rlog.e(LOG_TAG, "Can't update configuration", e);
             }
         }
     }
@@ -273,7 +273,7 @@ public final class MccTable
                 AlarmManager alarm =
                         (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
                 alarm.setTimeZone(zoneId);
-                Log.d(LOG_TAG, "timezone set to "+zoneId);
+                Rlog.d(LOG_TAG, "timezone set to "+zoneId);
             }
         }
     }
@@ -292,7 +292,7 @@ public final class MccTable
         String language = MccTable.defaultLanguageForMcc(mcc);
         String country = MccTable.countryCodeForMcc(mcc);
 
-        Log.d(LOG_TAG, "locale set to "+language+"_"+country);
+        Rlog.d(LOG_TAG, "locale set to "+language+"_"+country);
         setSystemLocale(context, language, country);
     }
 
@@ -305,7 +305,7 @@ public final class MccTable
     private static void setWifiCountryCodeFromMcc(Context context, int mcc) {
         String country = MccTable.countryCodeForMcc(mcc);
         if (!country.isEmpty()) {
-            Log.d(LOG_TAG, "WIFI_COUNTRY_CODE set to " + country);
+            Rlog.d(LOG_TAG, "WIFI_COUNTRY_CODE set to " + country);
             WifiManager wM = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
             //persist
             wM.setCountryCode(country, true);
