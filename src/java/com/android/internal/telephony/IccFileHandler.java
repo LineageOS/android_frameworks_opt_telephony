@@ -88,6 +88,8 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
     static protected final int EVENT_READ_IMG_DONE = 9;
     /** Finished retrieving icon data; post result. */
     static protected final int EVENT_READ_ICON_DONE = 10;
+    /** Finished retrieving size of record for EFimg now. */
+    static protected final int EVENT_GET_RECORD_SIZE_IMG_DONE = 11;
 
      // member variables
     protected final CommandsInterface mCi;
@@ -162,14 +164,14 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
      *
      */
     public void loadEFImgLinearFixed(int recordNum, Message onLoaded) {
-        Message response = obtainMessage(EVENT_READ_IMG_DONE,
+        Message response = obtainMessage(EVENT_GET_RECORD_SIZE_IMG_DONE,
                 new LoadLinearFixedContext(IccConstants.EF_IMG, recordNum,
                         onLoaded));
 
-        // TODO(): Verify when path changes are done.
-        mCi.iccIOForApp(COMMAND_GET_RESPONSE, IccConstants.EF_IMG, "img",
-                recordNum, READ_RECORD_MODE_ABSOLUTE,
-                GET_RESPONSE_EF_IMG_SIZE_BYTES, null, null, mAid, response);
+        mCi.iccIOForApp(COMMAND_GET_RESPONSE, IccConstants.EF_IMG,
+                    getEFPath(IccConstants.EF_IMG), recordNum,
+                    READ_RECORD_MODE_ABSOLUTE, GET_RESPONSE_EF_IMG_SIZE_BYTES,
+                    null, null, mAid, response);
     }
 
     /**
@@ -257,8 +259,17 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
         Message response = obtainMessage(EVENT_READ_ICON_DONE, fileid, 0,
                 onLoaded);
 
-        mCi.iccIOForApp(COMMAND_READ_BINARY, fileid, "img", highOffset, lowOffset,
-                length, null, null, mAid, response);
+        logd("IccFileHandler: loadEFImgTransparent fileid = " + fileid
+                + " filePath = " + getEFPath(fileid) + " highOffset = " + highOffset
+                + " lowOffset = " + lowOffset + " length = " + length);
+        /*
+         * Per TS 31.102, for displaying of Icon, under
+         * DF Telecom and DF Graphics , EF instance(s) (4FXX,transparent files)
+         * are present. The possible image file identifiers (EF instance) for
+         * EF img ( 4F20, linear fixed file) are : 4F01 ... 4F05.
+         */
+        mCi.iccIOForApp(COMMAND_READ_BINARY, fileid, getEFPath(fileid),
+                highOffset, lowOffset, length, null, null, mAid, response);
     }
 
     /**
@@ -322,6 +333,42 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
 
         try {
             switch (msg.what) {
+            case EVENT_GET_RECORD_SIZE_IMG_DONE:
+                logd("IccFileHandler: get record size img done");
+                ar = (AsyncResult) msg.obj;
+                lc = (LoadLinearFixedContext) ar.userObj;
+                result = (IccIoResult) ar.result;
+                response = lc.onLoaded;
+
+                if (ar.exception != null) {
+                    sendResult(response, null, ar.exception);
+                    break;
+                }
+
+                iccException = result.getException();
+
+                if (iccException != null) {
+                    sendResult(response, null, iccException);
+                    break;
+                }
+
+                data = result.payload;
+                lc.recordSize = data[RESPONSE_DATA_RECORD_LENGTH] & 0xFF;
+
+                if ((TYPE_EF != data[RESPONSE_DATA_FILE_TYPE]) ||
+                    (EF_TYPE_LINEAR_FIXED != data[RESPONSE_DATA_STRUCTURE])) {
+                    loge("IccFileHandler: File type mismatch: Throw Exception");
+                    throw new IccFileTypeMismatch();
+                }
+
+                logd("IccFileHandler: read EF IMG");
+                mCi.iccIOForApp(COMMAND_READ_RECORD, lc.efid, getEFPath(lc.efid),
+                        lc.recordNum,
+                        READ_RECORD_MODE_ABSOLUTE,
+                        lc.recordSize, null, null, mAid,
+                        obtainMessage(EVENT_READ_IMG_DONE, IccConstants.EF_IMG, 0, response));
+                break;
+
             case EVENT_READ_IMG_DONE:
                 ar = (AsyncResult) msg.obj;
                 lc = (LoadLinearFixedContext) ar.userObj;
