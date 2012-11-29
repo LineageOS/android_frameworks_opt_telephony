@@ -159,6 +159,7 @@ public class SamsungExynos4RIL extends RIL implements CommandsInterface {
     public SamsungExynos4RIL(Context context, int networkMode, int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
         audioManager = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
+        mQANElements = 5;
     }
 
     @Override
