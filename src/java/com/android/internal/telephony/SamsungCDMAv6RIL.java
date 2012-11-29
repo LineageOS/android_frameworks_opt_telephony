@@ -33,6 +33,7 @@ import android.os.AsyncResult;
 import android.os.Parcel;
 import android.os.SystemProperties;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import static com.android.internal.telephony.RILConstants.*;
@@ -43,7 +44,7 @@ import com.android.internal.telephony.DataCallState;
 import com.android.internal.telephony.DataConnection.FailCause;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
-import com.android.internal.telephony.IccCardApplication;
+import com.android.internal.telephony.IccCardApplicationStatus;
 import com.android.internal.telephony.IccCardStatus;
 import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.RILConstants;
@@ -624,7 +625,6 @@ public class SamsungCDMAv6RIL extends RIL implements CommandsInterface {
         int numInts = 12;
         int response[];
 
-        /* TODO: Add SignalStrength class to match RIL_SignalStrength */
         response = new int[numInts];
         for (int i = 0 ; i < 7 ; i++) {
             response[i] = p.readInt();
@@ -640,7 +640,11 @@ public class SamsungCDMAv6RIL extends RIL implements CommandsInterface {
            response[2] = ((response[2]-96)/2)+96;
         }
         // Framework takes care of the rest for us.
-        return response;
+
+        SignalStrength signalStrength = new SignalStrength(
+            response[0], response[1], response[2], response[3], response[4],
+            response[5], response[6], false);
+        return signalStrength;
     }
 
     protected Object
