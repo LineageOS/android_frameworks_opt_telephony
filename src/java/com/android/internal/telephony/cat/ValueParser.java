@@ -338,4 +338,73 @@ abstract class ValueParser {
             throw new ResultException(ResultCode.CMD_DATA_NOT_UNDERSTOOD);
         }
     }
+
+    /**
+     * Samsung STK: Read SMSC Address
+     *
+     * @param ctlv A SMSC Address COMPREHENSION-TLV object
+     * @return A Java String object decoded from the SMSC Address object
+     * @throws ResultException
+     */
+    static String retrieveSMSCaddress(ComprehensionTlv ctlv)
+        throws ResultException {
+        byte[] rawValue = ctlv.getRawValue();
+        int valueIndex = ctlv.getValueIndex();
+        int length = ctlv.getLength();
+        byte[] outputValue = new byte[length + 1];
+
+        for (int k = 0; k <= length; k++) {
+            try {
+                outputValue[k] = rawValue[k + (valueIndex - 1)];
+            }
+            catch (IndexOutOfBoundsException indexoutofboundsexception) {
+                throw new ResultException(ResultCode.CMD_DATA_NOT_UNDERSTOOD);
+            }
+        }
+        if (length != 0)
+            return IccUtils.bytesToHexString(outputValue);
+        else
+            throw new ResultException(ResultCode.CMD_DATA_NOT_UNDERSTOOD);
+    }
+
+    /**
+     * Samsung STK: Read SMS TPDU Address
+     *
+     * @param ctlv A SMS TPDU COMPREHENSION-TLV object
+     * @return A Java String object decoded from the SMS TPDU object
+     * @throws ResultException
+     */
+    static String retrieveSMSTPDU(ComprehensionTlv ctlv)
+            throws ResultException {
+        byte[] rawValue = ctlv.getRawValue();
+        int valueIndex = ctlv.getValueIndex();
+        int pduLength = ctlv.getLength();
+        byte[] outputValue;
+        int k;
+        String result;
+        if (rawValue[valueIndex + 2] % 2 == 0)
+            k = rawValue[valueIndex + 2] / 2;
+        else
+            k = (1 + rawValue[valueIndex + 2]) / 2;
+
+        if (pduLength == k + 6)
+            outputValue = new byte[pduLength + 1];
+        else
+            outputValue = new byte[pduLength];
+
+        for (int l = 0; l < pduLength; l++) {
+            try {
+                outputValue[l] = rawValue[valueIndex + l];
+            }
+            catch (IndexOutOfBoundsException ex) {
+                throw new ResultException(ResultCode.CMD_DATA_NOT_UNDERSTOOD);
+            }
+        }
+        if (pduLength != 0)
+            result = IccUtils.bytesToHexString(outputValue);
+        else
+            throw new ResultException(ResultCode.CMD_DATA_NOT_UNDERSTOOD);
+
+        return result;
+    }
 }

@@ -2563,6 +2563,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE: ret = responseVoid(p); break;
             case RIL_UNSOL_RIL_CONNECTED: ret = responseInts(p); break;
             case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: ret =  responseInts(p); break;
+            case RIL_UNSOL_STK_SEND_SMS_RESULT: ret = responseInts(p); break; // Samsung STK
 
             default:
                 throw new RuntimeException("Unrecognized unsol response: " + response);
@@ -2924,6 +2925,19 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
                 break;
             }
+
+            // Samsung STK
+            case RIL_UNSOL_STK_SEND_SMS_RESULT:
+                if (Resources.getSystem().
+                        getBoolean(com.android.internal.R.bool.config_samsung_stk)) {
+                    if (RILJ_LOGD) unsljLogRet(response, ret);
+
+                    if (mCatSendSmsResultRegistrant != null) {
+                        mCatSendSmsResultRegistrant.notifyRegistrant(
+                                new AsyncResult (null, ret, null));
+                    }
+                }
+                break;
         }
     }
 
@@ -3733,6 +3747,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE: return "UNSOL_EXIT_EMERGENCY_CALLBACK_MODE";
             case RIL_UNSOL_RIL_CONNECTED: return "UNSOL_RIL_CONNECTED";
             case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: return "UNSOL_VOICE_RADIO_TECH_CHANGED";
+            case RIL_UNSOL_STK_SEND_SMS_RESULT: return "RIL_UNSOL_STK_SEND_SMS_RESULT";
             default: return "<unknown reponse>";
         }
     }
