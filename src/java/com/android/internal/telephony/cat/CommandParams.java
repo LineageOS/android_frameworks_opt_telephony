@@ -216,3 +216,12 @@ class SendSMSParams extends DisplayTextParams {
         pdu = smsPdu;
     }
 }
+
+class SendUSSDParams extends DisplayTextParams {
+    String ussdString;
+
+    SendUSSDParams(CommandDetails cmdDet, TextMessage textmessage, String ussdstring) {
+        super(cmdDet, textmessage);
+        ussdString = ussdstring;
+    }
+}

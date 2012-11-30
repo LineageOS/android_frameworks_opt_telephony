@@ -295,6 +295,10 @@ public class CatService extends Handler implements AppInterface {
                 // Fall through
             case SEND_SS:
             case SEND_USSD:
+                if (mContext.getResources().
+                        getBoolean(com.android.internal.R.bool.config_samsung_stk)) {
+                    handleProactiveCommandSendUSSD((SendUSSDParams) cmdParams);
+                }
                 if ((((DisplayTextParams)cmdParams).mTextMsg.text != null)
                         && (((DisplayTextParams)cmdParams).mTextMsg.text.equals(STK_DEFAULT))) {
                     message = mContext.getText(com.android.internal.R.string.sending);
@@ -869,6 +873,16 @@ public class CatService extends Handler implements AppInterface {
         CatLog.d(this, "The SMS tpdu is: " + cmdPar.pdu);
         mCmdIf.sendSMS(cmdPar.smscAddress, cmdPar.pdu, null);
         startTimeOut(WAITING_SMS_RESULT, WAITING_SMS_RESULT_TIME);
+    }
+
+    /**
+     * Samsung STK SEND_USSD
+     * @param cmdPar
+     */
+    private void handleProactiveCommandSendUSSD(SendUSSDParams cmdPar) {
+        CatLog.d(this, "The USSD is: " + cmdPar.ussdString);
+        mCmdIf.sendUSSD(cmdPar.ussdString, null);
+        // Sent USSD, let framework handle the rest
     }
 
     private void cancelTimeOut() {

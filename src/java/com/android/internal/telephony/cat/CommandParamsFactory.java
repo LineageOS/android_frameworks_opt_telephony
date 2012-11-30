@@ -678,6 +678,18 @@ class CommandParamsFactory extends Handler {
             }
             mCmdParams = new SendSMSParams(cmdDet, textMsg, smscAddress, pdu);
         }
+        else if (cmdType == AppInterface.CommandType.SEND_USSD && isSamsungStk) {
+            String ussdString = null;
+            ctlv = searchForTag(ComprehensionTlvTag.USSD_STRING, ctlvs);
+            if (ctlv != null) {
+                ussdString = ValueParser.retrieveUSSDString(ctlv);
+                CatLog.d(this, "The ussd string is " + ussdString);
+            }
+            else {
+                CatLog.d(this, "The ussd string is null");
+            }
+            mCmdParams = new SendUSSDParams(cmdDet, textMsg, ussdString);
+        }
         else {
             mCmdParams = new DisplayTextParams(cmdDet, textMsg);
         }

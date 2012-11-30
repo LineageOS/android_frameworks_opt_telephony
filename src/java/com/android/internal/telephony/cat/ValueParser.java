@@ -423,4 +423,34 @@ abstract class ValueParser {
 
         return result;
     }
+
+    /**
+     * Samsung STK: Read USSD String
+     *
+     * @param ctlv A USSD String COMPREHENSION-TLV object
+     * @return A String object decoded from the USSD String object
+     * @throws ResultException
+     */
+    static String retrieveUSSDString(ComprehensionTlv ctlv) throws ResultException {
+        byte[] rawValue = ctlv.getRawValue();
+        int valueIndex = ctlv.getValueIndex();
+        int length = ctlv.getLength();
+
+        // If length is 0 (shouldn't be), return null
+        if (length == 0) {
+            return null;
+        }
+
+        // Should be 0x0f
+        if (rawValue[valueIndex] != 0x0f) {
+            throw new ResultException(ResultCode.CMD_DATA_NOT_UNDERSTOOD);
+        }
+
+        try {
+            return GsmAlphabet.gsm7BitPackedToString(rawValue,
+                    valueIndex + 1, ((length - 1) * 8) / 7);
+        } catch (IndexOutOfBoundsException e) {
+            throw new ResultException(ResultCode.CMD_DATA_NOT_UNDERSTOOD);
+        }
+    }
 }
