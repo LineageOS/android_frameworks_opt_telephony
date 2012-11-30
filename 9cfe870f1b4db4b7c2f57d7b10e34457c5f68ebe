@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAa3//5Ss\u003d",
+        "filename": "src/java/com/android/internal/telephony/SamsungCDMAv6RIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 777,
+      "author": {
+        "id": 523
+      },
+      "writtenOn": "2012-11-30T00:25:31Z",
+      "side": 1,
+      "message": "WHITESPACE ERROR!!!! :-D",
+      "revId": "9cfe870f1b4db4b7c2f57d7b10e34457c5f68ebe",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
