@@ -31,6 +31,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.AsyncResult;
 import android.os.Parcel;
+import android.os.Registrant;
 import android.os.SystemProperties;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SignalStrength;
@@ -60,6 +61,7 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
 
     private boolean mSignalbarCount = SystemProperties.getInt("ro.telephony.sends_barcount", 0) == 1 ? true : false;
     private boolean mIsSamsungCdma = SystemProperties.getBoolean("ro.ril.samsung_cdma", false);
+    private Object mCatProCmdBuffer;
 
     public SamsungExynos3RIL(Context context, int networkMode, int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
@@ -352,6 +354,7 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
         case RIL_UNSOL_SIGNAL_STRENGTH: ret = responseSignalStrength(p); break;
         case RIL_UNSOL_CDMA_INFO_REC: ret = responseCdmaInformationRecord(p); break;
         case RIL_UNSOL_HSDPA_STATE_CHANGED: ret = responseInts(p); break;
+        case RIL_UNSOL_STK_PROACTIVE_COMMAND: ret = responseString(p); break;
 
         //fixing anoying Exceptions caused by the new Samsung states
         //FIXME figure out what the states mean an what data is in the parcel
@@ -434,6 +437,20 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
             if (mSignalStrengthRegistrant != null) {
                 mSignalStrengthRegistrant.notifyRegistrant(
                                     new AsyncResult (null, ret, null));
+            }
+            break;
+
+        case RIL_UNSOL_STK_PROACTIVE_COMMAND:
+            if (RILJ_LOGD) unsljLogRet(response, ret);
+
+            if (mCatProCmdRegistrant != null) {
+                mCatProCmdRegistrant.notifyRegistrant(
+                                    new AsyncResult (null, ret, null));
+            } else {
+                // The RIL will send a CAT proactive command before the
+                // registrant is registered. Buffer it to make sure it
+                // does not get ignored (and breaks CatService).
+                mCatProCmdBuffer = ret;
             }
             break;
 
@@ -878,6 +895,17 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
 
         send(rr);
     }
+
+    @Override
+    public void setOnCatProactiveCmd(Handler h, int what, Object obj) {
+        mCatProCmdRegistrant = new Registrant (h, what, obj);
+        if (mCatProCmdBuffer != null) {
+            mCatProCmdRegistrant.notifyRegistrant(
+                                new AsyncResult (null, mCatProCmdBuffer, null));
+            mCatProCmdBuffer = null;
+        }
+    }
+
     /* private class that does the handling for the dataconnection
      * dataconnection is done async, so we send the request for disabling it,
      * wait for the response, set the prefered networktype and notify the
