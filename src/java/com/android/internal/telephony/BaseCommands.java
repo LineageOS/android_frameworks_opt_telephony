@@ -87,6 +87,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected Registrant mCatProCmdRegistrant;
     protected Registrant mCatEventRegistrant;
     protected Registrant mCatCallSetUpRegistrant;
+    protected Registrant mCatSendSmsResultRegistrant;
     protected Registrant mIccSmsFullRegistrant;
     protected Registrant mEmergencyCallbackModeRegistrant;
     protected Registrant mRingRegistrant;
@@ -408,6 +409,15 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void unSetOnCatCallSetUp(Handler h) {
         mCatCallSetUpRegistrant.clear();
+    }
+
+    // For Samsung STK
+    public void setOnCatSendSmsResult(Handler h, int what, Object obj) {
+        mCatSendSmsResultRegistrant = new Registrant(h, what, obj);
+    }
+
+    public void unSetOnCatSendSmsResult(Handler h) {
+        mCatSendSmsResultRegistrant.clear();
     }
 
     @Override
