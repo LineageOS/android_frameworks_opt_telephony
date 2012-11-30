@@ -76,6 +76,10 @@ public class CatService extends Handler implements AppInterface {
     private CatCmdMessage mCurrntCmd = null;
     private CatCmdMessage mMenuCmd = null;
 
+    // Samsung STK
+    private int mTimeoutDest = 0;
+    private int mCallControlResultCode = 0;
+
     private RilMessageDecoder mMsgDecoder = null;
     private boolean mStkAppInstalled = false;
 
@@ -88,7 +92,9 @@ public class CatService extends Handler implements AppInterface {
     static final int MSG_ID_RESPONSE                 = 6;
     static final int MSG_ID_SIM_READY                = 7;
 
+    static final int MSG_ID_TIMEOUT                  = 9;  // Samsung STK
     static final int MSG_ID_RIL_MSG_DECODED          = 10;
+    static final int MSG_ID_SEND_SMS_RESULT          = 12; // Samsung STK
 
     // Events to signal SIM presence or absent in the device.
     private static final int MSG_ID_ICC_RECORDS_LOADED       = 20;
@@ -101,6 +107,14 @@ public class CatService extends Handler implements AppInterface {
     private static final int DEV_ID_NETWORK     = 0x83;
 
     static final String STK_DEFAULT = "Defualt Message";
+
+    // Samsung STK SEND_SMS
+    static final int WAITING_SMS_RESULT = 2;
+    static final int WAITING_SMS_RESULT_TIME = 60000;
+
+    static final int SMS_SEND_OK = 0;
+    static final int SMS_SEND_FAIL = 32790;
+    static final int SMS_SEND_RETRY = 32810;
 
     /* Intentionally private for singleton */
     private CatService(CommandsInterface ci, UiccCardApplication ca, IccRecords ir,
@@ -121,6 +135,7 @@ public class CatService extends Handler implements AppInterface {
         mCmdIf.setOnCatProactiveCmd(this, MSG_ID_PROACTIVE_COMMAND, null);
         mCmdIf.setOnCatEvent(this, MSG_ID_EVENT_NOTIFY, null);
         mCmdIf.setOnCatCallSetUp(this, MSG_ID_CALL_SETUP, null);
+        mCmdIf.setOnCatSendSmsResult(this, MSG_ID_SEND_SMS_RESULT, null); // Samsung STK
         //mCmdIf.setOnSimRefresh(this, MSG_ID_REFRESH, null);
 
         mIccRecords = ir;
@@ -142,6 +157,7 @@ public class CatService extends Handler implements AppInterface {
         mCmdIf.unSetOnCatProactiveCmd(this);
         mCmdIf.unSetOnCatEvent(this);
         mCmdIf.unSetOnCatCallSetUp(this);
+        mCmdIf.unSetOnCatSendSmsResult(this);
 
         this.removeCallbacksAndMessages(null);
     }
@@ -271,6 +287,11 @@ public class CatService extends Handler implements AppInterface {
                 break;
             case SEND_DTMF:
             case SEND_SMS:
+                if (mContext.getResources().
+                        getBoolean(com.android.internal.R.bool.config_samsung_stk)) {
+                    handleProactiveCommandSendSMS((SendSMSParams) cmdParams);
+                }
+                // Fall through
             case SEND_SS:
             case SEND_USSD:
                 if ((((DisplayTextParams)cmdParams).textMsg.text != null)
@@ -654,6 +675,76 @@ public class CatService extends Handler implements AppInterface {
             CatLog.d(this, "SIM ready. Reporting STK service running now...");
             mCmdIf.reportStkServiceIsRunning(null);
             break;
+        case MSG_ID_TIMEOUT: // Should only be called for Samsung STK
+            if (mTimeoutDest == WAITING_SMS_RESULT) {
+                CatLog.d(this, "SMS SEND TIMEOUT");
+                if (CallControlResult.fromInt(mCallControlResultCode) ==
+                        CallControlResult.CALL_CONTROL_NOT_ALLOWED)
+                    sendTerminalResponse(mCurrntCmd.mCmdDet,
+                            ResultCode.USIM_CALL_CONTROL_PERMANENT, true, 1, null);
+                else
+                    sendTerminalResponse(mCurrntCmd.mCmdDet,
+                            ResultCode.TERMINAL_CRNTLY_UNABLE_TO_PROCESS, false, 0, null);
+                break;
+            }
+            break;
+        case MSG_ID_SEND_SMS_RESULT: // Samsung STK SEND_SMS
+            if (mContext.getResources().
+                        getBoolean(com.android.internal.R.bool.config_samsung_stk)) {
+                int[] sendResult;
+                AsyncResult ar;
+                CatLog.d(this, "handleMsg : MSG_ID_SEND_SMS_RESULT");
+                cancelTimeOut();
+                CatLog.d(this, "The Msg ID data:" + msg.what);
+                if (msg.obj == null)
+                    break;
+                ar = (AsyncResult) msg.obj;
+                if (ar == null || ar.result == null || mCurrntCmd == null || mCurrntCmd.mCmdDet == null)
+                    break;
+                sendResult = (int[]) ar.result;
+                switch (sendResult[0]) {
+                    default:
+                        CatLog.d(this, "SMS SEND GENERIC FAIL");
+                        if (CallControlResult.fromInt(mCallControlResultCode) ==
+                                CallControlResult.CALL_CONTROL_NOT_ALLOWED)
+                            sendTerminalResponse(mCurrntCmd.mCmdDet,
+                                    ResultCode.USIM_CALL_CONTROL_PERMANENT, true, 1, null);
+                        else
+                            sendTerminalResponse(mCurrntCmd.mCmdDet,
+                                    ResultCode.TERMINAL_CRNTLY_UNABLE_TO_PROCESS, false, 0, null);
+                        break;
+                    case SMS_SEND_OK: // '\0'
+                        CatLog.d(this, "SMS SEND OK");
+                        if (CallControlResult.fromInt(mCallControlResultCode) ==
+                                CallControlResult.CALL_CONTROL_NOT_ALLOWED)
+                            sendTerminalResponse(mCurrntCmd.mCmdDet,
+                                    ResultCode.USIM_CALL_CONTROL_PERMANENT, true, 1, null);
+                        else
+                            sendTerminalResponse(mCurrntCmd.mCmdDet, ResultCode.OK, false, 0, null);
+                        break;
+                    case SMS_SEND_FAIL:
+                        CatLog.d(this, "SMS SEND FAIL - MEMORY NOT AVAILABLE");
+                        if (CallControlResult.fromInt(mCallControlResultCode) ==
+                                CallControlResult.CALL_CONTROL_NOT_ALLOWED)
+                            sendTerminalResponse(mCurrntCmd.mCmdDet,
+                                    ResultCode.USIM_CALL_CONTROL_PERMANENT, true, 1, null);
+                        else
+                            sendTerminalResponse(mCurrntCmd.mCmdDet,
+                                    ResultCode.TERMINAL_CRNTLY_UNABLE_TO_PROCESS, false, 0, null);
+                        break;
+                    case SMS_SEND_RETRY:
+                        CatLog.d(this, "SMS SEND FAIL RETRY");
+                        if (CallControlResult.fromInt(mCallControlResultCode) ==
+                                CallControlResult.CALL_CONTROL_NOT_ALLOWED)
+                            sendTerminalResponse(mCurrntCmd.mCmdDet,
+                                    ResultCode.USIM_CALL_CONTROL_PERMANENT, true, 1, null);
+                        else
+                            sendTerminalResponse(mCurrntCmd.mCmdDet,
+                                    ResultCode.NETWORK_CRNTLY_UNABLE_TO_PROCESS, false, 0, null);
+                        break;
+                    }
+            }
+            break;
         default:
             throw new AssertionError("Unrecognized CAT command: " + msg.what);
         }
@@ -775,5 +866,27 @@ public class CatService extends Handler implements AppInterface {
         int numReceiver = broadcastReceivers == null ? 0 : broadcastReceivers.size();
 
         return (numReceiver > 0);
+    }
+
+    /**
+     * Samsung STK SEND_SMS
+     * @param cmdPar
+     */
+    private void handleProactiveCommandSendSMS(SendSMSParams cmdPar) {
+        CatLog.d(this, "The smscaddress is: " + cmdPar.smscAddress);
+        CatLog.d(this, "The SMS tpdu is: " + cmdPar.pdu);
+        mCmdIf.sendSMS(cmdPar.smscAddress, cmdPar.pdu, null);
+        startTimeOut(WAITING_SMS_RESULT, WAITING_SMS_RESULT_TIME);
+    }
+
+    private void cancelTimeOut() {
+        removeMessages(MSG_ID_TIMEOUT);
+        mTimeoutDest = 0;
+    }
+
+    private void startTimeOut(int timeout, int delay) {
+        cancelTimeOut();
+        mTimeoutDest = timeout;
+        sendMessageDelayed(obtainMessage(MSG_ID_TIMEOUT), delay);
     }
 }
