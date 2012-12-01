@@ -550,7 +550,7 @@ public class GsmConnection extends Connection {
         releaseWakeLock();
     }
 
-    private void
+    /*package*/ void
     onStartedHolding() {
         holdingStartTime = SystemClock.elapsedRealtime();
     }
