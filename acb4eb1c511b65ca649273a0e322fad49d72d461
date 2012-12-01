@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAa3//5KI\u003d",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2012-12-01T02:11:11Z",
+      "side": 1,
+      "message": "If we\u0027re using the same radio blobs this function should still work fine, although I don\u0027t know if the main RIL.java class now uses a similar signal strength parcel format.",
+      "revId": "acb4eb1c511b65ca649273a0e322fad49d72d461",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
