@@ -310,8 +310,7 @@ public class SamsungQualcommUiccRIL extends QualcommSharedRIL implements Command
             " gsmDbm=" + response[0] + " gsmEcio=" + response[1] +
             " lteSignalStrength=" + response[7] + " lteRsrp=" + response[8] + " lteRsrq=" + response[9] +
             " lteRssnr=" + response[10] + " lteCqi=" + response[11]);
-        return new SignalStrength(response[0], response[1], response[2], response[3],
-                response[4], response[5], response[6], true);
+        return new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7],response[8], response[9], response[10], response[11], true);
     }
 
     @Override
