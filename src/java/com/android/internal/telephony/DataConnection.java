@@ -17,7 +17,6 @@
 package com.android.internal.telephony;
 
 
-import com.android.internal.telephony.DataCallState.SetupResult;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
@@ -41,7 +40,6 @@ import android.util.TimeUtils;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -84,13 +82,13 @@ public abstract class DataConnection extends StateMachine {
      * Used internally for saving connecting parameters.
      */
     protected static class ConnectionParams {
-        public ConnectionParams(ApnSetting apn, Message onCompletedMsg) {
-            this.apn = apn;
+        public ConnectionParams(ApnContext apnContext, Message onCompletedMsg) {
+            this.apnContext = apnContext;
             this.onCompletedMsg = onCompletedMsg;
         }
 
         public int tag;
-        public ApnSetting apn;
+        public ApnContext apnContext;
         public Message onCompletedMsg;
     }
 
@@ -98,11 +96,14 @@ public abstract class DataConnection extends StateMachine {
      * Used internally for saving disconnecting parameters.
      */
     protected static class DisconnectParams {
-        public DisconnectParams(String reason, Message onCompletedMsg) {
+        public DisconnectParams(ApnContext apnContext, String reason, Message onCompletedMsg) {
+            this.apnContext = apnContext;
             this.reason = reason;
             this.onCompletedMsg = onCompletedMsg;
         }
+
         public int tag;
+        public ApnContext apnContext;
         public String reason;
         public Message onCompletedMsg;
     }
@@ -420,7 +421,6 @@ public abstract class DataConnection extends StateMachine {
     protected FailCause lastFailCause;
     protected int mRetryOverride = -1;
     protected static final String NULL_IP = "0.0.0.0";
-    protected int mRefCount;
     Object userData;
 
     //***** Abstract methods
@@ -728,10 +728,10 @@ public abstract class DataConnection extends StateMachine {
         lastFailTime = -1;
         lastFailCause = FailCause.NONE;
         mRetryOverride = -1;
-        mRefCount = 0;
         cid = -1;
 
         mLinkProperties = new LinkProperties();
+        mApnList.clear();
         mApn = null;
     }
 
@@ -858,7 +858,8 @@ public abstract class DataConnection extends StateMachine {
             AsyncResult ar;
 
             if (VDBG) {
-                log("DcDefault msg=0x" + Integer.toHexString(msg.what) + " RefCount=" + mRefCount);
+                log("DcDefault msg=0x" + Integer.toHexString(msg.what)
+                        + " RefCount=" + mApnList.size());
             }
             switch (msg.what) {
                 case AsyncChannel.CMD_CHANNEL_FULL_CONNECTION: {
@@ -934,24 +935,8 @@ public abstract class DataConnection extends StateMachine {
                     transitionTo(mInactiveState);
                     break;
                 case DataConnectionAc.REQ_GET_REFCOUNT: {
-                    if (VDBG) log("REQ_GET_REFCOUNT  RefCount=" + mRefCount);
-                    mAc.replyToMessage(msg, DataConnectionAc.RSP_GET_REFCOUNT, mRefCount);
-                    break;
-                }
-                case DataConnectionAc.REQ_ADD_APNCONTEXT: {
-                    ApnContext apnContext = (ApnContext) msg.obj;
-                    if (VDBG) log("REQ_ADD_APNCONTEXT apn=" + apnContext.getApnType());
-                    if (!mApnList.contains(apnContext)) {
-                        mApnList.add(apnContext);
-                    }
-                    mAc.replyToMessage(msg, DataConnectionAc.RSP_ADD_APNCONTEXT);
-                    break;
-                }
-                case DataConnectionAc.REQ_REMOVE_APNCONTEXT: {
-                    ApnContext apnContext = (ApnContext) msg.obj;
-                    if (VDBG) log("REQ_REMOVE_APNCONTEXT apn=" + apnContext.getApnType());
-                    mApnList.remove(apnContext);
-                    mAc.replyToMessage(msg, DataConnectionAc.RSP_REMOVE_APNCONTEXT);
+                    if (VDBG) log("REQ_GET_REFCOUNT  RefCount=" + mApnList.size());
+                    mAc.replyToMessage(msg, DataConnectionAc.RSP_GET_REFCOUNT, mApnList.size());
                     break;
                 }
                 case DataConnectionAc.REQ_GET_APNCONTEXT_LIST: {
@@ -982,7 +967,7 @@ public abstract class DataConnection extends StateMachine {
                 case EVENT_DISCONNECT:
                     if (DBG) {
                         log("DcDefaultState deferring msg.what=EVENT_DISCONNECT RefCount="
-                                + mRefCount);
+                                + mApnList.size());
                     }
                     deferMessage(msg);
                     break;
@@ -990,7 +975,7 @@ public abstract class DataConnection extends StateMachine {
                 case EVENT_DISCONNECT_ALL:
                     if (DBG) {
                         log("DcDefaultState deferring msg.what=EVENT_DISCONNECT_ALL RefCount="
-                                + mRefCount);
+                                + mApnList.size());
                     }
                     deferMessage(msg);
                     break;
@@ -1088,11 +1073,11 @@ public abstract class DataConnection extends StateMachine {
 
                 case EVENT_CONNECT:
                     ConnectionParams cp = (ConnectionParams) msg.obj;
+                    mApnList.add(cp.apnContext);
                     cp.tag = mTag;
-                    mRefCount = 1;
                     if (DBG) {
                         log("DcInactiveState msg.what=EVENT_CONNECT " + "RefCount="
-                                + mRefCount);
+                                + mApnList.size());
                     }
                     doOnConnect(cp);
                     transitionTo(mActivatingState);
@@ -1138,7 +1123,7 @@ public abstract class DataConnection extends StateMachine {
                 case EVENT_CONNECT:
                     if (DBG) {
                         log("DcActivatingState deferring msg.what=EVENT_CONNECT RefCount="
-                                + mRefCount);
+                                + mApnList.size());
                     }
                     deferMessage(msg);
                     retVal = HANDLED;
@@ -1147,7 +1132,7 @@ public abstract class DataConnection extends StateMachine {
                 case EVENT_SETUP_DATA_CONNECTION_DONE:
                     if (DBG) {
                         log("DcActivatingState msg.what=EVENT_SETUP_DATA_CONNECTION_DONE"
-                                + " RefCount=" + mRefCount);
+                                + " RefCount=" + mApnList.size());
                     }
 
                     ar = (AsyncResult) msg.obj;
@@ -1201,7 +1186,7 @@ public abstract class DataConnection extends StateMachine {
                     if (cp.tag == mTag) {
                         if (DBG) {
                             log("DcActivatingState msg.what=EVENT_GET_LAST_FAIL_DONE"
-                                    + " RefCount=" + mRefCount);
+                                    + " RefCount=" + mApnList.size());
                         }
                         if (ar.exception == null) {
                             int rilFailCause = ((int[]) (ar.result))[0];
@@ -1214,7 +1199,7 @@ public abstract class DataConnection extends StateMachine {
                     } else {
                         if (DBG) {
                             log("DcActivatingState EVENT_GET_LAST_FAIL_DONE is stale cp.tag="
-                                + cp.tag + ", mTag=" + mTag + " RefCount=" + mRefCount);
+                                + cp.tag + ", mTag=" + mTag + " RefCount=" + mApnList.size());
                         }
                     }
 
@@ -1224,7 +1209,7 @@ public abstract class DataConnection extends StateMachine {
                 default:
                     if (VDBG) {
                         log("DcActivatingState not handled msg.what=0x" +
-                                Integer.toHexString(msg.what) + " RefCount=" + mRefCount);
+                                Integer.toHexString(msg.what) + " RefCount=" + mApnList.size());
                     }
                     retVal = NOT_HANDLED;
                     break;
@@ -1273,44 +1258,59 @@ public abstract class DataConnection extends StateMachine {
             boolean retVal;
 
             switch (msg.what) {
-                case EVENT_CONNECT:
-                    mRefCount++;
-                    if (DBG) log("DcActiveState msg.what=EVENT_CONNECT RefCount=" + mRefCount);
-                    if (msg.obj != null) {
-                        notifyConnectCompleted((ConnectionParams) msg.obj, FailCause.NONE);
-                    }
-                    retVal = HANDLED;
-                    break;
-                case EVENT_DISCONNECT:
-                    mRefCount--;
-                    if (DBG) log("DcActiveState msg.what=EVENT_DISCONNECT RefCount=" + mRefCount);
-                    if (mRefCount == 0)
-                    {
-                        DisconnectParams dp = (DisconnectParams) msg.obj;
-                        dp.tag = mTag;
-                        tearDownData(dp);
-                        transitionTo(mDisconnectingState);
+                case EVENT_CONNECT: {
+                    ConnectionParams cp = (ConnectionParams) msg.obj;
+                    if (mApnList.contains(cp.apnContext)) {
+                        log("DcActiveState ERROR already added apnContext=" + cp.apnContext
+                                    + " to this DC=" + this);
                     } else {
-                        if (msg.obj != null) {
-                            notifyDisconnectCompleted((DisconnectParams) msg.obj, false);
+                        mApnList.add(cp.apnContext);
+                        if (DBG) {
+                            log("DcActiveState msg.what=EVENT_CONNECT RefCount=" + mApnList.size());
                         }
                     }
+                    notifyConnectCompleted(cp, FailCause.NONE);
                     retVal = HANDLED;
                     break;
+                }
+                case EVENT_DISCONNECT: {
+                    DisconnectParams dp = (DisconnectParams) msg.obj;
+                    if (mApnList.contains(dp.apnContext)) {
+                        if (DBG) {
+                            log("DcActiveState msg.what=EVENT_DISCONNECT RefCount="
+                                    + mApnList.size());
+                        }
 
-                case EVENT_DISCONNECT_ALL:
-                    if (DBG) {
-                        log("DcActiveState msg.what=EVENT_DISCONNECT_ALL RefCount=" + mRefCount
-                                + " setting ot 0");
+                        if (mApnList.size() == 1) {
+                            mApnList.clear();
+                            dp.tag = mTag;
+                            tearDownData(dp);
+                            transitionTo(mDisconnectingState);
+                        } else {
+                            mApnList.remove(dp.apnContext);
+                            notifyDisconnectCompleted(dp, false);
+                        }
+                    } else {
+                        log("DcActiveState ERROR no such apnContext=" + dp.apnContext
+                                + " in this DC=" + this);
+                        notifyDisconnectCompleted(dp, false);
                     }
-                    mRefCount = 0;
+                    retVal = HANDLED;
+                    break;
+                }
+                case EVENT_DISCONNECT_ALL: {
+                    if (DBG) {
+                        log("DcActiveState msg.what=EVENT_DISCONNECT_ALL RefCount="
+                                + mApnList.size() + " clearing apn contexts");
+                    }
+                    mApnList.clear();
                     DisconnectParams dp = (DisconnectParams) msg.obj;
                     dp.tag = mTag;
                     tearDownData(dp);
                     transitionTo(mDisconnectingState);
                     retVal = HANDLED;
                     break;
-
+                }
                 default:
                     if (VDBG) {
                         log("DcActiveState not handled msg.what=0x" +
@@ -1335,14 +1335,14 @@ public abstract class DataConnection extends StateMachine {
             switch (msg.what) {
                 case EVENT_CONNECT:
                     if (DBG) log("DcDisconnectingState msg.what=EVENT_CONNECT. Defer. RefCount = "
-                            + mRefCount);
+                            + mApnList.size());
                     deferMessage(msg);
                     retVal = HANDLED;
                     break;
 
                 case EVENT_DEACTIVATE_DONE:
                     if (DBG) log("DcDisconnectingState msg.what=EVENT_DEACTIVATE_DONE RefCount="
-                            + mRefCount);
+                            + mApnList.size());
                     AsyncResult ar = (AsyncResult) msg.obj;
                     DisconnectParams dp = (DisconnectParams) ar.userObj;
                     if (dp.tag == mTag) {
@@ -1428,9 +1428,9 @@ public abstract class DataConnection extends StateMachine {
      *        AsyncResult.result = FailCause and AsyncResult.exception = Exception().
      * @param apn is the Access Point Name to bring up a connection to
      */
-    public void bringUp(Message onCompletedMsg, ApnSetting apn) {
-        if (DBG) log("bringUp: onCompletedMsg=" + onCompletedMsg + " apn=" + apn);
-        sendMessage(obtainMessage(EVENT_CONNECT, new ConnectionParams(apn, onCompletedMsg)));
+    public void bringUp(ApnContext apnContext, Message onCompletedMsg) {
+        if (DBG) log("bringUp: apnContext=" + apnContext + " onCompletedMsg=" + onCompletedMsg);
+        sendMessage(obtainMessage(EVENT_CONNECT, new ConnectionParams(apnContext, onCompletedMsg)));
     }
 
     /**
@@ -1439,9 +1439,13 @@ public abstract class DataConnection extends StateMachine {
      * @param onCompletedMsg is sent with its msg.obj as an AsyncResult object.
      *        With AsyncResult.userObj set to the original msg.obj.
      */
-    public void tearDown(String reason, Message onCompletedMsg) {
-        if (DBG) log("tearDown: reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
-        sendMessage(obtainMessage(EVENT_DISCONNECT, new DisconnectParams(reason, onCompletedMsg)));
+    public void tearDown(ApnContext apnContext, String reason, Message onCompletedMsg) {
+        if (DBG) {
+            log("tearDown: apnContext=" + apnContext
+                    + " reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
+        }
+        sendMessage(obtainMessage(EVENT_DISCONNECT,
+                        new DisconnectParams(apnContext, reason, onCompletedMsg)));
     }
 
     /**
@@ -1454,7 +1458,7 @@ public abstract class DataConnection extends StateMachine {
     public void tearDownAll(String reason, Message onCompletedMsg) {
         if (DBG) log("tearDownAll: reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
         sendMessage(obtainMessage(EVENT_DISCONNECT_ALL,
-                new DisconnectParams(reason, onCompletedMsg)));
+                new DisconnectParams(null, reason, onCompletedMsg)));
     }
 
     /**
@@ -1481,7 +1485,8 @@ public abstract class DataConnection extends StateMachine {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.print("DataConnection ");
         super.dump(fd, pw, args);
-        pw.println(" mApnList=" + mApnList);
+        pw.println(" mApnContexts.size=" + mApnList.size());
+        pw.println(" mApnContexts=" + mApnList);
         pw.flush();
         pw.println(" mDataConnectionTracker=" + mDataConnectionTracker);
         pw.println(" mApn=" + mApn);
@@ -1499,7 +1504,6 @@ public abstract class DataConnection extends StateMachine {
         pw.println(" lastFailCause=" + lastFailCause);
         pw.flush();
         pw.println(" mRetryOverride=" + mRetryOverride);
-        pw.println(" mRefCount=" + mRefCount);
         pw.println(" userData=" + userData);
         if (mRetryMgr != null) pw.println(" " + mRetryMgr);
         pw.flush();

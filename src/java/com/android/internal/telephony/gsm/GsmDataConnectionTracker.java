@@ -886,7 +886,8 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
                         if (disconnectAll) {
                             apnContext.getDataConnection().tearDownAll(apnContext.getReason(), msg);
                         } else {
-                            apnContext.getDataConnection().tearDown(apnContext.getReason(), msg);
+                            apnContext.getDataConnection()
+                                .tearDown(apnContext, apnContext.getReason(), msg);
                         }
                         apnContext.setState(DctConstants.State.DISCONNECTING);
                     }
@@ -1005,12 +1006,8 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         // TODO: Fix retry handling so free DataConnections have empty apnlists.
         // Probably move retry handling into DataConnections and reduce complexity
         // of DCT.
-        for (ApnContext apnContext : dcac.getApnListSync()) {
-            if (DBG) {
-                log("dataConnectionNotInUse: removing apnContext=" + apnContext);
-            }
-            dcac.removeApnContextSync(apnContext);
-        }
+        if (DBG) log("dataConnectionNotInUse: tearDownAll");
+        dcac.dataConnection.tearDownAll("No connection", null);
         if (DBG) log("dataConnectionNotInUse: not in use return true");
         return true;
     }
@@ -1112,7 +1109,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         apnContext.setState(DctConstants.State.INITING);
         mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
         // If reconnect alarm is active on this DataConnection, wait for the alarm being
-        // fired so that we don't disruppt data retry pattern engaged.
+        // fired so that we don't disrupt data retry pattern engaged.
         if (apnContext.getDataConnectionAc().getReconnectIntentSync() != null) {
             if (DBG) log("setupData: data reconnection pending");
             apnContext.setState(DctConstants.State.FAILED);
@@ -1123,7 +1120,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         Message msg = obtainMessage();
         msg.what = DctConstants.EVENT_DATA_SETUP_COMPLETE;
         msg.obj = apnContext;
-        dc.bringUp(msg, apn);
+        dc.bringUp(apnContext, msg);
 
         if (DBG) log("setupData: initing!");
         return true;

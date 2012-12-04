@@ -67,20 +67,14 @@ public class DataConnectionAc extends AsyncChannel {
     public static final int REQ_GET_REFCOUNT = BASE + 16;
     public static final int RSP_GET_REFCOUNT = BASE + 17;
 
-    public static final int REQ_ADD_APNCONTEXT = BASE + 18;
-    public static final int RSP_ADD_APNCONTEXT = BASE + 19;
+    public static final int REQ_GET_APNCONTEXT_LIST = BASE + 18;
+    public static final int RSP_GET_APNCONTEXT_LIST = BASE + 19;
 
-    public static final int REQ_REMOVE_APNCONTEXT = BASE + 20;
-    public static final int RSP_REMOVE_APNCONTEXT = BASE + 21;
+    public static final int REQ_SET_RECONNECT_INTENT = BASE + 20;
+    public static final int RSP_SET_RECONNECT_INTENT = BASE + 21;
 
-    public static final int REQ_GET_APNCONTEXT_LIST = BASE + 22;
-    public static final int RSP_GET_APNCONTEXT_LIST = BASE + 23;
-
-    public static final int REQ_SET_RECONNECT_INTENT = BASE + 24;
-    public static final int RSP_SET_RECONNECT_INTENT = BASE + 25;
-
-    public static final int REQ_GET_RECONNECT_INTENT = BASE + 26;
-    public static final int RSP_GET_RECONNECT_INTENT = BASE + 27;
+    public static final int REQ_GET_RECONNECT_INTENT = BASE + 22;
+    public static final int RSP_GET_RECONNECT_INTENT = BASE + 23;
 
     private static final int CMD_TO_STRING_COUNT = RSP_GET_RECONNECT_INTENT - BASE + 1;
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
@@ -107,10 +101,6 @@ public class DataConnectionAc extends AsyncChannel {
         sCmdToString[RSP_RESET - BASE] = "RSP_RESET";
         sCmdToString[REQ_GET_REFCOUNT - BASE] = "REQ_GET_REFCOUNT";
         sCmdToString[RSP_GET_REFCOUNT - BASE] = "RSP_GET_REFCOUNT";
-        sCmdToString[REQ_ADD_APNCONTEXT - BASE] = "REQ_ADD_APNCONTEXT";
-        sCmdToString[RSP_ADD_APNCONTEXT - BASE] = "RSP_ADD_APNCONTEXT";
-        sCmdToString[REQ_REMOVE_APNCONTEXT - BASE] = "REQ_REMOVE_APNCONTEXT";
-        sCmdToString[RSP_REMOVE_APNCONTEXT - BASE] = "RSP_REMOVE_APNCONTEXT";
         sCmdToString[REQ_GET_APNCONTEXT_LIST - BASE] = "REQ_GET_APNCONTEXT_LIST";
         sCmdToString[RSP_GET_APNCONTEXT_LIST - BASE] = "RSP_GET_APNCONTEXT_LIST";
         sCmdToString[REQ_SET_RECONNECT_INTENT - BASE] = "REQ_SET_RECONNECT_INTENT";
@@ -437,53 +427,7 @@ public class DataConnectionAc extends AsyncChannel {
     }
 
     /**
-     * Request to add ApnContext association.
-     * Response RSP_ADD_APNCONTEXT when complete.
-     */
-    public void reqAddApnContext(ApnContext apnContext) {
-        Message response = sendMessageSynchronously(REQ_ADD_APNCONTEXT, apnContext);
-        if (DBG) log("reqAddApnContext");
-    }
-
-    /**
-     * Add ApnContext association synchronoulsy.
-     *
-     * @param ApnContext to associate
-     */
-    public void addApnContextSync(ApnContext apnContext) {
-        Message response = sendMessageSynchronously(REQ_ADD_APNCONTEXT, apnContext);
-        if ((response != null) && (response.what == RSP_ADD_APNCONTEXT)) {
-            if (DBG) log("addApnContext ok");
-        } else {
-            log("addApnContext error response=" + response);
-        }
-    }
-
-    /**
-     * Request to remove ApnContext association.
-     * Response RSP_REMOVE_APNCONTEXT when complete.
-     */
-    public void reqRemomveApnContext(ApnContext apnContext) {
-        Message response = sendMessageSynchronously(REQ_REMOVE_APNCONTEXT, apnContext);
-        if (DBG) log("reqRemomveApnContext");
-    }
-
-    /**
-     * Remove ApnContext associateion.
-     *
-     * @param ApnContext to dissociate
-     */
-    public void removeApnContextSync(ApnContext apnContext) {
-        Message response = sendMessageSynchronously(REQ_REMOVE_APNCONTEXT, apnContext);
-        if ((response != null) && (response.what == RSP_REMOVE_APNCONTEXT)) {
-            if (DBG) log("removeApnContext ok");
-        } else {
-            log("removeApnContext error response=" + response);
-        }
-    }
-
-    /**
-     * Request to retrive ApnContext List associated with DC.
+     * Request the ApnContext List associated with DC.
      * Response RSP_GET_APNCONTEXT_LIST when complete.
      */
     public void reqGetApnList(ApnContext apnContext) {
