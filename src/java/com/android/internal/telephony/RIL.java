@@ -1712,8 +1712,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         RILRequest rr
                 = RILRequest.obtain(RIL_REQUEST_SEND_USSD, response);
 
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                            + " " + ussdString);
+        if (RILJ_LOGD) {
+            String logUssdString = "*******";
+            if (RILJ_LOGV) logUssdString = ussdString;
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                                   + " " + logUssdString);
+        }
 
         rr.mp.writeString(ussdString);
 
