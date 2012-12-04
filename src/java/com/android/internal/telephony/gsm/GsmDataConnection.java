@@ -73,7 +73,7 @@ public class GsmDataConnection extends DataConnection {
     @Override
     protected
     void onConnect(ConnectionParams cp) {
-        mApn = cp.apn;
+        mApn = cp.apnContext.getApnSetting();
 
         if (DBG) log("onConnect: carrier='" + mApn.carrier
                 + "' APN='" + mApn.apn
@@ -120,7 +120,7 @@ public class GsmDataConnection extends DataConnection {
     @Override
     public String toStringSimple() {
         return getName() + ": State=" + getCurrentState().getName() +
-                " apnSetting=" + mApn + " RefCount=" + mRefCount +
+                " apnSetting=" + mApn + " RefCount=" + mApnList.size() +
                 " cid=" + cid + " create=" + createTime + " lastFail=" + lastFailTime +
                 " lastFailCause=" + lastFailCause;
     }

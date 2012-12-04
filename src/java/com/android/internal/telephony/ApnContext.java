@@ -95,14 +95,14 @@ public class ApnContext {
 
     public synchronized void setDataConnectionAc(DataConnectionAc dcac) {
         if (DBG) {
-            log("setDataConnectionAc: old dcac=" + mDataConnectionAc + " new dcac=" + dcac);
+            log("setDataConnectionAc: old dcac=" + mDataConnectionAc + " new dcac=" + dcac
+                    + " this=" + this);
         }
-        if (dcac != null) {
-            dcac.addApnContextSync(this);
-        } else {
-            if (mDataConnectionAc != null) {
-                mDataConnectionAc.removeApnContextSync(this);
-            }
+        if ((dcac == null) && (mDataConnectionAc != null) &&
+                (mDataConnectionAc.dataConnection != null)) {
+            // TODO: This tearDown should be done by caller, but for now we'll do it
+            if (DBG) log("setDataConnection: call tearDown");
+            mDataConnectionAc.dataConnection.tearDown(this, "", null);
         }
         mDataConnectionAc = dcac;
     }
