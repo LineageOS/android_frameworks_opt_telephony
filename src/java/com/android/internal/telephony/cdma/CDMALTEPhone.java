@@ -141,7 +141,6 @@ public class CDMALTEPhone extends CDMAPhone {
                     }
                     break;
 
-                case INITING:
                 case CONNECTING:
                 case SCANNING:
                     ret = PhoneConstants.DataState.CONNECTING;

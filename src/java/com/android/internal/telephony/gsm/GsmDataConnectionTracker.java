@@ -436,7 +436,6 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
                     if (DBG) log("overall state is CONNECTED");
                     return DctConstants.State.CONNECTED;
                 case CONNECTING:
-                case INITING:
                     isConnecting = true;
                     isFailed = false;
                     break;
@@ -502,7 +501,6 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     private void notifyApnIdUpToCurrent(String reason, ApnContext apnContext, String type) {
         switch (apnContext.getState()) {
             case IDLE:
-            case INITING:
                 break;
             case CONNECTING:
             case SCANNING:
@@ -803,7 +801,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
 
     /**
      * If tearDown is true, this only tears down a CONNECTED session. Presently,
-     * there is no mechanism for abandoning an INITING/CONNECTING session,
+     * there is no mechanism for abandoning an CONNECTING session,
      * but would likely involve cancelling pending async requests or
      * setting a flag or new state to ignore them when they came in
      * @param tearDown true if the underlying GsmDataConnection should be
@@ -1027,33 +1025,6 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         return null;
     }
 
-    protected GsmDataConnection findReadyDataConnection(ApnSetting apn) {
-        if (apn == null) {
-            return null;
-        }
-        if (DBG) {
-            log("findReadyDataConnection: apn string <" + apn + ">" +
-                    " dcacs.size=" + mDataConnectionAsyncChannels.size());
-        }
-        for (DataConnectionAc dcac : mDataConnectionAsyncChannels.values()) {
-            ApnSetting apnSetting = dcac.getApnSettingSync();
-            if (DBG) {
-                log("findReadyDataConnection: dc apn string <" +
-                         (apnSetting != null ? (apnSetting.toString()) : "null") + ">");
-            }
-            if ((apnSetting != null) && TextUtils.equals(apnSetting.toString(), apn.toString())) {
-                DataConnection dc = dcac.dataConnection;
-                if (DBG) {
-                    log("findReadyDataConnection: found ready GsmDataConnection=" +
-                        " dcac=" + dcac + " dc=" + dc);
-                }
-                return (GsmDataConnection) dc;
-            }
-        }
-        return null;
-    }
-
-
     private boolean setupData(ApnContext apnContext) {
         if (DBG) log("setupData: apnContext=" + apnContext);
         ApnSetting apn;
@@ -1070,14 +1041,9 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         dc = (GsmDataConnection) checkForConnectionForApnContext(apnContext);
 
         if (dc == null) {
-            dc = findReadyDataConnection(apn);
-
-            if (dc == null) {
-                if (DBG) log("setupData: No ready GsmDataConnection found!");
-                // TODO: When allocating you are mapping type to id. If more than 1 free,
-                // then could findFreeDataConnection get the wrong one??
-                dc = findFreeDataConnection();
-            }
+            // TODO: When allocating you are mapping type to id. If more than 1 free,
+            // then could findFreeDataConnection get the wrong one??
+            dc = findFreeDataConnection();
 
             if (dc == null) {
                 dc = createDataConnection();
@@ -1106,7 +1072,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         apnContext.setDataConnection(dc);
 
         apnContext.setApnSetting(apn);
-        apnContext.setState(DctConstants.State.INITING);
+        apnContext.setState(DctConstants.State.CONNECTING);
         mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
         // If reconnect alarm is active on this DataConnection, wait for the alarm being
         // fired so that we don't disrupt data retry pattern engaged.
@@ -1185,8 +1151,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
                 }
                 if (!found) {
                     // ApnContext does not have dcac reported in data call list.
-                    // Fetch all the ApnContexts that map to this dcac which are in
-                    // INITING state too.
+                    // Fetch all the ApnContexts that map to this dcac.
                     if (DBG) log("findApnContextToClean(ar): Connected apn not found in the list (" +
                                  apnContext.toString() + ")");
                     if (apnContext.getDataConnectionAc() != null) {
@@ -1254,8 +1219,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
             ArrayList<ApnContext> connectedApns = new ArrayList<ApnContext>();
             for (ApnContext apnContext : apns) {
                 if (apnContext.getState() == DctConstants.State.CONNECTED ||
-                       apnContext.getState() == DctConstants.State.CONNECTING ||
-                       apnContext.getState() == DctConstants.State.INITING) {
+                       apnContext.getState() == DctConstants.State.CONNECTING) {
                     connectedApns.add(apnContext);
                 }
             }

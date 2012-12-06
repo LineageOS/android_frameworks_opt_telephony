@@ -784,7 +784,6 @@ public abstract class DataConnectionTracker extends Handler {
     private void notifyApnIdUpToCurrent(String reason, int apnId) {
         switch (mState) {
             case IDLE:
-            case INITING:
                 break;
             case CONNECTING:
             case SCANNING:
