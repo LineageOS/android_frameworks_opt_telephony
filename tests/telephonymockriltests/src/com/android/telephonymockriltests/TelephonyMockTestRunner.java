@@ -20,7 +20,7 @@ import android.os.Bundle;
 import android.test.InstrumentationTestRunner;
 import android.test.InstrumentationTestSuite;
 import com.android.internal.telephony.mockril.MockRilController;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.telephonymockriltests.functional.SimpleTestUsingMockRil;
 

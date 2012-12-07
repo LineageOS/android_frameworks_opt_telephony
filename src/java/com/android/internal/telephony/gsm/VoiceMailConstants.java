@@ -18,7 +18,7 @@ package com.android.internal.telephony.gsm;
 
 import android.os.Environment;
 import android.util.Xml;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.util.HashMap;
 import java.io.FileReader;
@@ -79,7 +79,7 @@ class VoiceMailConstants {
         try {
             vmReader = new FileReader(vmFile);
         } catch (FileNotFoundException e) {
-            Log.w(LOG_TAG, "Can't open " +
+            Rlog.w(LOG_TAG, "Can't open " +
                     Environment.getRootDirectory() + "/" + PARTNER_VOICEMAIL_PATH);
             return;
         }
@@ -107,9 +107,9 @@ class VoiceMailConstants {
                 CarrierVmMap.put(numeric, data);
             }
         } catch (XmlPullParserException e) {
-            Log.w(LOG_TAG, "Exception in Voicemail parser " + e);
+            Rlog.w(LOG_TAG, "Exception in Voicemail parser " + e);
         } catch (IOException e) {
-            Log.w(LOG_TAG, "Exception in Voicemail parser " + e);
+            Rlog.w(LOG_TAG, "Exception in Voicemail parser " + e);
         } finally {
             try {
                 if (vmReader != null) {

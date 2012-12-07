@@ -22,7 +22,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.telephony.PhoneNumberUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.ims.IsimRecords;
 
@@ -50,9 +50,9 @@ public class PhoneSubInfo extends IPhoneSubInfo.Stub {
         try {
             super.finalize();
         } catch (Throwable throwable) {
-            Log.e(LOG_TAG, "Error while finalizing:", throwable);
+            Rlog.e(LOG_TAG, "Error while finalizing:", throwable);
         }
-        Log.d(LOG_TAG, "PhoneSubInfo finalized");
+        Rlog.d(LOG_TAG, "PhoneSubInfo finalized");
     }
 
     /**
@@ -118,7 +118,7 @@ public class PhoneSubInfo extends IPhoneSubInfo.Stub {
     public String getVoiceMailNumber() {
         mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
         String number = PhoneNumberUtils.extractNetworkPortion(mPhone.getVoiceMailNumber());
-        Log.d(LOG_TAG, "VM: PhoneSubInfo.getVoiceMailNUmber: "); // + number);
+        Rlog.d(LOG_TAG, "VM: PhoneSubInfo.getVoiceMailNUmber: "); // + number);
         return number;
     }
 
@@ -131,7 +131,7 @@ public class PhoneSubInfo extends IPhoneSubInfo.Stub {
         mContext.enforceCallingOrSelfPermission(CALL_PRIVILEGED,
                 "Requires CALL_PRIVILEGED");
         String number = mPhone.getVoiceMailNumber();
-        Log.d(LOG_TAG, "VM: PhoneSubInfo.getCompleteVoiceMailNUmber: "); // + number);
+        Rlog.d(LOG_TAG, "VM: PhoneSubInfo.getCompleteVoiceMailNUmber: "); // + number);
         return number;
     }
 

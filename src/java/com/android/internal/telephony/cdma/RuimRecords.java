@@ -31,7 +31,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.SystemProperties;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.AdnRecord;
 import com.android.internal.telephony.AdnRecordCache;
@@ -506,7 +506,7 @@ public final class RuimRecords extends IccRecords {
             case EVENT_UPDATE_DONE:
                 ar = (AsyncResult)msg.obj;
                 if (ar.exception != null) {
-                    Log.i(LOG_TAG, "RuimRecords update failed", ar.exception);
+                    Rlog.i(LOG_TAG, "RuimRecords update failed", ar.exception);
                 }
             break;
 
@@ -514,7 +514,7 @@ public final class RuimRecords extends IccRecords {
             case EVENT_MARK_SMS_READ_DONE:
             case EVENT_SMS_ON_RUIM:
             case EVENT_GET_SMS_DONE:
-                Log.w(LOG_TAG, "Event not supported: " + msg.what);
+                Rlog.w(LOG_TAG, "Event not supported: " + msg.what);
                 break;
 
             // TODO: probably EF_CST should be read instead
@@ -535,7 +535,7 @@ public final class RuimRecords extends IccRecords {
 
         }}catch (RuntimeException exc) {
             // I don't want these exceptions to be fatal
-            Log.w(LOG_TAG, "Exception parsing RUIM record", exc);
+            Rlog.w(LOG_TAG, "Exception parsing RUIM record", exc);
         } finally {
             // Count up record load responses even if they are fails
             if (isRecordLoadResponse) {
@@ -799,11 +799,11 @@ public final class RuimRecords extends IccRecords {
     }
     @Override
     protected void log(String s) {
-        Log.d(LOG_TAG, "[RuimRecords] " + s);
+        Rlog.d(LOG_TAG, "[RuimRecords] " + s);
     }
 
     @Override
     protected void loge(String s) {
-        Log.e(LOG_TAG, "[RuimRecords] " + s);
+        Rlog.e(LOG_TAG, "[RuimRecords] " + s);
     }
 }

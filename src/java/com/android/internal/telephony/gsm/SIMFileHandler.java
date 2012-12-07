@@ -17,7 +17,7 @@
 package com.android.internal.telephony.gsm;
 
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccConstants;
@@ -71,18 +71,18 @@ public final class SIMFileHandler extends IccFileHandler implements IccConstants
         }
         String path = getCommonIccEFPath(efid);
         if (path == null) {
-            Log.e(LOG_TAG, "Error: EF Path being returned in null");
+            Rlog.e(LOG_TAG, "Error: EF Path being returned in null");
         }
         return path;
     }
 
     @Override
     protected void logd(String msg) {
-        Log.d(LOG_TAG, "[SIMFileHandler] " + msg);
+        Rlog.d(LOG_TAG, "[SIMFileHandler] " + msg);
     }
 
     @Override
     protected void loge(String msg) {
-        Log.e(LOG_TAG, "[SIMFileHandler] " + msg);
+        Rlog.e(LOG_TAG, "[SIMFileHandler] " + msg);
     }
 }

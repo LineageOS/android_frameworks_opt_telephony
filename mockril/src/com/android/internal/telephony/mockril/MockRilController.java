@@ -17,7 +17,7 @@
 package com.android.internal.telephony.mockril;
 
 import android.os.Bundle;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.communication.MsgHeader;
 import com.android.internal.communication.Msg;
@@ -62,7 +62,7 @@ public class MockRilController {
         try {
             Msg.send(mRilChannel, cmd, token, status, pbData);
         } catch (IOException e) {
-            Log.v(TAG, "send command : %d failed: " + e.getStackTrace());
+            Rlog.v(TAG, "send command : %d failed: " + e.getStackTrace());
             return false;
         }
         return true;
@@ -77,7 +77,7 @@ public class MockRilController {
         try {
             response = Msg.recv(mRilChannel);
         } catch (IOException e) {
-            Log.v(TAG, "receive response for getRadioState() error: " + e.getStackTrace());
+            Rlog.v(TAG, "receive response for getRadioState() error: " + e.getStackTrace());
             return null;
         }
         return response;
@@ -92,7 +92,7 @@ public class MockRilController {
         }
         Msg response = getCtrlResponse();
         if (response == null) {
-            Log.v(TAG, "failed to get response");
+            Rlog.v(TAG, "failed to get response");
             return -1;
         }
         response.printHeader(TAG);
@@ -113,17 +113,17 @@ public class MockRilController {
     public boolean setRadioState(int state) {
         RilCtrlCmds.CtrlReqRadioState req = new RilCtrlCmds.CtrlReqRadioState();
         if (state < 0 || state > RilCmds.RADIOSTATE_NV_READY) {
-            Log.v(TAG, "the give radio state is not valid.");
+            Rlog.v(TAG, "the give radio state is not valid.");
             return false;
         }
         req.setState(state);
         if (!sendCtrlCommand(RilCtrlCmds.CTRL_CMD_SET_RADIO_STATE, 0, 0, req)) {
-            Log.v(TAG, "send set radio state request failed.");
+            Rlog.v(TAG, "send set radio state request failed.");
             return false;
         }
         Msg response = getCtrlResponse();
         if (response == null) {
-            Log.v(TAG, "failed to get response for setRadioState");
+            Rlog.v(TAG, "failed to get response for setRadioState");
             return false;
         }
         response.printHeader(TAG);
@@ -144,7 +144,7 @@ public class MockRilController {
 
         req.setPhoneNumber(phoneNumber);
         if (!sendCtrlCommand(RilCtrlCmds.CTRL_CMD_SET_MT_CALL, 0, 0, req)) {
-            Log.v(TAG, "send CMD_SET_MT_CALL request failed");
+            Rlog.v(TAG, "send CMD_SET_MT_CALL request failed");
             return false;
         }
         return true;
@@ -163,7 +163,7 @@ public class MockRilController {
         req.setCallFailCause(failCause);
 
         if (!sendCtrlCommand(RilCtrlCmds.CTRL_CMD_HANGUP_CONN_REMOTE, 0, 0, req)) {
-            Log.v(TAG, "send CTRL_CMD_HANGUP_CONN_REMOTE request failed");
+            Rlog.v(TAG, "send CTRL_CMD_HANGUP_CONN_REMOTE request failed");
             return false;
         }
         return true;
@@ -183,7 +183,7 @@ public class MockRilController {
         req.setFlag(flag);
 
         if (!sendCtrlCommand(RilCtrlCmds.CTRL_CMD_SET_CALL_TRANSITION_FLAG, 0, 0, req)) {
-            Log.v(TAG, "send CTRL_CMD_SET_CALL_TRANSITION_FLAG request failed");
+            Rlog.v(TAG, "send CTRL_CMD_SET_CALL_TRANSITION_FLAG request failed");
             return false;
         }
         return true;
@@ -196,7 +196,7 @@ public class MockRilController {
      */
     public boolean setDialCallToAlert() {
         if (!sendCtrlCommand(RilCtrlCmds.CTRL_CMD_SET_CALL_ALERT, 0, 0, null)) {
-            Log.v(TAG, "send CTRL_CMD_SET_CALL_ALERT request failed");
+            Rlog.v(TAG, "send CTRL_CMD_SET_CALL_ALERT request failed");
             return false;
         }
         return true;
@@ -209,7 +209,7 @@ public class MockRilController {
     */
    public boolean setAlertCallToActive() {
         if (!sendCtrlCommand(RilCtrlCmds.CTRL_CMD_SET_CALL_ACTIVE, 0, 0, null)) {
-            Log.v(TAG, "send CTRL_CMD_SET_CALL_ACTIVE request failed");
+            Rlog.v(TAG, "send CTRL_CMD_SET_CALL_ACTIVE request failed");
             return false;
         }
         return true;

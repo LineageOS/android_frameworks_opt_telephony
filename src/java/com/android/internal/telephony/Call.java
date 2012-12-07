@@ -18,7 +18,7 @@ package com.android.internal.telephony;
 
 import java.util.List;
 
-import android.util.Log;
+import android.telephony.Rlog;
 
 /**
  * {@hide}
@@ -248,7 +248,7 @@ public abstract class Call {
             try {
                 hangup();
             } catch (CallStateException ex) {
-                Log.w(LOG_TAG, " hangupIfActive: caught " + ex);
+                Rlog.w(LOG_TAG, " hangupIfActive: caught " + ex);
             }
         }
     }

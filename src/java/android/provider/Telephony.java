@@ -28,7 +28,7 @@ import android.net.Uri;
 import android.os.Environment;
 import android.telephony.SmsMessage;
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.util.Patterns;
 
 
@@ -1293,7 +1293,7 @@ public final class Telephony {
             }
 
             Uri uri = uriBuilder.build();
-            //if (DEBUG) Log.v(TAG, "getOrCreateThreadId uri: " + uri);
+            //if (DEBUG) Rlog.v(TAG, "getOrCreateThreadId uri: " + uri);
 
             Cursor cursor = SqliteWrapper.query(context, context.getContentResolver(),
                     uri, ID_PROJECTION, null, null, null);
@@ -1302,14 +1302,14 @@ public final class Telephony {
                     if (cursor.moveToFirst()) {
                         return cursor.getLong(0);
                     } else {
-                        Log.e(TAG, "getOrCreateThreadId returned no rows!");
+                        Rlog.e(TAG, "getOrCreateThreadId returned no rows!");
                     }
                 } finally {
                     cursor.close();
                 }
             }
 
-            Log.e(TAG, "getOrCreateThreadId failed with uri " + uri.toString());
+            Rlog.e(TAG, "getOrCreateThreadId failed with uri " + uri.toString());
             throw new IllegalArgumentException("Unable to find or allocate a thread ID.");
         }
     }

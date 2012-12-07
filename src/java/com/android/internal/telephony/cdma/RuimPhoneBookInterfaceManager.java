@@ -19,7 +19,7 @@ package com.android.internal.telephony.cdma;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
@@ -46,9 +46,9 @@ public class RuimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager 
         try {
             super.finalize();
         } catch (Throwable throwable) {
-            Log.e(LOG_TAG, "Error while finalizing:", throwable);
+            Rlog.e(LOG_TAG, "Error while finalizing:", throwable);
         }
-        if(DBG) Log.d(LOG_TAG, "RuimPhoneBookInterfaceManager finalized");
+        if(DBG) Rlog.d(LOG_TAG, "RuimPhoneBookInterfaceManager finalized");
     }
 
     public int[] getAdnRecordsSize(int efid) {
@@ -73,11 +73,11 @@ public class RuimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager 
     }
 
     protected void logd(String msg) {
-        Log.d(LOG_TAG, "[RuimPbInterfaceManager] " + msg);
+        Rlog.d(LOG_TAG, "[RuimPbInterfaceManager] " + msg);
     }
 
     protected void loge(String msg) {
-        Log.e(LOG_TAG, "[RuimPbInterfaceManager] " + msg);
+        Rlog.e(LOG_TAG, "[RuimPbInterfaceManager] " + msg);
     }
 }
 

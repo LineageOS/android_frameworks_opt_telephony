@@ -25,7 +25,7 @@ import android.os.Message;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
-import android.util.Log;
+import android.telephony.Rlog;
 
 /**
  *
@@ -174,7 +174,7 @@ public final class PhoneStateIntentReceiver extends BroadcastReceiver {
                     mTarget.sendMessage(message);
                 }
             } else if (TelephonyManager.ACTION_PHONE_STATE_CHANGED.equals(action)) {
-                if (DBG) Log.d(LOG_TAG, "onReceiveIntent: ACTION_PHONE_STATE_CHANGED, state="
+                if (DBG) Rlog.d(LOG_TAG, "onReceiveIntent: ACTION_PHONE_STATE_CHANGED, state="
                                + intent.getStringExtra(PhoneConstants.STATE_KEY));
                 String phoneState = intent.getStringExtra(PhoneConstants.STATE_KEY);
                 mPhoneState = (PhoneConstants.State) Enum.valueOf(
@@ -195,7 +195,7 @@ public final class PhoneStateIntentReceiver extends BroadcastReceiver {
                 }
             }
         } catch (Exception ex) {
-            Log.e(LOG_TAG, "[PhoneStateIntentRecv] caught " + ex);
+            Rlog.e(LOG_TAG, "[PhoneStateIntentRecv] caught " + ex);
             ex.printStackTrace();
         }
     }

@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.util.Log;
+import android.telephony.Rlog;
 import android.util.Pair;
 import android.text.TextUtils;
 
@@ -208,7 +208,7 @@ public class RetryManager {
                             mMaxRetryCount = value.second;
                         }
                     } else {
-                        Log.e(LOG_TAG, "Unrecognized configuration name value pair: "
+                        Rlog.e(LOG_TAG, "Unrecognized configuration name value pair: "
                                         + strArray[i]);
                         return false;
                     }
@@ -365,7 +365,7 @@ public class RetryManager {
             value = Integer.parseInt(stringValue);
             retVal = new Pair<Boolean, Integer>(validateNonNegativeInt(name, value), value);
         } catch (NumberFormatException e) {
-            Log.e(LOG_TAG, name + " bad value: " + stringValue, e);
+            Rlog.e(LOG_TAG, name + " bad value: " + stringValue, e);
             retVal = new Pair<Boolean, Integer>(false, 0);
         }
         if (VDBG) log("parseNonNetativeInt: " + name + ", " + stringValue + ", "
@@ -383,7 +383,7 @@ public class RetryManager {
     private boolean validateNonNegativeInt(String name, int value) {
         boolean retVal;
         if (value < 0) {
-            Log.e(LOG_TAG, name + " bad value: is < 0");
+            Rlog.e(LOG_TAG, name + " bad value: is < 0");
             retVal = false;
         } else {
             retVal = true;
@@ -405,6 +405,6 @@ public class RetryManager {
     }
 
     private void log(String s) {
-        Log.d(LOG_TAG, "[RM] " + s);
+        Rlog.d(LOG_TAG, "[RM] " + s);
     }
 }

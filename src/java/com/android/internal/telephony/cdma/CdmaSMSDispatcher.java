@@ -39,7 +39,7 @@ import android.telephony.SmsCbMessage;
 import android.telephony.SmsManager;
 import android.telephony.cdma.CdmaSmsCbProgramData;
 import android.telephony.cdma.CdmaSmsCbProgramResults;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.GsmAlphabet;
@@ -116,7 +116,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
     private void handleServiceCategoryProgramData(SmsMessage sms) {
         ArrayList<CdmaSmsCbProgramData> programDataList = sms.getSmsCbProgramData();
         if (programDataList == null) {
-            Log.e(TAG, "handleServiceCategoryProgramData: program data list is null!");
+            Rlog.e(TAG, "handleServiceCategoryProgramData: program data list is null!");
             return;
         }
 
@@ -132,7 +132,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
 
         // If sms is null, means there was a parsing error.
         if (smsb == null) {
-            Log.e(TAG, "dispatchMessage: message is null");
+            Rlog.e(TAG, "dispatchMessage: message is null");
             return Intents.RESULT_SMS_GENERIC_ERROR;
         }
 
@@ -143,7 +143,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
 
         if (mSmsReceiveDisabled) {
             // Device doesn't support receiving SMS,
-            Log.d(TAG, "Received short message on device which doesn't support "
+            Rlog.d(TAG, "Received short message on device which doesn't support "
                     + "receiving SMS. Ignored.");
             return Intents.RESULT_SMS_HANDLED;
         }
@@ -152,7 +152,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
 
         // Handle CMAS emergency broadcast messages.
         if (SmsEnvelope.MESSAGE_TYPE_BROADCAST == sms.getMessageType()) {
-            Log.d(TAG, "Broadcast type message");
+            Rlog.d(TAG, "Broadcast type message");
             SmsCbMessage message = sms.parseBroadcastSms();
             if (message != null) {
                 dispatchBroadcastMessage(message);
@@ -175,7 +175,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
                 (SmsEnvelope.TELESERVICE_MWI == teleService)) {
             // handling Voicemail
             int voicemailCount = sms.getNumOfVoicemails();
-            Log.d(TAG, "Voicemail count=" + voicemailCount);
+            Rlog.d(TAG, "Voicemail count=" + voicemailCount);
             // Store the voicemail count in preferences.
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
                     mContext);
@@ -194,7 +194,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             handled = true;
         } else if ((sms.getUserData() == null)) {
             if (false) {
-                Log.d(TAG, "Received SMS without user data");
+                Rlog.d(TAG, "Received SMS without user data");
             }
             handled = true;
         }
@@ -243,14 +243,14 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
 
         int msgType = (0xFF & pdu[index++]);
         if (msgType != 0) {
-            Log.w(TAG, "Received a WAP SMS which is not WDP. Discard.");
+            Rlog.w(TAG, "Received a WAP SMS which is not WDP. Discard.");
             return Intents.RESULT_SMS_HANDLED;
         }
         int totalSegments = (0xFF & pdu[index++]);   // >= 1
         int segment = (0xFF & pdu[index++]);         // >= 0
 
         if (segment >= totalSegments) {
-            Log.e(TAG, "WDP bad segment #" + segment + " expecting 0-" + (totalSegments - 1));
+            Rlog.e(TAG, "WDP bad segment #" + segment + " expecting 0-" + (totalSegments - 1));
             return Intents.RESULT_SMS_HANDLED;
         }
 
@@ -273,7 +273,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         }
 
         // Lookup all other related parts
-        Log.i(TAG, "Received WAP PDU. Type = " + msgType + ", originator = " + address
+        Rlog.i(TAG, "Received WAP PDU. Type = " + msgType + ", originator = " + address
                 + ", src-port = " + sourcePort + ", dst-port = " + destinationPort
                 + ", ID = " + referenceNumber + ", segment# = " + segment + '/' + totalSegments);
 
@@ -344,7 +344,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
                 } catch (CanceledException ex) {}
             }
             if (false) {
-                Log.d(TAG, "Block SMS in Emergency Callback mode");
+                Rlog.d(TAG, "Block SMS in Emergency Callback mode");
             }
             return;
         }
@@ -443,23 +443,23 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             int rc = getResultCode();
             boolean success = (rc == Activity.RESULT_OK) || (rc == Intents.RESULT_SMS_HANDLED);
             if (!success) {
-                Log.e(TAG, "SCP results error: result code = " + rc);
+                Rlog.e(TAG, "SCP results error: result code = " + rc);
                 return;
             }
             Bundle extras = getResultExtras(false);
             if (extras == null) {
-                Log.e(TAG, "SCP results error: missing extras");
+                Rlog.e(TAG, "SCP results error: missing extras");
                 return;
             }
             String sender = extras.getString("sender");
             if (sender == null) {
-                Log.e(TAG, "SCP results error: missing sender extra.");
+                Rlog.e(TAG, "SCP results error: missing sender extra.");
                 return;
             }
             ArrayList<CdmaSmsCbProgramResults> results
                     = extras.getParcelableArrayList("results");
             if (results == null) {
-                Log.e(TAG, "SCP results error: missing results extra.");
+                Rlog.e(TAG, "SCP results error: missing results extra.");
                 return;
             }
 
@@ -492,7 +492,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
                 // Ignore the RIL response. TODO: implement retry if SMS send fails.
                 mCm.sendCdmaSms(baos.toByteArray(), null);
             } catch (IOException e) {
-                Log.e(TAG, "exception creating SCP results PDU", e);
+                Rlog.e(TAG, "exception creating SCP results PDU", e);
             } finally {
                 try {
                     dos.close();

@@ -20,7 +20,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.telephony.PhoneNumberUtils;
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.util.Arrays;
 
@@ -212,15 +212,15 @@ public class AdnRecord implements Parcelable {
         }
 
         if (TextUtils.isEmpty(number)) {
-            Log.w(LOG_TAG, "[buildAdnString] Empty dialing number");
+            Rlog.w(LOG_TAG, "[buildAdnString] Empty dialing number");
             return adnString;   // return the empty record (for delete)
         } else if (number.length()
                 > (ADN_DIALING_NUMBER_END - ADN_DIALING_NUMBER_START + 1) * 2) {
-            Log.w(LOG_TAG,
+            Rlog.w(LOG_TAG,
                     "[buildAdnString] Max length of dialing number is 20");
             return null;
         } else if (alphaTag != null && alphaTag.length() > footerOffset) {
-            Log.w(LOG_TAG,
+            Rlog.w(LOG_TAG,
                     "[buildAdnString] Max length of tag is " + footerOffset);
             return null;
         } else {
@@ -271,7 +271,7 @@ public class AdnRecord implements Parcelable {
             // We don't support ext record chaining.
 
         } catch (RuntimeException ex) {
-            Log.w(LOG_TAG, "Error parsing AdnRecord ext record", ex);
+            Rlog.w(LOG_TAG, "Error parsing AdnRecord ext record", ex);
         }
     }
 
@@ -312,7 +312,7 @@ public class AdnRecord implements Parcelable {
             emails = null;
 
         } catch (RuntimeException ex) {
-            Log.w(LOG_TAG, "Error parsing AdnRecord", ex);
+            Rlog.w(LOG_TAG, "Error parsing AdnRecord", ex);
             number = "";
             alphaTag = "";
             emails = null;

@@ -28,7 +28,7 @@ import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -211,17 +211,17 @@ abstract class SipPhoneBase extends PhoneBase {
 
     public boolean canDial() {
         int serviceState = getServiceState().getState();
-        Log.v(LOG_TAG, "canDial(): serviceState = " + serviceState);
+        Rlog.v(LOG_TAG, "canDial(): serviceState = " + serviceState);
         if (serviceState == ServiceState.STATE_POWER_OFF) return false;
 
         String disableCall = SystemProperties.get(
                 TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
-        Log.v(LOG_TAG, "canDial(): disableCall = " + disableCall);
+        Rlog.v(LOG_TAG, "canDial(): disableCall = " + disableCall);
         if (disableCall.equals("true")) return false;
 
-        Log.v(LOG_TAG, "canDial(): ringingCall: " + getRingingCall().getState());
-        Log.v(LOG_TAG, "canDial(): foregndCall: " + getForegroundCall().getState());
-        Log.v(LOG_TAG, "canDial(): backgndCall: " + getBackgroundCall().getState());
+        Rlog.v(LOG_TAG, "canDial(): ringingCall: " + getRingingCall().getState());
+        Rlog.v(LOG_TAG, "canDial(): foregndCall: " + getForegroundCall().getState());
+        Rlog.v(LOG_TAG, "canDial(): backgndCall: " + getBackgroundCall().getState());
         return !getRingingCall().isRinging()
                 && (!getForegroundCall().getState().isAlive()
                     || !getBackgroundCall().getState().isAlive());
@@ -279,12 +279,12 @@ abstract class SipPhoneBase extends PhoneBase {
     }
 
     public String getEsn() {
-        Log.e(LOG_TAG, "[SipPhone] getEsn() is a CDMA method");
+        Rlog.e(LOG_TAG, "[SipPhone] getEsn() is a CDMA method");
         return "0";
     }
 
     public String getMeid() {
-        Log.e(LOG_TAG, "[SipPhone] getMeid() is a CDMA method");
+        Rlog.e(LOG_TAG, "[SipPhone] getMeid() is a CDMA method");
         return "0";
     }
 
@@ -344,7 +344,7 @@ abstract class SipPhoneBase extends PhoneBase {
     }
 
     public void setCallWaiting(boolean enable, Message onComplete) {
-        Log.e(LOG_TAG, "call waiting not supported");
+        Rlog.e(LOG_TAG, "call waiting not supported");
     }
 
     public boolean getIccRecordsLoaded() {
@@ -431,15 +431,15 @@ abstract class SipPhoneBase extends PhoneBase {
     }
 
     public void activateCellBroadcastSms(int activate, Message response) {
-        Log.e(LOG_TAG, "Error! This functionality is not implemented for SIP.");
+        Rlog.e(LOG_TAG, "Error! This functionality is not implemented for SIP.");
     }
 
     public void getCellBroadcastSmsConfig(Message response) {
-        Log.e(LOG_TAG, "Error! This functionality is not implemented for SIP.");
+        Rlog.e(LOG_TAG, "Error! This functionality is not implemented for SIP.");
     }
 
     public void setCellBroadcastSmsConfig(int[] configValuesArray, Message response){
-        Log.e(LOG_TAG, "Error! This functionality is not implemented for SIP.");
+        Rlog.e(LOG_TAG, "Error! This functionality is not implemented for SIP.");
     }
 
     //@Override
@@ -467,7 +467,7 @@ abstract class SipPhoneBase extends PhoneBase {
         }
 
         if (state != oldState) {
-            Log.d(LOG_TAG, " ^^^ new phone state: " + state);
+            Rlog.d(LOG_TAG, " ^^^ new phone state: " + state);
             notifyPhoneStateChanged();
         }
     }

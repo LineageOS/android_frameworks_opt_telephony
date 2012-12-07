@@ -30,7 +30,7 @@ import android.os.Message;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -64,7 +64,7 @@ public class SipPhone extends SipPhoneBase {
     SipPhone (Context context, PhoneNotifier notifier, SipProfile profile) {
         super(context, notifier);
 
-        if (DEBUG) Log.d(LOG_TAG, "new SipPhone: " + profile.getUriString());
+        if (DEBUG) Rlog.d(LOG_TAG, "new SipPhone: " + profile.getUriString());
         ringingCall = new SipCall();
         foregroundCall = new SipCall();
         backgroundCall = new SipCall();
@@ -106,7 +106,7 @@ public class SipPhone extends SipPhoneBase {
 
             try {
                 SipAudioCall sipAudioCall = (SipAudioCall) incomingCall;
-                if (DEBUG) Log.d(LOG_TAG, "+++ taking call from: "
+                if (DEBUG) Rlog.d(LOG_TAG, "+++ taking call from: "
                         + sipAudioCall.getPeerProfile().getUriString());
                 String localUri = sipAudioCall.getLocalProfile().getUriString();
                 if (localUri.equals(mProfile.getUriString())) {
@@ -115,7 +115,7 @@ public class SipPhone extends SipPhoneBase {
                     if (sipAudioCall.getState()
                             != SipSession.State.INCOMING_CALL) {
                         // Peer cancelled the call!
-                        if (DEBUG) Log.d(LOG_TAG, "    call cancelled !!");
+                        if (DEBUG) Rlog.d(LOG_TAG, "    call cancelled !!");
                         ringingCall.reset();
                     }
                     return true;
@@ -134,7 +134,7 @@ public class SipPhone extends SipPhoneBase {
         synchronized (SipPhone.class) {
             if ((ringingCall.getState() == Call.State.INCOMING) ||
                     (ringingCall.getState() == Call.State.WAITING)) {
-                if (DEBUG) Log.d(LOG_TAG, "acceptCall");
+                if (DEBUG) Rlog.d(LOG_TAG, "acceptCall");
                 // Always unmute when answering a new call
                 ringingCall.setMute(false);
                 ringingCall.acceptCall();
@@ -147,7 +147,7 @@ public class SipPhone extends SipPhoneBase {
     public void rejectCall() throws CallStateException {
         synchronized (SipPhone.class) {
             if (ringingCall.getState().isRinging()) {
-                if (DEBUG) Log.d(LOG_TAG, "rejectCall");
+                if (DEBUG) Rlog.d(LOG_TAG, "rejectCall");
                 ringingCall.rejectCall();
             } else {
                 throw new CallStateException("phone not ringing");
@@ -181,13 +181,13 @@ public class SipPhone extends SipPhoneBase {
             Connection c = foregroundCall.dial(dialString);
             return c;
         } catch (SipException e) {
-            Log.e(LOG_TAG, "dial()", e);
+            Rlog.e(LOG_TAG, "dial()", e);
             throw new CallStateException("dial error: " + e);
         }
     }
 
     public void switchHoldingAndActive() throws CallStateException {
-        if (DEBUG) Log.d(LOG_TAG, " ~~~~~~  switch fg and bg");
+        if (DEBUG) Rlog.d(LOG_TAG, " ~~~~~~  switch fg and bg");
         synchronized (SipPhone.class) {
             foregroundCall.switchWith(backgroundCall);
             if (backgroundCall.getState().isAlive()) backgroundCall.hold();
@@ -242,7 +242,7 @@ public class SipPhone extends SipPhoneBase {
 
     public void sendDtmf(char c) {
         if (!PhoneNumberUtils.is12Key(c)) {
-            Log.e(LOG_TAG,
+            Rlog.e(LOG_TAG,
                     "sendDtmf called with invalid character '" + c + "'");
         } else if (foregroundCall.getState().isAlive()) {
             synchronized (SipPhone.class) {
@@ -253,7 +253,7 @@ public class SipPhone extends SipPhoneBase {
 
     public void startDtmf(char c) {
         if (!PhoneNumberUtils.is12Key(c)) {
-            Log.e(LOG_TAG,
+            Rlog.e(LOG_TAG,
                 "startDtmf called with invalid character '" + c + "'");
         } else {
             sendDtmf(c);
@@ -265,7 +265,7 @@ public class SipPhone extends SipPhoneBase {
     }
 
     public void sendBurstDtmf(String dtmfString) {
-        Log.e(LOG_TAG, "[SipPhone] sendBurstDtmf() is a CDMA method");
+        Rlog.e(LOG_TAG, "[SipPhone] sendBurstDtmf() is a CDMA method");
     }
 
     public void getOutgoingCallerIdDisplay(Message onComplete) {
@@ -289,7 +289,7 @@ public class SipPhone extends SipPhoneBase {
 
     public void setCallWaiting(boolean enable, Message onComplete) {
         // FIXME: what to reply?
-        Log.e(LOG_TAG, "call waiting not supported");
+        Rlog.e(LOG_TAG, "call waiting not supported");
     }
 
     @Override
@@ -410,7 +410,7 @@ public class SipPhone extends SipPhoneBase {
         public void hangup() throws CallStateException {
             synchronized (SipPhone.class) {
                 if (state.isAlive()) {
-                    if (DEBUG) Log.d(LOG_TAG, "hang up call: " + getState()
+                    if (DEBUG) Rlog.d(LOG_TAG, "hang up call: " + getState()
                             + ": " + this + " on phone " + getPhone());
                     setState(State.DISCONNECTING);
                     CallStateException excp = null;
@@ -423,7 +423,7 @@ public class SipPhone extends SipPhoneBase {
                     }
                     if (excp != null) throw excp;
                 } else {
-                    if (DEBUG) Log.d(LOG_TAG, "hang up dead call: " + getState()
+                    if (DEBUG) Rlog.d(LOG_TAG, "hang up dead call: " + getState()
                             + ": " + this + " on phone " + getPhone());
                 }
             }
@@ -473,7 +473,7 @@ public class SipPhone extends SipPhoneBase {
             } else {
                 audioGroup.setMode(AudioGroup.MODE_NORMAL);
             }
-            if (DEBUG) Log.d(LOG_TAG, String.format(
+            if (DEBUG) Rlog.d(LOG_TAG, String.format(
                     "audioGroup mode change: %d --> %d", mode,
                     audioGroup.getMode()));
         }
@@ -558,7 +558,7 @@ public class SipPhone extends SipPhoneBase {
         @Override
         protected void setState(State newState) {
             if (state != newState) {
-                if (DEBUG) Log.v(LOG_TAG, "+***+ call state changed: " + state
+                if (DEBUG) Rlog.v(LOG_TAG, "+***+ call state changed: " + state
                         + " --> " + newState + ": " + this + ": on phone "
                         + getPhone() + " " + connections.size());
 
@@ -585,10 +585,10 @@ public class SipPhone extends SipPhoneBase {
             // set state to DISCONNECTED only when all conns are disconnected
             if (state != State.DISCONNECTED) {
                 boolean allConnectionsDisconnected = true;
-                if (DEBUG) Log.d(LOG_TAG, "---check connections: "
+                if (DEBUG) Rlog.d(LOG_TAG, "---check connections: "
                         + connections.size());
                 for (Connection c : connections) {
-                    if (DEBUG) Log.d(LOG_TAG, "   state=" + c.getState() + ": "
+                    if (DEBUG) Rlog.d(LOG_TAG, "   state=" + c.getState() + ": "
                             + c);
                     if (c.getState() != State.DISCONNECTED) {
                         allConnectionsDisconnected = false;
@@ -627,7 +627,7 @@ public class SipPhone extends SipPhoneBase {
                     String sessionState = (sipAudioCall == null)
                             ? ""
                             : (sipAudioCall.getState() + ", ");
-                    if (DEBUG) Log.d(LOG_TAG, "--- connection ended: "
+                    if (DEBUG) Rlog.d(LOG_TAG, "--- connection ended: "
                             + mPeer.getUriString() + ": " + sessionState
                             + "cause: " + getDisconnectCause() + ", on phone "
                             + getPhone());
@@ -674,7 +674,7 @@ public class SipPhone extends SipPhoneBase {
                         setState(newState);
                     }
                     mOwner.onConnectionStateChanged(SipConnection.this);
-                    if (DEBUG) Log.v(LOG_TAG, "+***+ connection state changed: "
+                    if (DEBUG) Rlog.v(LOG_TAG, "+***+ connection state changed: "
                             + mPeer.getUriString() + ": " + mState
                             + " on phone " + getPhone());
                 }
@@ -682,7 +682,7 @@ public class SipPhone extends SipPhoneBase {
 
             @Override
             protected void onError(DisconnectCause cause) {
-                if (DEBUG) Log.d(LOG_TAG, "SIP error: " + cause);
+                if (DEBUG) Rlog.d(LOG_TAG, "SIP error: " + cause);
                 onCallEnded(cause);
             }
         };
@@ -810,7 +810,7 @@ public class SipPhone extends SipPhoneBase {
         @Override
         public void hangup() throws CallStateException {
             synchronized (SipPhone.class) {
-                if (DEBUG) Log.d(LOG_TAG, "hangup conn: " + mPeer.getUriString()
+                if (DEBUG) Rlog.d(LOG_TAG, "hangup conn: " + mPeer.getUriString()
                         + ": " + mState + ": on phone "
                         + getPhone().getPhoneName());
                 if (!mState.isAlive()) return;
@@ -842,7 +842,7 @@ public class SipPhone extends SipPhoneBase {
                             "cannot put conn back to a call in non-idle state: "
                             + call.getState());
                 }
-                if (DEBUG) Log.d(LOG_TAG, "separate conn: "
+                if (DEBUG) Rlog.d(LOG_TAG, "separate conn: "
                         + mPeer.getUriString() + " from " + mOwner + " back to "
                         + call);
 
@@ -877,7 +877,7 @@ public class SipPhone extends SipPhoneBase {
             case SipSession.State.OUTGOING_CALL_CANCELING:  return Call.State.DISCONNECTING;
             case SipSession.State.IN_CALL:                  return Call.State.ACTIVE;
             default:
-                Log.w(LOG_TAG, "illegal connection state: " + sessionState);
+                Rlog.w(LOG_TAG, "illegal connection state: " + sessionState);
                 return Call.State.DISCONNECTED;
         }
     }
@@ -930,7 +930,7 @@ public class SipPhone extends SipPhoneBase {
                 case SipErrorCode.SOCKET_ERROR:
                 case SipErrorCode.CLIENT_ERROR:
                 default:
-                    Log.w(LOG_TAG, "error: " + SipErrorCode.toString(errorCode)
+                    Rlog.w(LOG_TAG, "error: " + SipErrorCode.toString(errorCode)
                             + ": " + errorMessage);
                     onError(Connection.DisconnectCause.ERROR_UNSPECIFIED);
             }
