@@ -22,7 +22,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 
 
 public class AdnRecordLoader extends Handler {
@@ -186,7 +186,7 @@ public class AdnRecordLoader extends Handler {
                     }
 
                     if (false) {
-                        Log.d(LOG_TAG,"ADN EF: 0x"
+                        Rlog.d(LOG_TAG,"ADN EF: 0x"
                             + Integer.toHexString(ef)
                             + ":" + recordNumber
                             + "\n" + IccUtils.bytesToHexString(data));
@@ -217,7 +217,7 @@ public class AdnRecordLoader extends Handler {
                         throw new RuntimeException("load failed", ar.exception);
                     }
 
-                    Log.d(LOG_TAG,"ADN extension EF: 0x"
+                    Rlog.d(LOG_TAG,"ADN extension EF: 0x"
                         + Integer.toHexString(extensionEF)
                         + ":" + adn.extRecord
                         + "\n" + IccUtils.bytesToHexString(data));

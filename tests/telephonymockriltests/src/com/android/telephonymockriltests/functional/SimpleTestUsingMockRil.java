@@ -18,7 +18,7 @@ package com.android.telephonymockriltests.functional;
 
 import com.android.internal.telephony.mockril.MockRilController;
 import android.test.InstrumentationTestCase;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.telephonymockriltests.TelephonyMockTestRunner;
 
@@ -43,7 +43,7 @@ public class SimpleTestUsingMockRil extends InstrumentationTestCase {
      */
     public void testGetRadioState() {
         int state = mMockRilCtrl.getRadioState();
-        Log.v(TAG, "testGetRadioState: " + state);
+        Rlog.v(TAG, "testGetRadioState: " + state);
         assertTrue(state >= 0 && state <= 9);
     }
 
@@ -53,7 +53,7 @@ public class SimpleTestUsingMockRil extends InstrumentationTestCase {
      */
     public void testSetRadioState() {
         for (int state = 0; state <= 9; state++) {
-            Log.v(TAG, "set radio state to be " + state);
+            Rlog.v(TAG, "set radio state to be " + state);
             assertTrue("set radio state: " + state + " failed.",
                        mMockRilCtrl.setRadioState(state));
         }

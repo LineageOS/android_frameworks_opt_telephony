@@ -17,7 +17,7 @@
 package android.telephony;
 
 import android.os.Parcel;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
@@ -158,7 +158,7 @@ public class SmsMessage {
         } else if (SmsConstants.FORMAT_3GPP.equals(format)) {
             wrappedMessage = com.android.internal.telephony.gsm.SmsMessage.createFromPdu(pdu);
         } else {
-            Log.e(LOG_TAG, "createFromPdu(): unsupported message format " + format);
+            Rlog.e(LOG_TAG, "createFromPdu(): unsupported message format " + format);
             return null;
         }
 
@@ -337,7 +337,7 @@ public class SmsMessage {
                 nextPos = pos + Math.min(limit / 2, textLen - pos);
             }
             if ((nextPos <= pos) || (nextPos > textLen)) {
-                Log.e(LOG_TAG, "fragmentText failed (" + pos + " >= " + nextPos + " or " +
+                Rlog.e(LOG_TAG, "fragmentText failed (" + pos + " >= " + nextPos + " or " +
                           nextPos + " >= " + textLen + ")");
                 break;
             }

@@ -20,7 +20,7 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 
 import android.os.Message;
 import android.os.Handler;
-import android.util.Log;
+import android.telephony.Rlog;
 
 /**
  * {@hide}

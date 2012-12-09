@@ -24,7 +24,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import com.android.internal.telephony.CallerInfo;
 import com.android.internal.telephony.CallerInfoAsyncQuery;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.os.Looper;
 import android.test.ActivityInstrumentationTestCase;
 import android.util.StringBuilderPrinter;

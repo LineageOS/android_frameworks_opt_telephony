@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony.cdma;
 
-import android.util.Log;
+import android.telephony.Rlog;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.PhoneConstants;
 
@@ -62,7 +62,7 @@ public class CdmaCallWaitingNotification {
             case 2: return PhoneConstants.PRESENTATION_UNKNOWN;
             default:
                 // This shouldn't happen, just log an error and treat as Unknown
-                Log.d(LOG_TAG, "Unexpected presentation " + cli);
+                Rlog.d(LOG_TAG, "Unexpected presentation " + cli);
                 return PhoneConstants.PRESENTATION_UNKNOWN;
         }
     }

@@ -29,7 +29,7 @@ import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.ApnSetting;
 import com.android.internal.telephony.CommandsInterface;
@@ -951,12 +951,12 @@ public final class CdmaDataConnectionTracker extends DataConnectionTracker {
 
     @Override
     protected void log(String s) {
-        Log.d(LOG_TAG, "[CdmaDCT] " + s);
+        Rlog.d(LOG_TAG, "[CdmaDCT] " + s);
     }
 
     @Override
     protected void loge(String s) {
-        Log.e(LOG_TAG, "[CdmaDCT] " + s);
+        Rlog.e(LOG_TAG, "[CdmaDCT] " + s);
     }
 
     @Override

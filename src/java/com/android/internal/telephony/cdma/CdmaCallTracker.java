@@ -23,7 +23,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.os.SystemProperties;
 
 import com.android.internal.telephony.CallStateException;
@@ -112,14 +112,14 @@ public final class CdmaCallTracker extends CallTracker {
             try {
                 if(c != null) hangup(c);
             } catch (CallStateException ex) {
-                Log.e(LOG_TAG, "unexpected error on hangup during dispose");
+                Rlog.e(LOG_TAG, "unexpected error on hangup during dispose");
             }
         }
 
         try {
             if(pendingMO != null) hangup(pendingMO);
         } catch (CallStateException ex) {
-            Log.e(LOG_TAG, "unexpected error on hangup during dispose");
+            Rlog.e(LOG_TAG, "unexpected error on hangup during dispose");
         }
 
         clearDisconnected();
@@ -128,7 +128,7 @@ public final class CdmaCallTracker extends CallTracker {
 
     @Override
     protected void finalize() {
-        Log.d(LOG_TAG, "CdmaCallTracker finalized");
+        Rlog.d(LOG_TAG, "CdmaCallTracker finalized");
     }
 
     //***** Instance Methods
@@ -274,7 +274,7 @@ public final class CdmaCallTracker extends CallTracker {
     void
     acceptCall() throws CallStateException {
         if (ringingCall.getState() == CdmaCall.State.INCOMING) {
-            Log.i("phone", "acceptCall: incoming...");
+            Rlog.i("phone", "acceptCall: incoming...");
             // Always unmute when answering a new call
             setMute(false);
             cm.acceptCall(obtainCompleteMessage());
@@ -386,7 +386,7 @@ public final class CdmaCallTracker extends CallTracker {
 
     boolean
     canTransfer() {
-        Log.e(LOG_TAG, "canTransfer: not possible in CDMA");
+        Rlog.e(LOG_TAG, "canTransfer: not possible in CDMA");
         return false;
     }
 
@@ -436,7 +436,7 @@ public final class CdmaCallTracker extends CallTracker {
             cm.getCurrentCalls(lastRelevantPoll);
         } else if (pendingOperations < 0) {
             // this should never happen
-            Log.e(LOG_TAG,"CdmaCallTracker.pendingOperations < 0");
+            Rlog.e(LOG_TAG,"CdmaCallTracker.pendingOperations < 0");
             pendingOperations = 0;
         }
     }
@@ -540,7 +540,7 @@ public final class CdmaCallTracker extends CallTracker {
                                     "poll: hangupPendingMO, hangup conn " + i);
                             hangup(connections[i]);
                         } catch (CallStateException ex) {
-                            Log.e(LOG_TAG, "unexpected error on hangup");
+                            Rlog.e(LOG_TAG, "unexpected error on hangup");
                         }
 
                         // Do not continue processing this poll
@@ -608,7 +608,7 @@ public final class CdmaCallTracker extends CallTracker {
                         // We should follow the rule of MT calls taking precedence over MO calls
                         // when there is conflict, so here we drop the call info from dc and
                         // continue to use the call info from conn, and only take a log.
-                        Log.e(LOG_TAG,"Error in RIL, Phantom call appeared " + dc);
+                        Rlog.e(LOG_TAG,"Error in RIL, Phantom call appeared " + dc);
                     }
                 } else {
                     boolean changed;
@@ -641,7 +641,7 @@ public final class CdmaCallTracker extends CallTracker {
         // We expect the pending call to appear in the list
         // If it does not, we land here
         if (pendingMO != null) {
-            Log.d(LOG_TAG,"Pending MO dropped before poll fg state:"
+            Rlog.d(LOG_TAG,"Pending MO dropped before poll fg state:"
                             + foregroundCall.getState());
 
             droppedDuringPoll.add(pendingMO);
@@ -756,7 +756,7 @@ public final class CdmaCallTracker extends CallTracker {
             } catch (CallStateException ex) {
                 // Ignore "connection not found"
                 // Call may have hung up already
-                Log.w(LOG_TAG,"CdmaCallTracker WARN: hangup() on absent connection "
+                Rlog.w(LOG_TAG,"CdmaCallTracker WARN: hangup() on absent connection "
                                 + conn);
             }
         }
@@ -776,7 +776,7 @@ public final class CdmaCallTracker extends CallTracker {
         } catch (CallStateException ex) {
             // Ignore "connection not found"
             // Call may have hung up already
-            Log.w(LOG_TAG,"CdmaCallTracker WARN: separate() on absent connection "
+            Rlog.w(LOG_TAG,"CdmaCallTracker WARN: separate() on absent connection "
                           + conn);
         }
     }
@@ -867,7 +867,7 @@ public final class CdmaCallTracker extends CallTracker {
                 cm.hangupConnection(cn.getCDMAIndex(), obtainCompleteMessage());
             }
         } catch (CallStateException ex) {
-            Log.e(LOG_TAG, "hangupConnectionByIndex caught " + ex);
+            Rlog.e(LOG_TAG, "hangupConnectionByIndex caught " + ex);
         }
     }
 
@@ -949,7 +949,7 @@ public final class CdmaCallTracker extends CallTracker {
 
         switch (msg.what) {
             case EVENT_POLL_CALLS_RESULT:{
-                Log.d(LOG_TAG, "Event EVENT_POLL_CALLS_RESULT Received");
+                Rlog.d(LOG_TAG, "Event EVENT_POLL_CALLS_RESULT Received");
                 ar = (AsyncResult)msg.obj;
 
                 if(msg == lastRelevantPoll) {
@@ -982,7 +982,7 @@ public final class CdmaCallTracker extends CallTracker {
                     // An exception occurred...just treat the disconnect
                     // cause as "normal"
                     causeCode = CallFailCause.NORMAL_CLEARING;
-                    Log.i(LOG_TAG,
+                    Rlog.i(LOG_TAG,
                             "Exception during getLastCallFailCause, assuming normal disconnect");
                 } else {
                     causeCode = ((int[])ar.result)[0];
@@ -1028,7 +1028,7 @@ public final class CdmaCallTracker extends CallTracker {
                ar = (AsyncResult)msg.obj;
                if (ar.exception == null) {
                    handleCallWaitingInfo((CdmaCallWaitingNotification)ar.result);
-                   Log.d(LOG_TAG, "Event EVENT_CALL_WAITING_INFO_CDMA Received");
+                   Rlog.d(LOG_TAG, "Event EVENT_CALL_WAITING_INFO_CDMA Received");
                }
             break;
 
@@ -1056,7 +1056,7 @@ public final class CdmaCallTracker extends CallTracker {
         case CDMAPhone.CANCEL_ECM_TIMER: mIsEcmTimerCanceled = true; break;
         case CDMAPhone.RESTART_ECM_TIMER: mIsEcmTimerCanceled = false; break;
         default:
-            Log.e(LOG_TAG, "handleEcmTimer, unsupported action " + action);
+            Rlog.e(LOG_TAG, "handleEcmTimer, unsupported action " + action);
         }
     }
 
@@ -1106,7 +1106,7 @@ public final class CdmaCallTracker extends CallTracker {
             // Something strange happened: a call which is neither
             // a ringing call nor the one we created. It could be the
             // call collision result from RIL
-            Log.e(LOG_TAG,"Phantom call appeared " + dc);
+            Rlog.e(LOG_TAG,"Phantom call appeared " + dc);
             // If it's a connected call, set the connect time so that
             // it's non-zero.  It may not be accurate, but at least
             // it won't appear as a Missed Call.
@@ -1129,7 +1129,7 @@ public final class CdmaCallTracker extends CallTracker {
     }
 
     protected void log(String msg) {
-        Log.d(LOG_TAG, "[CdmaCallTracker] " + msg);
+        Rlog.d(LOG_TAG, "[CdmaCallTracker] " + msg);
     }
 
     @Override

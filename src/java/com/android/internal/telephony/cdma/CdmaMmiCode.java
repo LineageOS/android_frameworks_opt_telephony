@@ -24,7 +24,7 @@ import com.android.internal.telephony.MmiCode;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -183,7 +183,7 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
     }
 
     public boolean isUssdRequest() {
-        Log.w(LOG_TAG, "isUssdRequest is not implemented in CdmaMmiCode");
+        Rlog.w(LOG_TAG, "isUssdRequest is not implemented in CdmaMmiCode");
         return false;
     }
 
@@ -239,7 +239,7 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
             ar = (AsyncResult) (msg.obj);
             onSetComplete(ar);
         } else {
-            Log.e(LOG_TAG, "Unexpected reply");
+            Rlog.e(LOG_TAG, "Unexpected reply");
         }
     }
     // Private instance methods

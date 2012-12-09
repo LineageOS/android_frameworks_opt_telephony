@@ -31,7 +31,7 @@ import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.gsm.GSMPhone;
@@ -131,15 +131,15 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     private static void logd(String msg) {
-        Log.d(LOG_TAG, "[PhoneProxy] " + msg);
+        Rlog.d(LOG_TAG, "[PhoneProxy] " + msg);
     }
 
     private void logw(String msg) {
-        Log.w(LOG_TAG, "[PhoneProxy] " + msg);
+        Rlog.w(LOG_TAG, "[PhoneProxy] " + msg);
     }
 
     private void loge(String msg) {
-        Log.e(LOG_TAG, "[PhoneProxy] " + msg);
+        Rlog.e(LOG_TAG, "[PhoneProxy] " + msg);
     }
 
     private void updatePhoneObject(int newVoiceRadioTech) {

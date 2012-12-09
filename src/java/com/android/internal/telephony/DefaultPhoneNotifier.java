@@ -24,7 +24,7 @@ import android.os.ServiceManager;
 import android.telephony.CellInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.ITelephonyRegistry;
 
@@ -176,7 +176,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     private void log(String s) {
-        Log.d(LOG_TAG, "[PhoneNotifier] " + s);
+        Rlog.d(LOG_TAG, "[PhoneNotifier] " + s);
     }
 
     /**

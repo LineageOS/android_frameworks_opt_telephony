@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony.cat;
 
-import android.util.Log;
+import android.telephony.Rlog;
 
 public abstract class CatLog {
     static final boolean DEBUG = true;
@@ -27,7 +27,7 @@ public abstract class CatLog {
         }
 
         String className = caller.getClass().getName();
-        Log.d("CAT", className.substring(className.lastIndexOf('.') + 1) + ": "
+        Rlog.d("CAT", className.substring(className.lastIndexOf('.') + 1) + ": "
                 + msg);
     }
 
@@ -36,6 +36,6 @@ public abstract class CatLog {
             return;
         }
 
-        Log.d("CAT", caller + ": " + msg);
+        Rlog.d("CAT", caller + ": " + msg);
     }
 }

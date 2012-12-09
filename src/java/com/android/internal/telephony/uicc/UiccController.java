@@ -22,7 +22,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCardStatus;
@@ -185,7 +185,7 @@ public class UiccController extends Handler {
                     onGetIccCardStatusDone(ar);
                     break;
                 default:
-                    Log.e(LOG_TAG, " Unknown Event " + msg.what);
+                    Rlog.e(LOG_TAG, " Unknown Event " + msg.what);
             }
         }
     }
@@ -201,7 +201,7 @@ public class UiccController extends Handler {
 
     private synchronized void onGetIccCardStatusDone(AsyncResult ar) {
         if (ar.exception != null) {
-            Log.e(LOG_TAG,"Error getting ICC status. "
+            Rlog.e(LOG_TAG,"Error getting ICC status. "
                     + "RIL_REQUEST_GET_ICC_STATUS should "
                     + "never return an error", ar.exception);
             return;
@@ -222,6 +222,6 @@ public class UiccController extends Handler {
     }
 
     private void log(String string) {
-        Log.d(LOG_TAG, string);
+        Rlog.d(LOG_TAG, string);
     }
 }

@@ -24,7 +24,7 @@ import com.android.internal.telephony.UUSInfo;
 
 import android.net.sip.SipAudioCall;
 import android.os.SystemClock;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.telephony.PhoneNumberUtils;
 
 abstract class SipConnectionBase extends Connection {
@@ -165,7 +165,7 @@ abstract class SipConnectionBase extends Connection {
     }
 
     private void log(String msg) {
-        Log.d(LOG_TAG, "[SipConn] " + msg);
+        Rlog.d(LOG_TAG, "[SipConn] " + msg);
     }
 
     @Override

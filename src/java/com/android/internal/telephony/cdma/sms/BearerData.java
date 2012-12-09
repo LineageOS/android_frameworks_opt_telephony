@@ -21,7 +21,7 @@ import android.telephony.SmsCbCmasInfo;
 import android.telephony.cdma.CdmaSmsCbProgramData;
 import android.telephony.cdma.CdmaSmsCbProgramResults;
 import android.text.format.Time;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.IccUtils;
@@ -627,7 +627,7 @@ public final class BearerData {
         throws CodingException
     {
         if ((uData.payloadStr == null) && (uData.msgEncoding != UserData.ENCODING_OCTET)) {
-            Log.e(LOG_TAG, "user data with null payloadStr");
+            Rlog.e(LOG_TAG, "user data with null payloadStr");
             uData.payloadStr = "";
         }
 
@@ -639,7 +639,7 @@ public final class BearerData {
         if (uData.msgEncodingSet) {
             if (uData.msgEncoding == UserData.ENCODING_OCTET) {
                 if (uData.payload == null) {
-                    Log.e(LOG_TAG, "user data with octet encoding but null payload");
+                    Rlog.e(LOG_TAG, "user data with octet encoding but null payload");
                     uData.payload = new byte[0];
                     uData.numFields = 0;
                 } else {
@@ -647,7 +647,7 @@ public final class BearerData {
                 }
             } else {
                 if (uData.payloadStr == null) {
-                    Log.e(LOG_TAG, "non-octet user data with null payloadStr");
+                    Rlog.e(LOG_TAG, "non-octet user data with null payloadStr");
                     uData.payloadStr = "";
                 }
                 if (uData.msgEncoding == UserData.ENCODING_GSM_7BIT_ALPHABET) {
@@ -937,9 +937,9 @@ public final class BearerData {
             }
             return outStream.toByteArray();
         } catch (BitwiseOutputStream.AccessException ex) {
-            Log.e(LOG_TAG, "BearerData encode failed: " + ex);
+            Rlog.e(LOG_TAG, "BearerData encode failed: " + ex);
         } catch (CodingException ex) {
-            Log.e(LOG_TAG, "BearerData encode failed: " + ex);
+            Rlog.e(LOG_TAG, "BearerData encode failed: " + ex);
         }
         return null;
    }
@@ -960,7 +960,7 @@ public final class BearerData {
             inStream.skip(3);
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "MESSAGE_IDENTIFIER decode " +
+            Rlog.d(LOG_TAG, "MESSAGE_IDENTIFIER decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1014,7 +1014,7 @@ public final class BearerData {
             if (maxNumFields < 0) {
                 throw new CodingException(charset + " decode failed: offset out of range");
             }
-            Log.e(LOG_TAG, charset + " decode error: offset = " + offset + " numFields = "
+            Rlog.e(LOG_TAG, charset + " decode error: offset = " + offset + " numFields = "
                     + numFields + " data.length = " + data.length + " maxNumFields = "
                     + maxNumFields);
             numFields = maxNumFields;
@@ -1271,7 +1271,7 @@ public final class BearerData {
             inStream.skip(4);
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "REPLY_OPTION decode " +
+            Rlog.d(LOG_TAG, "REPLY_OPTION decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1291,7 +1291,7 @@ public final class BearerData {
             bData.numberOfMessages = IccUtils.cdmaBcdByteToInt((byte)inStream.read(8));
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "NUMBER_OF_MESSAGES decode " +
+            Rlog.d(LOG_TAG, "NUMBER_OF_MESSAGES decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1311,7 +1311,7 @@ public final class BearerData {
             bData.depositIndex = (inStream.read(8) << 8) | inStream.read(8);
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "MESSAGE_DEPOSIT_INDEX decode " +
+            Rlog.d(LOG_TAG, "MESSAGE_DEPOSIT_INDEX decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1394,7 +1394,7 @@ public final class BearerData {
             bData.messageStatus = inStream.read(6);
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "MESSAGE_STATUS decode " +
+            Rlog.d(LOG_TAG, "MESSAGE_STATUS decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1415,7 +1415,7 @@ public final class BearerData {
             bData.msgCenterTimeStamp = TimeStamp.fromByteArray(inStream.readByteArray(6 * 8));
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "MESSAGE_CENTER_TIME_STAMP decode " +
+            Rlog.d(LOG_TAG, "MESSAGE_CENTER_TIME_STAMP decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1435,7 +1435,7 @@ public final class BearerData {
             bData.validityPeriodAbsolute = TimeStamp.fromByteArray(inStream.readByteArray(6 * 8));
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "VALIDITY_PERIOD_ABSOLUTE decode " +
+            Rlog.d(LOG_TAG, "VALIDITY_PERIOD_ABSOLUTE decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1456,7 +1456,7 @@ public final class BearerData {
                     inStream.readByteArray(6 * 8));
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "DEFERRED_DELIVERY_TIME_ABSOLUTE decode " +
+            Rlog.d(LOG_TAG, "DEFERRED_DELIVERY_TIME_ABSOLUTE decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1476,7 +1476,7 @@ public final class BearerData {
             bData.deferredDeliveryTimeRelative = inStream.read(8);
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "VALIDITY_PERIOD_RELATIVE decode " +
+            Rlog.d(LOG_TAG, "VALIDITY_PERIOD_RELATIVE decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1497,7 +1497,7 @@ public final class BearerData {
             bData.validityPeriodRelative = inStream.read(8);
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "DEFERRED_DELIVERY_TIME_RELATIVE decode " +
+            Rlog.d(LOG_TAG, "DEFERRED_DELIVERY_TIME_RELATIVE decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1519,7 +1519,7 @@ public final class BearerData {
             inStream.skip(6);
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "PRIVACY_INDICATOR decode " +
+            Rlog.d(LOG_TAG, "PRIVACY_INDICATOR decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1540,7 +1540,7 @@ public final class BearerData {
             bData.language = inStream.read(8);
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "LANGUAGE_INDICATOR decode " +
+            Rlog.d(LOG_TAG, "LANGUAGE_INDICATOR decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1562,7 +1562,7 @@ public final class BearerData {
             inStream.skip(6);
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "DISPLAY_MODE decode " +
+            Rlog.d(LOG_TAG, "DISPLAY_MODE decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1584,7 +1584,7 @@ public final class BearerData {
             inStream.skip(6);
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "PRIORITY_INDICATOR decode " +
+            Rlog.d(LOG_TAG, "PRIORITY_INDICATOR decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1606,7 +1606,7 @@ public final class BearerData {
             inStream.skip(6);
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "ALERT_ON_MESSAGE_DELIVERY decode " +
+            Rlog.d(LOG_TAG, "ALERT_ON_MESSAGE_DELIVERY decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1627,7 +1627,7 @@ public final class BearerData {
             bData.userResponseCode = inStream.read(8);
         }
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "USER_RESPONSE_CODE decode " +
+            Rlog.d(LOG_TAG, "USER_RESPONSE_CODE decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ")");
         }
@@ -1689,7 +1689,7 @@ public final class BearerData {
         }
 
         if ((! decodeSuccess) || (paramBits > 0)) {
-            Log.d(LOG_TAG, "SERVICE_CATEGORY_PROGRAM_DATA decode " +
+            Rlog.d(LOG_TAG, "SERVICE_CATEGORY_PROGRAM_DATA decode " +
                       (decodeSuccess ? "succeeded" : "failed") +
                       " (extra bits = " + paramBits + ')');
         }
@@ -1823,7 +1823,7 @@ public final class BearerData {
                     break;
 
                 default:
-                    Log.w(LOG_TAG, "skipping unsupported CMAS record type " + recordType);
+                    Rlog.w(LOG_TAG, "skipping unsupported CMAS record type " + recordType);
                     inStream.skip(recordLen * 8);
                     break;
             }
@@ -1945,7 +1945,7 @@ public final class BearerData {
                              (1 << SUBPARAM_MESSAGE_IDENTIFIER) ^
                              (1 << SUBPARAM_USER_DATA))
                             != 0) {
-                        Log.e(LOG_TAG, "IS-91 must occur without extra subparams (" +
+                        Rlog.e(LOG_TAG, "IS-91 must occur without extra subparams (" +
                               foundSubparamMask + ")");
                     }
                     decodeIs91(bData);
@@ -1955,9 +1955,9 @@ public final class BearerData {
             }
             return bData;
         } catch (BitwiseInputStream.AccessException ex) {
-            Log.e(LOG_TAG, "BearerData decode failed: " + ex);
+            Rlog.e(LOG_TAG, "BearerData decode failed: " + ex);
         } catch (CodingException ex) {
-            Log.e(LOG_TAG, "BearerData decode failed: " + ex);
+            Rlog.e(LOG_TAG, "BearerData decode failed: " + ex);
         }
         return null;
     }

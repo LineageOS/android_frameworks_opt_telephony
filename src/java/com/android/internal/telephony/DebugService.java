@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -103,6 +103,6 @@ public class DebugService {
     }
 
     private static void log(String s) {
-        Log.d(TAG, "DebugService " + s);
+        Rlog.d(TAG, "DebugService " + s);
     }
 }

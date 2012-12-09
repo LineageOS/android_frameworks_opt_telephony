@@ -25,7 +25,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.AdnRecord;
 import com.android.internal.telephony.AdnRecordCache;
@@ -944,7 +944,7 @@ public class SIMRecords extends IccRecords {
                 break;
 
             case EVENT_MARK_SMS_READ_DONE:
-                Log.i("ENF", "marked read: sms " + msg.arg1);
+                Rlog.i("ENF", "marked read: sms " + msg.arg1);
                 break;
 
 
@@ -1205,7 +1205,7 @@ public class SIMRecords extends IccRecords {
 
     private void handleSms(byte[] ba) {
         if (ba[0] != 0)
-            Log.d("ENF", "status : " + ba[0]);
+            Rlog.d("ENF", "status : " + ba[0]);
 
         // 3GPP TS 51.011 v5.0.0 (20011-12)  10.5.3
         // 3 == "received by MS from network; message to be read"
@@ -1230,7 +1230,7 @@ public class SIMRecords extends IccRecords {
             byte[] ba = (byte[]) messages.get(i);
 
             if (ba[0] != 0)
-                Log.i("ENF", "status " + i + ": " + ba[0]);
+                Rlog.i("ENF", "status " + i + ": " + ba[0]);
 
             // 3GPP TS 51.011 v5.0.0 (20011-12)  10.5.3
             // 3 == "received by MS from network; message to be read"
@@ -1618,19 +1618,19 @@ public class SIMRecords extends IccRecords {
     }
 
     protected void log(String s) {
-        Log.d(LOG_TAG, "[SIMRecords] " + s);
+        Rlog.d(LOG_TAG, "[SIMRecords] " + s);
     }
 
     protected void loge(String s) {
-        Log.e(LOG_TAG, "[SIMRecords] " + s);
+        Rlog.e(LOG_TAG, "[SIMRecords] " + s);
     }
 
     protected void logw(String s, Throwable tr) {
-        Log.w(LOG_TAG, "[SIMRecords] " + s, tr);
+        Rlog.w(LOG_TAG, "[SIMRecords] " + s, tr);
     }
 
     protected void logv(String s) {
-        Log.v(LOG_TAG, "[SIMRecords] " + s);
+        Rlog.v(LOG_TAG, "[SIMRecords] " + s);
     }
 
     /**

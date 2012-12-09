@@ -35,7 +35,7 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import com.android.internal.telephony.CallTracker;
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_DISABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
@@ -176,11 +176,11 @@ public class GSMPhone extends PhoneBase {
                                     try {
                                         Socket sock;
                                         sock = debugSocket.accept();
-                                        Log.i(LOG_TAG, "New connection; resetting radio");
+                                        Rlog.i(LOG_TAG, "New connection; resetting radio");
                                         mCM.resetRadio(null);
                                         sock.close();
                                     } catch (IOException ex) {
-                                        Log.w(LOG_TAG,
+                                        Rlog.w(LOG_TAG,
                                             "Exception accepting socket", ex);
                                     }
                                 }
@@ -191,7 +191,7 @@ public class GSMPhone extends PhoneBase {
                 debugPortThread.start();
 
             } catch (IOException ex) {
-                Log.w(LOG_TAG, "Failure to open com.android.internal.telephony.debug socket", ex);
+                Rlog.w(LOG_TAG, "Failure to open com.android.internal.telephony.debug socket", ex);
             }
         }
 
@@ -228,7 +228,7 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public void removeReferences() {
-        Log.d(LOG_TAG, "removeReferences");
+        Rlog.d(LOG_TAG, "removeReferences");
         mSimulatedRadioControl = null;
         mSimPhoneBookIntManager = null;
         mSimSmsIntManager = null;
@@ -239,7 +239,7 @@ public class GSMPhone extends PhoneBase {
     }
 
     protected void finalize() {
-        if(LOCAL_DEBUG) Log.d(LOG_TAG, "GSMPhone finalized");
+        if(LOCAL_DEBUG) Rlog.d(LOG_TAG, "GSMPhone finalized");
     }
 
 
@@ -481,16 +481,16 @@ public class GSMPhone extends PhoneBase {
         }
 
         if (getRingingCall().getState() != GsmCall.State.IDLE) {
-            if (LOCAL_DEBUG) Log.d(LOG_TAG, "MmiCode 0: rejectCall");
+            if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "MmiCode 0: rejectCall");
             try {
                 mCT.rejectCall();
             } catch (CallStateException e) {
-                if (LOCAL_DEBUG) Log.d(LOG_TAG,
+                if (LOCAL_DEBUG) Rlog.d(LOG_TAG,
                     "reject failed", e);
                 notifySuppServiceFailed(Phone.SuppService.REJECT);
             }
         } else if (getBackgroundCall().getState() != GsmCall.State.IDLE) {
-            if (LOCAL_DEBUG) Log.d(LOG_TAG,
+            if (LOCAL_DEBUG) Rlog.d(LOG_TAG,
                     "MmiCode 0: hangupWaitingOrBackground");
             mCT.hangupWaitingOrBackground();
         }
@@ -514,25 +514,25 @@ public class GSMPhone extends PhoneBase {
                 int callIndex = ch - '0';
 
                 if (callIndex >= 1 && callIndex <= GsmCallTracker.MAX_CONNECTIONS) {
-                    if (LOCAL_DEBUG) Log.d(LOG_TAG,
+                    if (LOCAL_DEBUG) Rlog.d(LOG_TAG,
                             "MmiCode 1: hangupConnectionByIndex " +
                             callIndex);
                     mCT.hangupConnectionByIndex(call, callIndex);
                 }
             } else {
                 if (call.getState() != GsmCall.State.IDLE) {
-                    if (LOCAL_DEBUG) Log.d(LOG_TAG,
+                    if (LOCAL_DEBUG) Rlog.d(LOG_TAG,
                             "MmiCode 1: hangup foreground");
                     //mCT.hangupForegroundResumeBackground();
                     mCT.hangup(call);
                 } else {
-                    if (LOCAL_DEBUG) Log.d(LOG_TAG,
+                    if (LOCAL_DEBUG) Rlog.d(LOG_TAG,
                             "MmiCode 1: switchWaitingOrHoldingAndActive");
                     mCT.switchWaitingOrHoldingAndActive();
                 }
             }
         } catch (CallStateException e) {
-            if (LOCAL_DEBUG) Log.d(LOG_TAG,
+            if (LOCAL_DEBUG) Rlog.d(LOG_TAG,
                 "hangup failed", e);
             notifySuppServiceFailed(Phone.SuppService.HANGUP);
         }
@@ -558,32 +558,32 @@ public class GSMPhone extends PhoneBase {
 
                 // gsm index starts at 1, up to 5 connections in a call,
                 if (conn != null && callIndex >= 1 && callIndex <= GsmCallTracker.MAX_CONNECTIONS) {
-                    if (LOCAL_DEBUG) Log.d(LOG_TAG, "MmiCode 2: separate call "+
+                    if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "MmiCode 2: separate call "+
                             callIndex);
                     mCT.separate(conn);
                 } else {
-                    if (LOCAL_DEBUG) Log.d(LOG_TAG, "separate: invalid call index "+
+                    if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "separate: invalid call index "+
                             callIndex);
                     notifySuppServiceFailed(Phone.SuppService.SEPARATE);
                 }
             } catch (CallStateException e) {
-                if (LOCAL_DEBUG) Log.d(LOG_TAG,
+                if (LOCAL_DEBUG) Rlog.d(LOG_TAG,
                     "separate failed", e);
                 notifySuppServiceFailed(Phone.SuppService.SEPARATE);
             }
         } else {
             try {
                 if (getRingingCall().getState() != GsmCall.State.IDLE) {
-                    if (LOCAL_DEBUG) Log.d(LOG_TAG,
+                    if (LOCAL_DEBUG) Rlog.d(LOG_TAG,
                     "MmiCode 2: accept ringing call");
                     mCT.acceptCall();
                 } else {
-                    if (LOCAL_DEBUG) Log.d(LOG_TAG,
+                    if (LOCAL_DEBUG) Rlog.d(LOG_TAG,
                     "MmiCode 2: switchWaitingOrHoldingAndActive");
                     mCT.switchWaitingOrHoldingAndActive();
                 }
             } catch (CallStateException e) {
-                if (LOCAL_DEBUG) Log.d(LOG_TAG,
+                if (LOCAL_DEBUG) Rlog.d(LOG_TAG,
                     "switch failed", e);
                 notifySuppServiceFailed(Phone.SuppService.SWITCH);
             }
@@ -598,11 +598,11 @@ public class GSMPhone extends PhoneBase {
             return false;
         }
 
-        if (LOCAL_DEBUG) Log.d(LOG_TAG, "MmiCode 3: merge calls");
+        if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "MmiCode 3: merge calls");
         try {
             conference();
         } catch (CallStateException e) {
-            if (LOCAL_DEBUG) Log.d(LOG_TAG,
+            if (LOCAL_DEBUG) Rlog.d(LOG_TAG,
                 "conference failed", e);
             notifySuppServiceFailed(Phone.SuppService.CONFERENCE);
         }
@@ -618,11 +618,11 @@ public class GSMPhone extends PhoneBase {
             return false;
         }
 
-        if (LOCAL_DEBUG) Log.d(LOG_TAG, "MmiCode 4: explicit call transfer");
+        if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "MmiCode 4: explicit call transfer");
         try {
             explicitCallTransfer();
         } catch (CallStateException e) {
-            if (LOCAL_DEBUG) Log.d(LOG_TAG,
+            if (LOCAL_DEBUG) Rlog.d(LOG_TAG,
                 "transfer failed", e);
             notifySuppServiceFailed(Phone.SuppService.TRANSFER);
         }
@@ -635,7 +635,7 @@ public class GSMPhone extends PhoneBase {
             return false;
         }
 
-        Log.i(LOG_TAG, "MmiCode 5: CCBS not supported!");
+        Rlog.i(LOG_TAG, "MmiCode 5: CCBS not supported!");
         // Treat it as an "unknown" service.
         notifySuppServiceFailed(Phone.SuppService.UNKNOWN);
         return true;
@@ -710,7 +710,7 @@ public class GSMPhone extends PhoneBase {
         String networkPortion = PhoneNumberUtils.extractNetworkPortionAlt(newDialString);
         GsmMmiCode mmi =
                 GsmMmiCode.newFromDialString(networkPortion, this, mUiccApplication.get());
-        if (LOCAL_DEBUG) Log.d(LOG_TAG,
+        if (LOCAL_DEBUG) Rlog.d(LOG_TAG,
                                "dialing w/ mmi '" + mmi + "'...");
 
         if (mmi == null) {
@@ -750,7 +750,7 @@ public class GSMPhone extends PhoneBase {
     public void
     sendDtmf(char c) {
         if (!PhoneNumberUtils.is12Key(c)) {
-            Log.e(LOG_TAG,
+            Rlog.e(LOG_TAG,
                     "sendDtmf called with invalid character '" + c + "'");
         } else {
             if (mCT.state ==  PhoneConstants.State.OFFHOOK) {
@@ -762,7 +762,7 @@ public class GSMPhone extends PhoneBase {
     public void
     startDtmf(char c) {
         if (!PhoneNumberUtils.is12Key(c)) {
-            Log.e(LOG_TAG,
+            Rlog.e(LOG_TAG,
                 "startDtmf called with invalid character '" + c + "'");
         } else {
             mCM.startDtmf(c, null);
@@ -776,7 +776,7 @@ public class GSMPhone extends PhoneBase {
 
     public void
     sendBurstDtmf(String dtmfString) {
-        Log.e(LOG_TAG, "[GSMPhone] sendBurstDtmf() is a CDMA method");
+        Rlog.e(LOG_TAG, "[GSMPhone] sendBurstDtmf() is a CDMA method");
     }
 
     public void
@@ -842,12 +842,12 @@ public class GSMPhone extends PhoneBase {
     }
 
     public String getEsn() {
-        Log.e(LOG_TAG, "[GSMPhone] getEsn() is a CDMA method");
+        Rlog.e(LOG_TAG, "[GSMPhone] getEsn() is a CDMA method");
         return "0";
     }
 
     public String getMeid() {
-        Log.e(LOG_TAG, "[GSMPhone] getMeid() is a CDMA method");
+        Rlog.e(LOG_TAG, "[GSMPhone] getMeid() is a CDMA method");
         return "0";
     }
 
@@ -924,7 +924,7 @@ public class GSMPhone extends PhoneBase {
 
     public void getCallForwardingOption(int commandInterfaceCFReason, Message onComplete) {
         if (isValidCommandInterfaceCFReason(commandInterfaceCFReason)) {
-            if (LOCAL_DEBUG) Log.d(LOG_TAG, "requesting call forwarding query.");
+            if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "requesting call forwarding query.");
             Message resp;
             if (commandInterfaceCFReason == CF_REASON_UNCONDITIONAL) {
                 resp = obtainMessage(EVENT_GET_CALL_FORWARD_DONE, onComplete);
@@ -1009,7 +1009,7 @@ public class GSMPhone extends PhoneBase {
         // get the message
         Message msg = obtainMessage(EVENT_SET_NETWORK_AUTOMATIC_COMPLETE, nsm);
         if (LOCAL_DEBUG)
-            Log.d(LOG_TAG, "wrapping and sending message to connect automatically");
+            Rlog.d(LOG_TAG, "wrapping and sending message to connect automatically");
 
         mCM.setNetworkSelectionModeAutomatic(msg);
     }
@@ -1199,7 +1199,7 @@ public class GSMPhone extends PhoneBase {
                     break;
                 }
 
-                if (LOCAL_DEBUG) Log.d(LOG_TAG, "Baseband version: " + ar.result);
+                if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Baseband version: " + ar.result);
                 setSystemProperty(PROPERTY_BASEBAND_VERSION, (String)ar.result);
             break;
 
@@ -1232,7 +1232,7 @@ public class GSMPhone extends PhoneBase {
                     try {
                         onIncomingUSSD(Integer.parseInt(ussdResult[0]), ussdResult[1]);
                     } catch (NumberFormatException e) {
-                        Log.w(LOG_TAG, "error parsing USSD");
+                        Rlog.w(LOG_TAG, "error parsing USSD");
                     }
                 }
             break;
@@ -1389,7 +1389,7 @@ public class GSMPhone extends PhoneBase {
                 mContext.getContentResolver().insert(uri, map);
                 return true;
             } catch (SQLException e) {
-                Log.e(LOG_TAG, "Can't store current operator", e);
+                Rlog.e(LOG_TAG, "Can't store current operator", e);
             }
         }
         return false;
@@ -1402,7 +1402,7 @@ public class GSMPhone extends PhoneBase {
         // look for our wrapper within the asyncresult, skip the rest if it
         // is null.
         if (!(ar.userObj instanceof NetworkSelectMessage)) {
-            if (LOCAL_DEBUG) Log.d(LOG_TAG, "unexpected result from user object.");
+            if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "unexpected result from user object.");
             return;
         }
 
@@ -1411,7 +1411,7 @@ public class GSMPhone extends PhoneBase {
         // found the object, now we send off the message we had originally
         // attached to the request.
         if (nsm.message != null) {
-            if (LOCAL_DEBUG) Log.d(LOG_TAG, "sending original message to recipient");
+            if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "sending original message to recipient");
             AsyncResult.forMessage(nsm.message, ar.result, ar.exception);
             nsm.message.sendToTarget();
         }
@@ -1425,7 +1425,7 @@ public class GSMPhone extends PhoneBase {
 
         // commit and log the result.
         if (! editor.commit()) {
-            Log.e(LOG_TAG, "failed to commit network selection preference");
+            Rlog.e(LOG_TAG, "failed to commit network selection preference");
         }
 
     }
@@ -1442,7 +1442,7 @@ public class GSMPhone extends PhoneBase {
 
         // commit and log the result.
         if (! editor.commit()) {
-            Log.e(LOG_TAG, "failed to commit CLIR preference");
+            Rlog.e(LOG_TAG, "failed to commit CLIR preference");
         }
     }
 
@@ -1493,7 +1493,7 @@ public class GSMPhone extends PhoneBase {
      * @param response Callback message is empty on completion
      */
     public void activateCellBroadcastSms(int activate, Message response) {
-        Log.e(LOG_TAG, "[GSMPhone] activateCellBroadcastSms() is obsolete; use SmsManager");
+        Rlog.e(LOG_TAG, "[GSMPhone] activateCellBroadcastSms() is obsolete; use SmsManager");
         response.sendToTarget();
     }
 
@@ -1503,7 +1503,7 @@ public class GSMPhone extends PhoneBase {
      * @param response Callback message is empty on completion
      */
     public void getCellBroadcastSmsConfig(Message response) {
-        Log.e(LOG_TAG, "[GSMPhone] getCellBroadcastSmsConfig() is obsolete; use SmsManager");
+        Rlog.e(LOG_TAG, "[GSMPhone] getCellBroadcastSmsConfig() is obsolete; use SmsManager");
         response.sendToTarget();
     }
 
@@ -1513,7 +1513,7 @@ public class GSMPhone extends PhoneBase {
      * @param response Callback message is empty on completion
      */
     public void setCellBroadcastSmsConfig(int[] configValuesArray, Message response) {
-        Log.e(LOG_TAG, "[GSMPhone] setCellBroadcastSmsConfig() is obsolete; use SmsManager");
+        Rlog.e(LOG_TAG, "[GSMPhone] setCellBroadcastSmsConfig() is obsolete; use SmsManager");
         response.sendToTarget();
     }
 
@@ -1561,6 +1561,6 @@ public class GSMPhone extends PhoneBase {
     }
 
     protected void log(String s) {
-        Log.d(LOG_TAG, "[GSMPhone] " + s);
+        Rlog.d(LOG_TAG, "[GSMPhone] " + s);
     }
 }

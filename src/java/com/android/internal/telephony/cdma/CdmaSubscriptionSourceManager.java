@@ -28,7 +28,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.provider.Settings;
-import android.util.Log;
+import android.telephony.Rlog;
 
 /**
  * Class that handles the CDMA subscription source changed events from RIL
@@ -182,15 +182,15 @@ public class CdmaSubscriptionSourceManager extends Handler {
     }
 
     private void log(String s) {
-        Log.d(LOG_TAG, "[CdmaSSM] " + s);
+        Rlog.d(LOG_TAG, "[CdmaSSM] " + s);
     }
 
     private void loge(String s) {
-        Log.e(LOG_TAG, "[CdmaSSM] " + s);
+        Rlog.e(LOG_TAG, "[CdmaSSM] " + s);
     }
 
     private void logw(String s) {
-        Log.w(LOG_TAG, "[CdmaSSM] " + s);
+        Rlog.w(LOG_TAG, "[CdmaSSM] " + s);
     }
 
 }
