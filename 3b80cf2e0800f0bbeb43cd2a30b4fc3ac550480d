@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAa3//3KU\u003d",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2116,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2012-12-09T14:35:20Z",
+      "side": 1,
+      "message": "trailing whitespace oh noes",
+      "revId": "3b80cf2e0800f0bbeb43cd2a30b4fc3ac550480d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
