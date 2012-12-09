@@ -17,7 +17,7 @@
 package com.android.internal.telephony.cdma;
 
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.DataConnection;
 import com.android.internal.telephony.DataConnectionTracker;
@@ -113,7 +113,7 @@ public class CdmaDataConnection extends DataConnection {
 
     @Override
     protected void log(String s) {
-        Log.d(LOG_TAG, "[" + getName() + "] " + s);
+        Rlog.d(LOG_TAG, "[" + getName() + "] " + s);
     }
 
     @Override

@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.Phone;
 
@@ -104,7 +104,7 @@ public class TelephonyCapabilities {
         } else if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
             return com.android.internal.R.string.meid;
         } else {
-            Log.w(LOG_TAG, "getDeviceIdLabel: no known label for phone "
+            Rlog.w(LOG_TAG, "getDeviceIdLabel: no known label for phone "
                   + phone.getPhoneName());
             return 0;
         }

@@ -37,7 +37,7 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.util.EventLog;
 
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
@@ -611,12 +611,12 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
     @Override
     protected void log(String s) {
-        Log.d(LOG_TAG, "[CdmaLteSST] " + s);
+        Rlog.d(LOG_TAG, "[CdmaLteSST] " + s);
     }
 
     @Override
     protected void loge(String s) {
-        Log.e(LOG_TAG, "[CdmaLteSST] " + s);
+        Rlog.e(LOG_TAG, "[CdmaLteSST] " + s);
     }
 
     @Override

@@ -23,7 +23,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.ServiceManager;
 import android.telephony.PhoneNumberUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.List;

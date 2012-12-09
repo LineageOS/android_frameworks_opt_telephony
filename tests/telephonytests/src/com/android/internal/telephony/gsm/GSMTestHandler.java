@@ -22,7 +22,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.test.SimulatedCommands;

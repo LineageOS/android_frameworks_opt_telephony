@@ -17,7 +17,7 @@
 package com.android.internal.telephony;
 
 import android.os.*;
-import android.util.Log;
+import android.telephony.Rlog;
 import java.util.ArrayList;
 
 /**

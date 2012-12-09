@@ -22,7 +22,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.IccCardApplicationStatus.AppType;
@@ -690,10 +690,10 @@ public class UiccCardApplication {
     }
 
     private void log(String msg) {
-        Log.d(LOG_TAG, msg);
+        Rlog.d(LOG_TAG, msg);
     }
 
     private void loge(String msg) {
-        Log.e(LOG_TAG, msg);
+        Rlog.e(LOG_TAG, msg);
     }
 }

@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccConstants;
@@ -61,11 +61,11 @@ public final class CsimFileHandler extends IccFileHandler implements IccConstant
 
     @Override
     protected void logd(String msg) {
-        Log.d(LOG_TAG, msg);
+        Rlog.d(LOG_TAG, msg);
     }
 
     @Override
     protected void loge(String msg) {
-        Log.e(LOG_TAG, msg);
+        Rlog.e(LOG_TAG, msg);
     }
 }

@@ -26,7 +26,7 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 
 import android.os.Environment;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.util.Xml;
 
 import com.android.internal.util.XmlUtils;
@@ -60,7 +60,7 @@ public class SpnOverride {
         try {
             spnReader = new FileReader(spnFile);
         } catch (FileNotFoundException e) {
-            Log.w(LOG_TAG, "Can't open " +
+            Rlog.w(LOG_TAG, "Can't open " +
                     Environment.getRootDirectory() + "/" + PARTNER_SPN_OVERRIDE_PATH);
             return;
         }
@@ -85,9 +85,9 @@ public class SpnOverride {
                 CarrierSpnMap.put(numeric, data);
             }
         } catch (XmlPullParserException e) {
-            Log.w(LOG_TAG, "Exception in spn-conf parser " + e);
+            Rlog.w(LOG_TAG, "Exception in spn-conf parser " + e);
         } catch (IOException e) {
-            Log.w(LOG_TAG, "Exception in spn-conf parser " + e);
+            Rlog.w(LOG_TAG, "Exception in spn-conf parser " + e);
         }
     }
 

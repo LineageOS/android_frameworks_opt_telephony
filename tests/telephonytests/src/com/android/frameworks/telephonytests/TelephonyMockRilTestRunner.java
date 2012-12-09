@@ -20,7 +20,7 @@ import android.os.Bundle;
 
 import android.test.InstrumentationTestRunner;
 import android.test.InstrumentationTestSuite;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.io.IOException;
 
@@ -88,6 +88,6 @@ public class TelephonyMockRilTestRunner extends InstrumentationTestRunner {
     }
 
     private void log(String s) {
-        Log.e("TelephonyMockRilTestRunner", s);
+        Rlog.e("TelephonyMockRilTestRunner", s);
     }
 }

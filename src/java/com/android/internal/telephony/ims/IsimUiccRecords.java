@@ -20,7 +20,7 @@ import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.AdnRecord;
 import com.android.internal.telephony.AdnRecordCache;
@@ -80,7 +80,7 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     // ***** Overridden from Handler
     public void handleMessage(Message msg) {
         if (mDestroyed.get()) {
-            Log.e(LOG_TAG, "Received message " + msg +
+            Rlog.e(LOG_TAG, "Received message " + msg +
                     "[" + msg.what + "] while being destroyed. Ignoring.");
             return;
         }
@@ -97,7 +97,7 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
             }
         } catch (RuntimeException exc) {
             // I don't want these exceptions to be fatal
-            Log.w(LOG_TAG, "Exception parsing SIM record", exc);
+            Rlog.w(LOG_TAG, "Exception parsing SIM record", exc);
         }
     }
 
@@ -179,7 +179,7 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
             }
         } while (tlv.nextObject());
 
-        Log.e(LOG_TAG, "[ISIM] can't find TLV tag in ISIM record, returning null");
+        Rlog.e(LOG_TAG, "[ISIM] can't find TLV tag in ISIM record, returning null");
         return null;
     }
 
@@ -262,11 +262,11 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
 
     @Override
     protected void log(String s) {
-        if (DBG) Log.d(LOG_TAG, "[ISIM] " + s);
+        if (DBG) Rlog.d(LOG_TAG, "[ISIM] " + s);
     }
 
     @Override
     protected void loge(String s) {
-        if (DBG) Log.e(LOG_TAG, "[ISIM] " + s);
+        if (DBG) Rlog.e(LOG_TAG, "[ISIM] " + s);
     }
 }

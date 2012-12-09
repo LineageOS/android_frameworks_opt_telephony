@@ -18,7 +18,7 @@ package com.android.internal.telephony;
 
 import com.android.internal.telephony.RILConstants;
 
-import android.util.Log;
+import android.telephony.Rlog;
 
 /**
  * {@hide}
@@ -84,7 +84,7 @@ public class CommandException extends RuntimeException {
             case RILConstants.ILLEGAL_SIM_OR_ME:
                 return new CommandException(Error.ILLEGAL_SIM_OR_ME);
             default:
-                Log.e("GSM", "Unrecognized RIL errno " + ril_errno);
+                Rlog.e("GSM", "Unrecognized RIL errno " + ril_errno);
                 return new CommandException(Error.INVALID_RESPONSE);
         }
     }

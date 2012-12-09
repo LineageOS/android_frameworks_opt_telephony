@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony.mockril;
 
-import android.util.Log;
+import android.telephony.Rlog;
 import android.test.InstrumentationTestCase;
 
 import java.io.IOException;
@@ -51,7 +51,7 @@ public class MockRilTest extends InstrumentationTestCase {
     }
 
     static void log(String s) {
-        Log.v(TAG, s);
+        Rlog.v(TAG, s);
     }
 
     /**

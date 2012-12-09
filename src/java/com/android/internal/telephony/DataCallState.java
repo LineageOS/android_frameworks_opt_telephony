@@ -22,7 +22,7 @@ import android.net.LinkProperties;
 import android.net.NetworkUtils;
 import android.net.RouteInfo;
 import android.os.SystemProperties;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.DataConnection.FailCause;
 
@@ -149,7 +149,7 @@ public class DataCallState {
                                 // Assume point to point
                                 addrPrefixLen = (ia instanceof Inet4Address) ? 32 : 128;
                             }
-                            if (DBG) Log.d(LOG_TAG, "addr/pl=" + addr + "/" + addrPrefixLen);
+                            if (DBG) Rlog.d(LOG_TAG, "addr/pl=" + addr + "/" + addrPrefixLen);
                             la = new LinkAddress(ia, addrPrefixLen);
                             linkProperties.addLinkAddress(la);
                         }
@@ -219,7 +219,7 @@ public class DataCallState {
 
                 result = SetupResult.SUCCESS;
             } catch (UnknownHostException e) {
-                Log.d(LOG_TAG, "setLinkProperties: UnknownHostException " + e);
+                Rlog.d(LOG_TAG, "setLinkProperties: UnknownHostException " + e);
                 e.printStackTrace();
                 result = SetupResult.ERR_UnacceptableParameter;
             }
@@ -234,7 +234,7 @@ public class DataCallState {
         // An error occurred so clear properties
         if (result != SetupResult.SUCCESS) {
             if(DBG) {
-                Log.d(LOG_TAG, "setLinkProperties: error clearing LinkProperties " +
+                Rlog.d(LOG_TAG, "setLinkProperties: error clearing LinkProperties " +
                         "status=" + status + " result=" + result);
             }
             linkProperties.clear();

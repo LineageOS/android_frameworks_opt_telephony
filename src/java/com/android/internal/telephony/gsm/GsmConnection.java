@@ -23,7 +23,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.text.TextUtils;
@@ -266,7 +266,7 @@ public class GsmConnection extends Connection {
 
     public void proceedAfterWaitChar() {
         if (postDialState != PostDialState.WAIT) {
-            Log.w(LOG_TAG, "GsmConnection.proceedAfterWaitChar(): Expected "
+            Rlog.w(LOG_TAG, "GsmConnection.proceedAfterWaitChar(): Expected "
                 + "getPostDialState() to be WAIT but was " + postDialState);
             return;
         }
@@ -278,7 +278,7 @@ public class GsmConnection extends Connection {
 
     public void proceedAfterWildChar(String str) {
         if (postDialState != PostDialState.WILD) {
-            Log.w(LOG_TAG, "GsmConnection.proceedAfterWaitChar(): Expected "
+            Rlog.w(LOG_TAG, "GsmConnection.proceedAfterWaitChar(): Expected "
                 + "getPostDialState() to be WILD but was " + postDialState);
             return;
         }
@@ -422,7 +422,7 @@ public class GsmConnection extends Connection {
             duration = SystemClock.elapsedRealtime() - connectTimeReal;
             disconnected = true;
 
-            if (false) Log.d(LOG_TAG,
+            if (false) Rlog.d(LOG_TAG,
                     "[GSMConn] onDisconnect: cause=" + cause);
 
             owner.phone.notifyDisconnect(this);
@@ -617,7 +617,7 @@ public class GsmConnection extends Connection {
          * and or onConnectedInOrOut.
          */
         if (mPartialWakeLock.isHeld()) {
-            Log.e(LOG_TAG, "[GSMConn] UNEXPECTED; mPartialWakeLock is held when finalizing.");
+            Rlog.e(LOG_TAG, "[GSMConn] UNEXPECTED; mPartialWakeLock is held when finalizing.");
         }
         releaseWakeLock();
     }
@@ -628,7 +628,7 @@ public class GsmConnection extends Connection {
         Registrant postDialHandler;
 
         if (postDialState == PostDialState.CANCELLED) {
-            //Log.v("GSM", "##### processNextPostDialChar: postDialState == CANCELLED, bail");
+            //Rlog.v("GSM", "##### processNextPostDialChar: postDialState == CANCELLED, bail");
             return;
         }
 
@@ -651,7 +651,7 @@ public class GsmConnection extends Connection {
                 // Will call processNextPostDialChar
                 h.obtainMessage(EVENT_NEXT_POST_DIAL).sendToTarget();
                 // Don't notify application
-                Log.e("GSM", "processNextPostDialChar: c=" + c + " isn't valid!");
+                Rlog.e("GSM", "processNextPostDialChar: c=" + c + " isn't valid!");
                 return;
             }
         }
@@ -671,7 +671,7 @@ public class GsmConnection extends Connection {
             // arg1 is the character that was/is being processed
             notifyMessage.arg1 = c;
 
-            //Log.v("GSM", "##### processNextPostDialChar: send msg to postDialHandler, arg1=" + c);
+            //Rlog.v("GSM", "##### processNextPostDialChar: send msg to postDialHandler, arg1=" + c);
             notifyMessage.sendToTarget();
         }
     }
@@ -753,7 +753,7 @@ public class GsmConnection extends Connection {
     }
 
     private void log(String msg) {
-        Log.d(LOG_TAG, "[GSMConn] " + msg);
+        Rlog.d(LOG_TAG, "[GSMConn] " + msg);
     }
 
     @Override

@@ -27,7 +27,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.os.UserHandle;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 
@@ -687,10 +687,10 @@ public class IccCardProxy extends Handler implements IccCard {
     }
 
     private void log(String s) {
-        Log.d(LOG_TAG, s);
+        Rlog.d(LOG_TAG, s);
     }
 
     private void loge(String msg) {
-        Log.e(LOG_TAG, msg);
+        Rlog.e(LOG_TAG, msg);
     }
 }

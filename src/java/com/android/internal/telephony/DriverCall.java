@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 //import com.android.internal.telephony.*;
-import android.util.Log;
+import android.telephony.Rlog;
 import java.lang.Comparable;
 import android.telephony.PhoneNumberUtils;
 
@@ -90,7 +90,7 @@ public class DriverCall implements Comparable {
 
             }
         } catch (ATParseEx ex) {
-            Log.e(LOG_TAG,"Invalid CLCC line: '" + line + "'");
+            Rlog.e(LOG_TAG,"Invalid CLCC line: '" + line + "'");
             return null;
         }
 
