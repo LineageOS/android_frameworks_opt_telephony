@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAa3//3CE\u003d",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 2931,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2012-12-10T03:03:51Z",
+      "side": 1,
+      "message": "there\u0027s no samsung specific RIL for this?",
+      "revId": "54c8ad0c3f7480eed5c6e8229a0890eef0ca1cde",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
