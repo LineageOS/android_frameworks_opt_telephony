@@ -21,12 +21,12 @@ import android.os.Handler;
 import android.os.Message;
 import android.telephony.Rlog;
 
-import com.android.internal.telephony.AdnRecord;
-import com.android.internal.telephony.AdnRecordCache;
-import com.android.internal.telephony.IccConstants;
-import com.android.internal.telephony.IccFileHandler;
-import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.uicc.AdnRecord;
+import com.android.internal.telephony.uicc.AdnRecordCache;
+import com.android.internal.telephony.uicc.IccConstants;
+import com.android.internal.telephony.uicc.IccFileHandler;
+import com.android.internal.telephony.uicc.IccUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;

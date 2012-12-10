@@ -20,6 +20,8 @@ import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.uicc.RuimRecords;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 import android.telephony.CellInfo;
 import android.telephony.CellInfoLte;
@@ -37,7 +39,6 @@ import android.os.SystemProperties;
 import android.telephony.Rlog;
 import android.util.EventLog;
 
-import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;

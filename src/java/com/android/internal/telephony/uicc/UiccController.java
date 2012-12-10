@@ -25,12 +25,6 @@ import android.os.RegistrantList;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccCardStatus;
-import com.android.internal.telephony.IccFileHandler;
-import com.android.internal.telephony.IccRecords;
-import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.UiccCard;
-import com.android.internal.telephony.UiccCardApplication;
 
 /**
  * This class is responsible for keeping all knowledge about

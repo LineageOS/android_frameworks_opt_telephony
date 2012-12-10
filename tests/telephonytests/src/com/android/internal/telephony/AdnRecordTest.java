@@ -19,6 +19,9 @@ package com.android.internal.telephony;
 import junit.framework.TestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.telephony.uicc.AdnRecord;
+import com.android.internal.telephony.uicc.IccUtils;
+
 /**
  * {@hide}
  */

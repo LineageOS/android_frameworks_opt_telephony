@@ -19,6 +19,8 @@ package com.android.internal.telephony;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.telephony.uicc.IccServiceTable;
+
 /**
  * Test IccServiceTable class.
  */

@@ -16,8 +16,8 @@
 
 package com.android.internal.telephony.cat;
 
-import com.android.internal.telephony.IccFileHandler;
-import com.android.internal.telephony.IccUtils;
+import com.android.internal.telephony.uicc.IccFileHandler;
+import com.android.internal.telephony.uicc.IccUtils;
 
 import android.os.Handler;
 import com.android.internal.util.State;

@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony.cat;
 
-import com.android.internal.telephony.IccFileHandler;
+import com.android.internal.telephony.uicc.IccFileHandler;
 
 import android.graphics.Bitmap;
 import android.graphics.Color;

@@ -39,13 +39,16 @@ import android.text.TextUtils;
 import android.telephony.Rlog;
 
 import com.android.internal.R;
-import com.android.internal.telephony.IccCardApplicationStatus.AppState;
-import com.android.internal.telephony.IccCardApplicationStatus.AppType;
-import com.android.internal.telephony.gsm.UsimServiceTable;
-import com.android.internal.telephony.ims.IsimRecords;
 import com.android.internal.telephony.test.SimulatedRadioControl;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
+import com.android.internal.telephony.uicc.IccFileHandler;
+import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.IsimRecords;
+import com.android.internal.telephony.uicc.SIMRecords;
+import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.gsm.SIMRecords;
+import com.android.internal.telephony.uicc.UsimServiceTable;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

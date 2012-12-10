@@ -17,7 +17,8 @@
 package com.android.internal.telephony;
 
 import com.android.internal.telephony.gsm.SimTlv;
-import com.android.internal.telephony.IccUtils;
+import com.android.internal.telephony.uicc.IccUtils;
+
 import junit.framework.TestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 

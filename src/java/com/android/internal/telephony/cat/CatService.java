@@ -26,12 +26,12 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.os.SystemProperties;
 
-import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccFileHandler;
-import com.android.internal.telephony.IccRecords;
-import com.android.internal.telephony.UiccCard;
-import com.android.internal.telephony.UiccCardApplication;
+import com.android.internal.telephony.uicc.IccFileHandler;
+import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.UiccCard;
+import com.android.internal.telephony.uicc.UiccCardApplication;
 
 
 import java.io.ByteArrayOutputStream;
