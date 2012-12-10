@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import com.android.internal.telephony.AdnRecord;
+import com.android.internal.telephony.uicc.AdnRecord;
 
 
 

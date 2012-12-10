@@ -21,7 +21,7 @@ import android.os.Handler;
 import android.os.Message;
 
 import com.android.internal.telephony.GsmAlphabet;
-import com.android.internal.telephony.IccFileHandler;
+import com.android.internal.telephony.uicc.IccFileHandler;
 
 import java.util.Iterator;
 import java.util.List;

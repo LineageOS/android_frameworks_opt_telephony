@@ -22,7 +22,7 @@ import android.telephony.SmsCbMessage;
 import android.test.AndroidTestCase;
 import android.telephony.Rlog;
 
-import com.android.internal.telephony.IccUtils;
+import com.android.internal.telephony.uicc.IccUtils;
 
 import java.util.Random;
 

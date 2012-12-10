@@ -25,6 +25,9 @@ import android.os.ServiceManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 
+import com.android.internal.telephony.uicc.AdnRecord;
+
+
 import java.util.ArrayList;
 import java.util.List;
 

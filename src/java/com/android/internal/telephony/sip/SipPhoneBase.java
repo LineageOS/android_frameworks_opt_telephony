@@ -35,7 +35,6 @@ import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.DataConnection;
 import com.android.internal.telephony.IccCard;
-import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
 import com.android.internal.telephony.IccSmsInterfaceManager;
 import com.android.internal.telephony.MmiCode;
@@ -47,6 +46,7 @@ import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
+import com.android.internal.telephony.uicc.IccFileHandler;
 
 import java.util.ArrayList;
 import java.util.List;
