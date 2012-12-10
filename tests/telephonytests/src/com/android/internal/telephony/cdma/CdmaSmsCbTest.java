@@ -24,11 +24,11 @@ import android.test.AndroidTestCase;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.GsmAlphabet;
-import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.cdma.sms.BearerData;
 import com.android.internal.telephony.cdma.sms.CdmaSmsAddress;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.telephony.cdma.sms.UserData;
+import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.util.BitwiseOutputStream;
 
 import java.util.Arrays;

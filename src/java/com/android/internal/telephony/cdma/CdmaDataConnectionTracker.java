@@ -41,11 +41,11 @@ import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.IccRecords;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.RILConstants;
-import com.android.internal.telephony.UiccCard;
+import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.AsyncChannel;
 

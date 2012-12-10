@@ -22,8 +22,8 @@ import android.os.ServiceManager;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.ISms;
-import com.android.internal.telephony.IccConstants;
 import com.android.internal.telephony.SmsRawData;
+import com.android.internal.telephony.uicc.IccConstants;
 
 import java.util.ArrayList;
 import java.util.Arrays;

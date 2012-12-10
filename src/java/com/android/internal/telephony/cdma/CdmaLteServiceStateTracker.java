@@ -40,8 +40,9 @@ import android.text.TextUtils;
 import android.telephony.Rlog;
 import android.util.EventLog;
 
-import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.gsm.GsmDataConnectionTracker;
+import com.android.internal.telephony.uicc.RuimRecords;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.IccCardConstants;
 
 import java.io.FileDescriptor;
