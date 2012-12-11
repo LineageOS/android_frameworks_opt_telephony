@@ -288,15 +288,15 @@ public class CatService extends Handler implements AppInterface {
                 break;
             case SEND_DTMF:
             case SEND_SMS:
-                if (mContext.getResources().
-                        getBoolean(com.android.internal.R.bool.config_samsung_stk)) {
+                // Samsung STK
+                if (cmdParams instanceof SendSMSParams) {
                     handleProactiveCommandSendSMS((SendSMSParams) cmdParams);
                 }
                 // Fall through
             case SEND_SS:
             case SEND_USSD:
-                if (mContext.getResources().
-                        getBoolean(com.android.internal.R.bool.config_samsung_stk)) {
+                // Samsung STK
+                if (cmdParams instanceof SendUSSDParams) {
                     handleProactiveCommandSendUSSD((SendUSSDParams) cmdParams);
                 }
                 if ((((DisplayTextParams)cmdParams).mTextMsg.text != null)
