@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAbH///2o\u003d",
+        "filename": "src/java/com/android/internal/telephony/SamsungCDMAQualcommSIMRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 1892
+      },
+      "writtenOn": "2012-12-11T10:34:29Z",
+      "side": 1,
+      "message": "SignalStrength.java seems to expect 99 in response[7] in 3g, and now lte rsrp is handled directly there now. What seems to work both ways (on d2vzw at least) is:\n\nif (response[7] \u003d\u003d 99) {\n    // If LTE is not enabled, clear LTE results\n    // 8-11 must be -1 for cdma/evdo signal strength to be used (see\n    // frameworks/base/telephony/java/android/telephony/SignalStrength.java)\n    response[8] \u003d -1;\n    response[9] \u003d -1;\n    response[10] \u003d -1;\n    response[11] \u003d -1;\n}\n\nand then leave response[8] alone when response[7] !\u003d 99.\n\nAlso seems SignalStrength uses 0x7FFFFFFF for INVALID on 8, 9, 10, 11 when all values are not wanted instead of -1 but seems to work either way for me.\n\nSorry for the long comment. Didn\u0027t want to push up a patchset on someone else\u0027s commit in case this is wrong.\n\nTest shows:\n\n-104 dBm 36 asu -- LTE\n\n-88 dBm 2 asu -- CDMA - eHRPD",
+      "revId": "c28e96b686992285023d58dc4f0d4333f263ed5c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
