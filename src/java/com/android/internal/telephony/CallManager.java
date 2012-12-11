@@ -542,15 +542,15 @@ public final class CallManager {
 
         Context context = getContext();
         if (context == null) {
-            Log.d(LOG_TAG, "Speedup Audio Path enhancement: Context is null");
+            Rlog.d(LOG_TAG, "Speedup Audio Path enhancement: Context is null");
         } else if (context.getResources().getBoolean(
                 com.android.internal.R.bool.config_speed_up_audio_on_mt_calls)) {
-            Log.d(LOG_TAG, "Speedup Audio Path enhancement");
+            Rlog.d(LOG_TAG, "Speedup Audio Path enhancement");
             AudioManager audioManager = (AudioManager)
                     context.getSystemService(Context.AUDIO_SERVICE);
             int currMode = audioManager.getMode();
             if ((currMode != AudioManager.MODE_IN_CALL) && !(ringingPhone instanceof SipPhone)) {
-                Log.d(LOG_TAG, "setAudioMode Setting audio mode from " +
+                Rlog.d(LOG_TAG, "setAudioMode Setting audio mode from " +
                                 currMode + " to " + AudioManager.MODE_IN_CALL);
                 audioManager.setMode(AudioManager.MODE_IN_CALL);
                 mSpeedUpAudioForMtCall = true;
