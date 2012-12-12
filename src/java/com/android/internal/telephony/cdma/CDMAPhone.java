@@ -636,7 +636,6 @@ public class CDMAPhone extends PhoneBase {
                     }
                 break;
 
-                case INITING:
                 case CONNECTING:
                 case SCANNING:
                     ret = PhoneConstants.DataState.CONNECTING;
