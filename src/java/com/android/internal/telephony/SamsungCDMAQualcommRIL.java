@@ -110,13 +110,10 @@ CommandsInterface {
             // If LTE is not enabled, clear LTE results
             // 7-11 must be -1 for GSM signal strength to be used (see
             // frameworks/base/telephony/java/android/telephony/SignalStrength.java)
-            response[7] = -1;
             response[8] = -1;
             response[9] = -1;
             response[10] = -1;
             response[11] = -1;
-        } else {
-            response[8] *= -1;
         }
 
         return new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7], response[8], response[9], response[10], response[11], false);
