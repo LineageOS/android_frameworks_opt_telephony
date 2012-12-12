@@ -35,6 +35,7 @@ import android.telephony.ServiceState;
 import com.android.internal.telephony.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 
 /**
@@ -418,10 +419,10 @@ public class CdmaConnection extends Connection {
             default:
                 CDMAPhone phone = owner.phone;
                 int serviceState = phone.getServiceState().getState();
-                AppState uiccAppState = UiccController
-                        .getInstance()
-                        .getUiccCardApplication(UiccController.APP_FAM_3GPP2)
-                        .getState();
+                UiccCardApplication uiccCardApplication = UiccController.getInstance()
+                    .getUiccCardApplication(UiccController.APP_FAM_3GPP2);
+                AppState uiccAppState = uiccCardApplication != null
+                    ? uiccCardApplication.getState() : null;
                 if (serviceState == ServiceState.STATE_POWER_OFF) {
                     return DisconnectCause.POWER_OFF;
                 } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE
