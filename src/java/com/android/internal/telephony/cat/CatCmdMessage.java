@@ -80,6 +80,9 @@ public class CatCmdMessage implements Parcelable {
             mToneSettings = params.settings;
             mTextMsg = params.textMsg;
             break;
+        case GET_CHANNEL_STATUS:
+            mTextMsg = ((CallSetupParams) cmdParams).confirmMsg;
+            break;
         case SET_UP_CALL:
             mCallSettings = new CallSettings();
             mCallSettings.confirmMsg = ((CallSetupParams) cmdParams).confirmMsg;
