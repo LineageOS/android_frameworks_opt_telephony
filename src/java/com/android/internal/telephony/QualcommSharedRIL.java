@@ -27,15 +27,20 @@ import android.os.Message;
 import android.os.Parcel;
 import android.telephony.SmsMessage;
 import android.os.SystemProperties;
+import android.os.SystemClock;
 import android.telephony.SignalStrength;
 import android.text.TextUtils;
 import android.util.Log;
 
+import android.telephony.PhoneNumberUtils;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
+import com.android.internal.telephony.cdma.CdmaInformationRecords.CdmaSignalInfoRec;
+import com.android.internal.telephony.cdma.SignalToneUtil;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 /**
  * Custom Qualcomm No SimReady RIL using the latest Uicc stack
@@ -58,11 +63,43 @@ public class QualcommSharedRIL extends RIL implements CommandsInterface {
     private final int RIL_INT_RADIO_ON_NG = 10;
     private final int RIL_INT_RADIO_ON_HTC = 13;
 
+    private Object mSMSLock = new Object();
+    private boolean mIsSendingSMS = false;
+    public static final long SEND_SMS_TIMEOUT_IN_MS = 30000;
+    private boolean isCdmaSimDevice = needsOldRilFeature("isCdmaSimDevice");
 
     public QualcommSharedRIL(Context context, int networkMode, int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
         mSetPreferredNetworkType = -1;
         mQANElements = 5;
+    }
+
+    @Override
+    public void
+    sendCdmaSms(byte[] pdu, Message result) {
+        if (isCdmaSimDevice) {
+           // Do not send a new SMS until the response for the previous SMS has been received
+            //   * for the error case where the response never comes back, time out after
+            //     30 seconds and just try the next CDMA_SEND_SMS
+            synchronized (mSMSLock) {
+                long timeoutTime  = SystemClock.elapsedRealtime() + SEND_SMS_TIMEOUT_IN_MS;
+                long waitTimeLeft = SEND_SMS_TIMEOUT_IN_MS;
+                while (mIsSendingSMS && (waitTimeLeft > 0)) {
+                    Log.d(LOG_TAG, "sendCdmaSms() waiting for response of previous CDMA_SEND_SMS");
+                    try {
+                        mSMSLock.wait(waitTimeLeft);
+                    } catch (InterruptedException ex) {
+                        // ignore the interrupt and rewait for the remainder
+                    }
+                    waitTimeLeft = timeoutTime - SystemClock.elapsedRealtime();
+                }
+                if (waitTimeLeft <= 0) {
+                    Log.e(LOG_TAG, "sendCdmaSms() timed out waiting for response of previous CDMA_SEND_SMS");
+                }
+                mIsSendingSMS = true;
+            }
+        }
+        super.sendCdmaSms(pdu, result);
     }
 
     @Override public void
@@ -174,6 +211,15 @@ public class QualcommSharedRIL extends RIL implements CommandsInterface {
             ca.app_type = ca.AppTypeFromRILInt(p.readInt());
             ca.app_state = ca.AppStateFromRILInt(p.readInt());
             ca.perso_substate = ca.PersoSubstateFromRILInt(p.readInt());
+            if ((ca.app_state == IccCardApplicationStatus.AppState.APPSTATE_SUBSCRIPTION_PERSO) &&
+                ((ca.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_READY) ||
+                (ca.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_UNKNOWN)) &&
+                isCdmaSimDevice) {
+                // ridiculous hack for network SIM unlock pin
+                ca.app_state = IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN;
+                Log.d(LOG_TAG, "ca.app_state == AppState.APPSTATE_SUBSCRIPTION_PERSO");
+                Log.d(LOG_TAG, "ca.perso_substate == PersoSubState.PERSOSUBSTATE_READY");
+            }
             ca.aid = p.readString();
             ca.app_label = p.readString();
             ca.pin1_replaced = p.readInt();
@@ -183,30 +229,107 @@ public class QualcommSharedRIL extends RIL implements CommandsInterface {
             p.readInt(); //remaining_count_puk1
             p.readInt(); //remaining_count_pin2
             p.readInt(); //remaining_count_puk2
+            if (isCdmaSimDevice) {
+                p.readInt(); // - perso_unblock_retries
+            }
             status.mApplications[i] = ca;
         }
-        int appIndex = -1;
-        if (mPhoneType == RILConstants.CDMA_PHONE && !skipCdmaSubcription) {
-            appIndex = status.mCdmaSubscriptionAppIndex;
-            Log.d(LOG_TAG, "This is a CDMA PHONE " + appIndex);
-        } else {
-            appIndex = status.mGsmUmtsSubscriptionAppIndex;
-            Log.d(LOG_TAG, "This is a GSM PHONE " + appIndex);
-        }
+        if (!isCdmaSimDevice) {
+            int appIndex = -1;
+            if (mPhoneType == RILConstants.CDMA_PHONE && !skipCdmaSubcription) {
+                appIndex = status.mCdmaSubscriptionAppIndex;
+                Log.d(LOG_TAG, "This is a CDMA PHONE " + appIndex);
+            } else {
+                appIndex = status.mGsmUmtsSubscriptionAppIndex;
+                Log.d(LOG_TAG, "This is a GSM PHONE " + appIndex);
+            }
 
-        if (numApplications > 0) {
-            IccCardApplicationStatus application = status.mApplications[appIndex];
-            mAid = application.aid;
-            mUSIM = application.app_type
-                      == IccCardApplicationStatus.AppType.APPTYPE_USIM;
-            mSetPreferredNetworkType = mPreferredNetworkType;
+            if (numApplications > 0) {
+                IccCardApplicationStatus application = status.mApplications[appIndex];
+                mAid = application.aid;
+                mUSIM = application.app_type
+                          == IccCardApplicationStatus.AppType.APPTYPE_USIM;
+                mSetPreferredNetworkType = mPreferredNetworkType;
 
-            if (TextUtils.isEmpty(mAid))
-               mAid = "";
-            Log.d(LOG_TAG, "mAid " + mAid);
+                if (TextUtils.isEmpty(mAid))
+                   mAid = "";
+                Log.d(LOG_TAG, "mAid " + mAid);
+           }
         }
 
         return status;
+    }
+
+    // Workaround for Samsung CDMA "ring of death" bug:
+    //
+    // Symptom: As soon as the phone receives notice of an incoming call, an
+    // audible "old fashioned ring" is emitted through the earpiece and
+    // persists through the duration of the call, or until reboot if the call
+    // isn't answered.
+    //
+    // Background: The CDMA telephony stack implements a number of "signal info
+    // tones" that are locally generated by ToneGenerator and mixed into the
+    // voice call path in response to radio RIL_UNSOL_CDMA_INFO_REC requests.
+    // One of these tones, IS95_CONST_IR_SIG_IS54B_L, is requested by the
+    // radio just prior to notice of an incoming call when the voice call
+    // path is muted. CallNotifier is responsible for stopping all signal
+    // tones (by "playing" the TONE_CDMA_SIGNAL_OFF tone) upon receipt of a
+    // "new ringing connection", prior to unmuting the voice call path.
+    //
+    // Problem: CallNotifier's incoming call path is designed to minimize
+    // latency to notify users of incoming calls ASAP. Thus,
+    // SignalInfoTonePlayer requests are handled asynchronously by spawning a
+    // one-shot thread for each. Unfortunately the ToneGenerator API does
+    // not provide a mechanism to specify an ordering on requests, and thus,
+    // unexpected thread interleaving may result in ToneGenerator processing
+    // them in the opposite order that CallNotifier intended. In this case,
+    // playing the "signal off" tone first, followed by playing the "old
+    // fashioned ring" indefinitely.
+    //
+    // Solution: An API change to ToneGenerator is required to enable
+    // SignalInfoTonePlayer to impose an ordering on requests (i.e., drop any
+    // request that's older than the most recent observed). Such a change,
+    // or another appropriate fix should be implemented in AOSP first.
+    //
+    // Workaround: Intercept RIL_UNSOL_CDMA_INFO_REC requests from the radio,
+    // check for a signal info record matching IS95_CONST_IR_SIG_IS54B_L, and
+    // drop it so it's never seen by CallNotifier. If other signal tones are
+    // observed to cause this problem, they should be dropped here as well.
+    @Override
+    protected void notifyRegistrantsCdmaInfoRec(CdmaInformationRecords infoRec) {
+        if (isCdmaSimDevice) {
+            final int response = RIL_UNSOL_CDMA_INFO_REC;
+
+            if (infoRec.record instanceof CdmaSignalInfoRec) {
+                CdmaSignalInfoRec sir = (CdmaSignalInfoRec) infoRec.record;
+                if (sir != null
+                        && sir.isPresent
+                        && sir.signalType == SignalToneUtil.IS95_CONST_IR_SIGNAL_IS54B
+                        && sir.alertPitch == SignalToneUtil.IS95_CONST_IR_ALERT_MED
+                        && sir.signal == SignalToneUtil.IS95_CONST_IR_SIG_IS54B_L) {
+
+                    Log.d(LOG_TAG, "Dropping \"" + responseToString(response) + " "
+                            + retToString(response, sir)
+                            + "\" to prevent \"ring of death\" bug.");
+                    return;
+                }
+            }
+        }
+        super.notifyRegistrantsCdmaInfoRec(infoRec);
+    }
+
+    @Override
+    protected Object
+    responseSMS(Parcel p) {
+        if (isCdmaSimDevice) {
+            // Notify that sendSMS() can send the next SMS
+            synchronized (mSMSLock) {
+                mIsSendingSMS = false;
+                mSMSLock.notify();
+            }
+        }
+
+        return super.responseSMS(p);
     }
 
     @Override
@@ -370,7 +493,25 @@ public class QualcommSharedRIL extends RIL implements CommandsInterface {
                 response[i] *= -1;
             }
         }
-        return new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7],response[8], response[9], response[10], response[11], true);
+
+        if (isCdmaSimDevice) {
+            // Take just the least significant byte as the signal strength
+            response[2] %= 256;
+            response[4] %= 256;
+
+            // RIL_LTE_SignalStrength
+            if (response[7] == 99) {
+                // If LTE is not enabled, clear LTE results
+                // 8-11 must be -1 for cdma/evdo signal strength to be used (see
+                // frameworks/base/telephony/java/android/telephony/SignalStrength.java)
+                response[8] = -1;
+                response[9] = -1;
+                response[10] = -1;
+                response[11] = -1;
+            }
+        }
+
+        return new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7], response[8], response[9], response[10], response[11], !isCdmaSimDevice);
     }
 
     @Override

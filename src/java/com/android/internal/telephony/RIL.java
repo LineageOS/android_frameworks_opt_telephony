@@ -210,6 +210,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static final boolean RILJ_LOGD = true;
     static final boolean RILJ_LOGV = false; // STOP SHIP if true
 
+    private boolean needsSamsungDataCallMagic = needsOldRilFeature("needsSamsungDataCallMagic");
+
     /**
      * Wake lock timeout should be longer than the longest timeout in
      * the vendor ril.
@@ -3179,6 +3181,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
             voiceSettings = p.readInt();
             dc.isVoice = (0 == voiceSettings) ? false : true;
             dc.isVoicePrivacy = (0 != p.readInt());
+            if (needsSamsungDataCallMagic) {
+                // Some Samsung magic data for Videocalls
+                // hack taken from smdk4210ril class
+                voiceSettings = p.readInt();
+                // Printing it to console for later investigation
+                Log.d(LOG_TAG, "Samsung magic = " + voiceSettings);
+            }
             dc.number = p.readString();
             int np = p.readInt();
             dc.numberPresentation = DriverCall.presentationFromCLIP(np);
