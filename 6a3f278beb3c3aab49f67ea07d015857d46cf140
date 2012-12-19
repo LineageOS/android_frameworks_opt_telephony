@@ -16,6 +16,24 @@
       "revId": "6a3f278beb3c3aab49f67ea07d015857d46cf140",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "AAAAbH//9ls\u003d",
+        "filename": "src/java/com/android/internal/telephony/QualcommSharedRIL.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 329,
+      "author": {
+        "id": 3671
+      },
+      "writtenOn": "2012-12-19T12:57:08Z",
+      "side": 1,
+      "message": "return calls it anyway, i don\u0027t know that we need an else here",
+      "parentUuid": "AAAAbH//9mA\u003d",
+      "revId": "6a3f278beb3c3aab49f67ea07d015857d46cf140",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
