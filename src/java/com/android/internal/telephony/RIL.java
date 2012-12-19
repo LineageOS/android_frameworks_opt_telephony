@@ -3158,6 +3158,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         int voiceSettings;
         ArrayList<DriverCall> response;
         DriverCall dc;
+        private boolean isCdmaSimDevice = needsOldRilFeature("isCdmaSimDevice");
 
         num = p.readInt();
         response = new ArrayList<DriverCall>(num);
@@ -3179,6 +3180,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
             voiceSettings = p.readInt();
             dc.isVoice = (0 == voiceSettings) ? false : true;
             dc.isVoicePrivacy = (0 != p.readInt());
+            if (isCdmaSimDevice) {
+                // Some Samsung magic data for Videocalls
+                // hack taken from smdk4210ril class
+                voiceSettings = p.readInt();
+                // Printing it to console for later investigation
+                Log.d(LOG_TAG, "Samsung magic = " + voiceSettings);
+            }
             dc.number = p.readString();
             int np = p.readInt();
             dc.numberPresentation = DriverCall.presentationFromCLIP(np);
