@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAbH//9mo\u003d",
+        "filename": "src/java/com/android/internal/telephony/QualcommSharedRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 284,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2012-12-19T11:24:35Z",
+      "side": 1,
+      "message": "ifdef this",
+      "revId": "cfa2de5aca44c852d7ef48f32aed430f43826a13",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
