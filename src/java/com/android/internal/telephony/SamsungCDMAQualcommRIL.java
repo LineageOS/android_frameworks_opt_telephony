@@ -62,6 +62,53 @@ CommandsInterface {
     }
 
     @Override
+    protected Object responseIccCardStatus(Parcel p) {
+        IccCardApplicationStatus ca;
+
+        IccCardStatus status = new IccCardStatus();
+        status.setCardState(p.readInt());
+        status.setUniversalPinState(p.readInt());
+        status.mGsmUmtsSubscriptionAppIndex = p.readInt();
+        status.mCdmaSubscriptionAppIndex = p.readInt();
+        status.mImsSubscriptionAppIndex = p.readInt();
+
+        int numApplications = p.readInt();
+
+        // limit to maximum allowed applications
+        if (numApplications > IccCardStatus.CARD_MAX_APPS) {
+            numApplications = IccCardStatus.CARD_MAX_APPS;
+        }
+        status.mApplications = new IccCardApplicationStatus[numApplications];
+
+        for (int i = 0; i < numApplications; i++) {
+            ca = new IccCardApplicationStatus();
+            ca.app_type = ca.AppTypeFromRILInt(p.readInt());
+            ca.app_state = ca.AppStateFromRILInt(p.readInt());
+            ca.perso_substate = ca.PersoSubstateFromRILInt(p.readInt());
+            if ((ca.app_state == IccCardApplicationStatus.AppState.APPSTATE_SUBSCRIPTION_PERSO) &&
+                ((ca.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_READY) ||
+                 (ca.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_UNKNOWN))) {
+                    // ridiculous hack for network SIM unlock pin
+                    ca.app_state = IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN;
+                    Log.d(LOG_TAG, "ca.app_state == AppState.APPSTATE_SUBSCRIPTION_PERSO");
+                    Log.d(LOG_TAG, "ca.perso_substate == PersoSubState.PERSOSUBSTATE_READY");
+                }
+            ca.aid = p.readString();
+            ca.app_label = p.readString();
+            ca.pin1_replaced = p.readInt();
+            ca.pin1 = ca.PinStateFromRILInt(p.readInt());
+            ca.pin2 = ca.PinStateFromRILInt(p.readInt());
+            p.readInt(); // remaining_count_pin1 - pin1_num_retries
+            p.readInt(); // remaining_count_puk1 - puk1_num_retries
+            p.readInt(); // remaining_count_pin2 - pin2_num_retries
+            p.readInt(); // remaining_count_puk2 - puk2_num_retries
+            p.readInt(); // - perso_unblock_retries
+            status.mApplications[i] = ca;
+        }
+        return status;
+    }
+
+    @Override
     public void
     sendCdmaSms(byte[] pdu, Message result) {
         // Do not send a new SMS until the response for the previous SMS has been received
