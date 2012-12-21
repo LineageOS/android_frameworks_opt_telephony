@@ -565,6 +565,11 @@ public class CallManager {
             phone.setOnPostDialCharacter(mHandler, EVENT_POST_DIAL_CHARACTER, null);
         }
 
+        // for events supported only by GSM phone
+        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
+            phone.registerForSuppServiceNotification(mHandler, EVENT_SUPP_SERVICE_NOTIFY, null);
+        }
+
         // for events supported only by CDMA phone
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA ){
             phone.registerForCdmaOtaStatusChange(mHandler, EVENT_CDMA_OTA_STATUS_CHANGE, null);
@@ -609,6 +614,11 @@ public class CallManager {
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM ||
                 phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
             phone.setOnPostDialCharacter(null, EVENT_POST_DIAL_CHARACTER, null);
+        }
+
+        // for events supported only by GSM phone
+        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
+            phone.unregisterForSuppServiceNotification(mHandler);
         }
 
         // for events supported only by CDMA phone
