@@ -92,6 +92,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     private int mNitzUpdateDiff = SystemProperties.getInt("ro.nitz_update_diff",
             NITZ_UPDATE_DIFF_DEFAULT);
 
+    private boolean mSubscribeOnRuimReady = SystemProperties.getBoolean(
+            "ro.cdma.subscribe_on_ruim_ready", false);
+
     private boolean mCdmaRoaming = false;
     private int mRoamingIndicator;
     private boolean mIsInPrl;
@@ -283,7 +286,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             // TODO: Consider calling setCurrentPreferredNetworkType as we do in GsmSST.
             // cm.setCurrentPreferredNetworkType();
 
-            if (mPhone.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {
+            if (!mSubscribeOnRuimReady && mPhone.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {
                 // Subscription will be read from SIM I/O
                 if (DBG) log("Receive EVENT_RUIM_READY");
                 pollState();
