@@ -52,9 +52,15 @@ import java.util.Collections;
  */
 public class SamsungCDMAQualcommRIL extends RIL implements
 CommandsInterface {
+    protected HandlerThread mIccThread;
+    protected IccHandler mIccHandler;
     private Object mSMSLock = new Object();
     private boolean mIsSendingSMS = false;
     public static final long SEND_SMS_TIMEOUT_IN_MS = 30000;
+
+    private final int RIL_INT_RADIO_OFF = 0;
+    private final int RIL_INT_RADIO_UNAVALIABLE = 1;
+    private final int RIL_INT_RADIO_ON = 2;
 
     public SamsungCDMAQualcommRIL(Context context, int networkMode,
             int cdmaSubscription) {
@@ -239,6 +245,184 @@ CommandsInterface {
         Collections.sort(response);
 
         return response;
+    }
+
+    @Override
+    protected void
+    processUnsolicited (Parcel p) {
+        Object ret;
+        int dataPosition = p.dataPosition(); // save off position within the Parcel
+        int response = p.readInt();
+
+        switch(response) {
+            case RIL_UNSOL_RIL_CONNECTED: ret = responseInts(p); break;
+            case 1035: ret = responseVoid(p); break; // RIL_UNSOL_VOICE_RADIO_TECH_CHANGED
+            case 1036: ret = responseVoid(p); break; // RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED
+            case 1037: ret = responseVoid(p); break; // RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE
+            case 1038: ret = responseVoid(p); break; // RIL_UNSOL_DATA_NETWORK_STATE_CHANGED
+
+            default:
+                // Rewind the Parcel
+                p.setDataPosition(dataPosition);
+
+                // Forward responses that we are not overriding to the super class
+                super.processUnsolicited(p);
+                return;
+        }
+
+        switch(response) {
+            case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED:
+                int state = p.readInt();
+                setRadioStateFromRILInt(state);
+                break;
+            case RIL_UNSOL_RIL_CONNECTED:
+                notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
+                break;
+            case 1035:
+            case 1036:
+                break;
+            case 1037: // RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE
+                if (mExitEmergencyCallbackModeRegistrants != null) {
+                    mExitEmergencyCallbackModeRegistrants.notifyRegistrants(
+                                        new AsyncResult (null, null, null));
+                }
+                break;
+            case 1038:
+                break;
+        }
+    }
+
+    /**
+     * Notify all registrants that the ril has connected or disconnected.
+     *
+     * @param rilVer is the version of the ril or -1 if disconnected.
+     */
+    private void notifyRegistrantsRilConnectionChanged(int rilVer) {
+        mRilVersion = rilVer;
+        if (mRilConnectedRegistrants != null) {
+            mRilConnectedRegistrants.notifyRegistrants(
+                                new AsyncResult (null, new Integer(rilVer), null));
+        }
+    }
+
+    private void setRadioStateFromRILInt (int stateCode) {
+        CommandsInterface.RadioState radioState;
+        HandlerThread handlerThread;
+        Looper looper;
+        IccHandler iccHandler;
+
+        switch (stateCode) {
+            case RIL_INT_RADIO_OFF:
+                radioState = CommandsInterface.RadioState.RADIO_OFF;
+                if (mIccHandler != null) {
+                    mIccThread = null;
+                    mIccHandler = null;
+                }
+                break;
+            case RIL_INT_RADIO_UNAVALIABLE:
+                radioState = CommandsInterface.RadioState.RADIO_UNAVAILABLE;
+                break;
+            case RIL_INT_RADIO_ON:
+                if (mIccHandler == null) {
+                    handlerThread = new HandlerThread("IccHandler");
+                    mIccThread = handlerThread;
+
+                    mIccThread.start();
+
+                    looper = mIccThread.getLooper();
+                    mIccHandler = new IccHandler(this,looper);
+                    mIccHandler.run();
+                }
+                radioState = CommandsInterface.RadioState.RADIO_ON;
+                break;
+            default:
+                throw new RuntimeException("Unrecognized RIL_RadioState: " + stateCode);
+        }
+
+        setRadioState (radioState);
+    }
+
+    class IccHandler extends Handler implements Runnable {
+        private static final int EVENT_RADIO_ON = 1;
+        private static final int EVENT_ICC_STATUS_CHANGED = 2;
+        private static final int EVENT_GET_ICC_STATUS_DONE = 3;
+        private static final int EVENT_RADIO_OFF_OR_UNAVAILABLE = 4;
+
+        private RIL mRil;
+        private boolean mRadioOn = false;
+
+        public IccHandler (RIL ril, Looper looper) {
+            super (looper);
+            mRil = ril;
+        }
+
+        public void handleMessage (Message paramMessage) {
+            switch (paramMessage.what) {
+                case EVENT_RADIO_ON:
+                    mRadioOn = true;
+                    sendMessage(obtainMessage(EVENT_ICC_STATUS_CHANGED));
+                    break;
+                case EVENT_GET_ICC_STATUS_DONE:
+                    AsyncResult asyncResult = (AsyncResult) paramMessage.obj;
+                    if (asyncResult.exception != null) {
+                        break;
+                    }
+                    IccCardStatus status = (IccCardStatus) asyncResult.result;
+                    if (status.mApplications == null || status.mApplications.length == 0) {
+                        if (!mRil.getRadioState().isOn()) {
+                            break;
+                        }
+
+                        mRil.setRadioState(CommandsInterface.RadioState.RADIO_ON);
+                    } else {
+                        int appIndex = status.mCdmaSubscriptionAppIndex;
+                        IccCardApplicationStatus application = status.mApplications[appIndex];
+                        IccCardApplicationStatus.AppState app_state = application.app_state;
+                        IccCardApplicationStatus.AppType app_type = application.app_type;
+                        switch (app_state) {
+                            case APPSTATE_PIN:
+                            case APPSTATE_PUK:
+                                switch (app_type) {
+                                    case APPTYPE_USIM:
+                                    case APPTYPE_RUIM:
+                                        mRil.setRadioState(CommandsInterface.RadioState.RADIO_ON);
+                                        break;
+                                    default:
+                                        return;
+                                }
+                                break;
+                            case APPSTATE_READY:
+                                switch (app_type) {
+                                    case APPTYPE_USIM:
+                                    case APPTYPE_RUIM:
+                                        mRil.setRadioState(CommandsInterface.RadioState.RADIO_ON);
+                                        break;
+                                    default:
+                                        return;
+                                }
+                                break;
+                            default:
+                                return;
+                        }
+                    }
+                    break;
+                case EVENT_ICC_STATUS_CHANGED:
+                    if (mRadioOn) {
+                        mRil.getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE, paramMessage.obj));
+                    }
+                    break;
+                case EVENT_RADIO_OFF_OR_UNAVAILABLE:
+                    mRadioOn = false;
+                default:
+                    break;
+            }
+        }
+
+        public void run () {
+            mRil.registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, null);
+            Message msg = obtainMessage(EVENT_RADIO_ON);
+            mRil.getIccCardStatus(msg);
+        }
     }
 
     // Workaround for Samsung CDMA "ring of death" bug:
