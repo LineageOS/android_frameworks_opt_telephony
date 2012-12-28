@@ -30,6 +30,9 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
+
 /**
  * {@hide}
  */
@@ -690,5 +693,42 @@ public class UiccCardApplication {
 
     private void loge(String msg) {
         Rlog.e(LOG_TAG, msg);
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("UiccCardApplication: " + this);
+        pw.println(" mUiccCard=" + mUiccCard);
+        pw.println(" mAppState=" + mAppState);
+        pw.println(" mAppType=" + mAppType);
+        pw.println(" mPersoSubState=" + mPersoSubState);
+        pw.println(" mAid=" + mAid);
+        pw.println(" mAppLabel=" + mAppLabel);
+        pw.println(" mPin1Replaced=" + mPin1Replaced);
+        pw.println(" mPin1State=" + mPin1State);
+        pw.println(" mPin2State=" + mPin2State);
+        pw.println(" mIccFdnEnabled=" + mIccFdnEnabled);
+        pw.println(" mDesiredFdnEnabled=" + mDesiredFdnEnabled);
+        pw.println(" mIccLockEnabled=" + mIccLockEnabled);
+        pw.println(" mDesiredPinLocked=" + mDesiredPinLocked);
+        pw.println(" mCi=" + mCi);
+        pw.println(" mIccRecords=" + mIccRecords);
+        pw.println(" mIccFh=" + mIccFh);
+        pw.println(" mDestroyed=" + mDestroyed);
+        pw.println(" mReadyRegistrants: size=" + mReadyRegistrants.size());
+        for (int i = 0; i < mReadyRegistrants.size(); i++) {
+            pw.println("  mReadyRegistrants[" + i + "]="
+                    + ((Registrant)mReadyRegistrants.get(i)).getHandler());
+        }
+        pw.println(" mPinLockedRegistrants: size=" + mPinLockedRegistrants.size());
+        for (int i = 0; i < mPinLockedRegistrants.size(); i++) {
+            pw.println("  mPinLockedRegistrants[" + i + "]="
+                    + ((Registrant)mPinLockedRegistrants.get(i)).getHandler());
+        }
+        pw.println(" mNetworkLockedRegistrants: size=" + mNetworkLockedRegistrants.size());
+        for (int i = 0; i < mNetworkLockedRegistrants.size(); i++) {
+            pw.println("  mNetworkLockedRegistrants[" + i + "]="
+                    + ((Registrant)mNetworkLockedRegistrants.get(i)).getHandler());
+        }
+        pw.flush();
     }
 }
