@@ -235,6 +235,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     // WAKE_LOCK_TIMEOUT occurs.
     int mRequestMessagesWaiting;
 
+    private boolean mSamsungDataCallMagic = SystemProperties.getBoolean("ro.ril.samsung_data_call_magic", false);
+
     //I'd rather this be LinkedList or something
     ArrayList<RILRequest> mRequestsList = new ArrayList<RILRequest>();
 
@@ -3179,6 +3181,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
             voiceSettings = p.readInt();
             dc.isVoice = (0 == voiceSettings) ? false : true;
             dc.isVoicePrivacy = (0 != p.readInt());
+            if ( mSamsungDataCallMagic == true) {
+                //Some Samsung magic data for Videocalls
+                // hack taken from smdk4210ril class
+                voiceSettings = p.readInt();
+                //printing it to cosole for later investigation
+                Log.d(LOG_TAG, "Samsung magic = " + voiceSettings);
+            }
             dc.number = p.readString();
             int np = p.readInt();
             dc.numberPresentation = DriverCall.presentationFromCLIP(np);
