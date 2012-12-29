@@ -235,6 +235,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     // WAKE_LOCK_TIMEOUT occurs.
     int mRequestMessagesWaiting;
 
+    private boolean mSamsungDataCallMagic = SystemProperties.getBoolean("ro.ril.samsung_data_call_magic", false);
+
     //I'd rather this be LinkedList or something
     ArrayList<RILRequest> mRequestsList = new ArrayList<RILRequest>();
 
@@ -3168,7 +3170,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     " mTestingEmergencyCall=" + mTestingEmergencyCall.get());
         }
         for (int i = 0 ; i < num ; i++) {
-            dc = new DriverCall();
+            if (mSamsungDataCallMagic) {
+                dc = new SamsungDriverCall();
+            } else {
+                dc = new DriverCall();
+            }
 
             dc.state = DriverCall.stateFromCLCC(p.readInt());
             dc.index = p.readInt();
@@ -3178,6 +3184,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
             dc.als = p.readInt();
             voiceSettings = p.readInt();
             dc.isVoice = (0 == voiceSettings) ? false : true;
+            if (mSamsungDataCallMagic) {
+                //Some Samsung magic data for Videocalls
+                // hack taken from smdk4210ril class
+                voiceSettings = p.readInt();
+                //printing it to cosole for later investigation
+                Log.d(LOG_TAG, "Samsung magic = " + voiceSettings);
+            }
             dc.isVoicePrivacy = (0 != p.readInt());
             dc.number = p.readString();
             int np = p.readInt();
@@ -3227,6 +3240,28 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
 
         return response;
+    }
+
+    protected class SamsungDriverCall extends DriverCall {
+        @Override
+        public String
+        toString() {
+            // Samsung CDMA devices' call parcel is formatted differently
+            // fake unused data for video calls, and fix formatting
+            // so that voice calls' information can be correctly parsed
+            return "id=" + index + ","
+            + state + ","
+            + "toa=" + TOA + ","
+            + (isMpty ? "conf" : "norm") + ","
+            + (isMT ? "mt" : "mo") + ","
+            + "als=" + als + ","
+            + (isVoice ? "voc" : "nonvoc") + ","
+            + "nonvid" + ","
+            + number + ","
+            + "cli=" + numberPresentation + ","
+            + "name=" + name + ","
+            + namePresentation;
+        }
     }
 
     protected DataCallState getDataCallState(Parcel p, int version) {
