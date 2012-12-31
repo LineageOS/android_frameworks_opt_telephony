@@ -105,6 +105,8 @@ public final class CallManager {
     private Phone mDefaultPhone;
 
     private boolean mSpeedUpAudioForMtCall = false;
+    
+    private boolean mRingVolumeReceiverIsRegistered = false;
 
     // state registrants
     protected final RegistrantList mPreciseCallStateRegistrants
@@ -449,8 +451,12 @@ public final class CallManager {
         if (state == PhoneConstants.State.RINGING && lastAudioMode != AudioManager.MODE_RINGTONE) {
             context.registerReceiver(mRingVolumeChangeReceiver,
                     new IntentFilter(AudioManager.VOLUME_CHANGED_ACTION));
+            mRingVolumeReceiverIsRegistered = true;
         } else if (state != PhoneConstants.State.RINGING && lastAudioMode == AudioManager.MODE_RINGTONE) {
-            context.unregisterReceiver(mRingVolumeChangeReceiver);
+            if(mRingVolumeReceiverIsRegistered){
+                context.unregisterReceiver(mRingVolumeChangeReceiver);
+                mRingVolumeReceiverIsRegistered = false;
+            }
         }
     }
 
