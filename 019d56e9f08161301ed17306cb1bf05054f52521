@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAbn//+No\u003d",
+        "filename": "src/java/com/android/internal/telephony/CallManager.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 456,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2012-12-31T20:22:45Z",
+      "side": 1,
+      "message": "Spaces after the if and before the brace missing.",
+      "revId": "019d56e9f08161301ed17306cb1bf05054f52521",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
