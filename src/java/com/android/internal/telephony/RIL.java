@@ -3872,7 +3872,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        pw.println("RIL:");
+        pw.println("RIL: " + this);
         pw.println(" mSocket=" + mSocket);
         pw.println(" mSenderThread=" + mSenderThread);
         pw.println(" mSender=" + mSender);

@@ -26,8 +26,11 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.gsm.SimTlv;
 //import com.android.internal.telephony.gsm.VoiceMailConstants;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import static com.android.internal.telephony.uicc.IccConstants.EF_DOMAIN;
 import static com.android.internal.telephony.uicc.IccConstants.EF_IMPI;
@@ -271,5 +274,16 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     @Override
     protected void loge(String s) {
         if (DBG) Rlog.e(LOG_TAG, "[ISIM] " + s);
+    }
+
+    @Override
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("IsimRecords: " + this);
+        pw.println(" extends:");
+        super.dump(fd, pw, args);
+        pw.println(" mIsimImpi=" + mIsimImpi);
+        pw.println(" mIsimDomain=" + mIsimDomain);
+        pw.println(" mIsimImpu[]=" + Arrays.toString(mIsimImpu));
+        pw.flush();
     }
 }
