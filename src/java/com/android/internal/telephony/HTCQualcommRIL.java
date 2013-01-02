@@ -62,6 +62,7 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
 
         // use old needsOldRilFeature method for feature. it would be redundant to make
         // a new method just for naming sake.
+        boolean subscriptionFromSource = needsOldRilFeature("subscriptionFromSource");
         boolean oldRil = needsOldRilFeature("icccardstatus");
 
         IccCardStatus cardStatus = new IccCardStatus();
@@ -101,6 +102,30 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
             appStatus.pin2           = appStatus.PinStateFromRILInt(p.readInt());
             cardStatus.mApplications[i] = appStatus;
         }
+
+        if (subscriptionFromSource)
+           return cardStatus;
+
+        int appIndex = -1;
+        if (mPhoneType == RILConstants.CDMA_PHONE) {
+            appIndex = cardStatus.mCdmaSubscriptionAppIndex;
+            Log.d(LOG_TAG, "This is a CDMA device " + appIndex);
+        } else {
+            appIndex = cardStatus.mGsmUmtsSubscriptionAppIndex;
+            Log.d(LOG_TAG, "This is a GSM device " + appIndex);
+        }
+
+        String mAid;
+        if (numApplications > 0) {
+            IccCardApplicationStatus application = cardStatus.mApplications[appIndex];
+            mAid = application.aid;
+            mSetPreferredNetworkType = mPreferredNetworkType;
+
+            if (TextUtils.isEmpty(mAid))
+               mAid = "";
+            Log.d(LOG_TAG, "mAid " + mAid);
+        }
+
         return cardStatus;
     }
 
