@@ -46,6 +46,9 @@ import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
 import com.android.internal.telephony.uicc.UiccController;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
+
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_SIM_STATE;
 
 /**
@@ -698,5 +701,38 @@ public class IccCardProxy extends Handler implements IccCard {
 
     private void loge(String msg) {
         Rlog.e(LOG_TAG, msg);
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("IccCardProxy: " + this);
+        pw.println(" mContext=" + mContext);
+        pw.println(" mCi=" + mCi);
+        pw.println(" mAbsentRegistrants: size=" + mAbsentRegistrants.size());
+        for (int i = 0; i < mAbsentRegistrants.size(); i++) {
+            pw.println("  mAbsentRegistrants[" + i + "]="
+                    + ((Registrant)mAbsentRegistrants.get(i)).getHandler());
+        }
+        pw.println(" mPinLockedRegistrants: size=" + mPinLockedRegistrants.size());
+        for (int i = 0; i < mPinLockedRegistrants.size(); i++) {
+            pw.println("  mPinLockedRegistrants[" + i + "]="
+                    + ((Registrant)mPinLockedRegistrants.get(i)).getHandler());
+        }
+        pw.println(" mNetworkLockedRegistrants: size=" + mNetworkLockedRegistrants.size());
+        for (int i = 0; i < mNetworkLockedRegistrants.size(); i++) {
+            pw.println("  mNetworkLockedRegistrants[" + i + "]="
+                    + ((Registrant)mNetworkLockedRegistrants.get(i)).getHandler());
+        }
+        pw.println(" mCurrentAppType=" + mCurrentAppType);
+        pw.println(" mUiccController=" + mUiccController);
+        pw.println(" mUiccCard=" + mUiccCard);
+        pw.println(" mUiccApplication=" + mUiccApplication);
+        pw.println(" mIccRecords=" + mIccRecords);
+        pw.println(" mCdmaSSM=" + mCdmaSSM);
+        pw.println(" mRadioOn=" + mRadioOn);
+        pw.println(" mQuietMode=" + mQuietMode);
+        pw.println(" mInitialized=" + mInitialized);
+        pw.println(" mExternalState=" + mExternalState);
+
+        pw.flush();
     }
 }

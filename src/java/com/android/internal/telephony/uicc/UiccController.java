@@ -26,6 +26,9 @@ import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
+
 /**
  * This class is responsible for keeping all knowledge about
  * Universal Integrated Circuit Card (UICC), also know as SIM's,
@@ -217,5 +220,23 @@ public class UiccController extends Handler {
 
     private void log(String string) {
         Rlog.d(LOG_TAG, string);
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("UiccController: " + this);
+        pw.println(" mContext=" + mContext);
+        pw.println(" mInstance=" + mInstance);
+        pw.println(" mCi=" + mCi);
+        pw.println(" mUiccCard=" + mUiccCard);
+        pw.println(" mIccChangedRegistrants: size=" + mIccChangedRegistrants.size());
+        for (int i = 0; i < mIccChangedRegistrants.size(); i++) {
+            pw.println("  mIccChangedRegistrants[" + i + "]="
+                    + ((Registrant)mIccChangedRegistrants.get(i)).getHandler());
+        }
+        pw.println();
+        pw.flush();
+        if (mUiccCard != null) {
+            mUiccCard.dump(fd, pw, args);
+        }
     }
 }

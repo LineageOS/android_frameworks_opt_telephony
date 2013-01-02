@@ -23,7 +23,10 @@ import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OP
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_TEST_CSIM;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Locale;
 import android.content.Context;
 import android.os.AsyncResult;
@@ -796,5 +799,24 @@ public final class RuimRecords extends IccRecords {
     @Override
     protected void loge(String s) {
         Rlog.e(LOG_TAG, "[RuimRecords] " + s);
+    }
+
+    @Override
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("RuimRecords: " + this);
+        pw.println(" extends:");
+        super.dump(fd, pw, args);
+        pw.println(" m_ota_commited=" + m_ota_commited);
+        pw.println(" mMyMobileNumber=" + mMyMobileNumber);
+        pw.println(" mMin2Min1=" + mMin2Min1);
+        pw.println(" mPrlVersion=" + mPrlVersion);
+        pw.println(" mEFpl[]=" + Arrays.toString(mEFpl));
+        pw.println(" mEFli[]=" + Arrays.toString(mEFli));
+        pw.println(" mCsimSpnDisplayCondition=" + mCsimSpnDisplayCondition);
+        pw.println(" mMdn=" + mMdn);
+        pw.println(" mMin=" + mMin);
+        pw.println(" mHomeSystemId=" + mHomeSystemId);
+        pw.println(" mHomeNetworkId=" + mHomeNetworkId);
+        pw.flush();
     }
 }
