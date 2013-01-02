@@ -49,6 +49,9 @@ import android.os.SystemProperties;
 
 import com.android.internal.R;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
+
 /**
  * {@hide}
  */
@@ -349,5 +352,52 @@ public class UiccCard {
 
     private void loge(String msg) {
         Rlog.e(LOG_TAG, msg);
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("UiccCard:");
+        pw.println(" mCi=" + mCi);
+        pw.println(" mDestroyed=" + mDestroyed);
+        pw.println(" mLastRadioState=" + mLastRadioState);
+        pw.println(" mCatService=" + mCatService);
+        pw.println(" mAbsentRegistrants: size=" + mAbsentRegistrants.size());
+        for (int i = 0; i < mAbsentRegistrants.size(); i++) {
+            pw.println("  mAbsentRegistrants[" + i + "]="
+                    + ((Registrant)mAbsentRegistrants.get(i)).getHandler());
+        }
+        pw.println(" mCardState=" + mCardState);
+        pw.println(" mUniversalPinState=" + mUniversalPinState);
+        pw.println(" mGsmUmtsSubscriptionAppIndex=" + mGsmUmtsSubscriptionAppIndex);
+        pw.println(" mCdmaSubscriptionAppIndex=" + mCdmaSubscriptionAppIndex);
+        pw.println(" mImsSubscriptionAppIndex=" + mImsSubscriptionAppIndex);
+        pw.println(" mImsSubscriptionAppIndex=" + mImsSubscriptionAppIndex);
+        pw.println(" mUiccApplications: length=" + mUiccApplications.length);
+        for (int i = 0; i < mUiccApplications.length; i++) {
+            if (mUiccApplications[i] == null) {
+                pw.println("  mUiccApplications[" + i + "]=" + null);
+            } else {
+                pw.println("  mUiccApplications[" + i + "]="
+                        + mUiccApplications[i].getType() + " " + mUiccApplications[i]);
+            }
+        }
+        pw.println();
+        // Print details of all applications
+        for (UiccCardApplication app : mUiccApplications) {
+            if (app != null) {
+                app.dump(fd, pw, args);
+                pw.println();
+            }
+        }
+        // Print details of all IccRecords
+        for (UiccCardApplication app : mUiccApplications) {
+            if (app != null) {
+                IccRecords ir = app.getIccRecords();
+                if (ir != null) {
+                    ir.dump(fd, pw, args);
+                    pw.println();
+                }
+            }
+        }
+        pw.flush();
     }
 }

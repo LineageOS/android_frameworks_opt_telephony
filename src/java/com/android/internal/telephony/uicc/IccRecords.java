@@ -25,6 +25,8 @@ import android.os.RegistrantList;
 
 import com.android.internal.telephony.CommandsInterface;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -441,5 +443,56 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     public UsimServiceTable getUsimServiceTable() {
         return null;
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("IccRecords: " + this);
+        pw.println(" mDestroyed=" + mDestroyed);
+        pw.println(" mCi=" + mCi);
+        pw.println(" mFh=" + mFh);
+        pw.println(" mParentApp=" + mParentApp);
+        pw.println(" recordsLoadedRegistrants: size=" + recordsLoadedRegistrants.size());
+        for (int i = 0; i < recordsLoadedRegistrants.size(); i++) {
+            pw.println("  recordsLoadedRegistrants[" + i + "]="
+                    + ((Registrant)recordsLoadedRegistrants.get(i)).getHandler());
+        }
+        pw.println(" mImsiReadyRegistrants: size=" + mImsiReadyRegistrants.size());
+        for (int i = 0; i < mImsiReadyRegistrants.size(); i++) {
+            pw.println("  mImsiReadyRegistrants[" + i + "]="
+                    + ((Registrant)mImsiReadyRegistrants.get(i)).getHandler());
+        }
+        pw.println(" mRecordsEventsRegistrants: size=" + mRecordsEventsRegistrants.size());
+        for (int i = 0; i < mRecordsEventsRegistrants.size(); i++) {
+            pw.println("  mRecordsEventsRegistrants[" + i + "]="
+                    + ((Registrant)mRecordsEventsRegistrants.get(i)).getHandler());
+        }
+        pw.println(" mNewSmsRegistrants: size=" + mNewSmsRegistrants.size());
+        for (int i = 0; i < mNewSmsRegistrants.size(); i++) {
+            pw.println("  mNewSmsRegistrants[" + i + "]="
+                    + ((Registrant)mNewSmsRegistrants.get(i)).getHandler());
+        }
+        pw.println(" mNetworkSelectionModeAutomaticRegistrants: size="
+                + mNetworkSelectionModeAutomaticRegistrants.size());
+        for (int i = 0; i < mNetworkSelectionModeAutomaticRegistrants.size(); i++) {
+            pw.println("  mNetworkSelectionModeAutomaticRegistrants[" + i + "]="
+                    + ((Registrant)mNetworkSelectionModeAutomaticRegistrants.get(i)).getHandler());
+        }
+        pw.println(" recordsRequested=" + recordsRequested);
+        pw.println(" recordsToLoad=" + recordsToLoad);
+        pw.println(" adnCache=" + adnCache);
+        pw.println(" iccid=" + iccid);
+        pw.println(" msisdn=" + msisdn);
+        pw.println(" msisdnTag=" + msisdnTag);
+        pw.println(" voiceMailNum=" + voiceMailNum);
+        pw.println(" voiceMailTag=" + voiceMailTag);
+        pw.println(" newVoiceMailNum=" + newVoiceMailNum);
+        pw.println(" newVoiceMailTag=" + newVoiceMailTag);
+        pw.println(" isVoiceMailFixed=" + isVoiceMailFixed);
+        pw.println(" countVoiceMessages=" + countVoiceMessages);
+        pw.println(" mImsi=" + mImsi);
+        pw.println(" mncLength=" + mncLength);
+        pw.println(" mailboxIndex=" + mailboxIndex);
+        pw.println(" spn=" + spn);
+        pw.flush();
     }
 }

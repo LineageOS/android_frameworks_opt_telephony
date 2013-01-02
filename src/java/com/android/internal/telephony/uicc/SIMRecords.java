@@ -37,7 +37,10 @@ import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.gsm.SimTlv;
 import com.android.internal.telephony.gsm.SmsMessage;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 
 /**
@@ -1672,5 +1675,27 @@ public class SIMRecords extends IccRecords {
         }
 
         log("[CSP] Value Added Service Group (0xC0), not found!");
+    }
+
+    @Override
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("SIMRecords: " + this);
+        pw.println(" extends:");
+        super.dump(fd, pw, args);
+        pw.println(" mVmConfig=" + mVmConfig);
+        pw.println(" mSpnOverride=" + mSpnOverride);
+        pw.println(" callForwardingEnabled=" + callForwardingEnabled);
+        pw.println(" spnState=" + spnState);
+        pw.println(" mCphsInfo=" + mCphsInfo);
+        pw.println(" mCspPlmnEnabled=" + mCspPlmnEnabled);
+        pw.println(" efMWIS[]=" + Arrays.toString(efMWIS));
+        pw.println(" efCPHS_MWI[]=" + Arrays.toString(efCPHS_MWI));
+        pw.println(" mEfCff[]=" + Arrays.toString(mEfCff));
+        pw.println(" mEfCfis[]=" + Arrays.toString(mEfCfis));
+        pw.println(" spnDisplayCondition=" + spnDisplayCondition);
+        pw.println(" spdiNetworks[]=" + spdiNetworks);
+        pw.println(" pnnHomeName=" + pnnHomeName);
+        pw.println(" mUsimServiceTable=" + mUsimServiceTable);
+        pw.flush();
     }
 }
