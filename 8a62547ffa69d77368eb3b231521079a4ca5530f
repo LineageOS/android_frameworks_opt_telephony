@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAcH///pA\u003d",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 3190,
+      "author": {
+        "id": 523
+      },
+      "writtenOn": "2013-01-03T16:05:14Z",
+      "side": 1,
+      "message": "wrong order here.\r\n\r\ncorrect order from decompiled 4210 rom:\r\ndc.isVoice              \u003d (0 !\u003d p.readInt());    \r\nisVideo                 \u003d (0 !\u003d p.readInt());    \r\ndc.isVoicePrivacy       \u003d (0 !\u003d p.readInt()); \r\n\r\nIt was always wrong on SamsungCDMAQualcommRIL.java.",
+      "revId": "8a62547ffa69d77368eb3b231521079a4ca5530f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
