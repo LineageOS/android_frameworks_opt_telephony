@@ -62,6 +62,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.ICarrierConfigLoader;
 import com.android.internal.telephony.MccTable;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.ProxyController;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
@@ -104,6 +105,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     private int mNewMaxDataCalls = 1;
     private int mReasonDataDenied = -1;
     private int mNewReasonDataDenied = -1;
+
+    private static final String ACTION_MANAGED_ROAMING_IND =
+            "codeaurora.intent.action.ACTION_MANAGED_ROAMING_IND";
 
     /**
      * GSM roaming status solely based on TS 27.007 7.2 CREG. Only used by
@@ -755,6 +759,26 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     mGsmRoaming = regCodeIsRoaming(regState);
                     mNewSS.setState(regCodeToServiceState(regState));
                     mNewSS.setRilVoiceRadioTechnology(type);
+
+                    if ((regState == ServiceState.RIL_REG_STATE_DENIED
+                            || regState == ServiceState.RIL_REG_STATE_DENIED_EMERGENCY_CALL_ENABLED)
+                            && (states.length >= 14)) {
+                        try {
+                            int rejCode = Integer.parseInt(states[13]);
+                            // Check if rejCode is "Persistent location update reject",
+                            if (rejCode == 10) {
+                                log(" Posting Managed roaming intent sub = "
+                                        + mPhone.getSubId());
+                                Intent intent =
+                                        new Intent(ACTION_MANAGED_ROAMING_IND);
+                                intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                                        mPhone.getSubId());
+                                mPhone.getContext().sendBroadcast(intent);
+                            }
+                        } catch (NumberFormatException ex) {
+                            loge("error parsing regCode: " + ex);
+                        }
+                    }
 
                     boolean isVoiceCapable = mPhoneBase.getContext().getResources()
                             .getBoolean(com.android.internal.R.bool.config_voice_capable);
