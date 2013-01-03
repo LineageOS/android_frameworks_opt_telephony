@@ -732,6 +732,26 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     mNewSS.setRilVoiceRadioTechnology(type);
                     mNewSS.setCssIndicator(cssIndicator);
 
+                    if ((regState == ServiceState.RIL_REG_STATE_DENIED
+                            || regState == ServiceState.RIL_REG_STATE_DENIED_EMERGENCY_CALL_ENABLED)
+                            && (states.length >= 14)) {
+                        try {
+                            int rejCode = Integer.parseInt(states[13]);
+                            // Check if rejCode is "Persistent location update reject",
+                            if (rejCode == 10) {
+                                log(" Posting Managed roaming intent sub = "
+                                        + mPhone.getSubId());
+                                Intent intent =
+                                        new Intent(TelephonyIntents.ACTION_MANAGED_ROAMING_IND);
+                                intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                                        mPhone.getSubId());
+                                mPhone.getContext().sendBroadcast(intent);
+                            }
+                        } catch (NumberFormatException ex) {
+                            loge("error parsing regCode: " + ex);
+                        }
+                    }
+
                     boolean isVoiceCapable = mPhoneBase.getContext().getResources()
                             .getBoolean(com.android.internal.R.bool.config_voice_capable);
                     if ((regState == ServiceState.RIL_REG_STATE_DENIED_EMERGENCY_CALL_ENABLED
