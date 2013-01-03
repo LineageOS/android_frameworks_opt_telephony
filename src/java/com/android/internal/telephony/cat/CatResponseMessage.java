@@ -23,7 +23,8 @@ public class CatResponseMessage {
         String usersInput  = null;
         boolean usersYesNoSelection = false;
         boolean usersConfirm = false;
-
+        boolean includeAdditionalInfo = false;
+        int additionalInfo = 0;
         public CatResponseMessage(CatCmdMessage cmdMsg) {
             this.cmdDet = cmdMsg.mCmdDet;
         }
@@ -46,6 +47,11 @@ public class CatResponseMessage {
 
         public void setConfirmation(boolean confirm) {
             usersConfirm = confirm;
+        }
+
+        public void setAdditionalInfo(int info) {
+            this.includeAdditionalInfo = true;
+            this.additionalInfo = info;
         }
 
         CommandDetails getCmdDetails() {
