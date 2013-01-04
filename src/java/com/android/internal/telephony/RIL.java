@@ -2384,6 +2384,33 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU: ret = responseVoid(p); break;
             case RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS: ret = responseICC_IO(p); break;
             case RIL_REQUEST_VOICE_RADIO_TECH: ret = responseInts(p); break;
+            case RIL_REQUEST_DIAL_VIDEO_CALL: ret = responseVoid(p); break;
+            case RIL_REQUEST_SETUP_QOS: ret = responseStrings(p); break;
+            case RIL_REQUEST_GET_QOS_STATUS: ret = responseStrings(p); break;
+            case RIL_REQUEST_RELEASE_QOS: ret = responseStrings(p); break;
+            case RIL_REQUEST_MODIFY_QOS: ret = responseStrings(p); break;
+            case RIL_REQUEST_SUSPEND_QOS: ret = responseStrings(p); break;
+            case RIL_REQUEST_RESUME_QOS: ret = responseStrings(p); break;
+            case RIL_REQUEST_GET_DATA_CALL_PROFILE: ret = responseInts(p); break;
+            case RIL_REQUEST_IMS_REGISTRATION_STATE: ret = responseInts(p); break;
+            case RIL_REQUEST_IMS_SEND_SMS: ret = responseSMS(p); break;
+            case RIL_REQUEST_GET_PHONEBOOK_STORAGE_INFO: ret = responseInts(p); break;
+            case RIL_REQUEST_GET_PHONEBOOK_ENTRY: ret = responseVoid(p); break; // fixme: responseSIM_PB
+            case RIL_REQUEST_ACCESS_PHONEBOOK_ENTRY: ret = responseInts(p); break;
+            case RIL_REQUEST_USIM_PB_CAPA: ret = responseInts(p); break;
+            case RIL_REQUEST_DIAL_EMERGENCY_CALL: ret = responseVoid(p); break;
+            case RIL_REQUEST_SET_TRANSMIT_POWER: ret = responseVoid(p); break;
+            case RIL_REQUEST_SET_UICC_SUBSCRIPTION: ret = responseVoid(p); break;
+            case RIL_REQUEST_SET_DATA_SUBSCRIPTION: ret = responseVoid(p); break;
+            case RIL_REQUEST_GET_UICC_SUBSCRIPTION: ret = responseVoid(p); break; // fixme: responseUiccSubscription
+            case RIL_REQUEST_GET_DATA_SUBSCRIPTION: ret = responseInts(p); break;
+            case RIL_REQUEST_SET_SUBSCRIPTION_MODE: ret = responseVoid(p); break;
+            case RIL_REQUEST_UICC_GBA_AUTHENTICATE_BOOTSTRAP: ret = responseVoid(p); break; // fixme: responseBootstrap
+            case RIL_REQUEST_UICC_GBA_AUTHENTICATE_NAF: ret = responseVoid(p); break; // fixme: responseNaf
+            case RIL_REQUEST_SIM_AUTH: ret = responseICC_IO(p); break;
+            case RIL_REQUEST_SET_PREFERRED_NETWORK_LIST: ret = responseVoid(p); break;
+            case RIL_REQUEST_GET_PREFERRED_NETWORK_LIST: ret = responseVoid(p); break; // fixme: responsePreferredNetworkList
+            case RIL_REQUEST_HANGUP_VT: ret = responseVoid(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -2566,6 +2593,16 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RIL_CONNECTED: ret = responseInts(p); break;
             case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: ret =  responseInts(p); break;
             case RIL_UNSOL_STK_SEND_SMS_RESULT: ret = responseInts(p); break; // Samsung STK
+            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED: ret = responseVoid(p); break;
+            case RIL_UNSOL_TETHERED_MODE_STATE_CHANGED: ret = responseInts(p); break;
+            case RIL_UNSOL_ON_SS: ret = responseVoid(p); break; // fixme: responseSSData
+            case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: ret = responseInts(p); break;
+            case RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED: ret = responseStrings(p); break;
+            case RIL_UNSOL_QOS_STATE_CHANGED: ret = responseVoid(p); break;
+            case RIL_UNSOL_SIM_PB_READY: ret = responseString(p); break;
+            case RIL_UNSOL_SIM_APPLICATION_REFRESH: ret = responseVoid(p); break; // fixme: not sure? =/
+            case RIL_UNSOL_AM: ret = responseInts(p); break;
+            case RIL_UNSOL_STK_CALL_CONTROL_RESULT: ret = responseString(p); break;
 
             default:
                 throw new RuntimeException("Unrecognized unsol response: " + response);
@@ -2971,7 +3008,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         return response;
     }
-
 
     protected Object
     responseVoid(Parcel p) {
@@ -3702,6 +3738,33 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU: return "RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU";
             case RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS: return "RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS";
             case RIL_REQUEST_VOICE_RADIO_TECH: return "RIL_REQUEST_VOICE_RADIO_TECH";
+            case RIL_REQUEST_DIAL_VIDEO_CALL: return "DIAL_VIDEO_CALL";
+            case RIL_REQUEST_SETUP_QOS: return "SETUP_QOS";
+            case RIL_REQUEST_GET_QOS_STATUS: return "GET_QOS_STATUS";
+            case RIL_REQUEST_RELEASE_QOS: return "RELEASE_QOS";
+            case RIL_REQUEST_MODIFY_QOS: return "MODIFY_QOS";
+            case RIL_REQUEST_SUSPEND_QOS: return "SUSPEND_QOS";
+            case RIL_REQUEST_RESUME_QOS: return "RESUME_QOS";
+            case RIL_REQUEST_GET_DATA_CALL_PROFILE: return "RIL_REQUEST_GET_DATA_CALL_PROFILE";
+            case RIL_REQUEST_IMS_REGISTRATION_STATE: return "RIL_REQUEST_IMS_REGISTRATION_STATE";
+            case RIL_REQUEST_IMS_SEND_SMS: return "RIL_REQUEST_IMS_SEND_SMS";
+            case RIL_REQUEST_GET_PHONEBOOK_STORAGE_INFO: return "GET_PHONEBOOK_STORAGE_INFO";
+            case RIL_REQUEST_GET_PHONEBOOK_ENTRY: return "GET_PHONEBOOK_ENTRY";
+            case RIL_REQUEST_ACCESS_PHONEBOOK_ENTRY: return "ACCESS_PHONEBOOK_ENTRY";
+            case RIL_REQUEST_USIM_PB_CAPA: return "USIM_PB_CAPA";
+            case RIL_REQUEST_DIAL_EMERGENCY_CALL: return "RIL_REQUEST_DIAL_EMERGENCY_CALL";
+            case RIL_REQUEST_SET_TRANSMIT_POWER: return "RIL_REQUEST_SET_TRANSMIT_POWER";
+            case RIL_REQUEST_SET_UICC_SUBSCRIPTION: return "RIL_REQUEST_SET_UICC_SUBSCRIPTION";
+            case RIL_REQUEST_SET_DATA_SUBSCRIPTION: return "RIL_REQUEST_SET_DATA_SUBSCRIPTION";
+            case RIL_REQUEST_GET_UICC_SUBSCRIPTION: return "RIL_REQUEST_GET_UICC_SUBSCRIPTION";
+            case RIL_REQUEST_GET_DATA_SUBSCRIPTION: return "RIL_REQUEST_GET_DATA_SUBSCRIPTION";
+            case RIL_REQUEST_SET_SUBSCRIPTION_MODE: return "RIL_REQUEST_SET_SUBSCRIPTION_MODE";
+            case RIL_REQUEST_UICC_GBA_AUTHENTICATE_BOOTSTRAP: return "RIL_REQUEST_UICC_GBA_AUTHENTICATE_BOOTSTRAP";
+            case RIL_REQUEST_UICC_GBA_AUTHENTICATE_NAF: return "RIL_REQUEST_UICC_GBA_AUTHENTICATE_NAF";
+            case RIL_REQUEST_SIM_AUTH: return "RIL_REQUEST_SIM_AUTH";
+            case RIL_REQUEST_SET_PREFERRED_NETWORK_LIST: return "SET_PREFERRED_NETWORK_LIST";
+            case RIL_REQUEST_GET_PREFERRED_NETWORK_LIST: return "GET_PREFERRED_NETWORK_LIST";
+            case RIL_REQUEST_HANGUP_VT: return "HANGUP_VT";
             default: return "<unknown request>";
         }
     }
@@ -3752,6 +3815,16 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RIL_CONNECTED: return "UNSOL_RIL_CONNECTED";
             case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: return "UNSOL_VOICE_RADIO_TECH_CHANGED";
             case RIL_UNSOL_STK_SEND_SMS_RESULT: return "RIL_UNSOL_STK_SEND_SMS_RESULT";
+            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED: return "UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED";
+            case RIL_UNSOL_TETHERED_MODE_STATE_CHANGED: return "RIL_UNSOL_TETHERED_MODE_STATE_CHANGED";
+            case RIL_UNSOL_ON_SS: return "UNSOL_ON_SS";
+            case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: return "UNSOL_STK_CC_ALPHA_NOTIFY";
+            case RIL_UNSOL_QOS_STATE_CHANGED: return "RIL_UNSOL_QOS_STATE_CHANGED";
+            case RIL_UNSOL_SIM_PB_READY: return "UNSOL_SIM_PB_READY";
+            case RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED: return "RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED";
+            case RIL_UNSOL_SIM_APPLICATION_REFRESH: return "UNSOL_SIM_APPLICATION_REFRESH";
+            case RIL_UNSOL_AM: return "RIL_UNSOL_AM";
+            case RIL_UNSOL_STK_CALL_CONTROL_RESULT: return "UNSOL_STK_CALL_CONTROL_RESULT";
             default: return "<unknown reponse>";
         }
     }
