@@ -60,12 +60,12 @@ public class SamsungQualcommD2RIL extends SamsungQualcommUiccRIL implements Comm
             dc.als = p.readInt();
             voiceSettings = p.readInt();
             dc.isVoice = (0 == voiceSettings) ? false : true;
-            dc.isVoicePrivacy = (0 != p.readInt());
             //Some Samsung magic data for Videocalls
             // hack taken from smdk4210ril class
             voiceSettings = p.readInt();
             //printing it to cosole for later investigation
             Log.d(LOG_TAG, "Samsung magic = " + voiceSettings);
+            dc.isVoicePrivacy = (0 != p.readInt());
             dc.number = p.readString();
             int np = p.readInt();
             dc.numberPresentation = DriverCall.presentationFromCLIP(np);
