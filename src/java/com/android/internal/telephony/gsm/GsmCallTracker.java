@@ -497,7 +497,11 @@ public final class GsmCallTracker extends CallTracker {
                         // it won't appear as a Missed Call.
                         if (dc.state != DriverCall.State.ALERTING
                                 && dc.state != DriverCall.State.DIALING) {
-                            connections[i].connectTime = System.currentTimeMillis();
+                            connections[i].onConnectedInOrOut();
+                            if (dc.state == DriverCall.State.HOLDING) {
+                                // We've transitioned into HOLDING
+                                connections[i].onStartedHolding();
+                            }
                         }
 
                         unknownConnectionAppeared = true;
