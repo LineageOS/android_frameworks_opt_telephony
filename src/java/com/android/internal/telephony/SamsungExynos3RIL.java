@@ -597,7 +597,7 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
         // does not follow up with RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED. We
         // notify the system here.
         String state = SystemProperties.get(TelephonyProperties.PROPERTY_SIM_STATE);
-        if (!"READY".equals(state) && mIccStatusChangedRegistrants != null) {
+        if (!"READY".equals(state) && mIccStatusChangedRegistrants != null && !mIsSamsungCdma) {
             mIccStatusChangedRegistrants.notifyRegistrants();
         }
 
