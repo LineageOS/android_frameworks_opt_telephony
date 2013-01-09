@@ -597,7 +597,7 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
         // does not follow up with RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED. We
         // notify the system here.
         String state = SystemProperties.get(TelephonyProperties.PROPERTY_SIM_STATE);
-        if (!"READY".equals(state) && mIccStatusChangedRegistrants != null) {
+        if (!"READY".equals(state) && mIccStatusChangedRegistrants != null && !mIsSamsungCdma) {
             mIccStatusChangedRegistrants.notifyRegistrants();
         }
 
@@ -904,6 +904,18 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
                                 new AsyncResult (null, mCatProCmdBuffer, null));
             mCatProCmdBuffer = null;
         }
+    }
+
+    @Override
+    public void
+    getIccCardStatus(Message result) {
+        // if CDMA, do nothing
+        if (mIsSamsungCdma) {
+            Log.d(LOG_TAG, "### CDMA device...ignoring getIccCardStatus...");
+            return;
+        }
+
+        super.getIccCardStatus(result);
     }
 
     /* private class that does the handling for the dataconnection
