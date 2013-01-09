@@ -906,6 +906,18 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
         }
     }
 
+    @Override
+    public void
+    getIccCardStatus(Message result) {
+        // if CDMA, do nothing
+        if (mIsSamsungCdma) {
+            Log.d(LOG_TAG, "### CDMA device...ignoring getIccCardStatus...");
+            return;
+        }
+
+        super.getIccCardStatus(result);
+    }
+
     /* private class that does the handling for the dataconnection
      * dataconnection is done async, so we send the request for disabling it,
      * wait for the response, set the prefered networktype and notify the
