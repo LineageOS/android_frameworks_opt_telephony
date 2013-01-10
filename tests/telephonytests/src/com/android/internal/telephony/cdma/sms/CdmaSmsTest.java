@@ -40,6 +40,9 @@ public class CdmaSmsTest extends AndroidTestCase {
             "\u0400\u0401\u0402\u0403\u0404\u0405\u0406\u0407\u0408" +
             "\u00a2\u00a9\u00ae\u2122";
 
+    // "Hello, world" in Japanese.
+    private static final String sHelloWorldJa = "\u3053\u3093\u306b\u3061\u306f\u4e16\u754c";
+
     @SmallTest
     public void testCdmaSmsAddrParsing() throws Exception {
         CdmaSmsAddress addr = CdmaSmsAddress.parse("6502531000");
@@ -812,51 +815,98 @@ public class CdmaSmsTest extends AndroidTestCase {
 
     @SmallTest
     public void testUserDataHeaderWithEightCharMsg() throws Exception {
-        encodeDecodeAssertEquals("01234567", 2, 2, false);
+        SmsHeader smsHeader = getConcatUserDataHeader(2, 2);
+        encodeDecodeAssertEquals("01234567", smsHeader, -1);
+        SmsHeader smsHeader2 = getOddLengthUserDataHeader();
+        encodeDecodeAssertEquals("01234567", smsHeader2, -1);
     }
 
-    private void encodeDecodeAssertEquals(String payload, int index, int total,
-            boolean oddLengthHeader) throws Exception {
+    @SmallTest
+    public void testShiftJis() throws Exception {
+        encodeDecodeAssertEquals(sHelloWorldJa, null, UserData.ENCODING_UNICODE_16);
+        encodeDecodeAssertEquals(sHelloWorldJa, null, UserData.ENCODING_SHIFT_JIS);
+    }
+
+    @SmallTest
+    public void testIgnoreReservedSubparam() throws Exception {
         BearerData bearerData = new BearerData();
         bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
-        bearerData.messageId = 55;
-        SmsHeader smsHeader = new SmsHeader();
-        if (oddLengthHeader) {
-            // Odd length header to verify correct UTF-16 header padding
-            SmsHeader.MiscElt miscElt = new SmsHeader.MiscElt();
-            miscElt.id = 0x27;  // reserved for future use; ignored on decode
-            miscElt.data = new byte[]{0x12, 0x34};
-            smsHeader.miscEltList.add(miscElt);
-        } else {
-            // Even length header normally generated for concatenated SMS.
-            SmsHeader.ConcatRef concatRef = new SmsHeader.ConcatRef();
-            concatRef.refNumber = 0xEE;
-            concatRef.msgCount = total;
-            concatRef.seqNumber = index;
-            concatRef.isEightBits = true;
-            smsHeader.concatRef = concatRef;
-        }
-        byte[] encodeHeader = SmsHeader.toByteArray(smsHeader);
-        if (oddLengthHeader) {
-            assertEquals(4, encodeHeader.length);     // 5 bytes with UDH length
-        } else {
-            assertEquals(5, encodeHeader.length);     // 6 bytes with UDH length
-        }
+        bearerData.messageId = 1234;
         UserData userData = new UserData();
-        userData.payloadStr = payload;
-        userData.userDataHeader = smsHeader;
+        userData.payloadStr = sHelloWorldJa;
         bearerData.userData = userData;
         byte[] encodedSms = BearerData.encode(bearerData);
         BearerData revBearerData = BearerData.decode(encodedSms);
         assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
-        assertTrue(revBearerData.hasUserDataHeader);
-        byte[] header = SmsHeader.toByteArray(revBearerData.userData.userDataHeader);
-        if (oddLengthHeader) {
-            assertEquals(4, header.length);     // 5 bytes with UDH length
-        } else {
-            assertEquals(5, header.length);     // 6 bytes with UDH length
+
+        byte[] smsWithValidSubparam = Arrays.copyOf(encodedSms, encodedSms.length + 5);
+        smsWithValidSubparam[encodedSms.length] = 0x18; // BearerData.SUBPARAM_ID_LAST_DEFINED + 1
+        smsWithValidSubparam[encodedSms.length + 1] = 3;
+        smsWithValidSubparam[encodedSms.length + 2] = 0x12;
+        smsWithValidSubparam[encodedSms.length + 3] = 0x34;
+        smsWithValidSubparam[encodedSms.length + 4] = 0x56;
+        revBearerData = BearerData.decode(smsWithValidSubparam);
+        assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
+
+        smsWithValidSubparam = Arrays.copyOf(encodedSms, encodedSms.length + 2);
+        smsWithValidSubparam[encodedSms.length] = 0x18;
+        smsWithValidSubparam[encodedSms.length + 1] = 0;
+        revBearerData = BearerData.decode(smsWithValidSubparam);
+        assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
+
+        byte[] smsWithInvalidSubparam = Arrays.copyOf(encodedSms, encodedSms.length + 2);
+        smsWithInvalidSubparam[encodedSms.length] = 0x18;
+        smsWithInvalidSubparam[encodedSms.length + 1] = (byte) 1;
+        revBearerData = BearerData.decode(smsWithInvalidSubparam);
+        assertNull(revBearerData);
+    }
+
+    // Return a user data header for a concatenated message
+    private static SmsHeader getConcatUserDataHeader(int index, int total) {
+        SmsHeader smsHeader = new SmsHeader();
+        SmsHeader.ConcatRef concatRef = new SmsHeader.ConcatRef();
+        concatRef.refNumber = 0xEE;
+        concatRef.msgCount = total;
+        concatRef.seqNumber = index;
+        concatRef.isEightBits = true;
+        smsHeader.concatRef = concatRef;
+        return smsHeader;
+    }
+
+    // Return a user data header of odd length to verify correct UTF-16 header padding
+    private static SmsHeader getOddLengthUserDataHeader() {
+        SmsHeader smsHeader = new SmsHeader();
+        SmsHeader.MiscElt miscElt = new SmsHeader.MiscElt();
+        miscElt.id = 0x27;  // reserved for future use; ignored on decode
+        miscElt.data = new byte[]{0x12, 0x34};
+        smsHeader.miscEltList.add(miscElt);
+        return smsHeader;
+    }
+
+    private static void encodeDecodeAssertEquals(String payload, SmsHeader smsHeader,
+            int msgEncoding) throws Exception {
+        BearerData bearerData = new BearerData();
+        bearerData.messageType = BearerData.MESSAGE_TYPE_DELIVER;
+        bearerData.messageId = 55;
+        UserData userData = new UserData();
+        userData.payloadStr = payload;
+        userData.userDataHeader = smsHeader;    // may be null
+        if (msgEncoding != -1) {
+            userData.msgEncoding = msgEncoding;
+            userData.msgEncodingSet = true;
         }
-        assertTrue(Arrays.equals(encodeHeader, header));
+        bearerData.userData = userData;
+        byte[] encodedSms = BearerData.encode(bearerData);
+        BearerData revBearerData = BearerData.decode(encodedSms);
+        assertEquals(userData.payloadStr, revBearerData.userData.payloadStr);
+        if (smsHeader != null) {
+            assertTrue(revBearerData.hasUserDataHeader);
+            byte[] encodeHeader = SmsHeader.toByteArray(smsHeader);
+            byte[] decodeHeader = SmsHeader.toByteArray(revBearerData.userData.userDataHeader);
+            assertTrue(Arrays.equals(encodeHeader, decodeHeader));
+        } else {
+            assertFalse(revBearerData.hasUserDataHeader);
+        }
     }
 
     @SmallTest
@@ -912,8 +962,10 @@ public class CdmaSmsTest extends AndroidTestCase {
             assertEquals(3, fragments.size());
 
             for (int i = 0; i < 3; i++) {
-                encodeDecodeAssertEquals(fragments.get(i), i + 1, 3, false);
-                encodeDecodeAssertEquals(fragments.get(i), i + 1, 3, true);
+                SmsHeader header = getConcatUserDataHeader(i + 1, 3);
+                SmsHeader header2 = getOddLengthUserDataHeader();
+                encodeDecodeAssertEquals(fragments.get(i), header, -1);
+                encodeDecodeAssertEquals(fragments.get(i), header2, -1);
             }
         }
 
@@ -928,8 +980,10 @@ public class CdmaSmsTest extends AndroidTestCase {
             assertEquals(3, fragments.size());
 
             for (int i = 0; i < 3; i++) {
-                encodeDecodeAssertEquals(fragments.get(i), i + 1, 3, false);
-                encodeDecodeAssertEquals(fragments.get(i), i + 1, 3, true);
+                SmsHeader header = getConcatUserDataHeader(i + 1, 3);
+                SmsHeader header2 = getOddLengthUserDataHeader();
+                encodeDecodeAssertEquals(fragments.get(i), header, -1);
+                encodeDecodeAssertEquals(fragments.get(i), header2, -1);
             }
         }
     }
