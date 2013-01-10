@@ -1096,7 +1096,9 @@ public abstract class SMSDispatcher extends Handler {
         if (mPendingTrackerCount >= MO_MSG_QUEUE_LIMIT) {
             // Deny sending message when the queue limit is reached.
             try {
-                tracker.mSentIntent.send(RESULT_ERROR_LIMIT_EXCEEDED);
+                if (tracker.mSentIntent != null) {
+                    tracker.mSentIntent.send(RESULT_ERROR_LIMIT_EXCEEDED);
+                }
             } catch (CanceledException ex) {
                 Rlog.e(TAG, "failed to send back RESULT_ERROR_LIMIT_EXCEEDED");
             }
