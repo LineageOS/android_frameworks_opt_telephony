@@ -235,7 +235,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     int mRequestMessagesWaiting;
 
     //I'd rather this be LinkedList or something
-    ArrayList<RILRequest> mRequestsList = new ArrayList<RILRequest>();
+    ArrayList<RILRequest> mRequestList = new ArrayList<RILRequest>();
 
     Object     mLastNITZTimeInfo;
 
@@ -320,8 +320,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                             return;
                         }
 
-                        synchronized (mRequestsList) {
-                            mRequestsList.add(rr);
+                        synchronized (mRequestList) {
+                            mRequestList.add(rr);
                             mRequestMessagesWaiting++;
                         }
 
@@ -403,13 +403,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                                 mRequestMessagesWaiting = 0;
 
                                 if (RILJ_LOGD) {
-                                    synchronized (mRequestsList) {
-                                        int count = mRequestsList.size();
+                                    synchronized (mRequestList) {
+                                        int count = mRequestList.size();
                                         Rlog.d(RILJ_LOG_TAG, "WAKE_LOCK_TIMEOUT " +
                                                 " mRequestList=" + count);
 
                                         for (int i = 0; i < count; i++) {
-                                            rr = mRequestsList.get(i);
+                                            rr = mRequestList.get(i);
                                             Rlog.d(RILJ_LOG_TAG, i + ": [" + rr.mSerial + "] "
                                                     + requestToString(rr.mRequest));
                                         }
@@ -598,7 +598,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 RILRequest.resetSerial();
 
                 // Clear request list on close
-                clearRequestsList(RADIO_NOT_AVAILABLE, false);
+                clearRequestList(RADIO_NOT_AVAILABLE, false);
             }} catch (Throwable tr) {
                 Rlog.e(RILJ_LOG_TAG,"Uncaught exception", tr);
             }
@@ -2145,14 +2145,14 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     /**
-     * Release each request in mReqeustsList then clear the list
+     * Release each request in mRequestList then clear the list
      * @param error is the RIL_Errno sent back
-     * @param loggable true means to print all requests in mRequestslist
+     * @param loggable true means to print all requests in mRequestList
      */
-    private void clearRequestsList(int error, boolean loggable) {
+    private void clearRequestList(int error, boolean loggable) {
         RILRequest rr;
-        synchronized (mRequestsList) {
-            int count = mRequestsList.size();
+        synchronized (mRequestList) {
+            int count = mRequestList.size();
             if (RILJ_LOGD && loggable) {
                 Rlog.d(RILJ_LOG_TAG, "WAKE_LOCK_TIMEOUT " +
                         " mReqPending=" + mRequestMessagesPending +
@@ -2160,7 +2160,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             }
 
             for (int i = 0; i < count ; i++) {
-                rr = mRequestsList.get(i);
+                rr = mRequestList.get(i);
                 if (RILJ_LOGD && loggable) {
                     Rlog.d(RILJ_LOG_TAG, i + ": [" + rr.mSerial + "] " +
                             requestToString(rr.mRequest));
@@ -2168,18 +2168,18 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 rr.onError(error, null);
                 rr.release();
             }
-            mRequestsList.clear();
+            mRequestList.clear();
             mRequestMessagesWaiting = 0;
         }
     }
 
     private RILRequest findAndRemoveRequestFromList(int serial) {
-        synchronized (mRequestsList) {
-            for (int i = 0, s = mRequestsList.size() ; i < s ; i++) {
-                RILRequest rr = mRequestsList.get(i);
+        synchronized (mRequestList) {
+            for (int i = 0, s = mRequestList.size() ; i < s ; i++) {
+                RILRequest rr = mRequestList.get(i);
 
                 if (rr.mSerial == serial) {
-                    mRequestsList.remove(i);
+                    mRequestList.remove(i);
                     if (mRequestMessagesWaiting > 0)
                         mRequestMessagesWaiting--;
                     return rr;
@@ -3880,13 +3880,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         pw.println(" mReceiver=" + mReceiver);
         pw.println(" mWakeLock=" + mWakeLock);
         pw.println(" mWakeLockTimeout=" + mWakeLockTimeout);
-        synchronized (mRequestsList) {
+        synchronized (mRequestList) {
           pw.println(" mRequestMessagesPending=" + mRequestMessagesPending);
           pw.println(" mRequestMessagesWaiting=" + mRequestMessagesWaiting);
-            int count = mRequestsList.size();
+            int count = mRequestList.size();
             pw.println(" mRequestList count=" + count);
             for (int i = 0; i < count; i++) {
-                RILRequest rr = mRequestsList.get(i);
+                RILRequest rr = mRequestList.get(i);
                 pw.println("  [" + rr.mSerial + "] " + requestToString(rr.mRequest));
             }
         }
