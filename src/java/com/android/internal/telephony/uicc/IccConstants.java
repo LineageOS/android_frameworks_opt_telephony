@@ -28,6 +28,7 @@ public interface IccConstants {
     static final int EF_EXT1 = 0x6F4A;
     static final int EF_EXT2 = 0x6F4B;
     static final int EF_EXT3 = 0x6F4C;
+    static final int EF_EXT5 = 0x6F4E;
     static final int EF_EXT6 = 0x6fc8;   // Ext record for EF[MBDN]
     static final int EF_MWIS = 0x6FCA;
     static final int EF_MBDN = 0x6fc7;
