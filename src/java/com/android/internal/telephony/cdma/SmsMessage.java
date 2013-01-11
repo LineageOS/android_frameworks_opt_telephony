@@ -488,7 +488,7 @@ public class SmsMessage extends SmsMessageBase {
     private void parsePdu(byte[] pdu) {
         ByteArrayInputStream bais = new ByteArrayInputStream(pdu);
         DataInputStream dis = new DataInputStream(bais);
-        byte length;
+        int length;
         int bearerDataLength;
         SmsEnvelope env = new SmsEnvelope();
         CdmaSmsAddress addr = new CdmaSmsAddress();
@@ -503,7 +503,7 @@ public class SmsMessage extends SmsMessageBase {
             addr.ton = dis.readByte();
             addr.numberPlan = dis.readByte();
 
-            length = dis.readByte();
+            length = dis.readUnsignedByte();
             addr.numberOfDigits = length;
             addr.origBytes = new byte[length];
             dis.read(addr.origBytes, 0, length); // digits
@@ -547,7 +547,7 @@ public class SmsMessage extends SmsMessageBase {
 
             while (dis.available() > 0) {
                 int parameterId = dis.readByte();
-                int parameterLen = dis.readByte();
+                int parameterLen = dis.readUnsignedByte();
                 byte[] parameterData = new byte[parameterLen];
 
                 switch (parameterId) {
