@@ -70,6 +70,9 @@ public final class BearerData {
     //private final static byte SUBPARAM_ENHANCED_VMN                     = 0x16;
     //private final static byte SUBPARAM_ENHANCED_VMN_ACK                 = 0x17;
 
+    // All other values after this are reserved.
+    private final static byte SUBPARAM_ID_LAST_DEFINED                    = 0x17;
+
     /**
      * Supported message types for CDMA SMS messages
      * (See 3GPP2 C.S0015-B, v2.0, table 4.5.1-1)
@@ -623,6 +626,14 @@ public final class BearerData {
         }
     }
 
+    private static byte[] encodeShiftJis(String msg) throws CodingException {
+        try {
+            return msg.getBytes("Shift_JIS");
+        } catch (java.io.UnsupportedEncodingException ex) {
+            throw new CodingException("Shift-JIS encode failed: " + ex);
+        }
+    }
+
     private static void encodeUserDataPayload(UserData uData)
         throws CodingException
     {
@@ -660,6 +671,9 @@ public final class BearerData {
                 } else if (uData.msgEncoding == UserData.ENCODING_UNICODE_16) {
                     uData.payload = encodeUtf16(uData.payloadStr);
                     uData.numFields = uData.payloadStr.length();
+                } else if (uData.msgEncoding == UserData.ENCODING_SHIFT_JIS) {
+                    uData.payload = encodeShiftJis(uData.payloadStr);
+                    uData.numFields = uData.payload.length;
                 } else {
                     throw new CodingException("unsupported user data encoding (" +
                                               uData.msgEncoding + ")");
@@ -968,6 +982,27 @@ public final class BearerData {
         return decodeSuccess;
     }
 
+    private static boolean decodeReserved(
+            BearerData bData, BitwiseInputStream inStream, int subparamId)
+        throws BitwiseInputStream.AccessException, CodingException
+    {
+        boolean decodeSuccess = false;
+        int subparamLen = inStream.read(8); // SUBPARAM_LEN
+        int paramBits = subparamLen * 8;
+        if (paramBits <= inStream.available()) {
+            decodeSuccess = true;
+            inStream.skip(paramBits);
+        }
+        Rlog.d(LOG_TAG, "RESERVED bearer data subparameter " + subparamId + " decode "
+                + (decodeSuccess ? "succeeded" : "failed") + " (param bits = " + paramBits + ")");
+        if (!decodeSuccess) {
+            throw new CodingException("RESERVED bearer data subparameter " + subparamId
+                    + " had invalid SUBPARAM_LEN " + subparamLen);
+        }
+
+        return decodeSuccess;
+    }
+
     private static boolean decodeUserData(BearerData bData, BitwiseInputStream inStream)
         throws BitwiseInputStream.AccessException
     {
@@ -1081,6 +1116,16 @@ public final class BearerData {
         return decodeCharset(data, offset, numFields, 1, "ISO-8859-1");
     }
 
+    private static String decodeShiftJis(byte[] data, int offset, int numFields)
+        throws CodingException
+    {
+        try {
+            return new String(data, offset, numFields - offset, "Shift_JIS");
+        } catch (java.io.UnsupportedEncodingException ex) {
+            throw new CodingException("Shift_JIS decode failed: " + ex);
+        }
+    }
+
     private static void decodeUserDataPayload(UserData userData, boolean hasUserDataHeader)
         throws CodingException
     {
@@ -1131,6 +1176,9 @@ public final class BearerData {
             break;
         case UserData.ENCODING_LATIN:
             userData.payloadStr = decodeLatin(userData.payload, offset, userData.numFields);
+            break;
+        case UserData.ENCODING_SHIFT_JIS:
+            userData.payloadStr = decodeShiftJis(userData.payload, offset, userData.numFields);
             break;
         default:
             throw new CodingException("unsupported user data encoding ("
@@ -1870,7 +1918,15 @@ public final class BearerData {
             while (inStream.available() > 0) {
                 int subparamId = inStream.read(8);
                 int subparamIdBit = 1 << subparamId;
-                if ((foundSubparamMask & subparamIdBit) != 0) {
+                // int is 4 bytes. This duplicate check has a limit to Id number up to 32 (4*8)
+                // as 32th bit is the max bit in int.
+                // Per 3GPP2 C.S0015-B Table 4.5-1 Bearer Data Subparameter Identifiers:
+                // last defined subparam ID is 23 (00010111 = 0x17 = 23).
+                // Only do duplicate subparam ID check if subparam is within defined value as
+                // reserved subparams are just skipped.
+                if ((foundSubparamMask & subparamIdBit) != 0 &&
+                        (subparamId >= SUBPARAM_MESSAGE_IDENTIFIER &&
+                        subparamId <= SUBPARAM_ID_LAST_DEFINED)) {
                     throw new CodingException("illegal duplicate subparameter (" +
                                               subparamId + ")");
                 }
@@ -1934,10 +1990,13 @@ public final class BearerData {
                     decodeSuccess = decodeServiceCategoryProgramData(bData, inStream);
                     break;
                 default:
-                    throw new CodingException("unsupported bearer data subparameter ("
-                                              + subparamId + ")");
+                    decodeSuccess = decodeReserved(bData, inStream, subparamId);
                 }
-                if (decodeSuccess) foundSubparamMask |= subparamIdBit;
+                if (decodeSuccess &&
+                        (subparamId >= SUBPARAM_MESSAGE_IDENTIFIER &&
+                        subparamId <= SUBPARAM_ID_LAST_DEFINED)) {
+                    foundSubparamMask |= subparamIdBit;
+                }
             }
             if ((foundSubparamMask & (1 << SUBPARAM_MESSAGE_IDENTIFIER)) == 0) {
                 throw new CodingException("missing MESSAGE_IDENTIFIER subparam");
