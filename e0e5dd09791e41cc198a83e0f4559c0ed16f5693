@@ -1,0 +1,9 @@
+Change-Id: Ie0e5dd09791e41cc198a83e0f4559c0ed16f5693
+Code-Review+2: Ricardo Cerqueira <cyanogenmod@cerqueira.org>
+Verified+1: Ricardo Cerqueira <cyanogenmod@cerqueira.org>
+Code-Review+1: Mike Kasick <mike@kasick.org>
+Submitted-by: Ricardo Cerqueira <cyanogenmod@cerqueira.org>
+Submitted-at: Tue, 15 Jan 2013 08:21:09 -0800
+Reviewed-on: http://review.cyanogenmod.org/30356
+Project: CyanogenMod/android_frameworks_opt_telephony
+Branch: refs/heads/cm-10.1-staging
