@@ -194,6 +194,7 @@ public abstract class ServiceStateTracker extends Handler {
 
     public void dispose() {
         cm.unSetOnSignalStrengthUpdate(this);
+        mUiccController.unregisterForIccChanged(this);
     }
 
     public boolean getDesiredPowerState() {
