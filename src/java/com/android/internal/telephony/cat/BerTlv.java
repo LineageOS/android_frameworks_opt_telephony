@@ -28,15 +28,17 @@ import java.util.List;
 class BerTlv {
     private int mTag = BER_UNKNOWN_TAG;
     private List<ComprehensionTlv> mCompTlvs = null;
+    private boolean mLengthValid = true;
 
     public static final int BER_UNKNOWN_TAG             = 0x00;
     public static final int BER_PROACTIVE_COMMAND_TAG   = 0xd0;
     public static final int BER_MENU_SELECTION_TAG      = 0xd3;
     public static final int BER_EVENT_DOWNLOAD_TAG      = 0xd6;
 
-    private BerTlv(int tag, List<ComprehensionTlv> ctlvs) {
+    private BerTlv(int tag, List<ComprehensionTlv> ctlvs, boolean lengthValid) {
         mTag = tag;
         mCompTlvs = ctlvs;
+        mLengthValid = lengthValid;
     }
 
     /**
@@ -58,6 +60,15 @@ class BerTlv {
     }
 
     /**
+     * Gets if the length of the BER-TLV object is valid
+     *
+     * @return if length valid
+     */
+     public boolean isLengthValid() {
+         return mLengthValid;
+     }
+
+    /**
      * Decodes a BER-TLV object from a byte array.
      *
      * @param data A byte array to decode from
@@ -68,6 +79,7 @@ class BerTlv {
         int curIndex = 0;
         int endIndex = data.length;
         int tag, length = 0;
+        boolean isLengthValid = true;
 
         try {
             /* tag */
@@ -118,6 +130,32 @@ class BerTlv {
         List<ComprehensionTlv> ctlvs = ComprehensionTlv.decodeMany(data,
                 curIndex);
 
-        return new BerTlv(tag, ctlvs);
+        if (tag == BER_PROACTIVE_COMMAND_TAG) {
+            int totalLength = 0;
+            for (ComprehensionTlv item : ctlvs) {
+                int itemLength = item.getLength();
+                if (itemLength >= 0x80 && itemLength <= 0xFF) {
+                    totalLength += itemLength + 3; //3: 'tag'(1 byte) and 'length'(2 bytes).
+                } else if (itemLength >= 0 && itemLength < 0x80) {
+                    totalLength += itemLength + 2; //2: 'tag'(1 byte) and 'length'(1 byte).
+                } else {
+                    isLengthValid = false;
+                    break;
+                }
+            }
+
+            // According to 3gpp11.14, chapter 6.10.6 "Length errors",
+
+            // If the total lengths of the SIMPLE-TLV data objects are not
+            // consistent with the length given in the BER-TLV data object,
+            // then the whole BER-TLV data object shall be rejected. The
+            // result field in the TERMINAL RESPONSE shall have the error
+            // condition "Command data not understood by ME".
+            if (length != totalLength) {
+                isLengthValid = false;
+            }
+        }
+
+        return new BerTlv(tag, ctlvs, isLengthValid);
     }
 }
