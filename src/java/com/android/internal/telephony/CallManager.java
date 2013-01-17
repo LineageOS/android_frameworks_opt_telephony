@@ -448,15 +448,13 @@ public final class CallManager {
                 break;
         }
 
-        if (state == PhoneConstants.State.RINGING && lastAudioMode != AudioManager.MODE_RINGTONE) {
+        if (!mRingVolumeReceiverIsRegistered && state == PhoneConstants.State.RINGING) {
             context.registerReceiver(mRingVolumeChangeReceiver,
                     new IntentFilter(AudioManager.VOLUME_CHANGED_ACTION));
             mRingVolumeReceiverIsRegistered = true;
-        } else if (state != PhoneConstants.State.RINGING && lastAudioMode == AudioManager.MODE_RINGTONE) {
-            if (mRingVolumeReceiverIsRegistered) {
-                context.unregisterReceiver(mRingVolumeChangeReceiver);
-                mRingVolumeReceiverIsRegistered = false;
-            }
+        } else if (mRingVolumeReceiverIsRegistered && state != PhoneConstants.State.RINGING) {
+            context.unregisterReceiver(mRingVolumeChangeReceiver);
+            mRingVolumeReceiverIsRegistered = false;
         }
 
         // Set additional audio parameters needed for incall audio
