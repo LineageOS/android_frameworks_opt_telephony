@@ -124,6 +124,13 @@ class CommandParamsFactory extends Handler {
             return;
         }
 
+        // proactive command length is incorrect.
+        if (!berTlv.isLengthValid()) {
+            mCmdParams = new CommandParams(cmdDet);
+            sendCmdParams(ResultCode.CMD_DATA_NOT_UNDERSTOOD);
+            return;
+        }
+
         try {
             switch (cmdType) {
             case SET_UP_MENU:
