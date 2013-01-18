@@ -854,21 +854,14 @@ public class SamsungExynos4RIL extends RIL implements CommandsInterface {
         */
 
         int mGsmSignalStrength = response[0]; // Valid values are (0-31, 99) as defined in TS 27.007 8.5
-        int mCdmaDbm = response[2];
 
-        Log.d(LOG_TAG, "responseSignalStength (unmodified): gsmSignalStrength=" + mGsmSignalStrength);
+        Log.d(LOG_TAG, "responseSignalStrength (unmodified): gsmSignalStrength=" + mGsmSignalStrength);
 
-        if (mCdmaDbm < 0) {
-            mGsmSignalStrength = 99;
-        } else if (mCdmaDbm > 31) {
-            mGsmSignalStrength = 31;
-        } else {
-            mGsmSignalStrength = mCdmaDbm;
-        }
+        mGsmSignalStrength = mGsmSignalStrength & 0xff; // Get the first 8 bits
 
-        Log.d(LOG_TAG, "responseSignalStength (corrected): gsmSignalStrength=" + mGsmSignalStrength);
+        Log.d(LOG_TAG, "responseSignalStrength (corrected): gsmSignalStrength=" + mGsmSignalStrength);
 
-        SignalStrength signalStrength = new SignalStrength(mGsmSignalStrength, response[1], mCdmaDbm,
+        SignalStrength signalStrength = new SignalStrength(mGsmSignalStrength, response[1], response[2],
                 response[3], response[4], response[5], response[6], isGsm);
 
         return signalStrength;
