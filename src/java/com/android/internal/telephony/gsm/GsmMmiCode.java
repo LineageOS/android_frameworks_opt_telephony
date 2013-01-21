@@ -564,7 +564,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     /**
      * @return true if the Service Code is PIN/PIN2/PUK/PUK2-related
      */
-    boolean isPinCommand() {
+    boolean isPinPukCommand() {
         return mSc != null && (mSc.equals(SC_PIN) || mSc.equals(SC_PIN2)
                               || mSc.equals(SC_PUK) || mSc.equals(SC_PUK2));
      }
@@ -779,7 +779,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 } else {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
                 }
-            } else if (isPinCommand()) {
+            } else if (isPinPukCommand()) {
                 // sia = old PIN or PUK
                 // sib = new PIN
                 // sic = new PIN
@@ -990,7 +990,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 return mContext.getText(com.android.internal.R.string.PwdMmi);
             } else if (mSc.equals(SC_WAIT)) {
                 return mContext.getText(com.android.internal.R.string.CwMmi);
-            } else if (isPinCommand()) {
+            } else if (isPinPukCommand()) {
                 return mContext.getText(com.android.internal.R.string.PinMmi);
             }
         }
@@ -1008,12 +1008,21 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             if (ar.exception instanceof CommandException) {
                 CommandException.Error err = ((CommandException)(ar.exception)).getCommandError();
                 if (err == CommandException.Error.PASSWORD_INCORRECT) {
-                    if (isPinCommand()) {
+                    if (isPinPukCommand()) {
                         // look specifically for the PUK commands and adjust
                         // the message accordingly.
                         if (mSc.equals(SC_PUK) || mSc.equals(SC_PUK2)) {
                             sb.append(mContext.getText(
                                     com.android.internal.R.string.badPuk));
+                            // Get the No. of attempts remaining to unlock PUK1 from the result
+                            if (ar.result != null && (((int[]) ar.result).length != 0)) {
+                                int pukAttemptsRemaining = ((int[])ar.result)[0];
+                                if (pukAttemptsRemaining >= 0) {
+                                    sb.append(mContext.getText(
+                                        com.android.internal.R.string.pinpuk_attempts));
+                                    sb.append(pukAttemptsRemaining);
+                                }
+                            }
                         } else {
                             sb.append(mContext.getText(
                                     com.android.internal.R.string.badPin));
@@ -1028,6 +1037,11 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                     sb.append("\n");
                     sb.append(mContext.getText(
                             com.android.internal.R.string.needPuk2));
+                } else if (err == CommandException.Error.REQUEST_NOT_SUPPORTED) {
+                    if (mSc.equals(SC_PIN)) {
+                        sb.append(mContext.getText(
+                                com.android.internal.R.string.enablePin));
+                    }
                 } else if (err == CommandException.Error.FDN_CHECK_FAILURE) {
                     Rlog.i(LOG_TAG, "FDN_CHECK_FAILURE");
                     sb.append(mContext.getText(com.android.internal.R.string.mmiFdnError));
