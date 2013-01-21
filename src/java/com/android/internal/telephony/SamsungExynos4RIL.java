@@ -155,6 +155,7 @@ public class SamsungExynos4RIL extends RIL implements CommandsInterface {
     protected HandlerThread mSamsungExynos4RILThread;
     protected ConnectivityHandler mSamsungExynos4RILHandler;
     private AudioManager audioManager;
+    private boolean mIsGBModem = SystemProperties.getBoolean("ro.ril.gbmodem", false);
 
     public SamsungExynos4RIL(Context context, int networkMode, int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
@@ -855,16 +856,37 @@ public class SamsungExynos4RIL extends RIL implements CommandsInterface {
 
         int mGsmSignalStrength = response[0]; // Valid values are (0-31, 99) as defined in TS 27.007 8.5
 
-        Log.d(LOG_TAG, "responseSignalStrength (unmodified): gsmSignalStrength=" + mGsmSignalStrength);
+	if (mIsGBModem) {
+	        int mCdmaDbm = response[2];
 
-        mGsmSignalStrength = mGsmSignalStrength & 0xff; // Get the first 8 bits
+	        Log.d(LOG_TAG, "responseSignalStength (unmodified): gsmSignalStrength=" + mGsmSignalStrength);
 
-        Log.d(LOG_TAG, "responseSignalStrength (corrected): gsmSignalStrength=" + mGsmSignalStrength);
+	        if (mCdmaDbm < 0) {
+	            mGsmSignalStrength = 99;
+	        } else if (mCdmaDbm > 31) {
+	            mGsmSignalStrength = 31;
+	        } else {
+	            mGsmSignalStrength = mCdmaDbm;
+	        }
 
-        SignalStrength signalStrength = new SignalStrength(mGsmSignalStrength, response[1], response[2],
-                response[3], response[4], response[5], response[6], isGsm);
+	        Log.d(LOG_TAG, "responseSignalStength (corrected): gsmSignalStrength=" + mGsmSignalStrength);
 
-        return signalStrength;
+	        SignalStrength signalStrength = new SignalStrength(mGsmSignalStrength, response[1], mCdmaDbm,
+	                response[3], response[4], response[5], response[6], isGsm);
+
+	        return signalStrength;
+	} else {
+	        Log.d(LOG_TAG, "responseSignalStrength (unmodified): gsmSignalStrength=" + mGsmSignalStrength);
+
+	        mGsmSignalStrength = mGsmSignalStrength & 0xff; // Get the first 8 bits
+
+	        Log.d(LOG_TAG, "responseSignalStrength (corrected): gsmSignalStrength=" + mGsmSignalStrength);
+
+	        SignalStrength signalStrength = new SignalStrength(mGsmSignalStrength, response[1], response[2],
+	                response[3], response[4], response[5], response[6], isGsm);
+
+        	return signalStrength;
+        }
     }
 
     @Override public void
