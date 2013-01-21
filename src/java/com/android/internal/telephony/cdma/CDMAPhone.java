@@ -551,12 +551,12 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public boolean handlePinMmi(String dialString) {
-        CdmaMmiCode mmi = CdmaMmiCode.newFromDialString(dialString, this);
+        CdmaMmiCode mmi = CdmaMmiCode.newFromDialString(dialString, this, mUiccApplication.get());
 
         if (mmi == null) {
             Rlog.e(LOG_TAG, "Mmi is NULL!");
             return false;
-        } else if (mmi.isPukCommand()) {
+        } else if (mmi.isPinCommand()) {
             mPendingMmis.add(mmi);
             mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
             mmi.processCode();

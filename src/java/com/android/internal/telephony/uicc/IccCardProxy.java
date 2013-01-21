@@ -610,8 +610,9 @@ public class IccCardProxy extends Handler implements IccCard {
     @Override
     public boolean getIccLockEnabled() {
         synchronized (mLock) {
-            /* defaults to true, if ICC is absent */
-            Boolean retValue = mUiccApplication != null ? mUiccApplication.getIccLockEnabled() : true;
+            /* defaults to false, if ICC is absent/deactivated */
+            Boolean retValue = mUiccApplication != null ?
+                    mUiccApplication.getIccLockEnabled() : false;
             return retValue;
         }
     }
@@ -619,9 +620,37 @@ public class IccCardProxy extends Handler implements IccCard {
     @Override
     public boolean getIccFdnEnabled() {
         synchronized (mLock) {
-            Boolean retValue = mUiccApplication != null ? mUiccApplication.getIccFdnEnabled() : false;
+            Boolean retValue = mUiccApplication != null ?
+                    mUiccApplication.getIccFdnEnabled() : false;
             return retValue;
         }
+    }
+
+    public boolean getIccFdnAvailable() {
+        boolean retValue = mUiccApplication != null ? mUiccApplication.getIccFdnAvailable() : false;
+        return retValue;
+    }
+
+    public int getIccPin1RetryCount() {
+        int retValue = mUiccApplication != null ? mUiccApplication.getIccPin1RetryCount() : -1;
+        return retValue;
+    }
+
+    public int getIccPin2RetryCount() {
+        int retValue = mUiccApplication != null ? mUiccApplication.getIccPin2RetryCount() : -1;
+        return retValue;
+    }
+
+    public boolean getIccPin2Blocked() {
+        /* defaults to disabled */
+        Boolean retValue = mUiccApplication != null ? mUiccApplication.getIccPin2Blocked() : false;
+        return retValue;
+    }
+
+    public boolean getIccPuk2Blocked() {
+        /* defaults to disabled */
+        Boolean retValue = mUiccApplication != null ? mUiccApplication.getIccPuk2Blocked() : false;
+        return retValue;
     }
 
     @Override
