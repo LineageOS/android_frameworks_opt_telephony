@@ -1,0 +1,8 @@
+Change-Id: Idd1468a3d808973908a5d6de4ce38d703b81db33
+Code-Review+2: Steve Kondik <shade@chemlab.org>
+Verified+1: Steve Kondik <shade@chemlab.org>
+Submitted-by: Steve Kondik <shade@chemlab.org>
+Submitted-at: Sun, 20 Jan 2013 20:39:10 -0800
+Reviewed-on: http://review.cyanogenmod.org/29806
+Project: CyanogenMod/android_frameworks_opt_telephony
+Branch: refs/heads/cm-10.1
