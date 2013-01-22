@@ -141,7 +141,9 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
         }
 
         if (dcac != null) {
-            for (ApnContext apnContext : dcac.getApnListSync()) {
+            Collection<ApnContext> apnList = dcac.getApnListSync();
+            if (DBG) log("onActionIntentReconnectAlarm: dcac.getApnListSync()=" + apnList);
+            for (ApnContext apnContext : apnList) {
                 apnContext.setReason(reason);
                 apnContext.setRetryCount(retryCount);
                 DctConstants.State apnContextState = apnContext.getState();
