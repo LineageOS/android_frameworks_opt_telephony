@@ -1294,6 +1294,7 @@ public abstract class DataConnectionTracker extends Handler {
                 throw new RuntimeException("doRecovery: Invalid recoveryAction=" +
                     recoveryAction);
             }
+            mSentSinceLastRecv = 0;
         }
     }
 
