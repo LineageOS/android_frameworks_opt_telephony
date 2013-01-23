@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "AAAAc3//+48\u003d",
+        "filename": "src/java/com/android/internal/telephony/SamsungExynos4RIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 863,
+      "author": {
+        "id": 2035
+      },
+      "writtenOn": "2013-01-23T22:14:02Z",
+      "side": 1,
+      "message": "|| mGsmSignalStrength \u003d 99",
+      "revId": "cbbde26e66e6c3922ed478f25693539a09313012",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
