@@ -29,6 +29,8 @@ import android.telephony.PhoneNumberUtils;
 
 abstract class SipConnectionBase extends Connection {
     private static final String LOG_TAG = "SIP_CONN";
+    private static final boolean DBG = true;
+    private static final boolean VDBG = true; // STOPSHIP if true
 
     private SipAudioCall mSipAudioCall;
 
@@ -59,6 +61,7 @@ abstract class SipConnectionBase extends Connection {
     private PostDialState postDialState = PostDialState.NOT_STARTED;
 
     SipConnectionBase(String dialString) {
+        if (DBG) log("SipConnectionBase: ctor dialString=" + dialString);
         this.dialString = dialString;
 
         postDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
@@ -68,6 +71,7 @@ abstract class SipConnectionBase extends Connection {
     }
 
     protected void setState(Call.State state) {
+        if (DBG) log("setState: state=" + state);
         switch (state) {
             case ACTIVE:
                 if (connectTime == 0) {
@@ -87,67 +91,79 @@ abstract class SipConnectionBase extends Connection {
 
     @Override
     public long getCreateTime() {
+        if (VDBG) log("getCreateTime: ret=" + createTime);
         return createTime;
     }
 
     @Override
     public long getConnectTime() {
+        if (VDBG) log("getConnectTime: ret=" + connectTime);
         return connectTime;
     }
 
     @Override
     public long getDisconnectTime() {
+        if (VDBG) log("getDisconnectTime: ret=" + disconnectTime);
         return disconnectTime;
     }
 
     @Override
     public long getDurationMillis() {
+        long dur;
         if (connectTimeReal == 0) {
-            return 0;
+            dur = 0;
         } else if (duration < 0) {
-            return SystemClock.elapsedRealtime() - connectTimeReal;
+            dur = SystemClock.elapsedRealtime() - connectTimeReal;
         } else {
-            return duration;
+            dur = duration;
         }
+        if (VDBG) log("getDurationMillis: ret=" + dur);
+        return dur;
     }
 
     @Override
     public long getHoldDurationMillis() {
+        long dur;
         if (getState() != Call.State.HOLDING) {
             // If not holding, return 0
-            return 0;
+            dur = 0;
         } else {
-            return SystemClock.elapsedRealtime() - holdingStartTime;
+            dur = SystemClock.elapsedRealtime() - holdingStartTime;
         }
+        if (VDBG) log("getHoldDurationMillis: ret=" + dur);
+        return dur;
     }
 
     @Override
     public DisconnectCause getDisconnectCause() {
+        if (VDBG) log("getDisconnectCause: ret=" + mCause);
         return mCause;
     }
 
     void setDisconnectCause(DisconnectCause cause) {
+        if (DBG) log("setDisconnectCause: prev=" + mCause + " new=" + cause);
         mCause = cause;
     }
 
     @Override
     public PostDialState getPostDialState() {
+        if (VDBG) log("getPostDialState: ret=" + postDialState);
         return postDialState;
     }
 
     @Override
     public void proceedAfterWaitChar() {
-        // TODO
+        if (DBG) log("proceedAfterWaitChar: ignore");
     }
 
     @Override
     public void proceedAfterWildChar(String str) {
-        // TODO
+        if (DBG) log("proceedAfterWildChar: ignore");
     }
 
     @Override
     public void cancelPostDial() {
-        // TODO
+        if (DBG) log("cancelPostDial: ignore");
     }
 
     protected abstract Phone getPhone();
@@ -158,6 +174,7 @@ abstract class SipConnectionBase extends Connection {
             || postDialState == PostDialState.COMPLETE
             || postDialString == null
             || postDialString.length() <= nextPostDialChar) {
+            if (DBG) log("getRemaingPostDialString: ret empty string");
             return "";
         }
 
@@ -165,18 +182,20 @@ abstract class SipConnectionBase extends Connection {
     }
 
     private void log(String msg) {
-        Rlog.d(LOG_TAG, "[SipConn] " + msg);
+        Rlog.d(LOG_TAG, msg);
     }
 
     @Override
     public int getNumberPresentation() {
         // TODO: add PRESENTATION_URL
+        if (VDBG) log("getNumberPresentation: ret=PRESENTATION_ALLOWED");
         return PhoneConstants.PRESENTATION_ALLOWED;
     }
 
     @Override
     public UUSInfo getUUSInfo() {
         // FIXME: what's this for SIP?
+        if (VDBG) log("getUUSInfo: ? ret=null");
         return null;
     }
 }
