@@ -855,25 +855,25 @@ public class SamsungExynos4RIL extends RIL implements CommandsInterface {
         */
 
         int mGsmSignalStrength = response[0]; // Valid values are (0-31, 99) as defined in TS 27.007 8.5
+        Log.d(LOG_TAG, "responseSignalStrength (raw): gsmSignalStrength=" + mGsmSignalStrength);
+        mGsmSignalStrength = mGsmSignalStrength & 0xff; // Get the first 8 bits
+        Log.d(LOG_TAG, "responseSignalStrength (corrected): gsmSignalStrength=" + mGsmSignalStrength);
 
-        if (mIsGBModem) {
-	        int mCdmaDbm = response[2];
-	        Log.d(LOG_TAG, "responseSignalStrength (unmodified): gsmSignalStrength=" + mGsmSignalStrength);
+        /* if mGsmSignalStrength isn't a valid value, use mCdmaDbm as fallback */
+        if (mGsmSignalStrength < 0 || (mGsmSignalStrength > 31 && response[0] != 99)) {
+            int mCdmaDbm = response[2];
+            Log.d(LOG_TAG, "responseSignalStrength-fallback (raw): gsmSignalStrength=" + mCdmaDbm);
 
 	        if (mCdmaDbm < 0) {
 	            mGsmSignalStrength = 99;
-	        } else if (mCdmaDbm > 31) {
+	        } else if (mCdmaDbm > 31 && mCdmaDbm != 99) {
 	            mGsmSignalStrength = 31;
 	        } else {
 	            mGsmSignalStrength = mCdmaDbm;
 	        }
-
-	        Log.d(LOG_TAG, "responseSignalStrength (corrected): gsmSignalStrength=" + mGsmSignalStrength);
-        } else {
-	        Log.d(LOG_TAG, "responseSignalStrength (unmodified): gsmSignalStrength=" + mGsmSignalStrength);
-	        mGsmSignalStrength = mGsmSignalStrength & 0xff; // Get the first 8 bits
-	        Log.d(LOG_TAG, "responseSignalStrength (corrected): gsmSignalStrength=" + mGsmSignalStrength);
+            Log.d(LOG_TAG, "responseSignalStrength-fallback (corrected): gsmSignalStrength=" + mGsmSignalStrength);
         }
+
         SignalStrength signalStrength = new SignalStrength(mGsmSignalStrength, response[1], response[2],
                     response[3], response[4], response[5], response[6], isGsm);
 
