@@ -128,6 +128,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     private boolean isUssdRequest;
 
+    private boolean isCallFwdReg;
     State state = State.PENDING;
     CharSequence message;
 
@@ -672,7 +673,17 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                     int cfAction;
 
                     if (isActivate()) {
-                        cfAction = CommandsInterface.CF_ACTION_ENABLE;
+                        // 3GPP TS 22.030 6.5.2
+                        // a call forwarding request with a single * would be
+                        // interpreted as registration if containing a forwarded-to
+                        // number, or an activation if not
+                        if (isEmptyOrNull(dialingNumber)) {
+                            cfAction = CommandsInterface.CF_ACTION_ENABLE;
+                            isCallFwdReg = false;
+                        } else {
+                            cfAction = CommandsInterface.CF_ACTION_REGISTRATION;
+                            isCallFwdReg = true;
+                        }
                     } else if (isDeactivate()) {
                         cfAction = CommandsInterface.CF_ACTION_DISABLE;
                     } else if (isRegister()) {
@@ -1021,8 +1032,13 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             }
         } else if (isActivate()) {
             state = State.COMPLETE;
-            sb.append(context.getText(
-                    com.android.internal.R.string.serviceEnabled));
+            if (isCallFwdReg) {
+                sb.append(context.getText(
+                        com.android.internal.R.string.serviceRegistered));
+            } else {
+                sb.append(context.getText(
+                        com.android.internal.R.string.serviceEnabled));
+            }
             // Record CLIR setting
             if (sc.equals(SC_CLIR)) {
                 phone.saveClirSetting(CommandsInterface.CLIR_INVOCATION);
