@@ -27,6 +27,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Handler;
 import android.os.Message;
 import android.os.AsyncResult;
@@ -872,8 +873,8 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
         ConnectivityManager cm =
             (ConnectivityManager)mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
 
-        if(cm.getMobileDataEnabled())
-        {
+        NetworkInfo.State mobileState = cm.getNetworkInfo(ConnectivityManager.TYPE_MOBILE).getState();
+        if (mobileState == NetworkInfo.State.CONNECTED || mobileState == NetworkInfo.State.CONNECTING) {
             ConnectivityHandler handler = new ConnectivityHandler(mContext);
             handler.setPreferedNetworkType(networkType, response);
         } else {
