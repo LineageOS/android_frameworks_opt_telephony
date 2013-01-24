@@ -159,6 +159,7 @@ public class IccProvider extends ContentProvider {
 
         resultUri = Uri.parse(buf.toString());
 
+        getContext().getContentResolver().notifyChange(url, null);
         /*
         // notify interested parties that an insertion happened
         getContext().getContentResolver().notifyInsert(
@@ -170,6 +171,11 @@ public class IccProvider extends ContentProvider {
 
     private String normalizeValue(String inVal) {
         int len = inVal.length();
+        // If name is empty in contact return null to avoid crash.
+        if (len == 0) {
+            if (DBG) log("len of input String is 0");
+            return inVal;
+        }
         String retVal = inVal;
 
         if (inVal.charAt(0) == '\'' && inVal.charAt(len-1) == '\'') {
@@ -239,6 +245,7 @@ public class IccProvider extends ContentProvider {
             return 0;
         }
 
+        getContext().getContentResolver().notifyChange(url, null);
         return 1;
     }
 
@@ -279,6 +286,7 @@ public class IccProvider extends ContentProvider {
             return 0;
         }
 
+        getContext().getContentResolver().notifyChange(url, null);
         return 1;
     }
 
