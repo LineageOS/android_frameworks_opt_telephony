@@ -70,6 +70,8 @@ public class WapPushOverSms {
         public void onServiceDisconnected(ComponentName name) {
             mWapPushMan = null;
             if (false) Rlog.v(LOG_TAG, "wappush manager disconnected.");
+            // Detach the previous binder
+            mOwner.unbindService(mWapConn);
             // WapPushManager must be always attached.
             rebindWapPushManager();
         }
