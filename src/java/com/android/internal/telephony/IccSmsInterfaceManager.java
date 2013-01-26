@@ -18,29 +18,121 @@ package com.android.internal.telephony;
 
 import android.app.PendingIntent;
 import android.content.Context;
+import android.os.AsyncResult;
+import android.os.Handler;
+import android.os.Message;
 import android.telephony.Rlog;
 import android.util.Log;
 
 import com.android.internal.telephony.uicc.IccConstants;
+import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.util.HexDump;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static android.telephony.SmsManager.STATUS_ON_ICC_FREE;
+import static android.telephony.SmsManager.STATUS_ON_ICC_READ;
+import static android.telephony.SmsManager.STATUS_ON_ICC_UNREAD;
 
 /**
  * IccSmsInterfaceManager to provide an inter-process communication to
  * access Sms in Icc.
  */
 public abstract class IccSmsInterfaceManager extends ISms.Stub {
+    static final String LOG_TAG = "RIL_IccSms";
+    static final boolean DBG = true;
+
+    protected final Object mLock = new Object();
+    protected boolean mSuccess;
+    private List<SmsRawData> mSms;
+
+    private static final int EVENT_LOAD_DONE = 1;
+    private static final int EVENT_UPDATE_DONE = 2;
+    protected static final int EVENT_SET_BROADCAST_ACTIVATION_DONE = 3;
+    protected static final int EVENT_SET_BROADCAST_CONFIG_DONE = 4;
+
     protected PhoneBase mPhone;
     protected Context mContext;
     protected SMSDispatcher mDispatcher;
 
+    protected Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            AsyncResult ar;
+
+            switch (msg.what) {
+                case EVENT_UPDATE_DONE:
+                    ar = (AsyncResult) msg.obj;
+                    synchronized (mLock) {
+                        mSuccess = (ar.exception == null);
+                        mLock.notifyAll();
+                    }
+                    break;
+                case EVENT_LOAD_DONE:
+                    ar = (AsyncResult)msg.obj;
+                    synchronized (mLock) {
+                        if (ar.exception == null) {
+                            mSms = buildValidRawData((ArrayList<byte[]>) ar.result);
+                            //Mark SMS as read after importing it from card.
+                            markMessagesAsRead((ArrayList<byte[]>) ar.result);
+                        } else {
+                            if(DBG) log("Cannot load Sms records");
+                            if (mSms != null)
+                                mSms.clear();
+                        }
+                        mLock.notifyAll();
+                    }
+                    break;
+                case EVENT_SET_BROADCAST_ACTIVATION_DONE:
+                case EVENT_SET_BROADCAST_CONFIG_DONE:
+                    ar = (AsyncResult) msg.obj;
+                    synchronized (mLock) {
+                        mSuccess = (ar.exception == null);
+                        mLock.notifyAll();
+                    }
+                    break;
+            }
+        }
+    };
+
     protected IccSmsInterfaceManager(PhoneBase phone){
         mPhone = phone;
         mContext = phone.getContext();
+    }
+
+    protected void markMessagesAsRead(ArrayList<byte[]> messages) {
+        if (messages == null) {
+            return;
+        }
+
+        //IccFileHandler can be null, if icc card is absent.
+        IccFileHandler fh = mPhone.getIccFileHandler();
+        if (fh == null) {
+            //shouldn't really happen, as messages are marked as read, only
+            //after importing it from icc.
+            if (Rlog.isLoggable("SMS", Log.DEBUG)) {
+                log("markMessagesAsRead - aborting, no icc card present.");
+            }
+            return;
+        }
+
+        int count = messages.size();
+
+        for (int i = 0; i < count; i++) {
+             byte[] ba = messages.get(i);
+             if (ba[0] == STATUS_ON_ICC_UNREAD) {
+                 int n = ba.length;
+                 byte[] nba = new byte[n - 1];
+                 System.arraycopy(ba, 1, nba, 0, n - 1);
+                 byte[] record = makeSmsRecordData(STATUS_ON_ICC_READ, nba);
+                 fh.updateEFLinearFixed(IccConstants.EF_SMS, i + 1, record, null, null);
+                 if (Rlog.isLoggable("SMS", Log.DEBUG)) {
+                     log("SMS " + (i + 1) + " marked as read");
+                 }
+             }
+        }
     }
 
     protected void enforceReceiveAndSend(String message) {
@@ -48,6 +140,119 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
                 "android.permission.RECEIVE_SMS", message);
         mContext.enforceCallingPermission(
                 "android.permission.SEND_SMS", message);
+    }
+
+    /**
+     * Update the specified message on the Icc.
+     *
+     * @param index record index of message to update
+     * @param status new message status (STATUS_ON_ICC_READ,
+     *                  STATUS_ON_ICC_UNREAD, STATUS_ON_ICC_SENT,
+     *                  STATUS_ON_ICC_UNSENT, STATUS_ON_ICC_FREE)
+     * @param pdu the raw PDU to store
+     * @return success or not
+     *
+     */
+    public boolean
+    updateMessageOnIccEf(int index, int status, byte[] pdu) {
+        if (DBG) log("updateMessageOnIccEf: index=" + index +
+                " status=" + status + " ==> " +
+                "("+ Arrays.toString(pdu) + ")");
+        enforceReceiveAndSend("Updating message on Icc");
+        synchronized(mLock) {
+            mSuccess = false;
+            Message response = mHandler.obtainMessage(EVENT_UPDATE_DONE);
+
+            if (status == STATUS_ON_ICC_FREE) {
+                // RIL_REQUEST_DELETE_SMS_ON_SIM vs RIL_REQUEST_CDMA_DELETE_SMS_ON_RUIM
+                // Special case FREE: call deleteSmsOnSim/Ruim instead of
+                // manipulating the record
+                // Will eventually fail if icc card is not present.
+                deleteSms(index, response);
+            } else {
+                //IccFilehandler can be null if ICC card is not present.
+                IccFileHandler fh = mPhone.getIccFileHandler();
+                if (fh == null) {
+                    response.recycle();
+                    return mSuccess; /* is false */
+                }
+                byte[] record = makeSmsRecordData(status, pdu);
+                fh.updateEFLinearFixed(
+                        IccConstants.EF_SMS,
+                        index, record, null, response);
+            }
+            try {
+                mLock.wait();
+            } catch (InterruptedException e) {
+                log("interrupted while trying to update by index");
+            }
+        }
+        return mSuccess;
+    }
+
+    /**
+     * Copy a raw SMS PDU to the Icc.
+     *
+     * @param pdu the raw PDU to store
+     * @param status message status (STATUS_ON_ICC_READ, STATUS_ON_ICC_UNREAD,
+     *               STATUS_ON_ICC_SENT, STATUS_ON_ICC_UNSENT)
+     * @return success or not
+     *
+     */
+    public boolean copyMessageToIccEf(int status, byte[] pdu, byte[] smsc) {
+        //NOTE smsc not used in RUIM
+        if (DBG) log("copyMessageToIccEf: status=" + status + " ==> " +
+                "pdu=("+ Arrays.toString(pdu) +
+                "), smsc=(" + Arrays.toString(smsc) +")");
+        enforceReceiveAndSend("Copying message to Icc");
+        synchronized(mLock) {
+            mSuccess = false;
+            Message response = mHandler.obtainMessage(EVENT_UPDATE_DONE);
+
+            //RIL_REQUEST_WRITE_SMS_TO_SIM vs RIL_REQUEST_CDMA_WRITE_SMS_TO_RUIM
+            writeSms(status, smsc, pdu, response);
+
+            try {
+                mLock.wait();
+            } catch (InterruptedException e) {
+                log("interrupted while trying to update by index");
+            }
+        }
+        return mSuccess;
+    }
+
+    /**
+     * Retrieves all messages currently stored on Icc.
+     *
+     * @return list of SmsRawData of all sms on Icc
+     */
+    public List<SmsRawData> getAllMessagesFromIccEf() {
+        if (DBG) log("getAllMessagesFromEF");
+
+        mContext.enforceCallingPermission(
+                "android.permission.RECEIVE_SMS",
+                "Reading messages from Icc");
+        synchronized(mLock) {
+
+            IccFileHandler fh = mPhone.getIccFileHandler();
+            if (fh == null) {
+                Rlog.e(LOG_TAG, "Cannot load Sms records. No icc card?");
+                if (mSms != null) {
+                    mSms.clear();
+                    return mSms;
+                }
+            }
+
+            Message response = mHandler.obtainMessage(EVENT_LOAD_DONE);
+            fh.loadEFLinearFixedAll(IccConstants.EF_SMS, response);
+
+            try {
+                mLock.wait();
+            } catch (InterruptedException e) {
+                log("interrupted while trying to load from the Icc");
+            }
+        }
+        return mSms;
     }
 
     /**
@@ -221,6 +426,10 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
 
         return data;
     }
+
+    protected abstract void deleteSms(int index, Message response);
+
+    protected abstract void writeSms(int status, byte[] pdu, byte[] smsc, Message response);
 
     protected abstract void log(String msg);
 

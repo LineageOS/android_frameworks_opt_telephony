@@ -18,23 +18,12 @@
 package com.android.internal.telephony.cdma;
 
 import android.content.Context;
-import android.os.AsyncResult;
-import android.os.Handler;
 import android.os.Message;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.IccSmsInterfaceManager;
-import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.SMSDispatcher;
-import com.android.internal.telephony.SmsRawData;
-import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccUtils;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import static android.telephony.SmsManager.STATUS_ON_ICC_FREE;
 
 /**
  * RuimSmsInterfaceManager to provide an inter-process communication to
@@ -43,43 +32,6 @@ import static android.telephony.SmsManager.STATUS_ON_ICC_FREE;
 public class RuimSmsInterfaceManager extends IccSmsInterfaceManager {
     static final String LOG_TAG = "CDMA";
     static final boolean DBG = true;
-
-    private final Object mLock = new Object();
-    private boolean mSuccess;
-    private List<SmsRawData> mSms;
-
-    private static final int EVENT_LOAD_DONE = 1;
-    private static final int EVENT_UPDATE_DONE = 2;
-
-    Handler mHandler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            AsyncResult ar;
-
-            switch (msg.what) {
-                case EVENT_UPDATE_DONE:
-                    ar = (AsyncResult) msg.obj;
-                    synchronized (mLock) {
-                        mSuccess = (ar.exception == null);
-                        mLock.notifyAll();
-                    }
-                    break;
-                case EVENT_LOAD_DONE:
-                    ar = (AsyncResult)msg.obj;
-                    synchronized (mLock) {
-                        if (ar.exception == null) {
-                            mSms = buildValidRawData((ArrayList<byte[]>) ar.result);
-                        } else {
-                            if(DBG) log("Cannot load Sms records");
-                            if (mSms != null)
-                                mSms.clear();
-                        }
-                        mLock.notifyAll();
-                    }
-                    break;
-            }
-        }
-    };
 
     public RuimSmsInterfaceManager(CDMAPhone phone, SMSDispatcher dispatcher) {
         super(phone);
@@ -98,97 +50,14 @@ public class RuimSmsInterfaceManager extends IccSmsInterfaceManager {
         if(DBG) Rlog.d(LOG_TAG, "RuimSmsInterfaceManager finalized");
     }
 
-    /**
-     * Update the specified message on the RUIM.
-     *
-     * @param index record index of message to update
-     * @param status new message status (STATUS_ON_ICC_READ,
-     *                  STATUS_ON_ICC_UNREAD, STATUS_ON_ICC_SENT,
-     *                  STATUS_ON_ICC_UNSENT, STATUS_ON_ICC_FREE)
-     * @param pdu the raw PDU to store
-     * @return success or not
-     *
-     */
-    public boolean
-    updateMessageOnIccEf(int index, int status, byte[] pdu) {
-        if (DBG) log("updateMessageOnIccEf: index=" + index +
-                " status=" + status + " ==> " +
-                "("+ pdu + ")");
-        enforceReceiveAndSend("Updating message on RUIM");
-        synchronized(mLock) {
-            mSuccess = false;
-            Message response = mHandler.obtainMessage(EVENT_UPDATE_DONE);
-
-            if (status == STATUS_ON_ICC_FREE) {
-                // Special case FREE: call deleteSmsOnRuim instead of
-                // manipulating the RUIM record
-                mPhone.mCM.deleteSmsOnRuim(index, response);
-            } else {
-                byte[] record = makeSmsRecordData(status, pdu);
-                mPhone.getIccFileHandler().updateEFLinearFixed(
-                        IccConstants.EF_SMS, index, record, null, response);
-            }
-            try {
-                mLock.wait();
-            } catch (InterruptedException e) {
-                log("interrupted while trying to update by index");
-            }
-        }
-        return mSuccess;
+    protected void deleteSms(int index, Message response) {
+        mPhone.mCM.deleteSmsOnRuim(index, response);
     }
 
-    /**
-     * Copy a raw SMS PDU to the RUIM.
-     *
-     * @param pdu the raw PDU to store
-     * @param status message status (STATUS_ON_ICC_READ, STATUS_ON_ICC_UNREAD,
-     *               STATUS_ON_ICC_SENT, STATUS_ON_ICC_UNSENT)
-     * @return success or not
-     *
-     */
-    public boolean copyMessageToIccEf(int status, byte[] pdu, byte[] smsc) {
+    protected void writeSms(int status, byte[] pdu, byte[] smsc, Message response) {
         //NOTE smsc not used in RUIM
-        if (DBG) log("copyMessageToIccEf: status=" + status + " ==> " +
-                "pdu=("+ Arrays.toString(pdu) + ")");
-        enforceReceiveAndSend("Copying message to RUIM");
-        synchronized(mLock) {
-            mSuccess = false;
-            Message response = mHandler.obtainMessage(EVENT_UPDATE_DONE);
-
-            mPhone.mCM.writeSmsToRuim(status, IccUtils.bytesToHexString(pdu),
-                    response);
-
-            try {
-                mLock.wait();
-            } catch (InterruptedException e) {
-                log("interrupted while trying to update by index");
-            }
-        }
-        return mSuccess;
-    }
-
-    /**
-     * Retrieves all messages currently stored on RUIM.
-     */
-    public List<SmsRawData> getAllMessagesFromIccEf() {
-        if (DBG) log("getAllMessagesFromEF");
-
-        Context context = mPhone.getContext();
-
-        context.enforceCallingPermission(
-                "android.permission.RECEIVE_SMS",
-                "Reading messages from RUIM");
-        synchronized(mLock) {
-            Message response = mHandler.obtainMessage(EVENT_LOAD_DONE);
-            mPhone.getIccFileHandler().loadEFLinearFixedAll(IccConstants.EF_SMS, response);
-
-            try {
-                mLock.wait();
-            } catch (InterruptedException e) {
-                log("interrupted while trying to load from the RUIM");
-            }
-        }
-        return mSms;
+        mPhone.mCM.writeSmsToRuim(status, IccUtils.bytesToHexString(pdu),
+                response);
     }
 
     public boolean enableCellBroadcast(int messageIdentifier) {
