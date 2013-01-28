@@ -436,8 +436,6 @@ public abstract class DataConnection extends StateMachine {
 
     protected abstract boolean isDnsOk(String[] domainNameServers);
 
-    protected abstract void log(String s);
-
    //***** Constructor
     protected DataConnection(PhoneBase phone, String name, int id, RetryManager rm,
             DataConnectionTracker dct) {
