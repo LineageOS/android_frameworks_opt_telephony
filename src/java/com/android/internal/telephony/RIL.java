@@ -2056,9 +2056,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         // In case screen state was lost (due to process crash),
         // this ensures that the RIL knows the correct screen state.
 
-        // TODO: Should query Power Manager and send the actual
-        // screen state.  Just send true for now.
-        sendScreenState(true);
+        PowerManager pm = (PowerManager)mContext.getSystemService(Context.POWER_SERVICE);
+        sendScreenState(pm.isScreenOn());
    }
 
     private RadioState getRadioStateFromInt(int stateInt) {
