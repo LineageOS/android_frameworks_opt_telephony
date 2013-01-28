@@ -36,8 +36,6 @@ import java.io.PrintWriter;
  */
 public class GsmDataConnection extends DataConnection {
 
-    private static final String LOG_TAG = "GSM";
-
     //***** Instance Variables
     protected int mProfileId = RILConstants.DATA_PROFILE_DEFAULT;
     //***** Constructor
@@ -153,7 +151,7 @@ public class GsmDataConnection extends DataConnection {
 
     @Override
     protected void log(String s) {
-        Rlog.d(LOG_TAG, "[" + getName() + "] " + s);
+        Rlog.d(getName(), s);
     }
 
     private boolean isIpAddress(String address) {
