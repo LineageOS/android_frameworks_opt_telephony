@@ -55,8 +55,8 @@ public class TelephonyUtilsTest extends TestCase {
         assertEquals(0, rm.getRetryTimer());
 
         rm.setRetryCount(2);
-        assertFalse(rm.isRetryForever());
-        assertFalse(rm.isRetryNeeded());
+        assertTrue(rm.isRetryForever());
+        assertTrue(rm.isRetryNeeded());
         assertEquals(0, rm.getRetryCount());
         assertEquals(0, rm.getRetryTimer());
     }
@@ -203,7 +203,7 @@ public class TelephonyUtilsTest extends TestCase {
 
         rm.setRetryCount(1);
         assertTrue(rm.isRetryNeeded());
-        assertFalse(rm.isRetryForever());
+        assertTrue(rm.isRetryForever());
         assertEquals(1, rm.getRetryCount());
         assertEquals(2000, rm.getRetryTimer());
 
@@ -212,7 +212,7 @@ public class TelephonyUtilsTest extends TestCase {
         assertTrue(rm.isRetryForever());
         rm.resetRetryCount();
         assertTrue(rm.isRetryNeeded());
-        assertFalse(rm.isRetryForever());
+        assertTrue(rm.isRetryForever());
         assertEquals(0, rm.getRetryCount());
         assertEquals(1000, rm.getRetryTimer());
     }
