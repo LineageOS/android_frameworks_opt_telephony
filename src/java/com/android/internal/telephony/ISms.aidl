@@ -150,7 +150,8 @@ interface ISms {
      * message identifier, they must both disable it for the device to stop
      * receiving those messages.
      *
-     * @param messageIdentifier Message identifier as specified in TS 23.041
+     * @param messageIdentifier Message identifier as specified in TS 23.041 (3GPP) or
+     *   C.R1001-G (3GPP2)
      * @return true if successful, false otherwise
      *
      * @see #disableCellBroadcast(int)
@@ -163,21 +164,24 @@ interface ISms {
      * message identifier, they must both disable it for the device to stop
      * receiving those messages.
      *
-     * @param messageIdentifier Message identifier as specified in TS 23.041
+     * @param messageIdentifier Message identifier as specified in TS 23.041 (3GPP) or
+     *   C.R1001-G (3GPP2)
      * @return true if successful, false otherwise
      *
      * @see #enableCellBroadcast(int)
      */
     boolean disableCellBroadcast(int messageIdentifier);
 
-    /**
+    /*
      * Enable reception of cell broadcast (SMS-CB) messages with the given
      * message identifier range. Note that if two different clients enable
      * a message identifier range, they must both disable it for the device
      * to stop receiving those messages.
      *
-     * @param startMessageId first message identifier as specified in TS 23.041
-     * @param endMessageId last message identifier as specified in TS 23.041
+     * @param startMessageId first message identifier as specified in TS 23.041 (3GPP) or
+     *   C.R1001-G (3GPP2)
+     * @param endMessageId last message identifier as specified in TS 23.041 (3GPP) or
+     *   C.R1001-G (3GPP2)
      * @return true if successful, false otherwise
      *
      * @see #disableCellBroadcastRange(int, int)
@@ -190,8 +194,10 @@ interface ISms {
      * a message identifier range, they must both disable it for the device
      * to stop receiving those messages.
      *
-     * @param startMessageId first message identifier as specified in TS 23.041
-     * @param endMessageId last message identifier as specified in TS 23.041
+     * @param startMessageId first message identifier as specified in TS 23.041 (3GPP) or
+     *   C.R1001-G (3GPP2)
+     * @param endMessageId last message identifier as specified in TS 23.041 (3GPP) or
+     *   C.R1001-G (3GPP2)
      * @return true if successful, false otherwise
      *
      * @see #enableCellBroadcastRange(int, int)
