@@ -358,7 +358,8 @@ public final class SmsManager {
      * Note: This call is blocking, callers may want to avoid calling it from
      * the main thread of an application.
      *
-     * @param messageIdentifier Message identifier as specified in TS 23.041
+     * @param messageIdentifier Message identifier as specified in TS 23.041 (3GPP)
+     * or C.R1001-G (3GPP2)
      * @return true if successful, false otherwise
      * @see #disableCellBroadcast(int)
      *
@@ -387,7 +388,8 @@ public final class SmsManager {
      * Note: This call is blocking, callers may want to avoid calling it from
      * the main thread of an application.
      *
-     * @param messageIdentifier Message identifier as specified in TS 23.041
+     * @param messageIdentifier Message identifier as specified in TS 23.041 (3GPP)
+     * or C.R1001-G (3GPP2)
      * @return true if successful, false otherwise
      *
      * @see #enableCellBroadcast(int)
@@ -418,8 +420,10 @@ public final class SmsManager {
      * Note: This call is blocking, callers may want to avoid calling it from
      * the main thread of an application.
      *
-     * @param startMessageId first message identifier as specified in TS 23.041
-     * @param endMessageId last message identifier as specified in TS 23.041
+     * @param startMessageId first message identifier as specified in TS 23.041 (3GPP)
+     * or C.R1001-G (3GPP2)
+     * @param endMessageId last message identifier as specified in TS 23.041 (3GPP)
+     * or C.R1001-G (3GPP2)
      * @return true if successful, false otherwise
      * @see #disableCellBroadcastRange(int, int)
      *
@@ -452,8 +456,10 @@ public final class SmsManager {
      * Note: This call is blocking, callers may want to avoid calling it from
      * the main thread of an application.
      *
-     * @param startMessageId first message identifier as specified in TS 23.041
-     * @param endMessageId last message identifier as specified in TS 23.041
+     * @param startMessageId first message identifier as specified in TS 23.041 (3GPP)
+     * or C.R1001-G (3GPP2)
+     * @param endMessageId last message identifier as specified in TS 23.041 (3GPP)
+     * or C.R1001-G (3GPP2)
      * @return true if successful, false otherwise
      *
      * @see #enableCellBroadcastRange(int, int)

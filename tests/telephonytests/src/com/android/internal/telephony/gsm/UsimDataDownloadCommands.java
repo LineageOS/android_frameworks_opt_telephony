@@ -25,6 +25,7 @@ import android.telephony.Rlog;
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.uicc.IccIoResult;
+import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 
 import junit.framework.Assert;
 
@@ -590,7 +591,7 @@ class UsimDataDownloadCommands extends BaseCommands {
     }
 
     @Override
-    public void setCdmaBroadcastConfig(int[] configValuesArray, Message result) {
+    public void setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs, Message response) {
     }
 
     @Override
