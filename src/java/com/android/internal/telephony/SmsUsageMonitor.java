@@ -111,7 +111,6 @@ public class SmsUsageMonitor {
     public static final int PREMIUM_SMS_PERMISSION_ALWAYS_ALLOW = 3;
 
     private final int mCheckPeriod;
-    private final int mMaxAllowed;
 
     private final HashMap<String, ArrayList<Long>> mSmsStamp =
             new HashMap<String, ArrayList<Long>>();
@@ -262,10 +261,6 @@ public class SmsUsageMonitor {
     public SmsUsageMonitor(Context context) {
         mContext = context;
         ContentResolver resolver = context.getContentResolver();
-
-        mMaxAllowed = Settings.Global.getInt(resolver,
-                Settings.Global.SMS_OUTGOING_CHECK_MAX_COUNT,
-                DEFAULT_SMS_MAX_COUNT);
 
         mCheckPeriod = Settings.Global.getInt(resolver,
                 Settings.Global.SMS_OUTGOING_CHECK_INTERVAL_MS,
@@ -639,7 +634,12 @@ public class SmsUsageMonitor {
             sent.remove(0);
         }
 
-        if ((sent.size() + smsWaiting) <= mMaxAllowed) {
+        ContentResolver resolver = mContext.getContentResolver();
+        int allowed = Settings.Global.getInt(resolver,
+            Settings.Global.SMS_OUTGOING_CHECK_MAX_COUNT,
+            DEFAULT_SMS_MAX_COUNT);
+
+        if ((sent.size() + smsWaiting) <= allowed) {
             for (int i = 0; i < smsWaiting; i++ ) {
                 sent.add(ct);
             }
