@@ -16,6 +16,7 @@
 
 package android.telephony;
 
+import android.app.ActivityThread;
 import android.app.PendingIntent;
 import android.os.RemoteException;
 import android.os.ServiceManager;
@@ -84,7 +85,8 @@ public final class SmsManager {
         try {
             ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
-                iccISms.sendText(destinationAddress, scAddress, text, sentIntent, deliveryIntent);
+                iccISms.sendText(ActivityThread.currentPackageName(), destinationAddress,
+                        scAddress, text, sentIntent, deliveryIntent);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -154,7 +156,8 @@ public final class SmsManager {
             try {
                 ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
                 if (iccISms != null) {
-                    iccISms.sendMultipartText(destinationAddress, scAddress, parts,
+                    iccISms.sendMultipartText(ActivityThread.currentPackageName(),
+                            destinationAddress, scAddress, parts,
                             sentIntents, deliveryIntents);
                 }
             } catch (RemoteException ex) {
@@ -215,7 +218,8 @@ public final class SmsManager {
         try {
             ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
-                iccISms.sendData(destinationAddress, scAddress, destinationPort & 0xFFFF,
+                iccISms.sendData(ActivityThread.currentPackageName(),
+                        destinationAddress, scAddress, destinationPort & 0xFFFF,
                         data, sentIntent, deliveryIntent);
             }
         } catch (RemoteException ex) {
@@ -259,7 +263,8 @@ public final class SmsManager {
         try {
             ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
-                success = iccISms.copyMessageToIccEf(status, pdu, smsc);
+                success = iccISms.copyMessageToIccEf(ActivityThread.currentPackageName(),
+                        status, pdu, smsc);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -287,7 +292,8 @@ public final class SmsManager {
         try {
             ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
-                success = iccISms.updateMessageOnIccEf(messageIndex, STATUS_ON_ICC_FREE, pdu);
+                success = iccISms.updateMessageOnIccEf(ActivityThread.currentPackageName(),
+                        messageIndex, STATUS_ON_ICC_FREE, pdu);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -316,7 +322,8 @@ public final class SmsManager {
         try {
             ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
-                success = iccISms.updateMessageOnIccEf(messageIndex, newStatus, pdu);
+                success = iccISms.updateMessageOnIccEf(ActivityThread.currentPackageName(),
+                        messageIndex, newStatus, pdu);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -340,7 +347,7 @@ public final class SmsManager {
         try {
             ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
-                records = iccISms.getAllMessagesFromIccEf();
+                records = iccISms.getAllMessagesFromIccEf(ActivityThread.currentPackageName());
             }
         } catch (RemoteException ex) {
             // ignore it

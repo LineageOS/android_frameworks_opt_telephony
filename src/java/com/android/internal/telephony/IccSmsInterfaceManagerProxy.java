@@ -37,34 +37,37 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
     }
 
     public boolean
-    updateMessageOnIccEf(int index, int status, byte[] pdu) throws android.os.RemoteException {
-         return mIccSmsInterfaceManager.updateMessageOnIccEf(index, status, pdu);
+    updateMessageOnIccEf(String callingPackage, int index, int status, byte[] pdu)
+            throws android.os.RemoteException {
+         return mIccSmsInterfaceManager.updateMessageOnIccEf(callingPackage, index, status, pdu);
     }
 
-    public boolean copyMessageToIccEf(int status, byte[] pdu,
+    public boolean copyMessageToIccEf(String callingPackage, int status, byte[] pdu,
             byte[] smsc) throws android.os.RemoteException {
-        return mIccSmsInterfaceManager.copyMessageToIccEf(status, pdu, smsc);
+        return mIccSmsInterfaceManager.copyMessageToIccEf(callingPackage, status, pdu, smsc);
     }
 
-    public List<SmsRawData> getAllMessagesFromIccEf() throws android.os.RemoteException {
-        return mIccSmsInterfaceManager.getAllMessagesFromIccEf();
+    public List<SmsRawData> getAllMessagesFromIccEf(String callingPackage)
+            throws android.os.RemoteException {
+        return mIccSmsInterfaceManager.getAllMessagesFromIccEf(callingPackage);
     }
 
-    public void sendData(String destAddr, String scAddr, int destPort,
+    public void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        mIccSmsInterfaceManager.sendData(destAddr, scAddr, destPort, data,
+        mIccSmsInterfaceManager.sendData(callingPackage, destAddr, scAddr, destPort, data,
                 sentIntent, deliveryIntent);
     }
 
-    public void sendText(String destAddr, String scAddr,
+    public void sendText(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        mIccSmsInterfaceManager.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent);
+        mIccSmsInterfaceManager.sendText(callingPackage, destAddr, scAddr, text, sentIntent,
+                deliveryIntent);
     }
 
-    public void sendMultipartText(String destAddr, String scAddr,
+    public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
             List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents) throws android.os.RemoteException {
-        mIccSmsInterfaceManager.sendMultipartText(destAddr, scAddr,
+        mIccSmsInterfaceManager.sendMultipartText(callingPackage, destAddr, scAddr,
                 parts, sentIntents, deliveryIntents);
     }
 

@@ -16,8 +16,10 @@
 
 package com.android.internal.telephony;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
 import android.content.BroadcastReceiver;
@@ -86,11 +88,12 @@ public abstract class SMSDispatcher extends Handler {
     private static final String SEND_NEXT_MSG_EXTRA = "SendNextMsg";
 
     /** Permission required to receive SMS and SMS-CB messages. */
-    public static final String RECEIVE_SMS_PERMISSION = "android.permission.RECEIVE_SMS";
+    public static final String RECEIVE_SMS_PERMISSION = Manifest.permission.RECEIVE_SMS;
 
-    /** Permission required to receive ETWS and CMAS emergency broadcasts. */
+    /** Permission required to receive ETWS and CMAS emergency broadcasts.
+     *  XXX this permission is declared in the Mms app...  wha?!? */
     public static final String RECEIVE_EMERGENCY_BROADCAST_PERMISSION =
-            "android.permission.RECEIVE_EMERGENCY_BROADCAST";
+            Manifest.permission.RECEIVE_EMERGENCY_BROADCAST;
 
     /** Permission required to send SMS to short codes without user confirmation. */
     private static final String SEND_SMS_NO_CONFIRMATION_PERMISSION =
@@ -386,12 +389,13 @@ public abstract class SMSDispatcher extends Handler {
      *
      * @param intent intent to broadcast
      * @param permission Receivers are required to have this permission
+     * @param appOp App op that is being performed when dispatching to a receiver
      */
-    public void dispatch(Intent intent, String permission) {
+    public void dispatch(Intent intent, String permission, int appOp) {
         // Hold a wake lock for WAKE_LOCK_TIMEOUT seconds, enough to give any
         // receivers time to take their own wake locks.
         mWakeLock.acquire(WAKE_LOCK_TIMEOUT);
-        mContext.sendOrderedBroadcast(intent, permission, mResultReceiver,
+        mContext.sendOrderedBroadcast(intent, permission, appOp, mResultReceiver,
                 this, Activity.RESULT_OK, null, null);
     }
 
@@ -401,13 +405,15 @@ public abstract class SMSDispatcher extends Handler {
      *
      * @param intent intent to broadcast
      * @param permission Receivers are required to have this permission
+     * @param appOp App op that is being performed when dispatching to a receiver
      * @param resultReceiver the result receiver to use
      */
-    public void dispatch(Intent intent, String permission, BroadcastReceiver resultReceiver) {
+    public void dispatch(Intent intent, String permission, int appOp,
+            BroadcastReceiver resultReceiver) {
         // Hold a wake lock for WAKE_LOCK_TIMEOUT seconds, enough to give any
         // receivers time to take their own wake locks.
         mWakeLock.acquire(WAKE_LOCK_TIMEOUT);
-        mContext.sendOrderedBroadcast(intent, permission, resultReceiver,
+        mContext.sendOrderedBroadcast(intent, permission, appOp, resultReceiver,
                 this, Activity.RESULT_OK, null, null);
     }
 
@@ -733,7 +739,7 @@ public abstract class SMSDispatcher extends Handler {
         Intent intent = new Intent(Intents.SMS_RECEIVED_ACTION);
         intent.putExtra("pdus", pdus);
         intent.putExtra("format", getFormat());
-        dispatch(intent, RECEIVE_SMS_PERMISSION);
+        dispatch(intent, RECEIVE_SMS_PERMISSION, AppOpsManager.OP_RECEIVE_SMS);
     }
 
     /**
@@ -747,7 +753,7 @@ public abstract class SMSDispatcher extends Handler {
         Intent intent = new Intent(Intents.DATA_SMS_RECEIVED_ACTION, uri);
         intent.putExtra("pdus", pdus);
         intent.putExtra("format", getFormat());
-        dispatch(intent, RECEIVE_SMS_PERMISSION);
+        dispatch(intent, RECEIVE_SMS_PERMISSION, AppOpsManager.OP_RECEIVE_SMS);
     }
 
     /**
@@ -1300,7 +1306,7 @@ public abstract class SMSDispatcher extends Handler {
             Intent intent = new Intent(Intents.SMS_REJECTED_ACTION);
             intent.putExtra("result", result);
             mWakeLock.acquire(WAKE_LOCK_TIMEOUT);
-            mContext.sendBroadcast(intent, "android.permission.RECEIVE_SMS");
+            mContext.sendBroadcast(intent, Manifest.permission.RECEIVE_SMS);
         }
         acknowledgeLastIncomingSms(success, result, response);
     }
@@ -1450,12 +1456,13 @@ public abstract class SMSDispatcher extends Handler {
             Intent intent = new Intent(Intents.SMS_EMERGENCY_CB_RECEIVED_ACTION);
             intent.putExtra("message", message);
             Rlog.d(TAG, "Dispatching emergency SMS CB");
-            dispatch(intent, RECEIVE_EMERGENCY_BROADCAST_PERMISSION);
+            dispatch(intent, RECEIVE_EMERGENCY_BROADCAST_PERMISSION,
+                    AppOpsManager.OP_RECEIVE_EMERGECY_SMS);
         } else {
             Intent intent = new Intent(Intents.SMS_CB_RECEIVED_ACTION);
             intent.putExtra("message", message);
             Rlog.d(TAG, "Dispatching SMS CB");
-            dispatch(intent, RECEIVE_SMS_PERMISSION);
+            dispatch(intent, RECEIVE_SMS_PERMISSION, AppOpsManager.OP_RECEIVE_SMS);
         }
     }
 }

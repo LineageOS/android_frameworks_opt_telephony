@@ -18,6 +18,7 @@ package com.android.internal.telephony.cdma;
 
 
 import android.app.Activity;
+import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
 import android.content.BroadcastReceiver;
@@ -123,7 +124,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         Intent intent = new Intent(Intents.SMS_SERVICE_CATEGORY_PROGRAM_DATA_RECEIVED_ACTION);
         intent.putExtra("sender", sms.getOriginatingAddress());
         intent.putParcelableArrayListExtra("program_data", programDataList);
-        dispatch(intent, RECEIVE_SMS_PERMISSION, mScpResultsReceiver);
+        dispatch(intent, RECEIVE_SMS_PERMISSION, AppOpsManager.OP_RECEIVE_SMS, mScpResultsReceiver);
     }
 
     /** {@inheritDoc} */

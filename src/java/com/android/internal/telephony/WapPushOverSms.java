@@ -17,7 +17,9 @@
 
 package com.android.internal.telephony;
 
+import android.Manifest;
 import android.app.Activity;
+import android.app.AppOpsManager;
 import android.content.Context;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -257,11 +259,14 @@ public class WapPushOverSms {
         }
 
         String permission;
+        int appOp;
 
         if (mimeType.equals(WspTypeDecoder.CONTENT_TYPE_B_MMS)) {
-            permission = "android.permission.RECEIVE_MMS";
+            permission = android.Manifest.permission.RECEIVE_MMS;
+            appOp = AppOpsManager.OP_RECEIVE_MMS;
         } else {
-            permission = "android.permission.RECEIVE_WAP_PUSH";
+            permission = android.Manifest.permission.RECEIVE_WAP_PUSH;
+            appOp = AppOpsManager.OP_RECEIVE_WAP_PUSH;
         }
 
         Intent intent = new Intent(Intents.WAP_PUSH_RECEIVED_ACTION);
@@ -272,7 +277,7 @@ public class WapPushOverSms {
         intent.putExtra("data", intentData);
         intent.putExtra("contentTypeParameters", pduDecoder.getContentParameters());
 
-        mSmsDispatcher.dispatch(intent, permission);
+        mSmsDispatcher.dispatch(intent, permission, appOp);
 
         return Activity.RESULT_OK;
     }

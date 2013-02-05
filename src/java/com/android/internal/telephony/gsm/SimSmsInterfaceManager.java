@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.gsm;
 
+import android.Manifest;
 import android.content.Context;
 import android.os.Binder;
 import android.os.Message;
@@ -83,7 +84,7 @@ public class SimSmsInterfaceManager extends IccSmsInterfaceManager {
         Context context = mPhone.getContext();
 
         context.enforceCallingPermission(
-                "android.permission.RECEIVE_SMS",
+                Manifest.permission.RECEIVE_SMS,
                 "Enabling cell broadcast SMS");
 
         String client = context.getPackageManager().getNameForUid(
@@ -110,7 +111,7 @@ public class SimSmsInterfaceManager extends IccSmsInterfaceManager {
         Context context = mPhone.getContext();
 
         context.enforceCallingPermission(
-                "android.permission.RECEIVE_SMS",
+                Manifest.permission.RECEIVE_SMS,
                 "Disabling cell broadcast SMS");
 
         String client = context.getPackageManager().getNameForUid(

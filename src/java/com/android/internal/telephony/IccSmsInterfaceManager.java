@@ -16,9 +16,12 @@
 
 package com.android.internal.telephony;
 
+import android.Manifest;
+import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.os.AsyncResult;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.Rlog;
@@ -53,8 +56,9 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
     protected static final int EVENT_SET_BROADCAST_ACTIVATION_DONE = 3;
     protected static final int EVENT_SET_BROADCAST_CONFIG_DONE = 4;
 
-    protected PhoneBase mPhone;
-    protected Context mContext;
+    final protected PhoneBase mPhone;
+    final protected Context mContext;
+    final protected AppOpsManager mAppOps;
     protected SMSDispatcher mDispatcher;
 
     protected Handler mHandler = new Handler() {
@@ -100,6 +104,7 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
     protected IccSmsInterfaceManager(PhoneBase phone){
         mPhone = phone;
         mContext = phone.getContext();
+        mAppOps = (AppOpsManager)mContext.getSystemService(Context.APP_OPS_SERVICE);
     }
 
     protected void markMessagesAsRead(ArrayList<byte[]> messages) {
@@ -137,9 +142,9 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
 
     protected void enforceReceiveAndSend(String message) {
         mContext.enforceCallingPermission(
-                "android.permission.RECEIVE_SMS", message);
+                Manifest.permission.RECEIVE_SMS, message);
         mContext.enforceCallingPermission(
-                "android.permission.SEND_SMS", message);
+                Manifest.permission.SEND_SMS, message);
     }
 
     /**
@@ -154,11 +159,15 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      *
      */
     public boolean
-    updateMessageOnIccEf(int index, int status, byte[] pdu) {
+    updateMessageOnIccEf(String callingPackage, int index, int status, byte[] pdu) {
         if (DBG) log("updateMessageOnIccEf: index=" + index +
                 " status=" + status + " ==> " +
                 "("+ Arrays.toString(pdu) + ")");
         enforceReceiveAndSend("Updating message on Icc");
+        if (mAppOps.noteOp(AppOpsManager.OP_WRITE_ICC_SMS, Binder.getCallingUid(),
+                callingPackage) != AppOpsManager.MODE_ALLOWED) {
+            return false;
+        }
         synchronized(mLock) {
             mSuccess = false;
             Message response = mHandler.obtainMessage(EVENT_UPDATE_DONE);
@@ -199,12 +208,16 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      * @return success or not
      *
      */
-    public boolean copyMessageToIccEf(int status, byte[] pdu, byte[] smsc) {
+    public boolean copyMessageToIccEf(String callingPackage, int status, byte[] pdu, byte[] smsc) {
         //NOTE smsc not used in RUIM
         if (DBG) log("copyMessageToIccEf: status=" + status + " ==> " +
                 "pdu=("+ Arrays.toString(pdu) +
                 "), smsc=(" + Arrays.toString(smsc) +")");
         enforceReceiveAndSend("Copying message to Icc");
+        if (mAppOps.noteOp(AppOpsManager.OP_WRITE_ICC_SMS, Binder.getCallingUid(),
+                callingPackage) != AppOpsManager.MODE_ALLOWED) {
+            return false;
+        }
         synchronized(mLock) {
             mSuccess = false;
             Message response = mHandler.obtainMessage(EVENT_UPDATE_DONE);
@@ -226,12 +239,16 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      *
      * @return list of SmsRawData of all sms on Icc
      */
-    public List<SmsRawData> getAllMessagesFromIccEf() {
+    public List<SmsRawData> getAllMessagesFromIccEf(String callingPackage) {
         if (DBG) log("getAllMessagesFromEF");
 
         mContext.enforceCallingPermission(
-                "android.permission.RECEIVE_SMS",
+                Manifest.permission.RECEIVE_SMS,
                 "Reading messages from Icc");
+        if (mAppOps.noteOp(AppOpsManager.OP_READ_ICC_SMS, Binder.getCallingUid(),
+                callingPackage) != AppOpsManager.MODE_ALLOWED) {
+            return new ArrayList<SmsRawData>();
+        }
         synchronized(mLock) {
 
             IccFileHandler fh = mPhone.getIccFileHandler();
@@ -280,15 +297,19 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      *  broadcast when the message is delivered to the recipient.  The
      *  raw pdu of the status report is in the extended data ("pdu").
      */
-    public void sendData(String destAddr, String scAddr, int destPort,
+    public void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         mPhone.getContext().enforceCallingPermission(
-                "android.permission.SEND_SMS",
+                Manifest.permission.SEND_SMS,
                 "Sending SMS message");
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("sendData: destAddr=" + destAddr + " scAddr=" + scAddr + " destPort=" +
                 destPort + " data='"+ HexDump.toHexString(data)  + "' sentIntent=" +
                 sentIntent + " deliveryIntent=" + deliveryIntent);
+        }
+        if (mAppOps.noteOp(AppOpsManager.OP_SEND_SMS, Binder.getCallingUid(),
+                callingPackage) != AppOpsManager.MODE_ALLOWED) {
+            return;
         }
         mDispatcher.sendData(destAddr, scAddr, destPort, data, sentIntent, deliveryIntent);
     }
@@ -317,15 +338,19 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      *  broadcast when the message is delivered to the recipient.  The
      *  raw pdu of the status report is in the extended data ("pdu").
      */
-    public void sendText(String destAddr, String scAddr,
+    public void sendText(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         mPhone.getContext().enforceCallingPermission(
-                "android.permission.SEND_SMS",
+                Manifest.permission.SEND_SMS,
                 "Sending SMS message");
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("sendText: destAddr=" + destAddr + " scAddr=" + scAddr +
                 " text='"+ text + "' sentIntent=" +
                 sentIntent + " deliveryIntent=" + deliveryIntent);
+        }
+        if (mAppOps.noteOp(AppOpsManager.OP_SEND_SMS, Binder.getCallingUid(),
+                callingPackage) != AppOpsManager.MODE_ALLOWED) {
+            return;
         }
         mDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent);
     }
@@ -355,10 +380,11 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      *   to the recipient.  The raw pdu of the status report is in the
      *   extended data ("pdu").
      */
-    public void sendMultipartText(String destAddr, String scAddr, List<String> parts,
-            List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents) {
+    public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
+            List<String> parts, List<PendingIntent> sentIntents,
+            List<PendingIntent> deliveryIntents) {
         mPhone.getContext().enforceCallingPermission(
-                "android.permission.SEND_SMS",
+                Manifest.permission.SEND_SMS,
                 "Sending SMS message");
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             int i = 0;
@@ -366,6 +392,10 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
                 log("sendMultipartText: destAddr=" + destAddr + ", srAddr=" + scAddr +
                         ", part[" + (i++) + "]=" + part);
             }
+        }
+        if (mAppOps.noteOp(AppOpsManager.OP_SEND_SMS, Binder.getCallingUid(),
+                callingPackage) != AppOpsManager.MODE_ALLOWED) {
+            return;
         }
         mDispatcher.sendMultipartText(destAddr, scAddr, (ArrayList<String>) parts,
                 (ArrayList<PendingIntent>) sentIntents, (ArrayList<PendingIntent>) deliveryIntents);
