@@ -281,9 +281,13 @@ public class IccCardProxy extends Handler implements IccCard {
             return;
         }
 
-        if (mUiccCard.getCardState() == CardState.CARDSTATE_ERROR ||
-                mUiccApplication == null) {
-            setExternalState(State.UNKNOWN);
+        if (mUiccCard.getCardState() == CardState.CARDSTATE_ERROR) {
+            setExternalState(State.CARD_IO_ERROR);
+            return;
+        }
+
+        if (mUiccApplication == null) {
+            setExternalState(State.NOT_READY);
             return;
         }
 
@@ -419,12 +423,13 @@ public class IccCardProxy extends Handler implements IccCard {
             case READY: return IccCardConstants.INTENT_VALUE_ICC_READY;
             case NOT_READY: return IccCardConstants.INTENT_VALUE_ICC_NOT_READY;
             case PERM_DISABLED: return IccCardConstants.INTENT_VALUE_ICC_LOCKED;
+            case CARD_IO_ERROR: return IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR;
             default: return IccCardConstants.INTENT_VALUE_ICC_UNKNOWN;
         }
     }
 
     /**
-     * Locked state have a reason (PIN, PUK, NETWORK, PERM_DISABLED)
+     * Locked state have a reason (PIN, PUK, NETWORK, PERM_DISABLED, CARD_IO_ERROR)
      * @return reason
      */
     private String getIccStateReason(State state) {
@@ -433,6 +438,7 @@ public class IccCardProxy extends Handler implements IccCard {
             case PUK_REQUIRED: return IccCardConstants.INTENT_VALUE_LOCKED_ON_PUK;
             case NETWORK_LOCKED: return IccCardConstants.INTENT_VALUE_LOCKED_NETWORK;
             case PERM_DISABLED: return IccCardConstants.INTENT_VALUE_ABSENT_ON_PERM_DISABLED;
+            case CARD_IO_ERROR: return IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR;
             default: return null;
        }
     }
