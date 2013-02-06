@@ -147,6 +147,7 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_SIM_REFRESH = 31;
     private static final int EVENT_GET_CFIS_DONE = 32;
     private static final int EVENT_GET_CSP_CPHS_DONE = 33;
+    private static final int EVENT_GET_GID1_DONE = 34;
 
     // Lookup table for carriers known to produce SIMs which incorrectly indicate MNC length.
 
@@ -220,6 +221,7 @@ public class SIMRecords extends IccRecords {
         efCPHS_MWI = null;
         spdiNetworks = null;
         pnnHomeName = null;
+        gid1 = null;
 
         adnCache.reset();
 
@@ -247,6 +249,11 @@ public class SIMRecords extends IccRecords {
 
     public String getMsisdnNumber() {
         return msisdn;
+    }
+
+    @Override
+    public String getGid1() {
+        return gid1;
     }
 
     @Override
@@ -1105,6 +1112,22 @@ public class SIMRecords extends IccRecords {
                 handleEfCspData(data);
                 break;
 
+            case EVENT_GET_GID1_DONE:
+                isRecordLoadResponse = true;
+
+                ar = (AsyncResult)msg.obj;
+                data =(byte[])ar.result;
+
+                if (ar.exception != null) {
+                    loge("Exception in get GID1 " + ar.exception);
+                    gid1 = null;
+                    break;
+                }
+                gid1 = IccUtils.bytesToHexString(data);
+                log("GID1: " + gid1);
+
+                break;
+
             default:
                 super.handleMessage(msg);   // IccRecords handles generic record load responses
 
@@ -1374,7 +1397,10 @@ public class SIMRecords extends IccRecords {
         mFh.loadEFTransparent(EF_INFO_CPHS, obtainMessage(EVENT_GET_INFO_CPHS_DONE));
         recordsToLoad++;
 
-        mFh.loadEFTransparent(EF_CSP_CPHS,obtainMessage(EVENT_GET_CSP_CPHS_DONE));
+        mFh.loadEFTransparent(EF_CSP_CPHS, obtainMessage(EVENT_GET_CSP_CPHS_DONE));
+        recordsToLoad++;
+
+        mFh.loadEFTransparent(EF_GID1, obtainMessage(EVENT_GET_GID1_DONE));
         recordsToLoad++;
 
         // XXX should seek instead of examining them all
@@ -1696,6 +1722,7 @@ public class SIMRecords extends IccRecords {
         pw.println(" spdiNetworks[]=" + spdiNetworks);
         pw.println(" pnnHomeName=" + pnnHomeName);
         pw.println(" mUsimServiceTable=" + mUsimServiceTable);
+        pw.println(" gid1=" + gid1);
         pw.flush();
     }
 }
