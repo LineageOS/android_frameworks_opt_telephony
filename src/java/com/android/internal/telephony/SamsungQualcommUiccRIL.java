@@ -293,17 +293,16 @@ public class SamsungQualcommUiccRIL extends QualcommSharedRIL implements Command
 
             // Translate number of bars into something SignalStrength.java can understand
             switch (num_bars) {
-                case 0  : response[8] = -1;   break; // map to 0 bars
-                case 1  : response[8] = -116; break; // map to 1 bar
-                case 2  : response[8] = -115; break; // map to 2 bars
-                case 3  : response[8] = -105; break; // map to 3 bars
-                case 4  : response[8] = -95;  break; // map to 4 bars
-                case 5  : response[8] = -85;  break; // map to 4 bars but give an extra 10 dBm
-                default : response[8] *= -1;  break; // no idea; just pass value through
+                case 0  : response[8] = 1;   break; // map to 0 bars
+                case 1  : response[8] = 116; break; // map to 1 bar
+                case 2  : response[8] = 115; break; // map to 2 bars
+                case 3  : response[8] = 105; break; // map to 3 bars
+                case 4  : response[8] = 95;  break; // map to 4 bars
+                case 5  : response[8] = 85;  break; // map to 4 bars but give an extra 10 dBm
+                default :                    break; // no idea; just pass value through
             }
         } else {
             response[7] &= 0xff;  // remove the Samsung number of bars field
-            response[8] *= -1;
         }
 
         Log.d(LOG_TAG, "responseSignalStength AFTER: mode=" + (mSignalbarCount ? "bars" : "raw") +
