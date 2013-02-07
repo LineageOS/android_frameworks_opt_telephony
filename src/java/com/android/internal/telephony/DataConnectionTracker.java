@@ -361,8 +361,8 @@ public abstract class DataConnectionTracker extends Handler {
         }
 
         public void updateTxRxSum() {
-            this.txPkts = TrafficStats.getMobileTxPackets();
-            this.rxPkts = TrafficStats.getMobileRxPackets();
+            this.txPkts = TrafficStats.getMobileTcpTxPackets();
+            this.rxPkts = TrafficStats.getMobileTcpRxPackets();
         }
     }
 
