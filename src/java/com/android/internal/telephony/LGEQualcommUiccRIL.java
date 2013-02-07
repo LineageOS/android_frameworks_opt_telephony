@@ -179,9 +179,6 @@ public class LGEQualcommUiccRIL extends QualcommSharedRIL implements CommandsInt
                 response[i] = -1;
                 noLte = true;
             }
-            if (i == 8 && !(noLte || oldRil)) {
-                response[i] *= -1;
-            }
         }
 
         return new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7],response[8], response[9], response[10], response[11], true);
