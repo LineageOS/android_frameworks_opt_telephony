@@ -1119,11 +1119,7 @@ public final class BearerData {
     private static String decodeShiftJis(byte[] data, int offset, int numFields)
         throws CodingException
     {
-        try {
-            return new String(data, offset, numFields - offset, "Shift_JIS");
-        } catch (java.io.UnsupportedEncodingException ex) {
-            throw new CodingException("Shift_JIS decode failed: " + ex);
-        }
+        return decodeCharset(data, offset, numFields, 1, "Shift_JIS");
     }
 
     private static void decodeUserDataPayload(UserData userData, boolean hasUserDataHeader)
