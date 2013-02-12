@@ -129,44 +129,47 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     @Override
     protected void onActionIntentReconnectAlarm(Intent intent) {
         String reason = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON);
-        int connectionId = intent.getIntExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE, -1);
+        String apnType = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE);
         int retryCount = intent.getIntExtra(INTENT_RECONNECT_ALARM_EXTRA_RETRY_COUNT, 0);
 
-        DataConnectionAc dcac= mDataConnectionAsyncChannels.get(connectionId);
+        ApnContext apnContext = mApnContexts.get(apnType);
 
         if (DBG) {
             log("onActionIntentReconnectAlarm: mState=" + mState + " reason=" + reason +
-                    " connectionId=" + connectionId + " retryCount=" + retryCount + " dcac=" + dcac
-                    + " mDataConnectionAsyncChannels=" + mDataConnectionAsyncChannels);
+                    " retryCount=" + retryCount +
+                    " apnType=" + apnType + " apnContext=" + apnContext +
+                    " mDataConnectionAsyncChannels=" + mDataConnectionAsyncChannels);
         }
 
-        if (dcac != null) {
-            Collection<ApnContext> apnList = dcac.getApnListSync();
-            if (DBG) log("onActionIntentReconnectAlarm: dcac.getApnListSync()=" + apnList);
-            for (ApnContext apnContext : apnList) {
-                apnContext.setReason(reason);
-                apnContext.setRetryCount(retryCount);
-                DctConstants.State apnContextState = apnContext.getState();
-                if (DBG) {
-                    log("onActionIntentReconnectAlarm: apnContext state=" + apnContextState);
-                }
-                if ((apnContextState == DctConstants.State.FAILED)
-                        || (apnContextState == DctConstants.State.IDLE)) {
-                    if (DBG) {
-                        log("onActionIntentReconnectAlarm: state is FAILED|IDLE, disassociate");
-                    }
-                    apnContext.setDataConnectionAc(null);
-                    apnContext.setDataConnection(null);
-                    apnContext.setState(DctConstants.State.IDLE);
-                } else {
-                    if (DBG) {
-                        log("onActionIntentReconnectAlarm: keep associated");
-                    }
-                }
-                sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, apnContext));
+        if ((apnContext != null) && (apnContext.isEnabled())) {
+            apnContext.setReason(reason);
+            apnContext.setRetryCount(retryCount);
+            DctConstants.State apnContextState = apnContext.getState();
+            if (DBG) {
+                log("onActionIntentReconnectAlarm: apnContext state=" + apnContextState);
             }
-            // Alram had expired. Clear pending intent recorded on the DataConnection.
-            dcac.setReconnectIntentSync(null);
+            if ((apnContextState == DctConstants.State.FAILED)
+                    || (apnContextState == DctConstants.State.IDLE)) {
+                if (DBG) {
+                    log("onActionIntentReconnectAlarm: state is FAILED|IDLE, disassociate");
+                }
+                apnContext.setDataConnectionAc(null);
+                apnContext.setDataConnection(null);
+                apnContext.setState(DctConstants.State.IDLE);
+            } else {
+                if (DBG) log("onActionIntentReconnectAlarm: keep associated");
+            }
+            // TODO: IF already associated should we send the EVENT_TRY_SETUP_DATA???
+            sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, apnContext));
+
+            DataConnectionAc dcac = apnContext.getDataConnectionAc();
+            if (dcac != null) {
+                Collection<ApnContext> apnList = dcac.getApnListSync();
+                log("onActionIntentReconnectAlarm: dcac.getApnListSync()=" + apnList);
+                // Alarm had expired. Clear pending intent recorded on the DataConnection.
+                // TODO: Maybe store in apnContext????
+                dcac.setReconnectIntentSync(null);
+            }
         }
     }
 
@@ -1472,8 +1475,8 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
                                    dcac.dataConnection.getDataConnectionId());
         String reason = apnContext.getReason();
         intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON, reason);
-        int connectionId = dcac.dataConnection.getDataConnectionId();
-        intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE, connectionId);
+        String apnType = apnContext.getApnType();
+        intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE, apnType);
 
         // TODO: Until a real fix is created, which probably entails pushing
         // retires into the DC itself, this fix gets the retry count and
@@ -1487,7 +1490,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
 
         if (DBG) {
             log("startAlarmForReconnect: next attempt in " + (delay / 1000) + "s" +
-                    " reason='" + reason + "' connectionId=" + connectionId +
+                    " reason='" + reason + "' apnType=" + apnType +
                     " retryCount=" + retryCount);
         }
 
