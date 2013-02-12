@@ -862,9 +862,8 @@ public class SmsMessage extends SmsMessageBase {
             // If the user data is a single space char, do not store
             // the message. Otherwise, store and display as usual
             if (" ".equals(getMessageBody())) {
-                ;
+                return true;
             }
-            return true;
         }
 
         return false;
