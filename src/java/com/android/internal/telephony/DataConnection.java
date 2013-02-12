@@ -440,7 +440,8 @@ public abstract class DataConnection extends StateMachine {
     protected DataConnection(PhoneBase phone, String name, int id, RetryManager rm,
             DataConnectionTracker dct) {
         super(name);
-        setLogRecSize(100);
+        setLogRecSize(300);
+        setLogOnlyTransitions(true);
         if (DBG) log("DataConnection constructor E");
         this.phone = phone;
         this.mDataConnectionTracker = dct;
@@ -473,7 +474,6 @@ public abstract class DataConnection extends StateMachine {
             log("DataConnection: register mActionFailBringUp=" + mActionFailBringUp);
         }
 
-        setDbg(false);
         addState(mDefaultState);
             addState(mInactiveState, mDefaultState);
             addState(mActivatingState, mDefaultState);
