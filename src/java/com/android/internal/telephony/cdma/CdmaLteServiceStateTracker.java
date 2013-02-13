@@ -167,29 +167,32 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                                 operatorNumeric + " e=" + e);
                         mnc = Integer.MAX_VALUE;
                     }
+
+                    // Use Integer#decode to be generous in what we receive and allow
+                    // decimal, hex or octal values.
                     try {
-                        tac = Integer.parseInt(states[6], 16);
+                        tac = Integer.decode(states[6]);
                     } catch (Exception e) {
                         loge("handlePollStateResultMessage: bad tac states[6]=" +
                                 states[6] + " e=" + e);
                         tac = Integer.MAX_VALUE;
                     }
                     try {
-                        pci = Integer.parseInt(states[7], 16);
+                        pci = Integer.decode(states[7]);
                     } catch (Exception e) {
                         loge("handlePollStateResultMessage: bad pci states[7]=" +
                                 states[7] + " e=" + e);
                         pci = Integer.MAX_VALUE;
                     }
                     try {
-                        eci = Integer.parseInt(states[8], 16);
+                        eci = Integer.decode(states[8]);
                     } catch (Exception e) {
                         loge("handlePollStateResultMessage: bad eci states[8]=" +
                                 states[8] + " e=" + e);
                         eci = Integer.MAX_VALUE;
                     }
                     try {
-                        csgid = Integer.parseInt(states[9], 16);
+                        csgid = Integer.decode(states[9]);
                     } catch (Exception e) {
                         // FIX: Always bad so don't pollute the logs
                         // loge("handlePollStateResultMessage: bad csgid states[9]=" +

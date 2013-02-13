@@ -404,14 +404,20 @@ public final class CallManager {
         // but only on audio mode transitions
         switch (state) {
             case RINGING:
-                if (lastAudioMode != AudioManager.MODE_RINGTONE) {
-                    updateRingingAudioFocus(context);
-                    if (!mSpeedUpAudioForMtCall) {
+                int curAudioMode = audioManager.getMode();
+                if (curAudioMode != AudioManager.MODE_RINGTONE) {
+                    // only request audio focus if the ringtone is going to be heard
+                    if (audioManager.getStreamVolume(AudioManager.STREAM_RING) > 0) {
+                        if (VDBG) Log.d(LOG_TAG, "requestAudioFocus on STREAM_RING");
+                        audioManager.requestAudioFocusForCall(AudioManager.STREAM_RING,
+                                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
+                    }
+                    if(!mSpeedUpAudioForMtCall) {
                         audioManager.setMode(AudioManager.MODE_RINGTONE);
                     }
                 }
 
-                if (mSpeedUpAudioForMtCall && lastAudioMode != AudioManager.MODE_IN_CALL) {
+                if (mSpeedUpAudioForMtCall && (curAudioMode != AudioManager.MODE_IN_CALL)) {
                     audioManager.setMode(AudioManager.MODE_IN_CALL);
                 }
                 break;
@@ -428,7 +434,7 @@ public final class CallManager {
                     // enable IN_COMMUNICATION audio mode instead for sipPhone
                     newAudioMode = AudioManager.MODE_IN_COMMUNICATION;
                 }
-                if (lastAudioMode != newAudioMode || mSpeedUpAudioForMtCall) {
+                if (audioManager.getMode() != newAudioMode || mSpeedUpAudioForMtCall) {
                     // request audio focus before setting the new mode
                     if (VDBG) Log.d(LOG_TAG, "requestAudioFocus on STREAM_VOICE_CALL");
                     audioManager.requestAudioFocusForCall(AudioManager.STREAM_VOICE_CALL,
@@ -628,7 +634,7 @@ public final class CallManager {
             int currMode = audioManager.getMode();
             if ((currMode != AudioManager.MODE_IN_CALL) && !(ringingPhone instanceof SipPhone)) {
                 Log.d(LOG_TAG, "setAudioMode Setting audio mode from " +
-                        currMode + " to " + AudioManager.MODE_IN_CALL);
+                                currMode + " to " + AudioManager.MODE_IN_CALL);
                 audioManager.setMode(AudioManager.MODE_IN_CALL);
                 mSpeedUpAudioForMtCall = true;
             }

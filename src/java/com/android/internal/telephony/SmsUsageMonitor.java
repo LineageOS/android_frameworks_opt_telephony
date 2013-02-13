@@ -73,7 +73,7 @@ public class SmsUsageMonitor {
     private static final String SHORT_CODE_PATH = "/data/misc/sms/codes";
 
     /** Default checking period for SMS sent without user permission. */
-    private static final int DEFAULT_SMS_CHECK_PERIOD = 1800000;    // 30 minutes
+    private static final int DEFAULT_SMS_CHECK_PERIOD = 60000;      // 1 minute
 
     /** Default number of SMS sent in checking period without user permission. */
     private static final int DEFAULT_SMS_MAX_COUNT = 30;
