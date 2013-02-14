@@ -51,6 +51,14 @@ public interface AppInterface {
     public static final String CHECK_SCREEN_IDLE_ACTION =
                                     "android.intent.action.stk.check_screen_idle";
 
+    // This is used to send refresh-result when MSG_ID_ICC_REFRESH is received.
+    public static final String REFRESH_RESULT = "refresh_result";
+    //This is used to send card status from card to STK App.
+    public static final String CARD_STATUS = "card_status";
+    //Intent's actions are broadcasted by Telephony once IccRefresh occurs.
+    public static final String CAT_ICC_STATUS_CHANGE =
+                                    "qualcomm.intent.action.stk.icc_status_change";
+
     /*
      * Callback function from app to telephony to pass a result code and user's
      * input back to the ICC.
