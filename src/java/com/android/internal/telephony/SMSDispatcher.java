@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -160,6 +160,9 @@ public abstract class SMSDispatcher extends Handler {
     // other
     protected static final int EVENT_NEW_ICC_SMS = 13;
     protected static final int EVENT_ICC_CHANGED = 14;
+
+    /** Class2 SMS  */
+    static final protected int EVENT_SMS_ON_ICC = 15;
 
     protected PhoneBase mPhone;
     protected final Context mContext;
