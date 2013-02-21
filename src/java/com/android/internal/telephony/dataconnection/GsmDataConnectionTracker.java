@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.gsm;
+package com.android.internal.telephony.dataconnection;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -51,16 +51,19 @@ import android.text.TextUtils;
 import android.util.EventLog;
 import android.telephony.Rlog;
 
-import com.android.internal.telephony.ApnContext;
-import com.android.internal.telephony.ApnSetting;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.dataconnection.ApnContext;
+import com.android.internal.telephony.dataconnection.ApnSetting;
 import com.android.internal.telephony.DataCallState;
-import com.android.internal.telephony.DataConnection;
-import com.android.internal.telephony.DataConnection.FailCause;
-import com.android.internal.telephony.DataConnection.UpdateLinkPropertyResult;
-import com.android.internal.telephony.DataConnectionAc;
-import com.android.internal.telephony.DataConnectionTracker;
+import com.android.internal.telephony.dataconnection.DataConnection;
+import com.android.internal.telephony.dataconnection.DataConnection.FailCause;
+import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
+import com.android.internal.telephony.dataconnection.DataConnectionAc;
+import com.android.internal.telephony.dataconnection.DataConnectionTracker;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
@@ -249,7 +252,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     }
 
     @Override
-    protected boolean isDataPossible(String apnType) {
+    public boolean isDataPossible(String apnType) {
         ApnContext apnContext = mApnContexts.get(apnType);
         if (apnContext == null) {
             return false;
@@ -346,7 +349,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     }
 
     @Override
-    protected LinkProperties getLinkProperties(String apnType) {
+    public LinkProperties getLinkProperties(String apnType) {
         ApnContext apnContext = mApnContexts.get(apnType);
         if (apnContext != null) {
             DataConnectionAc dcac = apnContext.getDataConnectionAc();
@@ -360,7 +363,7 @@ public final class GsmDataConnectionTracker extends DataConnectionTracker {
     }
 
     @Override
-    protected LinkCapabilities getLinkCapabilities(String apnType) {
+    public LinkCapabilities getLinkCapabilities(String apnType) {
         ApnContext apnContext = mApnContexts.get(apnType);
         if (apnContext!=null) {
             DataConnectionAc dataConnectionAc = apnContext.getDataConnectionAc();

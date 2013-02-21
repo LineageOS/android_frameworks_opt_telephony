@@ -39,6 +39,7 @@ import android.text.TextUtils;
 import android.telephony.Rlog;
 
 import com.android.internal.R;
+import com.android.internal.telephony.dataconnection.DataConnectionTracker;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccFileHandler;

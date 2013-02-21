@@ -24,7 +24,7 @@ import android.net.RouteInfo;
 import android.os.SystemProperties;
 import android.telephony.Rlog;
 
-import com.android.internal.telephony.DataConnection.FailCause;
+import com.android.internal.telephony.dataconnection.DataConnection.FailCause;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;

@@ -14,15 +14,13 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.gsm;
+package com.android.internal.telephony.dataconnection;
 
 import android.os.Message;
 import android.telephony.Rlog;
 import android.util.Patterns;
 import android.text.TextUtils;
 
-import com.android.internal.telephony.DataConnection;
-import com.android.internal.telephony.DataConnectionTracker;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;

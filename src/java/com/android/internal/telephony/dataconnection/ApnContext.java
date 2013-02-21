@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.dataconnection;
 
 import android.telephony.Rlog;
+
+import com.android.internal.telephony.DctConstants;
+import com.android.internal.telephony.Phone;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

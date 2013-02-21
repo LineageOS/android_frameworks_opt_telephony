@@ -18,7 +18,7 @@ package com.android.internal.telephony.cdma;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.DataConnectionTracker;
+import com.android.internal.telephony.dataconnection.DataConnectionTracker;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.MccTable;

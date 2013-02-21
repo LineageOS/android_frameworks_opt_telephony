@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.dataconnection;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -47,8 +47,12 @@ import android.util.EventLog;
 import android.telephony.Rlog;
 
 import com.android.internal.R;
-import com.android.internal.telephony.DataConnection.FailCause;
+import com.android.internal.telephony.dataconnection.DataConnection.FailCause;
 import com.android.internal.telephony.DctConstants;
+import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.AsyncChannel;
@@ -558,7 +562,7 @@ public abstract class DataConnectionTracker extends Handler {
     protected abstract void onVoiceCallEnded();
     protected abstract void onCleanUpConnection(boolean tearDown, int apnId, String reason);
     protected abstract void onCleanUpAllConnections(String cause);
-    protected abstract boolean isDataPossible(String apnType);
+    public abstract boolean isDataPossible(String apnType);
     protected abstract void onUpdateIcc();
 
     @Override
@@ -747,7 +751,7 @@ public abstract class DataConnectionTracker extends Handler {
         }
     }
 
-    protected LinkProperties getLinkProperties(String apnType) {
+    public LinkProperties getLinkProperties(String apnType) {
         int id = apnTypeToId(apnType);
 
         if (isApnIdEnabled(id)) {
@@ -759,7 +763,7 @@ public abstract class DataConnectionTracker extends Handler {
         }
     }
 
-    protected LinkCapabilities getLinkCapabilities(String apnType) {
+    public LinkCapabilities getLinkCapabilities(String apnType) {
         int id = apnTypeToId(apnType);
         if (isApnIdEnabled(id)) {
             // TODO - remove this cdma-only hack and support multiple DCs.

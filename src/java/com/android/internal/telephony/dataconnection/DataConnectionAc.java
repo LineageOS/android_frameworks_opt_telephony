@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.dataconnection;
 
-import com.android.internal.telephony.DataConnection.UpdateLinkPropertyResult;
+import com.android.internal.telephony.DataCallState;
+import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 

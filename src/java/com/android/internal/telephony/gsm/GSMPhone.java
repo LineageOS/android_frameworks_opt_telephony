@@ -51,6 +51,7 @@ import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOI
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_BASEBAND_VERSION;
 
 import com.android.internal.telephony.cat.CatService;
+import com.android.internal.telephony.dataconnection.GsmDataConnectionTracker;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CallStateException;
@@ -1378,7 +1379,7 @@ public class GSMPhone extends PhoneBase {
      *
      * @return true for success; false otherwise.
      */
-    boolean updateCurrentCarrierInProvider() {
+    public boolean updateCurrentCarrierInProvider() {
         IccRecords r = mIccRecords.get();
         if (r != null) {
             try {

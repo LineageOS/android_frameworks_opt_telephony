@@ -64,7 +64,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cat.CatService;
-import com.android.internal.telephony.gsm.GsmDataConnectionTracker;
+import com.android.internal.telephony.dataconnection.GsmDataConnectionTracker;
 import com.android.internal.telephony.uicc.IccException;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccRecords;

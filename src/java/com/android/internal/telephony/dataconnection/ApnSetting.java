@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.dataconnection;
+
+import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.RILConstants;
 
 /**
  * This class represents a apn setting for create PDP link

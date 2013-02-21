@@ -21,14 +21,12 @@ import android.net.LinkCapabilities;
 import android.net.LinkProperties;
 import android.os.Handler;
 import android.os.Message;
-import android.os.SystemProperties;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 
-import com.android.internal.telephony.DataConnection;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UsimServiceTable;

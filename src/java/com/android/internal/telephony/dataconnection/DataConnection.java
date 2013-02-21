@@ -14,9 +14,16 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony;
+package com.android.internal.telephony.dataconnection;
 
 
+import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.DataCallState;
+import com.android.internal.telephony.DctConstants;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.RetryManager;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
@@ -163,7 +170,7 @@ public abstract class DataConnection extends StateMachine {
             mErrorCode = errorCode;
         }
 
-        int getErrorCode() {
+        public int getErrorCode() {
             return mErrorCode;
         }
 
