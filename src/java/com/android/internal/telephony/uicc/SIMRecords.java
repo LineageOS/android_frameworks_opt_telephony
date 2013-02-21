@@ -154,7 +154,6 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_GET_ALL_SMS_DONE = 18;
     private static final int EVENT_MARK_SMS_READ_DONE = 19;
     private static final int EVENT_SET_MBDN_DONE = 20;
-    private static final int EVENT_SMS_ON_SIM = 21;
     private static final int EVENT_GET_SMS_DONE = 22;
     private static final int EVENT_GET_CFF_DONE = 24;
     private static final int EVENT_SET_CPHS_MAILBOX_DONE = 25;
@@ -201,7 +200,6 @@ public class SIMRecords extends IccRecords {
         // recordsToLoad is set to 0 because no requests are made yet
         mRecordsToLoad = 0;
 
-        mCi.setOnSmsOnSim(this, EVENT_SMS_ON_SIM, null);
         // Start off by setting empty state
         resetRecords();
         mParentApp.registerForReady(this, EVENT_APP_READY, null);
@@ -212,7 +210,6 @@ public class SIMRecords extends IccRecords {
     public void dispose() {
         if (DBG) log("Disposing SIMRecords this=" + this);
         //Unregister for all events
-        mCi.unSetOnSmsOnSim(this);
         mParentApp.unregisterForReady(this);
         resetRecords();
         super.dispose();
@@ -1000,24 +997,6 @@ public class SIMRecords extends IccRecords {
                 Rlog.i("ENF", "marked read: sms " + msg.arg1);
                 break;
 
-
-            case EVENT_SMS_ON_SIM:
-                isRecordLoadResponse = false;
-
-                ar = (AsyncResult)msg.obj;
-
-                int[] index = (int[])ar.result;
-
-                if (ar.exception != null || index.length != 1) {
-                    loge("Error on SMS_ON_SIM with exp "
-                            + ar.exception + " length " + index.length);
-                } else {
-                    log("READ EF_SMS RECORD index=" + index[0]);
-                    mFh.loadEFLinearFixed(EF_SMS,index[0],
-                            obtainMessage(EVENT_GET_SMS_DONE));
-                }
-                break;
-
             case EVENT_GET_SMS_DONE:
                 isRecordLoadResponse = false;
                 ar = (AsyncResult)msg.obj;
@@ -1239,6 +1218,26 @@ public class SIMRecords extends IccRecords {
     private int dispatchGsmMessage(SmsMessage message) {
         mNewSmsRegistrants.notifyResult(message);
         return 0;
+    }
+
+    /*
+     * Called when a Class2 SMS is  received.
+     *
+     * @param ar AsyncResult passed to this function. "ar.result" should
+     *           be representing the INDEX of SMS on SIM.
+     */
+    public void handleSmsOnIcc(AsyncResult ar) {
+
+        int[] index = (int[])ar.result;
+
+        if (ar.exception != null || index.length != 1) {
+            loge(" Error on SMS_ON_SIM with exp "
+                   + ar.exception + " length " + index.length);
+        } else {
+            log("READ EF_SMS RECORD index= " + index[0]);
+            mFh.loadEFLinearFixed(EF_SMS,index[0],
+                            obtainMessage(EVENT_GET_SMS_DONE));
+        }
     }
 
     private void handleSms(byte[] ba) {
