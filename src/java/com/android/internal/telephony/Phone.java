@@ -60,11 +60,11 @@ public interface Phone {
          * </ul>
          */
         NONE, DATAIN, DATAOUT, DATAINANDOUT, DORMANT;
-    };
+    }
 
     enum SuppService {
       UNKNOWN, SWITCH, SEPARATE, TRANSFER, CONFERENCE, REJECT, HANGUP;
-    };
+    }
 
     // "Features" accessible through the connectivity manager
     static final String FEATURE_ENABLE_MMS = "enableMMS";
@@ -298,7 +298,7 @@ public interface Phone {
     /**
      * Register for getting notifications for change in the Call State {@link Call.State}
      * This is called PreciseCallState because the call state is more precise than the
-     * {@link Phone.State} which can be obtained using the {@link PhoneStateListener}
+     * {@link PhoneConstants.State} which can be obtained using the {@link PhoneStateListener}
      *
      * Resulting events will have an AsyncResult in <code>Message.obj</code>.
      * AsyncResult.userData will be set to the obj argument here.
@@ -541,7 +541,7 @@ public interface Phone {
     void registerForInCallVoicePrivacyOff(Handler h, int what, Object obj);
 
     /**
-     * Unegister for notifications when a sInCall VoicePrivacy is disabled
+     * Unregister for notifications when a sInCall VoicePrivacy is disabled
      *
      * @param h Handler to be removed from the registrant list.
      */
@@ -557,7 +557,7 @@ public interface Phone {
     void registerForCdmaOtaStatusChange(Handler h, int what, Object obj);
 
     /**
-     * Unegister for notifications when CDMA OTA Provision status change
+     * Unregister for notifications when CDMA OTA Provision status change
      * @param h Handler to be removed from the registrant list.
      */
     void unregisterForCdmaOtaStatusChange(Handler h);
@@ -1253,7 +1253,7 @@ public interface Phone {
 
     /**
      * If this is a simulated phone interface, returns a SimulatedRadioControl.
-     * @ return A SimulatedRadioControl if this is a simulated interface;
+     * @return SimulatedRadioControl if this is a simulated interface;
      * otherwise, null.
      */
     SimulatedRadioControl getSimulatedRadioControl();
@@ -1261,7 +1261,7 @@ public interface Phone {
     /**
      * Enables the specified APN type. Only works for "special" APN types,
      * i.e., not the default APN.
-     * @param type The desired APN type. Cannot be {@link #APN_TYPE_DEFAULT}.
+     * @param type The desired APN type. Cannot be {@link PhoneConstants#APN_TYPE_DEFAULT}.
      * @return <code>APN_ALREADY_ACTIVE</code> if the current APN
      * services the requested type.<br/>
      * <code>APN_TYPE_NOT_AVAILABLE</code> if the carrier does not
@@ -1276,10 +1276,10 @@ public interface Phone {
     /**
      * Disables the specified APN type, and switches back to the default APN,
      * if necessary. Switching to the default APN will not happen if default
-     * data traffic has been explicitly disabled via a call to {@link #disableDataConnectivity}.
+     * data traffic has been explicitly disabled via a call to ITelephony#disableDataConnectivity.
      * <p/>Only works for "special" APN types,
      * i.e., not the default APN.
-     * @param type The desired APN type. Cannot be {@link #APN_TYPE_DEFAULT}.
+     * @param type The desired APN type. Cannot be {@link PhoneConstants#APN_TYPE_DEFAULT}.
      * @return <code>APN_ALREADY_ACTIVE</code> if the default APN
      * is already active.<br/>
      * <code>APN_REQUEST_STARTED</code> if the request to switch to the default
@@ -1643,7 +1643,8 @@ public interface Phone {
      * is a tri-state return value as for a period of time
      * the mode may be unknown.
      *
-     * @return {@link #LTE_ON_CDMA_UNKNOWN}, {@link #LTE_ON_CDMA_FALSE} or {@link #LTE_ON_CDMA_TRUE}
+     * @return {@link PhoneConstants#LTE_ON_CDMA_UNKNOWN}, {@link PhoneConstants#LTE_ON_CDMA_FALSE}
+     * or {@link PhoneConstants#LTE_ON_CDMA_TRUE}
      */
     public int getLteOnCdmaMode();
 

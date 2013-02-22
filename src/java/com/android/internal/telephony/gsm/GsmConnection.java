@@ -37,7 +37,8 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
  * {@hide}
  */
 public class GsmConnection extends Connection {
-    static final String LOG_TAG = "GSM";
+    private static final String LOG_TAG = "GsmConnection";
+    private static final boolean DBG = true;
 
     //***** Instance Variables
 
@@ -98,6 +99,7 @@ public class GsmConnection extends Connection {
     class MyHandler extends Handler {
         MyHandler(Looper l) {super(l);}
 
+        @Override
         public void
         handleMessage(Message msg) {
 
@@ -190,26 +192,32 @@ public class GsmConnection extends Connection {
         return isIncoming == c.isMT && equalsHandlesNulls(address, cAddress);
     }
 
+    @Override
     public String getAddress() {
         return address;
     }
 
+    @Override
     public GsmCall getCall() {
         return parent;
     }
 
+    @Override
     public long getCreateTime() {
         return createTime;
     }
 
+    @Override
     public long getConnectTime() {
         return connectTime;
     }
 
+    @Override
     public long getDisconnectTime() {
         return disconnectTime;
     }
 
+    @Override
     public long getDurationMillis() {
         if (connectTimeReal == 0) {
             return 0;
@@ -220,6 +228,7 @@ public class GsmConnection extends Connection {
         }
     }
 
+    @Override
     public long getHoldDurationMillis() {
         if (getState() != GsmCall.State.HOLDING) {
             // If not holding, return 0
@@ -229,14 +238,17 @@ public class GsmConnection extends Connection {
         }
     }
 
+    @Override
     public DisconnectCause getDisconnectCause() {
         return cause;
     }
 
+    @Override
     public boolean isIncoming() {
         return isIncoming;
     }
 
+    @Override
     public GsmCall.State getState() {
         if (disconnected) {
             return GsmCall.State.DISCONNECTED;
@@ -245,6 +257,7 @@ public class GsmConnection extends Connection {
         }
     }
 
+    @Override
     public void hangup() throws CallStateException {
         if (!disconnected) {
             owner.hangup(this);
@@ -253,6 +266,7 @@ public class GsmConnection extends Connection {
         }
     }
 
+    @Override
     public void separate() throws CallStateException {
         if (!disconnected) {
             owner.separate(this);
@@ -261,10 +275,12 @@ public class GsmConnection extends Connection {
         }
     }
 
+    @Override
     public PostDialState getPostDialState() {
         return postDialState;
     }
 
+    @Override
     public void proceedAfterWaitChar() {
         if (postDialState != PostDialState.WAIT) {
             Rlog.w(LOG_TAG, "GsmConnection.proceedAfterWaitChar(): Expected "
@@ -277,6 +293,7 @@ public class GsmConnection extends Connection {
         processNextPostDialChar();
     }
 
+    @Override
     public void proceedAfterWildChar(String str) {
         if (postDialState != PostDialState.WILD) {
             Rlog.w(LOG_TAG, "GsmConnection.proceedAfterWaitChar(): Expected "
@@ -286,44 +303,22 @@ public class GsmConnection extends Connection {
 
         setPostDialState(PostDialState.STARTED);
 
-        if (false) {
-            boolean playedTone = false;
-            int len = (str != null ? str.length() : 0);
+        // make a new postDialString, with the wild char replacement string
+        // at the beginning, followed by the remaining postDialString.
 
-            for (int i=0; i<len; i++) {
-                char c = str.charAt(i);
-                Message msg = null;
-
-                if (i == len-1) {
-                    msg = h.obtainMessage(EVENT_DTMF_DONE);
-                }
-
-                if (PhoneNumberUtils.is12Key(c)) {
-                    owner.cm.sendDtmf(c, msg);
-                    playedTone = true;
-                }
-            }
-
-            if (!playedTone) {
-                processNextPostDialChar();
-            }
-        } else {
-            // make a new postDialString, with the wild char replacement string
-            // at the beginning, followed by the remaining postDialString.
-
-            StringBuilder buf = new StringBuilder(str);
-            buf.append(postDialString.substring(nextPostDialChar));
-            postDialString = buf.toString();
-            nextPostDialChar = 0;
-            if (Phone.DEBUG_PHONE) {
-                log("proceedAfterWildChar: new postDialString is " +
-                        postDialString);
-            }
-
-            processNextPostDialChar();
+        StringBuilder buf = new StringBuilder(str);
+        buf.append(postDialString.substring(nextPostDialChar));
+        postDialString = buf.toString();
+        nextPostDialChar = 0;
+        if (Phone.DEBUG_PHONE) {
+            log("proceedAfterWildChar: new postDialString is " +
+                    postDialString);
         }
+
+        processNextPostDialChar();
     }
 
+    @Override
     public void cancelPostDial() {
         setPostDialState(PostDialState.CANCELLED);
     }
@@ -423,8 +418,7 @@ public class GsmConnection extends Connection {
             duration = SystemClock.elapsedRealtime() - connectTimeReal;
             disconnected = true;
 
-            if (false) Rlog.d(LOG_TAG,
-                    "[GSMConn] onDisconnect: cause=" + cause);
+            if (DBG) Rlog.d(LOG_TAG, "onDisconnect: cause=" + cause);
 
             owner.phone.notifyDisconnect(this);
 
@@ -595,6 +589,7 @@ public class GsmConnection extends Connection {
         return true;
     }
 
+    @Override
     public String
     getRemainingPostDialString() {
         if (postDialState == PostDialState.CANCELLED

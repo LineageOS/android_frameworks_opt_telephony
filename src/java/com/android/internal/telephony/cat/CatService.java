@@ -62,6 +62,7 @@ class RilMessage {
  * {@hide}
  */
 public class CatService extends Handler implements AppInterface {
+    private static final boolean DBG = false;
 
     // Class members
     private static IccRecords mIccRecords;
@@ -94,12 +95,8 @@ public class CatService extends Handler implements AppInterface {
     private static final int MSG_ID_ICC_RECORDS_LOADED       = 20;
 
     private static final int DEV_ID_KEYPAD      = 0x01;
-    private static final int DEV_ID_DISPLAY     = 0x02;
-    private static final int DEV_ID_EARPIECE    = 0x03;
     private static final int DEV_ID_UICC        = 0x81;
     private static final int DEV_ID_TERMINAL    = 0x82;
-    private static final int DEV_ID_NETWORK     = 0x83;
-
     static final String STK_DEFAULT = "Defualt Message";
 
     /* Intentionally private for singleton */
@@ -146,6 +143,7 @@ public class CatService extends Handler implements AppInterface {
         this.removeCallbacksAndMessages(null);
     }
 
+    @Override
     protected void finalize() {
         CatLog.d(this, "Service finalized");
     }
@@ -405,7 +403,7 @@ public class CatService extends Handler implements AppInterface {
 
         byte[] rawData = buf.toByteArray();
         String hexString = IccUtils.bytesToHexString(rawData);
-        if (false) {
+        if (DBG) {
             CatLog.d(this, "TERMINAL RESPONSE: " + hexString);
         }
 
@@ -506,56 +504,11 @@ public class CatService extends Handler implements AppInterface {
         mCmdIf.sendEnvelope(hexString, null);
     }
 
-    private void eventDownload(int event, int sourceId, int destinationId,
-            byte[] additionalInfo, boolean oneShot) {
-
-        ByteArrayOutputStream buf = new ByteArrayOutputStream();
-
-        // tag
-        int tag = BerTlv.BER_EVENT_DOWNLOAD_TAG;
-        buf.write(tag);
-
-        // length
-        buf.write(0x00); // place holder, assume length < 128.
-
-        // event list
-        tag = 0x80 | ComprehensionTlvTag.EVENT_LIST.value();
-        buf.write(tag);
-        buf.write(0x01); // length
-        buf.write(event); // event value
-
-        // device identities
-        tag = 0x80 | ComprehensionTlvTag.DEVICE_IDENTITIES.value();
-        buf.write(tag);
-        buf.write(0x02); // length
-        buf.write(sourceId); // source device id
-        buf.write(destinationId); // destination device id
-
-        // additional information
-        if (additionalInfo != null) {
-            for (byte b : additionalInfo) {
-                buf.write(b);
-            }
-        }
-
-        byte[] rawData = buf.toByteArray();
-
-        // write real length
-        int len = rawData.length - 2; // minus (tag + length)
-        rawData[1] = (byte) len;
-
-        String hexString = IccUtils.bytesToHexString(rawData);
-
-        mCmdIf.sendEnvelope(hexString, null);
-    }
-
     /**
      * Used for instantiating/updating the Service from the GsmPhone or CdmaPhone constructor.
      *
      * @param ci CommandsInterface object
-     * @param ir IccRecords object
      * @param context phone app context
-     * @param fh Icc file handler
      * @param ic Icc card
      * @return The only Service object in the system
      */
@@ -659,6 +612,7 @@ public class CatService extends Handler implements AppInterface {
         }
     }
 
+    @Override
     public synchronized void onCmdResponse(CatResponseMessage resMsg) {
         if (resMsg == null) {
             return;
@@ -753,6 +707,8 @@ public class CatService extends Handler implements AppInterface {
                 // invoked by the CommandInterface call above.
                 mCurrntCmd = null;
                 return;
+            default:
+                break;
             }
             break;
         case NO_RESPONSE_FROM_USER:

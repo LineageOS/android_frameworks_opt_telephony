@@ -18,10 +18,8 @@ package com.android.internal.telephony.gsm;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.dataconnection.DataConnectionTracker;
+import com.android.internal.telephony.dataconnection.DataConnectionTrackerBase;
 import com.android.internal.telephony.EventLogTags;
-import com.android.internal.telephony.IccCard;
-import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RestrictedState;
@@ -29,10 +27,8 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
-import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
-import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -52,14 +48,11 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
-import android.os.Registrant;
-import android.os.RegistrantList;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
-import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -74,17 +67,15 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.TimeZone;
 
 /**
  * {@hide}
  */
 final class GsmServiceStateTracker extends ServiceStateTracker {
-    static final String LOG_TAG = "GSM";
-    static final boolean DBG = true;
+    private static final String LOG_TAG = "GsmSST";
+    private static final boolean VDBG = false;
 
     GSMPhone phone;
     GsmCellLocation cellLoc;
@@ -152,10 +143,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     private String curPlmn = null;
     private boolean curShowPlmn = false;
     private boolean curShowSpn = false;
-
-
-    /** waiting period before recheck gprs and voice registration. */
-    static final int DEFAULT_GPRS_CHECK_PERIOD_MILLIS = 60 * 1000;
 
     /** Notification type. */
     static final int PS_ENABLED = 1001;            // Access Control blocks data service
@@ -255,6 +242,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         super.dispose();
     }
 
+    @Override
     protected void finalize() {
         if(DBG) log("finalize");
     }
@@ -264,6 +252,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         return phone;
     }
 
+    @Override
     public void handleMessage (Message msg) {
         AsyncResult ar;
         int[] ints;
@@ -461,6 +450,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
     }
 
+    @Override
     protected void setPowerStateToDesired() {
         // If we want it on and it's off, turn it on
         if (mDesiredPowerState
@@ -468,7 +458,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             cm.setRadioPower(true, null);
         } else if (!mDesiredPowerState && cm.getRadioState().isOn()) {
             // If it's on and available and we want it off gracefully
-            DataConnectionTracker dcTracker = phone.mDataConnectionTracker;
+            DataConnectionTrackerBase dcTracker = phone.mDataConnectionTracker;
             powerOffRadioSafely(dcTracker);
         } // Otherwise, we're in the desired state
     }
@@ -1074,8 +1064,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     /**
      * Check if GPRS got registered while voice is registered.
      *
-     * @param dataRegState, i.e. CGREG in GSM
-     * @param voiceRegState, i.e. CREG in GSM
+     * @param dataRegState i.e. CGREG in GSM
+     * @param voiceRegState i.e. CREG in GSM
      * @return false if device only register to voice but not gprs
      */
     private boolean isGprsConsistent(int dataRegState, int voiceRegState) {
@@ -1295,20 +1285,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         return gsmRoaming && !(equalsMcc && (equalsOnsl || equalsOnss));
     }
 
-    private static int twoDigitsAt(String s, int offset) {
-        int a, b;
-
-        a = Character.digit(s.charAt(offset), 10);
-        b = Character.digit(s.charAt(offset+1), 10);
-
-        if (a < 0 || b < 0) {
-
-            throw new RuntimeException("invalid format");
-        }
-
-        return a*10 + b;
-    }
-
     /**
      * @return The current GPRS state. IN_SERVICE is the same as "attached"
      * and OUT_OF_SERVICE is the same as detached.
@@ -1322,41 +1298,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
      * @return true if phone is camping on a technology (eg UMTS)
      * that could support voice and data simultaneously.
      */
+    @Override
     public boolean isConcurrentVoiceAndDataAllowed() {
         return (ss.getRilVoiceRadioTechnology() >= ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
-    }
-
-    /**
-     * Provides the name of the algorithmic time zone for the specified
-     * offset.  Taken from TimeZone.java.
-     */
-    private static String displayNameFor(int off) {
-        off = off / 1000 / 60;
-
-        char[] buf = new char[9];
-        buf[0] = 'G';
-        buf[1] = 'M';
-        buf[2] = 'T';
-
-        if (off < 0) {
-            buf[3] = '-';
-            off = -off;
-        } else {
-            buf[3] = '+';
-        }
-
-        int hours = off / 60;
-        int minutes = off % 60;
-
-        buf[4] = (char) ('0' + hours / 10);
-        buf[5] = (char) ('0' + hours % 10);
-
-        buf[6] = ':';
-
-        buf[7] = (char) ('0' + minutes / 10);
-        buf[8] = (char) ('0' + minutes % 10);
-
-        return new String(buf);
     }
 
     /**
@@ -1513,7 +1457,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 }
                 SystemProperties.set("gsm.nitz.time", String.valueOf(c.getTimeInMillis()));
                 saveNitzTime(c.getTimeInMillis());
-                if (false) {
+                if (VDBG) {
                     long end = SystemClock.elapsedRealtime();
                     log("NITZ: end=" + end + " dur=" + (end - start));
                 }
@@ -1640,19 +1584,19 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         switch (notifyType) {
         case PS_ENABLED:
             notificationId = PS_NOTIFICATION;
-            details = context.getText(com.android.internal.R.string.RestrictedOnData);;
+            details = context.getText(com.android.internal.R.string.RestrictedOnData);
             break;
         case PS_DISABLED:
             notificationId = PS_NOTIFICATION;
             break;
         case CS_ENABLED:
-            details = context.getText(com.android.internal.R.string.RestrictedOnAllVoice);;
+            details = context.getText(com.android.internal.R.string.RestrictedOnAllVoice);
             break;
         case CS_NORMAL_ENABLED:
-            details = context.getText(com.android.internal.R.string.RestrictedOnNormal);;
+            details = context.getText(com.android.internal.R.string.RestrictedOnNormal);
             break;
         case CS_EMERGENCY_ENABLED:
-            details = context.getText(com.android.internal.R.string.RestrictedOnEmergency);;
+            details = context.getText(com.android.internal.R.string.RestrictedOnEmergency);
             break;
         case CS_DISABLED:
             // do nothing and cancel the notification later
@@ -1713,10 +1657,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
     @Override
     protected void loge(String s) {
-        Rlog.e(LOG_TAG, "[GsmSST] " + s);
-    }
-
-    private static void sloge(String s) {
         Rlog.e(LOG_TAG, "[GsmSST] " + s);
     }
 

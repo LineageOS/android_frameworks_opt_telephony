@@ -22,7 +22,6 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.DriverCall;
 import com.android.internal.telephony.Phone;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -31,7 +30,6 @@ import java.util.List;
 class GsmCall extends Call {
     /*************************** Instance Variables **************************/
 
-    /*package*/ ArrayList<Connection> connections = new ArrayList<Connection>();
     /*package*/ GsmCallTracker owner;
 
 
@@ -62,17 +60,20 @@ class GsmCall extends Call {
 
     /************************** Overridden from Call *************************/
 
+    @Override
     public List<Connection>
     getConnections() {
         // FIXME should return Collections.unmodifiableList();
         return connections;
     }
 
+    @Override
     public Phone
     getPhone() {
         return owner.phone;
     }
 
+    @Override
     public boolean
     isMultiparty() {
         return connections.size() > 1;
@@ -82,11 +83,13 @@ class GsmCall extends Call {
      *  background call exists, the background call will be resumed
      *  because an AT+CHLD=1 will be sent
      */
+    @Override
     public void
     hangup() throws CallStateException {
         owner.hangup(this);
     }
 
+    @Override
     public String
     toString() {
         return state.toString();

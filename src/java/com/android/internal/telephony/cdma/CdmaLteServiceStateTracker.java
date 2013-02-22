@@ -19,7 +19,6 @@ package com.android.internal.telephony.cdma;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.EventLogTags;
-import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
@@ -79,7 +78,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 mMdn = ruim.getMdn();
                 mMin = ruim.getMin();
                 parseSidNid(ruim.getSid(), ruim.getNid());
-                mPrlVersion = ruim.getPrlVersion();;
+                mPrlVersion = ruim.getPrlVersion();
                 mIsMinInfoReady = true;
                 updateOtaspState();
             }

@@ -16,9 +16,6 @@
 
 package com.android.internal.telephony.uicc;
 
-
-import java.util.ArrayList;
-
 /**
  * See also RIL_CardStatus in include/telephony/ril.h
  *

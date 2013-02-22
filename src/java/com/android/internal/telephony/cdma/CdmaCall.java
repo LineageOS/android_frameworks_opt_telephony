@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.cdma;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import com.android.internal.telephony.Call;
@@ -24,7 +23,6 @@ import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.DriverCall;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.Call.State;
 
 /**
  * {@hide}
@@ -32,8 +30,6 @@ import com.android.internal.telephony.Call.State;
 public final class CdmaCall extends Call {
     /*************************** Instance Variables **************************/
 
-    /*package*/ ArrayList<Connection> connections = new ArrayList<Connection>();
-    /*package*/ State state = State.IDLE;
     /*package*/ CdmaCallTracker owner;
 
     /***************************** Class Methods *****************************/
@@ -62,22 +58,20 @@ public final class CdmaCall extends Call {
     }
 
     /************************** Overridden from Call *************************/
+    @Override
     public List<Connection>
     getConnections() {
         // FIXME should return Collections.unmodifiableList();
         return connections;
     }
 
-    public State
-    getState() {
-        return state;
-    }
-
+    @Override
     public Phone
     getPhone() {
         return owner.phone;
     }
 
+    @Override
     public boolean isMultiparty() {
         return connections.size() > 1;
     }
@@ -86,11 +80,13 @@ public final class CdmaCall extends Call {
      *  background call exists, the background call will be resumed
      *  because an AT+CHLD=1 will be sent
      */
+    @Override
     public void
     hangup() throws CallStateException {
         owner.hangup(this);
     }
 
+    @Override
     public String
     toString() {
         return state.toString();

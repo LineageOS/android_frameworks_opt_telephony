@@ -25,7 +25,7 @@ import com.android.internal.telephony.CommandsInterface;
  * This class should be used to access files in ISIM ADF
  */
 public final class IsimFileHandler extends IccFileHandler implements IccConstants {
-    static final String LOG_TAG = "RIL_IsimFH";
+    static final String LOG_TAG = "IsimFH";
 
     public IsimFileHandler(UiccCardApplication app, String aid, CommandsInterface ci) {
         super(app, aid, ci);

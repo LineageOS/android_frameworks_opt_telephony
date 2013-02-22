@@ -45,7 +45,7 @@ import java.util.List;
  * {@hide}
  */
 public final class CdmaCallTracker extends CallTracker {
-    static final String LOG_TAG = "CDMA";
+    static final String LOG_TAG = "CdmaCallTracker";
 
     private static final boolean REPEAT_POLLING = false;
 
@@ -134,6 +134,7 @@ public final class CdmaCallTracker extends CallTracker {
     //***** Instance Methods
 
     //***** Public Methods
+    @Override
     public void registerForVoiceCallStarted(Handler h, int what, Object obj) {
         Registrant r = new Registrant(h, what, obj);
         voiceCallStartedRegistrants.add(r);
@@ -142,15 +143,18 @@ public final class CdmaCallTracker extends CallTracker {
             r.notifyRegistrant(new AsyncResult(null, null, null));
         }
     }
+    @Override
     public void unregisterForVoiceCallStarted(Handler h) {
         voiceCallStartedRegistrants.remove(h);
     }
 
+    @Override
     public void registerForVoiceCallEnded(Handler h, int what, Object obj) {
         Registrant r = new Registrant(h, what, obj);
         voiceCallEndedRegistrants.add(r);
     }
 
+    @Override
     public void unregisterForVoiceCallEnded(Handler h) {
         voiceCallEndedRegistrants.remove(h);
     }
@@ -162,21 +166,6 @@ public final class CdmaCallTracker extends CallTracker {
 
     public void unregisterForCallWaiting(Handler h) {
         callWaitingRegistrants.remove(h);
-    }
-
-    private void
-    fakeHoldForegroundBeforeDial() {
-        List<Connection> connCopy;
-
-        // We need to make a copy here, since fakeHoldBeforeDial()
-        // modifies the lists, and we don't want to reverse the order
-        connCopy = (List<Connection>) foregroundCall.connections.clone();
-
-        for (int i = 0, s = connCopy.size() ; i < s ; i++) {
-            CdmaConnection conn = (CdmaConnection)connCopy.get(i);
-
-            conn.fakeHoldBeforeDial();
-        }
     }
 
     /**
@@ -198,7 +187,7 @@ public final class CdmaCallTracker extends CallTracker {
 
         // Cancel Ecm timer if a second emergency call is originating in Ecm mode
         if (isPhoneInEcmMode && isEmergencyCall) {
-            handleEcmTimer(phone.CANCEL_ECM_TIMER);
+            handleEcmTimer(CDMAPhone.CANCEL_ECM_TIMER);
         }
 
         // We are initiating a call therefore even if we previously
@@ -322,13 +311,13 @@ public final class CdmaCallTracker extends CallTracker {
     }
 
     void
-    conference() throws CallStateException {
+    conference() {
         // Should we be checking state?
         flashAndSetGenericTrue();
     }
 
     void
-    explicitCallTransfer() throws CallStateException {
+    explicitCallTransfer() {
         cm.explicitCallTransfer(obtainCompleteMessage(EVENT_ECT_RESULT));
     }
 
@@ -473,6 +462,7 @@ public final class CdmaCallTracker extends CallTracker {
 
     // ***** Overwritten from CallTracker
 
+    @Override
     protected void
     handlePollCalls(AsyncResult ar) {
         List polledCalls;
@@ -532,7 +522,7 @@ public final class CdmaCallTracker extends CallTracker {
                         hangupPendingMO = false;
                         // Re-start Ecm timer when an uncompleted emergency call ends
                         if (mIsEcmTimerCanceled) {
-                            handleEcmTimer(phone.RESTART_ECM_TIMER);
+                            handleEcmTimer(CDMAPhone.RESTART_ECM_TIMER);
                         }
 
                         try {
@@ -583,7 +573,7 @@ public final class CdmaCallTracker extends CallTracker {
 
                 // Re-start Ecm timer when the connected emergency call ends
                 if (mIsEcmTimerCanceled) {
-                    handleEcmTimer(phone.RESTART_ECM_TIMER);
+                    handleEcmTimer(CDMAPhone.RESTART_ECM_TIMER);
                 }
                 // If emergency call is not going through while dialing
                 checkAndEnableDataCallAfterEmergencyCallDropped();
@@ -859,7 +849,7 @@ public final class CdmaCallTracker extends CallTracker {
         throw new CallStateException("no gsm index found");
     }
 
-    void hangupAllConnections(CdmaCall call) throws CallStateException{
+    void hangupAllConnections(CdmaCall call) {
         try {
             int count = call.connections.size();
             for (int i = 0; i < count; i++) {
@@ -885,7 +875,7 @@ public final class CdmaCallTracker extends CallTracker {
         return null;
     }
 
-    private void flashAndSetGenericTrue() throws CallStateException {
+    private void flashAndSetGenericTrue() {
         cm.sendCDMAFeatureCode("", obtainMessage(EVENT_SWITCH_RESULT));
 
         // Set generic to true because in CDMA it is not known what
@@ -893,20 +883,6 @@ public final class CdmaCallTracker extends CallTracker {
         // 3 way call merged or a switch between calls.
         foregroundCall.setGeneric(true);
         phone.notifyPreciseCallStateChanged();
-    }
-
-    private Phone.SuppService getFailedService(int what) {
-        switch (what) {
-            case EVENT_SWITCH_RESULT:
-                return Phone.SuppService.SWITCH;
-            case EVENT_CONFERENCE_RESULT:
-                return Phone.SuppService.CONFERENCE;
-            case EVENT_SEPARATE_RESULT:
-                return Phone.SuppService.SEPARATE;
-            case EVENT_ECT_RESULT:
-                return Phone.SuppService.TRANSFER;
-        }
-        return Phone.SuppService.UNKNOWN;
     }
 
     private void handleRadioNotAvailable() {
@@ -943,6 +919,7 @@ public final class CdmaCallTracker extends CallTracker {
     }
     //****** Overridden from Handler
 
+    @Override
     public void
     handleMessage (Message msg) {
         AsyncResult ar;
@@ -1132,6 +1109,7 @@ public final class CdmaCallTracker extends CallTracker {
         return mIsInEmergencyCall;
     }
 
+    @Override
     protected void log(String msg) {
         Rlog.d(LOG_TAG, "[CdmaCallTracker] " + msg);
     }

@@ -79,6 +79,7 @@ public class GsmSmsAddress extends SmsAddress {
         }
     }
 
+    @Override
     public String getAddressString() {
         return address;
     }
@@ -86,10 +87,12 @@ public class GsmSmsAddress extends SmsAddress {
     /**
      * Returns true if this is an alphanumeric address
      */
+    @Override
     public boolean isAlphanumeric() {
         return ton == TON_ALPHANUMERIC;
     }
 
+    @Override
     public boolean isNetworkSpecific() {
         return ton == TON_NETWORK;
     }

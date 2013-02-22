@@ -24,8 +24,6 @@ import android.telephony.Rlog;
 
 import com.android.internal.telephony.GsmAlphabet;
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 
 /**
  * Various methods, useful for dealing with SIM data.
@@ -118,7 +116,7 @@ public class IccUtils {
     }
 
     /**
-     * Decodes a CDMA style BCD byte like {@link gsmBcdByteToInt}, but
+     * Decodes a CDMA style BCD byte like {@link #gsmBcdByteToInt}, but
      * opposite nibble format. The least significant BCD digit
      * is in the least significant nibble and the most significant
      * is in the most significant nibble.
@@ -406,7 +404,7 @@ public class IccUtils {
                 bitIndex = 7;
             }
             pixels[pixelIndex++] = bitToRGB((currentByte >> bitIndex-- ) & 0x01);
-        };
+        }
 
         if (pixelIndex != numOfPixels) {
             Rlog.e(LOG_TAG, "parse end and size error");

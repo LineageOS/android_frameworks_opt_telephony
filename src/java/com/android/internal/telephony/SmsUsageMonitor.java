@@ -24,7 +24,6 @@ import android.content.res.XmlResourceParser;
 import android.database.ContentObserver;
 import android.os.Binder;
 import android.os.Handler;
-import android.os.Message;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.UserHandle;
@@ -39,7 +38,6 @@ import com.android.internal.util.XmlUtils;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
-import org.xmlpull.v1.XmlPullParserFactory;
 import org.xmlpull.v1.XmlSerializer;
 
 import java.io.File;
@@ -48,7 +46,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.HashMap;
@@ -127,9 +124,6 @@ public class SmsUsageMonitor {
 
     /** Notice when the enabled setting changes - can be changed through gservices */
     private final AtomicBoolean mCheckEnabled = new AtomicBoolean(true);
-
-    /** Cached short code regex patterns from secure settings for {@link #mCurrentCountry}. */
-    private String mSettingsShortCodePatterns;
 
     /** Handler for responding to content observer updates. */
     private final SettingsObserverHandler mSettingsObserverHandler;

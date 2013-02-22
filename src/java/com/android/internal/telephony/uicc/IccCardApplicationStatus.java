@@ -32,7 +32,7 @@ public class IccCardApplicationStatus {
         APPTYPE_RUIM,
         APPTYPE_CSIM,
         APPTYPE_ISIM
-    };
+    }
 
     public enum AppState{
         APPSTATE_UNKNOWN,
@@ -62,7 +62,7 @@ public class IccCardApplicationStatus {
             return this == APPSTATE_UNKNOWN  ||
                    this == APPSTATE_DETECTED;
         }
-    };
+    }
 
     public enum PersoSubState{
         PERSOSUBSTATE_UNKNOWN,
@@ -94,7 +94,7 @@ public class IccCardApplicationStatus {
         boolean isPersoSubStateUnknown() {
             return this == PERSOSUBSTATE_UNKNOWN;
         }
-    };
+    }
 
     public AppType        app_type;
     public AppState       app_state;

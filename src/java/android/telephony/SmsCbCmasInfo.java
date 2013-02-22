@@ -297,10 +297,12 @@ public class SmsCbCmasInfo implements Parcelable {
     /** Creator for unparcelling objects. */
     public static final Parcelable.Creator<SmsCbCmasInfo>
             CREATOR = new Parcelable.Creator<SmsCbCmasInfo>() {
+        @Override
         public SmsCbCmasInfo createFromParcel(Parcel in) {
             return new SmsCbCmasInfo(in);
         }
 
+        @Override
         public SmsCbCmasInfo[] newArray(int size) {
             return new SmsCbCmasInfo[size];
         }

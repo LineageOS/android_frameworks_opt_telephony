@@ -30,22 +30,14 @@ import java.util.Arrays;
 import java.util.Locale;
 import android.content.Context;
 import android.os.AsyncResult;
-import android.os.Handler;
 import android.os.Message;
-import android.os.Registrant;
 import android.os.SystemProperties;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.GsmAlphabet;
-import com.android.internal.telephony.PhoneBase;
-import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.MccTable;
 
-// can't be used since VoiceMailConstants is not public
-//import com.android.internal.telephony.gsm.VoiceMailConstants;
-import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 
@@ -54,9 +46,8 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
  * {@hide}
  */
 public final class RuimRecords extends IccRecords {
-    static final String LOG_TAG = "CDMA";
+    static final String LOG_TAG = "RuimRecords";
 
-    private static final boolean DBG = true;
     private boolean  m_ota_commited=false;
 
     // ***** Instance Variables
@@ -235,10 +226,12 @@ public final class RuimRecords extends IccRecords {
 
     // Refer to ETSI TS 102.221
     private class EfPlLoaded implements IccRecordLoaded {
+        @Override
         public String getEfName() {
             return "EF_PL";
         }
 
+        @Override
         public void onRecordLoaded(AsyncResult ar) {
             mEFpl = (byte[]) ar.result;
             if (DBG) log("EF_PL=" + IccUtils.bytesToHexString(mEFpl));
@@ -247,10 +240,12 @@ public final class RuimRecords extends IccRecords {
 
     // Refer to C.S0065 5.2.26
     private class EfCsimLiLoaded implements IccRecordLoaded {
+        @Override
         public String getEfName() {
             return "EF_CSIM_LI";
         }
 
+        @Override
         public void onRecordLoaded(AsyncResult ar) {
             mEFli = (byte[]) ar.result;
             // convert csim efli data to iso 639 format
@@ -273,10 +268,12 @@ public final class RuimRecords extends IccRecords {
 
     // Refer to C.S0065 5.2.32
     private class EfCsimSpnLoaded implements IccRecordLoaded {
+        @Override
         public String getEfName() {
             return "EF_CSIM_SPN";
         }
 
+        @Override
         public void onRecordLoaded(AsyncResult ar) {
             byte[] data = (byte[]) ar.result;
             if (DBG) log("CSIM_SPN=" +
@@ -327,10 +324,12 @@ public final class RuimRecords extends IccRecords {
     }
 
     private class EfCsimMdnLoaded implements IccRecordLoaded {
+        @Override
         public String getEfName() {
             return "EF_CSIM_MDN";
         }
 
+        @Override
         public void onRecordLoaded(AsyncResult ar) {
             byte[] data = (byte[]) ar.result;
             if (DBG) log("CSIM_MDN=" + IccUtils.bytesToHexString(data));
@@ -342,10 +341,12 @@ public final class RuimRecords extends IccRecords {
     }
 
     private class EfCsimImsimLoaded implements IccRecordLoaded {
+        @Override
         public String getEfName() {
             return "EF_CSIM_IMSIM";
         }
 
+        @Override
         public void onRecordLoaded(AsyncResult ar) {
             byte[] data = (byte[]) ar.result;
             if (DBG) log("CSIM_IMSIM=" + IccUtils.bytesToHexString(data));
@@ -377,10 +378,12 @@ public final class RuimRecords extends IccRecords {
     }
 
     private class EfCsimCdmaHomeLoaded implements IccRecordLoaded {
+        @Override
         public String getEfName() {
             return "EF_CSIM_CDMAHOME";
         }
 
+        @Override
         public void onRecordLoaded(AsyncResult ar) {
             // Per C.S0065 section 5.2.8
             ArrayList<byte[]> dataList = (ArrayList<byte[]>) ar.result;
@@ -409,9 +412,11 @@ public final class RuimRecords extends IccRecords {
     }
 
     private class EfCsimEprlLoaded implements IccRecordLoaded {
+        @Override
         public String getEfName() {
             return "EF_CSIM_EPRL";
         }
+        @Override
         public void onRecordLoaded(AsyncResult ar) {
             onGetCSimEprlDone(ar);
         }

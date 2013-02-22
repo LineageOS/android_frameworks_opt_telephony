@@ -29,7 +29,6 @@ import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.OperatorInfo;
-import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
@@ -46,8 +45,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
 public class CDMALTEPhone extends CDMAPhone {
-    static final String LOG_TAG = "CDMA";
-
+    static final String LOG_LTE_TAG = "CDMALTEPhone";
     private static final boolean DBG = true;
 
     /** Secondary SMSDispatcher for 3GPP format messages. */
@@ -176,7 +174,7 @@ public class CDMALTEPhone extends CDMAPhone {
         // look for our wrapper within the asyncresult, skip the rest if it
         // is null.
         if (!(ar.userObj instanceof NetworkSelectMessage)) {
-            Rlog.e(LOG_TAG, "unexpected result from user object.");
+            loge("unexpected result from user object.");
             return;
         }
 
@@ -199,7 +197,7 @@ public class CDMALTEPhone extends CDMAPhone {
 
         // commit and log the result.
         if (! editor.commit()) {
-            Rlog.e(LOG_TAG, "failed to commit network selection preference");
+            loge("failed to commit network selection preference");
         }
 
     }
@@ -217,7 +215,7 @@ public class CDMALTEPhone extends CDMAPhone {
                 mContext.getContentResolver().insert(uri, map);
                 return true;
             } catch (SQLException e) {
-                Rlog.e(LOG_TAG, "[CDMALTEPhone] Can't store current operator ret false", e);
+                loge("Can't store current operator ret false", e);
             }
         } else {
             if (DBG) log("updateCurrentCarrierInProvider mIccRecords == null ret false");
@@ -301,8 +299,16 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     protected void log(String s) {
-            Rlog.d(LOG_TAG, "[CDMALTEPhone] " + s);
+            Rlog.d(LOG_LTE_TAG, s);
     }
+
+    protected void loge(String s) {
+            Rlog.e(LOG_LTE_TAG, s);
+    }
+
+    protected void loge(String s, Throwable e) {
+        Rlog.e(LOG_LTE_TAG, s, e);
+}
 
     @Override
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

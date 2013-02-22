@@ -21,7 +21,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.telephony.Rlog;
 
-import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.AdnRecordCache;
 import com.android.internal.telephony.uicc.IccConstants;
@@ -39,7 +38,7 @@ import java.util.Map;
  * {@hide}
  */
 public class UsimPhoneBookManager extends Handler implements IccConstants {
-    private static final String LOG_TAG = "GSM";
+    private static final String LOG_TAG = "UsimPhoneBookManager";
     private static final boolean DBG = true;
     private PbrFile mPbrFile;
     private Boolean mIsPbrPresent;

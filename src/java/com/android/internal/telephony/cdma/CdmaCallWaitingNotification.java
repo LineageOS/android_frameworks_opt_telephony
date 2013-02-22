@@ -17,7 +17,6 @@
 package com.android.internal.telephony.cdma;
 
 import android.telephony.Rlog;
-import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.PhoneConstants;
 
 /**
@@ -26,7 +25,7 @@ import com.android.internal.telephony.PhoneConstants;
  * {@hide}
  */
 public class CdmaCallWaitingNotification {
-    static final String LOG_TAG = "CDMA";
+    static final String LOG_TAG = "CdmaCallWaitingNotification";
     public String number = null;
     public int numberPresentation = 0;
     public String name = null;
@@ -38,6 +37,7 @@ public class CdmaCallWaitingNotification {
     public int alertPitch = 0;
     public int signal = 0;
 
+    @Override
     public String toString()
     {
         return super.toString() + "Call Waiting Notification  "

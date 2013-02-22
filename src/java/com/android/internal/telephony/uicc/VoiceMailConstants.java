@@ -38,7 +38,7 @@ class VoiceMailConstants {
     private HashMap<String, String[]> CarrierVmMap;
 
 
-    static final String LOG_TAG = "GSM";
+    static final String LOG_TAG = "VoiceMailConstants";
     static final String PARTNER_VOICEMAIL_PATH ="etc/voicemail-conf.xml";
 
     static final int NAME = 0;

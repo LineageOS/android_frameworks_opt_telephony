@@ -31,17 +31,19 @@ import com.android.internal.telephony.uicc.IccFileHandler;
 
 
 public class SimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager {
-    static final String LOG_TAG = "GSM";
+    static final String LOG_TAG = "SimPhoneBookIM";
 
     public SimPhoneBookInterfaceManager(GSMPhone phone) {
         super(phone);
         //NOTE service "simphonebook" added by IccSmsInterfaceManagerProxy
     }
 
+    @Override
     public void dispose() {
         super.dispose();
     }
 
+    @Override
     protected void finalize() {
         try {
             super.finalize();
@@ -51,6 +53,7 @@ public class SimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager {
         if(DBG) Rlog.d(LOG_TAG, "SimPhoneBookInterfaceManager finalized");
     }
 
+    @Override
     public int[] getAdnRecordsSize(int efid) {
         if (DBG) logd("getAdnRecordsSize: efid=" + efid);
         synchronized(mLock) {
@@ -71,10 +74,12 @@ public class SimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager {
         return recordSize;
     }
 
+    @Override
     protected void logd(String msg) {
         Rlog.d(LOG_TAG, "[SimPbInterfaceManager] " + msg);
     }
 
+    @Override
     protected void loge(String msg) {
         Rlog.e(LOG_TAG, "[SimPbInterfaceManager] " + msg);
     }

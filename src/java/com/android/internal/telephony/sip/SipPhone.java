@@ -261,7 +261,7 @@ public class SipPhone extends SipPhoneBase {
     }
 
     @Override
-    public void explicitCallTransfer() throws CallStateException {
+    public void explicitCallTransfer() {
         //mCT.explicitCallTransfer();
     }
 

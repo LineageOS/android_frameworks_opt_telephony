@@ -16,11 +16,9 @@
 
 package android.telephony.gsm;
 
-import android.os.Parcel;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.GsmAlphabet;
-import com.android.internal.telephony.EncodeException;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsMessageBase.SubmitPduBase;
@@ -36,9 +34,6 @@ import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
  */
 @Deprecated
 public class SmsMessage {
-    private static final boolean LOCAL_DEBUG = true;
-    private static final String LOG_TAG = "SMS";
-
     /**
      * SMS Class enumeration.
      * See TS 23.038.
@@ -127,6 +122,7 @@ public class SmsMessage {
         }
 
         /** @deprecated Use android.telephony.SmsMessage. */
+        @Override
         @Deprecated
         public String toString() {
             return "SubmitPdu: encodedScAddress = "
@@ -617,6 +613,7 @@ public class SmsMessage {
      * @return Specific SmsMessage.
      * @deprecated Use android.telephony.SmsMessage.
      */
+    @Deprecated
     private static final SmsMessageBase getSmsFacility(){
         int activePhone = TelephonyManager.getDefault().getCurrentPhoneType();
         if (PHONE_TYPE_CDMA == activePhone) {

@@ -38,6 +38,7 @@ public class SmsResponse {
         this.errorCode = errorCode;
     }
 
+    @Override
     public String toString() {
         String ret = "{ messageRef = " + messageRef
                         + ", errorCode = " + errorCode

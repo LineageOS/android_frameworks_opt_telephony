@@ -35,12 +35,12 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
-import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
@@ -56,7 +56,7 @@ import static com.android.internal.telephony.TelephonyProperties.PROPERTY_SIM_ST
  *
  * The Phone App assumes that there is only one icc card, and one icc application
  * available at a time. Moreover, it assumes such object (represented with IccCard)
- * is available all the time (whether {@link RILConstants.RIL_REQUEST_GET_SIM_STATUS} returned
+ * is available all the time (whether {@link RILConstants#RIL_REQUEST_GET_SIM_STATUS} returned
  * or not, whether card has desired application or not, whether there really is a card in the
  * slot or not).
  *
@@ -71,7 +71,7 @@ import static com.android.internal.telephony.TelephonyProperties.PROPERTY_SIM_ST
 
 public class IccCardProxy extends Handler implements IccCard {
     private static final boolean DBG = true;
-    private static final String LOG_TAG = "RIL_IccCardProxy";
+    private static final String LOG_TAG = "IccCardProxy";
 
     private static final int EVENT_RADIO_OFF_OR_UNAVAILABLE = 1;
     private static final int EVENT_RADIO_ON = 2;
@@ -198,6 +198,7 @@ public class IccCardProxy extends Handler implements IccCard {
         }
     }
 
+    @Override
     public void handleMessage(Message msg) {
         switch (msg.what) {
             case EVENT_RADIO_OFF_OR_UNAVAILABLE:
@@ -373,6 +374,12 @@ public class IccCardProxy extends Handler implements IccCard {
                     break;
                 case APPSTATE_PUK:
                     setExternalState(State.PUK_REQUIRED);
+                    break;
+                case APPSTATE_DETECTED:
+                case APPSTATE_READY:
+                case APPSTATE_SUBSCRIPTION_PERSO:
+                case APPSTATE_UNKNOWN:
+                    // Neither required
                     break;
             }
         }

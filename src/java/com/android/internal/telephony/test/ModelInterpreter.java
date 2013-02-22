@@ -18,7 +18,6 @@ package com.android.internal.telephony.test;
 
 import android.os.HandlerThread;
 import android.os.Looper;
-import android.os.Message;
 import android.telephony.Rlog;
 
 import java.io.IOException;
@@ -195,6 +194,7 @@ public class ModelInterpreter
 
     //***** Runnable Implementation
 
+    @Override
     public void run()
     {
         for (;;) {
@@ -273,6 +273,7 @@ public class ModelInterpreter
     //***** Instance Methods
 
     /** Start the simulated phone ringing */
+    @Override
     public void
     triggerRing(String number)
     {
@@ -288,6 +289,7 @@ public class ModelInterpreter
     }
 
     /** If a call is DIALING or ALERTING, progress it to the next state */
+    @Override
     public void
     progressConnectingCallState()
     {
@@ -296,6 +298,7 @@ public class ModelInterpreter
 
 
     /** If a call is DIALING or ALERTING, progress it all the way to ACTIVE */
+    @Override
     public void
     progressConnectingToActive()
     {
@@ -305,18 +308,21 @@ public class ModelInterpreter
     /** automatically progress mobile originated calls to ACTIVE.
      *  default to true
      */
+    @Override
     public void
     setAutoProgressConnectingCall(boolean b)
     {
         simulatedCallState.setAutoProgressConnectingCall(b);
     }
 
+    @Override
     public void
     setNextDialFailImmediately(boolean b)
     {
         simulatedCallState.setNextDialFailImmediately(b);
     }
 
+    @Override
     public void setNextCallFailCause(int gsmCause)
     {
         //FIXME implement
@@ -324,6 +330,7 @@ public class ModelInterpreter
 
 
     /** hangup ringing, dialing, or actuve calls */
+    @Override
     public void
     triggerHangupForeground()
     {
@@ -337,6 +344,7 @@ public class ModelInterpreter
     }
 
     /** hangup holding calls */
+    @Override
     public void
     triggerHangupBackground()
     {
@@ -351,6 +359,7 @@ public class ModelInterpreter
 
     /** hangup all */
 
+    @Override
     public void
     triggerHangupAll()
     {
@@ -371,9 +380,12 @@ public class ModelInterpreter
         }
     }
 
+    @Override
     public void triggerSsn(int a, int b) {}
+    @Override
     public void triggerIncomingUssd(String statusCode, String message) {}
 
+    @Override
     public void
     triggerIncomingSMS(String message)
     {
@@ -403,6 +415,7 @@ public class ModelInterpreter
 **************/
     }
 
+    @Override
     public void
     pauseResponses()
     {
@@ -411,6 +424,7 @@ public class ModelInterpreter
         }
     }
 
+    @Override
     public void
     resumeResponses()
     {
@@ -473,66 +487,6 @@ public class ModelInterpreter
     }
 
     private void
-    releaseHeldOrUDUB() throws InterpreterEx
-    {
-        boolean success;
-
-        success = simulatedCallState.releaseHeldOrUDUB();
-
-        if (!success) {
-            throw new InterpreterEx("ERROR");
-        }
-    }
-
-    private void
-    releaseActiveAcceptHeldOrWaiting() throws InterpreterEx
-    {
-        boolean success;
-
-        success = simulatedCallState.releaseActiveAcceptHeldOrWaiting();
-
-        if (!success) {
-            throw new InterpreterEx("ERROR");
-        }
-    }
-
-    private void
-    switchActiveAndHeldOrWaiting() throws InterpreterEx
-    {
-        boolean success;
-
-        success = simulatedCallState.switchActiveAndHeldOrWaiting();
-
-        if (!success) {
-            throw new InterpreterEx("ERROR");
-        }
-    }
-
-    private void
-    separateCall(int index) throws InterpreterEx
-    {
-        boolean success;
-
-        success = simulatedCallState.separateCall(index);
-
-        if (!success) {
-            throw new InterpreterEx("ERROR");
-        }
-    }
-
-    private void
-    conference() throws InterpreterEx
-    {
-        boolean success;
-
-        success = simulatedCallState.conference();
-
-        if (!success) {
-            throw new InterpreterEx("ERROR");
-        }
-    }
-
-    private void
     onDial(String command) throws InterpreterEx
     {
         boolean success;
@@ -545,7 +499,7 @@ public class ModelInterpreter
     }
 
     private void
-    onCLCC() throws InterpreterEx
+    onCLCC()
     {
         List<String> lines;
 
@@ -557,7 +511,7 @@ public class ModelInterpreter
     }
 
     private void
-    onSMSSend(String command) throws InterpreterEx
+    onSMSSend(String command)
     {
         String pdu;
 
@@ -680,6 +634,7 @@ public class ModelInterpreter
     }
 
 
+    @Override
     public void
     shutdown()
     {

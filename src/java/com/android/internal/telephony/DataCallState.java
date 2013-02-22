@@ -24,7 +24,7 @@ import android.net.RouteInfo;
 import android.os.SystemProperties;
 import android.telephony.Rlog;
 
-import com.android.internal.telephony.dataconnection.DataConnection.FailCause;
+import com.android.internal.telephony.dataconnection.DataConnectionBase.FailCause;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -36,7 +36,7 @@ import java.net.UnknownHostException;
  */
 public class DataCallState {
     private final boolean DBG = true;
-    private final String LOG_TAG = "GSM";
+    private final String LOG_TAG = "DataCallState";
 
     public int version = 0;
     public int status = 0;

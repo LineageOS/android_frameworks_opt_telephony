@@ -21,8 +21,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.text.TextUtils;
-import android.telephony.Rlog;
-
 import com.android.internal.telephony.CommandException;
 
 import java.io.FileDescriptor;
@@ -139,7 +137,7 @@ public abstract class CallTracker extends Handler {
      * To test Dial 112 take call then hang up on MO device to enter ECM
      * see RIL#processSolicited RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND
      *
-     * @param number to test if it should be remapped
+     * @param dialString to test if it should be remapped
      * @return the same number or the remapped number.
      */
     protected String checkForTestEmergencyNumber(String dialString) {
@@ -165,6 +163,7 @@ public abstract class CallTracker extends Handler {
     }
 
     //***** Overridden from Handler
+    @Override
     public abstract void handleMessage (Message msg);
     public abstract void registerForVoiceCallStarted(Handler h, int what, Object obj);
     public abstract void unregisterForVoiceCallStarted(Handler h);

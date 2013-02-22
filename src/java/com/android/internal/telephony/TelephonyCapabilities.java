@@ -163,7 +163,7 @@ public class TelephonyCapabilities {
      * (Abbreviated Dialing Numbers).
      *
      * Currently this returns true when the phone type is GSM
-     * ({@link Phone#PHONE_TYPE_GSM}).
+     * ({@link PhoneConstants#PHONE_TYPE_GSM}).
      *
      * This is using int for an argument for letting apps outside
      * Phone process access to it, while other methods in this class is

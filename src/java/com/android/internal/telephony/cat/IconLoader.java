@@ -25,8 +25,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import android.telephony.Rlog;
-
 import java.util.HashMap;
 
 /**
@@ -173,7 +171,7 @@ class IconLoader extends Handler {
      * Handles Image descriptor parsing and required processing. This is the
      * first step required to handle retrieving icons from the SIM.
      *
-     * @param data byte [] containing Image Instance descriptor as defined in
+     * @param rawData byte [] containing Image Instance descriptor as defined in
      * TS 51.011.
      */
     private boolean handleImageDescriptor(byte[] rawData) {
@@ -184,7 +182,7 @@ class IconLoader extends Handler {
         return true;
     }
 
-    // Start reading colour lookup table from SIM card.
+    // Start reading color lookup table from SIM card.
     private void readClut() {
         int length = mIconData[3] * CLUT_ENTRY_SIZE;
         Message msg = this.obtainMessage(EVENT_READ_CLUT_DONE);

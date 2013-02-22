@@ -25,7 +25,6 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SqliteWrapper;
 import android.net.Uri;
-import android.os.Environment;
 import android.telephony.SmsMessage;
 import android.text.TextUtils;
 import android.telephony.Rlog;
@@ -44,8 +43,6 @@ import java.util.regex.Pattern;
  */
 public final class Telephony {
     private static final String TAG = "Telephony";
-    private static final boolean DEBUG = true;
-    private static final boolean LOCAL_LOGV = false;
 
     // Constructor
     public Telephony() {
@@ -1243,7 +1240,6 @@ public final class Telephony {
      */
     public static final class Threads implements ThreadsColumns {
         private static final String[] ID_PROJECTION = { BaseColumns._ID };
-        private static final String STANDARD_ENCODING = "UTF-8";
         private static final Uri THREAD_ID_CONTENT_URI = Uri.parse(
                 "content://mms-sms/threadID");
         public static final Uri CONTENT_URI = Uri.withAppendedPath(

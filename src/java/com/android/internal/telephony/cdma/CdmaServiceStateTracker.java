@@ -18,18 +18,15 @@ package com.android.internal.telephony.cdma;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.dataconnection.DataConnectionTracker;
+import com.android.internal.telephony.dataconnection.DataConnectionTrackerBase;
 import com.android.internal.telephony.EventLogTags;
-import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.CommandsInterface.RadioState;
-import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 
@@ -48,7 +45,6 @@ import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
-import android.provider.Settings.Secure;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoCdma;
@@ -72,7 +68,7 @@ import java.util.TimeZone;
  * {@hide}
  */
 public class CdmaServiceStateTracker extends ServiceStateTracker {
-    static final String LOG_TAG = "CDMA";
+    static final String LOG_TAG = "CdmaSST";
 
     CDMAPhone phone;
     CdmaCellLocation cellLoc;
@@ -515,7 +511,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             && cm.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
             cm.setRadioPower(true, null);
         } else if (!mDesiredPowerState && cm.getRadioState().isOn()) {
-            DataConnectionTracker dcTracker = phone.mDataConnectionTracker;
+            DataConnectionTrackerBase dcTracker = phone.mDataConnectionTracker;
 
             // If it's on and available and we want it off gracefully
             powerOffRadioSafely(dcTracker);
@@ -1208,6 +1204,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         }
     }
 
+    @Override
     public int getCurrentDataConnectionState() {
         return ss.getDataRegState();
     }
@@ -1574,6 +1571,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
      * @return true if phone is camping on a technology
      * that could support voice and data simultaneously.
      */
+    @Override
     public boolean isConcurrentVoiceAndDataAllowed() {
         // Note: it needs to be confirmed which CDMA network types
         // can support voice and data calls concurrently.

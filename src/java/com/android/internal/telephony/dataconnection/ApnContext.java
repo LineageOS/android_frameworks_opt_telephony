@@ -47,7 +47,7 @@ public class ApnContext {
 
     private ApnSetting mApnSetting;
 
-    DataConnection mDataConnection;
+    DataConnectionBase mDataConnection;
 
     DataConnectionAc mDataConnectionAc;
 
@@ -80,11 +80,11 @@ public class ApnContext {
         return mApnType;
     }
 
-    public synchronized DataConnection getDataConnection() {
+    public synchronized DataConnectionBase getDataConnection() {
         return mDataConnection;
     }
 
-    public synchronized void setDataConnection(DataConnection dc) {
+    public synchronized void setDataConnection(DataConnectionBase dc) {
         if (DBG) {
             log("setDataConnection: old dc=" + mDataConnection + " new dc=" + dc + " this=" + this);
         }
@@ -193,7 +193,7 @@ public class ApnContext {
             log("setRetryCount: " + retryCount);
         }
         mRetryCount = retryCount;
-        DataConnection dc = mDataConnection;
+        DataConnectionBase dc = mDataConnection;
         if (dc != null) {
             dc.setRetryCount(retryCount);
         }

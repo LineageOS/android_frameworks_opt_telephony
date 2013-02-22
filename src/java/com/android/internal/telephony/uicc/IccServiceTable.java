@@ -51,6 +51,7 @@ public abstract class IccServiceTable {
         return (mServiceTable[offset] & (1 << bit)) != 0;
     }
 
+    @Override
     public String toString() {
         Object[] values = getValues();
         int numBytes = mServiceTable.length;

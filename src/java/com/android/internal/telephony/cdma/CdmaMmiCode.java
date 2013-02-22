@@ -36,7 +36,7 @@ import java.util.regex.Matcher;
  *
  */
 public final class CdmaMmiCode  extends Handler implements MmiCode {
-    static final String LOG_TAG = "CDMA_MMI";
+    static final String LOG_TAG = "CdmaMmiCode";
 
     // Constants
 
@@ -143,17 +143,20 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
 
     // MmiCode implementation
 
+    @Override
     public State
     getState() {
         return state;
     }
 
+    @Override
     public CharSequence
     getMessage() {
         return message;
     }
 
     // inherited javadoc suffices
+    @Override
     public void
     cancel() {
         // Complete or failed cannot be cancelled
@@ -165,6 +168,7 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
         phone.onMMIDone (this);
     }
 
+    @Override
     public boolean isCancelable() {
         return false;
     }
@@ -182,6 +186,7 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
         return action != null && action.equals(ACTION_REGISTER);
     }
 
+    @Override
     public boolean isUssdRequest() {
         Rlog.w(LOG_TAG, "isUssdRequest is not implemented in CdmaMmiCode");
         return false;
@@ -231,6 +236,7 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
         phone.onMMIDone(this);
     }
 
+    @Override
     public void
     handleMessage (Message msg) {
         AsyncResult ar;

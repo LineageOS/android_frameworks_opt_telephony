@@ -53,7 +53,7 @@ import java.util.ArrayList;
  * {@hide}
  */
 public final class GsmCallTracker extends CallTracker {
-    static final String LOG_TAG = "GSM";
+    static final String LOG_TAG = "GsmCallTracker";
     private static final boolean REPEAT_POLLING = false;
 
     private static final boolean DBG_POLL = false;
@@ -127,6 +127,7 @@ public final class GsmCallTracker extends CallTracker {
         clearDisconnected();
     }
 
+    @Override
     protected void finalize() {
         Rlog.d(LOG_TAG, "GsmCallTracker finalized");
     }
@@ -134,20 +135,24 @@ public final class GsmCallTracker extends CallTracker {
     //***** Instance Methods
 
     //***** Public Methods
+    @Override
     public void registerForVoiceCallStarted(Handler h, int what, Object obj) {
         Registrant r = new Registrant(h, what, obj);
         voiceCallStartedRegistrants.add(r);
     }
 
+    @Override
     public void unregisterForVoiceCallStarted(Handler h) {
         voiceCallStartedRegistrants.remove(h);
     }
 
+    @Override
     public void registerForVoiceCallEnded(Handler h, int what, Object obj) {
         Registrant r = new Registrant(h, what, obj);
         voiceCallEndedRegistrants.add(r);
     }
 
+    @Override
     public void unregisterForVoiceCallEnded(Handler h) {
         voiceCallEndedRegistrants.remove(h);
     }
@@ -284,12 +289,12 @@ public final class GsmCallTracker extends CallTracker {
     }
 
     void
-    conference() throws CallStateException {
+    conference() {
         cm.conference(obtainCompleteMessage(EVENT_CONFERENCE_RESULT));
     }
 
     void
-    explicitCallTransfer() throws CallStateException {
+    explicitCallTransfer() {
         cm.explicitCallTransfer(obtainCompleteMessage(EVENT_ECT_RESULT));
     }
 
@@ -409,6 +414,7 @@ public final class GsmCallTracker extends CallTracker {
         }
     }
 
+    @Override
     protected synchronized void
     handlePollCalls(AsyncResult ar) {
         List polledCalls;
@@ -793,7 +799,7 @@ public final class GsmCallTracker extends CallTracker {
         throw new CallStateException("no gsm index found");
     }
 
-    void hangupAllConnections(GsmCall call) throws CallStateException{
+    void hangupAllConnections(GsmCall call) {
         try {
             int count = call.connections.size();
             for (int i = 0; i < count; i++) {
@@ -835,6 +841,7 @@ public final class GsmCallTracker extends CallTracker {
 
     //****** Overridden from Handler
 
+    @Override
     public void
     handleMessage (Message msg) {
         AsyncResult ar;
@@ -926,6 +933,7 @@ public final class GsmCallTracker extends CallTracker {
         }
     }
 
+    @Override
     protected void log(String msg) {
         Rlog.d(LOG_TAG, "[GsmCallTracker] " + msg);
     }

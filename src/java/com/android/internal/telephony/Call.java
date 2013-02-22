@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import android.telephony.Rlog;
@@ -47,6 +48,7 @@ public abstract class Call {
 
     public State state = State.IDLE;
 
+    public ArrayList<Connection> connections = new ArrayList<Connection>();
 
     // Flag to indicate if the current calling/caller information
     // is accurate. If false the information is known to be accurate.
@@ -85,7 +87,7 @@ public abstract class Call {
      * @return true if the call contains one or more connections
      */
     public boolean hasConnections() {
-        List connections = getConnections();
+        List<Connection> connections = getConnections();
 
         if (connections == null) {
             return false;
@@ -118,7 +120,7 @@ public abstract class Call {
      */
     public Connection
     getEarliestConnection() {
-        List l;
+        List<Connection> l;
         long time = Long.MAX_VALUE;
         Connection c;
         Connection earliest = null;
@@ -130,7 +132,7 @@ public abstract class Call {
         }
 
         for (int i = 0, s = l.size() ; i < s ; i++) {
-            c = (Connection) l.get(i);
+            c = l.get(i);
             long t;
 
             t = c.getCreateTime();
@@ -146,7 +148,7 @@ public abstract class Call {
 
     public long
     getEarliestCreateTime() {
-        List l;
+        List<Connection> l;
         long time = Long.MAX_VALUE;
 
         l = getConnections();
@@ -156,7 +158,7 @@ public abstract class Call {
         }
 
         for (int i = 0, s = l.size() ; i < s ; i++) {
-            Connection c = (Connection) l.get(i);
+            Connection c = l.get(i);
             long t;
 
             t = c.getCreateTime();
@@ -170,14 +172,14 @@ public abstract class Call {
     public long
     getEarliestConnectTime() {
         long time = Long.MAX_VALUE;
-        List l = getConnections();
+        List<Connection> l = getConnections();
 
         if (l.size() == 0) {
             return 0;
         }
 
         for (int i = 0, s = l.size() ; i < s ; i++) {
-            Connection c = (Connection) l.get(i);
+            Connection c = l.get(i);
             long t;
 
             t = c.getConnectTime();
@@ -205,7 +207,7 @@ public abstract class Call {
      */
     public Connection
     getLatestConnection() {
-        List l = getConnections();
+        List<Connection> l = getConnections();
         if (l.size() == 0) {
             return null;
         }
@@ -213,7 +215,7 @@ public abstract class Call {
         long time = 0;
         Connection latest = null;
         for (int i = 0, s = l.size() ; i < s ; i++) {
-            Connection c = (Connection) l.get(i);
+            Connection c = l.get(i);
             long t = c.getCreateTime();
 
             if (t > time) {

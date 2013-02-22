@@ -19,7 +19,6 @@ package android.telephony;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
-import android.graphics.Typeface;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.provider.Telephony;
@@ -27,10 +26,7 @@ import android.telephony.SmsCbCmasInfo;
 import android.telephony.SmsCbEtwsInfo;
 import android.telephony.SmsCbLocation;
 import android.telephony.SmsCbMessage;
-import android.text.Spannable;
-import android.text.SpannableStringBuilder;
 import android.text.format.DateUtils;
-import android.text.style.StyleSpan;
 
 /**
  * Application wrapper for {@link SmsCbMessage}. This is Parcelable so that
@@ -76,10 +72,12 @@ public class CellBroadcastMessage implements Parcelable {
     }
 
     /** Parcelable: no special flags. */
+    @Override
     public int describeContents() {
         return 0;
     }
 
+    @Override
     public void writeToParcel(Parcel out, int flags) {
         mSmsCbMessage.writeToParcel(out, flags);
         out.writeLong(mDeliveryTime);
@@ -88,10 +86,12 @@ public class CellBroadcastMessage implements Parcelable {
 
     public static final Parcelable.Creator<CellBroadcastMessage> CREATOR
             = new Parcelable.Creator<CellBroadcastMessage>() {
+        @Override
         public CellBroadcastMessage createFromParcel(Parcel in) {
             return new CellBroadcastMessage(in);
         }
 
+        @Override
         public CellBroadcastMessage[] newArray(int size) {
             return new CellBroadcastMessage[size];
         }

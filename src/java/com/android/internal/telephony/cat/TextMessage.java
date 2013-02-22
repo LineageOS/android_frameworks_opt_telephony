@@ -44,10 +44,12 @@ public class TextMessage implements Parcelable {
         duration = in.readParcelable(null);
     }
 
+    @Override
     public int describeContents() {
         return 0;
     }
 
+    @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(title);
         dest.writeString(text);
@@ -60,10 +62,12 @@ public class TextMessage implements Parcelable {
     }
 
     public static final Parcelable.Creator<TextMessage> CREATOR = new Parcelable.Creator<TextMessage>() {
+        @Override
         public TextMessage createFromParcel(Parcel in) {
             return new TextMessage(in);
         }
 
+        @Override
         public TextMessage[] newArray(int size) {
             return new TextMessage[size];
         }

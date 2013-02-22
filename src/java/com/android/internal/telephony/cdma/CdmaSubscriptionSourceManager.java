@@ -19,8 +19,6 @@ package com.android.internal.telephony.cdma;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.RILConstants;
-
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -34,7 +32,7 @@ import android.telephony.Rlog;
  * Class that handles the CDMA subscription source changed events from RIL
  */
 public class CdmaSubscriptionSourceManager extends Handler {
-    static final String LOG_TAG = "CDMA";
+    static final String LOG_TAG = "CdmaSSM";
     private static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 1;
     private static final int EVENT_GET_CDMA_SUBSCRIPTION_SOURCE     = 2;
     private static final int EVENT_RADIO_ON                         = 3;
@@ -77,7 +75,7 @@ public class CdmaSubscriptionSourceManager extends Handler {
             if (null == sInstance) {
                 sInstance = new CdmaSubscriptionSourceManager(context, ci);
             }
-            sInstance.sReferenceCount++;
+            CdmaSubscriptionSourceManager.sReferenceCount++;
         }
         sInstance.registerForCdmaSubscriptionSourceChanged(h, what, obj);
         return sInstance;
@@ -182,15 +180,11 @@ public class CdmaSubscriptionSourceManager extends Handler {
     }
 
     private void log(String s) {
-        Rlog.d(LOG_TAG, "[CdmaSSM] " + s);
-    }
-
-    private void loge(String s) {
-        Rlog.e(LOG_TAG, "[CdmaSSM] " + s);
+        Rlog.d(LOG_TAG, s);
     }
 
     private void logw(String s) {
-        Rlog.w(LOG_TAG, "[CdmaSSM] " + s);
+        Rlog.w(LOG_TAG, s);
     }
 
 }

@@ -22,8 +22,6 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.telephony.Rlog;
-import android.os.SystemProperties;
-
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CDMALTEPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
@@ -36,7 +34,7 @@ import com.android.internal.telephony.uicc.UiccController;
  * {@hide}
  */
 public class PhoneFactory {
-    static final String LOG_TAG = "PHONE";
+    static final String LOG_TAG = "PhoneFactory";
     static final int SOCKET_OPEN_RETRY_MILLIS = 2 * 1000;
     static final int SOCKET_OPEN_MAX_RETRY = 3;
 

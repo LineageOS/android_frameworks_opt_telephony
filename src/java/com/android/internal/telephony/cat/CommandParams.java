@@ -49,6 +49,7 @@ class DisplayTextParams extends CommandParams {
         this.textMsg = textMsg;
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
         if (icon != null && textMsg != null) {
             textMsg.icon = icon;
@@ -71,6 +72,7 @@ class LaunchBrowserParams extends CommandParams {
         this.url = url;
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
         if (icon != null && confirmMsg != null) {
             confirmMsg.icon = icon;
@@ -91,6 +93,7 @@ class PlayToneParams extends CommandParams {
         this.settings = new ToneSettings(duration, tone, vibrate);
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
         if (icon != null && textMsg != null) {
             textMsg.icon = icon;
@@ -111,6 +114,7 @@ class CallSetupParams extends CommandParams {
         this.callMsg = callMsg;
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
         if (icon == null) {
             return false;
@@ -136,6 +140,7 @@ class SelectItemParams extends CommandParams {
         this.loadTitleIcon = loadTitleIcon;
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
         if (icon != null && menu != null) {
             if (loadTitleIcon && menu.titleIcon == null) {
@@ -163,6 +168,7 @@ class GetInputParams extends CommandParams {
         this.input = input;
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
         if (icon != null && input != null) {
             input.icon = icon;
@@ -189,6 +195,7 @@ class BIPClientParams extends CommandParams {
         this.bHasAlphaId = has_alpha_id;
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
         if (icon != null && textMsg != null) {
             textMsg.icon = icon;

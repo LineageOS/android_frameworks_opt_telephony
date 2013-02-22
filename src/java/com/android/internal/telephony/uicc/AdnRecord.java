@@ -35,7 +35,7 @@ import java.util.Arrays;
  *
  */
 public class AdnRecord implements Parcelable {
-    static final String LOG_TAG = "GSM";
+    static final String LOG_TAG = "AdnRecord";
 
     //***** Instance Variables
 
@@ -73,6 +73,7 @@ public class AdnRecord implements Parcelable {
 
     public static final Parcelable.Creator<AdnRecord> CREATOR
             = new Parcelable.Creator<AdnRecord>() {
+        @Override
         public AdnRecord createFromParcel(Parcel source) {
             int efid;
             int recordNumber;
@@ -89,6 +90,7 @@ public class AdnRecord implements Parcelable {
             return new AdnRecord(efid, recordNumber, alphaTag, number, emails);
         }
 
+        @Override
         public AdnRecord[] newArray(int size) {
             return new AdnRecord[size];
         }
@@ -148,6 +150,7 @@ public class AdnRecord implements Parcelable {
         this.emails = emails;
     }
 
+    @Override
     public String toString() {
         return "ADN Record '" + alphaTag + "' '" + number + " " + emails + "'";
     }
@@ -181,10 +184,12 @@ public class AdnRecord implements Parcelable {
     }
     //***** Parcelable Implementation
 
+    @Override
     public int describeContents() {
         return 0;
     }
 
+    @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeInt(efid);
         dest.writeInt(recordNumber);

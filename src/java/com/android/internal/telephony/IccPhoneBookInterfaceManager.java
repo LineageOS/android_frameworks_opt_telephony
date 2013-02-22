@@ -25,7 +25,6 @@ import android.os.ServiceManager;
 
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.AdnRecordCache;
-import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -156,6 +155,7 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
      * @param pin2 required to update EF_FDN, otherwise must be null
      * @return true for success
      */
+    @Override
     public boolean
     updateAdnRecordsInEfBySearch (int efid,
             String oldTag, String oldPhoneNumber,
@@ -206,6 +206,7 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
      * @param pin2 required to update EF_FDN, otherwise must be null
      * @return true for success
      */
+    @Override
     public boolean
     updateAdnRecordsInEfByIndex(int efid, String newTag,
             String newPhoneNumber, int index, String pin2) {
@@ -241,6 +242,7 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
      *            recordSizes[1]  is the total length of the EF file
      *            recordSizes[2]  is the number of records in the EF file
      */
+    @Override
     public abstract int[] getAdnRecordsSize(int efid);
 
     /**
@@ -252,6 +254,7 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
      * @param efid the EF id of a ADN-like ICC
      * @return List of AdnRecord
      */
+    @Override
     public List<AdnRecord> getAdnRecordsInEf(int efid) {
 
         if (phone.getContext().checkCallingOrSelfPermission(

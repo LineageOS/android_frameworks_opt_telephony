@@ -19,11 +19,9 @@ package com.android.internal.telephony.cdma;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
-import android.os.Message;
 import android.telephony.Rlog;
 import android.util.Xml;
 
-import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.util.XmlUtils;
 
@@ -93,14 +91,12 @@ public final class EriManager {
     public static final int ERI_FROM_FILE_SYSTEM  = 1;
     public static final int ERI_FROM_MODEM        = 2;
 
-    private PhoneBase mPhone;
     private Context mContext;
     private int mEriFileSource = ERI_FROM_XML;
     private boolean isEriFileLoaded;
     private EriFile mEriFile;
 
     public EriManager(PhoneBase phone, Context context, int eriFileSource) {
-        this.mPhone = phone;
         this.mContext = context;
         this.mEriFileSource = eriFileSource;
         this.mEriFile = new EriFile();

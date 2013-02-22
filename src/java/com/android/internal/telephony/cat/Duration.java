@@ -58,20 +58,24 @@ public class Duration implements Parcelable {
         timeUnit = TimeUnit.values()[in.readInt()];
     }
 
+    @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeInt(timeInterval);
         dest.writeInt(timeUnit.ordinal());
     }
 
+    @Override
     public int describeContents() {
         return 0;
     }
 
     public static final Parcelable.Creator<Duration> CREATOR = new Parcelable.Creator<Duration>() {
+        @Override
         public Duration createFromParcel(Parcel in) {
             return new Duration(in);
         }
 
+        @Override
         public Duration[] newArray(int size) {
             return new Duration[size];
         }

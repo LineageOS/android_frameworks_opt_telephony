@@ -22,18 +22,14 @@ import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
 import android.content.BroadcastReceiver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
-import android.database.Cursor;
-import android.database.SQLException;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
-import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsCbMessage;
@@ -66,7 +62,8 @@ import java.util.HashMap;
 
 
 final class CdmaSMSDispatcher extends SMSDispatcher {
-    private static final String TAG = "CDMA";
+    private static final String TAG = "CdmaSMSDispatcher";
+    private static final boolean VDBG = false;
 
     private byte[] mLastDispatchedSmsFingerprint;
     private byte[] mLastAcknowledgedSmsFingerprint;
@@ -194,7 +191,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             handleServiceCategoryProgramData(sms);
             handled = true;
         } else if ((sms.getUserData() == null)) {
-            if (false) {
+            if (VDBG) {
                 Rlog.d(TAG, "Received SMS without user data");
             }
             handled = true;
@@ -235,7 +232,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
      * WDP segments are gathered until a datagram completes and gets dispatched.
      *
      * @param pdu The WAP-WDP PDU segment
-     * @return a result code from {@link Telephony.Sms.Intents}, or
+     * @return a result code from {@link android.provider.Telephony.Sms.Intents}, or
      *         {@link Activity#RESULT_OK} if the message has been broadcast
      *         to applications
      */
@@ -344,7 +341,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
                     sentIntent.send(SmsManager.RESULT_ERROR_NO_SERVICE);
                 } catch (CanceledException ex) {}
             }
-            if (false) {
+            if (VDBG) {
                 Rlog.d(TAG, "Block SMS in Emergency Callback mode");
             }
             return;

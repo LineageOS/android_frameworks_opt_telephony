@@ -33,8 +33,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * {@hide}
  */
 public abstract class IccRecords extends Handler implements IccConstants {
-
     protected static final boolean DBG = true;
+
     // ***** Instance Variables
     protected AtomicBoolean mDestroyed = new AtomicBoolean(false);
     protected Context mContext;
@@ -79,8 +79,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected static final int UNKNOWN = 0;
 
     // Bitmasks for SPN display rules.
-    protected static final int SPN_RULE_SHOW_SPN  = 0x01;
-    protected static final int SPN_RULE_SHOW_PLMN = 0x02;
+    public static final int SPN_RULE_SHOW_SPN  = 0x01;
+    public static final int SPN_RULE_SHOW_PLMN = 0x02;
 
     // ***** Event Constants
     protected static final int EVENT_SET_MSISDN_DONE = 30;
@@ -266,7 +266,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
         msisdn = number;
         msisdnTag = alphaTag;
 
-        if(DBG) log("Set MSISDN: " + msisdnTag +" " + msisdn);
+        if (DBG) log("Set MSISDN: " + msisdnTag +" " + msisdn);
 
 
         AdnRecord adn = new AdnRecord(msisdnTag, msisdn);

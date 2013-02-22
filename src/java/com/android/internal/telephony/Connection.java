@@ -28,7 +28,7 @@ public abstract class Connection {
     protected String cnapName;
     protected int cnapNamePresentation  = PhoneConstants.PRESENTATION_ALLOWED;
 
-    private static String LOG_TAG = "TelephonyConnection";
+    private static String LOG_TAG = "Connection";
 
     public enum DisconnectCause {
         NOT_DISCONNECTED,               /* has not yet disconnected */
@@ -106,7 +106,7 @@ public abstract class Connection {
 
     public int getCnapNamePresentation() {
        return cnapNamePresentation;
-    };
+    }
 
     /**
      * @return Call that owns this Connection, or null if none

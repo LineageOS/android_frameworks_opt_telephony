@@ -27,8 +27,6 @@ import android.provider.Telephony;
  * {@hide}
  */
 public abstract class SmsMessageBase {
-    private static final String LOG_TAG = "SMS";
-
     /** {@hide} The address of the SMSC. May be null */
     protected String scAddress;
 
@@ -91,6 +89,7 @@ public abstract class SmsMessageBase {
         public byte[] encodedScAddress; // Null if not applicable.
         public byte[] encodedMessage;
 
+        @Override
         public String toString() {
             return "SubmitPdu: encodedScAddress = "
                     + Arrays.toString(encodedScAddress)

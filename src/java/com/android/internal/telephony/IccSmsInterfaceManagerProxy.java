@@ -36,63 +36,73 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
         this.mIccSmsInterfaceManager = iccSmsInterfaceManager;
     }
 
+    @Override
     public boolean
-    updateMessageOnIccEf(String callingPackage, int index, int status, byte[] pdu)
-            throws android.os.RemoteException {
+    updateMessageOnIccEf(String callingPackage, int index, int status, byte[] pdu) {
          return mIccSmsInterfaceManager.updateMessageOnIccEf(callingPackage, index, status, pdu);
     }
 
+    @Override
     public boolean copyMessageToIccEf(String callingPackage, int status, byte[] pdu,
-            byte[] smsc) throws android.os.RemoteException {
+            byte[] smsc) {
         return mIccSmsInterfaceManager.copyMessageToIccEf(callingPackage, status, pdu, smsc);
     }
 
-    public List<SmsRawData> getAllMessagesFromIccEf(String callingPackage)
-            throws android.os.RemoteException {
+    @Override
+    public List<SmsRawData> getAllMessagesFromIccEf(String callingPackage) {
         return mIccSmsInterfaceManager.getAllMessagesFromIccEf(callingPackage);
     }
 
+    @Override
     public void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         mIccSmsInterfaceManager.sendData(callingPackage, destAddr, scAddr, destPort, data,
                 sentIntent, deliveryIntent);
     }
 
+    @Override
     public void sendText(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         mIccSmsInterfaceManager.sendText(callingPackage, destAddr, scAddr, text, sentIntent,
                 deliveryIntent);
     }
 
+    @Override
     public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
             List<String> parts, List<PendingIntent> sentIntents,
-            List<PendingIntent> deliveryIntents) throws android.os.RemoteException {
+            List<PendingIntent> deliveryIntents) {
         mIccSmsInterfaceManager.sendMultipartText(callingPackage, destAddr, scAddr,
                 parts, sentIntents, deliveryIntents);
     }
 
+    @Override
     public boolean enableCellBroadcast(int messageIdentifier) throws android.os.RemoteException {
         return mIccSmsInterfaceManager.enableCellBroadcast(messageIdentifier);
     }
 
+    @Override
     public boolean disableCellBroadcast(int messageIdentifier) throws android.os.RemoteException {
         return mIccSmsInterfaceManager.disableCellBroadcast(messageIdentifier);
     }
 
+    @Override
     public boolean enableCellBroadcastRange(int startMessageId, int endMessageId)
             throws android.os.RemoteException {
         return mIccSmsInterfaceManager.enableCellBroadcastRange(startMessageId, endMessageId);
     }
 
+    @Override
     public boolean disableCellBroadcastRange(int startMessageId, int endMessageId)
             throws android.os.RemoteException {
         return mIccSmsInterfaceManager.disableCellBroadcastRange(startMessageId, endMessageId);
     }
 
+    @Override
     public int getPremiumSmsPermission(String packageName) {
         return mIccSmsInterfaceManager.getPremiumSmsPermission(packageName);
     }
 
+    @Override
     public void setPremiumSmsPermission(String packageName, int permission) {
         mIccSmsInterfaceManager.setPremiumSmsPermission(packageName, permission);
     }

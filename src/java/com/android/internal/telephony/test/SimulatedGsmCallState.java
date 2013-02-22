@@ -39,8 +39,8 @@ class CallInfo {
         State (int value) {this.value = value;}
 
         private final int value;
-        public int value() {return value;};
-    };
+        public int value() {return value;}
+    }
 
     boolean isMT;
     State state;
@@ -155,6 +155,7 @@ class SimulatedGsmCallState extends Handler {
         super(looper);
     }
 
+    @Override
     public void
     handleMessage(Message msg) {
         synchronized(this) { switch (msg.what) {

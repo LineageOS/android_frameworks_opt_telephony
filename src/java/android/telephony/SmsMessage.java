@@ -22,7 +22,6 @@ import android.telephony.Rlog;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.SmsConstants;
-import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsMessageBase.SubmitPduBase;
 
@@ -37,7 +36,7 @@ import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
  * A Short Message Service message.
  */
 public class SmsMessage {
-    private static final String LOG_TAG = "SMS";
+    private static final String LOG_TAG = "SmsMessage";
 
     /**
      * SMS Class enumeration.
@@ -101,6 +100,7 @@ public class SmsMessage {
         public byte[] encodedScAddress; // Null if not applicable.
         public byte[] encodedMessage;
 
+        @Override
         public String toString() {
             return "SubmitPdu: encodedScAddress = "
                     + Arrays.toString(encodedScAddress)

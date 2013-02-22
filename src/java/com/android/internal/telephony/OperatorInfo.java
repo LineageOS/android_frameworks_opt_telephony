@@ -97,6 +97,7 @@ public class OperatorInfo implements Parcelable {
     }
 
 
+    @Override
     public String toString() {
         return "OperatorInfo " + operatorAlphaLong
                 + "/" + operatorAlphaShort
@@ -112,6 +113,7 @@ public class OperatorInfo implements Parcelable {
      * NetworkQueryService to fix 1128695.
      */
 
+    @Override
     public int describeContents() {
         return 0;
     }
@@ -120,6 +122,7 @@ public class OperatorInfo implements Parcelable {
      * Implement the Parcelable interface.
      * Method to serialize a OperatorInfo object.
      */
+    @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(operatorAlphaLong);
         dest.writeString(operatorAlphaShort);
@@ -133,6 +136,7 @@ public class OperatorInfo implements Parcelable {
      */
     public static final Creator<OperatorInfo> CREATOR =
         new Creator<OperatorInfo>() {
+            @Override
             public OperatorInfo createFromParcel(Parcel in) {
                 OperatorInfo opInfo = new OperatorInfo(
                         in.readString(), /*operatorAlphaLong*/
@@ -142,6 +146,7 @@ public class OperatorInfo implements Parcelable {
                 return opInfo;
             }
 
+            @Override
             public OperatorInfo[] newArray(int size) {
                 return new OperatorInfo[size];
             }

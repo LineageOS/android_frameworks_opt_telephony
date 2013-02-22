@@ -15,7 +15,7 @@
  */
 
 package com.android.internal.telephony;
-//import com.android.internal.telephony.*;
+
 import android.telephony.Rlog;
 import java.lang.Comparable;
 import android.telephony.PhoneNumberUtils;
@@ -23,8 +23,8 @@ import android.telephony.PhoneNumberUtils;
 /**
  * {@hide}
  */
-public class DriverCall implements Comparable {
-    static final String LOG_TAG = "RILB";
+public class DriverCall implements Comparable<DriverCall> {
+    static final String LOG_TAG = "DriverCall";
 
     public enum State {
         ACTIVE,
@@ -101,6 +101,7 @@ public class DriverCall implements Comparable {
     DriverCall() {
     }
 
+    @Override
     public String
     toString() {
         return "id=" + index + ","
@@ -145,11 +146,9 @@ public class DriverCall implements Comparable {
     //***** Comparable Implementation
 
     /** For sorting by index */
+    @Override
     public int
-    compareTo (Object o) {
-        DriverCall dc;
-
-        dc = (DriverCall)o;
+    compareTo(DriverCall dc) {
 
         if (index < dc.index) {
             return -1;

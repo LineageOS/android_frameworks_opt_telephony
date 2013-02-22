@@ -19,7 +19,7 @@ package com.android.internal.telephony.cat;
 
 /**
  * Enumeration for the return code in TERMINAL RESPONSE.
- * To get the actual return code for each enum value, call {@link #code() code}
+ * To get the actual return code for each enum value, call {@link #value}
  * method.
  *
  * {@hide}

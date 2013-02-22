@@ -21,18 +21,13 @@ import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OP
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
 import android.content.Context;
 import android.os.AsyncResult;
-import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 
-import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.MccTable;
-import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.gsm.SimTlv;
 import com.android.internal.telephony.gsm.SmsMessage;
@@ -47,11 +42,9 @@ import java.util.Arrays;
  * {@hide}
  */
 public class SIMRecords extends IccRecords {
-    protected static final String LOG_TAG = "GSM";
+    protected static final String LOG_TAG = "SIMRecords";
 
     private static final boolean CRASH_RIL = false;
-
-    protected static final boolean DBG = true;
 
     // ***** Instance Variables
 
@@ -110,10 +103,6 @@ public class SIMRecords extends IccRecords {
 
     // ***** Constants
 
-    // Bitmasks for SPN display rules.
-    public static final int SPN_RULE_SHOW_SPN  = 0x01;
-    public static final int SPN_RULE_SHOW_PLMN = 0x02;
-
     // From TS 51.011 EF[SPDI] section
     static final int TAG_SPDI = 0xA3;
     static final int TAG_SPDI_PLMN_LIST = 0x80;
@@ -159,7 +148,7 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_GET_CFF_DONE = 24;
     private static final int EVENT_SET_CPHS_MAILBOX_DONE = 25;
     private static final int EVENT_GET_INFO_CPHS_DONE = 26;
-    private static final int EVENT_SET_MSISDN_DONE = 30;
+    // private static final int EVENT_SET_MSISDN_DONE = 30; Defined in IccRecords as 30
     private static final int EVENT_SIM_REFRESH = 31;
     private static final int EVENT_GET_CFIS_DONE = 32;
     private static final int EVENT_GET_CSP_CPHS_DONE = 33;
@@ -220,6 +209,7 @@ public class SIMRecords extends IccRecords {
         super.dispose();
     }
 
+    @Override
     protected void finalize() {
         if(DBG) log("finalized");
     }
@@ -262,6 +252,7 @@ public class SIMRecords extends IccRecords {
         return mImsi;
     }
 
+    @Override
     public String getMsisdnNumber() {
         return msisdn;
     }
@@ -286,6 +277,7 @@ public class SIMRecords extends IccRecords {
      *        ((AsyncResult)onComplete.obj).exception == null on success
      *        ((AsyncResult)onComplete.obj).exception != null on fail
      */
+    @Override
     public void setMsisdnNumber(String alphaTag, String number,
             Message onComplete) {
 
@@ -301,10 +293,12 @@ public class SIMRecords extends IccRecords {
                 obtainMessage(EVENT_SET_MSISDN_DONE, onComplete));
     }
 
+    @Override
     public String getMsisdnAlphaTag() {
         return msisdnTag;
     }
 
+    @Override
     public String getVoiceMailNumber() {
         return voiceMailNum;
     }
@@ -333,6 +327,7 @@ public class SIMRecords extends IccRecords {
      *        ((AsyncResult)onComplete.obj).exception == null on success
      *        ((AsyncResult)onComplete.obj).exception != null on fail
      */
+    @Override
     public void setVoiceMailNumber(String alphaTag, String voiceNumber,
             Message onComplete) {
         if (isVoiceMailFixed) {
@@ -366,6 +361,7 @@ public class SIMRecords extends IccRecords {
         }
     }
 
+    @Override
     public String getVoiceMailAlphaTag()
     {
         return voiceMailTag;
@@ -378,6 +374,7 @@ public class SIMRecords extends IccRecords {
      *                     -1 to indicate that an unknown number of
      *                      messages are waiting
      */
+    @Override
     public void
     setVoiceMessageWaiting(int line, int countWaiting) {
         if (line != 1) {
@@ -508,6 +505,7 @@ public class SIMRecords extends IccRecords {
      * @param fileChanged indicates whether any files changed
      * @param fileList if non-null, a list of EF files that changed
      */
+    @Override
     public void onRefresh(boolean fileChanged, int[] fileList) {
         if (fileChanged) {
             // A future optimization would be to inspect fileList and
@@ -537,6 +535,7 @@ public class SIMRecords extends IccRecords {
     }
 
     // ***** Overridden from Handler
+    @Override
     public void handleMessage(Message msg) {
         AsyncResult ar;
         AdnRecord adn;
@@ -621,7 +620,7 @@ public class SIMRecords extends IccRecords {
                     log("EF_MBI: " + IccUtils.bytesToHexString(data));
 
                     // Voice mail record number stored first
-                    mailboxIndex = (int)data[0] & 0xff;
+                    mailboxIndex = data[0] & 0xff;
 
                     // check if dailing numbe id valid
                     if (mailboxIndex != 0 && mailboxIndex != 0xff) {
@@ -776,7 +775,7 @@ public class SIMRecords extends IccRecords {
                 // has been loaded
 
                 if (efMWIS == null) {
-                    int indicator = (int)(data[0] & 0xf);
+                    int indicator = data[0] & 0xf;
 
                     // Refer CPHS4_2.WW6 B4.2.3
                     if (indicator == 0xA) {
@@ -830,7 +829,7 @@ public class SIMRecords extends IccRecords {
                         break;
                     }
 
-                    mncLength = (int)data[3] & 0xf;
+                    mncLength = data[3] & 0xf;
 
                     if (mncLength == 0xf) {
                         mncLength = UNKNOWN;
@@ -952,7 +951,7 @@ public class SIMRecords extends IccRecords {
                 if (ar.exception != null)
                     break;
 
-                handleSmses((ArrayList) ar.result);
+                handleSmses((ArrayList<byte []>) ar.result);
                 break;
 
             case EVENT_MARK_SMS_READ_DONE:
@@ -1235,11 +1234,11 @@ public class SIMRecords extends IccRecords {
     }
 
 
-    private void handleSmses(ArrayList messages) {
+    private void handleSmses(ArrayList<byte[]> messages) {
         int count = messages.size();
 
         for (int i = 0; i < count; i++) {
-            byte[] ba = (byte[]) messages.get(i);
+            byte[] ba = messages.get(i);
 
             if (ba[0] != 0)
                 Rlog.i("ENF", "status " + i + ": " + ba[0]);
@@ -1263,7 +1262,7 @@ public class SIMRecords extends IccRecords {
 
                 ba[0] = 1;
 
-                if (false) { // XXX writing seems to crash RdoServD
+                if (false) { // FIXME: writing seems to crash RdoServD
                     mFh.updateEFLinearFixed(EF_SMS,
                             i, ba, null, obtainMessage(EVENT_MARK_SMS_READ_DONE, i));
                 }
@@ -1271,6 +1270,7 @@ public class SIMRecords extends IccRecords {
         }
     }
 
+    @Override
     protected void onRecordLoaded() {
         // One record loaded successfully or failed, In either case
         // we need to update the recordsToLoad count
@@ -1285,6 +1285,7 @@ public class SIMRecords extends IccRecords {
         }
     }
 
+    @Override
     protected void onAllRecordsLoaded() {
         String operator = getOperatorNumeric();
 
@@ -1629,10 +1630,12 @@ public class SIMRecords extends IccRecords {
         return ((mCphsInfo[1] & CPHS_SST_MBN_MASK) == CPHS_SST_MBN_ENABLED );
     }
 
+    @Override
     protected void log(String s) {
         Rlog.d(LOG_TAG, "[SIMRecords] " + s);
     }
 
+    @Override
     protected void loge(String s) {
         Rlog.e(LOG_TAG, "[SIMRecords] " + s);
     }
@@ -1649,6 +1652,7 @@ public class SIMRecords extends IccRecords {
      * Return true if "Restriction of menu options for manual PLMN selection"
      * bit is set or EF_CSP data is unavailable, return false otherwise.
      */
+    @Override
     public boolean isCspPlmnEnabled() {
         return mCspPlmnEnabled;
     }

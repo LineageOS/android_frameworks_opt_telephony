@@ -63,6 +63,7 @@ public final class MccTable
         }
 
 
+        @Override
         public int compareTo(MccEntry o)
         {
             return mcc - o.mcc;

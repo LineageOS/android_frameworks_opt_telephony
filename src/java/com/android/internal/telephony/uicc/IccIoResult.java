@@ -37,6 +37,7 @@ IccIoResult {
         this(sw1, sw2, IccUtils.hexStringToBytes(hexString));
     }
 
+    @Override
     public String toString() {
         return "IccIoResponse sw1:0x" + Integer.toHexString(sw1) + " sw2:0x"
                 + Integer.toHexString(sw2);

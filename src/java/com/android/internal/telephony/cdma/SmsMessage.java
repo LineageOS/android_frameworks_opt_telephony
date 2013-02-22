@@ -46,7 +46,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * TODO(cleanup): these constants are disturbing... are they not just
@@ -69,8 +68,9 @@ import java.util.List;
  *
  */
 public class SmsMessage extends SmsMessageBase {
-    static final String LOG_TAG = "CDMA";
+    static final String LOG_TAG = "SmsMessage";
     static private final String LOGGABLE_TAG = "CDMA:SMS";
+    private static final boolean VDBG = false;
 
     private final static byte TELESERVICE_IDENTIFIER                    = 0x00;
     private final static byte SERVICE_CATEGORY                          = 0x01;
@@ -369,6 +369,7 @@ public class SmsMessage extends SmsMessageBase {
     /**
      * Note: This function is a GSM specific functionality which is not supported in CDMA mode.
      */
+    @Override
     public int getProtocolIdentifier() {
         Rlog.w(LOG_TAG, "getProtocolIdentifier: is not supported in CDMA mode.");
         // (3GPP TS 23.040): "no interworking, but SME to SME protocol":
@@ -378,6 +379,7 @@ public class SmsMessage extends SmsMessageBase {
     /**
      * Note: This function is a GSM specific functionality which is not supported in CDMA mode.
      */
+    @Override
     public boolean isReplace() {
         Rlog.w(LOG_TAG, "isReplace: is not supported in CDMA mode.");
         return false;
@@ -387,6 +389,7 @@ public class SmsMessage extends SmsMessageBase {
      * {@inheritDoc}
      * Note: This function is a GSM specific functionality which is not supported in CDMA mode.
      */
+    @Override
     public boolean isCphsMwiMessage() {
         Rlog.w(LOG_TAG, "isCphsMwiMessage: is not supported in CDMA mode.");
         return false;
@@ -395,6 +398,7 @@ public class SmsMessage extends SmsMessageBase {
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean isMWIClearMessage() {
         return ((mBearerData != null) && (mBearerData.numberOfMessages == 0));
     }
@@ -402,6 +406,7 @@ public class SmsMessage extends SmsMessageBase {
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean isMWISetMessage() {
         return ((mBearerData != null) && (mBearerData.numberOfMessages > 0));
     }
@@ -409,6 +414,7 @@ public class SmsMessage extends SmsMessageBase {
     /**
      * {@inheritDoc}
      */
+    @Override
     public boolean isMwiDontStore() {
         return ((mBearerData != null) &&
                 (mBearerData.numberOfMessages > 0) &&
@@ -420,11 +426,13 @@ public class SmsMessage extends SmsMessageBase {
      * For not interfering with status codes from GSM, this status code is
      * shifted to the bits 31-16.
      */
+    @Override
     public int getStatus() {
         return (status << 16);
     }
 
     /** Return true iff the bearer data message type is DELIVERY_ACK. */
+    @Override
     public boolean isStatusReportMessage() {
         return (mBearerData.messageType == BearerData.MESSAGE_TYPE_DELIVERY_ACK);
     }
@@ -432,6 +440,7 @@ public class SmsMessage extends SmsMessageBase {
     /**
      * Note: This function is a GSM specific functionality which is not supported in CDMA mode.
      */
+    @Override
     public boolean isReplyPathPresent() {
         Rlog.w(LOG_TAG, "isReplyPathPresent: is not supported in CDMA mode.");
         return false;
@@ -680,7 +689,7 @@ public class SmsMessage extends SmsMessageBase {
             if (mEnvelope.bearerData != null) {
                 mBearerData.numberOfMessages = 0x000000FF & mEnvelope.bearerData[0];
             }
-            if (false) {
+            if (VDBG) {
                 Rlog.d(LOG_TAG, "parseSms: get MWI " +
                       Integer.toString(mBearerData.numberOfMessages));
             }
@@ -701,7 +710,7 @@ public class SmsMessage extends SmsMessageBase {
 
         if (originatingAddress != null) {
             originatingAddress.address = new String(originatingAddress.origBytes);
-            if (false) Rlog.v(LOG_TAG, "SMS originating address: "
+            if (VDBG) Rlog.v(LOG_TAG, "SMS originating address: "
                     + originatingAddress.address);
         }
 
@@ -709,7 +718,7 @@ public class SmsMessage extends SmsMessageBase {
             scTimeMillis = mBearerData.msgCenterTimeStamp.toMillis(true);
         }
 
-        if (false) Rlog.d(LOG_TAG, "SMS SC timestamp: " + scTimeMillis);
+        if (VDBG) Rlog.d(LOG_TAG, "SMS SC timestamp: " + scTimeMillis);
 
         // Message Type (See 3GPP2 C.S0015-B, v2, 4.5.1)
         if (mBearerData.messageType == BearerData.MESSAGE_TYPE_DELIVERY_ACK) {
@@ -734,9 +743,9 @@ public class SmsMessage extends SmsMessageBase {
         }
 
         if (messageBody != null) {
-            if (false) Rlog.v(LOG_TAG, "SMS message body: '" + messageBody + "'");
+            if (VDBG) Rlog.v(LOG_TAG, "SMS message body: '" + messageBody + "'");
             parseMessageBody();
-        } else if ((userData != null) && (false)) {
+        } else if ((userData != null) && VDBG) {
             Rlog.v(LOG_TAG, "SMS payload: '" + IccUtils.bytesToHexString(userData) + "'");
         }
     }

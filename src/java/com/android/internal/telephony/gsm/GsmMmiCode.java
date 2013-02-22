@@ -43,7 +43,7 @@ import java.util.regex.Matcher;
  *
  */
 public final class GsmMmiCode extends Handler implements MmiCode {
-    static final String LOG_TAG = "GSM";
+    static final String LOG_TAG = "GsmMmiCode";
 
     //***** Constants
 
@@ -415,17 +415,20 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     //***** MmiCode implementation
 
+    @Override
     public State
     getState() {
         return state;
     }
 
+    @Override
     public CharSequence
     getMessage() {
         return message;
     }
 
     // inherited javadoc suffices
+    @Override
     public void
     cancel() {
         // Complete or failed cannot be cancelled
@@ -456,6 +459,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     }
 
+    @Override
     public boolean isCancelable() {
         /* Can only cancel pending USSD sessions. */
         return isPendingUSSD;
@@ -620,6 +624,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         return isPendingUSSD;
     }
 
+    @Override
     public boolean isUssdRequest() {
         return isUssdRequest;
     }
@@ -887,6 +892,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     }
 
     /** Called from GSMPhone.handleMessage; not a Handler subclass */
+    @Override
     public void
     handleMessage (Message msg) {
         AsyncResult ar;

@@ -49,7 +49,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 
 public final class GsmSMSDispatcher extends SMSDispatcher {
-    private static final String TAG = "GSM";
+    private static final String TAG = "GsmSMSDispatcher";
+    private static final boolean VDBG = false;
 
     /** Status report received */
     private static final int EVENT_NEW_SMS_STATUS_REPORT = 100;
@@ -209,13 +210,13 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         if (sms.isMWISetMessage()) {
             mPhone.setVoiceMessageWaiting(1, -1);  // line 1: unknown number of msgs waiting
             handled = sms.isMwiDontStore();
-            if (false) {
+            if (VDBG) {
                 Rlog.d(TAG, "Received voice mail indicator set SMS shouldStore=" + !handled);
             }
         } else if (sms.isMWIClearMessage()) {
             mPhone.setVoiceMessageWaiting(1, 0);   // line 1: no msgs waiting
             handled = sms.isMwiDontStore();
-            if (false) {
+            if (VDBG) {
                 Rlog.d(TAG, "Received voice mail indicator clear SMS shouldStore=" + !handled);
             }
         }
@@ -378,7 +379,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         try {
             byte[] receivedPdu = (byte[])ar.result;
 
-            if (false) {
+            if (VDBG) {
                 for (int i = 0; i < receivedPdu.length; i += 8) {
                     StringBuilder sb = new StringBuilder("SMS CB pdu data: ");
                     for (int j = i; j < i + 8 && j < receivedPdu.length; j++) {

@@ -40,7 +40,7 @@ import static com.android.internal.telephony.uicc.IccConstants.EF_IMPU;
  * {@hide}
  */
 public final class IsimUiccRecords extends IccRecords implements IsimRecords {
-    protected static final String LOG_TAG = "GSM";
+    protected static final String LOG_TAG = "IsimUiccRecords";
 
     private static final boolean DBG = true;
     private static final boolean DUMP_RECORDS = false;   // Note: PII is logged when this is true

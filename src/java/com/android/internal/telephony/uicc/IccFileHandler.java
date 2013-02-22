@@ -17,8 +17,6 @@
 package com.android.internal.telephony.uicc;
 
 import android.os.*;
-import android.telephony.Rlog;
-
 import com.android.internal.telephony.CommandsInterface;
 
 import java.util.ArrayList;
@@ -320,6 +318,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
 
     //***** Overridden from Handler
 
+    @Override
     public void handleMessage(Message msg) {
         AsyncResult ar;
         IccIoResult result;
@@ -585,7 +584,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
      * This function handles only EFids that are common to
      * RUIM, SIM, USIM and other types of Icc cards.
      *
-     * @param efId
+     * @param efid of path to retrieve
      * @return root path of the file.
      */
     protected String getCommonIccEFPath(int efid) {

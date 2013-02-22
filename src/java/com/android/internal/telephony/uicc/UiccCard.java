@@ -56,7 +56,7 @@ import java.io.PrintWriter;
  * {@hide}
  */
 public class UiccCard {
-    protected static final String LOG_TAG = "RIL_UiccCard";
+    protected static final String LOG_TAG = "UiccCard";
     protected static final boolean DBG = true;
 
     private final Object mLock = new Object();
@@ -165,6 +165,7 @@ public class UiccCard {
         }
     }
 
+    @Override
     protected void finalize() {
         if (DBG) log("UiccCard finalized");
     }

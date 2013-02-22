@@ -17,7 +17,7 @@
 package com.android.internal.telephony.dataconnection;
 
 import com.android.internal.telephony.DataCallState;
-import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
+import com.android.internal.telephony.dataconnection.DataConnectionBase.UpdateLinkPropertyResult;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 
@@ -37,7 +37,7 @@ public class DataConnectionAc extends AsyncChannel {
     private static final boolean DBG = false;
     private String mLogTag;
 
-    public DataConnection dataConnection;
+    public DataConnectionBase dataConnection;
 
     public static final int BASE = Protocol.BASE_DATA_CONNECTION_AC;
 
@@ -138,7 +138,7 @@ public class DataConnectionAc extends AsyncChannel {
         }
     }
 
-    public DataConnectionAc(DataConnection dc, String logTag) {
+    public DataConnectionAc(DataConnectionBase dc, String logTag) {
         dataConnection = dc;
         mLogTag = logTag;
     }
@@ -439,7 +439,7 @@ public class DataConnectionAc extends AsyncChannel {
     /**
      * Retrieve Collection of ApnContext from the response message.
      *
-     * @param Message sent from DC in response to REQ_GET_APNCONTEXT_LIST.
+     * @param response sent from DC in response to REQ_GET_APNCONTEXT_LIST.
      * @return Collection of ApnContext
      */
     public Collection<ApnContext> rspApnList(Message response) {
@@ -478,7 +478,7 @@ public class DataConnectionAc extends AsyncChannel {
     /**
      * Set pending reconnect intent to DC synchronously.
      *
-     * @param PendingIntent to set.
+     * @param intent to set.
      */
     public void setReconnectIntentSync(PendingIntent intent) {
         Message response = sendMessageSynchronously(REQ_SET_RECONNECT_INTENT, intent);
@@ -501,7 +501,7 @@ public class DataConnectionAc extends AsyncChannel {
     /**
      * Retrieve reconnect intent from response message from DC.
      *
-     * @param Message which contains the reconnect intent.
+     * @param response which contains the reconnect intent.
      * @return PendingIntent from the response.
      */
     public PendingIntent rspReconnectIntent(Message response) {

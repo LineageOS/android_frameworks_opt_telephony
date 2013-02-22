@@ -17,8 +17,6 @@
 package com.android.internal.telephony.cdma;
 
 import java.util.HashMap;
-import java.util.HashSet;
-import android.telephony.Rlog;
 import android.media.ToneGenerator;
 
 public class SignalToneUtil {
@@ -36,7 +34,7 @@ public class SignalToneUtil {
     static public final int IS95_CONST_IR_ALERT_HIGH = 1;
     static public final int IS95_CONST_IR_ALERT_LOW = 2;
 
-    // Based on 3GPP2 C.S0005-E, seciton 3.7.5.5 Signal,
+    // Based on 3GPP2 C.S0005-E, section 3.7.5.5 Signal,
     // set TAPIAMSSCDMA_SIGNAL_PITCH_UNKNOWN to 0 to avoid
     // the alert pitch to be involved in hash calculation for
     // signal type other than IS54B.

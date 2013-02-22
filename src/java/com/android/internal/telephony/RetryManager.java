@@ -73,7 +73,7 @@ import java.util.ArrayList;
  * {@hide}
  */
 public class RetryManager {
-    static public final String LOG_TAG = "GSM";
+    static public final String LOG_TAG = "RetryManager";
     static public final boolean DBG = true;
     static public final boolean VDBG = false;
 
@@ -115,6 +115,7 @@ public class RetryManager {
         if (VDBG) log("constructor");
     }
 
+    @Override
     public String toString() {
         String ret = "RetryManager: forever=" + mRetryForever + ", maxRetry=" + mMaxRetryCount +
                 ", retry=" + mRetryCount + ",\n    " + mConfig;

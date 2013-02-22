@@ -1100,8 +1100,8 @@ public final class CallManager {
 
     /**
      * Register for getting notifications for change in the Call State {@link Call.State}
-     * This is called PreciseCallState because the call state is more precise than the
-     * {@link Phone.State} which can be obtained using the {@link PhoneStateListener}
+     * This is called PreciseCallState because the call state is more precise than what
+     * can be obtained using the {@link PhoneStateListener}
      *
      * Resulting events will have an AsyncResult in <code>Message.obj</code>.
      * AsyncResult.userData will be set to the obj argument here.

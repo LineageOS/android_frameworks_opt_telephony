@@ -37,7 +37,7 @@ import java.util.ArrayList;
 
 public final class SimulatedCommands extends BaseCommands
         implements CommandsInterface, SimulatedRadioControl {
-    private final static String LOG_TAG = "SIM";
+    private final static String LOG_TAG = "SimulatedCommands";
 
     private enum SimLockState {
         NONE,
@@ -104,10 +104,12 @@ public final class SimulatedCommands extends BaseCommands
 
     //***** CommandsInterface implementation
 
+    @Override
     public void getIccCardStatus(Message result) {
         unimplemented(result);
     }
 
+    @Override
     public void supplyIccPin(String pin, Message result)  {
         if (mSimLockedState != SimLockState.REQUIRE_PIN) {
             Rlog.i(LOG_TAG, "[SimCmd] supplyIccPin: wrong state, state=" +
@@ -150,6 +152,7 @@ public final class SimulatedCommands extends BaseCommands
         }
     }
 
+    @Override
     public void supplyIccPuk(String puk, String newPin, Message result)  {
         if (mSimLockedState != SimLockState.REQUIRE_PUK) {
             Rlog.i(LOG_TAG, "[SimCmd] supplyIccPuk: wrong state, state=" +
@@ -192,6 +195,7 @@ public final class SimulatedCommands extends BaseCommands
         }
     }
 
+    @Override
     public void supplyIccPin2(String pin2, Message result)  {
         if (mSimFdnEnabledState != SimFdnState.REQUIRE_PIN2) {
             Rlog.i(LOG_TAG, "[SimCmd] supplyIccPin2: wrong state, state=" +
@@ -233,6 +237,7 @@ public final class SimulatedCommands extends BaseCommands
         }
     }
 
+    @Override
     public void supplyIccPuk2(String puk2, String newPin2, Message result)  {
         if (mSimFdnEnabledState != SimFdnState.REQUIRE_PUK2) {
             Rlog.i(LOG_TAG, "[SimCmd] supplyIccPuk2: wrong state, state=" +
@@ -274,6 +279,7 @@ public final class SimulatedCommands extends BaseCommands
         }
     }
 
+    @Override
     public void changeIccPin(String oldPin, String newPin, Message result)  {
         if (oldPin != null && oldPin.equals(mPinCode)) {
             mPinCode = newPin;
@@ -295,6 +301,7 @@ public final class SimulatedCommands extends BaseCommands
         }
     }
 
+    @Override
     public void changeIccPin2(String oldPin2, String newPin2, Message result)  {
         if (oldPin2 != null && oldPin2.equals(mPin2Code)) {
             mPin2Code = newPin2;
@@ -316,11 +323,13 @@ public final class SimulatedCommands extends BaseCommands
         }
     }
 
+    @Override
     public void
     changeBarringPassword(String facility, String oldPwd, String newPwd, Message result) {
         unimplemented(result);
     }
 
+    @Override
     public void
     setSuppServiceNotifications(boolean enable, Message result) {
         resultSuccess(result, null);
@@ -429,6 +438,7 @@ public final class SimulatedCommands extends BaseCommands
         unimplemented(result);
     }
 
+    @Override
     public void supplyNetworkDepersonalization(String netpin, Message result)  {
         unimplemented(result);
     }
@@ -441,6 +451,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.result contains a List of DriverCall
      *      The ar.result List is sorted by DriverCall.index
      */
+    @Override
     public void getCurrentCalls (Message result) {
         if ((mState == RadioState.RADIO_ON) && !isSimLocked()) {
             //Rlog.i("GSM", "[SimCmds] getCurrentCalls");
@@ -456,6 +467,8 @@ public final class SimulatedCommands extends BaseCommands
     /**
      *  @deprecated
      */
+    @Deprecated
+    @Override
     public void getPDPContextList(Message result) {
         getDataCallList(result);
     }
@@ -467,6 +480,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result contains a List of DataCallState
      */
+    @Override
     public void getDataCallList(Message result) {
         resultSuccess(result, new ArrayList<DataCallState>(0));
     }
@@ -482,6 +496,7 @@ public final class SimulatedCommands extends BaseCommands
      * CLIR_SUPPRESSION == on "CLIR suppression" (allow CLI presentation)
      * CLIR_INVOCATION  == on "CLIR invocation" (restrict CLI presentation)
      */
+    @Override
     public void dial (String address, int clirMode, Message result) {
         simulatedCallState.onDial(address);
 
@@ -499,12 +514,14 @@ public final class SimulatedCommands extends BaseCommands
      * CLIR_SUPPRESSION == on "CLIR suppression" (allow CLI presentation)
      * CLIR_INVOCATION  == on "CLIR invocation" (restrict CLI presentation)
      */
+    @Override
     public void dial(String address, int clirMode, UUSInfo uusInfo, Message result) {
         simulatedCallState.onDial(address);
 
         resultSuccess(result, null);
     }
 
+    @Override
     public void getIMSI(Message result) {
         getIMSIForApp(null, result);
     }
@@ -515,6 +532,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is String containing IMSI on success
      */
+    @Override
     public void getIMSIForApp(String aid, Message result) {
         resultSuccess(result, "012345678901234");
     }
@@ -526,6 +544,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is String containing IMEI on success
      */
+    @Override
     public void getIMEI(Message result) {
         resultSuccess(result, "012345678901234");
     }
@@ -537,6 +556,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is String containing IMEISV on success
      */
+    @Override
     public void getIMEISV(Message result) {
         resultSuccess(result, "99");
     }
@@ -552,6 +572,7 @@ public final class SimulatedCommands extends BaseCommands
      *  3GPP 22.030 6.5.5
      *  "Releases a specific active call X"
      */
+    @Override
     public void hangupConnection (int gsmIndex, Message result) {
         boolean success;
 
@@ -574,6 +595,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is null on success and failure
      */
+    @Override
     public void hangupWaitingOrBackground (Message result) {
         boolean success;
 
@@ -595,6 +617,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is null on success and failure
      */
+    @Override
     public void hangupForegroundResumeBackground (Message result) {
         boolean success;
 
@@ -616,6 +639,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is null on success and failure
      */
+    @Override
     public void switchWaitingOrHoldingAndActive (Message result) {
         boolean success;
 
@@ -636,6 +660,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is null on success and failure
      */
+    @Override
     public void conference (Message result) {
         boolean success;
 
@@ -656,6 +681,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is null on success and failure
      */
+    @Override
     public void explicitCallTransfer (Message result) {
         boolean success;
 
@@ -673,6 +699,7 @@ public final class SimulatedCommands extends BaseCommands
      * "Places all active calls on hold except call X with which
      *  communication shall be supported."
      */
+    @Override
     public void separateConnection (int gsmIndex, Message result) {
         boolean success;
 
@@ -692,6 +719,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is null on success and failure
      */
+    @Override
     public void acceptCall (Message result) {
         boolean success;
 
@@ -710,6 +738,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is null on success and failure
      */
+    @Override
     public void rejectCall (Message result) {
         boolean success;
 
@@ -730,6 +759,7 @@ public final class SimulatedCommands extends BaseCommands
      * - Any defined in 22.001 F.4 (for generating busy/congestion)
      * - Cause 68: ACM >= ACMMax
      */
+    @Override
     public void getLastCallFailCause (Message result) {
         int[] ret = new int[1];
 
@@ -740,17 +770,22 @@ public final class SimulatedCommands extends BaseCommands
     /**
      * @deprecated
      */
+    @Deprecated
+    @Override
     public void getLastPdpFailCause (Message result) {
         unimplemented(result);
     }
 
+    @Override
     public void getLastDataCallFailCause(Message result) {
         //
         unimplemented(result);
     }
 
+    @Override
     public void setMute (boolean enableMute, Message result) {unimplemented(result);}
 
+    @Override
     public void getMute (Message result) {unimplemented(result);}
 
     /**
@@ -760,6 +795,7 @@ public final class SimulatedCommands extends BaseCommands
      * response.obj.result[1] is  bit error rate (0-7, 99)
      * as defined in TS 27.007 8.5
      */
+    @Override
     public void getSignalStrength (Message result) {
         int ret[] = new int[2];
 
@@ -775,6 +811,7 @@ public final class SimulatedCommands extends BaseCommands
      * @param bandMode one of BM_*_BAND
      * @param result is callback message
      */
+    @Override
     public void setBandMode (int bandMode, Message result) {
         resultSuccess(result, null);
     }
@@ -786,6 +823,7 @@ public final class SimulatedCommands extends BaseCommands
      *        ((AsyncResult)response.obj).result  is an int[] with every
      *        element representing one available BM_*_BAND
      */
+    @Override
     public void queryAvailableBandMode (Message result) {
         int ret[] = new int [4];
 
@@ -800,6 +838,7 @@ public final class SimulatedCommands extends BaseCommands
     /**
      * {@inheritDoc}
      */
+    @Override
     public void sendTerminalResponse(String contents, Message response) {
         resultSuccess(response, null);
     }
@@ -807,6 +846,7 @@ public final class SimulatedCommands extends BaseCommands
     /**
      * {@inheritDoc}
      */
+    @Override
     public void sendEnvelope(String contents, Message response) {
         resultSuccess(response, null);
     }
@@ -814,6 +854,7 @@ public final class SimulatedCommands extends BaseCommands
     /**
      * {@inheritDoc}
      */
+    @Override
     public void sendEnvelopeWithStatus(String contents, Message response) {
         resultSuccess(response, null);
     }
@@ -821,6 +862,7 @@ public final class SimulatedCommands extends BaseCommands
     /**
      * {@inheritDoc}
      */
+    @Override
     public void handleCallSetupRequestFromSim(
             boolean accept, Message response) {
         resultSuccess(response, null);
@@ -833,6 +875,7 @@ public final class SimulatedCommands extends BaseCommands
      * Please note that registration state 4 ("unknown") is treated
      * as "out of service" above
      */
+    @Override
     public void getVoiceRegistrationState (Message result) {
         String ret[] = new String[14];
 
@@ -871,6 +914,7 @@ public final class SimulatedCommands extends BaseCommands
      * Please note that registration state 4 ("unknown") is treated
      * as "out of service" in the Android telephony system
      */
+    @Override
     public void getDataRegistrationState (Message result) {
         String ret[] = new String[4];
 
@@ -888,6 +932,7 @@ public final class SimulatedCommands extends BaseCommands
      * response.obj.result[1] is short alpha or null if unregistered
      * response.obj.result[2] is numeric or null if unregistered
      */
+    @Override
     public void getOperator(Message result) {
         String[] ret = new String[3];
 
@@ -903,6 +948,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is null on success and failure
      */
+    @Override
     public void sendDtmf(char c, Message result) {
         resultSuccess(result, null);
     }
@@ -912,6 +958,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is null on success and failure
      */
+    @Override
     public void startDtmf(char c, Message result) {
         resultSuccess(result, null);
     }
@@ -921,6 +968,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is null on success and failure
      */
+    @Override
     public void stopDtmf(Message result) {
         resultSuccess(result, null);
     }
@@ -930,6 +978,7 @@ public final class SimulatedCommands extends BaseCommands
      *  ar.userObject contains the original value of result.obj
      *  ar.result is null on success and failure
      */
+    @Override
     public void sendBurstDtmf(String dtmfString, int on, int off, Message result) {
         resultSuccess(result, null);
     }
@@ -940,41 +989,50 @@ public final class SimulatedCommands extends BaseCommands
      * pdu is SMS in PDU format as an ASCII hex string
      *      less the SMSC address
      */
+    @Override
     public void sendSMS (String smscPDU, String pdu, Message result) {unimplemented(result);}
 
+    @Override
     public void deleteSmsOnSim(int index, Message response) {
         Rlog.d(LOG_TAG, "Delete message at index " + index);
         unimplemented(response);
     }
 
+    @Override
     public void deleteSmsOnRuim(int index, Message response) {
         Rlog.d(LOG_TAG, "Delete RUIM message at index " + index);
         unimplemented(response);
     }
 
+    @Override
     public void writeSmsToSim(int status, String smsc, String pdu, Message response) {
         Rlog.d(LOG_TAG, "Write SMS to SIM with status " + status);
         unimplemented(response);
     }
 
+    @Override
     public void writeSmsToRuim(int status, String pdu, Message response) {
         Rlog.d(LOG_TAG, "Write SMS to RUIM with status " + status);
         unimplemented(response);
     }
 
+    @Override
     public void setupDataCall(String radioTechnology, String profile,
             String apn, String user, String password, String authType,
             String protocol, Message result) {
         unimplemented(result);
     }
 
+    @Override
     public void deactivateDataCall(int cid, int reason, Message result) {unimplemented(result);}
 
+    @Override
     public void setPreferredNetworkType(int networkType , Message result) {
         mNetworkType = networkType;
         resultSuccess(result, null);
     }
 
+    @Override
     public void getPreferredNetworkType(Message result) {
         int ret[] = new int[1];
 
@@ -982,6 +1040,7 @@ public final class SimulatedCommands extends BaseCommands
         resultSuccess(result, ret);
     }
 
+    @Override
     public void getNeighboringCids(Message result) {
         int ret[] = new int[7];
 
@@ -992,22 +1051,27 @@ public final class SimulatedCommands extends BaseCommands
         resultSuccess(result, ret);
     }
 
+    @Override
     public void setLocationUpdates(boolean enable, Message response) {
         unimplemented(response);
     }
 
+    @Override
     public void getSmscAddress(Message result) {
         unimplemented(result);
     }
 
+    @Override
     public void setSmscAddress(String address, Message result) {
         unimplemented(result);
     }
 
+    @Override
     public void reportSmsMemoryStatus(boolean available, Message result) {
         unimplemented(result);
     }
 
+    @Override
     public void reportStkServiceIsRunning(Message result) {
         resultSuccess(result, null);
     }
@@ -1024,6 +1088,7 @@ public final class SimulatedCommands extends BaseCommands
         return false;
     }
 
+    @Override
     public void setRadioPower(boolean on, Message result) {
         if(on) {
             setRadioState(RadioState.RADIO_ON);
@@ -1033,19 +1098,23 @@ public final class SimulatedCommands extends BaseCommands
     }
 
 
+    @Override
     public void acknowledgeLastIncomingGsmSms(boolean success, int cause, Message result) {
         unimplemented(result);
     }
 
+    @Override
     public void acknowledgeLastIncomingCdmaSms(boolean success, int cause, Message result) {
         unimplemented(result);
     }
 
+    @Override
     public void acknowledgeIncomingGsmSmsWithPdu(boolean success, String ackPdu,
             Message result) {
         unimplemented(result);
     }
 
+    @Override
     public void iccIO(int command, int fileid, String path, int p1, int p2, int p3, String data,
             String pin2, Message response) {
         iccIOForApp(command, fileid, path, p1, p2, p3, data,pin2, null, response);
@@ -1056,6 +1125,7 @@ public final class SimulatedCommands extends BaseCommands
      * response.obj will be an AsyncResult
      * response.obj.userObj will be a SimIoResult on success
      */
+    @Override
     public void iccIOForApp (int command, int fileid, String path, int p1, int p2,
                        int p3, String data, String pin2, String aid, Message result) {
         unimplemented(result);
@@ -1067,6 +1137,7 @@ public final class SimulatedCommands extends BaseCommands
      *
      * @param response is callback message
      */
+    @Override
     public void queryCLIP(Message response) { unimplemented(response); }
 
 
@@ -1086,6 +1157,7 @@ public final class SimulatedCommands extends BaseCommands
      *  4 CLIR temporary mode presentation allowed
      */
 
+    @Override
     public void getCLIR(Message result) {unimplemented(result);}
 
     /**
@@ -1094,6 +1166,7 @@ public final class SimulatedCommands extends BaseCommands
      * response.obj is null
      */
 
+    @Override
     public void setCLIR(int clirMode, Message result) {unimplemented(result);}
 
     /**
@@ -1104,6 +1177,7 @@ public final class SimulatedCommands extends BaseCommands
      * @param response is callback message
      */
 
+    @Override
     public void queryCallWaiting(int serviceClass, Message response) {
         unimplemented(response);
     }
@@ -1114,6 +1188,7 @@ public final class SimulatedCommands extends BaseCommands
      * @param response is callback message
      */
 
+    @Override
     public void setCallWaiting(boolean enable, int serviceClass,
             Message response) {
         unimplemented(response);
@@ -1124,6 +1199,7 @@ public final class SimulatedCommands extends BaseCommands
      * @param cfReason is one of CF_REASON_*
      * @param serviceClass is a sum of SERVICE_CLASSS_*
      */
+    @Override
     public void setCallForward(int action, int cfReason, int serviceClass,
             String number, int timeSeconds, Message result) {unimplemented(result);}
 
@@ -1135,11 +1211,15 @@ public final class SimulatedCommands extends BaseCommands
      *
      * An array of length 0 means "disabled for all codes"
      */
+    @Override
     public void queryCallForwardStatus(int cfReason, int serviceClass,
             String number, Message result) {unimplemented(result);}
 
+    @Override
     public void setNetworkSelectionModeAutomatic(Message result) {unimplemented(result);}
+    @Override
     public void exitEmergencyCallbackMode(Message result) {unimplemented(result);}
+    @Override
     public void setNetworkSelectionModeManual(
             String operatorNumeric, Message result) {unimplemented(result);}
 
@@ -1151,6 +1231,7 @@ public final class SimulatedCommands extends BaseCommands
      * a 0 for automatic selection and a 1 for manual selection
      */
 
+    @Override
     public void getNetworkSelectionMode(Message result) {
         int ret[] = new int[1];
 
@@ -1163,8 +1244,10 @@ public final class SimulatedCommands extends BaseCommands
      *
      * ((AsyncResult)response.obj).result  is a List of NetworkInfo objects
      */
+    @Override
     public void getAvailableNetworks(Message result) {unimplemented(result);}
 
+    @Override
     public void getBasebandVersion (Message result) {
         resultSuccess(result, "SimulatedCommands");
     }
@@ -1175,6 +1258,7 @@ public final class SimulatedCommands extends BaseCommands
      * in CommandsInterface.java
      * @param message Message text to send or null if none
      */
+    @Override
     public void triggerIncomingUssd(String statusCode, String message) {
         if (mUSSDRegistrant != null) {
             String[] result = {statusCode, message};
@@ -1183,6 +1267,7 @@ public final class SimulatedCommands extends BaseCommands
     }
 
 
+    @Override
     public void sendUSSD (String ussdString, Message result) {
 
         // We simulate this particular sequence
@@ -1199,15 +1284,18 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     // inherited javadoc suffices
+    @Override
     public void cancelPendingUssd (Message response) {
         resultSuccess(response, null);
     }
 
 
+    @Override
     public void resetRadio(Message result) {
         unimplemented(result);
     }
 
+    @Override
     public void invokeOemRilRequestRaw(byte[] data, Message response) {
         // Just echo back data
         if (response != null) {
@@ -1216,6 +1304,7 @@ public final class SimulatedCommands extends BaseCommands
         }
     }
 
+    @Override
     public void invokeOemRilRequestStrings(String[] strings, Message response) {
         // Just echo back data
         if (response != null) {
@@ -1228,12 +1317,14 @@ public final class SimulatedCommands extends BaseCommands
 
 
     /** Start the simulated phone ringing */
+    @Override
     public void
     triggerRing(String number) {
         simulatedCallState.triggerRing(number);
         mCallStateRegistrants.notifyRegistrants();
     }
 
+    @Override
     public void
     progressConnectingCallState() {
         simulatedCallState.progressConnectingCallState();
@@ -1241,6 +1332,7 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     /** If a call is DIALING or ALERTING, progress it all the way to ACTIVE */
+    @Override
     public void
     progressConnectingToActive() {
         simulatedCallState.progressConnectingToActive();
@@ -1250,21 +1342,25 @@ public final class SimulatedCommands extends BaseCommands
     /** automatically progress mobile originated calls to ACTIVE.
      *  default to true
      */
+    @Override
     public void
     setAutoProgressConnectingCall(boolean b) {
         simulatedCallState.setAutoProgressConnectingCall(b);
     }
 
+    @Override
     public void
     setNextDialFailImmediately(boolean b) {
         simulatedCallState.setNextDialFailImmediately(b);
     }
 
+    @Override
     public void
     setNextCallFailCause(int gsmCause) {
         nextCallFailCause = gsmCause;
     }
 
+    @Override
     public void
     triggerHangupForeground() {
         simulatedCallState.triggerHangupForeground();
@@ -1272,12 +1368,14 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     /** hangup holding calls */
+    @Override
     public void
     triggerHangupBackground() {
         simulatedCallState.triggerHangupBackground();
         mCallStateRegistrants.notifyRegistrants();
     }
 
+    @Override
     public void triggerSsn(int type, int code) {
         SuppServiceNotification not = new SuppServiceNotification();
         not.notificationType = type;
@@ -1285,6 +1383,7 @@ public final class SimulatedCommands extends BaseCommands
         mSsnRegistrant.notifyRegistrant(new AsyncResult(null, not, null));
     }
 
+    @Override
     public void
     shutdown() {
         setRadioState(RadioState.RADIO_UNAVAILABLE);
@@ -1296,22 +1395,26 @@ public final class SimulatedCommands extends BaseCommands
 
     /** hangup all */
 
+    @Override
     public void
     triggerHangupAll() {
         simulatedCallState.triggerHangupAll();
         mCallStateRegistrants.notifyRegistrants();
     }
 
+    @Override
     public void
     triggerIncomingSMS(String message) {
         //TODO
     }
 
+    @Override
     public void
     pauseResponses() {
         pausedResponseCount++;
     }
 
+    @Override
     public void
     resumeResponses() {
         pausedResponseCount--;
@@ -1364,44 +1467,52 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     // ***** Methods for CDMA support
+    @Override
     public void
     getDeviceIdentity(Message response) {
         Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
     }
 
+    @Override
     public void
     getCDMASubscription(Message response) {
         Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
     }
 
+    @Override
     public void
     setCdmaSubscriptionSource(int cdmaSubscriptionType, Message response) {
         Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
     }
 
+    @Override
     public void queryCdmaRoamingPreference(Message response) {
         Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
     }
 
+    @Override
     public void setCdmaRoamingPreference(int cdmaRoamingType, Message response) {
         Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
     }
 
+    @Override
     public void
     setPhoneType(int phoneType) {
         Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
     }
 
+    @Override
     public void getPreferredVoicePrivacy(Message result) {
         Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(result);
     }
 
+    @Override
     public void setPreferredVoicePrivacy(boolean enable, Message result) {
         Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(result);
@@ -1417,6 +1528,7 @@ public final class SimulatedCommands extends BaseCommands
      * - {@link com.android.internal.telephony.Phone#TTY_MODE_VCO}
      * @param response is callback message
      */
+    @Override
     public void setTTYMode(int ttyMode, Message response) {
         Rlog.w(LOG_TAG, "Not implemented in SimulatedCommands");
         unimplemented(response);
@@ -1432,6 +1544,7 @@ public final class SimulatedCommands extends BaseCommands
      * - {@link com.android.internal.telephony.Phone#TTY_MODE_VCO}
      * @param response is callback message
      */
+    @Override
     public void queryTTYMode(Message response) {
         Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
@@ -1440,6 +1553,7 @@ public final class SimulatedCommands extends BaseCommands
     /**
      * {@inheritDoc}
      */
+    @Override
     public void sendCDMAFeatureCode(String FeatureCode, Message response) {
         Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
@@ -1448,20 +1562,24 @@ public final class SimulatedCommands extends BaseCommands
     /**
      * {@inheritDoc}
      */
+    @Override
     public void sendCdmaSms(byte[] pdu, Message response){
        Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
     }
 
+    @Override
     public void setCdmaBroadcastActivation(boolean activate, Message response) {
         unimplemented(response);
 
     }
 
+    @Override
     public void getCdmaBroadcastConfig(Message response) {
         unimplemented(response);
 
     }
 
+    @Override
     public void setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs, Message response) {
         unimplemented(response);
     }
@@ -1471,15 +1589,18 @@ public final class SimulatedCommands extends BaseCommands
     }
 
 
+    @Override
     public void setGsmBroadcastActivation(boolean activate, Message response) {
         unimplemented(response);
     }
 
 
+    @Override
     public void setGsmBroadcastConfig(SmsBroadcastConfigInfo[] config, Message response) {
         unimplemented(response);
     }
 
+    @Override
     public void getGsmBroadcastConfig(Message response) {
         unimplemented(response);
     }
@@ -1515,10 +1636,12 @@ public final class SimulatedCommands extends BaseCommands
         unimplemented(response);
     }
 
+    @Override
     public void requestIsimAuthentication(String nonce, Message response) {
         unimplemented(response);
     }
 
+    @Override
     public void getVoiceRadioTechnology(Message response) {
         unimplemented(response);
     }

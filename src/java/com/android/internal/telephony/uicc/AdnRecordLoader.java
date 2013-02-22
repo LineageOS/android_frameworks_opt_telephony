@@ -25,7 +25,8 @@ import android.os.Message;
 import android.telephony.Rlog;
 
 public class AdnRecordLoader extends Handler {
-    final static String LOG_TAG = "RIL_AdnRecordLoader";
+    final static String LOG_TAG = "AdnRecordLoader";
+    final static boolean VDBG = false;
 
     //***** Instance Variables
 
@@ -126,6 +127,7 @@ public class AdnRecordLoader extends Handler {
 
     //***** Overridden from Handler
 
+    @Override
     public void
     handleMessage(Message msg) {
         AsyncResult ar;
@@ -184,7 +186,7 @@ public class AdnRecordLoader extends Handler {
                         throw new RuntimeException("load failed", ar.exception);
                     }
 
-                    if (false) {
+                    if (VDBG) {
                         Rlog.d(LOG_TAG,"ADN EF: 0x"
                             + Integer.toHexString(ef)
                             + ":" + recordNumber

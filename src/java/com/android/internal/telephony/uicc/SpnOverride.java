@@ -35,7 +35,7 @@ public class SpnOverride {
     private HashMap<String, String> CarrierSpnMap;
 
 
-    static final String LOG_TAG = "GSM";
+    static final String LOG_TAG = "SpnOverride";
     static final String PARTNER_SPN_OVERRIDE_PATH ="etc/spn-conf.xml";
 
     SpnOverride () {
@@ -60,7 +60,7 @@ public class SpnOverride {
         try {
             spnReader = new FileReader(spnFile);
         } catch (FileNotFoundException e) {
-            Rlog.w(LOG_TAG, "Can't open " +
+            Rlog.w(LOG_TAG, "Can not open " +
                     Environment.getRootDirectory() + "/" + PARTNER_SPN_OVERRIDE_PATH);
             return;
         }

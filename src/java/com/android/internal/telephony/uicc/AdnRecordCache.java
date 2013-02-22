@@ -19,7 +19,6 @@ package com.android.internal.telephony.uicc;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
-import android.telephony.Rlog;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.gsm.UsimPhoneBookManager;
@@ -319,6 +318,7 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
     //***** Overridden from Handler
 
+    @Override
     public void
     handleMessage(Message msg) {
         AsyncResult ar;

@@ -34,7 +34,7 @@ import java.util.ArrayList;
  * access Sms in Ruim.
  */
 public class RuimSmsInterfaceManager extends IccSmsInterfaceManager {
-    static final String LOG_TAG = "CDMA";
+    static final String LOG_TAG = "RuimSmsIM";
     static final boolean DBG = true;
 
     private CdmaBroadcastRangeManager mCdmaBroadcastRangeManager =
@@ -48,6 +48,7 @@ public class RuimSmsInterfaceManager extends IccSmsInterfaceManager {
     public void dispose() {
     }
 
+    @Override
     protected void finalize() {
         try {
             super.finalize();
@@ -57,24 +58,29 @@ public class RuimSmsInterfaceManager extends IccSmsInterfaceManager {
         if(DBG) Rlog.d(LOG_TAG, "RuimSmsInterfaceManager finalized");
     }
 
+    @Override
     protected void deleteSms(int index, Message response) {
         mPhone.mCM.deleteSmsOnRuim(index, response);
     }
 
+    @Override
     protected void writeSms(int status, byte[] pdu, byte[] smsc, Message response) {
         //NOTE smsc not used in RUIM
         mPhone.mCM.writeSmsToRuim(status, IccUtils.bytesToHexString(pdu),
                 response);
     }
 
+    @Override
     public boolean enableCellBroadcast(int messageIdentifier) {
         return enableCellBroadcastRange(messageIdentifier, messageIdentifier);
     }
 
+    @Override
     public boolean disableCellBroadcast(int messageIdentifier) {
         return disableCellBroadcastRange(messageIdentifier, messageIdentifier);
     }
 
+    @Override
     public boolean enableCellBroadcastRange(int startMessageId, int endMessageId) {
         if (DBG) log("enableCellBroadcastRange");
 
@@ -102,6 +108,7 @@ public class RuimSmsInterfaceManager extends IccSmsInterfaceManager {
         return true;
     }
 
+    @Override
     public boolean disableCellBroadcastRange(int startMessageId, int endMessageId) {
         if (DBG) log("disableCellBroadcastRange");
 
@@ -138,6 +145,7 @@ public class RuimSmsInterfaceManager extends IccSmsInterfaceManager {
          * followed by zero or more calls to {@link #addRange} followed by
          * a call to {@link #finishUpdate}.
          */
+        @Override
         protected void startUpdate() {
             mConfigList.clear();
         }
@@ -148,6 +156,7 @@ public class RuimSmsInterfaceManager extends IccSmsInterfaceManager {
          * @param startId the first id included in the range
          * @param endId the last id included in the range
          */
+        @Override
         protected void addRange(int startId, int endId, boolean selected) {
             mConfigList.add(new CdmaSmsBroadcastConfigInfo(startId, endId,
                         1, selected));
@@ -158,6 +167,7 @@ public class RuimSmsInterfaceManager extends IccSmsInterfaceManager {
          * previous call to {@link #startUpdate}.
          * @return true if successful, false otherwise
          */
+        @Override
         protected boolean finishUpdate() {
             if (mConfigList.isEmpty()) {
                 return true;
@@ -209,6 +219,7 @@ public class RuimSmsInterfaceManager extends IccSmsInterfaceManager {
         return mSuccess;
     }
 
+    @Override
     protected void log(String msg) {
         Rlog.d(LOG_TAG, "[RuimSmsInterfaceManager] " + msg);
     }

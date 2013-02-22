@@ -25,7 +25,7 @@ import com.android.internal.telephony.CommandsInterface;
  * {@hide}
  */
 public final class RuimFileHandler extends IccFileHandler {
-    static final String LOG_TAG = "CDMA";
+    static final String LOG_TAG = "RuimFH";
 
     //***** Instance Variables
 

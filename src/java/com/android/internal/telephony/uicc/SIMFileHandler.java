@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony.uicc;
 
-import android.os.Message;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
@@ -25,7 +24,7 @@ import com.android.internal.telephony.CommandsInterface;
  * {@hide}
  */
 public final class SIMFileHandler extends IccFileHandler implements IccConstants {
-    static final String LOG_TAG = "GSM";
+    static final String LOG_TAG = "SIMFileHandler";
 
     //***** Instance Variables
 
@@ -75,11 +74,11 @@ public final class SIMFileHandler extends IccFileHandler implements IccConstants
 
     @Override
     protected void logd(String msg) {
-        Rlog.d(LOG_TAG, "[SIMFileHandler] " + msg);
+        Rlog.d(LOG_TAG, msg);
     }
 
     @Override
     protected void loge(String msg) {
-        Rlog.e(LOG_TAG, "[SIMFileHandler] " + msg);
+        Rlog.e(LOG_TAG, msg);
     }
 }

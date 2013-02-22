@@ -67,11 +67,11 @@ import java.io.PrintWriter;
  *         ^ stands for Generalization
  *
  * See also {@link com.android.internal.telephony.IccCard}
- * and {@link com.android.internal.telephony.IccCardProxy}
+ * and {@link com.android.internal.telephony.uicc.IccCardProxy}
  */
 public class UiccController extends Handler {
     private static final boolean DBG = true;
-    private static final String LOG_TAG = "RIL_UiccController";
+    private static final String LOG_TAG = "UiccController";
 
     public static final int APP_FAM_3GPP =  1;
     public static final int APP_FAM_3GPP2 = 2;

@@ -22,23 +22,17 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.UUSInfo;
 
-import android.net.sip.SipAudioCall;
 import android.os.SystemClock;
 import android.telephony.Rlog;
 import android.telephony.PhoneNumberUtils;
 
 abstract class SipConnectionBase extends Connection {
-    private static final String LOG_TAG = "SIP_CONN";
+    private static final String LOG_TAG = "SipConnBase";
     private static final boolean DBG = true;
     private static final boolean VDBG = true; // STOPSHIP if true
 
-    private SipAudioCall mSipAudioCall;
-
-    private String dialString;          // outgoing calls only
     private String postDialString;      // outgoing calls only
     private int nextPostDialChar;       // index into postDialString
-    private boolean isIncoming;
-
     /*
      * These time/timespan values are based on System.currentTimeMillis(),
      * i.e., "wall clock" time.
@@ -62,11 +56,8 @@ abstract class SipConnectionBase extends Connection {
 
     SipConnectionBase(String dialString) {
         if (DBG) log("SipConnectionBase: ctor dialString=" + dialString);
-        this.dialString = dialString;
-
         postDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
 
-        isIncoming = false;
         createTime = System.currentTimeMillis();
     }
 
@@ -85,6 +76,9 @@ abstract class SipConnectionBase extends Connection {
                 break;
             case HOLDING:
                 holdingStartTime = SystemClock.elapsedRealtime();
+                break;
+            default:
+                // Ignore
                 break;
         }
     }

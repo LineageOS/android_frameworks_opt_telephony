@@ -95,6 +95,11 @@ public class CatCmdMessage implements Parcelable {
             BIPClientParams param = (BIPClientParams) cmdParams;
             mTextMsg = param.textMsg;
             break;
+        case PROVIDE_LOCAL_INFORMATION:
+        case REFRESH:
+        case SET_UP_EVENT_LIST:
+        default:
+            break;
         }
     }
 
@@ -117,9 +122,12 @@ public class CatCmdMessage implements Parcelable {
             mCallSettings.confirmMsg = in.readParcelable(null);
             mCallSettings.callMsg = in.readParcelable(null);
             break;
+        default:
+            break;
         }
     }
 
+    @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeParcelable(mCmdDet, 0);
         dest.writeParcelable(mTextMsg, 0);
@@ -137,19 +145,24 @@ public class CatCmdMessage implements Parcelable {
             dest.writeParcelable(mCallSettings.confirmMsg, 0);
             dest.writeParcelable(mCallSettings.callMsg, 0);
             break;
+        default:
+            break;
         }
     }
 
     public static final Parcelable.Creator<CatCmdMessage> CREATOR = new Parcelable.Creator<CatCmdMessage>() {
+        @Override
         public CatCmdMessage createFromParcel(Parcel in) {
             return new CatCmdMessage(in);
         }
 
+        @Override
         public CatCmdMessage[] newArray(int size) {
             return new CatCmdMessage[size];
         }
     };
 
+    @Override
     public int describeContents() {
         return 0;
     }

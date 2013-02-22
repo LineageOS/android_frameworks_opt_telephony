@@ -17,29 +17,26 @@
 package com.android.internal.telephony.sip;
 
 import com.android.internal.telephony.Call;
-import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
-import com.android.internal.telephony.Phone;
-
-import android.net.sip.SipManager;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 abstract class SipCallBase extends Call {
-    protected List<Connection> connections = new ArrayList<Connection>();
 
     protected abstract void setState(State newState);
 
+    @Override
     public List<Connection> getConnections() {
         // FIXME should return Collections.unmodifiableList();
         return connections;
     }
 
+    @Override
     public boolean isMultiparty() {
         return connections.size() > 1;
     }
 
+    @Override
     public String toString() {
         return state.toString() + ":" + super.toString();
     }

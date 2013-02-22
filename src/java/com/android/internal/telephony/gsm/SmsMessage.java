@@ -46,7 +46,8 @@ import static com.android.internal.telephony.SmsConstants.MAX_USER_DATA_BYTES_WI
  *
  */
 public class SmsMessage extends SmsMessageBase {
-    static final String LOG_TAG = "GSM";
+    static final String LOG_TAG = "SmsMessage";
+    private static final boolean VDBG = false;
 
     private MessageClass messageClass;
 
@@ -67,18 +68,8 @@ public class SmsMessage extends SmsMessageBase {
     // e.g. 23.040 9.2.2.1
     private boolean replyPathPresent = false;
 
-    // "Message Marked for Automatic Deletion Group"
-    // 23.038 Section 4
-    private boolean automaticDeletion;
-
-    /** True if Status Report is for SMS-SUBMIT; false for SMS-COMMAND. */
-    private boolean forSubmit;
-
     /** The address of the receiver. */
     private GsmSmsAddress recipientAddress;
-
-    /** Time when SMS-SUBMIT was delivered from SC to MSE. */
-    private long dischargeTimeMillis;
 
     /**
      *  TP-Status - status of a previously submitted SMS.
@@ -344,7 +335,7 @@ public class SmsMessage extends SmsMessageBase {
     /**
      * Packs header and UCS-2 encoded message. Includes TP-UDL & TP-UDHL if necessary
      *
-     * @return
+     * @return encoded message as UCS2
      * @throws UnsupportedEncodingException
      */
     private static byte[] encodeUCS2(String message, byte[] header)
@@ -472,7 +463,7 @@ public class SmsMessage extends SmsMessageBase {
         if (statusReportRequested) {
             // Set TP-Status-Report-Request bit.
             mtiByte |= 0x20;
-            if (false) Rlog.d(LOG_TAG, "SMS status report requested");
+            if (VDBG) Rlog.d(LOG_TAG, "SMS status report requested");
         }
         bo.write(mtiByte);
 
@@ -502,7 +493,6 @@ public class SmsMessage extends SmsMessageBase {
         SmsHeader userDataHeader;
         byte[] userData;
         int mUserDataSeptetPadding;
-        int mUserDataSize;
 
         PduParser(byte[] pdu) {
             this.pdu = pdu;
@@ -683,17 +673,6 @@ public class SmsMessage extends SmsMessageBase {
          */
         byte[] getUserData() {
             return userData;
-        }
-
-        /**
-         * Returns the number of padding bits at the beginning of the user data
-         * array before the start of the septets.
-         *
-         * @return the number of padding bits at the beginning of the user data
-         * array before the start of the septets
-         */
-        int getUserDataSeptetPadding() {
-            return mUserDataSeptetPadding;
         }
 
         /**
@@ -905,7 +884,7 @@ public class SmsMessage extends SmsMessageBase {
         scAddress = p.getSCAddress();
 
         if (scAddress != null) {
-            if (false) Rlog.d(LOG_TAG, "SMS SC address: " + scAddress);
+            if (VDBG) Rlog.d(LOG_TAG, "SMS SC address: " + scAddress);
         }
 
         // TODO(mkf) support reply path, user data header indicator
@@ -944,16 +923,13 @@ public class SmsMessage extends SmsMessageBase {
     private void parseSmsStatusReport(PduParser p, int firstByte) {
         isStatusReportMessage = true;
 
-        // TP-Status-Report-Qualifier bit == 0 for SUBMIT
-        forSubmit = (firstByte & 0x20) == 0x00;
         // TP-Message-Reference
         messageRef = p.getByte();
         // TP-Recipient-Address
         recipientAddress = p.getAddress();
         // TP-Service-Centre-Time-Stamp
         scTimeMillis = p.getSCTimestampMillis();
-        // TP-Discharge-Time
-        dischargeTimeMillis = p.getSCTimestampMillis();
+        p.getSCTimestampMillis();
         // TP-Status
         status = p.getByte();
 
@@ -994,7 +970,7 @@ public class SmsMessage extends SmsMessageBase {
         originatingAddress = p.getAddress();
 
         if (originatingAddress != null) {
-            if (false) Rlog.v(LOG_TAG, "SMS originating address: "
+            if (VDBG) Rlog.v(LOG_TAG, "SMS originating address: "
                     + originatingAddress.address);
         }
 
@@ -1006,14 +982,14 @@ public class SmsMessage extends SmsMessageBase {
         // see TS 23.038
         dataCodingScheme = p.getByte();
 
-        if (false) {
+        if (VDBG) {
             Rlog.v(LOG_TAG, "SMS TP-PID:" + protocolIdentifier
                     + " data coding scheme: " + dataCodingScheme);
         }
 
         scTimeMillis = p.getSCTimestampMillis();
 
-        if (false) Rlog.d(LOG_TAG, "SMS SC timestamp: " + scTimeMillis);
+        if (VDBG) Rlog.d(LOG_TAG, "SMS SC timestamp: " + scTimeMillis);
 
         boolean hasUserDataHeader = (firstByte & 0x40) == 0x40;
 
@@ -1035,8 +1011,7 @@ public class SmsMessage extends SmsMessageBase {
         recipientAddress = p.getAddress();
 
         if (recipientAddress != null) {
-            if (false) Rlog.v(LOG_TAG, "SMS recipient address: "
-                    + recipientAddress.address);
+            if (VDBG) Rlog.v(LOG_TAG, "SMS recipient address: " + recipientAddress.address);
         }
 
         // TP-Protocol-Identifier (TP-PID)
@@ -1047,7 +1022,7 @@ public class SmsMessage extends SmsMessageBase {
         // see TS 23.038
         dataCodingScheme = p.getByte();
 
-        if (false) {
+        if (VDBG) {
             Rlog.v(LOG_TAG, "SMS TP-PID:" + protocolIdentifier
                     + " data coding scheme: " + dataCodingScheme);
         }
@@ -1094,8 +1069,6 @@ public class SmsMessage extends SmsMessageBase {
 
         // Look up the data encoding scheme
         if ((dataCodingScheme & 0x80) == 0) {
-            // Bits 7..4 == 0xxx
-            automaticDeletion = (0 != (dataCodingScheme & 0x40));
             userDataCompressed = (0 != (dataCodingScheme & 0x20));
             hasMessageClass = (0 != (dataCodingScheme & 0x10));
 
@@ -1121,7 +1094,6 @@ public class SmsMessage extends SmsMessageBase {
                 }
             }
         } else if ((dataCodingScheme & 0xf0) == 0xf0) {
-            automaticDeletion = false;
             hasMessageClass = true;
             userDataCompressed = false;
 
@@ -1204,7 +1176,7 @@ public class SmsMessage extends SmsMessageBase {
             break;
         }
 
-        if (false) Rlog.v(LOG_TAG, "SMS message body (raw): '" + messageBody + "'");
+        if (VDBG) Rlog.v(LOG_TAG, "SMS message body (raw): '" + messageBody + "'");
 
         if (messageBody != null) {
             parseMessageBody();

@@ -37,7 +37,7 @@ import java.io.PrintWriter;
  * {@hide}
  */
 public class UiccCardApplication {
-    private static final String LOG_TAG = "RIL_UiccCardApplication";
+    private static final String LOG_TAG = "UiccCardApplication";
     private static final boolean DBG = true;
 
     private static final int EVENT_QUERY_FACILITY_FDN_DONE = 1;
@@ -283,6 +283,10 @@ public class UiccCardApplication {
                             loge("QUERY_FACILITY_LOCK:disabled GET_SIM_STATUS.Pin1:enabled."
                                     + " Fixme");
                         }
+                    case PINSTATE_UNKNOWN:
+                    default:
+                        if (DBG) log("Ignoring: pin1state=" + mPin1State);
+                        break;
                 }
             } else {
                 loge("Bogus facility lock response");
