@@ -27,33 +27,33 @@ public class SimTlv
 {
     //***** Private Instance Variables
 
-    byte record[];
-    int tlvOffset;
-    int tlvLength;
-    int curOffset;
-    int curDataOffset;
-    int curDataLength;
-    boolean hasValidTlvObject;
+    byte mRecord[];
+    int mTlvOffset;
+    int mTlvLength;
+    int mCurOffset;
+    int mCurDataOffset;
+    int mCurDataLength;
+    boolean mHasValidTlvObject;
 
     public SimTlv(byte[] record, int offset, int length) {
-        this.record = record;
+        mRecord = record;
 
-        this.tlvOffset = offset;
-        this.tlvLength = length;
-        curOffset = offset;
+        mTlvOffset = offset;
+        mTlvLength = length;
+        mCurOffset = offset;
 
-        hasValidTlvObject = parseCurrentTlvObject();
+        mHasValidTlvObject = parseCurrentTlvObject();
     }
 
     public boolean nextObject() {
-        if (!hasValidTlvObject) return false;
-        curOffset = curDataOffset + curDataLength;
-        hasValidTlvObject = parseCurrentTlvObject();
-        return hasValidTlvObject;
+        if (!mHasValidTlvObject) return false;
+        mCurOffset = mCurDataOffset + mCurDataLength;
+        mHasValidTlvObject = parseCurrentTlvObject();
+        return mHasValidTlvObject;
     }
 
     public boolean isValidObject() {
-        return hasValidTlvObject;
+        return mHasValidTlvObject;
     }
 
     /**
@@ -63,8 +63,8 @@ public class SimTlv
      * valid tags range from 1 - 0xfe
      */
     public int getTag() {
-        if (!hasValidTlvObject) return 0;
-        return record[curOffset] & 0xff;
+        if (!mHasValidTlvObject) return 0;
+        return mRecord[mCurOffset] & 0xff;
     }
 
     /**
@@ -73,10 +73,10 @@ public class SimTlv
      */
 
     public byte[] getData() {
-        if (!hasValidTlvObject) return null;
+        if (!mHasValidTlvObject) return null;
 
-        byte[] ret = new byte[curDataLength];
-        System.arraycopy(record, curDataOffset, ret, 0, curDataLength);
+        byte[] ret = new byte[mCurDataLength];
+        System.arraycopy(mRecord, mCurDataOffset, ret, 0, mCurDataLength);
         return ret;
     }
 
@@ -89,18 +89,18 @@ public class SimTlv
         // 0x00 and 0xff are invalid tag values
 
         try {
-            if (record[curOffset] == 0 || (record[curOffset] & 0xff) == 0xff) {
+            if (mRecord[mCurOffset] == 0 || (mRecord[mCurOffset] & 0xff) == 0xff) {
                 return false;
             }
 
-            if ((record[curOffset + 1] & 0xff) < 0x80) {
+            if ((mRecord[mCurOffset + 1] & 0xff) < 0x80) {
                 // one byte length 0 - 0x7f
-                curDataLength = record[curOffset + 1] & 0xff;
-                curDataOffset = curOffset + 2;
-            } else if ((record[curOffset + 1] & 0xff) == 0x81) {
+                mCurDataLength = mRecord[mCurOffset + 1] & 0xff;
+                mCurDataOffset = mCurOffset + 2;
+            } else if ((mRecord[mCurOffset + 1] & 0xff) == 0x81) {
                 // two byte length 0x80 - 0xff
-                curDataLength = record[curOffset + 2] & 0xff;
-                curDataOffset = curOffset + 3;
+                mCurDataLength = mRecord[mCurOffset + 2] & 0xff;
+                mCurDataOffset = mCurOffset + 3;
             } else {
                 return false;
             }
@@ -108,7 +108,7 @@ public class SimTlv
             return false;
         }
 
-        if (curDataLength + curDataOffset > tlvOffset + tlvLength) {
+        if (mCurDataLength + mCurDataOffset > mTlvOffset + mTlvLength) {
             return false;
         }
 

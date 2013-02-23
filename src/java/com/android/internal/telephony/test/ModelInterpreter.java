@@ -44,15 +44,15 @@ class LineReader
     static final int BUFFER_SIZE = 0x1000;
 
     // just to prevent constant allocations
-    byte buffer[] = new byte[BUFFER_SIZE];
+    byte mBuffer[] = new byte[BUFFER_SIZE];
 
     //***** Instance Variables
 
-    InputStream inStream;
+    InputStream mInStream;
 
     LineReader (InputStream s)
     {
-        inStream = s;
+        mInStream = s;
     }
 
     String
@@ -83,7 +83,7 @@ class LineReader
             for (;;) {
                 int result;
 
-                result = inStream.read();
+                result = mInStream.read();
 
                 if (result < 0) {
                     return null;
@@ -100,7 +100,7 @@ class LineReader
                     }
                 }
 
-                buffer[i++] = (byte)result;
+                mBuffer[i++] = (byte)result;
             }
         } catch (IOException ex) {
             return null;
@@ -109,7 +109,7 @@ class LineReader
         }
 
         try {
-            return new String(buffer, 0, i, "US-ASCII");
+            return new String(mBuffer, 0, i, "US-ASCII");
         } catch (UnsupportedEncodingException ex) {
             System.err.println("ATChannel: implausable UnsupportedEncodingException");
             return null;
@@ -124,10 +124,10 @@ class InterpreterEx extends Exception
     public
     InterpreterEx (String result)
     {
-        this.result = result;
+        mResult = result;
     }
 
-    String result;
+    String mResult;
 }
 
 public class ModelInterpreter
@@ -142,19 +142,19 @@ public class ModelInterpreter
 
     //***** Instance Variables
 
-    InputStream in;
-    OutputStream out;
-    LineReader lineReader;
-    ServerSocket ss;
+    InputStream mIn;
+    OutputStream mOut;
+    LineReader mLineReader;
+    ServerSocket mSS;
 
-    private String finalResponse;
+    private String mFinalResponse;
 
-    SimulatedGsmCallState simulatedCallState;
+    SimulatedGsmCallState mSimulatedCallState;
 
     HandlerThread mHandlerThread;
 
-    int pausedResponseCount;
-    Object pausedResponseMonitor = new Object();
+    int mPausedResponseCount;
+    Object mPausedResponseMonitor = new Object();
 
     //***** Events
 
@@ -165,8 +165,8 @@ public class ModelInterpreter
     public
     ModelInterpreter (InputStream in, OutputStream out)
     {
-        this.in = in;
-        this.out = out;
+        mIn = in;
+        mOut = out;
 
         init();
     }
@@ -174,10 +174,10 @@ public class ModelInterpreter
     public
     ModelInterpreter (InetSocketAddress sa) throws java.io.IOException
     {
-        ss = new ServerSocket();
+        mSS = new ServerSocket();
 
-        ss.setReuseAddress(true);
-        ss.bind(sa);
+        mSS.setReuseAddress(true);
+        mSS.bind(sa);
 
         init();
     }
@@ -189,7 +189,7 @@ public class ModelInterpreter
         mHandlerThread = new HandlerThread("ModelInterpreter");
         mHandlerThread.start();
         Looper looper = mHandlerThread.getLooper();
-        simulatedCallState = new SimulatedGsmCallState(looper);
+        mSimulatedCallState = new SimulatedGsmCallState(looper);
     }
 
     //***** Runnable Implementation
@@ -198,11 +198,11 @@ public class ModelInterpreter
     public void run()
     {
         for (;;) {
-            if (ss != null) {
+            if (mSS != null) {
                 Socket s;
 
                 try {
-                    s = ss.accept();
+                    s = mSS.accept();
                 } catch (java.io.IOException ex) {
                     Rlog.w(LOG_TAG,
                         "IOException on socket.accept(); stopping", ex);
@@ -210,8 +210,8 @@ public class ModelInterpreter
                 }
 
                 try {
-                    in = s.getInputStream();
-                    out = s.getOutputStream();
+                    mIn = s.getInputStream();
+                    mOut = s.getOutputStream();
                 } catch (java.io.IOException ex) {
                     Rlog.w(LOG_TAG,
                         "IOException on accepted socket(); re-listening", ex);
@@ -222,14 +222,14 @@ public class ModelInterpreter
             }
 
 
-            lineReader = new LineReader (in);
+            mLineReader = new LineReader (mIn);
 
             println ("Welcome");
 
             for (;;) {
                 String line;
 
-                line = lineReader.getNextLine();
+                line = mLineReader.getNextLine();
 
                 //System.out.println("MI<< " + line);
 
@@ -237,10 +237,10 @@ public class ModelInterpreter
                     break;
                 }
 
-                synchronized(pausedResponseMonitor) {
-                    while (pausedResponseCount > 0) {
+                synchronized(mPausedResponseMonitor) {
+                    while (mPausedResponseCount > 0) {
                         try {
-                            pausedResponseMonitor.wait();
+                            mPausedResponseMonitor.wait();
                         } catch (InterruptedException ex) {
                         }
                     }
@@ -248,11 +248,11 @@ public class ModelInterpreter
 
                 synchronized (this) {
                     try {
-                        finalResponse = "OK";
+                        mFinalResponse = "OK";
                         processLine(line);
-                        println(finalResponse);
+                        println(mFinalResponse);
                     } catch (InterpreterEx ex) {
-                        println(ex.result);
+                        println(ex.mResult);
                     } catch (RuntimeException ex) {
                         ex.printStackTrace();
                         println("ERROR");
@@ -262,7 +262,7 @@ public class ModelInterpreter
 
             Rlog.i(LOG_TAG, "Disconnected");
 
-            if (ss == null) {
+            if (mSS == null) {
                 // no reconnect in this case
                 break;
             }
@@ -280,7 +280,7 @@ public class ModelInterpreter
         synchronized (this) {
             boolean success;
 
-            success = simulatedCallState.triggerRing(number);
+            success = mSimulatedCallState.triggerRing(number);
 
             if (success) {
                 println ("RING");
@@ -293,7 +293,7 @@ public class ModelInterpreter
     public void
     progressConnectingCallState()
     {
-        simulatedCallState.progressConnectingCallState();
+        mSimulatedCallState.progressConnectingCallState();
     }
 
 
@@ -302,7 +302,7 @@ public class ModelInterpreter
     public void
     progressConnectingToActive()
     {
-        simulatedCallState.progressConnectingToActive();
+        mSimulatedCallState.progressConnectingToActive();
     }
 
     /** automatically progress mobile originated calls to ACTIVE.
@@ -312,14 +312,14 @@ public class ModelInterpreter
     public void
     setAutoProgressConnectingCall(boolean b)
     {
-        simulatedCallState.setAutoProgressConnectingCall(b);
+        mSimulatedCallState.setAutoProgressConnectingCall(b);
     }
 
     @Override
     public void
     setNextDialFailImmediately(boolean b)
     {
-        simulatedCallState.setNextDialFailImmediately(b);
+        mSimulatedCallState.setNextDialFailImmediately(b);
     }
 
     @Override
@@ -336,7 +336,7 @@ public class ModelInterpreter
     {
         boolean success;
 
-        success = simulatedCallState.triggerHangupForeground();
+        success = mSimulatedCallState.triggerHangupForeground();
 
         if (success) {
             println ("NO CARRIER");
@@ -350,7 +350,7 @@ public class ModelInterpreter
     {
         boolean success;
 
-        success = simulatedCallState.triggerHangupBackground();
+        success = mSimulatedCallState.triggerHangupBackground();
 
         if (success) {
             println ("NO CARRIER");
@@ -365,7 +365,7 @@ public class ModelInterpreter
     {
         boolean success;
 
-        success = simulatedCallState.triggerHangupAll();
+        success = mSimulatedCallState.triggerHangupAll();
 
         if (success) {
             println ("NO CARRIER");
@@ -419,8 +419,8 @@ public class ModelInterpreter
     public void
     pauseResponses()
     {
-        synchronized(pausedResponseMonitor) {
-            pausedResponseCount++;
+        synchronized(mPausedResponseMonitor) {
+            mPausedResponseCount++;
         }
     }
 
@@ -428,11 +428,11 @@ public class ModelInterpreter
     public void
     resumeResponses()
     {
-        synchronized(pausedResponseMonitor) {
-            pausedResponseCount--;
+        synchronized(mPausedResponseMonitor) {
+            mPausedResponseCount--;
 
-            if (pausedResponseCount == 0) {
-                pausedResponseMonitor.notifyAll();
+            if (mPausedResponseCount == 0) {
+                mPausedResponseMonitor.notifyAll();
             }
         }
     }
@@ -444,7 +444,7 @@ public class ModelInterpreter
     {
         boolean success;
 
-        success = simulatedCallState.onAnswer();
+        success = mSimulatedCallState.onAnswer();
 
         if (!success) {
             throw new InterpreterEx("ERROR");
@@ -456,13 +456,13 @@ public class ModelInterpreter
     {
         boolean success = false;
 
-        success = simulatedCallState.onAnswer();
+        success = mSimulatedCallState.onAnswer();
 
         if (!success) {
             throw new InterpreterEx("ERROR");
         }
 
-        finalResponse = "NO CARRIER";
+        mFinalResponse = "NO CARRIER";
     }
 
     private void
@@ -479,7 +479,7 @@ public class ModelInterpreter
             c1 = command.charAt(7);
         }
 
-        success = simulatedCallState.onChld(c0, c1);
+        success = mSimulatedCallState.onChld(c0, c1);
 
         if (!success) {
             throw new InterpreterEx("ERROR");
@@ -491,7 +491,7 @@ public class ModelInterpreter
     {
         boolean success;
 
-        success = simulatedCallState.onDial(command.substring(1));
+        success = mSimulatedCallState.onDial(command.substring(1));
 
         if (!success) {
             throw new InterpreterEx("ERROR");
@@ -503,7 +503,7 @@ public class ModelInterpreter
     {
         List<String> lines;
 
-        lines = simulatedCallState.getClccLines();
+        lines = mSimulatedCallState.getClccLines();
 
         for (int i = 0, s = lines.size() ; i < s ; i++) {
             println (lines.get(i));
@@ -516,7 +516,7 @@ public class ModelInterpreter
         String pdu;
 
         print ("> ");
-        pdu = lineReader.getNextLineCtrlZ();
+        pdu = mLineReader.getNextLineCtrlZ();
 
         println("+CMGS: 1");
     }
@@ -609,8 +609,8 @@ public class ModelInterpreter
 
                 //System.out.println("MI>> " + s);
 
-                out.write(bytes);
-                out.write('\r');
+                mOut.write(bytes);
+                mOut.write('\r');
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
@@ -626,7 +626,7 @@ public class ModelInterpreter
 
                 //System.out.println("MI>> " + s + " (no <cr>)");
 
-                out.write(bytes);
+                mOut.write(bytes);
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
@@ -644,11 +644,11 @@ public class ModelInterpreter
         }
 
         try {
-            in.close();
+            mIn.close();
         } catch (IOException ex) {
         }
         try {
-            out.close();
+            mOut.close();
         } catch (IOException ex) {
         }
     }

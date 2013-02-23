@@ -209,7 +209,7 @@ public class SmsMessage extends SmsMessageBase {
         // link the the filled objects to the SMS
         env.origAddress = addr;
         env.origSubaddress = subaddr;
-        msg.originatingAddress = addr;
+        msg.mOriginatingAddress = addr;
         msg.mEnvelope = env;
 
         // create byte stream representation for transportation through the layers.
@@ -232,7 +232,7 @@ public class SmsMessage extends SmsMessageBase {
         try {
             SmsMessage msg = new SmsMessage();
 
-            msg.indexOnIcc = index;
+            msg.mIndexOnIcc = index;
 
             // First byte is status: RECEIVED_READ, RECEIVED_UNREAD, STORED_SENT,
             // or STORED_UNSENT
@@ -241,7 +241,7 @@ public class SmsMessage extends SmsMessageBase {
                 Rlog.w(LOG_TAG, "SMS parsing failed: Trying to parse a free record");
                 return null;
             } else {
-                msg.statusOnIcc = data[0] & 0x07;
+                msg.mStatusOnIcc = data[0] & 0x07;
             }
 
             // Second byte is the MSG_LEN, length of the message
@@ -533,7 +533,7 @@ public class SmsMessage extends SmsMessageBase {
         }
 
         // link the filled objects to this SMS
-        originatingAddress = addr;
+        mOriginatingAddress = addr;
         env.origAddress = addr;
         mEnvelope = env;
         mPdu = pdu;
@@ -669,7 +669,7 @@ public class SmsMessage extends SmsMessageBase {
         }
 
         // link the filled objects to this SMS
-        originatingAddress = addr;
+        mOriginatingAddress = addr;
         env.origAddress = addr;
         env.origSubaddress = subAddr;
         mEnvelope = env;
@@ -701,24 +701,24 @@ public class SmsMessage extends SmsMessageBase {
                       HexDump.toHexString(mEnvelope.bearerData) + "'");
             Rlog.d(LOG_TAG, "MT (decoded) BearerData = " + mBearerData);
         }
-        messageRef = mBearerData.messageId;
+        mMessageRef = mBearerData.messageId;
         if (mBearerData.userData != null) {
-            userData = mBearerData.userData.payload;
-            userDataHeader = mBearerData.userData.userDataHeader;
-            messageBody = mBearerData.userData.payloadStr;
+            mUserData = mBearerData.userData.payload;
+            mUserDataHeader = mBearerData.userData.userDataHeader;
+            mMessageBody = mBearerData.userData.payloadStr;
         }
 
-        if (originatingAddress != null) {
-            originatingAddress.address = new String(originatingAddress.origBytes);
+        if (mOriginatingAddress != null) {
+            mOriginatingAddress.address = new String(mOriginatingAddress.origBytes);
             if (VDBG) Rlog.v(LOG_TAG, "SMS originating address: "
-                    + originatingAddress.address);
+                    + mOriginatingAddress.address);
         }
 
         if (mBearerData.msgCenterTimeStamp != null) {
-            scTimeMillis = mBearerData.msgCenterTimeStamp.toMillis(true);
+            mScTimeMillis = mBearerData.msgCenterTimeStamp.toMillis(true);
         }
 
-        if (VDBG) Rlog.d(LOG_TAG, "SMS SC timestamp: " + scTimeMillis);
+        if (VDBG) Rlog.d(LOG_TAG, "SMS SC timestamp: " + mScTimeMillis);
 
         // Message Type (See 3GPP2 C.S0015-B, v2, 4.5.1)
         if (mBearerData.messageType == BearerData.MESSAGE_TYPE_DELIVERY_ACK) {
@@ -731,7 +731,7 @@ public class SmsMessage extends SmsMessageBase {
             // indicate successful delivery (status == 0).
             if (! mBearerData.messageStatusSet) {
                 Rlog.d(LOG_TAG, "DELIVERY_ACK message without msgStatus (" +
-                        (userData == null ? "also missing" : "does have") +
+                        (mUserData == null ? "also missing" : "does have") +
                         " userData).");
                 status = 0;
             } else {
@@ -742,11 +742,11 @@ public class SmsMessage extends SmsMessageBase {
             throw new RuntimeException("Unsupported message type: " + mBearerData.messageType);
         }
 
-        if (messageBody != null) {
-            if (VDBG) Rlog.v(LOG_TAG, "SMS message body: '" + messageBody + "'");
+        if (mMessageBody != null) {
+            if (VDBG) Rlog.v(LOG_TAG, "SMS message body: '" + mMessageBody + "'");
             parseMessageBody();
-        } else if ((userData != null) && VDBG) {
-            Rlog.v(LOG_TAG, "SMS payload: '" + IccUtils.bytesToHexString(userData) + "'");
+        } else if ((mUserData != null) && VDBG) {
+            Rlog.v(LOG_TAG, "SMS payload: '" + IccUtils.bytesToHexString(mUserData) + "'");
         }
     }
 

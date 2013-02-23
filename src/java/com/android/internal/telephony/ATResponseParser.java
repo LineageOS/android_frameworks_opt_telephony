@@ -23,16 +23,16 @@ public class ATResponseParser
 {
     /*************************** Instance Variables **************************/
 
-    private String line;
-    private int next = 0;
-    private int tokStart, tokEnd;
+    private String mLine;
+    private int mNext = 0;
+    private int mTokStart, mTokEnd;
 
     /***************************** Class Methods *****************************/
 
     public
     ATResponseParser (String line)
     {
-        this.line = line;
+        mLine = line;
     }
 
     public boolean
@@ -43,10 +43,10 @@ public class ATResponseParser
 
         nextTok();
 
-        if (tokEnd - tokStart > 1) {
+        if (mTokEnd - mTokStart > 1) {
             throw new ATParseEx();
         }
-        char c = line.charAt(tokStart);
+        char c = mLine.charAt(mTokStart);
 
         if (c == '0') return false;
         if (c ==  '1') return true;
@@ -63,8 +63,8 @@ public class ATResponseParser
 
         nextTok();
 
-        for (int i = tokStart ; i < tokEnd ; i++) {
-            char c = line.charAt(i);
+        for (int i = mTokStart ; i < mTokEnd ; i++) {
+            char c = mLine.charAt(i);
 
             // Yes, ASCII decimal digits only
             if (c < '0' || c > '9') {
@@ -83,63 +83,63 @@ public class ATResponseParser
     {
         nextTok();
 
-        return line.substring(tokStart, tokEnd);
+        return mLine.substring(mTokStart, mTokEnd);
     }
 
     public boolean
     hasMore()
     {
-        return next < line.length();
+        return mNext < mLine.length();
     }
 
     private void
     nextTok()
     {
-        int len = line.length();
+        int len = mLine.length();
 
-        if (next == 0) {
+        if (mNext == 0) {
             skipPrefix();
         }
 
-        if (next >= len) {
+        if (mNext >= len) {
             throw new ATParseEx();
         }
 
         try {
             // \s*("([^"]*)"|(.*)\s*)(,|$)
 
-            char c = line.charAt(next++);
+            char c = mLine.charAt(mNext++);
             boolean hasQuote = false;
 
             c = skipWhiteSpace(c);
 
             if (c == '"') {
-                if (next >= len) {
+                if (mNext >= len) {
                     throw new ATParseEx();
                 }
-                c = line.charAt(next++);
-                tokStart = next - 1;
-                while (c != '"' && next < len) {
-                    c = line.charAt(next++);
+                c = mLine.charAt(mNext++);
+                mTokStart = mNext - 1;
+                while (c != '"' && mNext < len) {
+                    c = mLine.charAt(mNext++);
                 }
                 if (c != '"') {
                     throw new ATParseEx();
                 }
-                tokEnd = next - 1;
-                if (next < len && line.charAt(next++) != ',') {
+                mTokEnd = mNext - 1;
+                if (mNext < len && mLine.charAt(mNext++) != ',') {
                     throw new ATParseEx();
                 }
             } else {
-                tokStart = next - 1;
-                tokEnd = tokStart;
+                mTokStart = mNext - 1;
+                mTokEnd = mTokStart;
                 while (c != ',') {
                     if (!Character.isWhitespace(c)) {
-                        tokEnd = next;
+                        mTokEnd = mNext;
                     }
-                    if (next == len) {
+                    if (mNext == len) {
                         break;
                     }
-                    c = line.charAt(next++);
+                    c = mLine.charAt(mNext++);
                 }
             }
         } catch (StringIndexOutOfBoundsException ex) {
@@ -153,9 +153,9 @@ public class ATResponseParser
     skipWhiteSpace (char c)
     {
         int len;
-        len = line.length();
-        while (next < len && Character.isWhitespace(c)) {
-            c = line.charAt(next++);
+        len = mLine.length();
+        while (mNext < len && Character.isWhitespace(c)) {
+            c = mLine.charAt(mNext++);
         }
 
         if (Character.isWhitespace(c)) {
@@ -170,10 +170,10 @@ public class ATResponseParser
     {
         // consume "^[^:]:"
 
-        next = 0;
-        int s = line.length();
-        while (next < s){
-            char c = line.charAt(next++);
+        mNext = 0;
+        int s = mLine.length();
+        while (mNext < s){
+            char c = mLine.charAt(mNext++);
 
             if (c == ':') {
                 return;

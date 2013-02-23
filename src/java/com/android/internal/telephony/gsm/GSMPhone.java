@@ -115,8 +115,8 @@ public class GSMPhone extends PhoneBase {
     /** List of Registrants to receive Supplementary Service Notifications. */
     RegistrantList mSsnRegistrants = new RegistrantList();
 
-    Thread debugPortThread;
-    ServerSocket debugSocket;
+    Thread mDebugPortThread;
+    ServerSocket mDebugSocket;
 
     private String mImei;
     private String mImeiSv;
@@ -138,7 +138,7 @@ public class GSMPhone extends PhoneBase {
             mSimulatedRadioControl = (SimulatedRadioControl) ci;
         }
 
-        mCM.setPhoneType(PhoneConstants.PHONE_TYPE_GSM);
+        mCi.setPhoneType(PhoneConstants.PHONE_TYPE_GSM);
         mCT = new GsmCallTracker(this);
         mSST = new GsmServiceStateTracker (this);
         mSMS = new GsmSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
@@ -150,21 +150,21 @@ public class GSMPhone extends PhoneBase {
             mSubInfo = new PhoneSubInfo(this);
         }
 
-        mCM.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
-        mCM.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
-        mCM.registerForOn(this, EVENT_RADIO_ON, null);
-        mCM.setOnUSSD(this, EVENT_USSD, null);
-        mCM.setOnSuppServiceNotification(this, EVENT_SSN, null);
+        mCi.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
+        mCi.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
+        mCi.registerForOn(this, EVENT_RADIO_ON, null);
+        mCi.setOnUSSD(this, EVENT_USSD, null);
+        mCi.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
 
         if (DBG_PORT) {
             try {
                 //debugSocket = new LocalServerSocket("com.android.internal.telephony.debug");
-                debugSocket = new ServerSocket();
-                debugSocket.setReuseAddress(true);
-                debugSocket.bind (new InetSocketAddress("127.0.0.1", 6666));
+                mDebugSocket = new ServerSocket();
+                mDebugSocket.setReuseAddress(true);
+                mDebugSocket.bind (new InetSocketAddress("127.0.0.1", 6666));
 
-                debugPortThread
+                mDebugPortThread
                     = new Thread(
                         new Runnable() {
                             @Override
@@ -172,9 +172,9 @@ public class GSMPhone extends PhoneBase {
                                 for(;;) {
                                     try {
                                         Socket sock;
-                                        sock = debugSocket.accept();
+                                        sock = mDebugSocket.accept();
                                         Rlog.i(LOG_TAG, "New connection; resetting radio");
-                                        mCM.resetRadio(null);
+                                        mCi.resetRadio(null);
                                         sock.close();
                                     } catch (IOException ex) {
                                         Rlog.w(LOG_TAG,
@@ -185,7 +185,7 @@ public class GSMPhone extends PhoneBase {
                         },
                         "GSMPhone debug");
 
-                debugPortThread.start();
+                mDebugPortThread.start();
 
             } catch (IOException ex) {
                 Rlog.w(LOG_TAG, "Failure to open com.android.internal.telephony.debug socket", ex);
@@ -203,13 +203,13 @@ public class GSMPhone extends PhoneBase {
             super.dispose();
 
             //Unregister from all former registered events
-            mCM.unregisterForAvailable(this); //EVENT_RADIO_AVAILABLE
+            mCi.unregisterForAvailable(this); //EVENT_RADIO_AVAILABLE
             unregisterForSimRecordEvents();
-            mCM.unregisterForOffOrNotAvailable(this); //EVENT_RADIO_OFF_OR_NOT_AVAILABLE
-            mCM.unregisterForOn(this); //EVENT_RADIO_ON
+            mCi.unregisterForOffOrNotAvailable(this); //EVENT_RADIO_OFF_OR_NOT_AVAILABLE
+            mCi.unregisterForOn(this); //EVENT_RADIO_ON
             mSST.unregisterForNetworkAttached(this); //EVENT_REGISTERED_TO_NETWORK
-            mCM.unSetOnUSSD(this);
-            mCM.unSetOnSuppServiceNotification(this);
+            mCi.unSetOnUSSD(this);
+            mCi.unSetOnSuppServiceNotification(this);
 
             mPendingMMIs.clear();
 
@@ -244,17 +244,17 @@ public class GSMPhone extends PhoneBase {
     @Override
     public ServiceState
     getServiceState() {
-        return mSST.ss;
+        return mSST.mSS;
     }
 
     @Override
     public CellLocation getCellLocation() {
-        return mSST.cellLoc;
+        return mSST.mCellLoc;
     }
 
     @Override
     public PhoneConstants.State getState() {
-        return mCT.state;
+        return mCT.mState;
     }
 
     @Override
@@ -312,7 +312,7 @@ public class GSMPhone extends PhoneBase {
 
                 case CONNECTED:
                 case DISCONNECTING:
-                    if ( mCT.state != PhoneConstants.State.IDLE
+                    if ( mCT.mState != PhoneConstants.State.IDLE
                             && !mSST.isConcurrentVoiceAndDataAllowed()) {
                         ret = PhoneConstants.DataState.SUSPENDED;
                     } else {
@@ -428,13 +428,13 @@ public class GSMPhone extends PhoneBase {
     public void registerForSuppServiceNotification(
             Handler h, int what, Object obj) {
         mSsnRegistrants.addUnique(h, what, obj);
-        if (mSsnRegistrants.size() == 1) mCM.setSuppServiceNotifications(true, null);
+        if (mSsnRegistrants.size() == 1) mCi.setSuppServiceNotifications(true, null);
     }
 
     @Override
     public void unregisterForSuppServiceNotification(Handler h) {
         mSsnRegistrants.remove(h);
-        if (mSsnRegistrants.size() == 0) mCM.setSuppServiceNotifications(false, null);
+        if (mSsnRegistrants.size() == 0) mCi.setSuppServiceNotifications(false, null);
     }
 
     @Override
@@ -487,19 +487,19 @@ public class GSMPhone extends PhoneBase {
     @Override
     public GsmCall
     getForegroundCall() {
-        return mCT.foregroundCall;
+        return mCT.mForegroundCall;
     }
 
     @Override
     public GsmCall
     getBackgroundCall() {
-        return mCT.backgroundCall;
+        return mCT.mBackgroundCall;
     }
 
     @Override
     public GsmCall
     getRingingCall() {
-        return mCT.ringingCall;
+        return mCT.mRingingCall;
     }
 
     private boolean handleCallDeflectionIncallSupplementaryService(
@@ -731,7 +731,7 @@ public class GSMPhone extends PhoneBase {
         if (mmi == null) {
             return mCT.dial(newDialString, uusInfo);
         } else if (mmi.isTemporaryModeCLIR()) {
-            return mCT.dial(mmi.dialingNumber, mmi.getCLIRMode(), uusInfo);
+            return mCT.dial(mmi.mDialingNumber, mmi.getCLIRMode(), uusInfo);
         } else {
             mPendingMMIs.add(mmi);
             mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
@@ -771,8 +771,8 @@ public class GSMPhone extends PhoneBase {
             Rlog.e(LOG_TAG,
                     "sendDtmf called with invalid character '" + c + "'");
         } else {
-            if (mCT.state ==  PhoneConstants.State.OFFHOOK) {
-                mCM.sendDtmf(c, null);
+            if (mCT.mState ==  PhoneConstants.State.OFFHOOK) {
+                mCi.sendDtmf(c, null);
             }
         }
     }
@@ -784,14 +784,14 @@ public class GSMPhone extends PhoneBase {
             Rlog.e(LOG_TAG,
                 "startDtmf called with invalid character '" + c + "'");
         } else {
-            mCM.startDtmf(c, null);
+            mCi.startDtmf(c, null);
         }
     }
 
     @Override
     public void
     stopDtmf() {
-        mCM.stopDtmf(null);
+        mCi.stopDtmf(null);
     }
 
     public void
@@ -965,7 +965,7 @@ public class GSMPhone extends PhoneBase {
             } else {
                 resp = onComplete;
             }
-            mCM.queryCallForwardStatus(commandInterfaceCFReason,0,null,resp);
+            mCi.queryCallForwardStatus(commandInterfaceCFReason,0,null,resp);
         }
     }
 
@@ -985,7 +985,7 @@ public class GSMPhone extends PhoneBase {
             } else {
                 resp = onComplete;
             }
-            mCM.setCallForward(commandInterfaceCFAction,
+            mCi.setCallForward(commandInterfaceCFAction,
                     commandInterfaceCFReason,
                     CommandsInterface.SERVICE_CLASS_VOICE,
                     dialingNumber,
@@ -996,13 +996,13 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public void getOutgoingCallerIdDisplay(Message onComplete) {
-        mCM.getCLIR(onComplete);
+        mCi.getCLIR(onComplete);
     }
 
     @Override
     public void setOutgoingCallerIdDisplay(int commandInterfaceCLIRMode,
                                            Message onComplete) {
-        mCM.setCLIR(commandInterfaceCLIRMode,
+        mCi.setCLIR(commandInterfaceCLIRMode,
                 obtainMessage(EVENT_SET_CLIR_COMPLETE, commandInterfaceCLIRMode, 0, onComplete));
     }
 
@@ -1010,18 +1010,18 @@ public class GSMPhone extends PhoneBase {
     public void getCallWaiting(Message onComplete) {
         //As per 3GPP TS 24.083, section 1.6 UE doesn't need to send service
         //class parameter in call waiting interrogation  to network
-        mCM.queryCallWaiting(CommandsInterface.SERVICE_CLASS_NONE, onComplete);
+        mCi.queryCallWaiting(CommandsInterface.SERVICE_CLASS_NONE, onComplete);
     }
 
     @Override
     public void setCallWaiting(boolean enable, Message onComplete) {
-        mCM.setCallWaiting(enable, CommandsInterface.SERVICE_CLASS_VOICE, onComplete);
+        mCi.setCallWaiting(enable, CommandsInterface.SERVICE_CLASS_VOICE, onComplete);
     }
 
     @Override
     public void
     getAvailableNetworks(Message response) {
-        mCM.getAvailableNetworks(response);
+        mCi.getAvailableNetworks(response);
     }
 
     /**
@@ -1052,7 +1052,7 @@ public class GSMPhone extends PhoneBase {
         if (LOCAL_DEBUG)
             Rlog.d(LOG_TAG, "wrapping and sending message to connect automatically");
 
-        mCM.setNetworkSelectionModeAutomatic(msg);
+        mCi.setNetworkSelectionModeAutomatic(msg);
     }
 
     @Override
@@ -1069,13 +1069,13 @@ public class GSMPhone extends PhoneBase {
         // get the message
         Message msg = obtainMessage(EVENT_SET_NETWORK_MANUAL_COMPLETE, nsm);
 
-        mCM.setNetworkSelectionModeManual(network.getOperatorNumeric(), msg);
+        mCi.setNetworkSelectionModeManual(network.getOperatorNumeric(), msg);
     }
 
     @Override
     public void
     getNeighboringCids(Message response) {
-        mCM.getNeighboringCids(response);
+        mCi.getNeighboringCids(response);
     }
 
     @Override
@@ -1095,7 +1095,7 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public void getDataCallList(Message response) {
-        mCM.getDataCallList(response);
+        mCi.getDataCallList(response);
     }
 
     @Override
@@ -1204,7 +1204,7 @@ public class GSMPhone extends PhoneBase {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
         int clirSetting = sp.getInt(CLIR_KEY, -1);
         if (clirSetting >= 0) {
-            mCM.setCLIR(clirSetting, null);
+            mCi.setCLIR(clirSetting, null);
         }
     }
 
@@ -1215,11 +1215,11 @@ public class GSMPhone extends PhoneBase {
 
         switch (msg.what) {
             case EVENT_RADIO_AVAILABLE: {
-                mCM.getBasebandVersion(
+                mCi.getBasebandVersion(
                         obtainMessage(EVENT_GET_BASEBAND_VERSION_DONE));
 
-                mCM.getIMEI(obtainMessage(EVENT_GET_IMEI_DONE));
-                mCM.getIMEISV(obtainMessage(EVENT_GET_IMEISV_DONE));
+                mCi.getIMEI(obtainMessage(EVENT_GET_IMEI_DONE));
+                mCi.getIMEISV(obtainMessage(EVENT_GET_IMEISV_DONE));
             }
             break;
 

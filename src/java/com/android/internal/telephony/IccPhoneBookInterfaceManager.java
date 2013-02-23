@@ -39,12 +39,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
     protected static final boolean DBG = true;
 
-    protected PhoneBase phone;
-    protected AdnRecordCache adnCache;
+    protected PhoneBase mPhone;
+    protected AdnRecordCache mAdnCache;
     protected final Object mLock = new Object();
-    protected int recordSize[];
-    protected boolean success;
-    protected List<AdnRecord> records;
+    protected int mRecordSize[];
+    protected boolean mSuccess;
+    protected List<AdnRecord> mRecords;
 
     protected static final boolean ALLOW_SIM_OP_IN_UI_THREAD = false;
 
@@ -62,13 +62,13 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
                     ar = (AsyncResult) msg.obj;
                     synchronized (mLock) {
                         if (ar.exception == null) {
-                            recordSize = (int[])ar.result;
+                            mRecordSize = (int[])ar.result;
                             // recordSize[0]  is the record length
                             // recordSize[1]  is the total length of the EF file
                             // recordSize[2]  is the number of records in the EF file
-                            logd("GET_RECORD_SIZE Size " + recordSize[0] +
-                                    " total " + recordSize[1] +
-                                    " #record " + recordSize[2]);
+                            logd("GET_RECORD_SIZE Size " + mRecordSize[0] +
+                                    " total " + mRecordSize[1] +
+                                    " #record " + mRecordSize[2]);
                         }
                         notifyPending(ar);
                     }
@@ -76,7 +76,7 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
                 case EVENT_UPDATE_DONE:
                     ar = (AsyncResult) msg.obj;
                     synchronized (mLock) {
-                        success = (ar.exception == null);
+                        mSuccess = (ar.exception == null);
                         notifyPending(ar);
                     }
                     break;
@@ -84,11 +84,11 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
                     ar = (AsyncResult)msg.obj;
                     synchronized (mLock) {
                         if (ar.exception == null) {
-                            records = (List<AdnRecord>) ar.result;
+                            mRecords = (List<AdnRecord>) ar.result;
                         } else {
                             if(DBG) logd("Cannot load ADN records");
-                            if (records != null) {
-                                records.clear();
+                            if (mRecords != null) {
+                                mRecords.clear();
                             }
                         }
                         notifyPending(ar);
@@ -108,10 +108,10 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
     };
 
     public IccPhoneBookInterfaceManager(PhoneBase phone) {
-        this.phone = phone;
+        this.mPhone = phone;
         IccRecords r = phone.mIccRecords.get();
         if (r != null) {
-            adnCache = r.getAdnCache();
+            mAdnCache = r.getAdnCache();
         }
     }
 
@@ -120,9 +120,9 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
 
     public void updateIccRecords(IccRecords iccRecords) {
         if (iccRecords != null) {
-            adnCache = iccRecords.getAdnCache();
+            mAdnCache = iccRecords.getAdnCache();
         } else {
-            adnCache = null;
+            mAdnCache = null;
         }
     }
 
@@ -162,7 +162,7 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
             String newTag, String newPhoneNumber, String pin2) {
 
 
-        if (phone.getContext().checkCallingOrSelfPermission(
+        if (mPhone.getContext().checkCallingOrSelfPermission(
                 android.Manifest.permission.WRITE_CONTACTS)
             != PackageManager.PERMISSION_GRANTED) {
             throw new SecurityException(
@@ -178,15 +178,15 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
 
         synchronized(mLock) {
             checkThread();
-            success = false;
+            mSuccess = false;
             AtomicBoolean status = new AtomicBoolean(false);
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, status);
             AdnRecord oldAdn = new AdnRecord(oldTag, oldPhoneNumber);
             AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber);
-            adnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
+            mAdnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
             waitForResult(status);
         }
-        return success;
+        return mSuccess;
     }
 
     /**
@@ -211,7 +211,7 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
     updateAdnRecordsInEfByIndex(int efid, String newTag,
             String newPhoneNumber, int index, String pin2) {
 
-        if (phone.getContext().checkCallingOrSelfPermission(
+        if (mPhone.getContext().checkCallingOrSelfPermission(
                 android.Manifest.permission.WRITE_CONTACTS)
                 != PackageManager.PERMISSION_GRANTED) {
             throw new SecurityException(
@@ -223,14 +223,14 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
                 "("+ newTag + "," + newPhoneNumber + ")"+ " pin2=" + pin2);
         synchronized(mLock) {
             checkThread();
-            success = false;
+            mSuccess = false;
             AtomicBoolean status = new AtomicBoolean(false);
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, status);
             AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber);
-            adnCache.updateAdnByIndex(efid, newAdn, index, pin2, response);
+            mAdnCache.updateAdnByIndex(efid, newAdn, index, pin2, response);
             waitForResult(status);
         }
-        return success;
+        return mSuccess;
     }
 
     /**
@@ -257,7 +257,7 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
     @Override
     public List<AdnRecord> getAdnRecordsInEf(int efid) {
 
-        if (phone.getContext().checkCallingOrSelfPermission(
+        if (mPhone.getContext().checkCallingOrSelfPermission(
                 android.Manifest.permission.READ_CONTACTS)
                 != PackageManager.PERMISSION_GRANTED) {
             throw new SecurityException(
@@ -271,10 +271,10 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
             checkThread();
             AtomicBoolean status = new AtomicBoolean(false);
             Message response = mBaseHandler.obtainMessage(EVENT_LOAD_DONE, status);
-            adnCache.requestLoadAllAdnLike(efid, adnCache.extensionEfForEf(efid), response);
+            mAdnCache.requestLoadAllAdnLike(efid, mAdnCache.extensionEfForEf(efid), response);
             waitForResult(status);
         }
-        return records;
+        return mRecords;
     }
 
     protected void checkThread() {
@@ -301,7 +301,7 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
     private int updateEfForIccType(int efid) {
         // Check if we are trying to read ADN records
         if (efid == IccConstants.EF_ADN) {
-            if (phone.getCurrentUiccAppType() == AppType.APPTYPE_USIM) {
+            if (mPhone.getCurrentUiccAppType() == AppType.APPTYPE_USIM) {
                 return IccConstants.EF_PBR;
             }
         }

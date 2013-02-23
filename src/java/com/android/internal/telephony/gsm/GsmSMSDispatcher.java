@@ -67,17 +67,17 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     public GsmSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
             SmsUsageMonitor usageMonitor) {
         super(phone, storageMonitor, usageMonitor);
-        mDataDownloadHandler = new UsimDataDownloadHandler(mCm);
-        mCm.setOnNewGsmSms(this, EVENT_NEW_SMS, null);
-        mCm.setOnSmsStatus(this, EVENT_NEW_SMS_STATUS_REPORT, null);
-        mCm.setOnNewGsmBroadcastSms(this, EVENT_NEW_BROADCAST_SMS, null);
+        mDataDownloadHandler = new UsimDataDownloadHandler(mCi);
+        mCi.setOnNewGsmSms(this, EVENT_NEW_SMS, null);
+        mCi.setOnSmsStatus(this, EVENT_NEW_SMS_STATUS_REPORT, null);
+        mCi.setOnNewGsmBroadcastSms(this, EVENT_NEW_BROADCAST_SMS, null);
     }
 
     @Override
     public void dispose() {
-        mCm.unSetOnNewGsmSms(this);
-        mCm.unSetOnSmsStatus(this);
-        mCm.unSetOnNewGsmBroadcastSms(this);
+        mCi.unSetOnNewGsmSms(this);
+        mCi.unSetOnSmsStatus(this);
+        mCi.unSetOnNewGsmBroadcastSms(this);
     }
 
     @Override
@@ -106,10 +106,10 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
             AsyncResult ar = (AsyncResult) msg.obj;
             if (ar.exception == null) {
                 Rlog.d(TAG, "Successfully wrote SMS-PP message to UICC");
-                mCm.acknowledgeLastIncomingGsmSms(true, 0, null);
+                mCi.acknowledgeLastIncomingGsmSms(true, 0, null);
             } else {
                 Rlog.d(TAG, "Failed to write SMS-PP message to UICC", ar.exception);
-                mCm.acknowledgeLastIncomingGsmSms(false,
+                mCi.acknowledgeLastIncomingGsmSms(false,
                         CommandsInterface.GSM_SMS_FAIL_CAUSE_UNSPECIFIED_ERROR, null);
             }
             break;
@@ -132,7 +132,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
 
         if (sms != null) {
             int tpStatus = sms.getStatus();
-            int messageRef = sms.messageRef;
+            int messageRef = sms.mMessageRef;
             for (int i = 0, count = deliveryPendingList.size(); i < count; i++) {
                 SmsTracker tracker = deliveryPendingList.get(i);
                 if (tracker.mMessageRef == messageRef) {
@@ -191,7 +191,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                 String smsc = IccUtils.bytesToHexString(
                         PhoneNumberUtils.networkPortionToCalledPartyBCDWithLength(
                                 sms.getServiceCenterAddress()));
-                mCm.writeSmsToSim(SmsManager.STATUS_ON_ICC_UNREAD, smsc,
+                mCi.writeSmsToSim(SmsManager.STATUS_ON_ICC_UNREAD, smsc,
                         IccUtils.bytesToHexString(sms.getPdu()),
                         obtainMessage(EVENT_WRITE_SMS_COMPLETE));
                 return Activity.RESULT_OK;  // acknowledge after response from write to USIM
@@ -295,13 +295,13 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         byte pdu[] = (byte[]) map.get("pdu");
 
         Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
-        mCm.sendSMS(IccUtils.bytesToHexString(smsc), IccUtils.bytesToHexString(pdu), reply);
+        mCi.sendSMS(IccUtils.bytesToHexString(smsc), IccUtils.bytesToHexString(pdu), reply);
     }
 
     /** {@inheritDoc} */
     @Override
     protected void acknowledgeLastIncomingSms(boolean success, int result, Message response) {
-        mCm.acknowledgeLastIncomingGsmSms(success, resultToCause(result), response);
+        mCi.acknowledgeLastIncomingGsmSms(success, resultToCause(result), response);
     }
 
     private static int resultToCause(int rc) {

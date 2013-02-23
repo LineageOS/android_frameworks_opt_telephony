@@ -24,7 +24,7 @@ import android.telephony.Rlog;
  * {@hide}
  */
 public class CommandException extends RuntimeException {
-    private Error e;
+    private Error mError;
 
     public enum Error {
         INVALID_RESPONSE,
@@ -46,7 +46,7 @@ public class CommandException extends RuntimeException {
 
     public CommandException(Error e) {
         super(e.toString());
-        this.e = e;
+        mError = e;
     }
 
     public static CommandException
@@ -90,7 +90,7 @@ public class CommandException extends RuntimeException {
     }
 
     public Error getCommandError() {
-        return e;
+        return mError;
     }
 
 

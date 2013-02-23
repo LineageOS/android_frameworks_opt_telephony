@@ -99,26 +99,26 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
 
     static class LoadLinearFixedContext {
 
-        int efid;
-        int recordNum, recordSize, countRecords;
-        boolean loadAll;
+        int mEfid;
+        int mRecordNum, mRecordSize, mCountRecords;
+        boolean mLoadAll;
 
-        Message onLoaded;
+        Message mOnLoaded;
 
         ArrayList<byte[]> results;
 
         LoadLinearFixedContext(int efid, int recordNum, Message onLoaded) {
-            this.efid = efid;
-            this.recordNum = recordNum;
-            this.onLoaded = onLoaded;
-            this.loadAll = false;
+            mEfid = efid;
+            mRecordNum = recordNum;
+            mOnLoaded = onLoaded;
+            mLoadAll = false;
         }
 
         LoadLinearFixedContext(int efid, Message onLoaded) {
-            this.efid = efid;
-            this.recordNum = 1;
-            this.loadAll = true;
-            this.onLoaded = onLoaded;
+            mEfid = efid;
+            mRecordNum = 1;
+            mLoadAll = true;
+            mOnLoaded = onLoaded;
         }
     }
 
@@ -340,7 +340,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 ar = (AsyncResult) msg.obj;
                 lc = (LoadLinearFixedContext) ar.userObj;
                 result = (IccIoResult) ar.result;
-                response = lc.onLoaded;
+                response = lc.mOnLoaded;
 
                 if (ar.exception != null) {
                     sendResult(response, null, ar.exception);
@@ -355,7 +355,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 }
 
                 data = result.payload;
-                lc.recordSize = data[RESPONSE_DATA_RECORD_LENGTH] & 0xFF;
+                lc.mRecordSize = data[RESPONSE_DATA_RECORD_LENGTH] & 0xFF;
 
                 if ((TYPE_EF != data[RESPONSE_DATA_FILE_TYPE]) ||
                     (EF_TYPE_LINEAR_FIXED != data[RESPONSE_DATA_STRUCTURE])) {
@@ -364,10 +364,10 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 }
 
                 logd("IccFileHandler: read EF IMG");
-                mCi.iccIOForApp(COMMAND_READ_RECORD, lc.efid, getEFPath(lc.efid),
-                        lc.recordNum,
+                mCi.iccIOForApp(COMMAND_READ_RECORD, lc.mEfid, getEFPath(lc.mEfid),
+                        lc.mRecordNum,
                         READ_RECORD_MODE_ABSOLUTE,
-                        lc.recordSize, null, null, mAid,
+                        lc.mRecordSize, null, null, mAid,
                         obtainMessage(EVENT_READ_IMG_DONE, IccConstants.EF_IMG, 0, response));
                 break;
 
@@ -375,7 +375,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 ar = (AsyncResult) msg.obj;
                 lc = (LoadLinearFixedContext) ar.userObj;
                 result = (IccIoResult) ar.result;
-                response = lc.onLoaded;
+                response = lc.mOnLoaded;
 
                 iccException = result.getException();
                 if (iccException != null) {
@@ -396,7 +396,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 ar = (AsyncResult)msg.obj;
                 lc = (LoadLinearFixedContext) ar.userObj;
                 result = (IccIoResult) ar.result;
-                response = lc.onLoaded;
+                response = lc.mOnLoaded;
 
                 if (ar.exception != null) {
                     sendResult(response, null, ar.exception);
@@ -428,7 +428,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 ar = (AsyncResult)msg.obj;
                 lc = (LoadLinearFixedContext) ar.userObj;
                 result = (IccIoResult) ar.result;
-                response = lc.onLoaded;
+                response = lc.mOnLoaded;
 
                 if (ar.exception != null) {
                     sendResult(response, null, ar.exception);
@@ -443,8 +443,8 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 }
 
                 data = result.payload;
-                fileid = lc.efid;
-                recordNum = lc.recordNum;
+                fileid = lc.mEfid;
+                recordNum = lc.mRecordNum;
 
                 if (TYPE_EF != data[RESPONSE_DATA_FILE_TYPE]) {
                     throw new IccFileTypeMismatch();
@@ -454,21 +454,21 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                     throw new IccFileTypeMismatch();
                 }
 
-                lc.recordSize = data[RESPONSE_DATA_RECORD_LENGTH] & 0xFF;
+                lc.mRecordSize = data[RESPONSE_DATA_RECORD_LENGTH] & 0xFF;
 
                 size = ((data[RESPONSE_DATA_FILE_SIZE_1] & 0xff) << 8)
                        + (data[RESPONSE_DATA_FILE_SIZE_2] & 0xff);
 
-                lc.countRecords = size / lc.recordSize;
+                lc.mCountRecords = size / lc.mRecordSize;
 
-                 if (lc.loadAll) {
-                     lc.results = new ArrayList<byte[]>(lc.countRecords);
+                 if (lc.mLoadAll) {
+                     lc.results = new ArrayList<byte[]>(lc.mCountRecords);
                  }
 
-                 mCi.iccIOForApp(COMMAND_READ_RECORD, lc.efid, getEFPath(lc.efid),
-                         lc.recordNum,
+                 mCi.iccIOForApp(COMMAND_READ_RECORD, lc.mEfid, getEFPath(lc.mEfid),
+                         lc.mRecordNum,
                          READ_RECORD_MODE_ABSOLUTE,
-                         lc.recordSize, null, null, mAid,
+                         lc.mRecordSize, null, null, mAid,
                          obtainMessage(EVENT_READ_RECORD_DONE, lc));
                  break;
             case EVENT_GET_BINARY_SIZE_DONE:
@@ -514,7 +514,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 ar = (AsyncResult)msg.obj;
                 lc = (LoadLinearFixedContext) ar.userObj;
                 result = (IccIoResult) ar.result;
-                response = lc.onLoaded;
+                response = lc.mOnLoaded;
 
                 if (ar.exception != null) {
                     sendResult(response, null, ar.exception);
@@ -528,20 +528,20 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                     break;
                 }
 
-                if (!lc.loadAll) {
+                if (!lc.mLoadAll) {
                     sendResult(response, result.payload, null);
                 } else {
                     lc.results.add(result.payload);
 
-                    lc.recordNum++;
+                    lc.mRecordNum++;
 
-                    if (lc.recordNum > lc.countRecords) {
+                    if (lc.mRecordNum > lc.mCountRecords) {
                         sendResult(response, lc.results, null);
                     } else {
-                        mCi.iccIOForApp(COMMAND_READ_RECORD, lc.efid, getEFPath(lc.efid),
-                                    lc.recordNum,
+                        mCi.iccIOForApp(COMMAND_READ_RECORD, lc.mEfid, getEFPath(lc.mEfid),
+                                    lc.mRecordNum,
                                     READ_RECORD_MODE_ABSOLUTE,
-                                    lc.recordSize, null, null, mAid,
+                                    lc.mRecordSize, null, null, mAid,
                                     obtainMessage(EVENT_READ_RECORD_DONE, lc));
                     }
                 }

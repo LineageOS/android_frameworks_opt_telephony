@@ -118,7 +118,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
     static final Uri PREFERAPN_NO_UPDATE_URI =
                         Uri.parse("content://telephony/carriers/preferapn_no_update");
     static final String APN_ID = "apn_id";
-    private boolean canSetPreferApn = false;
+    private boolean mCanSetPreferApn = false;
 
     @Override
     protected void onActionIntentReconnectAlarm(Intent intent) {
@@ -175,10 +175,10 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
     public DataConnectionTracker(PhoneBase p) {
         super(p);
         if (DBG) log("GsmDCT.constructor");
-        p.mCM.registerForAvailable (this, DctConstants.EVENT_RADIO_AVAILABLE, null);
-        p.mCM.registerForOffOrNotAvailable(this, DctConstants.EVENT_RADIO_OFF_OR_NOT_AVAILABLE,
+        p.mCi.registerForAvailable (this, DctConstants.EVENT_RADIO_AVAILABLE, null);
+        p.mCi.registerForOffOrNotAvailable(this, DctConstants.EVENT_RADIO_OFF_OR_NOT_AVAILABLE,
                 null);
-        p.mCM.registerForDataNetworkStateChanged (this, DctConstants.EVENT_DATA_STATE_CHANGED,
+        p.mCi.registerForDataNetworkStateChanged (this, DctConstants.EVENT_DATA_STATE_CHANGED,
                 null);
         p.getCallTracker().registerForVoiceCallEnded (this, DctConstants.EVENT_VOICE_CALL_ENDED,
                 null);
@@ -214,11 +214,11 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
         super.dispose();
 
         //Unregister for all events
-        mPhone.mCM.unregisterForAvailable(this);
-        mPhone.mCM.unregisterForOffOrNotAvailable(this);
+        mPhone.mCi.unregisterForAvailable(this);
+        mPhone.mCi.unregisterForOffOrNotAvailable(this);
         IccRecords r = mIccRecords.get();
         if (r != null) { r.unregisterForRecordsLoaded(this);}
-        mPhone.mCM.unregisterForDataNetworkStateChanged(this);
+        mPhone.mCi.unregisterForDataNetworkStateChanged(this);
         mPhone.getCallTracker().unregisterForVoiceCallEnded(this);
         mPhone.getCallTracker().unregisterForVoiceCallStarted(this);
         mPhone.getServiceStateTracker().unregisterForDataConnectionAttached(this);
@@ -228,7 +228,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
         mPhone.getServiceStateTracker().unregisterForPsRestrictedEnabled(this);
         mPhone.getServiceStateTracker().unregisterForPsRestrictedDisabled(this);
 
-        mPhone.getContext().getContentResolver().unregisterContentObserver(this.mApnObserver);
+        mPhone.getContext().getContentResolver().unregisterContentObserver(mApnObserver);
         mApnContexts.clear();
 
         destroyDataConnections();
@@ -1494,7 +1494,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
     private void onRecordsLoaded() {
         if (DBG) log("onRecordsLoaded: createAllApnList");
         createAllApnList();
-        if (mPhone.mCM.getRadioState().isOn()) {
+        if (mPhone.mCi.getRadioState().isOn()) {
             if (DBG) log("onRecordsLoaded: notifying data availability");
             notifyOffApnsOfAvailability(Phone.REASON_SIM_LOADED);
         }
@@ -1769,7 +1769,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
                 // everything is setup
                 if(TextUtils.equals(apnContext.getApnType(),PhoneConstants.APN_TYPE_DEFAULT)) {
                     SystemProperties.set("gsm.defaultpdpcontext.active", "true");
-                    if (canSetPreferApn && mPreferredApn == null) {
+                    if (mCanSetPreferApn && mPreferredApn == null) {
                         if (DBG) log("onDataSetupComplete: PREFERED APN is null");
                         mPreferredApn = apn;
                         if (mPreferredApn != null) {
@@ -1892,7 +1892,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
     protected void onPollPdp() {
         if (getOverallState() == DctConstants.State.CONNECTED) {
             // only poll when connected
-            mPhone.mCM.getDataCallList(this.obtainMessage(DctConstants.EVENT_DATA_STATE_CHANGED));
+            mPhone.mCi.getDataCallList(obtainMessage(DctConstants.EVENT_DATA_STATE_CHANGED));
             sendMessageDelayed(obtainMessage(DctConstants.EVENT_POLL_PDP), POLL_PDP_MILLIS);
         }
     }
@@ -2115,13 +2115,13 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
         }
         if (DBG) {
             log("buildWaitingApns: usePreferred=" + usePreferred
-                    + " canSetPreferApn=" + canSetPreferApn
+                    + " canSetPreferApn=" + mCanSetPreferApn
                     + " mPreferredApn=" + mPreferredApn
                     + " operator=" + operator + " radioTech=" + radioTech
                     + " IccRecords r=" + r);
         }
 
-        if (usePreferred && canSetPreferApn && mPreferredApn != null &&
+        if (usePreferred && mCanSetPreferApn && mPreferredApn != null &&
                 mPreferredApn.canHandleType(requestedApnType)) {
             if (DBG) {
                 log("buildWaitingApns: Preferred APN:" + operator + ":"
@@ -2189,7 +2189,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
     }
 
     private void setPreferredApn(int pos) {
-        if (!canSetPreferApn) {
+        if (!mCanSetPreferApn) {
             log("setPreferredApn: X !canSEtPreferApn");
             return;
         }
@@ -2217,14 +2217,14 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
                 null, null, Telephony.Carriers.DEFAULT_SORT_ORDER);
 
         if (cursor != null) {
-            canSetPreferApn = true;
+            mCanSetPreferApn = true;
         } else {
-            canSetPreferApn = false;
+            mCanSetPreferApn = false;
         }
         log("getPreferredApn: mRequestedApnType=" + mRequestedApnType + " cursor=" + cursor
                 + " cursor.count=" + ((cursor != null) ? cursor.getCount() : 0));
 
-        if (canSetPreferApn && cursor.getCount() > 0) {
+        if (mCanSetPreferApn && cursor.getCount() > 0) {
             int pos;
             cursor.moveToFirst();
             pos = cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers._ID));
@@ -2408,7 +2408,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
         pw.println("DataConnectionTracker extends:");
         super.dump(fd, pw, args);
         pw.println(" mReregisterOnReconnectFailure=" + mReregisterOnReconnectFailure);
-        pw.println(" canSetPreferApn=" + canSetPreferApn);
+        pw.println(" canSetPreferApn=" + mCanSetPreferApn);
         pw.println(" mApnObserver=" + mApnObserver);
         pw.println(" getOverallState=" + getOverallState());
         pw.println(" mDataConnectionAsyncChannels=%s\n" + mDataConnectionAsyncChannels);

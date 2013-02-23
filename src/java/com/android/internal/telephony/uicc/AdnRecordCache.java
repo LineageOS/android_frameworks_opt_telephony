@@ -36,15 +36,15 @@ public final class AdnRecordCache extends Handler implements IccConstants {
     private UsimPhoneBookManager mUsimPhoneBookManager;
 
     // Indexed by EF ID
-    SparseArray<ArrayList<AdnRecord>> adnLikeFiles
+    SparseArray<ArrayList<AdnRecord>> mAdnLikeFiles
         = new SparseArray<ArrayList<AdnRecord>>();
 
     // People waiting for ADN-like files to be loaded
-    SparseArray<ArrayList<Message>> adnLikeWaiters
+    SparseArray<ArrayList<Message>> mAdnLikeWaiters
         = new SparseArray<ArrayList<Message>>();
 
     // People waiting for adn record to be updated
-    SparseArray<Message> userWriteResponse = new SparseArray<Message>();
+    SparseArray<Message> mUserWriteResponse = new SparseArray<Message>();
 
     //***** Event Constants
 
@@ -66,7 +66,7 @@ public final class AdnRecordCache extends Handler implements IccConstants {
      * Called from SIMRecords.onRadioNotAvailable and SIMRecords.handleSimRefresh.
      */
     public void reset() {
-        adnLikeFiles.clear();
+        mAdnLikeFiles.clear();
         mUsimPhoneBookManager.reset();
 
         clearWaiters();
@@ -75,21 +75,21 @@ public final class AdnRecordCache extends Handler implements IccConstants {
     }
 
     private void clearWaiters() {
-        int size = adnLikeWaiters.size();
+        int size = mAdnLikeWaiters.size();
         for (int i = 0; i < size; i++) {
-            ArrayList<Message> waiters = adnLikeWaiters.valueAt(i);
+            ArrayList<Message> waiters = mAdnLikeWaiters.valueAt(i);
             AsyncResult ar = new AsyncResult(null, null, new RuntimeException("AdnCache reset"));
             notifyWaiters(waiters, ar);
         }
-        adnLikeWaiters.clear();
+        mAdnLikeWaiters.clear();
     }
 
     private void clearUserWriters() {
-        int size = userWriteResponse.size();
+        int size = mUserWriteResponse.size();
         for (int i = 0; i < size; i++) {
-            sendErrorResponse(userWriteResponse.valueAt(i), "AdnCace reset");
+            sendErrorResponse(mUserWriteResponse.valueAt(i), "AdnCace reset");
         }
-        userWriteResponse.clear();
+        mUserWriteResponse.clear();
     }
 
     /**
@@ -98,7 +98,7 @@ public final class AdnRecordCache extends Handler implements IccConstants {
      */
     public ArrayList<AdnRecord>
     getRecordsIfLoaded(int efid) {
-        return adnLikeFiles.get(efid);
+        return mAdnLikeFiles.get(efid);
     }
 
     /**
@@ -146,13 +146,13 @@ public final class AdnRecordCache extends Handler implements IccConstants {
             return;
         }
 
-        Message pendingResponse = userWriteResponse.get(efid);
+        Message pendingResponse = mUserWriteResponse.get(efid);
         if (pendingResponse != null) {
             sendErrorResponse(response, "Have pending update for EF:" + efid);
             return;
         }
 
-        userWriteResponse.put(efid, response);
+        mUserWriteResponse.put(efid, response);
 
         new AdnRecordLoader(mFh).updateEF(adn, efid, extensionEF,
                 recordIndex, pin2,
@@ -214,23 +214,23 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
         if (efid == EF_PBR) {
             AdnRecord foundAdn = oldAdnList.get(index-1);
-            efid = foundAdn.efid;
-            extensionEF = foundAdn.extRecord;
-            index = foundAdn.recordNumber;
+            efid = foundAdn.mEfid;
+            extensionEF = foundAdn.mExtRecord;
+            index = foundAdn.mRecordNumber;
 
-            newAdn.efid = efid;
-            newAdn.extRecord = extensionEF;
-            newAdn.recordNumber = index;
+            newAdn.mEfid = efid;
+            newAdn.mExtRecord = extensionEF;
+            newAdn.mRecordNumber = index;
         }
 
-        Message pendingResponse = userWriteResponse.get(efid);
+        Message pendingResponse = mUserWriteResponse.get(efid);
 
         if (pendingResponse != null) {
             sendErrorResponse(response, "Have pending update for EF:" + efid);
             return;
         }
 
-        userWriteResponse.put(efid, response);
+        mUserWriteResponse.put(efid, response);
 
         new AdnRecordLoader(mFh).updateEF(newAdn, efid, extensionEF,
                 index, pin2,
@@ -265,7 +265,7 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
         // Have we already *started* loading this efid?
 
-        waiters = adnLikeWaiters.get(efid);
+        waiters = mAdnLikeWaiters.get(efid);
 
         if (waiters != null) {
             // There's a pending request for this EF already
@@ -280,7 +280,7 @@ public final class AdnRecordCache extends Handler implements IccConstants {
         waiters = new ArrayList<Message>();
         waiters.add(response);
 
-        adnLikeWaiters.put(efid, waiters);
+        mAdnLikeWaiters.put(efid, waiters);
 
 
         if (extensionEf < 0) {
@@ -331,11 +331,11 @@ public final class AdnRecordCache extends Handler implements IccConstants {
                 efid = msg.arg1;
                 ArrayList<Message> waiters;
 
-                waiters = adnLikeWaiters.get(efid);
-                adnLikeWaiters.delete(efid);
+                waiters = mAdnLikeWaiters.get(efid);
+                mAdnLikeWaiters.delete(efid);
 
                 if (ar.exception == null) {
-                    adnLikeFiles.put(efid, (ArrayList<AdnRecord>) ar.result);
+                    mAdnLikeFiles.put(efid, (ArrayList<AdnRecord>) ar.result);
                 }
                 notifyWaiters(waiters, ar);
                 break;
@@ -346,12 +346,12 @@ public final class AdnRecordCache extends Handler implements IccConstants {
                 AdnRecord adn = (AdnRecord) (ar.userObj);
 
                 if (ar.exception == null) {
-                    adnLikeFiles.get(efid).set(index - 1, adn);
+                    mAdnLikeFiles.get(efid).set(index - 1, adn);
                     mUsimPhoneBookManager.invalidateCache();
                 }
 
-                Message response = userWriteResponse.get(efid);
-                userWriteResponse.delete(efid);
+                Message response = mUserWriteResponse.get(efid);
+                mUserWriteResponse.delete(efid);
 
                 AsyncResult.forMessage(response, null, ar.exception);
                 response.sendToTarget();

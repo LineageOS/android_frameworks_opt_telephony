@@ -155,9 +155,9 @@ public class CDMAPhone extends PhoneBase {
     }
 
     protected void init(Context context, PhoneNotifier notifier) {
-        mCM.setPhoneType(PhoneConstants.PHONE_TYPE_CDMA);
+        mCi.setPhoneType(PhoneConstants.PHONE_TYPE_CDMA);
         mCT = new CdmaCallTracker(this);
-        mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context, mCM, this,
+        mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context, mCi, this,
                 EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
         mSMS = new CdmaSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
         mDataConnectionTracker = new DataConnectionTracker (this);
@@ -166,12 +166,12 @@ public class CDMAPhone extends PhoneBase {
         mSubInfo = new PhoneSubInfo(this);
         mEriManager = new EriManager(this, context, EriManager.ERI_FROM_XML);
 
-        mCM.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
-        mCM.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
-        mCM.registerForOn(this, EVENT_RADIO_ON, null);
-        mCM.setOnSuppServiceNotification(this, EVENT_SSN, null);
+        mCi.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
+        mCi.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
+        mCi.registerForOn(this, EVENT_RADIO_ON, null);
+        mCi.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
-        mCM.setEmergencyCallbackMode(this, EVENT_EMERGENCY_CALLBACK_MODE_ENTER, null);
+        mCi.setEmergencyCallbackMode(this, EVENT_EMERGENCY_CALLBACK_MODE_ENTER, null);
 
         PowerManager pm
             = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
@@ -186,7 +186,7 @@ public class CDMAPhone extends PhoneBase {
         mIsPhoneInEcmState = inEcm.equals("true");
         if (mIsPhoneInEcmState) {
             // Send a message which will invoke handleExitEmergencyCallbackMode
-            mCM.exitEmergencyCallbackMode(obtainMessage(EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE));
+            mCi.exitEmergencyCallbackMode(obtainMessage(EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE));
         }
 
         // get the string that specifies the carrier OTA Sp number
@@ -221,11 +221,11 @@ public class CDMAPhone extends PhoneBase {
 
             //Unregister from all former registered events
             unregisterForRuimRecordEvents();
-            mCM.unregisterForAvailable(this); //EVENT_RADIO_AVAILABLE
-            mCM.unregisterForOffOrNotAvailable(this); //EVENT_RADIO_OFF_OR_NOT_AVAILABLE
-            mCM.unregisterForOn(this); //EVENT_RADIO_ON
+            mCi.unregisterForAvailable(this); //EVENT_RADIO_AVAILABLE
+            mCi.unregisterForOffOrNotAvailable(this); //EVENT_RADIO_OFF_OR_NOT_AVAILABLE
+            mCi.unregisterForOn(this); //EVENT_RADIO_ON
             mSST.unregisterForNetworkAttached(this); //EVENT_REGISTERED_TO_NETWORK
-            mCM.unSetOnSuppServiceNotification(this);
+            mCi.unSetOnSuppServiceNotification(this);
             removeCallbacks(mExitEcmRunnable);
 
             mPendingMmis.clear();
@@ -267,7 +267,7 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public ServiceState getServiceState() {
-        return mSST.ss;
+        return mSST.mSS;
     }
 
     @Override
@@ -277,7 +277,7 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public PhoneConstants.State getState() {
-        return mCT.state;
+        return mCT.mState;
     }
 
     @Override
@@ -303,7 +303,7 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public CdmaCall getRingingCall() {
-        return mCT.ringingCall;
+        return mCT.mRingingCall;
     }
 
     @Override
@@ -324,12 +324,12 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public void enableEnhancedVoicePrivacy(boolean enable, Message onComplete) {
-        this.mCM.setPreferredVoicePrivacy(enable, onComplete);
+        mCi.setPreferredVoicePrivacy(enable, onComplete);
     }
 
     @Override
     public void getEnhancedVoicePrivacy(Message onComplete) {
-        this.mCM.getPreferredVoicePrivacy(onComplete);
+        mCi.getPreferredVoicePrivacy(onComplete);
     }
 
     @Override
@@ -401,7 +401,7 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public CdmaCall getBackgroundCall() {
-        return mCT.backgroundCall;
+        return mCT.mBackgroundCall;
     }
 
     @Override
@@ -470,7 +470,7 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public void getCallWaiting(Message onComplete) {
-        mCM.queryCallWaiting(CommandsInterface.SERVICE_CLASS_VOICE, onComplete);
+        mCi.queryCallWaiting(CommandsInterface.SERVICE_CLASS_VOICE, onComplete);
     }
 
     @Override
@@ -525,12 +525,12 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public CellLocation getCellLocation() {
-        return mSST.cellLoc;
+        return mSST.mCellLoc;
     }
 
     @Override
     public CdmaCall getForegroundCall() {
-        return mCT.foregroundCall;
+        return mCT.mForegroundCall;
     }
 
     @Override
@@ -600,12 +600,12 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public void registerForCdmaOtaStatusChange(Handler h, int what, Object obj) {
-        mCM.registerForCdmaOtaProvision(h, what, obj);
+        mCi.registerForCdmaOtaProvision(h, what, obj);
     }
 
     @Override
     public void unregisterForCdmaOtaStatusChange(Handler h) {
-        mCM.unregisterForCdmaOtaProvision(h);
+        mCi.unregisterForCdmaOtaProvision(h);
     }
 
     @Override
@@ -682,7 +682,7 @@ public class CDMAPhone extends PhoneBase {
 
                 case CONNECTED:
                 case DISCONNECTING:
-                    if ( mCT.state != PhoneConstants.State.IDLE
+                    if ( mCT.mState != PhoneConstants.State.IDLE
                             && !mSST.isConcurrentVoiceAndDataAllowed()) {
                         ret = PhoneConstants.DataState.SUSPENDED;
                     } else {
@@ -712,8 +712,8 @@ public class CDMAPhone extends PhoneBase {
             Rlog.e(LOG_TAG,
                     "sendDtmf called with invalid character '" + c + "'");
         } else {
-            if (mCT.state ==  PhoneConstants.State.OFFHOOK) {
-                mCM.sendDtmf(c, null);
+            if (mCT.mState ==  PhoneConstants.State.OFFHOOK) {
+                mCi.sendDtmf(c, null);
             }
         }
     }
@@ -724,13 +724,13 @@ public class CDMAPhone extends PhoneBase {
             Rlog.e(LOG_TAG,
                     "startDtmf called with invalid character '" + c + "'");
         } else {
-            mCM.startDtmf(c, null);
+            mCi.startDtmf(c, null);
         }
     }
 
     @Override
     public void stopDtmf() {
-        mCM.stopDtmf(null);
+        mCi.stopDtmf(null);
     }
 
     @Override
@@ -744,8 +744,8 @@ public class CDMAPhone extends PhoneBase {
                 break;
             }
         }
-        if ((mCT.state ==  PhoneConstants.State.OFFHOOK)&&(check)) {
-            mCM.sendBurstDtmf(dtmfString, on, off, onComplete);
+        if ((mCT.mState ==  PhoneConstants.State.OFFHOOK)&&(check)) {
+            mCi.sendBurstDtmf(dtmfString, on, off, onComplete);
         }
      }
 
@@ -771,7 +771,7 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public void getDataCallList(Message response) {
-        mCM.getDataCallList(response);
+        mCi.getDataCallList(response);
     }
 
     @Override
@@ -941,7 +941,7 @@ public class CDMAPhone extends PhoneBase {
             mWakeLock.release();
         }
         // Send a message which will invoke handleExitEmergencyCallbackMode
-        mCM.exitEmergencyCallbackMode(obtainMessage(EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE));
+        mCi.exitEmergencyCallbackMode(obtainMessage(EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE));
     }
 
     private void handleEnterEmergencyCallbackMode(Message msg) {
@@ -1036,9 +1036,9 @@ public class CDMAPhone extends PhoneBase {
 
         switch(msg.what) {
             case EVENT_RADIO_AVAILABLE: {
-                mCM.getBasebandVersion(obtainMessage(EVENT_GET_BASEBAND_VERSION_DONE));
+                mCi.getBasebandVersion(obtainMessage(EVENT_GET_BASEBAND_VERSION_DONE));
 
-                mCM.getDeviceIdentity(obtainMessage(EVENT_GET_DEVICE_IDENTITY_DONE));
+                mCi.getDeviceIdentity(obtainMessage(EVENT_GET_DEVICE_IDENTITY_DONE));
             }
             break;
 

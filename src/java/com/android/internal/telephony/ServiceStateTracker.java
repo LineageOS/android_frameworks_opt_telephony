@@ -41,15 +41,15 @@ import com.android.internal.telephony.uicc.UiccController;
  */
 public abstract class ServiceStateTracker extends Handler {
 
-    protected CommandsInterface cm;
+    protected CommandsInterface mCi;
     protected UiccController mUiccController = null;
     protected UiccCardApplication mUiccApplcation = null;
     protected IccRecords mIccRecords = null;
 
     protected PhoneBase mPhoneBase;
 
-    public ServiceState ss = new ServiceState();
-    protected ServiceState newSS = new ServiceState();
+    public ServiceState mSS = new ServiceState();
+    protected ServiceState mNewSS = new ServiceState();
 
     protected CellInfo mLastCellInfo = null;
 
@@ -73,7 +73,7 @@ public abstract class ServiceStateTracker extends Handler {
      * and ignore stale responses.  The value is a count-down of
      * expected responses in this pollingContext.
      */
-    protected int[] pollingContext;
+    protected int[] mPollingContext;
     protected boolean mDesiredPowerState;
 
     /**
@@ -81,7 +81,7 @@ public abstract class ServiceStateTracker extends Handler {
      * getting unsolicited signal strength updates from the radio, set
      * value to true and don't bother polling any more.
      */
-    protected boolean dontPollSignalStrength = false;
+    protected boolean mDontPollSignalStrength = false;
 
     protected RegistrantList mRoamingOnRegistrants = new RegistrantList();
     protected RegistrantList mRoamingOffRegistrants = new RegistrantList();
@@ -184,14 +184,14 @@ public abstract class ServiceStateTracker extends Handler {
     protected ServiceStateTracker(PhoneBase phoneBase, CommandsInterface ci, CellInfo cellInfo) {
         mPhoneBase = phoneBase;
         mCellInfo = cellInfo;
-        cm = ci;
+        mCi = ci;
         mUiccController = UiccController.getInstance();
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
-        cm.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
+        mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
     }
 
     public void dispose() {
-        cm.unSetOnSignalStrengthUpdate(this);
+        mCi.unSetOnSignalStrengthUpdate(this);
         mUiccController.unregisterForIccChanged(this);
     }
 
@@ -228,7 +228,7 @@ public abstract class ServiceStateTracker extends Handler {
         Registrant r = new Registrant(h, what, obj);
         mRoamingOnRegistrants.add(r);
 
-        if (ss.getRoaming()) {
+        if (mSS.getRoaming()) {
             r.notifyRegistrant();
         }
     }
@@ -249,7 +249,7 @@ public abstract class ServiceStateTracker extends Handler {
         Registrant r = new Registrant(h, what, obj);
         mRoamingOffRegistrants.add(r);
 
-        if (!ss.getRoaming()) {
+        if (!mSS.getRoaming()) {
             r.notifyRegistrant();
         }
     }
@@ -268,7 +268,7 @@ public abstract class ServiceStateTracker extends Handler {
      * on failure.
      */
     public void reRegisterNetwork(Message onComplete) {
-        cm.getPreferredNetworkType(
+        mCi.getPreferredNetworkType(
                 obtainMessage(EVENT_GET_PREFERRED_NETWORK_TYPE, onComplete));
     }
 
@@ -295,26 +295,26 @@ public abstract class ServiceStateTracker extends Handler {
     public void enableSingleLocationUpdate() {
         if (mWantSingleLocationUpdate || mWantContinuousLocationUpdates) return;
         mWantSingleLocationUpdate = true;
-        cm.setLocationUpdates(true, obtainMessage(EVENT_LOCATION_UPDATES_ENABLED));
+        mCi.setLocationUpdates(true, obtainMessage(EVENT_LOCATION_UPDATES_ENABLED));
     }
 
     public void enableLocationUpdates() {
         if (mWantSingleLocationUpdate || mWantContinuousLocationUpdates) return;
         mWantContinuousLocationUpdates = true;
-        cm.setLocationUpdates(true, obtainMessage(EVENT_LOCATION_UPDATES_ENABLED));
+        mCi.setLocationUpdates(true, obtainMessage(EVENT_LOCATION_UPDATES_ENABLED));
     }
 
     protected void disableSingleLocationUpdate() {
         mWantSingleLocationUpdate = false;
         if (!mWantSingleLocationUpdate && !mWantContinuousLocationUpdates) {
-            cm.setLocationUpdates(false, null);
+            mCi.setLocationUpdates(false, null);
         }
     }
 
     public void disableLocationUpdates() {
         mWantContinuousLocationUpdates = false;
         if (!mWantSingleLocationUpdate && !mWantContinuousLocationUpdates) {
-            cm.setLocationUpdates(false, null);
+            mCi.setLocationUpdates(false, null);
         }
     }
 
@@ -403,7 +403,7 @@ public abstract class ServiceStateTracker extends Handler {
         Registrant r = new Registrant(h, what, obj);
 
         mNetworkAttachedRegistrants.add(r);
-        if (ss.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+        if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
             r.notifyRegistrant();
         }
     }
@@ -531,7 +531,7 @@ public abstract class ServiceStateTracker extends Handler {
     /** Cancel a pending (if any) pollState() operation */
     protected void cancelPollState() {
         // This will effectively cancel the rest of the poll requests.
-        pollingContext = new int[1];
+        mPollingContext = new int[1];
     }
 
     /**
@@ -609,13 +609,13 @@ public abstract class ServiceStateTracker extends Handler {
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("ServiceStateTracker:");
-        pw.println(" ss=" + ss);
-        pw.println(" newSS=" + newSS);
+        pw.println(" mSS=" + mSS);
+        pw.println(" mNewSS=" + mNewSS);
         pw.println(" mCellInfo=" + mCellInfo);
         pw.println(" mRestrictedState=" + mRestrictedState);
-        pw.println(" pollingContext=" + pollingContext);
+        pw.println(" mPollingContext=" + mPollingContext);
         pw.println(" mDesiredPowerState=" + mDesiredPowerState);
-        pw.println(" dontPollSignalStrength=" + dontPollSignalStrength);
+        pw.println(" mDontPollSignalStrength=" + mDontPollSignalStrength);
         pw.println(" mPendingRadioPowerOffAfterDataOff=" + mPendingRadioPowerOffAfterDataOff);
         pw.println(" mPendingRadioPowerOffAfterDataOffTag=" + mPendingRadioPowerOffAfterDataOffTag);
     }

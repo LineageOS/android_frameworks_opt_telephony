@@ -72,7 +72,7 @@ public class PhoneProxy extends Handler implements Phone {
         mIccPhoneBookInterfaceManagerProxy = new IccPhoneBookInterfaceManagerProxy(
                 phone.getIccPhoneBookInterfaceManager());
         mPhoneSubInfoProxy = new PhoneSubInfoProxy(phone.getPhoneSubInfo());
-        mCommandsInterface = ((PhoneBase)mActivePhone).mCM;
+        mCommandsInterface = ((PhoneBase)mActivePhone).mCi;
 
         mCommandsInterface.registerForRilConnected(this, EVENT_RIL_CONNECTED, null);
         mCommandsInterface.registerForOn(this, EVENT_RADIO_ON, null);
@@ -94,7 +94,7 @@ public class PhoneProxy extends Handler implements Phone {
         case EVENT_RADIO_ON:
             /* Proactively query voice radio technologies */
             mCommandsInterface.getVoiceRadioTechnology(
-                    this.obtainMessage(EVENT_REQUEST_VOICE_RADIO_TECH_DONE));
+                    obtainMessage(EVENT_REQUEST_VOICE_RADIO_TECH_DONE));
             break;
 
         case EVENT_RIL_CONNECTED:
@@ -199,9 +199,9 @@ public class PhoneProxy extends Handler implements Phone {
                 mActivePhone.getIccSmsInterfaceManager());
         mIccPhoneBookInterfaceManagerProxy.setmIccPhoneBookInterfaceManager(mActivePhone
                 .getIccPhoneBookInterfaceManager());
-        mPhoneSubInfoProxy.setmPhoneSubInfo(this.mActivePhone.getPhoneSubInfo());
+        mPhoneSubInfoProxy.setmPhoneSubInfo(mActivePhone.getPhoneSubInfo());
 
-        mCommandsInterface = ((PhoneBase)mActivePhone).mCM;
+        mCommandsInterface = ((PhoneBase)mActivePhone).mCi;
         mIccCardProxy.setVoiceRadioTech(newVoiceRadioTech);
 
         // Send an Intent to the PhoneApp that we had a radio technology change

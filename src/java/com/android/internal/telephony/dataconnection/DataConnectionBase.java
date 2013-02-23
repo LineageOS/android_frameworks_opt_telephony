@@ -89,30 +89,30 @@ public abstract class DataConnectionBase extends StateMachine {
      * Used internally for saving connecting parameters.
      */
     protected static class ConnectionParams {
-        public ConnectionParams(ApnContext apnContext, Message onCompletedMsg) {
-            this.apnContext = apnContext;
-            this.onCompletedMsg = onCompletedMsg;
+        ConnectionParams(ApnContext apnContext, Message onCompletedMsg) {
+            mApnContext = apnContext;
+            mOnCompletedMsg = onCompletedMsg;
         }
 
-        public int tag;
-        public ApnContext apnContext;
-        public Message onCompletedMsg;
+        int mTheTag;
+        ApnContext mApnContext;
+        Message mOnCompletedMsg;
     }
 
     /**
      * Used internally for saving disconnecting parameters.
      */
     protected static class DisconnectParams {
-        public DisconnectParams(ApnContext apnContext, String reason, Message onCompletedMsg) {
-            this.apnContext = apnContext;
-            this.reason = reason;
-            this.onCompletedMsg = onCompletedMsg;
+        DisconnectParams(ApnContext apnContext, String reason, Message onCompletedMsg) {
+            mApnContext = apnContext;
+            mReason = reason;
+            mOnCompletedMsg = onCompletedMsg;
         }
 
-        public int tag;
-        public ApnContext apnContext;
-        public String reason;
-        public Message onCompletedMsg;
+        int mTheTag;
+        ApnContext mApnContext;
+        String mReason;
+        Message mOnCompletedMsg;
     }
 
     /**
@@ -324,7 +324,7 @@ public abstract class DataConnectionBase extends StateMachine {
         // Check if we should fake an error.
         if (sFailBringUp.counter  > 0) {
             DataCallState response = new DataCallState();
-            response.version = phone.mCM.getRilVersion();
+            response.version = mPhone.mCi.getRilVersion();
             response.status = sFailBringUp.failCause.getErrorCode();
             response.cid = 0;
             response.active = 0;
@@ -347,7 +347,7 @@ public abstract class DataConnectionBase extends StateMachine {
         }
         if (mFailBringUp.counter > 0) {
             DataCallState response = new DataCallState();
-            response.version = phone.mCM.getRilVersion();
+            response.version = mPhone.mCi.getRilVersion();
             response.status = mFailBringUp.failCause.getErrorCode();
             response.cid = 0;
             response.active = 0;
@@ -422,17 +422,17 @@ public abstract class DataConnectionBase extends StateMachine {
     //***** Member Variables
     protected ApnSetting mApn;
     protected int mTag;
-    protected PhoneBase phone;
+    protected PhoneBase mPhone;
     protected int mRilVersion = -1;
-    protected int cid;
+    protected int mCid;
     protected LinkProperties mLinkProperties = new LinkProperties();
     protected LinkCapabilities mCapabilities = new LinkCapabilities();
-    protected long createTime;
-    protected long lastFailTime;
-    protected FailCause lastFailCause;
+    protected long mCreateTime;
+    protected long mLastFailTime;
+    protected FailCause mLastFailCause;
     protected int mRetryOverride = -1;
     protected static final String NULL_IP = "0.0.0.0";
-    Object userData;
+    Object mUserData;
 
     //***** Abstract methods
     @Override
@@ -454,11 +454,11 @@ public abstract class DataConnectionBase extends StateMachine {
         setLogRecSize(300);
         setLogOnlyTransitions(true);
         if (DBG) log("DataConnectionBase constructor E");
-        this.phone = phone;
-        this.mDataConnectionTracker = dct;
+        mPhone = phone;
+        mDataConnectionTracker = dct;
         mId = id;
         mRetryMgr = rm;
-        this.cid = -1;
+        mCid = -1;
 
         if (DBG_FAILURE) {
             IntentFilter filter;
@@ -511,11 +511,11 @@ public abstract class DataConnectionBase extends StateMachine {
         mReconnectIntent = null;
         mDataConnectionTracker = null;
         mApn = null;
-        phone = null;
+        mPhone = null;
         mLinkProperties = null;
         mCapabilities = null;
-        lastFailCause = null;
-        userData = null;
+        mLastFailCause = null;
+        mUserData = null;
     }
 
     /**
@@ -528,16 +528,16 @@ public abstract class DataConnectionBase extends StateMachine {
         int discReason = RILConstants.DEACTIVATE_REASON_NONE;
         if ((o != null) && (o instanceof DisconnectParams)) {
             DisconnectParams dp = (DisconnectParams)o;
-            Message m = dp.onCompletedMsg;
-            if (TextUtils.equals(dp.reason, Phone.REASON_RADIO_TURNED_OFF)) {
+            Message m = dp.mOnCompletedMsg;
+            if (TextUtils.equals(dp.mReason, Phone.REASON_RADIO_TURNED_OFF)) {
                 discReason = RILConstants.DEACTIVATE_REASON_RADIO_OFF;
-            } else if (TextUtils.equals(dp.reason, Phone.REASON_PDP_RESET)) {
+            } else if (TextUtils.equals(dp.mReason, Phone.REASON_PDP_RESET)) {
                 discReason = RILConstants.DEACTIVATE_REASON_PDP_RESET;
             }
         }
-        if (phone.mCM.getRadioState().isOn()) {
+        if (mPhone.mCi.getRadioState().isOn()) {
             if (DBG) log("tearDownData radio is on, call deactivateDataCall");
-            phone.mCM.deactivateDataCall(cid, discReason, obtainMessage(EVENT_DEACTIVATE_DONE, o));
+            mPhone.mCi.deactivateDataCall(mCid, discReason, obtainMessage(EVENT_DEACTIVATE_DONE, o));
         } else {
             if (DBG) log("tearDownData radio is off sendMessage EVENT_DEACTIVATE_DONE immediately");
             AsyncResult ar = new AsyncResult(o, null, null);
@@ -552,20 +552,20 @@ public abstract class DataConnectionBase extends StateMachine {
      * @param cause
      */
     private void notifyConnectCompleted(ConnectionParams cp, FailCause cause) {
-        Message connectionCompletedMsg = cp.onCompletedMsg;
+        Message connectionCompletedMsg = cp.mOnCompletedMsg;
         if (connectionCompletedMsg == null) {
             return;
         }
 
         long timeStamp = System.currentTimeMillis();
-        connectionCompletedMsg.arg1 = cid;
+        connectionCompletedMsg.arg1 = mCid;
 
         if (cause == FailCause.NONE) {
-            createTime = timeStamp;
+            mCreateTime = timeStamp;
             AsyncResult.forMessage(connectionCompletedMsg);
         } else {
-            lastFailCause = cause;
-            lastFailTime = timeStamp;
+            mLastFailCause = cause;
+            mLastFailTime = timeStamp;
             AsyncResult.forMessage(connectionCompletedMsg, cause,
                                    new CallSetupException(mRetryOverride));
         }
@@ -585,13 +585,13 @@ public abstract class DataConnectionBase extends StateMachine {
         ApnContext alreadySent = null;
         String reason = null;
 
-        if (dp.onCompletedMsg != null) {
+        if (dp.mOnCompletedMsg != null) {
             // Get ApnContext, but only valid on GSM devices this is a string on CDMA devices.
-            Message msg = dp.onCompletedMsg;
+            Message msg = dp.mOnCompletedMsg;
             if (msg.obj instanceof ApnContext) {
                 alreadySent = (ApnContext)msg.obj;
             }
-            reason = dp.reason;
+            reason = dp.mReason;
             if (VDBG) {
                 log(String.format("msg=%s msg.obj=%s", msg.toString(),
                     ((msg.obj instanceof String) ? (String) msg.obj : "<no-reason>")));
@@ -618,7 +618,7 @@ public abstract class DataConnectionBase extends StateMachine {
         if (mApn.bearer > 0) {
             rilRadioTechnology = mApn.bearer + 2;
         } else {
-            rilRadioTechnology = phone.getServiceState().getRilDataRadioTechnology() + 2;
+            rilRadioTechnology = mPhone.getServiceState().getRilDataRadioTechnology() + 2;
         }
         return rilRadioTechnology;
     }
@@ -733,11 +733,11 @@ public abstract class DataConnectionBase extends StateMachine {
     protected void clearSettings() {
         if (DBG) log("clearSettings");
 
-        createTime = -1;
-        lastFailTime = -1;
-        lastFailCause = FailCause.NONE;
+        mCreateTime = -1;
+        mLastFailTime = -1;
+        mLastFailCause = FailCause.NONE;
         mRetryOverride = -1;
-        cid = -1;
+        mCid = -1;
 
         mLinkProperties = new LinkProperties();
         mApnList.clear();
@@ -772,9 +772,9 @@ public abstract class DataConnectionBase extends StateMachine {
                 result = DataCallState.SetupResult.ERR_RilError;
                 result.mFailCause = FailCause.fromInt(response.status);
             }
-        } else if (cp.tag != mTag) {
+        } else if (cp.mTheTag != mTag) {
             if (DBG) {
-                log("BUG: onSetupConnectionCompleted is stale cp.tag=" + cp.tag + ", mtag=" + mTag);
+                log("BUG: onSetupConnectionCompleted is stale cp.tag=" + cp.mTheTag + ", mtag=" + mTag);
             }
             result = DataCallState.SetupResult.ERR_Stale;
         } else if (response.status != 0) {
@@ -782,7 +782,7 @@ public abstract class DataConnectionBase extends StateMachine {
             result.mFailCause = FailCause.fromInt(response.status);
         } else {
             if (DBG) log("onSetupConnectionCompleted received DataCallState: " + response);
-            cid = response.cid;
+            mCid = response.cid;
             result = updateLinkProperty(response).setupResult;
         }
 
@@ -854,11 +854,11 @@ public abstract class DataConnectionBase extends StateMachine {
     private class DcDefaultState extends State {
         @Override
         public void enter() {
-            phone.mCM.registerForRilConnected(getHandler(), EVENT_RIL_CONNECTED, null);
+            mPhone.mCi.registerForRilConnected(getHandler(), EVENT_RIL_CONNECTED, null);
         }
         @Override
         public void exit() {
-            phone.mCM.unregisterForRilConnected(getHandler());
+            mPhone.mCi.unregisterForRilConnected(getHandler());
             shutDown();
         }
         @Override
@@ -897,8 +897,8 @@ public abstract class DataConnectionBase extends StateMachine {
                     break;
                 }
                 case DataConnectionAc.REQ_GET_CID: {
-                    if (VDBG) log("REQ_GET_CID  cid=" + cid);
-                    mAc.replyToMessage(msg, DataConnectionAc.RSP_GET_CID, cid);
+                    if (VDBG) log("REQ_GET_CID  cid=" + mCid);
+                    mAc.replyToMessage(msg, DataConnectionAc.RSP_GET_CID, mCid);
                     break;
                 }
                 case DataConnectionAc.REQ_GET_APNSETTING: {
@@ -1082,8 +1082,8 @@ public abstract class DataConnectionBase extends StateMachine {
 
                 case EVENT_CONNECT:
                     ConnectionParams cp = (ConnectionParams) msg.obj;
-                    mApnList.add(cp.apnContext);
-                    cp.tag = mTag;
+                    mApnList.add(cp.mApnContext);
+                    cp.mTheTag = mTag;
                     if (DBG) {
                         log("DcInactiveState msg.what=EVENT_CONNECT " + "RefCount="
                                 + mApnList.size());
@@ -1169,7 +1169,7 @@ public abstract class DataConnectionBase extends StateMachine {
                             break;
                         case ERR_GetLastErrorFromRil:
                             // Request failed and this is an old RIL
-                            phone.mCM.getLastDataCallFailCause(
+                            mPhone.mCi.getLastDataCallFailCause(
                                     obtainMessage(EVENT_GET_LAST_FAIL_DONE, cp));
                             break;
                         case ERR_RilError:
@@ -1192,7 +1192,7 @@ public abstract class DataConnectionBase extends StateMachine {
                     cp = (ConnectionParams) ar.userObj;
                     FailCause cause = FailCause.UNKNOWN;
 
-                    if (cp.tag == mTag) {
+                    if (cp.mTheTag == mTag) {
                         if (DBG) {
                             log("DcActivatingState msg.what=EVENT_GET_LAST_FAIL_DONE"
                                     + " RefCount=" + mApnList.size());
@@ -1208,7 +1208,7 @@ public abstract class DataConnectionBase extends StateMachine {
                     } else {
                         if (DBG) {
                             log("DcActivatingState EVENT_GET_LAST_FAIL_DONE is stale cp.tag="
-                                + cp.tag + ", mTag=" + mTag + " RefCount=" + mApnList.size());
+                                + cp.mTheTag + ", mTag=" + mTag + " RefCount=" + mApnList.size());
                         }
                     }
 
@@ -1269,11 +1269,11 @@ public abstract class DataConnectionBase extends StateMachine {
             switch (msg.what) {
                 case EVENT_CONNECT: {
                     ConnectionParams cp = (ConnectionParams) msg.obj;
-                    if (mApnList.contains(cp.apnContext)) {
-                        log("DcActiveState ERROR already added apnContext=" + cp.apnContext
+                    if (mApnList.contains(cp.mApnContext)) {
+                        log("DcActiveState ERROR already added apnContext=" + cp.mApnContext
                                     + " to this DC=" + this);
                     } else {
-                        mApnList.add(cp.apnContext);
+                        mApnList.add(cp.mApnContext);
                         if (DBG) {
                             log("DcActiveState msg.what=EVENT_CONNECT RefCount=" + mApnList.size());
                         }
@@ -1284,7 +1284,7 @@ public abstract class DataConnectionBase extends StateMachine {
                 }
                 case EVENT_DISCONNECT: {
                     DisconnectParams dp = (DisconnectParams) msg.obj;
-                    if (mApnList.contains(dp.apnContext)) {
+                    if (mApnList.contains(dp.mApnContext)) {
                         if (DBG) {
                             log("DcActiveState msg.what=EVENT_DISCONNECT RefCount="
                                     + mApnList.size());
@@ -1292,15 +1292,15 @@ public abstract class DataConnectionBase extends StateMachine {
 
                         if (mApnList.size() == 1) {
                             mApnList.clear();
-                            dp.tag = mTag;
+                            dp.mTheTag = mTag;
                             tearDownData(dp);
                             transitionTo(mDisconnectingState);
                         } else {
-                            mApnList.remove(dp.apnContext);
+                            mApnList.remove(dp.mApnContext);
                             notifyDisconnectCompleted(dp, false);
                         }
                     } else {
-                        log("DcActiveState ERROR no such apnContext=" + dp.apnContext
+                        log("DcActiveState ERROR no such apnContext=" + dp.mApnContext
                                 + " in this DC=" + this);
                         notifyDisconnectCompleted(dp, false);
                     }
@@ -1314,7 +1314,7 @@ public abstract class DataConnectionBase extends StateMachine {
                     }
                     mApnList.clear();
                     DisconnectParams dp = (DisconnectParams) msg.obj;
-                    dp.tag = mTag;
+                    dp.mTheTag = mTag;
                     tearDownData(dp);
                     transitionTo(mDisconnectingState);
                     retVal = HANDLED;
@@ -1354,14 +1354,14 @@ public abstract class DataConnectionBase extends StateMachine {
                             + mApnList.size());
                     AsyncResult ar = (AsyncResult) msg.obj;
                     DisconnectParams dp = (DisconnectParams) ar.userObj;
-                    if (dp.tag == mTag) {
+                    if (dp.mTheTag == mTag) {
                         // Transition to inactive but send notifications after
                         // we've entered the mInactive state.
                         mInactiveState.setEnterNotificationParams((DisconnectParams) ar.userObj);
                         transitionTo(mInactiveState);
                     } else {
                         if (DBG) log("DcDisconnectState EVENT_DEACTIVATE_DONE stale dp.tag="
-                                + dp.tag + " mTag=" + mTag);
+                                + dp.mTheTag + " mTag=" + mTag);
                     }
                     retVal = HANDLED;
                     break;
@@ -1391,7 +1391,7 @@ public abstract class DataConnectionBase extends StateMachine {
                 case EVENT_DEACTIVATE_DONE:
                     AsyncResult ar = (AsyncResult) msg.obj;
                     ConnectionParams cp = (ConnectionParams) ar.userObj;
-                    if (cp.tag == mTag) {
+                    if (cp.mTheTag == mTag) {
                         if (DBG) {
                             log("DcDisconnectionErrorCreatingConnection" +
                                 " msg.what=EVENT_DEACTIVATE_DONE");
@@ -1405,7 +1405,7 @@ public abstract class DataConnectionBase extends StateMachine {
                     } else {
                         if (DBG) {
                             log("DcDisconnectionErrorCreatingConnection EVENT_DEACTIVATE_DONE" +
-                                    " stale dp.tag=" + cp.tag + ", mTag=" + mTag);
+                                    " stale dp.tag=" + cp.mTheTag + ", mTag=" + mTag);
                         }
                     }
                     retVal = HANDLED;
@@ -1501,19 +1501,19 @@ public abstract class DataConnectionBase extends StateMachine {
         pw.println(" mApn=" + mApn);
         pw.println(" mTag=" + mTag);
         pw.flush();
-        pw.println(" phone=" + phone);
+        pw.println(" mPhone=" + mPhone);
         pw.println(" mRilVersion=" + mRilVersion);
-        pw.println(" cid=" + cid);
+        pw.println(" mCid=" + mCid);
         pw.flush();
         pw.println(" mLinkProperties=" + mLinkProperties);
         pw.flush();
         pw.println(" mCapabilities=" + mCapabilities);
-        pw.println(" createTime=" + TimeUtils.logTimeOfDay(createTime));
-        pw.println(" lastFailTime=" + TimeUtils.logTimeOfDay(lastFailTime));
-        pw.println(" lastFailCause=" + lastFailCause);
+        pw.println(" mCreateTime=" + TimeUtils.logTimeOfDay(mCreateTime));
+        pw.println(" mLastFailTime=" + TimeUtils.logTimeOfDay(mLastFailTime));
+        pw.println(" mLastFailCause=" + mLastFailCause);
         pw.flush();
         pw.println(" mRetryOverride=" + mRetryOverride);
-        pw.println(" userData=" + userData);
+        pw.println(" mUserData=" + mUserData);
         if (mRetryMgr != null) pw.println(" " + mRetryMgr);
         pw.flush();
     }

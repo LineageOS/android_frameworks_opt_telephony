@@ -198,6 +198,6 @@ public class ApnSetting {
     @Override
     public boolean equals(Object o) {
         if (o instanceof ApnSetting == false) return false;
-        return (this.toString().equals(o.toString()));
+        return (toString().equals(o.toString()));
     }
 }

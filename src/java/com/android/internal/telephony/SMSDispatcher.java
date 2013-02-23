@@ -148,7 +148,7 @@ public abstract class SMSDispatcher extends Handler {
     protected final Phone mPhone;
     protected final Context mContext;
     protected final ContentResolver mResolver;
-    protected final CommandsInterface mCm;
+    protected final CommandsInterface mCi;
     protected final SmsStorageMonitor mStorageMonitor;
     protected final TelephonyManager mTelephonyManager;
 
@@ -212,7 +212,7 @@ public abstract class SMSDispatcher extends Handler {
         mWapPush = new WapPushOverSms(phone, this);
         mContext = phone.getContext();
         mResolver = mContext.getContentResolver();
-        mCm = phone.mCM;
+        mCi = phone.mCi;
         mStorageMonitor = storageMonitor;
         mUsageMonitor = usageMonitor;
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
@@ -433,7 +433,7 @@ public abstract class SMSDispatcher extends Handler {
 
             if (tracker.mDeliveryIntent != null) {
                 // Expecting a status report.  Add it to the list.
-                int messageRef = ((SmsResponse)ar.result).messageRef;
+                int messageRef = ((SmsResponse)ar.result).mMessageRef;
                 tracker.mMessageRef = messageRef;
                 deliveryPendingList.add(tracker);
             }
@@ -485,7 +485,7 @@ public abstract class SMSDispatcher extends Handler {
                 try {
                     Intent fillIn = new Intent();
                     if (ar.result != null) {
-                        fillIn.putExtra("errorCode", ((SmsResponse)ar.result).errorCode);
+                        fillIn.putExtra("errorCode", ((SmsResponse)ar.result).mErrorCode);
                     }
                     if (mRemainingMessages > -1) {
                         mRemainingMessages--;

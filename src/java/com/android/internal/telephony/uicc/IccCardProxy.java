@@ -106,8 +106,8 @@ public class IccCardProxy extends Handler implements IccCard {
 
     public IccCardProxy(Context context, CommandsInterface ci) {
         log("Creating");
-        this.mContext = context;
-        this.mCi = ci;
+        mContext = context;
+        mCi = ci;
         mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context,
                 ci, this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
         mUiccController = UiccController.getInstance();

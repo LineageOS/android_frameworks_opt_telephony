@@ -25,21 +25,21 @@ public final class EriInfo {
     public static final int ROAMING_ICON_MODE_NORMAL    = 0;
     public static final int ROAMING_ICON_MODE_FLASH     = 1;
 
-    public int mRoamingIndicator;
-    public int mIconIndex;
-    public int mIconMode;
-    public String mEriText;
-    public int mCallPromptId;
-    public int mAlertId;
+    public int roamingIndicator;
+    public int iconIndex;
+    public int iconMode;
+    public String eriText;
+    public int callPromptId;
+    public int alertId;
 
     public EriInfo (int roamingIndicator, int iconIndex, int iconMode, String eriText,
             int callPromptId, int alertId) {
 
-        this.mRoamingIndicator = roamingIndicator;
-        this.mIconIndex = iconIndex;
-        this.mIconMode = iconMode;
-        this.mEriText = eriText;
-        this.mCallPromptId = callPromptId;
-        this.mAlertId = alertId;
+        this.roamingIndicator = roamingIndicator;
+        this.iconIndex = iconIndex;
+        this.iconMode = iconMode;
+        this.eriText = eriText;
+        this.callPromptId = callPromptId;
+        this.alertId = alertId;
     }
 }

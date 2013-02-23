@@ -25,6 +25,8 @@ import android.telephony.Rlog;
  * {@hide}
  */
 public abstract class Call {
+    protected final String LOG_TAG = "Call";
+
     /* Enums */
 
     public enum State {
@@ -46,9 +48,9 @@ public abstract class Call {
 
     /* Instance Variables */
 
-    public State state = State.IDLE;
+    public State mState = State.IDLE;
 
-    public ArrayList<Connection> connections = new ArrayList<Connection>();
+    public ArrayList<Connection> mConnections = new ArrayList<Connection>();
 
     // Flag to indicate if the current calling/caller information
     // is accurate. If false the information is known to be accurate.
@@ -56,9 +58,7 @@ public abstract class Call {
     // For CDMA, during call waiting/3 way, there is no network response
     // if call waiting is answered, network timed out, dropped, 3 way
     // merged, etc.
-    protected boolean isGeneric = false;
-
-    protected final String LOG_TAG = "Call";
+    protected boolean mIsGeneric = false;
 
     /* Instance Methods */
 
@@ -101,7 +101,7 @@ public abstract class Call {
      * @return state of class call
      */
     public State getState() {
-        return state;
+        return mState;
     }
 
     /**
@@ -232,14 +232,14 @@ public abstract class Call {
      * or not. false means accurate. Only used for CDMA.
      */
     public boolean isGeneric() {
-        return isGeneric;
+        return mIsGeneric;
     }
 
     /**
      * Set the generic instance variable
      */
     public void setGeneric(boolean generic) {
-        isGeneric = generic;
+        mIsGeneric = generic;
     }
 
     /**

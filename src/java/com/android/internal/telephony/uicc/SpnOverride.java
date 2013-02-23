@@ -32,23 +32,23 @@ import android.util.Xml;
 import com.android.internal.util.XmlUtils;
 
 public class SpnOverride {
-    private HashMap<String, String> CarrierSpnMap;
+    private HashMap<String, String> mCarrierSpnMap;
 
 
     static final String LOG_TAG = "SpnOverride";
     static final String PARTNER_SPN_OVERRIDE_PATH ="etc/spn-conf.xml";
 
     SpnOverride () {
-        CarrierSpnMap = new HashMap<String, String>();
+        mCarrierSpnMap = new HashMap<String, String>();
         loadSpnOverrides();
     }
 
     boolean containsCarrier(String carrier) {
-        return CarrierSpnMap.containsKey(carrier);
+        return mCarrierSpnMap.containsKey(carrier);
     }
 
     String getSpn(String carrier) {
-        return CarrierSpnMap.get(carrier);
+        return mCarrierSpnMap.get(carrier);
     }
 
     private void loadSpnOverrides() {
@@ -82,7 +82,7 @@ public class SpnOverride {
                 String numeric = parser.getAttributeValue(null, "numeric");
                 String data    = parser.getAttributeValue(null, "spn");
 
-                CarrierSpnMap.put(numeric, data);
+                mCarrierSpnMap.put(numeric, data);
             }
         } catch (XmlPullParserException e) {
             Rlog.w(LOG_TAG, "Exception in spn-conf parser " + e);

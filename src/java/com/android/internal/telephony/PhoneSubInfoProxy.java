@@ -33,7 +33,7 @@ public class PhoneSubInfoProxy extends IPhoneSubInfo.Stub {
     }
 
     public void setmPhoneSubInfo(PhoneSubInfo phoneSubInfo) {
-        this.mPhoneSubInfo = phoneSubInfo;
+        mPhoneSubInfo = phoneSubInfo;
     }
 
     @Override

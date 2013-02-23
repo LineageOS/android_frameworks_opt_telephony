@@ -58,20 +58,20 @@ public class SimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager {
         if (DBG) logd("getAdnRecordsSize: efid=" + efid);
         synchronized(mLock) {
             checkThread();
-            recordSize = new int[3];
+            mRecordSize = new int[3];
 
             //Using mBaseHandler, no difference in EVENT_GET_SIZE_DONE handling
             AtomicBoolean status = new AtomicBoolean(false);
             Message response = mBaseHandler.obtainMessage(EVENT_GET_SIZE_DONE, status);
 
-            IccFileHandler fh = phone.getIccFileHandler();
+            IccFileHandler fh = mPhone.getIccFileHandler();
             if (fh != null) {
                 fh.getEFLinearRecordSize(efid, response);
                 waitForResult(status);
             }
         }
 
-        return recordSize;
+        return mRecordSize;
     }
 
     @Override

@@ -95,7 +95,7 @@ public final class CallManager {
     private final ArrayList<Call> mForegroundCalls;
 
     // empty connection list
-    private final ArrayList<Connection> emptyConnections = new ArrayList<Connection>();
+    private final ArrayList<Connection> mEmptyConnections = new ArrayList<Connection>();
 
     // default phone as the first phone registered, which is PhoneBase obj
     private Phone mDefaultPhone;
@@ -519,7 +519,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "acceptCall(" +ringingCall + " from " + ringingCall.getPhone() + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
         if ( hasActiveFgCall() ) {
@@ -561,7 +561,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End acceptCall(" +ringingCall + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
     }
 
@@ -577,7 +577,7 @@ public final class CallManager {
     public void rejectCall(Call ringingCall) throws CallStateException {
         if (VDBG) {
             Rlog.d(LOG_TAG, "rejectCall(" +ringingCall + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
         Phone ringingPhone = ringingCall.getPhone();
@@ -586,7 +586,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End rejectCall(" +ringingCall + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
     }
 
@@ -614,7 +614,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "switchHoldingAndActive(" +heldCall + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
         if (hasActiveFgCall()) {
@@ -635,7 +635,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End switchHoldingAndActive(" +heldCall + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
     }
 
@@ -653,7 +653,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "hangupForegroundResumeBackground(" +heldCall + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
         if (hasActiveFgCall()) {
@@ -672,7 +672,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End hangupForegroundResumeBackground(" +heldCall + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
     }
 
@@ -709,7 +709,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "conference(" +heldCall + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
 
@@ -724,7 +724,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End conference(" +heldCall + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
     }
@@ -745,7 +745,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, " dial(" + basePhone + ", "+ dialString + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
         if (!canDial(phone)) {
@@ -775,7 +775,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End dial(" + basePhone + ", "+ dialString + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
         return result;
@@ -875,7 +875,7 @@ public final class CallManager {
     public void explicitCallTransfer(Call heldCall) throws CallStateException {
         if (VDBG) {
             Rlog.d(LOG_TAG, " explicitCallTransfer(" + heldCall + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
         if (canTransfer(heldCall)) {
@@ -884,7 +884,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End explicitCallTransfer(" + heldCall + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
     }
@@ -928,7 +928,7 @@ public final class CallManager {
     public void setMute(boolean muted) {
         if (VDBG) {
             Rlog.d(LOG_TAG, " setMute(" + muted + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
         if (hasActiveFgCall()) {
@@ -937,7 +937,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End setMute(" + muted + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
     }
 
@@ -965,7 +965,7 @@ public final class CallManager {
     public void setEchoSuppressionEnabled(boolean enabled) {
         if (VDBG) {
             Rlog.d(LOG_TAG, " setEchoSuppression(" + enabled + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
         if (hasActiveFgCall()) {
@@ -974,7 +974,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End setEchoSuppression(" + enabled + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
     }
 
@@ -991,7 +991,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, " sendDtmf(" + c + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
         if (hasActiveFgCall()) {
@@ -1001,7 +1001,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End sendDtmf(" + c + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
         return result;
     }
@@ -1020,7 +1020,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, " startDtmf(" + c + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
         if (hasActiveFgCall()) {
@@ -1030,7 +1030,7 @@ public final class CallManager {
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End startDtmf(" + c + ")");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
         return result;
@@ -1043,14 +1043,14 @@ public final class CallManager {
     public void stopDtmf() {
         if (VDBG) {
             Rlog.d(LOG_TAG, " stopDtmf()" );
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
 
         if (hasActiveFgCall()) getFgPhone().stopDtmf();
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End stopDtmf()");
-            Rlog.d(LOG_TAG, this.toString());
+            Rlog.d(LOG_TAG, toString());
         }
     }
 
@@ -1659,7 +1659,7 @@ public final class CallManager {
         if ( fgCall != null) {
             return fgCall.getConnections();
         }
-        return emptyConnections;
+        return mEmptyConnections;
     }
 
     /**
@@ -1671,7 +1671,7 @@ public final class CallManager {
         if ( bgCall != null) {
             return bgCall.getConnections();
         }
-        return emptyConnections;
+        return mEmptyConnections;
     }
 
     /**

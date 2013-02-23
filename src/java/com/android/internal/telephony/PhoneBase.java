@@ -120,7 +120,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     public static final String DNS_SERVER_CHECK_DISABLED_KEY = "dns_server_check_disabled_key";
 
     /* Instance Variables */
-    public CommandsInterface mCM;
+    public CommandsInterface mCi;
     boolean mDnsCheckDisabled;
     public DataConnectionTrackerBase mDataConnectionTracker;
     boolean mDoesRilSendMultipleCallRing;
@@ -214,10 +214,10 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     protected PhoneBase(PhoneNotifier notifier, Context context, CommandsInterface ci,
             boolean unitTestMode) {
-        this.mNotifier = notifier;
-        this.mContext = context;
+        mNotifier = notifier;
+        mContext = context;
         mLooper = Looper.myLooper();
-        mCM = ci;
+        mCi = ci;
 
         setPropertiesByCarrier();
 
@@ -225,7 +225,7 @@ public abstract class PhoneBase extends Handler implements Phone {
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
         mDnsCheckDisabled = sp.getBoolean(DNS_SERVER_CHECK_DISABLED_KEY, false);
-        mCM.setOnCallRing(this, EVENT_CALL_RING, null);
+        mCi.setOnCallRing(this, EVENT_CALL_RING, null);
 
         /* "Voice capable" means that this device supports circuit-switched
         * (i.e. voice) phone calls over the telephony network, and is allowed
@@ -264,7 +264,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     @Override
     public void dispose() {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
-            mCM.unSetOnCallRing(this);
+            mCi.unSetOnCallRing(this);
             // Must cleanup all connectionS and needs to use sendMessage!
             mDataConnectionTracker.cleanUpAllConnections(null);
             mIsTheCurrentActivePhone = false;
@@ -416,25 +416,25 @@ public abstract class PhoneBase extends Handler implements Phone {
     // Inherited documentation suffices.
     @Override
     public void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj){
-        mCM.registerForInCallVoicePrivacyOn(h,what,obj);
+        mCi.registerForInCallVoicePrivacyOn(h,what,obj);
     }
 
     // Inherited documentation suffices.
     @Override
     public void unregisterForInCallVoicePrivacyOn(Handler h){
-        mCM.unregisterForInCallVoicePrivacyOn(h);
+        mCi.unregisterForInCallVoicePrivacyOn(h);
     }
 
     // Inherited documentation suffices.
     @Override
     public void registerForInCallVoicePrivacyOff(Handler h, int what, Object obj){
-        mCM.registerForInCallVoicePrivacyOff(h,what,obj);
+        mCi.registerForInCallVoicePrivacyOff(h,what,obj);
     }
 
     // Inherited documentation suffices.
     @Override
     public void unregisterForInCallVoicePrivacyOff(Handler h){
-        mCM.unregisterForInCallVoicePrivacyOff(h);
+        mCi.unregisterForInCallVoicePrivacyOff(h);
     }
 
     // Inherited documentation suffices.
@@ -530,9 +530,9 @@ public abstract class PhoneBase extends Handler implements Phone {
 
         // set to auto if the id is empty, otherwise select the network.
         if (TextUtils.isEmpty(networkSelection)) {
-            mCM.setNetworkSelectionModeAutomatic(response);
+            mCi.setNetworkSelectionModeAutomatic(response);
         } else {
-            mCM.setNetworkSelectionModeManual(networkSelection, response);
+            mCi.setNetworkSelectionModeManual(networkSelection, response);
         }
     }
 
@@ -577,25 +577,25 @@ public abstract class PhoneBase extends Handler implements Phone {
     // Inherited documentation suffices.
     @Override
     public void registerForRingbackTone(Handler h, int what, Object obj) {
-        mCM.registerForRingbackTone(h,what,obj);
+        mCi.registerForRingbackTone(h,what,obj);
     }
 
     // Inherited documentation suffices.
     @Override
     public void unregisterForRingbackTone(Handler h) {
-        mCM.unregisterForRingbackTone(h);
+        mCi.unregisterForRingbackTone(h);
     }
 
     // Inherited documentation suffices.
     @Override
     public void registerForResendIncallMute(Handler h, int what, Object obj) {
-        mCM.registerForResendIncallMute(h,what,obj);
+        mCi.registerForResendIncallMute(h,what,obj);
     }
 
     // Inherited documentation suffices.
     @Override
     public void unregisterForResendIncallMute(Handler h) {
-        mCM.unregisterForResendIncallMute(h);
+        mCi.unregisterForResendIncallMute(h);
     }
 
     @Override
@@ -730,7 +730,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     @Override
     public String getIccSerialNumber() {
         IccRecords r = mIccRecords.get();
-        return (r != null) ? r.iccid : "";
+        return (r != null) ? r.iccId : "";
     }
 
     @Override
@@ -764,7 +764,7 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     @Override
     public void queryCdmaRoamingPreference(Message response) {
-        mCM.queryCdmaRoamingPreference(response);
+        mCi.queryCdmaRoamingPreference(response);
     }
 
     /**
@@ -785,7 +785,7 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     @Override
     public void setCdmaRoamingPreference(int cdmaRoamingType, Message response) {
-        mCM.setCdmaRoamingPreference(cdmaRoamingType, response);
+        mCi.setCdmaRoamingPreference(cdmaRoamingType, response);
     }
 
     /**
@@ -793,7 +793,7 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     @Override
     public void setCdmaSubscription(int cdmaSubscriptionType, Message response) {
-        mCM.setCdmaSubscriptionSource(cdmaSubscriptionType, response);
+        mCi.setCdmaSubscriptionSource(cdmaSubscriptionType, response);
     }
 
     /**
@@ -801,32 +801,32 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     @Override
     public void setPreferredNetworkType(int networkType, Message response) {
-        mCM.setPreferredNetworkType(networkType, response);
+        mCi.setPreferredNetworkType(networkType, response);
     }
 
     @Override
     public void getPreferredNetworkType(Message response) {
-        mCM.getPreferredNetworkType(response);
+        mCi.getPreferredNetworkType(response);
     }
 
     @Override
     public void getSmscAddress(Message result) {
-        mCM.getSmscAddress(result);
+        mCi.getSmscAddress(result);
     }
 
     @Override
     public void setSmscAddress(String address, Message result) {
-        mCM.setSmscAddress(address, result);
+        mCi.setSmscAddress(address, result);
     }
 
     @Override
     public void setTTYMode(int ttyMode, Message onComplete) {
-        mCM.setTTYMode(ttyMode, onComplete);
+        mCi.setTTYMode(ttyMode, onComplete);
     }
 
     @Override
     public void queryTTYMode(Message onComplete) {
-        mCM.queryTTYMode(onComplete);
+        mCi.queryTTYMode(onComplete);
     }
 
     @Override
@@ -843,22 +843,22 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public void setBandMode(int bandMode, Message response) {
-        mCM.setBandMode(bandMode, response);
+        mCi.setBandMode(bandMode, response);
     }
 
     @Override
     public void queryAvailableBandMode(Message response) {
-        mCM.queryAvailableBandMode(response);
+        mCi.queryAvailableBandMode(response);
     }
 
     @Override
     public void invokeOemRilRequestRaw(byte[] data, Message response) {
-        mCM.invokeOemRilRequestRaw(data, response);
+        mCi.invokeOemRilRequestRaw(data, response);
     }
 
     @Override
     public void invokeOemRilRequestStrings(String[] strings, Message response) {
-        mCM.invokeOemRilRequestStrings(strings, response);
+        mCi.invokeOemRilRequestStrings(strings, response);
     }
 
     @Override
@@ -1061,72 +1061,72 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public void registerForSignalInfo(Handler h, int what, Object obj) {
-        mCM.registerForSignalInfo(h, what, obj);
+        mCi.registerForSignalInfo(h, what, obj);
     }
 
     @Override
     public void unregisterForSignalInfo(Handler h) {
-        mCM.unregisterForSignalInfo(h);
+        mCi.unregisterForSignalInfo(h);
     }
 
     @Override
     public void registerForDisplayInfo(Handler h, int what, Object obj) {
-        mCM.registerForDisplayInfo(h, what, obj);
+        mCi.registerForDisplayInfo(h, what, obj);
     }
 
      @Override
     public void unregisterForDisplayInfo(Handler h) {
-         mCM.unregisterForDisplayInfo(h);
+         mCi.unregisterForDisplayInfo(h);
      }
 
     @Override
     public void registerForNumberInfo(Handler h, int what, Object obj) {
-        mCM.registerForNumberInfo(h, what, obj);
+        mCi.registerForNumberInfo(h, what, obj);
     }
 
     @Override
     public void unregisterForNumberInfo(Handler h) {
-        mCM.unregisterForNumberInfo(h);
+        mCi.unregisterForNumberInfo(h);
     }
 
     @Override
     public void registerForRedirectedNumberInfo(Handler h, int what, Object obj) {
-        mCM.registerForRedirectedNumberInfo(h, what, obj);
+        mCi.registerForRedirectedNumberInfo(h, what, obj);
     }
 
     @Override
     public void unregisterForRedirectedNumberInfo(Handler h) {
-        mCM.unregisterForRedirectedNumberInfo(h);
+        mCi.unregisterForRedirectedNumberInfo(h);
     }
 
     @Override
     public void registerForLineControlInfo(Handler h, int what, Object obj) {
-        mCM.registerForLineControlInfo( h, what, obj);
+        mCi.registerForLineControlInfo( h, what, obj);
     }
 
     @Override
     public void unregisterForLineControlInfo(Handler h) {
-        mCM.unregisterForLineControlInfo(h);
+        mCi.unregisterForLineControlInfo(h);
     }
 
     @Override
     public void registerFoT53ClirlInfo(Handler h, int what, Object obj) {
-        mCM.registerFoT53ClirlInfo(h, what, obj);
+        mCi.registerFoT53ClirlInfo(h, what, obj);
     }
 
     @Override
     public void unregisterForT53ClirInfo(Handler h) {
-        mCM.unregisterForT53ClirInfo(h);
+        mCi.unregisterForT53ClirInfo(h);
     }
 
     @Override
     public void registerForT53AudioControlInfo(Handler h, int what, Object obj) {
-        mCM.registerForT53AudioControlInfo( h, what, obj);
+        mCi.registerForT53AudioControlInfo( h, what, obj);
     }
 
     @Override
     public void unregisterForT53AudioControlInfo(Handler h) {
-        mCM.unregisterForT53AudioControlInfo(h);
+        mCi.unregisterForT53AudioControlInfo(h);
     }
 
      @Override
@@ -1285,7 +1285,7 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     @Override
     public int getLteOnCdmaMode() {
-        return mCM.getLteOnCdmaMode();
+        return mCi.getLteOnCdmaMode();
     }
 
     /**
@@ -1315,7 +1315,7 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("PhoneBase:");
-        pw.println(" mCM=" + mCM);
+        pw.println(" mCi=" + mCi);
         pw.println(" mDnsCheckDisabled=" + mDnsCheckDisabled);
         pw.println(" mDataConnectionTracker=" + mDataConnectionTracker);
         pw.println(" mDoesRilSendMultipleCallRing=" + mDoesRilSendMultipleCallRing);

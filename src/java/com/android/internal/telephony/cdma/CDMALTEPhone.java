@@ -131,7 +131,7 @@ public class CDMALTEPhone extends CDMAPhone {
 
                 case CONNECTED:
                 case DISCONNECTING:
-                    if (mCT.state != PhoneConstants.State.IDLE &&
+                    if (mCT.mState != PhoneConstants.State.IDLE &&
                             !mSST.isConcurrentVoiceAndDataAllowed()) {
                         ret = PhoneConstants.DataState.SUSPENDED;
                     } else {
@@ -164,7 +164,7 @@ public class CDMALTEPhone extends CDMAPhone {
         // get the message
         Message msg = obtainMessage(EVENT_SET_NETWORK_MANUAL_COMPLETE, nsm);
 
-        mCM.setNetworkSelectionModeManual(network.getOperatorNumeric(), msg);
+        mCi.setNetworkSelectionModeManual(network.getOperatorNumeric(), msg);
     }
 
     /**
@@ -251,12 +251,12 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     public void getAvailableNetworks(Message response) {
-        mCM.getAvailableNetworks(response);
+        mCi.getAvailableNetworks(response);
     }
 
     @Override
     public void requestIsimAuthentication(String nonce, Message result) {
-        mCM.requestIsimAuthentication(nonce, result);
+        mCi.requestIsimAuthentication(nonce, result);
     }
 
     @Override

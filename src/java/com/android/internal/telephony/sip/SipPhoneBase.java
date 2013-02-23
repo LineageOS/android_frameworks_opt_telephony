@@ -54,7 +54,7 @@ abstract class SipPhoneBase extends PhoneBase {
     private static final String LOG_TAG = "SipPhoneBase";
 
     private RegistrantList mRingbackRegistrants = new RegistrantList();
-    private PhoneConstants.State state = PhoneConstants.State.IDLE;
+    private PhoneConstants.State mState = PhoneConstants.State.IDLE;
 
     public SipPhoneBase(Context context, PhoneNotifier notifier) {
         super(notifier, context, new SipCommandInterface(context), false);
@@ -140,7 +140,7 @@ abstract class SipPhoneBase extends PhoneBase {
 
     @Override
     public PhoneConstants.State getState() {
-        return state;
+        return mState;
     }
 
     @Override
@@ -519,19 +519,19 @@ abstract class SipPhoneBase extends PhoneBase {
     }
 
     void updatePhoneState() {
-        PhoneConstants.State oldState = state;
+        PhoneConstants.State oldState = mState;
 
         if (getRingingCall().isRinging()) {
-            state = PhoneConstants.State.RINGING;
+            mState = PhoneConstants.State.RINGING;
         } else if (getForegroundCall().isIdle()
                 && getBackgroundCall().isIdle()) {
-            state = PhoneConstants.State.IDLE;
+            mState = PhoneConstants.State.IDLE;
         } else {
-            state = PhoneConstants.State.OFFHOOK;
+            mState = PhoneConstants.State.OFFHOOK;
         }
 
-        if (state != oldState) {
-            Rlog.d(LOG_TAG, " ^^^ new phone state: " + state);
+        if (mState != oldState) {
+            Rlog.d(LOG_TAG, " ^^^ new phone state: " + mState);
             notifyPhoneStateChanged();
         }
     }

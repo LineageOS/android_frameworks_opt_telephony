@@ -48,7 +48,7 @@ public class PhoneFactory {
     static private Looper sLooper;
     static private Context sContext;
 
-    static final int preferredCdmaSubscription =
+    static final int sPreferredCdmaSubscription =
                          CdmaSubscriptionSourceManager.PREFERRED_CDMA_SUBSCRIPTION;
 
     //***** Class Methods
@@ -128,7 +128,7 @@ public class PhoneFactory {
                         //Get cdmaSubscription mode from Settings.System
                         cdmaSubscription = Settings.Global.getInt(context.getContentResolver(),
                                 Settings.Global.PREFERRED_CDMA_SUBSCRIPTION,
-                                preferredCdmaSubscription);
+                                sPreferredCdmaSubscription);
                         Rlog.i(LOG_TAG, "lteOnCdma not set, using PREFERRED_CDMA_SUBSCRIPTION");
                         break;
                 }

@@ -60,13 +60,13 @@ public class RuimSmsInterfaceManager extends IccSmsInterfaceManager {
 
     @Override
     protected void deleteSms(int index, Message response) {
-        mPhone.mCM.deleteSmsOnRuim(index, response);
+        mPhone.mCi.deleteSmsOnRuim(index, response);
     }
 
     @Override
     protected void writeSms(int status, byte[] pdu, byte[] smsc, Message response) {
         //NOTE smsc not used in RUIM
-        mPhone.mCM.writeSmsToRuim(status, IccUtils.bytesToHexString(pdu),
+        mPhone.mCi.writeSmsToRuim(status, IccUtils.bytesToHexString(pdu),
                 response);
     }
 
@@ -187,7 +187,7 @@ public class RuimSmsInterfaceManager extends IccSmsInterfaceManager {
             Message response = mHandler.obtainMessage(EVENT_SET_BROADCAST_CONFIG_DONE);
 
             mSuccess = false;
-            mPhone.mCM.setCdmaBroadcastConfig(configs, response);
+            mPhone.mCi.setCdmaBroadcastConfig(configs, response);
 
             try {
                 mLock.wait();
@@ -207,7 +207,7 @@ public class RuimSmsInterfaceManager extends IccSmsInterfaceManager {
             Message response = mHandler.obtainMessage(EVENT_SET_BROADCAST_ACTIVATION_DONE);
 
             mSuccess = false;
-            mPhone.mCM.setCdmaBroadcastActivation(activate, response);
+            mPhone.mCi.setCdmaBroadcastActivation(activate, response);
 
             try {
                 mLock.wait();

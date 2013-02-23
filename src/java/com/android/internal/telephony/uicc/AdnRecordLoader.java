@@ -31,21 +31,21 @@ public class AdnRecordLoader extends Handler {
     //***** Instance Variables
 
     private IccFileHandler mFh;
-    int ef;
-    int extensionEF;
-    int pendingExtLoads;
-    Message userResponse;
-    String pin2;
+    int mEf;
+    int mExtensionEF;
+    int mPendingExtLoads;
+    Message mUserResponse;
+    String mPin2;
 
     // For "load one"
-    int recordNumber;
+    int mRecordNumber;
 
     // for "load all"
-    ArrayList<AdnRecord> adns; // only valid after EVENT_ADN_LOAD_ALL_DONE
+    ArrayList<AdnRecord> mAdns; // only valid after EVENT_ADN_LOAD_ALL_DONE
 
     // Either an AdnRecord or a reference to adns depending
     // if this is a load one or load all operation
-    Object result;
+    Object mResult;
 
     //***** Event Constants
 
@@ -71,10 +71,10 @@ public class AdnRecordLoader extends Handler {
     public void
     loadFromEF(int ef, int extensionEF, int recordNumber,
                 Message response) {
-        this.ef = ef;
-        this.extensionEF = extensionEF;
-        this.recordNumber = recordNumber;
-        this.userResponse = response;
+        mEf = ef;
+        mExtensionEF = extensionEF;
+        mRecordNumber = recordNumber;
+        mUserResponse = response;
 
         mFh.loadEFLinearFixed(
                     ef, recordNumber,
@@ -90,9 +90,9 @@ public class AdnRecordLoader extends Handler {
     public void
     loadAllFromEF(int ef, int extensionEF,
                 Message response) {
-        this.ef = ef;
-        this.extensionEF = extensionEF;
-        this.userResponse = response;
+        mEf = ef;
+        mExtensionEF = extensionEF;
+        mUserResponse = response;
 
         mFh.loadEFLinearFixedAll(
                     ef,
@@ -115,11 +115,11 @@ public class AdnRecordLoader extends Handler {
     public void
     updateEF(AdnRecord adn, int ef, int extensionEF, int recordNumber,
             String pin2, Message response) {
-        this.ef = ef;
-        this.extensionEF = extensionEF;
-        this.recordNumber = recordNumber;
-        this.userResponse = response;
-        this.pin2 = pin2;
+        mEf = ef;
+        mExtensionEF = extensionEF;
+        mRecordNumber = recordNumber;
+        mUserResponse = response;
+        mPin2 = pin2;
 
         mFh.getEFLinearRecordSize( ef,
             obtainMessage(EVENT_EF_LINEAR_RECORD_SIZE_DONE, adn));
@@ -151,7 +151,7 @@ public class AdnRecordLoader extends Handler {
                     // int[1]  is the total length of the EF file
                     // int[2]  is the number of records in the EF file
                     // So int[0] * int[2] = int[1]
-                   if (recordSize.length != 3 || recordNumber > recordSize[2]) {
+                   if (recordSize.length != 3 || mRecordNumber > recordSize[2]) {
                         throw new RuntimeException("get wrong EF record size format",
                                 ar.exception);
                     }
@@ -163,10 +163,10 @@ public class AdnRecordLoader extends Handler {
                                 ar.exception);
                     }
 
-                    mFh.updateEFLinearFixed(ef, recordNumber,
-                            data, pin2, obtainMessage(EVENT_UPDATE_RECORD_DONE));
+                    mFh.updateEFLinearFixed(mEf, mRecordNumber,
+                            data, mPin2, obtainMessage(EVENT_UPDATE_RECORD_DONE));
 
-                    pendingExtLoads = 1;
+                    mPendingExtLoads = 1;
 
                     break;
                 case EVENT_UPDATE_RECORD_DONE:
@@ -175,8 +175,8 @@ public class AdnRecordLoader extends Handler {
                         throw new RuntimeException("update EF adn record failed",
                                 ar.exception);
                     }
-                    pendingExtLoads = 0;
-                    result = null;
+                    mPendingExtLoads = 0;
+                    mResult = null;
                     break;
                 case EVENT_ADN_LOAD_DONE:
                     ar = (AsyncResult)(msg.obj);
@@ -188,23 +188,23 @@ public class AdnRecordLoader extends Handler {
 
                     if (VDBG) {
                         Rlog.d(LOG_TAG,"ADN EF: 0x"
-                            + Integer.toHexString(ef)
-                            + ":" + recordNumber
+                            + Integer.toHexString(mEf)
+                            + ":" + mRecordNumber
                             + "\n" + IccUtils.bytesToHexString(data));
                     }
 
-                    adn = new AdnRecord(ef, recordNumber, data);
-                    result = adn;
+                    adn = new AdnRecord(mEf, mRecordNumber, data);
+                    mResult = adn;
 
                     if (adn.hasExtendedRecord()) {
                         // If we have a valid value in the ext record field,
                         // we're not done yet: we need to read the corresponding
                         // ext record and append it
 
-                        pendingExtLoads = 1;
+                        mPendingExtLoads = 1;
 
                         mFh.loadEFLinearFixed(
-                            extensionEF, adn.extRecord,
+                            mExtensionEF, adn.mExtRecord,
                             obtainMessage(EVENT_EXT_RECORD_LOAD_DONE, adn));
                     }
                 break;
@@ -219,13 +219,13 @@ public class AdnRecordLoader extends Handler {
                     }
 
                     Rlog.d(LOG_TAG,"ADN extension EF: 0x"
-                        + Integer.toHexString(extensionEF)
-                        + ":" + adn.extRecord
+                        + Integer.toHexString(mExtensionEF)
+                        + ":" + adn.mExtRecord
                         + "\n" + IccUtils.bytesToHexString(data));
 
                     adn.appendExtRecord(data);
 
-                    pendingExtLoads--;
+                    mPendingExtLoads--;
                     // result should have been set in
                     // EVENT_ADN_LOAD_DONE or EVENT_ADN_LOAD_ALL_DONE
                 break;
@@ -238,46 +238,46 @@ public class AdnRecordLoader extends Handler {
                         throw new RuntimeException("load failed", ar.exception);
                     }
 
-                    adns = new ArrayList<AdnRecord>(datas.size());
-                    result = adns;
-                    pendingExtLoads = 0;
+                    mAdns = new ArrayList<AdnRecord>(datas.size());
+                    mResult = mAdns;
+                    mPendingExtLoads = 0;
 
                     for(int i = 0, s = datas.size() ; i < s ; i++) {
-                        adn = new AdnRecord(ef, 1 + i, datas.get(i));
-                        adns.add(adn);
+                        adn = new AdnRecord(mEf, 1 + i, datas.get(i));
+                        mAdns.add(adn);
 
                         if (adn.hasExtendedRecord()) {
                             // If we have a valid value in the ext record field,
                             // we're not done yet: we need to read the corresponding
                             // ext record and append it
 
-                            pendingExtLoads++;
+                            mPendingExtLoads++;
 
                             mFh.loadEFLinearFixed(
-                                extensionEF, adn.extRecord,
+                                mExtensionEF, adn.mExtRecord,
                                 obtainMessage(EVENT_EXT_RECORD_LOAD_DONE, adn));
                         }
                     }
                 break;
             }
         } catch (RuntimeException exc) {
-            if (userResponse != null) {
-                AsyncResult.forMessage(userResponse)
+            if (mUserResponse != null) {
+                AsyncResult.forMessage(mUserResponse)
                                 .exception = exc;
-                userResponse.sendToTarget();
+                mUserResponse.sendToTarget();
                 // Loading is all or nothing--either every load succeeds
                 // or we fail the whole thing.
-                userResponse = null;
+                mUserResponse = null;
             }
             return;
         }
 
-        if (userResponse != null && pendingExtLoads == 0) {
-            AsyncResult.forMessage(userResponse).result
-                = result;
+        if (mUserResponse != null && mPendingExtLoads == 0) {
+            AsyncResult.forMessage(mUserResponse).result
+                = mResult;
 
-            userResponse.sendToTarget();
-            userResponse = null;
+            mUserResponse.sendToTarget();
+            mUserResponse = null;
         }
     }
 

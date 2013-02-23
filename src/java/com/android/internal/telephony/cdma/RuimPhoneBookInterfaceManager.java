@@ -58,13 +58,13 @@ public class RuimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager 
         if (DBG) logd("getAdnRecordsSize: efid=" + efid);
         synchronized(mLock) {
             checkThread();
-            recordSize = new int[3];
+            mRecordSize = new int[3];
 
             //Using mBaseHandler, no difference in EVENT_GET_SIZE_DONE handling
             AtomicBoolean status = new AtomicBoolean(false);
             Message response = mBaseHandler.obtainMessage(EVENT_GET_SIZE_DONE, status);
 
-            IccFileHandler fh = phone.getIccFileHandler();
+            IccFileHandler fh = mPhone.getIccFileHandler();
             //IccFileHandler can be null if there is no icc card present.
             if (fh != null) {
                 fh.getEFLinearRecordSize(efid, response);
@@ -72,7 +72,7 @@ public class RuimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager 
             }
         }
 
-        return recordSize;
+        return mRecordSize;
     }
 
     @Override

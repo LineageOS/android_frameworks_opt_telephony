@@ -69,15 +69,15 @@ public class DataConnection extends DataConnectionBase {
     @Override
     protected
     void onConnect(ConnectionParams cp) {
-        mApn = cp.apnContext.getApnSetting();
+        mApn = cp.mApnContext.getApnSetting();
 
         if (DBG) log("onConnect: carrier='" + mApn.carrier
                 + "' APN='" + mApn.apn
                 + "' proxy='" + mApn.proxy + "' port='" + mApn.port + "'");
 
-        createTime = -1;
-        lastFailTime = -1;
-        lastFailCause = FailCause.NONE;
+        mCreateTime = -1;
+        mLastFailTime = -1;
+        mLastFailCause = FailCause.NONE;
 
         // msg.obj will be returned in AsyncResult.userObj;
         Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
@@ -90,13 +90,13 @@ public class DataConnection extends DataConnectionBase {
         }
 
         String protocol;
-        if (phone.getServiceState().getRoaming()) {
+        if (mPhone.getServiceState().getRoaming()) {
             protocol = mApn.roamingProtocol;
         } else {
             protocol = mApn.protocol;
         }
 
-        phone.mCM.setupDataCall(
+        mPhone.mCi.setupDataCall(
                 Integer.toString(getRilRadioTechnology()),
                 Integer.toString(mProfileId),
                 mApn.apn, mApn.user, mApn.password,
@@ -117,8 +117,8 @@ public class DataConnection extends DataConnectionBase {
     public String toStringSimple() {
         return getName() + ": State=" + getCurrentState().getName() +
                 " apnSetting=" + mApn + " RefCount=" + mApnList.size() +
-                " cid=" + cid + " create=" + createTime + " lastFail=" + lastFailTime +
-                " lastFailCause=" + lastFailCause;
+                " cid=" + mCid + " create=" + mCreateTime + " lastFail=" + mLastFailTime +
+                " lastFailCause=" + mLastFailCause;
     }
 
     @Override
@@ -129,7 +129,7 @@ public class DataConnection extends DataConnectionBase {
     @Override
     protected boolean isDnsOk(String[] domainNameServers) {
         if (NULL_IP.equals(domainNameServers[0]) && NULL_IP.equals(domainNameServers[1])
-                && !phone.isDnsCheckDisabled()) {
+                && !mPhone.isDnsCheckDisabled()) {
             // Work around a race condition where QMI does not fill in DNS:
             // Deactivate PDP and let DataConnectionTracker retry.
             // Do not apply the race condition workaround for MMS APN

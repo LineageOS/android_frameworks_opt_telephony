@@ -50,10 +50,10 @@ public class UsimDataDownloadHandler extends Handler {
     /** Response to SMS-PP download envelope command. */
     private static final int EVENT_SEND_ENVELOPE_RESPONSE = 2;
 
-    private final CommandsInterface mCI;
+    private final CommandsInterface mCi;
 
     public UsimDataDownloadHandler(CommandsInterface commandsInterface) {
-        mCI = commandsInterface;
+        mCi = commandsInterface;
     }
 
     /**
@@ -128,7 +128,7 @@ public class UsimDataDownloadHandler extends Handler {
         }
 
         String encodedEnvelope = IccUtils.bytesToHexString(envelope);
-        mCI.sendEnvelopeWithStatus(encodedEnvelope, obtainMessage(
+        mCi.sendEnvelopeWithStatus(encodedEnvelope, obtainMessage(
                 EVENT_SEND_ENVELOPE_RESPONSE, new int[]{ dcs, pid }));
     }
 
@@ -181,7 +181,7 @@ public class UsimDataDownloadHandler extends Handler {
         byte[] responseBytes = response.payload;
         if (responseBytes == null || responseBytes.length == 0) {
             if (success) {
-                mCI.acknowledgeLastIncomingGsmSms(true, 0, null);
+                mCi.acknowledgeLastIncomingGsmSms(true, 0, null);
             } else {
                 acknowledgeSmsWithError(
                         CommandsInterface.GSM_SMS_FAIL_CAUSE_USIM_DATA_DOWNLOAD_ERROR);
@@ -215,12 +215,12 @@ public class UsimDataDownloadHandler extends Handler {
 
         System.arraycopy(responseBytes, 0, smsAckPdu, index, responseBytes.length);
 
-        mCI.acknowledgeIncomingGsmSmsWithPdu(success,
+        mCi.acknowledgeIncomingGsmSmsWithPdu(success,
                 IccUtils.bytesToHexString(smsAckPdu), null);
     }
 
     private void acknowledgeSmsWithError(int cause) {
-        mCI.acknowledgeLastIncomingGsmSms(false, cause, null);
+        mCi.acknowledgeLastIncomingGsmSms(false, cause, null);
     }
 
     /**

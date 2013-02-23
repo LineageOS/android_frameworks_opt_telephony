@@ -39,12 +39,12 @@ public class AdnRecord implements Parcelable {
 
     //***** Instance Variables
 
-    String alphaTag = null;
-    String number = null;
-    String[] emails;
-    int extRecord = 0xff;
-    int efid;                   // or 0 if none
-    int recordNumber;           // or 0 if none
+    String mAlphaTag = null;
+    String mNumber = null;
+    String[] mEmails;
+    int mExtRecord = 0xff;
+    int mEfid;                   // or 0 if none
+    int mRecordNumber;           // or 0 if none
 
 
     //***** Constants
@@ -103,8 +103,8 @@ public class AdnRecord implements Parcelable {
     }
 
     public AdnRecord (int efid, int recordNumber, byte[] record) {
-        this.efid = efid;
-        this.recordNumber = recordNumber;
+        this.mEfid = efid;
+        this.mRecordNumber = recordNumber;
         parseRecord(record);
     }
 
@@ -117,50 +117,50 @@ public class AdnRecord implements Parcelable {
     }
 
     public AdnRecord (int efid, int recordNumber, String alphaTag, String number, String[] emails) {
-        this.efid = efid;
-        this.recordNumber = recordNumber;
-        this.alphaTag = alphaTag;
-        this.number = number;
-        this.emails = emails;
+        this.mEfid = efid;
+        this.mRecordNumber = recordNumber;
+        this.mAlphaTag = alphaTag;
+        this.mNumber = number;
+        this.mEmails = emails;
     }
 
     public AdnRecord(int efid, int recordNumber, String alphaTag, String number) {
-        this.efid = efid;
-        this.recordNumber = recordNumber;
-        this.alphaTag = alphaTag;
-        this.number = number;
-        this.emails = null;
+        this.mEfid = efid;
+        this.mRecordNumber = recordNumber;
+        this.mAlphaTag = alphaTag;
+        this.mNumber = number;
+        this.mEmails = null;
     }
 
     //***** Instance Methods
 
     public String getAlphaTag() {
-        return alphaTag;
+        return mAlphaTag;
     }
 
     public String getNumber() {
-        return number;
+        return mNumber;
     }
 
     public String[] getEmails() {
-        return emails;
+        return mEmails;
     }
 
     public void setEmails(String[] emails) {
-        this.emails = emails;
+        this.mEmails = emails;
     }
 
     @Override
     public String toString() {
-        return "ADN Record '" + alphaTag + "' '" + number + " " + emails + "'";
+        return "ADN Record '" + mAlphaTag + "' '" + mNumber + " " + mEmails + "'";
     }
 
     public boolean isEmpty() {
-        return TextUtils.isEmpty(alphaTag) && TextUtils.isEmpty(number) && emails == null;
+        return TextUtils.isEmpty(mAlphaTag) && TextUtils.isEmpty(mNumber) && mEmails == null;
     }
 
     public boolean hasExtendedRecord() {
-        return extRecord != 0 && extRecord != 0xff;
+        return mExtRecord != 0 && mExtRecord != 0xff;
     }
 
     /** Helper function for {@link #isEqual}. */
@@ -178,9 +178,9 @@ public class AdnRecord implements Parcelable {
     }
 
     public boolean isEqual(AdnRecord adn) {
-        return ( stringCompareNullEqualsEmpty(alphaTag, adn.alphaTag) &&
-                stringCompareNullEqualsEmpty(number, adn.number) &&
-                Arrays.equals(emails, adn.emails));
+        return ( stringCompareNullEqualsEmpty(mAlphaTag, adn.mAlphaTag) &&
+                stringCompareNullEqualsEmpty(mNumber, adn.mNumber) &&
+                Arrays.equals(mEmails, adn.mEmails));
     }
     //***** Parcelable Implementation
 
@@ -191,11 +191,11 @@ public class AdnRecord implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeInt(efid);
-        dest.writeInt(recordNumber);
-        dest.writeString(alphaTag);
-        dest.writeString(number);
-        dest.writeStringArray(emails);
+        dest.writeInt(mEfid);
+        dest.writeInt(mRecordNumber);
+        dest.writeString(mAlphaTag);
+        dest.writeString(mNumber);
+        dest.writeStringArray(mEmails);
     }
 
     /**
@@ -218,20 +218,20 @@ public class AdnRecord implements Parcelable {
             adnString[i] = (byte) 0xFF;
         }
 
-        if (TextUtils.isEmpty(number)) {
+        if (TextUtils.isEmpty(mNumber)) {
             Rlog.w(LOG_TAG, "[buildAdnString] Empty dialing number");
             return adnString;   // return the empty record (for delete)
-        } else if (number.length()
+        } else if (mNumber.length()
                 > (ADN_DIALING_NUMBER_END - ADN_DIALING_NUMBER_START + 1) * 2) {
             Rlog.w(LOG_TAG,
                     "[buildAdnString] Max length of dialing number is 20");
             return null;
-        } else if (alphaTag != null && alphaTag.length() > footerOffset) {
+        } else if (mAlphaTag != null && mAlphaTag.length() > footerOffset) {
             Rlog.w(LOG_TAG,
                     "[buildAdnString] Max length of tag is " + footerOffset);
             return null;
         } else {
-            bcdNumber = PhoneNumberUtils.numberToCalledPartyBCD(number);
+            bcdNumber = PhoneNumberUtils.numberToCalledPartyBCD(mNumber);
 
             System.arraycopy(bcdNumber, 0, adnString,
                     footerOffset + ADN_TON_AND_NPI, bcdNumber.length);
@@ -243,8 +243,8 @@ public class AdnRecord implements Parcelable {
             adnString[footerOffset + ADN_EXTENSION_ID]
                     = (byte) 0xFF; // Extension Record Id
 
-            if (!TextUtils.isEmpty(alphaTag)) {
-                byteTag = GsmAlphabet.stringToGsm8BitPacked(alphaTag);
+            if (!TextUtils.isEmpty(mAlphaTag)) {
+                byteTag = GsmAlphabet.stringToGsm8BitPacked(mAlphaTag);
                 System.arraycopy(byteTag, 0, adnString, 0, byteTag.length);
             }
 
@@ -272,7 +272,7 @@ public class AdnRecord implements Parcelable {
                 return;
             }
 
-            number += PhoneNumberUtils.calledPartyBCDFragmentToString(
+            mNumber += PhoneNumberUtils.calledPartyBCDFragmentToString(
                                         extRecord, 2, 0xff & extRecord[1]);
 
             // We don't support ext record chaining.
@@ -290,7 +290,7 @@ public class AdnRecord implements Parcelable {
     private void
     parseRecord(byte[] record) {
         try {
-            alphaTag = IccUtils.adnStringFieldToString(
+            mAlphaTag = IccUtils.adnStringFieldToString(
                             record, 0, record.length - FOOTER_SIZE_BYTES);
 
             int footerOffset = record.length - FOOTER_SIZE_BYTES;
@@ -299,7 +299,7 @@ public class AdnRecord implements Parcelable {
 
             if (numberLength > MAX_NUMBER_SIZE_BYTES) {
                 // Invalid number length
-                number = "";
+                mNumber = "";
                 return;
             }
 
@@ -310,19 +310,19 @@ public class AdnRecord implements Parcelable {
             // a service, the TON/NPI byte shall be set to 'FF' by
             // the ME (see note 2)."
 
-            number = PhoneNumberUtils.calledPartyBCDToString(
+            mNumber = PhoneNumberUtils.calledPartyBCDToString(
                             record, footerOffset + 1, numberLength);
 
 
-            extRecord = 0xff & record[record.length - 1];
+            mExtRecord = 0xff & record[record.length - 1];
 
-            emails = null;
+            mEmails = null;
 
         } catch (RuntimeException ex) {
             Rlog.w(LOG_TAG, "Error parsing AdnRecord", ex);
-            number = "";
-            alphaTag = "";
-            emails = null;
+            mNumber = "";
+            mAlphaTag = "";
+            mEmails = null;
         }
     }
 }

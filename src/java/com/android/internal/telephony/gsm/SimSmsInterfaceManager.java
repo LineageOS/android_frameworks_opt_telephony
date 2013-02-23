@@ -63,12 +63,12 @@ public class SimSmsInterfaceManager extends IccSmsInterfaceManager {
 
     @Override
     protected void deleteSms(int index, Message response) {
-        mPhone.mCM.deleteSmsOnSim(index, response);
+        mPhone.mCi.deleteSmsOnSim(index, response);
     }
 
     @Override
     protected void writeSms(int status, byte[] pdu, byte[] smsc, Message response) {
-        mPhone.mCM.writeSmsToSim(status, IccUtils.bytesToHexString(smsc),
+        mPhone.mCi.writeSmsToSim(status, IccUtils.bytesToHexString(smsc),
                 IccUtils.bytesToHexString(pdu), response);
     }
 
@@ -189,7 +189,7 @@ public class SimSmsInterfaceManager extends IccSmsInterfaceManager {
             Message response = mHandler.obtainMessage(EVENT_SET_BROADCAST_CONFIG_DONE);
 
             mSuccess = false;
-            mPhone.mCM.setGsmBroadcastConfig(configs, response);
+            mPhone.mCi.setGsmBroadcastConfig(configs, response);
 
             try {
                 mLock.wait();
@@ -209,7 +209,7 @@ public class SimSmsInterfaceManager extends IccSmsInterfaceManager {
             Message response = mHandler.obtainMessage(EVENT_SET_BROADCAST_ACTIVATION_DONE);
 
             mSuccess = false;
-            mPhone.mCM.setGsmBroadcastActivation(activate, response);
+            mPhone.mCi.setGsmBroadcastActivation(activate, response);
 
             try {
                 mLock.wait();

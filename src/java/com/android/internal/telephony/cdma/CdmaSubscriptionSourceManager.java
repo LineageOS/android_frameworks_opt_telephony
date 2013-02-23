@@ -47,7 +47,7 @@ public class CdmaSubscriptionSourceManager extends Handler {
     private static int sReferenceCount = 0;
 
     // ***** Instance Variables
-    private CommandsInterface mCM;
+    private CommandsInterface mCi;
     private Context mContext;
     private RegistrantList mCdmaSubscriptionSourceChangedRegistrants = new RegistrantList();
 
@@ -57,9 +57,9 @@ public class CdmaSubscriptionSourceManager extends Handler {
     // Constructor
     private CdmaSubscriptionSourceManager(Context context, CommandsInterface ci) {
         mContext = context;
-        mCM = ci;
-        mCM.registerForCdmaSubscriptionChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
-        mCM.registerForOn(this, EVENT_RADIO_ON, null);
+        mCi = ci;
+        mCi.registerForCdmaSubscriptionChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
+        mCi.registerForOn(this, EVENT_RADIO_ON, null);
         int subscriptionSource = getDefaultCdmaSubscriptionSource();
         mCdmaSubscriptionSource.set(subscriptionSource);
     }
@@ -89,8 +89,8 @@ public class CdmaSubscriptionSourceManager extends Handler {
         synchronized (sReferenceCountMonitor) {
             sReferenceCount--;
             if (sReferenceCount <= 0) {
-                mCM.unregisterForCdmaSubscriptionChanged(this);
-                mCM.unregisterForOn(this);
+                mCi.unregisterForCdmaSubscriptionChanged(this);
+                mCi.unregisterForOn(this);
                 sInstance = null;
             }
         }
@@ -113,7 +113,7 @@ public class CdmaSubscriptionSourceManager extends Handler {
             }
             break;
             case EVENT_RADIO_ON: {
-                mCM.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+                mCi.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
             }
             break;
             default:

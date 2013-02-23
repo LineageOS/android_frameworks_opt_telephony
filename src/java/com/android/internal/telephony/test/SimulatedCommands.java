@@ -77,10 +77,10 @@ public final class SimulatedCommands extends BaseCommands
     String mPin2Code;
     boolean mSsnNotifyOn = false;
 
-    int pausedResponseCount;
-    ArrayList<Message> pausedResponses = new ArrayList<Message>();
+    int mPausedResponseCount;
+    ArrayList<Message> mPausedResponses = new ArrayList<Message>();
 
-    int nextCallFailCause = CallFailCause.NORMAL_CLEARING;
+    int mNextCallFailCause = CallFailCause.NORMAL_CLEARING;
 
     //***** Constructor
 
@@ -763,7 +763,7 @@ public final class SimulatedCommands extends BaseCommands
     public void getLastCallFailCause (Message result) {
         int[] ret = new int[1];
 
-        ret[0] = nextCallFailCause;
+        ret[0] = mNextCallFailCause;
         resultSuccess(result, ret);
     }
 
@@ -1357,7 +1357,7 @@ public final class SimulatedCommands extends BaseCommands
     @Override
     public void
     setNextCallFailCause(int gsmCause) {
-        nextCallFailCause = gsmCause;
+        mNextCallFailCause = gsmCause;
     }
 
     @Override
@@ -1411,19 +1411,19 @@ public final class SimulatedCommands extends BaseCommands
     @Override
     public void
     pauseResponses() {
-        pausedResponseCount++;
+        mPausedResponseCount++;
     }
 
     @Override
     public void
     resumeResponses() {
-        pausedResponseCount--;
+        mPausedResponseCount--;
 
-        if (pausedResponseCount == 0) {
-            for (int i = 0, s = pausedResponses.size(); i < s ; i++) {
-                pausedResponses.get(i).sendToTarget();
+        if (mPausedResponseCount == 0) {
+            for (int i = 0, s = mPausedResponses.size(); i < s ; i++) {
+                mPausedResponses.get(i).sendToTarget();
             }
-            pausedResponses.clear();
+            mPausedResponses.clear();
         } else {
             Rlog.e("GSM", "SimulatedCommands.resumeResponses < 0");
         }
@@ -1436,8 +1436,8 @@ public final class SimulatedCommands extends BaseCommands
             AsyncResult.forMessage(result).exception
                 = new RuntimeException("Unimplemented");
 
-            if (pausedResponseCount > 0) {
-                pausedResponses.add(result);
+            if (mPausedResponseCount > 0) {
+                mPausedResponses.add(result);
             } else {
                 result.sendToTarget();
             }
@@ -1447,8 +1447,8 @@ public final class SimulatedCommands extends BaseCommands
     private void resultSuccess(Message result, Object ret) {
         if (result != null) {
             AsyncResult.forMessage(result).result = ret;
-            if (pausedResponseCount > 0) {
-                pausedResponses.add(result);
+            if (mPausedResponseCount > 0) {
+                mPausedResponses.add(result);
             } else {
                 result.sendToTarget();
             }
@@ -1458,8 +1458,8 @@ public final class SimulatedCommands extends BaseCommands
     private void resultFail(Message result, Throwable tr) {
         if (result != null) {
             AsyncResult.forMessage(result).exception = tr;
-            if (pausedResponseCount > 0) {
-                pausedResponses.add(result);
+            if (mPausedResponseCount > 0) {
+                mPausedResponses.add(result);
             } else {
                 result.sendToTarget();
             }

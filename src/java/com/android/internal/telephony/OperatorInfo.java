@@ -30,31 +30,31 @@ public class OperatorInfo implements Parcelable {
         FORBIDDEN;
     }
 
-    private String operatorAlphaLong;
-    private String operatorAlphaShort;
-    private String operatorNumeric;
+    private String mOperatorAlphaLong;
+    private String mOperatorAlphaShort;
+    private String mOperatorNumeric;
 
-    private State state = State.UNKNOWN;
+    private State mState = State.UNKNOWN;
 
 
     public String
     getOperatorAlphaLong() {
-        return operatorAlphaLong;
+        return mOperatorAlphaLong;
     }
 
     public String
     getOperatorAlphaShort() {
-        return operatorAlphaShort;
+        return mOperatorAlphaShort;
     }
 
     public String
     getOperatorNumeric() {
-        return operatorNumeric;
+        return mOperatorNumeric;
     }
 
     public State
     getState() {
-        return state;
+        return mState;
     }
 
     OperatorInfo(String operatorAlphaLong,
@@ -62,11 +62,11 @@ public class OperatorInfo implements Parcelable {
                 String operatorNumeric,
                 State state) {
 
-        this.operatorAlphaLong = operatorAlphaLong;
-        this.operatorAlphaShort = operatorAlphaShort;
-        this.operatorNumeric = operatorNumeric;
+        mOperatorAlphaLong = operatorAlphaLong;
+        mOperatorAlphaShort = operatorAlphaShort;
+        mOperatorNumeric = operatorNumeric;
 
-        this.state = state;
+        mState = state;
     }
 
 
@@ -99,10 +99,10 @@ public class OperatorInfo implements Parcelable {
 
     @Override
     public String toString() {
-        return "OperatorInfo " + operatorAlphaLong
-                + "/" + operatorAlphaShort
-                + "/" + operatorNumeric
-                + "/" + state;
+        return "OperatorInfo " + mOperatorAlphaLong
+                + "/" + mOperatorAlphaShort
+                + "/" + mOperatorNumeric
+                + "/" + mState;
     }
 
     /**
@@ -124,10 +124,10 @@ public class OperatorInfo implements Parcelable {
      */
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(operatorAlphaLong);
-        dest.writeString(operatorAlphaShort);
-        dest.writeString(operatorNumeric);
-        dest.writeSerializable(state);
+        dest.writeString(mOperatorAlphaLong);
+        dest.writeString(mOperatorAlphaShort);
+        dest.writeString(mOperatorNumeric);
+        dest.writeSerializable(mState);
     }
 
     /**

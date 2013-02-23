@@ -100,9 +100,9 @@ public abstract class DataConnectionTrackerBase extends Handler {
     // TODO: move away from static state once 5587429 is fixed.
     protected static boolean sPolicyDataEnabled = true;
 
-    private boolean[] dataEnabled = new boolean[DctConstants.APN_NUM_TYPES];
+    private boolean[] mDataEnabled = new boolean[DctConstants.APN_NUM_TYPES];
 
-    private int enabledCount = 0;
+    private int mEnabledCount = 0;
 
     /* Currently requested APN type (TODO: This should probably be a parameter not a member) */
     protected String mRequestedApnType = PhoneConstants.APN_TYPE_DEFAULT;
@@ -417,10 +417,10 @@ public abstract class DataConnectionTrackerBase extends Handler {
         // This preference tells us 1) initial condition for "dataEnabled",
         // and 2) whether the RIL will setup the baseband to auto-PS attach.
 
-        dataEnabled[DctConstants.APN_DEFAULT_ID] =
+        mDataEnabled[DctConstants.APN_DEFAULT_ID] =
                 SystemProperties.getBoolean(DEFALUT_DATA_ON_BOOT_PROP,true);
-        if (dataEnabled[DctConstants.APN_DEFAULT_ID]) {
-            enabledCount++;
+        if (mDataEnabled[DctConstants.APN_DEFAULT_ID]) {
+            mEnabledCount++;
         }
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
@@ -440,7 +440,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
         }
         mDataConnectionAsyncChannels.clear();
         mIsDisposed = true;
-        mPhone.getContext().unregisterReceiver(this.mIntentReceiver);
+        mPhone.getContext().unregisterReceiver(mIntentReceiver);
         mDataRoamingSettingObserver.unregister(mPhone.getContext());
         mUiccController.unregisterForIccChanged(this);
     }
@@ -689,7 +689,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
         final boolean result;
         synchronized (mDataEnabledLock) {
             result = (mInternalDataEnabled && mUserDataEnabled && sPolicyDataEnabled
-                    && (enabledCount != 0));
+                    && (mEnabledCount != 0));
         }
         if (!result && DBG) log("getAnyDataEnabled " + result);
         return result;
@@ -776,7 +776,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
     // tell all active apns of the current condition
     protected void notifyDataConnection(String reason) {
         for (int id = 0; id < DctConstants.APN_NUM_TYPES; id++) {
-            if (dataEnabled[id]) {
+            if (mDataEnabled[id]) {
                 mPhone.notifyDataConnection(reason, apnIdToType(id));
             }
         }
@@ -833,7 +833,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
 
     protected synchronized boolean isApnIdEnabled(int id) {
         if (id != DctConstants.APN_INVALID_ID) {
-            return dataEnabled[id];
+            return mDataEnabled[id];
         }
         return false;
     }
@@ -895,7 +895,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
         if (isApnIdEnabled(id)) {
             setEnabled(id, false);
             if (isApnTypeActive(PhoneConstants.APN_TYPE_DEFAULT)) {
-                if (dataEnabled[DctConstants.APN_DEFAULT_ID]) {
+                if (mDataEnabled[DctConstants.APN_DEFAULT_ID]) {
                     return PhoneConstants.APN_ALREADY_ACTIVE;
                 } else {
                     return PhoneConstants.APN_REQUEST_STARTED;
@@ -910,8 +910,8 @@ public abstract class DataConnectionTrackerBase extends Handler {
 
     protected void setEnabled(int id, boolean enable) {
         if (DBG) {
-            log("setEnabled(" + id + ", " + enable + ") with old state = " + dataEnabled[id]
-                    + " and enabledCount = " + enabledCount);
+            log("setEnabled(" + id + ", " + enable + ") with old state = " + mDataEnabled[id]
+                    + " and enabledCount = " + mEnabledCount);
         }
         Message msg = obtainMessage(DctConstants.EVENT_ENABLE_NEW_APN);
         msg.arg1 = id;
@@ -922,15 +922,15 @@ public abstract class DataConnectionTrackerBase extends Handler {
     protected void onEnableApn(int apnId, int enabled) {
         if (DBG) {
             log("EVENT_APN_ENABLE_REQUEST apnId=" + apnId + ", apnType=" + apnIdToType(apnId) +
-                    ", enabled=" + enabled + ", dataEnabled = " + dataEnabled[apnId] +
-                    ", enabledCount = " + enabledCount + ", isApnTypeActive = " +
+                    ", enabled=" + enabled + ", dataEnabled = " + mDataEnabled[apnId] +
+                    ", enabledCount = " + mEnabledCount + ", isApnTypeActive = " +
                     isApnTypeActive(apnIdToType(apnId)));
         }
         if (enabled == DctConstants.ENABLED) {
             synchronized (this) {
-                if (!dataEnabled[apnId]) {
-                    dataEnabled[apnId] = true;
-                    enabledCount++;
+                if (!mDataEnabled[apnId]) {
+                    mDataEnabled[apnId] = true;
+                    mEnabledCount++;
                 }
             }
             String type = apnIdToType(apnId);
@@ -944,14 +944,14 @@ public abstract class DataConnectionTrackerBase extends Handler {
             // disable
             boolean didDisable = false;
             synchronized (this) {
-                if (dataEnabled[apnId]) {
-                    dataEnabled[apnId] = false;
-                    enabledCount--;
+                if (mDataEnabled[apnId]) {
+                    mDataEnabled[apnId] = false;
+                    mEnabledCount--;
                     didDisable = true;
                 }
             }
             if (didDisable) {
-                if ((enabledCount == 0) || (apnId == DctConstants.APN_DUN_ID)) {
+                if ((mEnabledCount == 0) || (apnId == DctConstants.APN_DUN_ID)) {
                     mRequestedApnType = PhoneConstants.APN_TYPE_DEFAULT;
                     onCleanUpConnection(true, apnId, Phone.REASON_DATA_DISABLED);
                 }
@@ -959,7 +959,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
                 // send the disconnect msg manually, since the normal route wont send
                 // it (it's not enabled)
                 notifyApnIdDisconnected(Phone.REASON_DATA_DISABLED, apnId);
-                if (dataEnabled[DctConstants.APN_DEFAULT_ID] == true
+                if (mDataEnabled[DctConstants.APN_DEFAULT_ID] == true
                         && !isApnTypeActive(PhoneConstants.APN_TYPE_DEFAULT)) {
                     // TODO - this is an ugly way to restore the default conn - should be done
                     // by a real contention manager and policy that disconnects the lower pri
@@ -1220,7 +1220,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
                 EventLog.writeEvent(EventLogTags.DATA_STALL_RECOVERY_GET_DATA_CALL_LIST,
                         mSentSinceLastRecv);
                 if (DBG) log("doRecovery() get data call list");
-                mPhone.mCM.getDataCallList(obtainMessage(DctConstants.EVENT_DATA_STATE_CHANGED));
+                mPhone.mCi.getDataCallList(obtainMessage(DctConstants.EVENT_DATA_STATE_CHANGED));
                 putRecoveryAction(RecoveryAction.CLEANUP);
                 break;
             case RecoveryAction.CLEANUP:
@@ -1409,12 +1409,12 @@ public abstract class DataConnectionTrackerBase extends Handler {
         pw.println(" mInternalDataEnabled=" + mInternalDataEnabled);
         pw.println(" mUserDataEnabled=" + mUserDataEnabled);
         pw.println(" sPolicyDataEnabed=" + sPolicyDataEnabled);
-        pw.println(" dataEnabled:");
-        for(int i=0; i < dataEnabled.length; i++) {
-            pw.printf("  dataEnabled[%d]=%b\n", i, dataEnabled[i]);
+        pw.println(" mDataEnabled:");
+        for(int i=0; i < mDataEnabled.length; i++) {
+            pw.printf("  mDataEnabled[%d]=%b\n", i, mDataEnabled[i]);
         }
         pw.flush();
-        pw.println(" enabledCount=" + enabledCount);
+        pw.println(" mEnabledCount=" + mEnabledCount);
         pw.println(" mRequestedApnType=" + mRequestedApnType);
         pw.println(" mPhone=" + mPhone.getPhoneName());
         pw.println(" mActivity=" + mActivity);

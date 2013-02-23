@@ -40,7 +40,7 @@ public class IccPhoneBookInterfaceManagerProxy extends IIccPhoneBook.Stub {
 
     public void setmIccPhoneBookInterfaceManager(
             IccPhoneBookInterfaceManager iccPhoneBookInterfaceManager) {
-        this.mIccPhoneBookInterfaceManager = iccPhoneBookInterfaceManager;
+        mIccPhoneBookInterfaceManager = iccPhoneBookInterfaceManager;
     }
 
     @Override

@@ -916,7 +916,7 @@ class CommandParamsFactory extends Handler {
 
         if (iconId != null) {
             mIconLoadState = LOAD_SINGLE_ICON;
-            mIconLoader.loadIcon(iconId.recordNumber, this.obtainMessage(MSG_ID_LOAD_ICON_DONE));
+            mIconLoader.loadIcon(iconId.recordNumber, obtainMessage(MSG_ID_LOAD_ICON_DONE));
             return true;
         }
         return false;

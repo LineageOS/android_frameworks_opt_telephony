@@ -48,29 +48,29 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected RegistrantList mNewSmsRegistrants = new RegistrantList();
     protected RegistrantList mNetworkSelectionModeAutomaticRegistrants = new RegistrantList();
 
-    protected int recordsToLoad;  // number of pending load requests
+    protected int mRecordsToLoad;  // number of pending load requests
 
-    protected AdnRecordCache adnCache;
+    protected AdnRecordCache mAdnCache;
 
     // ***** Cached SIM State; cleared on channel close
 
-    protected boolean recordsRequested = false; // true if we've made requests for the sim records
+    protected boolean mRecordsRequested = false; // true if we've made requests for the sim records
 
-    public String iccid;
-    protected String msisdn = null;  // My mobile number
-    protected String msisdnTag = null;
-    protected String voiceMailNum = null;
-    protected String voiceMailTag = null;
-    protected String newVoiceMailNum = null;
-    protected String newVoiceMailTag = null;
-    protected boolean isVoiceMailFixed = false;
-    protected int countVoiceMessages = 0;
+    public String iccId;
+    protected String mMsisdn = null;  // My mobile number
+    protected String mMsisdnTag = null;
+    protected String mVoiceMailNum = null;
+    protected String mVoiceMailTag = null;
+    protected String mNewVoiceMailNum = null;
+    protected String mNewVoiceMailTag = null;
+    protected boolean mIsVoiceMailFixed = false;
+    protected int mCountVoiceMessages = 0;
     protected String mImsi;
 
-    protected int mncLength = UNINITIALIZED;
-    protected int mailboxIndex = 0; // 0 is no mailbox dailing number associated
+    protected int mMncLength = UNINITIALIZED;
+    protected int mMailboxIndex = 0; // 0 is no mailbox dailing number associated
 
-    protected String spn;
+    protected String mSpn;
 
     // ***** Constants
 
@@ -103,22 +103,22 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " mNewSmsRegistrants=" + mNewSmsRegistrants
                 + " mNetworkSelectionModeAutomaticRegistrants="
                         + mNetworkSelectionModeAutomaticRegistrants
-                + " recordsToLoad=" + recordsToLoad
-                + " adnCache=" + adnCache
-                + " recordsRequested=" + recordsRequested
-                + " iccid=" + iccid
-                + " msisdn=" + msisdn
-                + " msisdnTag=" + msisdnTag
-                + " voiceMailNum=" + voiceMailNum
-                + " voiceMailTag=" + voiceMailTag
-                + " newVoiceMailNum=" + newVoiceMailNum
-                + " newVoiceMailTag=" + newVoiceMailTag
-                + " isVoiceMailFixed=" + isVoiceMailFixed
-                + " countVoiceMessages=" + countVoiceMessages
+                + " recordsToLoad=" + mRecordsToLoad
+                + " adnCache=" + mAdnCache
+                + " recordsRequested=" + mRecordsRequested
+                + " iccid=" + iccId
+                + " msisdn=" + mMsisdn
+                + " msisdnTag=" + mMsisdnTag
+                + " voiceMailNum=" + mVoiceMailNum
+                + " voiceMailTag=" + mVoiceMailTag
+                + " newVoiceMailNum=" + mNewVoiceMailNum
+                + " newVoiceMailTag=" + mNewVoiceMailTag
+                + " isVoiceMailFixed=" + mIsVoiceMailFixed
+                + " countVoiceMessages=" + mCountVoiceMessages
                 + " mImsi=" + mImsi
-                + " mncLength=" + mncLength
-                + " mailboxIndex=" + mailboxIndex
-                + " spn=" + spn;
+                + " mncLength=" + mMncLength
+                + " mailboxIndex=" + mMailboxIndex
+                + " spn=" + mSpn;
 
     }
 
@@ -127,7 +127,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * {@link IccFileHandler} passing a Message for onLoaded with the what field set to
      * {@link #EVENT_GET_ICC_RECORD_DONE} and the obj field set to an instance
      * of this interface. The {@link #handleMessage} method in this class will print a
-     * log message using {@link #getEfName()} and decrement {@link #recordsToLoad}.
+     * log message using {@link #getEfName()} and decrement {@link #mRecordsToLoad}.
      *
      * If the record load was successful, {@link #onRecordLoaded} will be called with the result.
      * Otherwise, an error log message will be output by {@link #handleMessage} and
@@ -161,7 +161,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     //***** Public Methods
     public AdnRecordCache getAdnCache() {
-        return adnCache;
+        return mAdnCache;
     }
 
     public void registerForRecordsLoaded(Handler h, int what, Object obj) {
@@ -172,7 +172,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
         Registrant r = new Registrant(h, what, obj);
         recordsLoadedRegistrants.add(r);
 
-        if (recordsToLoad == 0 && recordsRequested == true) {
+        if (mRecordsToLoad == 0 && mRecordsRequested == true) {
             r.notifyRegistrant(new AsyncResult(null, null, null));
         }
     }
@@ -237,12 +237,12 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @param imsi
      */
     public void setImsi(String imsi) {
-        this.mImsi = imsi;
+        mImsi = imsi;
         mImsiReadyRegistrants.notifyRegistrants();
     }
 
     public String getMsisdnNumber() {
-        return msisdn;
+        return mMsisdn;
     }
 
     /**
@@ -263,24 +263,24 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public void setMsisdnNumber(String alphaTag, String number,
             Message onComplete) {
 
-        msisdn = number;
-        msisdnTag = alphaTag;
+        mMsisdn = number;
+        mMsisdnTag = alphaTag;
 
-        if (DBG) log("Set MSISDN: " + msisdnTag +" " + msisdn);
+        if (DBG) log("Set MSISDN: " + mMsisdnTag +" " + mMsisdn);
 
 
-        AdnRecord adn = new AdnRecord(msisdnTag, msisdn);
+        AdnRecord adn = new AdnRecord(mMsisdnTag, mMsisdn);
 
         new AdnRecordLoader(mFh).updateEF(adn, EF_MSISDN, EF_EXT1, 1, null,
                 obtainMessage(EVENT_SET_MSISDN_DONE, onComplete));
     }
 
     public String getMsisdnAlphaTag() {
-        return msisdnTag;
+        return mMsisdnTag;
     }
 
     public String getVoiceMailNumber() {
-        return voiceMailNum;
+        return mVoiceMailNum;
     }
 
     /**
@@ -288,7 +288,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return null if SIM is not yet ready or no RUIM entry
      */
     public String getServiceProviderName() {
-        return spn;
+        return mSpn;
     }
 
     /**
@@ -319,7 +319,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
             Message onComplete);
 
     public String getVoiceMailAlphaTag() {
-        return voiceMailTag;
+        return mVoiceMailTag;
     }
 
     /**
@@ -333,7 +333,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     /** @return  true if there are messages waiting, false otherwise. */
     public boolean getVoiceMessageWaiting() {
-        return countVoiceMessages != 0;
+        return mCountVoiceMessages != 0;
     }
 
     /**
@@ -342,7 +342,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * getVoiceMessageWaiting() is true
      */
     public int getVoiceMessageCount() {
-        return countVoiceMessages;
+        return mCountVoiceMessages;
     }
 
     /**
@@ -354,7 +354,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
 
     public boolean getRecordsLoaded() {
-        if (recordsToLoad == 0 && recordsRequested == true) {
+        if (mRecordsToLoad == 0 && mRecordsRequested == true) {
             return true;
         } else {
             return false;
@@ -509,22 +509,22 @@ public abstract class IccRecords extends Handler implements IccConstants {
             pw.println("  mNetworkSelectionModeAutomaticRegistrants[" + i + "]="
                     + ((Registrant)mNetworkSelectionModeAutomaticRegistrants.get(i)).getHandler());
         }
-        pw.println(" recordsRequested=" + recordsRequested);
-        pw.println(" recordsToLoad=" + recordsToLoad);
-        pw.println(" adnCache=" + adnCache);
-        pw.println(" iccid=" + iccid);
-        pw.println(" msisdn=" + msisdn);
-        pw.println(" msisdnTag=" + msisdnTag);
-        pw.println(" voiceMailNum=" + voiceMailNum);
-        pw.println(" voiceMailTag=" + voiceMailTag);
-        pw.println(" newVoiceMailNum=" + newVoiceMailNum);
-        pw.println(" newVoiceMailTag=" + newVoiceMailTag);
-        pw.println(" isVoiceMailFixed=" + isVoiceMailFixed);
-        pw.println(" countVoiceMessages=" + countVoiceMessages);
+        pw.println(" mRecordsRequested=" + mRecordsRequested);
+        pw.println(" mRecordsToLoad=" + mRecordsToLoad);
+        pw.println(" mRdnCache=" + mAdnCache);
+        pw.println(" iccid=" + iccId);
+        pw.println(" mMsisdn=" + mMsisdn);
+        pw.println(" mMsisdnTag=" + mMsisdnTag);
+        pw.println(" mVoiceMailNum=" + mVoiceMailNum);
+        pw.println(" mVoiceMailTag=" + mVoiceMailTag);
+        pw.println(" mNewVoiceMailNum=" + mNewVoiceMailNum);
+        pw.println(" mNewVoiceMailTag=" + mNewVoiceMailTag);
+        pw.println(" mIsVoiceMailFixed=" + mIsVoiceMailFixed);
+        pw.println(" mCountVoiceMessages=" + mCountVoiceMessages);
         pw.println(" mImsi=" + mImsi);
-        pw.println(" mncLength=" + mncLength);
-        pw.println(" mailboxIndex=" + mailboxIndex);
-        pw.println(" spn=" + spn);
+        pw.println(" mMncLength=" + mMncLength);
+        pw.println(" mMailboxIndex=" + mMailboxIndex);
+        pw.println(" mSpn=" + mSpn);
         pw.flush();
     }
 }

@@ -31,51 +31,51 @@ abstract class SipConnectionBase extends Connection {
     private static final boolean DBG = true;
     private static final boolean VDBG = true; // STOPSHIP if true
 
-    private String postDialString;      // outgoing calls only
-    private int nextPostDialChar;       // index into postDialString
+    private String mPostDialString;      // outgoing calls only
+    private int mNextPostDialChar;       // index into postDialString
     /*
      * These time/timespan values are based on System.currentTimeMillis(),
      * i.e., "wall clock" time.
      */
-    private long createTime;
-    private long connectTime;
-    private long disconnectTime;
+    private long mCreateTime;
+    private long mConnectTime;
+    private long mDisconnectTime;
 
     /*
      * These time/timespan values are based on SystemClock.elapsedRealTime(),
      * i.e., time since boot.  They are appropriate for comparison and
      * calculating deltas.
      */
-    private long connectTimeReal;
-    private long duration = -1L;
-    private long holdingStartTime;  // The time when the Connection last transitioned
+    private long mConnectTimeReal;
+    private long mDuration = -1L;
+    private long mHoldingStartTime;  // The time when the Connection last transitioned
                             // into HOLDING
 
     private DisconnectCause mCause = DisconnectCause.NOT_DISCONNECTED;
-    private PostDialState postDialState = PostDialState.NOT_STARTED;
+    private PostDialState mPostDialState = PostDialState.NOT_STARTED;
 
     SipConnectionBase(String dialString) {
         if (DBG) log("SipConnectionBase: ctor dialString=" + dialString);
-        postDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
+        mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
 
-        createTime = System.currentTimeMillis();
+        mCreateTime = System.currentTimeMillis();
     }
 
     protected void setState(Call.State state) {
         if (DBG) log("setState: state=" + state);
         switch (state) {
             case ACTIVE:
-                if (connectTime == 0) {
-                    connectTimeReal = SystemClock.elapsedRealtime();
-                    connectTime = System.currentTimeMillis();
+                if (mConnectTime == 0) {
+                    mConnectTimeReal = SystemClock.elapsedRealtime();
+                    mConnectTime = System.currentTimeMillis();
                 }
                 break;
             case DISCONNECTED:
-                duration = getDurationMillis();
-                disconnectTime = System.currentTimeMillis();
+                mDuration = getDurationMillis();
+                mDisconnectTime = System.currentTimeMillis();
                 break;
             case HOLDING:
-                holdingStartTime = SystemClock.elapsedRealtime();
+                mHoldingStartTime = SystemClock.elapsedRealtime();
                 break;
             default:
                 // Ignore
@@ -85,31 +85,31 @@ abstract class SipConnectionBase extends Connection {
 
     @Override
     public long getCreateTime() {
-        if (VDBG) log("getCreateTime: ret=" + createTime);
-        return createTime;
+        if (VDBG) log("getCreateTime: ret=" + mCreateTime);
+        return mCreateTime;
     }
 
     @Override
     public long getConnectTime() {
-        if (VDBG) log("getConnectTime: ret=" + connectTime);
-        return connectTime;
+        if (VDBG) log("getConnectTime: ret=" + mConnectTime);
+        return mConnectTime;
     }
 
     @Override
     public long getDisconnectTime() {
-        if (VDBG) log("getDisconnectTime: ret=" + disconnectTime);
-        return disconnectTime;
+        if (VDBG) log("getDisconnectTime: ret=" + mDisconnectTime);
+        return mDisconnectTime;
     }
 
     @Override
     public long getDurationMillis() {
         long dur;
-        if (connectTimeReal == 0) {
+        if (mConnectTimeReal == 0) {
             dur = 0;
-        } else if (duration < 0) {
-            dur = SystemClock.elapsedRealtime() - connectTimeReal;
+        } else if (mDuration < 0) {
+            dur = SystemClock.elapsedRealtime() - mConnectTimeReal;
         } else {
-            dur = duration;
+            dur = mDuration;
         }
         if (VDBG) log("getDurationMillis: ret=" + dur);
         return dur;
@@ -122,7 +122,7 @@ abstract class SipConnectionBase extends Connection {
             // If not holding, return 0
             dur = 0;
         } else {
-            dur = SystemClock.elapsedRealtime() - holdingStartTime;
+            dur = SystemClock.elapsedRealtime() - mHoldingStartTime;
         }
         if (VDBG) log("getHoldDurationMillis: ret=" + dur);
         return dur;
@@ -141,8 +141,8 @@ abstract class SipConnectionBase extends Connection {
 
     @Override
     public PostDialState getPostDialState() {
-        if (VDBG) log("getPostDialState: ret=" + postDialState);
-        return postDialState;
+        if (VDBG) log("getPostDialState: ret=" + mPostDialState);
+        return mPostDialState;
     }
 
     @Override
@@ -164,15 +164,15 @@ abstract class SipConnectionBase extends Connection {
 
     @Override
     public String getRemainingPostDialString() {
-        if (postDialState == PostDialState.CANCELLED
-            || postDialState == PostDialState.COMPLETE
-            || postDialString == null
-            || postDialString.length() <= nextPostDialChar) {
+        if (mPostDialState == PostDialState.CANCELLED
+            || mPostDialState == PostDialState.COMPLETE
+            || mPostDialString == null
+            || mPostDialString.length() <= mNextPostDialChar) {
             if (DBG) log("getRemaingPostDialString: ret empty string");
             return "";
         }
 
-        return postDialString.substring(nextPostDialChar);
+        return mPostDialString.substring(mNextPostDialChar);
     }
 
     private void log(String msg) {

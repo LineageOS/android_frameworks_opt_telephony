@@ -106,7 +106,7 @@ public class RetryManager {
     private int mRetryCount;
 
     /** Random number generator */
-    private Random rng = new Random();
+    private Random mRng = new Random();
 
     private String mConfig;
 
@@ -401,7 +401,7 @@ public class RetryManager {
         if (randomTime == 0) {
             return 0;
         } else {
-            return rng.nextInt(randomTime);
+            return mRng.nextInt(randomTime);
         }
     }
 

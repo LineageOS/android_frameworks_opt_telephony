@@ -74,12 +74,12 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
     CdmaSMSDispatcher(CDMAPhone phone, SmsStorageMonitor storageMonitor,
             SmsUsageMonitor usageMonitor) {
         super(phone, storageMonitor, usageMonitor);
-        mCm.setOnNewCdmaSms(this, EVENT_NEW_SMS, null);
+        mCi.setOnNewCdmaSms(this, EVENT_NEW_SMS, null);
     }
 
     @Override
     public void dispose() {
-        mCm.unSetOnNewCdmaSms(this);
+        mCi.unSetOnNewCdmaSms(this);
     }
 
     @Override
@@ -90,7 +90,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
     private void handleCdmaStatusReport(SmsMessage sms) {
         for (int i = 0, count = deliveryPendingList.size(); i < count; i++) {
             SmsTracker tracker = deliveryPendingList.get(i);
-            if (tracker.mMessageRef == sms.messageRef) {
+            if (tracker.mMessageRef == sms.mMessageRef) {
                 // Found it.  Remove from list and broadcast.
                 deliveryPendingList.remove(i);
                 PendingIntent intent = tracker.mDeliveryIntent;
@@ -210,7 +210,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         }
 
         if (SmsEnvelope.TELESERVICE_WAP == teleService) {
-            return processCdmaWapPdu(sms.getUserData(), sms.messageRef,
+            return processCdmaWapPdu(sms.getUserData(), sms.mMessageRef,
                     sms.getOriginatingAddress());
         }
 
@@ -358,7 +358,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         byte pdu[] = (byte[]) map.get("pdu");
 
         Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
-        mCm.sendCdmaSms(pdu, reply);
+        mCi.sendCdmaSms(pdu, reply);
     }
 
     /** {@inheritDoc} */
@@ -370,7 +370,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         }
 
         int causeCode = resultToCause(result);
-        mCm.acknowledgeLastIncomingCdmaSms(success, causeCode, response);
+        mCi.acknowledgeLastIncomingCdmaSms(success, causeCode, response);
 
         if (causeCode == 0) {
             mLastAcknowledgedSmsFingerprint = mLastDispatchedSmsFingerprint;
@@ -488,7 +488,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
                 dos.write(encodedBearerData.length);
                 dos.write(encodedBearerData, 0, encodedBearerData.length);
                 // Ignore the RIL response. TODO: implement retry if SMS send fails.
-                mCm.sendCdmaSms(baos.toByteArray(), null);
+                mCi.sendCdmaSms(baos.toByteArray(), null);
             } catch (IOException e) {
                 Rlog.e(TAG, "exception creating SCP results PDU", e);
             } finally {
