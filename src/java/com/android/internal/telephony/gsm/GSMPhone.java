@@ -882,13 +882,13 @@ public class GSMPhone extends PhoneBase {
     @Override
     public String getSubscriberId() {
         IccRecords r = mIccRecords.get();
-        return (r != null) ? r.getIMSI() : "";
+        return (r != null) ? r.getIMSI() : null;
     }
 
     @Override
     public String getLine1Number() {
         IccRecords r = mIccRecords.get();
-        return (r != null) ? r.getMsisdnNumber() : "";
+        return (r != null) ? r.getMsisdnNumber() : null;
     }
 
     @Override
