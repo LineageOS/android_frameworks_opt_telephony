@@ -747,7 +747,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         switch (mCi.getRadioState()) {
             case RADIO_UNAVAILABLE:
                 mNewSS.setStateOutOfService();
-                mSS.setStateOutOfService();
                 mNewCellLoc.setStateInvalid();
                 setSignalStrengthDefaultValues();
                 mGotCountryCode = false;
@@ -757,7 +756,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
             case RADIO_OFF:
                 mNewSS.setStateOff();
-                mSS.setStateOff();
                 mNewCellLoc.setStateInvalid();
                 setSignalStrengthDefaultValues();
                 mGotCountryCode = false;
