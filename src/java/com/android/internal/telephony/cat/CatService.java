@@ -658,6 +658,7 @@ public class CatService extends Handler implements AppInterface {
         ResponseData resp = null;
         boolean helpRequired = false;
         CommandDetails cmdDet = resMsg.getCmdDetails();
+        AppInterface.CommandType type = AppInterface.CommandType.fromInt(cmdDet.typeOfCommand);
 
         switch (resMsg.mResCode) {
         case HELP_INFO_REQUIRED:
@@ -674,7 +675,7 @@ public class CatService extends Handler implements AppInterface {
         case PRFRMD_NAA_NOT_ACTIVE:
         case PRFRMD_TONE_NOT_PLAYED:
         case TERMINAL_CRNTLY_UNABLE_TO_PROCESS:
-            switch (AppInterface.CommandType.fromInt(cmdDet.typeOfCommand)) {
+            switch (type) {
             case SET_UP_MENU:
                 helpRequired = resMsg.mResCode == ResultCode.HELP_INFO_REQUIRED;
                 sendMenuSelection(resMsg.mUsersMenuSelection, helpRequired);
@@ -711,10 +712,22 @@ public class CatService extends Handler implements AppInterface {
                 break;
             }
             break;
-        case NO_RESPONSE_FROM_USER:
-        case UICC_SESSION_TERM_BY_USER:
         case BACKWARD_MOVE_BY_USER:
         case USER_NOT_ACCEPT:
+            // if the user dismissed the alert dialog for a
+            // setup call/open channel, consider that as the user
+            // rejecting the call. Use dedicated API for this, rather than
+            // sending a terminal response.
+            if (type == CommandType.SET_UP_CALL || type == CommandType.OPEN_CHANNEL) {
+                mCmdIf.handleCallSetupRequestFromSim(false, null);
+                mCurrntCmd = null;
+                return;
+            } else {
+                resp = null;
+            }
+            break;
+        case NO_RESPONSE_FROM_USER:
+        case UICC_SESSION_TERM_BY_USER:
             resp = null;
             break;
         default:
