@@ -295,6 +295,21 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         byte pdu[] = (byte[]) map.get("pdu");
 
         Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
+
+        if (tracker.mRetryCount > 0) {
+            Rlog.d(TAG, "sendSms: "
+                    + " mRetryCount=" + tracker.mRetryCount
+                    + " mMessageRef=" + tracker.mMessageRef
+                    + " SS=" + mPhone.getServiceState().getState());
+
+            // per TS 23.040 Section 9.2.3.6:  If TP-MTI SMS-SUBMIT (0x01) type
+            //   TP-RD (bit 2) is 1 for retry
+            //   and TP-MR is set to previously failed sms TP-MR
+            if (((0x01 & pdu[0]) == 0x01)) {
+                pdu[0] |= 0x04; // TP-RD
+                pdu[1] = (byte) tracker.mMessageRef; // TP-MR
+            }
+        }
         mCi.sendSMS(IccUtils.bytesToHexString(smsc), IccUtils.bytesToHexString(pdu), reply);
     }
 
