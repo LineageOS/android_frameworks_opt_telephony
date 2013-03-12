@@ -56,7 +56,7 @@ public class PhoneProxy extends Handler implements Phone {
 
     private int mRilVersion;
     private boolean mRilV7NeedsCDMALTEPhone = SystemProperties.getBoolean(
-                    "telephony.rilV7NeedsCDMALTEPhone", false);
+                    "telephony.rilV7NeedCDMALTEPhone", false);
 
     private static final int EVENT_VOICE_RADIO_TECH_CHANGED = 1;
     private static final int EVENT_RADIO_ON = 2;
