@@ -72,6 +72,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     protected String spn;
 
+    protected String gid1;
+
     // ***** Constants
 
     // Markers for mncLength
@@ -211,6 +213,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     public String getMsisdnNumber() {
         return msisdn;
+    }
+
+    /**
+     * Get the Group Identifier Level 1 (GID1) on a SIM for GSM.
+     * @return null if SIM is not yet ready
+     */
+    public String getGid1() {
+        return null;
     }
 
     /**
