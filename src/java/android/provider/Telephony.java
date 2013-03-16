@@ -1816,6 +1816,21 @@ public final class Telephony {
           * but currently only used for LTE(14) and EHRPD(13).
           */
         public static final String BEARER = "bearer";
+
+        /**
+          * MVNO type
+          * spn(Service Provider Name), imsi, gid(Group Identifier Level 1)
+          */
+        public static final String MVNO_TYPE = "mvno_type";
+
+        /**
+          * MVNO data
+          * Use the following examples.
+          * spn: A MOBILE, BEN NL, ...
+          * imsi: 302720x94, 2060188, ...
+          * gid: 4E, 33, ...
+          */
+        public static final String MVNO_MATCH_DATA = "mvno_match_data";
     }
 
     /**
