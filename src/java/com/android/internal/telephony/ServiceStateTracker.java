@@ -206,6 +206,9 @@ public abstract class ServiceStateTracker extends Handler {
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
         mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
+
+        mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
+            ServiceState.rilRadioTechnologyToString(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN));
     }
 
     public void dispose() {
