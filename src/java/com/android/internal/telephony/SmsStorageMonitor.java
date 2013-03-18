@@ -139,7 +139,7 @@ public final class SmsStorageMonitor extends Handler {
         // broadcast SIM_FULL intent
         Intent intent = new Intent(Intents.SIM_FULL_ACTION);
         mWakeLock.acquire(WAKE_LOCK_TIMEOUT);
-        mContext.sendBroadcast(intent, SMSDispatcher.RECEIVE_SMS_PERMISSION);
+        mContext.sendBroadcast(intent, android.Manifest.permission.RECEIVE_SMS);
     }
 
     /** Returns whether or not there is storage available for an incoming SMS. */

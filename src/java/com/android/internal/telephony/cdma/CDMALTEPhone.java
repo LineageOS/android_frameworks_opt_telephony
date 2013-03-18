@@ -28,11 +28,14 @@ import android.provider.Telephony;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.SMSDispatcher;
+import com.android.internal.telephony.SmsBroadcastUndelivered;
+import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 import com.android.internal.telephony.gsm.GsmSMSDispatcher;
 import com.android.internal.telephony.gsm.SmsMessage;
 import com.android.internal.telephony.uicc.IsimRecords;
@@ -57,6 +60,8 @@ public class CDMALTEPhone extends CDMAPhone {
     private SIMRecords mSimRecords;
     private IsimUiccRecords mIsimUiccRecords;
 
+    private GsmInboundSmsHandler mGsmInboundSmsHandler;
+
     /**
      * Small container class used to hold information relevant to
      * the carrier selection process. operatorNumeric can be ""
@@ -72,21 +77,21 @@ public class CDMALTEPhone extends CDMAPhone {
     // Constructors
     public CDMALTEPhone(Context context, CommandsInterface ci, PhoneNotifier notifier) {
         super(context, ci, notifier, false);
-        m3gppSMS = new GsmSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
     }
 
     @Override
     public void handleMessage (Message msg) {
-        AsyncResult ar;
         switch (msg.what) {
             // handle the select network completion callbacks.
             case EVENT_SET_NETWORK_MANUAL_COMPLETE:
                 handleSetSelectNetwork((AsyncResult) msg.obj);
                 break;
+
             case EVENT_NEW_ICC_SMS:
-                ar = (AsyncResult)msg.obj;
-                m3gppSMS.dispatchMessage((SmsMessage)ar.result);
+                // pass to InboundSmsHandler to process
+                mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, msg.obj);
                 break;
+
             default:
                 super.handleMessage(msg);
         }
@@ -97,11 +102,28 @@ public class CDMALTEPhone extends CDMAPhone {
         mSST = new CdmaLteServiceStateTracker(this);
     }
 
+    /**
+     * Create SMSDispatcher and InboundSmsHandler for 3GPP format messages.
+     * @return the new GsmInboundSmsHandler (to pass to {@link SmsBroadcastUndelivered})
+     */
+    @Override
+    protected GsmInboundSmsHandler initGsmSmsDispatcher() {
+        // Create 3GPP SMS dispatcher for outgoing messages.
+        m3gppSMS = new GsmSMSDispatcher(this, mSmsUsageMonitor);
+
+        // Create 3GPP inbound SMS handler.
+        mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(mContext,
+                mSmsStorageMonitor, this);
+
+        return mGsmInboundSmsHandler;
+    }
+
     @Override
     public void dispose() {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
             super.dispose();
             m3gppSMS.dispose();
+            mGsmInboundSmsHandler.dispose();
         }
     }
 
