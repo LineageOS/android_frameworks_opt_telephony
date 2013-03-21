@@ -35,6 +35,7 @@ import android.net.ProxyProperties;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Message;
+import android.os.Messenger;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.provider.Settings;
@@ -138,7 +139,17 @@ public final class DcTracker extends DcTrackerBase {
                 Telephony.Carriers.CONTENT_URI, true, mApnObserver);
 
         initApnContextsAndDataConnection();
-        broadcastMessenger();
+
+        ConnectivityManager cm = (ConnectivityManager)p.getContext().getSystemService(
+                Context.CONNECTIVITY_SERVICE);
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_MMS, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_SUPL, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_DUN, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_HIPRI, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_FOTA, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_IMS, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_CBS, new Messenger(this));
     }
 
     @Override
