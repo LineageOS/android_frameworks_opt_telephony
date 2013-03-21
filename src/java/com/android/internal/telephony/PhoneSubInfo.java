@@ -88,6 +88,14 @@ public class PhoneSubInfo extends IPhoneSubInfo.Stub {
     }
 
     /**
+     * Retrieves the Group Identifier Level1 for GSM phones.
+     */
+    public String getGroupIdLevel1() {
+        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+        return mPhone.getGroupIdLevel1();
+    }
+
+    /**
      * Retrieves the serial number of the ICC, if applicable.
      */
     @Override

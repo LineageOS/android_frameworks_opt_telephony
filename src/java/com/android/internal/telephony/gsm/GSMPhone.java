@@ -886,6 +886,12 @@ public class GSMPhone extends PhoneBase {
     }
 
     @Override
+    public String getGroupIdLevel1() {
+        IccRecords r = mIccRecords.get();
+        return (r != null) ? r.getGid1() : null;
+    }
+
+    @Override
     public String getLine1Number() {
         IccRecords r = mIccRecords.get();
         return (r != null) ? r.getMsisdnNumber() : null;
