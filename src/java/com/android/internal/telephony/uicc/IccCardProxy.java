@@ -140,10 +140,29 @@ public class IccCardProxy extends Handler implements IccCard {
             }
             if (ServiceState.isGsm(radioTech)) {
                 mCurrentAppType = UiccController.APP_FAM_3GPP;
-            } else {
+            } else if (ServiceState.isCdma(radioTech)){
                 mCurrentAppType = UiccController.APP_FAM_3GPP2;
+            } else {
+                // If reported radio tech is unknown - we will have to guess
+                mCurrentAppType = guessRadioTech();
+                if (DBG) {
+                    log("Radio tech is unknown. Guessed radio tech family is " + mCurrentAppType);
+                }
             }
             updateQuietMode();
+        }
+    }
+
+    /**
+     * This function guesses radio tech family based on available uicc applications
+     */
+    private int guessRadioTech() {
+        UiccCardApplication app =
+                mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
+        if (app != null) {
+            return UiccController.APP_FAM_3GPP;
+        } else {
+            return UiccController.APP_FAM_3GPP2;
         }
     }
 
