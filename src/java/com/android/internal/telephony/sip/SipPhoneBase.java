@@ -33,7 +33,7 @@ import android.telephony.Rlog;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
-import com.android.internal.telephony.dataconnection.DataConnectionBase;
+import com.android.internal.telephony.dataconnection.DataConnection;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
 import com.android.internal.telephony.IccSmsInterfaceManager;
@@ -56,8 +56,8 @@ abstract class SipPhoneBase extends PhoneBase {
     private RegistrantList mRingbackRegistrants = new RegistrantList();
     private PhoneConstants.State mState = PhoneConstants.State.IDLE;
 
-    public SipPhoneBase(Context context, PhoneNotifier notifier) {
-        super(notifier, context, new SipCommandInterface(context), false);
+    public SipPhoneBase(String name, Context context, PhoneNotifier notifier) {
+        super(name, notifier, context, new SipCommandInterface(context), false);
     }
 
     @Override
@@ -424,7 +424,7 @@ abstract class SipPhoneBase extends PhoneBase {
     public void getDataCallList(Message response) {
     }
 
-    public List<DataConnectionBase> getCurrentDataConnectionList () {
+    public List<DataConnection> getCurrentDataConnectionList () {
         return null;
     }
 

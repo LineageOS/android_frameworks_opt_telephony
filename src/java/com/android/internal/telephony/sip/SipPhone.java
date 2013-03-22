@@ -49,7 +49,7 @@ import java.util.regex.Pattern;
 public class SipPhone extends SipPhoneBase {
     private static final String LOG_TAG = "SipPhone";
     private static final boolean DBG = true;
-    private static final boolean VDBG = true; // STOPSHIP if true
+    private static final boolean VDBG = false; // STOPSHIP if true
     private static final int TIMEOUT_MAKE_CALL = 15; // in seconds
     private static final int TIMEOUT_ANSWER_CALL = 8; // in seconds
     private static final int TIMEOUT_HOLD_CALL = 15; // in seconds
@@ -63,7 +63,7 @@ public class SipPhone extends SipPhoneBase {
     private SipProfile mProfile;
 
     SipPhone (Context context, PhoneNotifier notifier, SipProfile profile) {
-        super(context, notifier);
+        super("SIP:" + profile.getUriString(), context, notifier);
 
         if (DBG) log("new SipPhone: " + profile.getUriString());
         mRingingCall = new SipCall();
@@ -79,11 +79,6 @@ public class SipPhone extends SipPhoneBase {
         if (!(o instanceof SipPhone)) return false;
         SipPhone that = (SipPhone) o;
         return mProfile.getUriString().equals(that.mProfile.getUriString());
-    }
-
-    @Override
-    public String getPhoneName() {
-        return "SIP:" + getUriString(mProfile);
     }
 
     public String getSipUri() {

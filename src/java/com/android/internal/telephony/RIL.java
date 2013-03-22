@@ -59,7 +59,8 @@ import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
-import com.android.internal.telephony.dataconnection.DataConnectionBase;
+import com.android.internal.telephony.dataconnection.DcFailCause;
+import com.android.internal.telephony.dataconnection.DataCallResponse;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -3230,8 +3231,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return response;
     }
 
-    private DataCallState getDataCallState(Parcel p, int version) {
-        DataCallState dataCall = new DataCallState();
+    private DataCallResponse getDataCallResponse(Parcel p, int version) {
+        DataCallResponse dataCall = new DataCallResponse();
 
         dataCall.version = version;
         if (version < 5) {
@@ -3249,9 +3250,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             dataCall.active = p.readInt();
             dataCall.type = p.readString();
             dataCall.ifname = p.readString();
-            if ((dataCall.status == DataConnectionBase.FailCause.NONE.getErrorCode()) &&
+            if ((dataCall.status == DcFailCause.NONE.getErrorCode()) &&
                     TextUtils.isEmpty(dataCall.ifname)) {
-              throw new RuntimeException("getDataCallState, no ifname");
+              throw new RuntimeException("getDataCallResponse, no ifname");
             }
             String addresses = p.readString();
             if (!TextUtils.isEmpty(addresses)) {
@@ -3271,15 +3272,15 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     private Object
     responseDataCallList(Parcel p) {
-        ArrayList<DataCallState> response;
+        ArrayList<DataCallResponse> response;
 
         int ver = p.readInt();
         int num = p.readInt();
         riljLog("responseDataCallList ver=" + ver + " num=" + num);
 
-        response = new ArrayList<DataCallState>(num);
+        response = new ArrayList<DataCallResponse>(num);
         for (int i = 0; i < num; i++) {
-            response.add(getDataCallState(p, ver));
+            response.add(getDataCallResponse(p, ver));
         }
 
         return response;
@@ -3291,10 +3292,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         int num = p.readInt();
         if (RILJ_LOGV) riljLog("responseSetupDataCall ver=" + ver + " num=" + num);
 
-        DataCallState dataCall;
+        DataCallResponse dataCall;
 
         if (ver < 5) {
-            dataCall = new DataCallState();
+            dataCall = new DataCallResponse();
             dataCall.version = ver;
             dataCall.cid = Integer.parseInt(p.readString());
             dataCall.ifname = p.readString();
@@ -3326,7 +3327,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         "RIL_REQUEST_SETUP_DATA_CALL response expecting 1 RIL_Data_Call_response_v5"
                         + " got " + num);
             }
-            dataCall = getDataCallState(p, ver);
+            dataCall = getDataCallResponse(p, ver);
         }
 
         return dataCall;

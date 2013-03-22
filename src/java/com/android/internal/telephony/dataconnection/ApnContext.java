@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.app.PendingIntent;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.DctConstants;
@@ -34,7 +35,7 @@ public class ApnContext {
 
     public final String LOG_TAG;
 
-    protected static final boolean DBG = true;
+    protected static final boolean DBG = false;
 
     private final String mApnType;
 
@@ -47,13 +48,11 @@ public class ApnContext {
 
     private ApnSetting mApnSetting;
 
-    DataConnectionBase mDataConnection;
-
     DataConnectionAc mDataConnectionAc;
 
     String mReason;
 
-    int mRetryCount;
+    PendingIntent mReconnectAlarmIntent;
 
     /**
      * user/app requested connection on this APN
@@ -69,7 +68,6 @@ public class ApnContext {
         mApnType = apnType;
         mState = DctConstants.State.IDLE;
         setReason(Phone.REASON_DATA_ENABLED);
-        setRetryCount(0);
         mDataEnabled = new AtomicBoolean(false);
         mDependencyMet = new AtomicBoolean(true);
         mWaitingApnsPermanentFailureCountDown = new AtomicInteger(0);
@@ -80,19 +78,7 @@ public class ApnContext {
         return mApnType;
     }
 
-    public synchronized DataConnectionBase getDataConnection() {
-        return mDataConnection;
-    }
-
-    public synchronized void setDataConnection(DataConnectionBase dc) {
-        if (DBG) {
-            log("setDataConnection: old dc=" + mDataConnection + " new dc=" + dc + " this=" + this);
-        }
-        mDataConnection = dc;
-    }
-
-
-    public synchronized DataConnectionAc getDataConnectionAc() {
+    public synchronized DataConnectionAc getDcAc() {
         return mDataConnectionAc;
     }
 
@@ -101,20 +87,29 @@ public class ApnContext {
             log("setDataConnectionAc: old dcac=" + mDataConnectionAc + " new dcac=" + dcac
                     + " this=" + this);
         }
-        if ((dcac == null) && (mDataConnectionAc != null) &&
-                (mDataConnectionAc.dataConnection != null)) {
+        if ((dcac == null) && (mDataConnectionAc != null)) {
             // TODO: This tearDown should be done by caller, but for now we'll do it
             if (DBG) log("setDataConnection: call tearDown");
-            mDataConnectionAc.dataConnection.tearDown(this, "", null);
+            mDataConnectionAc.tearDown(this, "", null);
         }
         mDataConnectionAc = dcac;
     }
 
+    public synchronized PendingIntent getReconnectIntent() {
+        return mReconnectAlarmIntent;
+    }
+
+    public synchronized void setReconnectIntent(PendingIntent intent) {
+        mReconnectAlarmIntent = intent;
+    }
+
     public synchronized ApnSetting getApnSetting() {
+        log("getApnSetting: apnSetting=" + mApnSetting);
         return mApnSetting;
     }
 
     public synchronized void setApnSetting(ApnSetting apnSetting) {
+        log("setApnSetting: apnSetting=" + apnSetting);
         mApnSetting = apnSetting;
     }
 
@@ -188,23 +183,15 @@ public class ApnContext {
         return mReason;
     }
 
-    public synchronized void setRetryCount(int retryCount) {
-        if (DBG) {
-            log("setRetryCount: " + retryCount);
-        }
-        mRetryCount = retryCount;
-        DataConnectionBase dc = mDataConnection;
-        if (dc != null) {
-            dc.setRetryCount(retryCount);
-        }
-    }
-
-    public synchronized int getRetryCount() {
-        return mRetryCount;
-    }
-
     public boolean isReady() {
         return mDataEnabled.get() && mDependencyMet.get();
+    }
+
+    public boolean isConnectable() {
+        return isReady() && ((mState == DctConstants.State.IDLE)
+                                || (mState == DctConstants.State.SCANNING)
+                                || (mState == DctConstants.State.RETRYING)
+                                || (mState == DctConstants.State.FAILED));
     }
 
     public void setEnabled(boolean enabled) {
@@ -232,12 +219,9 @@ public class ApnContext {
     @Override
     public String toString() {
         // We don't print mDataConnection because its recursive.
-        return "{mApnType=" + mApnType + " mState=" + getState() + " mWaitingApns=" + mWaitingApns +
-                " mWaitingApnsPermanentFailureCountDown=" + mWaitingApnsPermanentFailureCountDown +
-                " mApnSetting=" + mApnSetting +
-                " mDataConnection=" + ((mDataConnection != null)
-                                            ? mDataConnection.toStringSimple() : "null") +
-                " mReason=" + mReason + " mRetryCount=" + mRetryCount +
+        return "{mApnType=" + mApnType + " mState=" + getState() + " mWaitingApns={" + mWaitingApns +
+                "} mWaitingApnsPermanentFailureCountDown=" + mWaitingApnsPermanentFailureCountDown +
+                " mApnSetting={" + mApnSetting + "} mReason=" + mReason +
                 " mDataEnabled=" + mDataEnabled + " mDependencyMet=" + mDependencyMet + "}";
     }
 

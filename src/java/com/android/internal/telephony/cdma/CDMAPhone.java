@@ -138,14 +138,14 @@ public class CDMAPhone extends PhoneBase {
 
     // Constructors
     public CDMAPhone(Context context, CommandsInterface ci, PhoneNotifier notifier) {
-        super(notifier, context, ci, false);
+        super("CDMA", notifier, context, ci, false);
         initSstIcc();
         init(context, notifier);
     }
 
     public CDMAPhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
             boolean unitTestMode) {
-        super(notifier, context, ci, unitTestMode);
+        super("CDMA", notifier, context, ci, unitTestMode);
         initSstIcc();
         init(context, notifier);
     }
@@ -283,11 +283,6 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public ServiceStateTracker getServiceStateTracker() {
         return mSST;
-    }
-
-    @Override
-    public String getPhoneName() {
-        return "CDMA";
     }
 
     @Override
@@ -690,6 +685,7 @@ public class CDMAPhone extends PhoneBase {
                     }
                 break;
 
+                case RETRYING:
                 case CONNECTING:
                 case SCANNING:
                     ret = PhoneConstants.DataState.CONNECTING;

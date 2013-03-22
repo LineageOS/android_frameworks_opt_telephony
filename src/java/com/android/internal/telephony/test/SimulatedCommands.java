@@ -25,10 +25,10 @@ import android.telephony.Rlog;
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.DataCallState;
+import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
+import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.CallFailCause;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
@@ -478,11 +478,11 @@ public final class SimulatedCommands extends BaseCommands
      *  retMsg.obj = AsyncResult ar
      *  ar.exception carries exception on failure
      *  ar.userObject contains the original value of result.obj
-     *  ar.result contains a List of DataCallState
+     *  ar.result contains a List of DataCallResponse
      */
     @Override
     public void getDataCallList(Message result) {
-        resultSuccess(result, new ArrayList<DataCallState>(0));
+        resultSuccess(result, new ArrayList<DataCallResponse>(0));
     }
 
     /**

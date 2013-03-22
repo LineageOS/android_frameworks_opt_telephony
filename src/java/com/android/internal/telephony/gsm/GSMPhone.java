@@ -132,7 +132,7 @@ public class GSMPhone extends PhoneBase {
 
     public
     GSMPhone (Context context, CommandsInterface ci, PhoneNotifier notifier, boolean unitTestMode) {
-        super(notifier, context, ci, unitTestMode);
+        super("GSM", notifier, context, ci, unitTestMode);
 
         if (ci instanceof SimulatedRadioControl) {
             mSimulatedRadioControl = (SimulatedRadioControl) ci;
@@ -258,11 +258,6 @@ public class GSMPhone extends PhoneBase {
     }
 
     @Override
-    public String getPhoneName() {
-        return "GSM";
-    }
-
-    @Override
     public int getPhoneType() {
         return PhoneConstants.PHONE_TYPE_GSM;
     }
@@ -320,6 +315,7 @@ public class GSMPhone extends PhoneBase {
                     }
                 break;
 
+                case RETRYING:
                 case CONNECTING:
                 case SCANNING:
                     ret = PhoneConstants.DataState.CONNECTING;

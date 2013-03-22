@@ -33,6 +33,7 @@ import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.SystemClock;
@@ -70,7 +71,8 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public abstract class DataConnectionTrackerBase extends Handler {
     protected static final boolean DBG = true;
-    protected static final boolean VDBG = false;
+    protected static final boolean VDBG = false; // STOPSHIP if true
+    protected static final boolean VDBG_STALL = true; // STOPSHIP if true
     protected static final boolean RADIO_TESTS = false;
 
     /**
@@ -85,6 +87,8 @@ public abstract class DataConnectionTrackerBase extends Handler {
         Note the property override mechanism is there just for testing purpose only. */
     protected static final int APN_DELAY_MILLIS =
                                 SystemProperties.getInt("persist.radio.apn_delay", 5000);
+
+    AlarmManager mAlarmManager;
 
     protected Object mDataEnabledLock = new Object();
 
@@ -155,16 +159,26 @@ public abstract class DataConnectionTrackerBase extends Handler {
 
     protected String RADIO_RESET_PROPERTY = "gsm.radioreset";
 
-
-    // TODO: See if we can remove INTENT_RECONNECT_ALARM
-    //       having to have different values for GSM and
-    //       CDMA. If so we can then remove the need for
-    //       getActionIntentReconnectAlarm.
+    protected static final String INTENT_RECONNECT_ALARM =
+            "com.android.internal.telephony.data-reconnect";
+    protected static final String INTENT_RECONNECT_ALARM_EXTRA_TYPE = "reconnect_alarm_extra_type";
     protected static final String INTENT_RECONNECT_ALARM_EXTRA_REASON =
-        "reconnect_alarm_extra_reason";
+            "reconnect_alarm_extra_reason";
+
+    protected static final String INTENT_RESTART_TRYSETUP_ALARM =
+            "com.android.internal.telephony.data-restart-trysetup";
+    protected static final String INTENT_RESTART_TRYSETUP_ALARM_EXTRA_TYPE =
+            "restart_trysetup_alarm_extra_type";
+
+    protected static final String INTENT_DATA_STALL_ALARM =
+            "com.android.internal.telephony.data-stall";
+
 
 
     protected static final String DEFALUT_DATA_ON_BOOT_PROP = "net.def_data_on_boot";
+
+    protected DcTesterFailBringUpAll mDcTesterFailBringUpAll;
+    protected DcController mDcc;
 
     // member variables
     protected PhoneBase mPhone;
@@ -210,11 +224,11 @@ public abstract class DataConnectionTrackerBase extends Handler {
     protected AtomicInteger mUniqueIdGenerator = new AtomicInteger(0);
 
     /** The data connections. */
-    protected HashMap<Integer, DataConnectionBase> mDataConnections =
-        new HashMap<Integer, DataConnectionBase>();
+    protected HashMap<Integer, DataConnection> mDataConnections =
+        new HashMap<Integer, DataConnection>();
 
     /** The data connection async channels */
-    protected HashMap<Integer, DataConnectionAc> mDataConnectionAsyncChannels =
+    protected HashMap<Integer, DataConnectionAc> mDataConnectionAcHashMap =
         new HashMap<Integer, DataConnectionAc>();
 
     /** Convert an ApnType string to Id (TODO: Use "enumeration" instead of String for ApnType) */
@@ -229,7 +243,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
     protected ApnSetting mActiveApn;
 
     /** allApns holds all apns */
-    protected ArrayList<ApnSetting> mAllApns = null;
+    protected ArrayList<ApnSetting> mAllApnSettings = null;
 
     /** preferred apn */
     protected ApnSetting mPreferredApn = null;
@@ -259,10 +273,13 @@ public abstract class DataConnectionTrackerBase extends Handler {
                 stopNetStatPoll();
                 startNetStatPoll();
                 restartDataStallAlarm();
-            } else if (action.startsWith(getActionIntentReconnectAlarm())) {
+            } else if (action.startsWith(INTENT_RECONNECT_ALARM)) {
                 if (DBG) log("Reconnect alarm. Previous state was " + mState);
                 onActionIntentReconnectAlarm(intent);
-            } else if (action.equals(getActionIntentDataStallAlarm())) {
+            } else if (action.startsWith(INTENT_RESTART_TRYSETUP_ALARM)) {
+                if (DBG) log("Restart trySetup alarm");
+                onActionIntentRestartTrySetupAlarm(intent);
+            } else if (action.equals(INTENT_DATA_STALL_ALARM)) {
                 onActionIntentDataStallAlarm(intent);
             } else if (action.equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
                 final android.net.NetworkInfo networkInfo = (NetworkInfo)
@@ -284,7 +301,6 @@ public abstract class DataConnectionTrackerBase extends Handler {
         }
     };
 
-    private final DataRoamingSettingObserver mDataRoamingSettingObserver;
     private Runnable mPollNetStat = new Runnable()
     {
         @Override
@@ -307,32 +323,52 @@ public abstract class DataConnectionTrackerBase extends Handler {
     };
 
     private class DataRoamingSettingObserver extends ContentObserver {
-        public DataRoamingSettingObserver(Handler handler) {
+
+        public DataRoamingSettingObserver(Handler handler, Context context) {
             super(handler);
+            mResolver = context.getContentResolver();
         }
 
-        public void register(Context context) {
-            final ContentResolver resolver = context.getContentResolver();
-            resolver.registerContentObserver(
+        public void register() {
+            mResolver.registerContentObserver(
                     Settings.Global.getUriFor(Settings.Global.DATA_ROAMING), false, this);
         }
 
-        public void unregister(Context context) {
-            final ContentResolver resolver = context.getContentResolver();
-            resolver.unregisterContentObserver(this);
+        public void unregister() {
+            mResolver.unregisterContentObserver(this);
         }
 
         @Override
         public void onChange(boolean selfChange) {
             // already running on mPhone handler thread
-            handleDataOnRoamingChange();
+            if (mPhone.getServiceState().getRoaming()) {
+                sendMessage(obtainMessage(DctConstants.EVENT_ROAMING_ON));
+            }
         }
+    }
+    private final DataRoamingSettingObserver mDataRoamingSettingObserver;
+
+    /**
+     * The Initial MaxRetry sent to a DataConnection as a parameter
+     * to DataConnectionAc.bringUp. This value can be defined at compile
+     * time using the SystemProperty Settings.Global.DCT_INITIAL_MAX_RETRY
+     * and at runtime using gservices to change Settings.Global.DCT_INITIAL_MAX_RETRY.
+     */
+    private static final int DEFAULT_MDC_INITIAL_RETRY = 1;
+    protected int getInitialMaxRetry() {
+        // Get default value from system property or use DEFAULT_MDC_INITIAL_RETRY
+        int value = SystemProperties.getInt(
+                Settings.Global.MDC_INITIAL_MAX_RETRY, DEFAULT_MDC_INITIAL_RETRY);
+
+        // Check if its been overridden
+        return Settings.Global.getInt(mResolver,
+                Settings.Global.MDC_INITIAL_MAX_RETRY, value);
     }
 
     /**
-     * Maintian the sum of transmit and receive packets.
+     * Maintain the sum of transmit and receive packets.
      *
-     * The packet counts are initizlied and reset to -1 and
+     * The packet counts are initialized and reset to -1 and
      * remain -1 until they can be updated.
      */
     public class TxRxSum {
@@ -371,18 +407,47 @@ public abstract class DataConnectionTrackerBase extends Handler {
 
     protected void onActionIntentReconnectAlarm(Intent intent) {
         String reason = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON);
-        if (mState == DctConstants.State.FAILED) {
-            Message msg = obtainMessage(DctConstants.EVENT_CLEAN_UP_CONNECTION);
-            msg.arg1 = 0; // tearDown is false
-            msg.arg2 = 0;
-            msg.obj = reason;
-            sendMessage(msg);
+        String apnType = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE);
+
+        ApnContext apnContext = mApnContexts.get(apnType);
+
+        if (DBG) {
+            log("onActionIntentReconnectAlarm: mState=" + mState + " reason=" + reason +
+                    " apnType=" + apnType + " apnContext=" + apnContext +
+                    " mDataConnectionAsyncChannels=" + mDataConnectionAcHashMap);
         }
-        sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA));
+
+        if ((apnContext != null) && (apnContext.isEnabled())) {
+            apnContext.setReason(reason);
+            DctConstants.State apnContextState = apnContext.getState();
+            if (DBG) {
+                log("onActionIntentReconnectAlarm: apnContext state=" + apnContextState);
+            }
+            if ((apnContextState == DctConstants.State.FAILED)
+                    || (apnContextState == DctConstants.State.IDLE)) {
+                if (DBG) {
+                    log("onActionIntentReconnectAlarm: state is FAILED|IDLE, disassociate");
+                }
+                apnContext.setDataConnectionAc(null);
+                apnContext.setState(DctConstants.State.IDLE);
+            } else {
+                if (DBG) log("onActionIntentReconnectAlarm: keep associated");
+            }
+            // TODO: IF already associated should we send the EVENT_TRY_SETUP_DATA???
+            sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, apnContext));
+
+            apnContext.setReconnectIntent(null);
+        }
+    }
+
+    protected void onActionIntentRestartTrySetupAlarm(Intent intent) {
+        String apnType = intent.getStringExtra(INTENT_RESTART_TRYSETUP_ALARM_EXTRA_TYPE);
+        ApnContext apnContext = mApnContexts.get(apnType);
+        sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, apnContext));
     }
 
     protected void onActionIntentDataStallAlarm(Intent intent) {
-        if (VDBG) log("onActionIntentDataStallAlarm: action=" + intent.getAction());
+        if (VDBG_STALL) log("onActionIntentDataStallAlarm: action=" + intent.getAction());
         Message msg = obtainMessage(DctConstants.EVENT_DATA_STALL_ALARM,
                 intent.getAction());
         msg.arg1 = intent.getIntExtra(DATA_STALL_ALARM_TAG_EXTRA, 0);
@@ -396,22 +461,24 @@ public abstract class DataConnectionTrackerBase extends Handler {
         super();
         if (DBG) log("DCT.constructor");
         mPhone = phone;
+        mResolver = mPhone.getContext().getContentResolver();
         mUiccController = UiccController.getInstance();
         mUiccController.registerForIccChanged(this, DctConstants.EVENT_ICC_CHANGED, null);
+        mAlarmManager =
+                (AlarmManager) mPhone.getContext().getSystemService(Context.ALARM_SERVICE);
+
 
         IntentFilter filter = new IntentFilter();
-        filter.addAction(getActionIntentReconnectAlarm());
+        filter.addAction(INTENT_RECONNECT_ALARM);
         filter.addAction(Intent.ACTION_SCREEN_ON);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
-        filter.addAction(getActionIntentDataStallAlarm());
+        filter.addAction(INTENT_DATA_STALL_ALARM);
 
         mUserDataEnabled = Settings.Global.getInt(
                 mPhone.getContext().getContentResolver(), Settings.Global.MOBILE_DATA, 1) == 1;
 
-        // TODO: Why is this registering the phone as the receiver of the intent
-        //       and not its own handler?
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
 
         // This preference tells us 1) initial condition for "dataEnabled",
@@ -426,23 +493,29 @@ public abstract class DataConnectionTrackerBase extends Handler {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
         mAutoAttachOnCreation = sp.getBoolean(PhoneBase.DATA_DISABLED_ON_BOOT_KEY, false);
 
-        // watch for changes to Settings.Global.DATA_ROAMING
-        mDataRoamingSettingObserver = new DataRoamingSettingObserver(mPhone);
-        mDataRoamingSettingObserver.register(mPhone.getContext());
+        // Watch for changes to Settings.Global.DATA_ROAMING
+        mDataRoamingSettingObserver = new DataRoamingSettingObserver(mPhone, mPhone.getContext());
+        mDataRoamingSettingObserver.register();
 
-        mResolver = mPhone.getContext().getContentResolver();
+        HandlerThread dcHandlerThread = new HandlerThread("DcHandlerThread");
+        dcHandlerThread.start();
+        Handler dcHandler = new Handler(dcHandlerThread.getLooper());
+        mDcc = DcController.makeDcc(mPhone, this, dcHandler);
+        mDcTesterFailBringUpAll = new DcTesterFailBringUpAll(mPhone, dcHandler);
     }
 
     public void dispose() {
         if (DBG) log("DCT.dispose");
-        for (DataConnectionAc dcac : mDataConnectionAsyncChannels.values()) {
+        for (DataConnectionAc dcac : mDataConnectionAcHashMap.values()) {
             dcac.disconnect();
         }
-        mDataConnectionAsyncChannels.clear();
+        mDataConnectionAcHashMap.clear();
         mIsDisposed = true;
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
-        mDataRoamingSettingObserver.unregister(mPhone.getContext());
         mUiccController.unregisterForIccChanged(this);
+        mDataRoamingSettingObserver.unregister();
+        mDcc.dispose();
+        mDcTesterFailBringUpAll.dispose();
     }
 
     protected void broadcastMessenger() {
@@ -529,18 +602,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
         }
     }
 
-    private void handleDataOnRoamingChange() {
-        if (mPhone.getServiceState().getRoaming()) {
-            if (getDataOnRoamingEnabled()) {
-                resetAllRetryCounts();
-            }
-            sendMessage(obtainMessage(DctConstants.EVENT_ROAMING_ON));
-        }
-    }
-
     // abstract methods
-    protected abstract String getActionIntentReconnectAlarm();
-    protected abstract String getActionIntentDataStallAlarm();
     protected abstract void restartRadio();
     protected abstract void log(String s);
     protected abstract void loge(String s);
@@ -556,7 +618,9 @@ public abstract class DataConnectionTrackerBase extends Handler {
     protected abstract void onRadioAvailable();
     protected abstract void onRadioOffOrNotAvailable();
     protected abstract void onDataSetupComplete(AsyncResult ar);
+    protected abstract void onDataSetupCompleteError(AsyncResult ar);
     protected abstract void onDisconnectDone(int connId, AsyncResult ar);
+    protected abstract void onDisconnectDcRetrying(int connId, AsyncResult ar);
     protected abstract void onVoiceCallStarted();
     protected abstract void onVoiceCallEnded();
     protected abstract void onCleanUpConnection(boolean tearDown, int apnId, String reason);
@@ -570,7 +634,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
             case AsyncChannel.CMD_CHANNEL_DISCONNECTED: {
                 log("DISCONNECTED_CONNECTED: msg=" + msg);
                 DataConnectionAc dcac = (DataConnectionAc) msg.obj;
-                mDataConnectionAsyncChannels.remove(dcac.dataConnection.getDataConnectionId());
+                mDataConnectionAcHashMap.remove(dcac.getDataConnectionIdSync());
                 dcac.disconnected();
                 break;
             }
@@ -591,9 +655,6 @@ public abstract class DataConnectionTrackerBase extends Handler {
                 break;
 
             case DctConstants.EVENT_ROAMING_OFF:
-                if (getDataOnRoamingEnabled() == false) {
-                    resetAllRetryCounts();
-                }
                 onRoamingOff();
                 break;
 
@@ -614,9 +675,18 @@ public abstract class DataConnectionTrackerBase extends Handler {
                 onDataSetupComplete((AsyncResult) msg.obj);
                 break;
 
+            case DctConstants.EVENT_DATA_SETUP_COMPLETE_ERROR:
+                onDataSetupCompleteError((AsyncResult) msg.obj);
+                break;
+
             case DctConstants.EVENT_DISCONNECT_DONE:
                 log("DataConnectoinTracker.handleMessage: EVENT_DISCONNECT_DONE msg=" + msg);
                 onDisconnectDone(msg.arg1, (AsyncResult) msg.obj);
+                break;
+
+            case DctConstants.EVENT_DISCONNECT_DC_RETRYING:
+                log("DataConnectoinTracker.handleMessage: EVENT_DISCONNECT_DC_RETRYING msg=" + msg);
+                onDisconnectDcRetrying(msg.arg1, (AsyncResult) msg.obj);
                 break;
 
             case DctConstants.EVENT_VOICE_CALL_STARTED:
@@ -669,10 +739,10 @@ public abstract class DataConnectionTrackerBase extends Handler {
                 onSetPolicyDataEnabled(enabled);
                 break;
             }
-            case DctConstants.EVENT_ICC_CHANGED:
+            case DctConstants.EVENT_ICC_CHANGED: {
                 onUpdateIcc();
                 break;
-
+            }
             default:
                 Rlog.e("DATA", "Unidentified event msg=" + msg);
                 break;
@@ -754,8 +824,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
         int id = apnTypeToId(apnType);
 
         if (isApnIdEnabled(id)) {
-            // TODO - remove this cdma-only hack and support multiple DCs.
-            DataConnectionAc dcac = mDataConnectionAsyncChannels.get(0);
+            DataConnectionAc dcac = mDataConnectionAcHashMap.get(0);
             return dcac.getLinkPropertiesSync();
         } else {
             return new LinkProperties();
@@ -765,8 +834,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
     public LinkCapabilities getLinkCapabilities(String apnType) {
         int id = apnTypeToId(apnType);
         if (isApnIdEnabled(id)) {
-            // TODO - remove this cdma-only hack and support multiple DCs.
-            DataConnectionAc dcac = mDataConnectionAsyncChannels.get(0);
+            DataConnectionAc dcac = mDataConnectionAcHashMap.get(0);
             return dcac.getLinkCapabilitiesSync();
         } else {
             return new LinkCapabilities();
@@ -789,6 +857,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
         switch (mState) {
             case IDLE:
                 break;
+            case RETRYING:
             case CONNECTING:
             case SCANNING:
                 mPhone.notifyDataConnection(reason, apnIdToType(apnId),
@@ -802,7 +871,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
                         PhoneConstants.DataState.CONNECTED);
                 break;
             default:
-                // Ingore
+                // Ignore
                 break;
         }
     }
@@ -1021,7 +1090,6 @@ public abstract class DataConnectionTrackerBase extends Handler {
             mInternalDataEnabled = enabled;
             if (enabled) {
                 log("onSetInternalDataEnabled: changed to enabled, try to setup data call");
-                resetAllRetryCounts();
                 onTrySetupData(Phone.REASON_DATA_ENABLED);
             } else {
                 log("onSetInternalDataEnabled: changed to disabled, cleanUpAllConnections");
@@ -1055,7 +1123,6 @@ public abstract class DataConnectionTrackerBase extends Handler {
                 }
                 if (prevEnabled != getAnyDataEnabled()) {
                     if (!prevEnabled) {
-                        resetAllRetryCounts();
                         onTrySetupData(Phone.REASON_DATA_ENABLED);
                     } else {
                         onCleanUpAllConnections(Phone.REASON_DATA_DISABLED);
@@ -1075,7 +1142,6 @@ public abstract class DataConnectionTrackerBase extends Handler {
                 sPolicyDataEnabled = enabled;
                 if (prevEnabled != getAnyDataEnabled()) {
                     if (!prevEnabled) {
-                        resetAllRetryCounts();
                         onTrySetupData(Phone.REASON_DATA_ENABLED);
                     } else {
                         onCleanUpAllConnections(Phone.REASON_DATA_DISABLED);
@@ -1103,15 +1169,6 @@ public abstract class DataConnectionTrackerBase extends Handler {
             } else {
                 return SystemProperties.get("ro.gsm.2nd_data_retry_config");
             }
-        }
-    }
-
-    protected void resetAllRetryCounts() {
-        for (ApnContext ac : mApnContexts.values()) {
-            ac.setRetryCount(0);
-        }
-        for (DataConnectionBase dc : mDataConnections.values()) {
-            dc.resetRetryCount();
         }
     }
 
@@ -1198,13 +1255,13 @@ public abstract class DataConnectionTrackerBase extends Handler {
     public int getRecoveryAction() {
         int action = Settings.System.getInt(mPhone.getContext().getContentResolver(),
                 "radio.data.stall.recovery.action", RecoveryAction.GET_DATA_CALL_LIST);
-        if (VDBG) log("getRecoveryAction: " + action);
+        if (VDBG_STALL) log("getRecoveryAction: " + action);
         return action;
     }
     public void putRecoveryAction(int action) {
         Settings.System.putInt(mPhone.getContext().getContentResolver(),
                 "radio.data.stall.recovery.action", action);
-        if (VDBG) log("putRecoveryAction: " + action);
+        if (VDBG_STALL) log("putRecoveryAction: " + action);
     }
 
     protected boolean isConnected() {
@@ -1274,7 +1331,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
         TxRxSum preTxRxSum = new TxRxSum(mDataStallTxRxSum);
         mDataStallTxRxSum.updateTxRxSum();
 
-        if (VDBG) {
+        if (VDBG_STALL) {
             log("updateDataStallInfo: mDataStallTxRxSum=" + mDataStallTxRxSum +
                     " preTxRxSum=" + preTxRxSum);
         }
@@ -1289,7 +1346,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
             }
         }
         if ( sent > 0 && received > 0 ) {
-            if (VDBG) log("updateDataStallInfo: IN/OUT");
+            if (VDBG_STALL) log("updateDataStallInfo: IN/OUT");
             mSentSinceLastRecv = 0;
             putRecoveryAction(RecoveryAction.GET_DATA_CALL_LIST);
         } else if (sent > 0 && received == 0) {
@@ -1303,11 +1360,11 @@ public abstract class DataConnectionTrackerBase extends Handler {
                         " mSentSinceLastRecv=" + mSentSinceLastRecv);
             }
         } else if (sent == 0 && received > 0) {
-            if (VDBG) log("updateDataStallInfo: IN");
+            if (VDBG_STALL) log("updateDataStallInfo: IN");
             mSentSinceLastRecv = 0;
             putRecoveryAction(RecoveryAction.GET_DATA_CALL_LIST);
         } else {
-            if (VDBG) log("updateDataStallInfo: NONE");
+            if (VDBG_STALL) log("updateDataStallInfo: NONE");
         }
     }
 
@@ -1332,7 +1389,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
             suspectedStall = DATA_STALL_SUSPECTED;
             sendMessage(obtainMessage(DctConstants.EVENT_DO_RECOVERY));
         } else {
-            if (VDBG) {
+            if (VDBG_STALL) {
                 log("onDataStallAlarm: tag=" + tag + " Sent " + String.valueOf(mSentSinceLastRecv) +
                     " pkts since last received, < watchdogTrigger=" + hangWatchdogTrigger);
             }
@@ -1358,33 +1415,31 @@ public abstract class DataConnectionTrackerBase extends Handler {
             }
 
             mDataStallAlarmTag += 1;
-            if (VDBG) {
+            if (VDBG_STALL) {
                 log("startDataStallAlarm: tag=" + mDataStallAlarmTag +
                         " delay=" + (delayInMs / 1000) + "s");
             }
-            AlarmManager am =
-                    (AlarmManager) mPhone.getContext().getSystemService(Context.ALARM_SERVICE);
-
-            Intent intent = new Intent(getActionIntentDataStallAlarm());
+            Intent intent = new Intent(INTENT_DATA_STALL_ALARM);
             intent.putExtra(DATA_STALL_ALARM_TAG_EXTRA, mDataStallAlarmTag);
             mDataStallAlarmIntent = PendingIntent.getBroadcast(mPhone.getContext(), 0, intent,
                     PendingIntent.FLAG_UPDATE_CURRENT);
-            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+            mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                     SystemClock.elapsedRealtime() + delayInMs, mDataStallAlarmIntent);
+        } else {
+            if (VDBG_STALL) {
+                log("startDataStallAlarm: NOT started, no connection tag=" + mDataStallAlarmTag);
+            }
         }
     }
 
     protected void stopDataStallAlarm() {
-        AlarmManager am =
-            (AlarmManager) mPhone.getContext().getSystemService(Context.ALARM_SERVICE);
-
-        if (VDBG) {
+        if (VDBG_STALL) {
             log("stopDataStallAlarm: current tag=" + mDataStallAlarmTag +
                     " mDataStallAlarmIntent=" + mDataStallAlarmIntent);
         }
         mDataStallAlarmTag += 1;
         if (mDataStallAlarmIntent != null) {
-            am.cancel(mDataStallAlarmIntent);
+            mAlarmManager.cancel(mDataStallAlarmIntent);
             mDataStallAlarmIntent = null;
         }
     }
@@ -1396,11 +1451,21 @@ public abstract class DataConnectionTrackerBase extends Handler {
         int nextAction = getRecoveryAction();
 
         if (RecoveryAction.isAggressiveRecovery(nextAction)) {
-            if (DBG) log("data stall recovery action is pending. not resetting the alarm.");
+            if (DBG) log("restartDataStallAlarm: action is pending. not resetting the alarm.");
             return;
         }
+        if (VDBG_STALL) log("restartDataStallAlarm: stop then start.");
         stopDataStallAlarm();
         startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
+    }
+
+    void sendCleanUpConnection(boolean tearDown, ApnContext apnContext) {
+        if (DBG)log("sendCleanUpConnection: tearDown=" + tearDown + " apnContext=" + apnContext);
+        Message msg = obtainMessage(DctConstants.EVENT_CLEAN_UP_CONNECTION);
+        msg.arg1 = tearDown ? 1 : 0;
+        msg.arg2 = 0;
+        msg.obj = apnContext;
+        sendMessage(msg);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
@@ -1436,25 +1501,43 @@ public abstract class DataConnectionTrackerBase extends Handler {
         pw.println(" mUniqueIdGenerator=" + mUniqueIdGenerator);
         pw.flush();
         pw.println(" ***************************************");
-        Set<Entry<Integer, DataConnectionBase> > mDcSet = mDataConnections.entrySet();
-        pw.println(" mDataConnections: count=" + mDcSet.size());
-        for (Entry<Integer, DataConnectionBase> entry : mDcSet) {
-            pw.printf(" *** mDataConnection[%d] \n", entry.getKey());
-            entry.getValue().dump(fd, pw, args);
+        DcController dcc = mDcc;
+        if (dcc != null) {
+            dcc.dump(fd, pw, args);
+        } else {
+            pw.println(" mDcc=null");
+        }
+        pw.println(" ***************************************");
+        HashMap<Integer, DataConnection> dcs = mDataConnections;
+        if (dcs != null) {
+            Set<Entry<Integer, DataConnection> > mDcSet = mDataConnections.entrySet();
+            pw.println(" mDataConnections: count=" + mDcSet.size());
+            for (Entry<Integer, DataConnection> entry : mDcSet) {
+                pw.printf(" *** mDataConnection[%d] \n", entry.getKey());
+                entry.getValue().dump(fd, pw, args);
+            }
+        } else {
+            pw.println("mDataConnections=null");
         }
         pw.println(" ***************************************");
         pw.flush();
-        Set<Entry<String, Integer>> mApnToDcIdSet = mApnToDataConnectionId.entrySet();
-        pw.println(" mApnToDataConnectonId size=" + mApnToDcIdSet.size());
-        for (Entry<String, Integer> entry : mApnToDcIdSet) {
-            pw.printf(" mApnToDataConnectonId[%s]=%d\n", entry.getKey(), entry.getValue());
+        HashMap<String, Integer> apnToDcId = mApnToDataConnectionId;
+        if (apnToDcId != null) {
+            Set<Entry<String, Integer>> apnToDcIdSet = apnToDcId.entrySet();
+            pw.println(" mApnToDataConnectonId size=" + apnToDcIdSet.size());
+            for (Entry<String, Integer> entry : apnToDcIdSet) {
+                pw.printf(" mApnToDataConnectonId[%s]=%d\n", entry.getKey(), entry.getValue());
+            }
+        } else {
+            pw.println("mApnToDataConnectionId=null");
         }
         pw.println(" ***************************************");
         pw.flush();
-        if (mApnContexts != null) {
-            Set<Entry<String, ApnContext>> mApnContextsSet = mApnContexts.entrySet();
-            pw.println(" mApnContexts size=" + mApnContextsSet.size());
-            for (Entry<String, ApnContext> entry : mApnContextsSet) {
+        ConcurrentHashMap<String, ApnContext> apnCtxs = mApnContexts;
+        if (apnCtxs != null) {
+            Set<Entry<String, ApnContext>> apnCtxsSet = apnCtxs.entrySet();
+            pw.println(" mApnContexts size=" + apnCtxsSet.size());
+            for (Entry<String, ApnContext> entry : apnCtxsSet) {
                 entry.getValue().dump(fd, pw, args);
             }
             pw.println(" ***************************************");
@@ -1463,14 +1546,15 @@ public abstract class DataConnectionTrackerBase extends Handler {
         }
         pw.flush();
         pw.println(" mActiveApn=" + mActiveApn);
-        if (mAllApns != null) {
-            pw.println(" mAllApns size=" + mAllApns.size());
-            for (int i=0; i < mAllApns.size(); i++) {
-                pw.printf(" mAllApns[%d]: %s\n", i, mAllApns.get(i));
+        ArrayList<ApnSetting> apnSettings = mAllApnSettings;
+        if (apnSettings != null) {
+            pw.println(" mAllApnSettings size=" + apnSettings.size());
+            for (int i=0; i < apnSettings.size(); i++) {
+                pw.printf(" mAllApnSettings[%d]: %s\n", i, apnSettings.get(i));
             }
             pw.flush();
         } else {
-            pw.println(" mAllApns=null");
+            pw.println(" mAllApnSettings=null");
         }
         pw.println(" mPreferredApn=" + mPreferredApn);
         pw.println(" mIsPsRestricted=" + mIsPsRestricted);

@@ -705,7 +705,7 @@ public interface CommandsInterface {
      *  retMsg.obj = AsyncResult ar
      *  ar.exception carries exception on failure
      *  ar.userObject contains the orignal value of result.obj
-     *  ar.result contains a List of DataCallState
+     *  ar.result contains a List of DataCallResponse
      *  @deprecated Do not use.
      */
     @Deprecated
@@ -716,7 +716,7 @@ public interface CommandsInterface {
      *  retMsg.obj = AsyncResult ar
      *  ar.exception carries exception on failure
      *  ar.userObject contains the orignal value of result.obj
-     *  ar.result contains a List of DataCallState
+     *  ar.result contains a List of DataCallResponse
      */
     void getDataCallList(Message result);
 
@@ -1471,8 +1471,8 @@ public interface CommandsInterface {
 
     /**
      * Setup a packet data connection On successful completion, the result
-     * message will return a {@link DataCallState} object containing the connection
-     * information.
+     * message will return a {@link com.android.internal.telephony.dataconnection.DataCallResponse}
+     * object containing the connection information.
      *
      * @param radioTechnology
      *            indicates whether to setup connection on radio technology CDMA

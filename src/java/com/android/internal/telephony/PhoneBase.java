@@ -65,6 +65,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class PhoneBase extends Handler implements Phone {
     private static final String LOG_TAG = "PhoneBase";
+    protected static final boolean DEBUGGABLE = SystemProperties.getInt("ro.debuggable", 0) == 1;
+
     // Key used to read and write the saved network selection numeric value
     public static final String NETWORK_SELECTION_KEY = "network_selection_key";
     // Key used to read and write the saved network selection operator name
@@ -136,11 +138,42 @@ public abstract class PhoneBase extends Handler implements Phone {
             new AtomicReference<UiccCardApplication>();
     public SMSDispatcher mSMS;
 
+    private TelephonyTester mTelephonyTester;
+    private final String mName;
+    private final String mActionDetached;
+    private final String mActionAttached;
+
+    @Override
+    public String getPhoneName() {
+        return mName;
+    }
+
+    /**
+     * Return the ActionDetached string. When this action is received by components
+     * they are to simulate detaching from the network.
+     *
+     * @return com.android.internal.telephony.{mName}.action_detached
+     *          {mName} is GSM, CDMA ...
+     */
+    public String getActionDetached() {
+        return mActionDetached;
+    }
+
+    /**
+     * Return the ActionAttached string. When this action is received by components
+     * they are to simulate attaching to the network.
+     *
+     * @return com.android.internal.telephony.{mName}.action_detached
+     *          {mName} is GSM, CDMA ...
+     */
+    public String getActionAttached() {
+        return mActionAttached;
+    }
+
     /**
      * Set a system property, unless we're in unit test mode
      */
-    public void
-    setSystemProperty(String property, String value) {
+    public void setSystemProperty(String property, String value) {
         if(getUnitTestMode()) {
             return;
         }
@@ -198,8 +231,8 @@ public abstract class PhoneBase extends Handler implements Phone {
      * unless unit testing.
      * @param ci the CommandsInterface
      */
-    protected PhoneBase(PhoneNotifier notifier, Context context, CommandsInterface ci) {
-        this(notifier, context, ci, false);
+    protected PhoneBase(String name, PhoneNotifier notifier, Context context, CommandsInterface ci) {
+        this(name, notifier, context, ci, false);
     }
 
     /**
@@ -212,12 +245,19 @@ public abstract class PhoneBase extends Handler implements Phone {
      * @param unitTestMode when true, prevents notifications
      * of state change events
      */
-    protected PhoneBase(PhoneNotifier notifier, Context context, CommandsInterface ci,
+    protected PhoneBase(String name, PhoneNotifier notifier, Context context, CommandsInterface ci,
             boolean unitTestMode) {
+        mName = name;
         mNotifier = notifier;
         mContext = context;
         mLooper = Looper.myLooper();
         mCi = ci;
+        mActionDetached = this.getClass().getPackage().getName() + ".action_detached";
+        mActionAttached = this.getClass().getPackage().getName() + ".action_attached";
+
+        if (DEBUGGABLE) {
+            mTelephonyTester = new TelephonyTester(this);
+        }
 
         setPropertiesByCarrier();
 
@@ -272,6 +312,10 @@ public abstract class PhoneBase extends Handler implements Phone {
             mSmsStorageMonitor.dispose();
             mSmsUsageMonitor.dispose();
             mUiccController.unregisterForIccChanged(this);
+
+            if (mTelephonyTester != null) {
+                mTelephonyTester.dispose();
+            }
         }
     }
 
@@ -918,9 +962,6 @@ public abstract class PhoneBase extends Handler implements Phone {
     public boolean isInEcm() {
         return false;
     }
-
-    @Override
-    public abstract String getPhoneName();
 
     @Override
     public abstract int getPhoneType();

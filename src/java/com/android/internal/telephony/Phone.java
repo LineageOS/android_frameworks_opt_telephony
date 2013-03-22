@@ -101,6 +101,8 @@ public interface Phone {
     static final String REASON_NW_TYPE_CHANGED = "nwTypeChanged";
     static final String REASON_DATA_DEPENDENCY_MET = "dependencyMet";
     static final String REASON_DATA_DEPENDENCY_UNMET = "dependencyUnmet";
+    static final String REASON_LOST_DATA_CONNECTION = "lostDataConnection";
+    static final String REASON_CONNECTED = "connected";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = 0; // selected by baseband automatically

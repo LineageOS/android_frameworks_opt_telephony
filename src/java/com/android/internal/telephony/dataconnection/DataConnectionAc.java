@@ -16,19 +16,15 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import com.android.internal.telephony.DataCallState;
-import com.android.internal.telephony.dataconnection.DataConnectionBase.UpdateLinkPropertyResult;
+import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
+import com.android.internal.telephony.dataconnection.DataConnection.DisconnectParams;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 
-import android.app.PendingIntent;
 import android.net.LinkCapabilities;
 import android.net.LinkProperties;
 import android.net.ProxyProperties;
 import android.os.Message;
-
-import java.util.ArrayList;
-import java.util.Collection;
 
 /**
  * AsyncChannel to a DataConnection
@@ -37,7 +33,8 @@ public class DataConnectionAc extends AsyncChannel {
     private static final boolean DBG = false;
     private String mLogTag;
 
-    public DataConnectionBase dataConnection;
+    private DataConnection mDc;
+    private long mDcThreadId;
 
     public static final int BASE = Protocol.BASE_DATA_CONNECTION_AC;
 
@@ -59,25 +56,10 @@ public class DataConnectionAc extends AsyncChannel {
     public static final int REQ_GET_LINK_CAPABILITIES = BASE + 10;
     public static final int RSP_GET_LINK_CAPABILITIES = BASE + 11;
 
-    public static final int REQ_UPDATE_LINK_PROPERTIES_DATA_CALL_STATE = BASE + 12;
-    public static final int RSP_UPDATE_LINK_PROPERTIES_DATA_CALL_STATE = BASE + 13;
+    public static final int REQ_RESET = BASE + 12;
+    public static final int RSP_RESET = BASE + 13;
 
-    public static final int REQ_RESET = BASE + 14;
-    public static final int RSP_RESET = BASE + 15;
-
-    public static final int REQ_GET_REFCOUNT = BASE + 16;
-    public static final int RSP_GET_REFCOUNT = BASE + 17;
-
-    public static final int REQ_GET_APNCONTEXT_LIST = BASE + 18;
-    public static final int RSP_GET_APNCONTEXT_LIST = BASE + 19;
-
-    public static final int REQ_SET_RECONNECT_INTENT = BASE + 20;
-    public static final int RSP_SET_RECONNECT_INTENT = BASE + 21;
-
-    public static final int REQ_GET_RECONNECT_INTENT = BASE + 22;
-    public static final int RSP_GET_RECONNECT_INTENT = BASE + 23;
-
-    private static final int CMD_TO_STRING_COUNT = RSP_GET_RECONNECT_INTENT - BASE + 1;
+    private static final int CMD_TO_STRING_COUNT = RSP_RESET - BASE + 1;
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
         sCmdToString[REQ_IS_INACTIVE - BASE] = "REQ_IS_INACTIVE";
@@ -94,21 +76,11 @@ public class DataConnectionAc extends AsyncChannel {
                 "RSP_SET_LINK_PROPERTIES_HTTP_PROXY";
         sCmdToString[REQ_GET_LINK_CAPABILITIES - BASE] = "REQ_GET_LINK_CAPABILITIES";
         sCmdToString[RSP_GET_LINK_CAPABILITIES - BASE] = "RSP_GET_LINK_CAPABILITIES";
-        sCmdToString[REQ_UPDATE_LINK_PROPERTIES_DATA_CALL_STATE - BASE] =
-                "REQ_UPDATE_LINK_PROPERTIES_DATA_CALL_STATE";
-        sCmdToString[RSP_UPDATE_LINK_PROPERTIES_DATA_CALL_STATE - BASE] =
-                "RSP_UPDATE_LINK_PROPERTIES_DATA_CALL_STATE";
         sCmdToString[REQ_RESET - BASE] = "REQ_RESET";
         sCmdToString[RSP_RESET - BASE] = "RSP_RESET";
-        sCmdToString[REQ_GET_REFCOUNT - BASE] = "REQ_GET_REFCOUNT";
-        sCmdToString[RSP_GET_REFCOUNT - BASE] = "RSP_GET_REFCOUNT";
-        sCmdToString[REQ_GET_APNCONTEXT_LIST - BASE] = "REQ_GET_APNCONTEXT_LIST";
-        sCmdToString[RSP_GET_APNCONTEXT_LIST - BASE] = "RSP_GET_APNCONTEXT_LIST";
-        sCmdToString[REQ_SET_RECONNECT_INTENT - BASE] = "REQ_SET_RECONNECT_INTENT";
-        sCmdToString[RSP_SET_RECONNECT_INTENT - BASE] = "RSP_SET_RECONNECT_INTENT";
-        sCmdToString[REQ_GET_RECONNECT_INTENT - BASE] = "REQ_GET_RECONNECT_INTENT";
-        sCmdToString[RSP_GET_RECONNECT_INTENT - BASE] = "RSP_GET_RECONNECT_INTENT";
     }
+
+    // Convert cmd to string or null if unknown
     protected static String cmdToString(int cmd) {
         cmd -= BASE;
         if ((cmd >= 0) && (cmd < sCmdToString.length)) {
@@ -138,8 +110,9 @@ public class DataConnectionAc extends AsyncChannel {
         }
     }
 
-    public DataConnectionAc(DataConnectionBase dc, String logTag) {
-        dataConnection = dc;
+    public DataConnectionAc(DataConnection dc, String logTag) {
+        mDc = dc;
+        mDcThreadId = mDc.getHandler().getLooper().getThread().getId();
         mLogTag = logTag;
     }
 
@@ -164,16 +137,23 @@ public class DataConnectionAc extends AsyncChannel {
     }
 
     /**
-     * @return true if the state machine is in the inactive state.
+     * @return true if the state machine is in the inactive state
+     * and can be used for a new connection.
      */
     public boolean isInactiveSync() {
-        Message response = sendMessageSynchronously(REQ_IS_INACTIVE);
-        if ((response != null) && (response.what == RSP_IS_INACTIVE)) {
-            return rspIsInactive(response);
+        boolean value;
+        if (isCallerOnDifferentThread()) {
+            Message response = sendMessageSynchronously(REQ_IS_INACTIVE);
+            if ((response != null) && (response.what == RSP_IS_INACTIVE)) {
+                value = rspIsInactive(response);
+            } else {
+                log("rspIsInactive error response=" + response);
+                value = false;
+            }
         } else {
-            log("rspIsInactive error response=" + response);
-            return false;
+            value = mDc.getIsInactive();
         }
+        return value;
     }
 
     /**
@@ -201,47 +181,19 @@ public class DataConnectionAc extends AsyncChannel {
      * @return connection id or -1 if an error
      */
     public int getCidSync() {
-        Message response = sendMessageSynchronously(REQ_GET_CID);
-        if ((response != null) && (response.what == RSP_GET_CID)) {
-            return rspCid(response);
+        int value;
+        if (isCallerOnDifferentThread()) {
+            Message response = sendMessageSynchronously(REQ_GET_CID);
+            if ((response != null) && (response.what == RSP_GET_CID)) {
+                value = rspCid(response);
+            } else {
+                log("rspCid error response=" + response);
+                value = -1;
+            }
         } else {
-            log("rspCid error response=" + response);
-            return -1;
+            value = mDc.getCid();
         }
-    }
-
-    /**
-     * Request the Reference Count.
-     * Response {@link #rspRefCount}
-     */
-    public void reqRefCount() {
-        sendMessage(REQ_GET_REFCOUNT);
-        if (DBG) log("reqRefCount");
-    }
-
-    /**
-     * Evaluate a RSP_GET_REFCOUNT message and return the refCount.
-     *
-     * @param response Message
-     * @return ref count or -1 if an error
-     */
-    public int rspRefCount(Message response) {
-        int retVal = response.arg1;
-        if (DBG) log("rspRefCount=" + retVal);
-        return retVal;
-    }
-
-    /**
-     * @return connection id or -1 if an error
-     */
-    public int getRefCountSync() {
-        Message response = sendMessageSynchronously(REQ_GET_REFCOUNT);
-        if ((response != null) && (response.what == RSP_GET_REFCOUNT)) {
-            return rspRefCount(response);
-        } else {
-            log("rspRefCount error response=" + response);
-            return -1;
-        }
+        return value;
     }
 
     /**
@@ -271,13 +223,19 @@ public class DataConnectionAc extends AsyncChannel {
      * @return ApnSetting or null if an error
      */
     public ApnSetting getApnSettingSync() {
-        Message response = sendMessageSynchronously(REQ_GET_APNSETTING);
-        if ((response != null) && (response.what == RSP_GET_APNSETTING)) {
-            return rspApnSetting(response);
+        ApnSetting value;
+        if (isCallerOnDifferentThread()) {
+            Message response = sendMessageSynchronously(REQ_GET_APNSETTING);
+            if ((response != null) && (response.what == RSP_GET_APNSETTING)) {
+                value = rspApnSetting(response);
+            } else {
+                log("getApnSetting error response=" + response);
+                value = null;
+            }
         } else {
-            log("getApnSetting error response=" + response);
-            return null;
+            value = mDc.getApnSetting();
         }
+        return value;
     }
 
     /**
@@ -307,13 +265,19 @@ public class DataConnectionAc extends AsyncChannel {
      * @return LinkProperties or null if an error
      */
     public LinkProperties getLinkPropertiesSync() {
-        Message response = sendMessageSynchronously(REQ_GET_LINK_PROPERTIES);
-        if ((response != null) && (response.what == RSP_GET_LINK_PROPERTIES)) {
-            return rspLinkProperties(response);
+        LinkProperties value;
+        if (isCallerOnDifferentThread()) {
+            Message response = sendMessageSynchronously(REQ_GET_LINK_PROPERTIES);
+            if ((response != null) && (response.what == RSP_GET_LINK_PROPERTIES)) {
+                value = rspLinkProperties(response);
+            } else {
+                log("getLinkProperties error response=" + response);
+                value = null;
+            }
         } else {
-            log("getLinkProperties error response=" + response);
-            return null;
+            value = mDc.getCopyLinkProperties();
         }
+        return value;
     }
 
     /**
@@ -329,44 +293,16 @@ public class DataConnectionAc extends AsyncChannel {
      * Set the connections LinkProperties.HttpProxy
      */
     public void setLinkPropertiesHttpProxySync(ProxyProperties proxy) {
-        Message response =
-            sendMessageSynchronously(REQ_SET_LINK_PROPERTIES_HTTP_PROXY, proxy);
-        if ((response != null) && (response.what == RSP_SET_LINK_PROPERTIES_HTTP_PROXY)) {
-            if (DBG) log("setLinkPropertiesHttpPoxy ok");
+        if (isCallerOnDifferentThread()) {
+            Message response =
+                sendMessageSynchronously(REQ_SET_LINK_PROPERTIES_HTTP_PROXY, proxy);
+            if ((response != null) && (response.what == RSP_SET_LINK_PROPERTIES_HTTP_PROXY)) {
+                if (DBG) log("setLinkPropertiesHttpPoxy ok");
+            } else {
+                log("setLinkPropertiesHttpPoxy error response=" + response);
+            }
         } else {
-            log("setLinkPropertiesHttpPoxy error response=" + response);
-        }
-    }
-
-    /**
-     * Request update LinkProperties from DataCallState
-     * Response {@link #rspUpdateLinkPropertiesDataCallState}
-     */
-    public void reqUpdateLinkPropertiesDataCallState(DataCallState newState) {
-        sendMessage(REQ_UPDATE_LINK_PROPERTIES_DATA_CALL_STATE, newState);
-        if (DBG) log("reqUpdateLinkPropertiesDataCallState");
-    }
-
-    public UpdateLinkPropertyResult rspUpdateLinkPropertiesDataCallState(Message response) {
-        UpdateLinkPropertyResult retVal = (UpdateLinkPropertyResult)response.obj;
-        if (DBG) log("rspUpdateLinkPropertiesState: retVal=" + retVal);
-        return retVal;
-    }
-
-    /**
-     * Update link properties in the data connection
-     *
-     * @return the removed and added addresses.
-     */
-    public UpdateLinkPropertyResult updateLinkPropertiesDataCallStateSync(DataCallState newState) {
-        Message response =
-            sendMessageSynchronously(REQ_UPDATE_LINK_PROPERTIES_DATA_CALL_STATE, newState);
-        if ((response != null) &&
-            (response.what == RSP_UPDATE_LINK_PROPERTIES_DATA_CALL_STATE)) {
-            return rspUpdateLinkPropertiesDataCallState(response);
-        } else {
-            log("getLinkProperties error response=" + response);
-            return new UpdateLinkPropertyResult(new LinkProperties());
+            mDc.setLinkPropertiesHttpProxy(proxy);
         }
     }
 
@@ -397,13 +333,18 @@ public class DataConnectionAc extends AsyncChannel {
      * @return LinkCapabilities or null if an error
      */
     public LinkCapabilities getLinkCapabilitiesSync() {
-        Message response = sendMessageSynchronously(REQ_GET_LINK_CAPABILITIES);
-        if ((response != null) && (response.what == RSP_GET_LINK_CAPABILITIES)) {
-            return rspLinkCapabilities(response);
+        LinkCapabilities value;
+        if (isCallerOnDifferentThread()) {
+            Message response = sendMessageSynchronously(REQ_GET_LINK_CAPABILITIES);
+            if ((response != null) && (response.what == RSP_GET_LINK_CAPABILITIES)) {
+                value = rspLinkCapabilities(response);
+            } else {
+                value = null;
+            }
         } else {
-            log("getLinkCapabilities error response=" + response);
-            return null;
+            value = mDc.getCopyLinkCapabilities();
         }
+        return value;
     }
 
     /**
@@ -416,118 +357,73 @@ public class DataConnectionAc extends AsyncChannel {
     }
 
     /**
-     * Reset the connection and wait for it to complete.
+     * Bring up a connection to the apn and return an AsyncResult in onCompletedMsg.
+     * Used for cellular networks that use Acesss Point Names (APN) such
+     * as GSM networks.
+     *
+     * @param apnContext is the Access Point Name to bring up a connection to
+     * @param initialMaxRetry the number of retires for initial bringup.
+     * @param profileId for the conneciton
+     * @param onCompletedMsg is sent with its msg.obj as an AsyncResult object.
+     *        With AsyncResult.userObj set to the original msg.obj,
+     *        AsyncResult.result = FailCause and AsyncResult.exception = Exception().
      */
-    public void resetSync() {
-        Message response = sendMessageSynchronously(REQ_RESET);
-        if ((response != null) && (response.what == RSP_RESET)) {
-            if (DBG) log("restSync ok");
-        } else {
-            log("restSync error response=" + response);
+    public void bringUp(ApnContext apnContext, int initialMaxRetry, int profileId,
+            Message onCompletedMsg) {
+        if (DBG) {
+            log("bringUp: apnContext=" + apnContext + " initialMaxRetry=" + initialMaxRetry
+                + " onCompletedMsg=" + onCompletedMsg);
         }
+        sendMessage(DataConnection.EVENT_CONNECT,
+                    new ConnectionParams(apnContext, initialMaxRetry, profileId, onCompletedMsg));
     }
 
     /**
-     * Request the ApnContext List associated with DC.
-     * Response RSP_GET_APNCONTEXT_LIST when complete.
-     */
-    public void reqGetApnList(ApnContext apnContext) {
-        Message response = sendMessageSynchronously(REQ_GET_APNCONTEXT_LIST);
-        if (DBG) log("reqGetApnList");
-    }
-
-    /**
-     * Retrieve Collection of ApnContext from the response message.
+     * Tear down the connection through the apn on the network.
      *
-     * @param response sent from DC in response to REQ_GET_APNCONTEXT_LIST.
-     * @return Collection of ApnContext
+     * @param onCompletedMsg is sent with its msg.obj as an AsyncResult object.
+     *        With AsyncResult.userObj set to the original msg.obj.
      */
-    public Collection<ApnContext> rspApnList(Message response) {
-        Collection<ApnContext> retVal = (Collection<ApnContext>)response.obj;
-        if (retVal == null) retVal = new ArrayList<ApnContext>();
-        return retVal;
-    }
-
-    /**
-     * Retrieve collection of ApnContext currently associated with
-     * the DataConnectionA synchronously.
-     *
-     * @return Collection of ApnContext
-     */
-    public Collection<ApnContext> getApnListSync() {
-        Message response = sendMessageSynchronously(REQ_GET_APNCONTEXT_LIST);
-        if ((response != null) && (response.what == RSP_GET_APNCONTEXT_LIST)) {
-            if (DBG) log("getApnList ok");
-            return rspApnList(response);
-        } else {
-            log("getApnList error response=" + response);
-            // return dummy list with no entry
-            return new ArrayList<ApnContext>();
+    public void tearDown(ApnContext apnContext, String reason, Message onCompletedMsg) {
+        if (DBG) {
+            log("tearDown: apnContext=" + apnContext
+                    + " reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
         }
+        sendMessage(DataConnection.EVENT_DISCONNECT,
+                        new DisconnectParams(apnContext, reason, onCompletedMsg));
     }
 
     /**
-     * Request to set Pending ReconnectIntent to DC.
-     * Response RSP_SET_RECONNECT_INTENT when complete.
-     */
-    public void reqSetReconnectIntent(PendingIntent intent) {
-        Message response = sendMessageSynchronously(REQ_SET_RECONNECT_INTENT, intent);
-        if (DBG) log("reqSetReconnectIntent");
-    }
-
-    /**
-     * Set pending reconnect intent to DC synchronously.
+     * Tear down the connection through the apn on the network.  Ignores refcount and
+     * and always tears down.
      *
-     * @param intent to set.
+     * @param onCompletedMsg is sent with its msg.obj as an AsyncResult object.
+     *        With AsyncResult.userObj set to the original msg.obj.
      */
-    public void setReconnectIntentSync(PendingIntent intent) {
-        Message response = sendMessageSynchronously(REQ_SET_RECONNECT_INTENT, intent);
-        if ((response != null) && (response.what == RSP_SET_RECONNECT_INTENT)) {
-            if (DBG) log("setReconnectIntent ok");
-        } else {
-            log("setReconnectIntent error response=" + response);
-        }
+    public void tearDownAll(String reason, Message onCompletedMsg) {
+        if (DBG) log("tearDownAll: reason=" + reason + " onCompletedMsg=" + onCompletedMsg);
+        sendMessage(DataConnection.EVENT_DISCONNECT_ALL,
+                new DisconnectParams(null, reason, onCompletedMsg));
     }
 
     /**
-     * Request to get Pending ReconnectIntent to DC.
-     * Response RSP_GET_RECONNECT_INTENT when complete.
+     * @return connection id
      */
-    public void reqGetReconnectIntent() {
-        Message response = sendMessageSynchronously(REQ_GET_RECONNECT_INTENT);
-        if (DBG) log("reqGetReconnectIntent");
-    }
-
-    /**
-     * Retrieve reconnect intent from response message from DC.
-     *
-     * @param response which contains the reconnect intent.
-     * @return PendingIntent from the response.
-     */
-    public PendingIntent rspReconnectIntent(Message response) {
-        PendingIntent retVal = (PendingIntent) response.obj;
-        return retVal;
-    }
-
-    /**
-     * Retrieve reconnect intent currently set in DC synchronously.
-     *
-     * @return PendingIntent reconnect intent current ly set in DC
-     */
-    public PendingIntent getReconnectIntentSync() {
-        Message response = sendMessageSynchronously(REQ_GET_RECONNECT_INTENT);
-        if ((response != null) && (response.what == RSP_GET_RECONNECT_INTENT)) {
-            if (DBG) log("getReconnectIntent ok");
-            return rspReconnectIntent(response);
-        } else {
-            log("getReconnectIntent error response=" + response);
-            return null;
-        }
+    public int getDataConnectionIdSync() {
+        // Safe because this is owned by the caller.
+        return mDc.getDataConnectionId();
     }
 
     @Override
     public String toString() {
-        return dataConnection.getName();
+        return mDc.getName();
+    }
+
+    private boolean isCallerOnDifferentThread() {
+        long curThreadId = Thread.currentThread().getId();
+        boolean value = mDcThreadId != curThreadId;
+        if (DBG) log("isCallerOnDifferentThread: " + value);
+        return value;
     }
 
     private void log(String s) {
