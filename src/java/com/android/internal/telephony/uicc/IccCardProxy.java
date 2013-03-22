@@ -140,10 +140,55 @@ public class IccCardProxy extends Handler implements IccCard {
             }
             if (ServiceState.isGsm(radioTech)) {
                 mCurrentAppType = UiccController.APP_FAM_3GPP;
-            } else {
+            } else if (ServiceState.isCdma(radioTech)){
                 mCurrentAppType = UiccController.APP_FAM_3GPP2;
+            } else {
+                // If reported radio tech is unknown - we will have to guess
+                mCurrentAppType = guessRadioTech();
+                if (DBG) {
+                    log("Radio tech is unknown. Guessed radio tech family is " + mCurrentAppType);
+                }
             }
             updateQuietMode();
+            updateActiveRecord();
+        }
+    }
+
+     /**
+     * This function guesses radio tech family based on available uicc applications
+     */
+    private int guessRadioTech() {
+        UiccCardApplication app =
+                mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
+        if (app != null) {
+            return UiccController.APP_FAM_3GPP;
+        } else {
+            return UiccController.APP_FAM_3GPP2;
+        }
+   
+
+    /**
+     * This method sets the IccRecord, corresponding to the currently active
+     * subscription, as the active record.
+     */
+    private void updateActiveRecord() {
+        log("updateActiveRecord app type = " + mCurrentAppType +
+                "mIccRecords = " + mIccRecords);
+
+        if (mIccRecords == null) {
+            return;
+        }
+
+        if (mCurrentAppType == UiccController.APP_FAM_3GPP2) {
+            int newSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
+            if (newSubscriptionSource == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM) {
+                // Set this as the Active record.
+                log("Setting Ruim Record as active");
+                mIccRecords.recordsRequired();
+            }
+        } else if (mCurrentAppType == UiccController.APP_FAM_3GPP) {
+            log("Setting SIM Record as active");
+            mIccRecords.recordsRequired();
         }
     }
 
