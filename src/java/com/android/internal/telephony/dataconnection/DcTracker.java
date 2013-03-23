@@ -67,7 +67,7 @@ import java.util.HashMap;
 /**
  * {@hide}
  */
-public final class DataConnectionTracker extends DataConnectionTrackerBase {
+public final class DcTracker extends DcTrackerBase {
     protected final String LOG_TAG = "DCT";
 
     /**
@@ -107,7 +107,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
 
     //***** Constructor
 
-    public DataConnectionTracker(PhoneBase p) {
+    public DcTracker(PhoneBase p) {
         super(p);
         if (DBG) log("GsmDCT.constructor");
         p.mCi.registerForAvailable (this, DctConstants.EVENT_RADIO_AVAILABLE, null);
@@ -268,7 +268,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
     public LinkProperties getLinkProperties(String apnType) {
         ApnContext apnContext = mApnContexts.get(apnType);
         if (apnContext != null) {
-            DataConnectionAc dcac = apnContext.getDcAc();
+            DcAsyncChannel dcac = apnContext.getDcAc();
             if (dcac != null) {
                 if (DBG) log("return link properites for " + apnType);
                 return dcac.getLinkPropertiesSync();
@@ -282,7 +282,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
     public LinkCapabilities getLinkCapabilities(String apnType) {
         ApnContext apnContext = mApnContexts.get(apnType);
         if (apnContext!=null) {
-            DataConnectionAc dataConnectionAc = apnContext.getDcAc();
+            DcAsyncChannel dataConnectionAc = apnContext.getDcAc();
             if (dataConnectionAc != null) {
                 if (DBG) log("get active pdp is not null, return link Capabilities for " + apnType);
                 return dataConnectionAc.getLinkCapabilitiesSync();
@@ -723,7 +723,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
             return;
         }
 
-        DataConnectionAc dcac = apnContext.getDcAc();
+        DcAsyncChannel dcac = apnContext.getDcAc();
         if (DBG) {
             log("cleanUpConnection: E tearDown=" + tearDown + " reason=" + apnContext.getReason() +
                     " apnContext=" + apnContext);
@@ -941,7 +941,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
         return result;
     }
 
-    private boolean dataConnectionNotInUse(DataConnectionAc dcac) {
+    private boolean dataConnectionNotInUse(DcAsyncChannel dcac) {
         if (DBG) log("dataConnectionNotInUse: check if dcac is inuse dcac=" + dcac);
         for (ApnContext apnContext : mApnContexts.values()) {
             if (apnContext.getDcAc() == dcac) {
@@ -958,8 +958,8 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
         return true;
     }
 
-    private DataConnectionAc findFreeDataConnection() {
-        for (DataConnectionAc dcac : mDataConnectionAcHashMap.values()) {
+    private DcAsyncChannel findFreeDataConnection() {
+        for (DcAsyncChannel dcac : mDataConnectionAcHashMap.values()) {
             if (dcac.isInactiveSync() && dataConnectionNotInUse(dcac)) {
                 if (DBG) {
                     log("findFreeDataConnection: found free DataConnection=" +
@@ -975,7 +975,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
     private boolean setupData(ApnContext apnContext) {
         if (DBG) log("setupData: apnContext=" + apnContext);
         ApnSetting apnSetting;
-        DataConnectionAc dcac;
+        DcAsyncChannel dcac;
 
         int profileId = getApnProfileID(apnContext.getApnType());
         apnSetting = apnContext.getNextWaitingApn();
@@ -1048,8 +1048,8 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
      * @param cid Connection id provided from RIL.
      * @return DataConnectionAc associated with specified cid.
      */
-    private DataConnectionAc findDataConnectionAcByCid(int cid) {
-        for (DataConnectionAc dcac : mDataConnectionAcHashMap.values()) {
+    private DcAsyncChannel findDataConnectionAcByCid(int cid) {
+        for (DcAsyncChannel dcac : mDataConnectionAcHashMap.values()) {
             if (dcac.getCidSync() == cid) {
                 return dcac;
             }
@@ -1077,10 +1077,10 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
         if (DBG) log("onDataStateChanged(ar): DataCallResponse size=" + dataCallStates.size());
 
         // Create a hash map to store the dataCallState of each DataConnectionAc
-        HashMap<DataCallResponse, DataConnectionAc> dataCallStateToDcac;
-        dataCallStateToDcac = new HashMap<DataCallResponse, DataConnectionAc>();
+        HashMap<DataCallResponse, DcAsyncChannel> dataCallStateToDcac;
+        dataCallStateToDcac = new HashMap<DataCallResponse, DcAsyncChannel>();
         for (DataCallResponse dataCallState : dataCallStates) {
-            DataConnectionAc dcac = findDataConnectionAcByCid(dataCallState.cid);
+            DcAsyncChannel dcac = findDataConnectionAcByCid(dataCallState.cid);
 
             if (dcac != null) dataCallStateToDcac.put(dataCallState, dcac);
         }
@@ -1172,7 +1172,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
     }
 
     private void startAlarmForReconnect(int delay, ApnContext apnContext) {
-        DataConnectionAc dcac = apnContext.getDcAc();
+        DcAsyncChannel dcac = apnContext.getDcAc();
 
         if (dcac == null) {
             // should not happen, but just in case.
@@ -1279,7 +1279,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
         if (trySetup) trySetupData(apnContext);
     }
 
-    private DataConnectionAc checkForCompatibleConnectedApnContext(ApnContext apnContext) {
+    private DcAsyncChannel checkForCompatibleConnectedApnContext(ApnContext apnContext) {
         String apnType = apnContext.getApnType();
         ApnSetting dunSetting = null;
 
@@ -1290,10 +1290,10 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
             log("checkForCompatibleConnectedApnContext: apnContext=" + apnContext );
         }
 
-        DataConnectionAc potentialDcac = null;
+        DcAsyncChannel potentialDcac = null;
         ApnContext potentialApnCtx = null;
         for (ApnContext curApnCtx : mApnContexts.values()) {
-            DataConnectionAc curDcac = curApnCtx.getDcAc();
+            DcAsyncChannel curDcac = curApnCtx.getDcAc();
             if (curDcac != null) {
                 ApnSetting apnSetting = curApnCtx.getApnSetting();
                 if (dunSetting != null) {
@@ -1463,7 +1463,7 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
         }
 
         if (ar.exception == null) {
-            DataConnectionAc dcac = apnContext.getDcAc();
+            DcAsyncChannel dcac = apnContext.getDcAc();
 
             if (RADIO_TESTS) {
                 // Note: To change radio.test.onDSC.null.dcac from command line you need to
@@ -1785,14 +1785,14 @@ public final class DataConnectionTracker extends DataConnectionTrackerBase {
     }
 
     /** Return the DC AsyncChannel for the new data connection */
-    private DataConnectionAc createDataConnection() {
+    private DcAsyncChannel createDataConnection() {
         if (DBG) log("createDataConnection E");
 
         int id = mUniqueIdGenerator.getAndIncrement();
         DataConnection conn = DataConnection.makeDataConnection(mPhone, id,
                                                 this, mDcTesterFailBringUpAll, mDcc);
         mDataConnections.put(id, conn);
-        DataConnectionAc dcac = new DataConnectionAc(conn, LOG_TAG);
+        DcAsyncChannel dcac = new DcAsyncChannel(conn, LOG_TAG);
         int status = dcac.fullyConnectSync(mPhone.getContext(), this, conn.getHandler());
         if (status == AsyncChannel.STATUS_SUCCESSFUL) {
             mDataConnectionAcHashMap.put(dcac.getDataConnectionIdSync(), dcac);

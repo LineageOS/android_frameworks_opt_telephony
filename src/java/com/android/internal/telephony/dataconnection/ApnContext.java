@@ -48,7 +48,7 @@ public class ApnContext {
 
     private ApnSetting mApnSetting;
 
-    DataConnectionAc mDataConnectionAc;
+    DcAsyncChannel mDcAc;
 
     String mReason;
 
@@ -78,21 +78,21 @@ public class ApnContext {
         return mApnType;
     }
 
-    public synchronized DataConnectionAc getDcAc() {
-        return mDataConnectionAc;
+    public synchronized DcAsyncChannel getDcAc() {
+        return mDcAc;
     }
 
-    public synchronized void setDataConnectionAc(DataConnectionAc dcac) {
+    public synchronized void setDataConnectionAc(DcAsyncChannel dcac) {
         if (DBG) {
-            log("setDataConnectionAc: old dcac=" + mDataConnectionAc + " new dcac=" + dcac
+            log("setDataConnectionAc: old dcac=" + mDcAc + " new dcac=" + dcac
                     + " this=" + this);
         }
-        if ((dcac == null) && (mDataConnectionAc != null)) {
+        if ((dcac == null) && (mDcAc != null)) {
             // TODO: This tearDown should be done by caller, but for now we'll do it
             if (DBG) log("setDataConnection: call tearDown");
-            mDataConnectionAc.tearDown(this, "", null);
+            mDcAc.tearDown(this, "", null);
         }
-        mDataConnectionAc = dcac;
+        mDcAc = dcac;
     }
 
     public synchronized PendingIntent getReconnectIntent() {

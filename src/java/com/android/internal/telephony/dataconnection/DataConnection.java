@@ -94,7 +94,7 @@ public final class DataConnection extends StateMachine {
     private DcRetryAlarmController mDcRetryAlarmController;
 
     // The DCT that's talking to us, we only support one!
-    private DataConnectionTrackerBase mDct = null;
+    private DcTrackerBase mDct = null;
 
     /**
      * Used internally for saving connecting parameters.
@@ -204,7 +204,7 @@ public final class DataConnection extends StateMachine {
         if ((cmd >= 0) && (cmd < sCmdToString.length)) {
             value = sCmdToString[cmd];
         } else {
-            value = DataConnectionAc.cmdToString(cmd + BASE);
+            value = DcAsyncChannel.cmdToString(cmd + BASE);
         }
         if (value == null) {
             value = "0x" + Integer.toHexString(cmd + BASE);
@@ -220,7 +220,7 @@ public final class DataConnection extends StateMachine {
      * @return DataConnection that was created.
      */
     static DataConnection makeDataConnection(PhoneBase phone, int id,
-            DataConnectionTrackerBase dct, DcTesterFailBringUpAll failBringUpAll,
+            DcTrackerBase dct, DcTesterFailBringUpAll failBringUpAll,
             DcController dcc) {
         DataConnection dc = new DataConnection(phone,
                 "DC-" + mInstanceNumber.incrementAndGet(), id, dct, failBringUpAll, dcc);
@@ -298,7 +298,7 @@ public final class DataConnection extends StateMachine {
 
     //***** Constructor (NOTE: uses dcc.getHandler() as its Handler)
     private DataConnection(PhoneBase phone, String name, int id,
-                DataConnectionTrackerBase dct, DcTesterFailBringUpAll failBringUpAll,
+                DcTrackerBase dct, DcTesterFailBringUpAll failBringUpAll,
                 DcController dcc) {
         super(name, dcc.getHandler());
         setLogRecSize(300);
@@ -783,44 +783,44 @@ public final class DataConnection extends StateMachine {
                     quit();
                     break;
                 }
-                case DataConnectionAc.REQ_IS_INACTIVE: {
+                case DcAsyncChannel.REQ_IS_INACTIVE: {
                     boolean val = getIsInactive();
                     if (VDBG) log("REQ_IS_INACTIVE  isInactive=" + val);
-                    mAc.replyToMessage(msg, DataConnectionAc.RSP_IS_INACTIVE, val ? 1 : 0);
+                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_IS_INACTIVE, val ? 1 : 0);
                     break;
                 }
-                case DataConnectionAc.REQ_GET_CID: {
+                case DcAsyncChannel.REQ_GET_CID: {
                     int cid = getCid();
                     if (VDBG) log("REQ_GET_CID  cid=" + cid);
-                    mAc.replyToMessage(msg, DataConnectionAc.RSP_GET_CID, cid);
+                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_CID, cid);
                     break;
                 }
-                case DataConnectionAc.REQ_GET_APNSETTING: {
+                case DcAsyncChannel.REQ_GET_APNSETTING: {
                     ApnSetting apnSetting = getApnSetting();
                     if (VDBG) log("REQ_GET_APNSETTING  mApnSetting=" + apnSetting);
-                    mAc.replyToMessage(msg, DataConnectionAc.RSP_GET_APNSETTING, apnSetting);
+                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_APNSETTING, apnSetting);
                     break;
                 }
-                case DataConnectionAc.REQ_GET_LINK_PROPERTIES: {
+                case DcAsyncChannel.REQ_GET_LINK_PROPERTIES: {
                     LinkProperties lp = getCopyLinkProperties();
                     if (VDBG) log("REQ_GET_LINK_PROPERTIES linkProperties" + lp);
-                    mAc.replyToMessage(msg, DataConnectionAc.RSP_GET_LINK_PROPERTIES, lp);
+                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_LINK_PROPERTIES, lp);
                     break;
                 }
-                case DataConnectionAc.REQ_SET_LINK_PROPERTIES_HTTP_PROXY: {
+                case DcAsyncChannel.REQ_SET_LINK_PROPERTIES_HTTP_PROXY: {
                     ProxyProperties proxy = (ProxyProperties) msg.obj;
                     if (VDBG) log("REQ_SET_LINK_PROPERTIES_HTTP_PROXY proxy=" + proxy);
                     setLinkPropertiesHttpProxy(proxy);
-                    mAc.replyToMessage(msg, DataConnectionAc.RSP_SET_LINK_PROPERTIES_HTTP_PROXY);
+                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_SET_LINK_PROPERTIES_HTTP_PROXY);
                     break;
                 }
-                case DataConnectionAc.REQ_GET_LINK_CAPABILITIES: {
+                case DcAsyncChannel.REQ_GET_LINK_CAPABILITIES: {
                     LinkCapabilities lc = getCopyLinkCapabilities();
                     if (VDBG) log("REQ_GET_LINK_CAPABILITIES linkCapabilities" + lc);
-                    mAc.replyToMessage(msg, DataConnectionAc.RSP_GET_LINK_CAPABILITIES, lc);
+                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_LINK_CAPABILITIES, lc);
                     break;
                 }
-                case DataConnectionAc.REQ_RESET:
+                case DcAsyncChannel.REQ_RESET:
                     if (VDBG) log("DcDefaultState: msg.what=REQ_RESET");
                     transitionTo(mInactiveState);
                     break;
@@ -956,7 +956,7 @@ public final class DataConnection extends StateMachine {
             boolean retVal;
 
             switch (msg.what) {
-                case DataConnectionAc.REQ_RESET:
+                case DcAsyncChannel.REQ_RESET:
                     if (DBG) {
                         log("DcInactiveState: msg.what=RSP_RESET, ignore we're already reset");
                     }
@@ -1052,7 +1052,7 @@ public final class DataConnection extends StateMachine {
                     retVal = HANDLED;
                     break;
                 }
-                case DataConnectionAc.REQ_RESET: {
+                case DcAsyncChannel.REQ_RESET: {
                     if (DBG) {
                         log("DcRetryingState: msg.what=RSP_RESET, ignore we're already reset");
                     }

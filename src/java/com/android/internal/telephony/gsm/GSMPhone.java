@@ -49,7 +49,7 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDI
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_BASEBAND_VERSION;
 
-import com.android.internal.telephony.dataconnection.DataConnectionTracker;
+import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
@@ -143,7 +143,7 @@ public class GSMPhone extends PhoneBase {
         mSST = new GsmServiceStateTracker (this);
         mSMS = new GsmSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
 
-        mDataConnectionTracker = new DataConnectionTracker (this);
+        mDcTracker = new DcTracker(this);
         if (!unitTestMode) {
             mSimPhoneBookIntManager = new SimPhoneBookInterfaceManager(this);
             mSimSmsIntManager = new SimSmsInterfaceManager(this, mSMS);
@@ -215,7 +215,7 @@ public class GSMPhone extends PhoneBase {
 
             //Force all referenced classes to unregister their former registered events
             mCT.dispose();
-            mDataConnectionTracker.dispose();
+            mDcTracker.dispose();
             mSST.dispose();
             mSimPhoneBookIntManager.dispose();
             mSimSmsIntManager.dispose();
@@ -292,14 +292,14 @@ public class GSMPhone extends PhoneBase {
             // If we're out of service, open TCP sockets may still work
             // but no data will flow
             ret = PhoneConstants.DataState.DISCONNECTED;
-        } else if (mDataConnectionTracker.isApnTypeEnabled(apnType) == false ||
-                mDataConnectionTracker.isApnTypeActive(apnType) == false) {
+        } else if (mDcTracker.isApnTypeEnabled(apnType) == false ||
+                mDcTracker.isApnTypeActive(apnType) == false) {
             //TODO: isApnTypeActive() is just checking whether ApnContext holds
             //      Dataconnection or not. Checking each ApnState below should
             //      provide the same state. Calling isApnTypeActive() can be removed.
             ret = PhoneConstants.DataState.DISCONNECTED;
         } else { /* mSST.gprsState == ServiceState.STATE_IN_SERVICE */
-            switch (mDataConnectionTracker.getState(apnType)) {
+            switch (mDcTracker.getState(apnType)) {
                 case FAILED:
                 case IDLE:
                     ret = PhoneConstants.DataState.DISCONNECTED;
@@ -331,7 +331,7 @@ public class GSMPhone extends PhoneBase {
         DataActivityState ret = DataActivityState.NONE;
 
         if (mSST.getCurrentDataConnectionState() == ServiceState.STATE_IN_SERVICE) {
-            switch (mDataConnectionTracker.getActivity()) {
+            switch (mDcTracker.getActivity()) {
                 case DATAIN:
                     ret = DataActivityState.DATAIN;
                 break;
@@ -1111,12 +1111,12 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public boolean getDataRoamingEnabled() {
-        return mDataConnectionTracker.getDataOnRoamingEnabled();
+        return mDcTracker.getDataOnRoamingEnabled();
     }
 
     @Override
     public void setDataRoamingEnabled(boolean enable) {
-        mDataConnectionTracker.setDataOnRoamingEnabled(enable);
+        mDcTracker.setDataOnRoamingEnabled(enable);
     }
 
     /**

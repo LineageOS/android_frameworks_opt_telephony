@@ -29,7 +29,7 @@ import android.os.Message;
 /**
  * AsyncChannel to a DataConnection
  */
-public class DataConnectionAc extends AsyncChannel {
+public class DcAsyncChannel extends AsyncChannel {
     private static final boolean DBG = false;
     private String mLogTag;
 
@@ -110,7 +110,7 @@ public class DataConnectionAc extends AsyncChannel {
         }
     }
 
-    public DataConnectionAc(DataConnection dc, String logTag) {
+    public DcAsyncChannel(DataConnection dc, String logTag) {
         mDc = dc;
         mDcThreadId = mDc.getHandler().getLooper().getThread().getId();
         mLogTag = logTag;

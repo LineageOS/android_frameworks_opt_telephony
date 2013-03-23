@@ -46,7 +46,7 @@ class DcController extends StateMachine {
     protected static final boolean DEBUGGABLE = SystemProperties.getInt("ro.debuggable", 0) == 1;
 
     private PhoneBase mPhone;
-    private DataConnectionTrackerBase mDct;
+    private DcTrackerBase mDct;
     private DcTesterDeactivateAll mDcTesterDeactivateAll;
 
     // package as its used by Testing code
@@ -74,7 +74,7 @@ class DcController extends StateMachine {
      * @param dct the DataConnectionTracker associated with Dcc
      * @param handler defines the thread/looper to be used with Dcc
      */
-    private DcController(String name, PhoneBase phone, DataConnectionTrackerBase dct,
+    private DcController(String name, PhoneBase phone, DcTrackerBase dct,
             Handler handler) {
         super(name, handler);
         setLogRecSize(300);
@@ -86,7 +86,7 @@ class DcController extends StateMachine {
         log("X ctor");
     }
 
-    static DcController makeDcc(PhoneBase phone, DataConnectionTrackerBase dct, Handler handler) {
+    static DcController makeDcc(PhoneBase phone, DcTrackerBase dct, Handler handler) {
         DcController dcc = new DcController("Dcc", phone, dct, handler);
         dcc.start();
         return dcc;
@@ -337,7 +337,7 @@ class DcController extends StateMachine {
         String info = null;
         info = DataConnection.cmdToString(what);
         if (info == null) {
-            info = DataConnectionAc.cmdToString(what);
+            info = DcAsyncChannel.cmdToString(what);
         }
         return info;
     }

@@ -1044,7 +1044,7 @@ public final class CdmaCallTracker extends CallTracker {
         if (PhoneNumberUtils.isLocalEmergencyNumber(dialString, mPhone.getContext())) {
             if (Phone.DEBUG_PHONE) log("disableDataCallInEmergencyCall");
             mIsInEmergencyCall = true;
-            mPhone.mDataConnectionTracker.setInternalDataEnabled(false);
+            mPhone.mDcTracker.setInternalDataEnabled(false);
         }
     }
 
@@ -1061,7 +1061,7 @@ public final class CdmaCallTracker extends CallTracker {
             }
             if (inEcm.compareTo("false") == 0) {
                 // Re-initiate data connection
-                mPhone.mDataConnectionTracker.setInternalDataEnabled(true);
+                mPhone.mDcTracker.setInternalDataEnabled(true);
             }
         }
     }

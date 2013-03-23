@@ -18,7 +18,7 @@ package com.android.internal.telephony.gsm;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.dataconnection.DataConnectionTrackerBase;
+import com.android.internal.telephony.dataconnection.DcTrackerBase;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.Phone;
@@ -458,7 +458,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             mCi.setRadioPower(true, null);
         } else if (!mDesiredPowerState && mCi.getRadioState().isOn()) {
             // If it's on and available and we want it off gracefully
-            DataConnectionTrackerBase dcTracker = mPhone.mDataConnectionTracker;
+            DcTrackerBase dcTracker = mPhone.mDcTracker;
             powerOffRadioSafely(dcTracker);
         } // Otherwise, we're in the desired state
     }
