@@ -16,23 +16,6 @@
 
 package com.android.internal.telephony.gsm;
 
-import com.android.internal.telephony.CommandException;
-import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.dataconnection.DcTrackerBase;
-import com.android.internal.telephony.EventLogTags;
-import com.android.internal.telephony.MccTable;
-import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.RestrictedState;
-import com.android.internal.telephony.RILConstants;
-import com.android.internal.telephony.ServiceStateTracker;
-import com.android.internal.telephony.TelephonyIntents;
-import com.android.internal.telephony.TelephonyProperties;
-import com.android.internal.telephony.uicc.IccRecords;
-import com.android.internal.telephony.uicc.SIMRecords;
-import com.android.internal.telephony.uicc.UiccCardApplication;
-import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
-
 import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -45,6 +28,7 @@ import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
@@ -54,13 +38,30 @@ import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.CellInfoGsm;
+import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
-import android.telephony.Rlog;
 import android.util.TimeUtils;
+
+import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.MccTable;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.RestrictedState;
+import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.dataconnection.DcTrackerBase;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.SIMRecords;
+import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.internal.telephony.uicc.UiccController;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -799,6 +800,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 " mNewMaxDataCalls=" + mNewMaxDataCalls +
                 " oldReasonDataDenied=" + mReasonDataDenied +
                 " mNewReasonDataDenied=" + mNewReasonDataDenied);
+        }
+
+        if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
+            mNewSS.setRoaming(true);
         }
 
         boolean hasRegistered =
