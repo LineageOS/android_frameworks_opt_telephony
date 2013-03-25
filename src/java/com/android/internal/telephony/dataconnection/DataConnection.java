@@ -34,6 +34,7 @@ import android.net.LinkCapabilities;
 import android.net.LinkProperties;
 import android.net.ProxyProperties;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Message;
 import android.os.SystemClock;
 import android.os.SystemProperties;
@@ -70,7 +71,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class DataConnection extends StateMachine {
     private static final boolean DBG = true;
     private static final boolean VDBG = true;
-    private static final boolean DEBUGGABLE = SystemProperties.getInt("ro.debuggable", 0) == 1;
 
     /** Retry configuration: A doubling of retry times from 5secs to 30minutes */
     private static final String DEFAULT_DATA_RETRY_CONFIG = "default_randomization=2000,"
@@ -329,7 +329,7 @@ public final class DataConnection extends StateMachine {
     private String getRetryConfig(boolean forDefault) {
         int nt = mPhone.getServiceState().getNetworkType();
 
-        if (DEBUGGABLE) {
+        if (Build.IS_DEBUGGABLE) {
             String config = SystemProperties.get("test.data_retry_config");
             if (! TextUtils.isEmpty(config)) {
                 return config;

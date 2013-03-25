@@ -23,7 +23,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.SystemClock;
-import android.os.SystemProperties;
 import android.telephony.Rlog;
 import android.text.TextUtils;
 
@@ -36,7 +35,6 @@ import com.android.internal.telephony.RILConstants;
 public class DcRetryAlarmController {
     private String mLogTag = "DcRac";
     private static final boolean DBG = true;
-    protected static final boolean DEBUGGABLE = SystemProperties.getInt("ro.debuggable", 0) == 1;
 
     private PhoneBase mPhone;
     private DataConnection mDc;

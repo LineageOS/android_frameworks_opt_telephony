@@ -20,8 +20,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.Handler;
-import android.os.SystemProperties;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.PhoneBase;
@@ -35,19 +35,11 @@ import com.android.internal.telephony.PhoneBase;
  * Also you can add a suggested retry time if desired:
  *     --ei suggested_retry_time 5000
  *
- * There is also a per DC command implemented in {@link DcRetryAlarmController#mFailBringUp} the intent is
- * the same as above except the action has a "DC-x" before the action_fail_bringup so for
- * DC-1 the action action is:
- *    adb shell am broadcast \
- *      -a com.android.internal.telephony.dataconnection.DC-1.action_fail_bringup \
- *      --ei counter 2 --ei fail_cause -3
- *
  * The fail_cause is one of {@link DcFailCause}
  */
 public class DcTesterFailBringUpAll {
     private static final String LOG_TAG = "DcTesterFailBrinupAll";
     private static final boolean DBG = true;
-    private static final boolean DEBUGGABLE = SystemProperties.getInt("ro.debuggable", 0) == 1;
 
     private PhoneBase mPhone;
 
@@ -84,7 +76,7 @@ public class DcTesterFailBringUpAll {
 
     DcTesterFailBringUpAll(PhoneBase phone, Handler handler) {
         mPhone = phone;
-        if (DEBUGGABLE) {
+        if (Build.IS_DEBUGGABLE) {
             IntentFilter filter = new IntentFilter();
 
             filter.addAction(mActionFailBringUp);

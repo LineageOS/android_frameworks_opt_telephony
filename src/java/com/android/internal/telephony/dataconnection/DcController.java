@@ -20,9 +20,9 @@ import android.net.LinkAddress;
 import android.net.NetworkUtils;
 import android.net.LinkProperties.CompareResult;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
-import android.os.SystemProperties;
 import android.telephony.Rlog;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
@@ -43,7 +43,6 @@ import java.util.HashMap;
 class DcController extends StateMachine {
     private static final boolean DBG = true;
     private static final boolean VDBG = false;
-    protected static final boolean DEBUGGABLE = SystemProperties.getInt("ro.debuggable", 0) == 1;
 
     private PhoneBase mPhone;
     private DcTrackerBase mDct;
@@ -127,7 +126,7 @@ class DcController extends StateMachine {
                     DataConnection.EVENT_RIL_CONNECTED, null);
             mPhone.mCi.registerForDataNetworkStateChanged(getHandler(),
                     DataConnection.EVENT_DATA_STATE_CHANGED, null);
-            if (DEBUGGABLE) {
+            if (Build.IS_DEBUGGABLE) {
                 mDcTesterDeactivateAll =
                         new DcTesterDeactivateAll(mPhone, DcController.this, getHandler());
             }
