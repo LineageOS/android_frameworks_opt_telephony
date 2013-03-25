@@ -20,8 +20,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Handler;
-import android.os.SystemProperties;
+import android.os.Build;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.PhoneBase;
@@ -35,7 +34,6 @@ import com.android.internal.telephony.PhoneBase;
 public class TelephonyTester {
     private static final String LOG_TAG = "TelephonyTester";
     private static final boolean DBG = true;
-    private static final boolean DEBUGGABLE = SystemProperties.getInt("ro.debuggable", 0) == 1;
 
     private PhoneBase mPhone;
 
@@ -61,7 +59,7 @@ public class TelephonyTester {
     TelephonyTester(PhoneBase phone) {
         mPhone = phone;
 
-        if (DEBUGGABLE) {
+        if (Build.IS_DEBUGGABLE) {
             IntentFilter filter = new IntentFilter();
 
             filter.addAction(mPhone.getActionDetached());
