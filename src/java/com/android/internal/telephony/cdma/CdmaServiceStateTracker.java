@@ -16,26 +16,13 @@
 
 package com.android.internal.telephony.cdma;
 
-import com.android.internal.telephony.CommandException;
-import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.dataconnection.DcTrackerBase;
-import com.android.internal.telephony.EventLogTags;
-import com.android.internal.telephony.MccTable;
-import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.ServiceStateTracker;
-import com.android.internal.telephony.TelephonyIntents;
-import com.android.internal.telephony.TelephonyProperties;
-import com.android.internal.telephony.CommandsInterface.RadioState;
-import com.android.internal.telephony.uicc.UiccCardApplication;
-import com.android.internal.telephony.uicc.UiccController;
-
 import android.app.AlarmManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.ContentObserver;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
@@ -48,13 +35,27 @@ import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoCdma;
+import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.cdma.CdmaCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
-import android.telephony.Rlog;
 import android.util.TimeUtils;
+
+import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.CommandsInterface.RadioState;
+import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.MccTable;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.dataconnection.DcTrackerBase;
+import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.internal.telephony.uicc.UiccController;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -958,6 +959,10 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
     protected void pollStateDone() {
         if (DBG) log("pollStateDone: cdma oldSS=[" + mSS + "] newSS=[" + mNewSS + "]");
+
+        if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
+            mNewSS.setRoaming(true);
+        }
 
         boolean hasRegistered =
             mSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE

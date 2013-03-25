@@ -23,7 +23,7 @@ thread. Without this change there was a dead lock when
 sendMessageSynchronously blocks.
 
 
-Testing:
+== Testing ==
 
 There are three Intents that can be sent for testing pruproses:
 
@@ -43,13 +43,30 @@ To simplify testing we also have detach and attach simulations below where {x} i
   adb shell am broadcast -a com.android.internal.telephony.{x}.action_attached
 
 
-Additionally, you on DEGUGGABLE builds (userdebug, eng) you can replace the retry configuration
-by setting the SystemProperty: test.data_retry_config for instance:
+== Testing on Debuggable Builds ==
 
-  adb shell setprop test.data_retry_config "5000,5000,5000"
+On debuggable builds (userdebug, eng) you can change additional
+settings through system properties.  These properties can be set with
+"setprop" for the current boot, or added to local.prop to persist
+across boots.
 
-Which changes the retry to 3 retires at 5 second intervals. This can be added to
-/data/local.prop, don't forget to "adb shell chmod 0600 /data/local.prop":
-  $ cat local.prop.test.data_retry_config
-  test.data_retry_config=5000,5000,5000,5000
+device# setprop key value
 
+device# echo "key=value" >> /data/local.prop
+device# chmod 644 /data/local.prop
+
+
+-- Retry configuration --
+
+You can replace the connection retry configuration.  For example, you
+could change it to perform 4 retries at 5 second intervals:
+
+device# setprop test.data_retry_config "5000,5000,5000"
+
+
+-- Roaming --
+
+You can force the telephony stack to always assume that it's roaming
+to verify higher-level framework functionality:
+
+device# setprop telephony.test.forceRoaming true
