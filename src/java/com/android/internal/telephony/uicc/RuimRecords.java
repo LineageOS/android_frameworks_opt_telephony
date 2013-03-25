@@ -135,7 +135,7 @@ public final class RuimRecords extends IccRecords {
     protected void resetRecords() {
         mCountVoiceMessages = 0;
         mMncLength = UNINITIALIZED;
-        iccId = null;
+        mIccId = null;
 
         mAdnCache.reset();
 
@@ -513,9 +513,9 @@ public final class RuimRecords extends IccRecords {
                     break;
                 }
 
-                iccId = IccUtils.bcdToString(data, 0, data.length);
+                mIccId = IccUtils.bcdToString(data, 0, data.length);
 
-                log("iccid: " + iccId);
+                log("iccid: " + mIccId);
 
             break;
 
@@ -641,7 +641,7 @@ public final class RuimRecords extends IccRecords {
         }
 
         setLocaleFromCsim();
-        recordsLoadedRegistrants.notifyRegistrants(
+        mRecordsLoadedRegistrants.notifyRegistrants(
             new AsyncResult(null, null, null));
     }
 

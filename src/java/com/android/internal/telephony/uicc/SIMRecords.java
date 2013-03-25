@@ -221,7 +221,7 @@ public class SIMRecords extends IccRecords {
         mVoiceMailNum = null;
         mCountVoiceMessages = 0;
         mMncLength = UNINITIALIZED;
-        iccId = null;
+        mIccId = null;
         // -1 means no EF_SPN found; treat accordingly.
         mSpnDisplayCondition = -1;
         mEfMWIS = null;
@@ -806,9 +806,9 @@ public class SIMRecords extends IccRecords {
                     break;
                 }
 
-                iccId = IccUtils.bcdToString(data, 0, data.length);
+                mIccId = IccUtils.bcdToString(data, 0, data.length);
 
-                log("iccid: " + iccId);
+                log("iccid: " + mIccId);
 
             break;
 
@@ -1329,7 +1329,7 @@ public class SIMRecords extends IccRecords {
         setVoiceMailByCountry(operator);
         setSpnFromConfig(operator);
 
-        recordsLoadedRegistrants.notifyRegistrants(
+        mRecordsLoadedRegistrants.notifyRegistrants(
             new AsyncResult(null, null, null));
     }
 

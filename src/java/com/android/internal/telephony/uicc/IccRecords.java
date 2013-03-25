@@ -42,7 +42,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected IccFileHandler mFh;
     protected UiccCardApplication mParentApp;
 
-    protected RegistrantList recordsLoadedRegistrants = new RegistrantList();
+    protected RegistrantList mRecordsLoadedRegistrants = new RegistrantList();
     protected RegistrantList mImsiReadyRegistrants = new RegistrantList();
     protected RegistrantList mRecordsEventsRegistrants = new RegistrantList();
     protected RegistrantList mNewSmsRegistrants = new RegistrantList();
@@ -56,7 +56,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     protected boolean mRecordsRequested = false; // true if we've made requests for the sim records
 
-    public String iccId;
+    protected String mIccId;
     protected String mMsisdn = null;  // My mobile number
     protected String mMsisdnTag = null;
     protected String mVoiceMailNum = null;
@@ -99,7 +99,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " mCi=" + mCi
                 + " mFh=" + mFh
                 + " mParentApp=" + mParentApp
-                + " recordsLoadedRegistrants=" + recordsLoadedRegistrants
+                + " recordsLoadedRegistrants=" + mRecordsLoadedRegistrants
                 + " mImsiReadyRegistrants=" + mImsiReadyRegistrants
                 + " mRecordsEventsRegistrants=" + mRecordsEventsRegistrants
                 + " mNewSmsRegistrants=" + mNewSmsRegistrants
@@ -108,7 +108,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " recordsToLoad=" + mRecordsToLoad
                 + " adnCache=" + mAdnCache
                 + " recordsRequested=" + mRecordsRequested
-                + " iccid=" + iccId
+                + " iccid=" + mIccId
                 + " msisdn=" + mMsisdn
                 + " msisdnTag=" + mMsisdnTag
                 + " voiceMailNum=" + mVoiceMailNum
@@ -166,20 +166,24 @@ public abstract class IccRecords extends Handler implements IccConstants {
         return mAdnCache;
     }
 
+    public String getIccId() {
+        return mIccId;
+    }
+
     public void registerForRecordsLoaded(Handler h, int what, Object obj) {
         if (mDestroyed.get()) {
             return;
         }
 
         Registrant r = new Registrant(h, what, obj);
-        recordsLoadedRegistrants.add(r);
+        mRecordsLoadedRegistrants.add(r);
 
         if (mRecordsToLoad == 0 && mRecordsRequested == true) {
             r.notifyRegistrant(new AsyncResult(null, null, null));
         }
     }
     public void unregisterForRecordsLoaded(Handler h) {
-        recordsLoadedRegistrants.remove(h);
+        mRecordsLoadedRegistrants.remove(h);
     }
 
     public void registerForImsiReady(Handler h, int what, Object obj) {
@@ -493,10 +497,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mCi=" + mCi);
         pw.println(" mFh=" + mFh);
         pw.println(" mParentApp=" + mParentApp);
-        pw.println(" recordsLoadedRegistrants: size=" + recordsLoadedRegistrants.size());
-        for (int i = 0; i < recordsLoadedRegistrants.size(); i++) {
+        pw.println(" recordsLoadedRegistrants: size=" + mRecordsLoadedRegistrants.size());
+        for (int i = 0; i < mRecordsLoadedRegistrants.size(); i++) {
             pw.println("  recordsLoadedRegistrants[" + i + "]="
-                    + ((Registrant)recordsLoadedRegistrants.get(i)).getHandler());
+                    + ((Registrant)mRecordsLoadedRegistrants.get(i)).getHandler());
         }
         pw.println(" mImsiReadyRegistrants: size=" + mImsiReadyRegistrants.size());
         for (int i = 0; i < mImsiReadyRegistrants.size(); i++) {
@@ -522,7 +526,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mRecordsRequested=" + mRecordsRequested);
         pw.println(" mRecordsToLoad=" + mRecordsToLoad);
         pw.println(" mRdnCache=" + mAdnCache);
-        pw.println(" iccid=" + iccId);
+        pw.println(" iccid=" + mIccId);
         pw.println(" mMsisdn=" + mMsisdn);
         pw.println(" mMsisdnTag=" + mMsisdnTag);
         pw.println(" mVoiceMailNum=" + mVoiceMailNum);

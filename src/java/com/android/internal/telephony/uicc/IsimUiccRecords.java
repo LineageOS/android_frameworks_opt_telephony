@@ -205,7 +205,7 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
 
     @Override
     protected void onAllRecordsLoaded() {
-        recordsLoadedRegistrants.notifyRegistrants(
+        mRecordsLoadedRegistrants.notifyRegistrants(
                 new AsyncResult(null, null, null));
     }
 
