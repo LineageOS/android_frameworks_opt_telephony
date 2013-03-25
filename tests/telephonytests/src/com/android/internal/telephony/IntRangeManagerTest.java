@@ -81,6 +81,18 @@ public class IntRangeManagerTest extends AndroidTestCase {
             flags = 0;
             mConfigList.clear();
         }
+
+        /** overwrite to not call populateAllRanges, so tryAddRanges called by enable
+         * do not populate previously added ranges
+         */
+        protected boolean tryAddRanges(int startId, int endId, boolean selected) {
+
+            startUpdate();
+            //populateAllRanges();
+            // This is the new range to be enabled
+            addRange(startId, endId, selected); // adds to mConfigList
+            return finishUpdate();
+        }
     }
 
     public void testEmptyRangeManager() {
@@ -120,10 +132,9 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertEquals("configlist size", 1, testManager.mConfigList.size());
         testManager.reset();
         assertTrue("disabling range", testManager.disableRange(123, 123, "client1"));
-        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
-        assertEquals("configlist size", 1, testManager.mConfigList.size());
-        checkConfigInfo(testManager.mConfigList.get(0), 123, 123, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
+        assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
+                testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
         testManager.reset();
         assertTrue("updating ranges", testManager.updateRanges());
         assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
@@ -186,14 +197,13 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertTrue("disabling range 1", testManager.disableRange(100, 200, "client1"));
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
         assertEquals("configlist size", 1, testManager.mConfigList.size());
-        checkConfigInfo(testManager.mConfigList.get(0), 100, 149, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
+        checkConfigInfo(testManager.mConfigList.get(0), 150, 250, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
         testManager.reset();
         assertTrue("disabling range 2", testManager.disableRange(150, 250, "client2"));
-        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
-        assertEquals("configlist size", 1, testManager.mConfigList.size());
-        checkConfigInfo(testManager.mConfigList.get(0), 150, 250, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
+        assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
+                testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
         testManager.reset();
         assertTrue("updating ranges", testManager.updateRanges());
         assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
@@ -219,8 +229,8 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertTrue("disabling range 2", testManager.disableRange(150, 250, "client2"));
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
         assertEquals("configlist size", 1, testManager.mConfigList.size());
-        checkConfigInfo(testManager.mConfigList.get(0), 201, 250, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
+        checkConfigInfo(testManager.mConfigList.get(0), 100, 200, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
         testManager.reset();
         assertTrue("updating ranges", testManager.updateRanges());
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
@@ -229,10 +239,50 @@ public class IntRangeManagerTest extends AndroidTestCase {
                 SMS_CB_CODE_SCHEME_MAX, true);
         testManager.reset();
         assertTrue("disabling range 1", testManager.disableRange(100, 200, "client1"));
+        assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
+                testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+    }
+
+    // new [3, 6]  existing [1, 2] [5, 7]
+    public void testOverlappingChannels3() {
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(1, 2, "client1"));
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
         assertEquals("configlist size", 1, testManager.mConfigList.size());
-        checkConfigInfo(testManager.mConfigList.get(0), 100, 200, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 2, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(5, 7, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 5, 7, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 3", testManager.enableRange(3, 6, "client3"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 3, 4, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 7, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+
+        // test disable
+        testManager.reset();
+        assertTrue("disabling range", testManager.disableRange(3, 6, "client3"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 2, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 2, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 5, 7, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+
     }
 
     public void testMultipleOverlappingChannels() {
@@ -280,11 +330,13 @@ public class IntRangeManagerTest extends AndroidTestCase {
         testManager.reset();
         assertTrue("disabling range 1", testManager.disableRange(67, 9999, "client1"));
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
-        assertEquals("configlist size", 2, testManager.mConfigList.size());
-        checkConfigInfo(testManager.mConfigList.get(0), 501, 7999, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
-        checkConfigInfo(testManager.mConfigList.get(1), 9999, 9999, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
+        assertEquals("configlist size", 3, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 12, 500, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 8000, 9998, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(2), 50000, 65535, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
         testManager.reset();
         assertTrue("updating ranges", testManager.updateRanges());
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
@@ -298,13 +350,15 @@ public class IntRangeManagerTest extends AndroidTestCase {
         testManager.reset();
         assertTrue("disabling range 4", testManager.disableRange(12, 500, "client4"));
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
-        assertEquals("configlist size", 3, testManager.mConfigList.size());
-        checkConfigInfo(testManager.mConfigList.get(0), 12, 24, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
-        checkConfigInfo(testManager.mConfigList.get(1), 76, 149, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
-        checkConfigInfo(testManager.mConfigList.get(2), 251, 500, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
+        assertEquals("configlist size", 4, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 25, 75, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 150, 250, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(2), 8000, 9998, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(3), 50000, 65535, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
         testManager.reset();
         assertTrue("updating ranges", testManager.updateRanges());
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
@@ -320,9 +374,13 @@ public class IntRangeManagerTest extends AndroidTestCase {
         testManager.reset();
         assertTrue("disabling range 5", testManager.disableRange(8000, 9998, "client5"));
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
-        assertEquals("configlist size", 1, testManager.mConfigList.size());
-        checkConfigInfo(testManager.mConfigList.get(0), 8000, 9998, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
+        assertEquals("configlist size", 3, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 25, 75, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 150, 250, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(2), 50000, 65535, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
         testManager.reset();
         assertTrue("updating ranges", testManager.updateRanges());
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
@@ -336,9 +394,11 @@ public class IntRangeManagerTest extends AndroidTestCase {
         testManager.reset();
         assertTrue("disabling range 6", testManager.disableRange(50000, 65535, "client6"));
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
-        assertEquals("configlist size", 1, testManager.mConfigList.size());
-        checkConfigInfo(testManager.mConfigList.get(0), 50000, 65535, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
+        assertEquals("configlist size", 2, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 25, 75, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 150, 250, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
         testManager.reset();
         assertTrue("updating ranges", testManager.updateRanges());
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
@@ -351,8 +411,8 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertTrue("disabling range 2", testManager.disableRange(150, 250, "client2"));
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
         assertEquals("configlist size", 1, testManager.mConfigList.size());
-        checkConfigInfo(testManager.mConfigList.get(0), 150, 250, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
+        checkConfigInfo(testManager.mConfigList.get(0), 25, 75, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
         testManager.reset();
         assertTrue("updating ranges", testManager.updateRanges());
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
@@ -361,10 +421,713 @@ public class IntRangeManagerTest extends AndroidTestCase {
                 SMS_CB_CODE_SCHEME_MAX, true);
         testManager.reset();
         assertTrue("disabling range 3", testManager.disableRange(25, 75, "client3"));
+        assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
+                testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
+                testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+    }
+
+    public void testAddSingleDigitChannels() {
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(3, 5, "client1"));
         assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
         assertEquals("configlist size", 1, testManager.mConfigList.size());
-        checkConfigInfo(testManager.mConfigList.get(0), 25, 75, SMS_CB_CODE_SCHEME_MIN,
-                SMS_CB_CODE_SCHEME_MAX, false);
+        checkConfigInfo(testManager.mConfigList.get(0), 3, 5, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(7, 8, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 7, 8, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 3", testManager.enableRange(6, 6, "client3"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 6, 6, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 3, 8, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        // test disable
+        testManager.reset();
+        assertTrue("disable range 3", testManager.disableRange(6, 6, "client3"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 2, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 3, 5, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 7, 8, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        // enable
+        testManager.reset();
+        assertTrue("enabling range 4", testManager.enableRange(6, 12, "client3"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 6, 12, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 3, 12, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        // test disable
+        testManager.reset();
+        assertTrue("disable range 2", testManager.disableRange(7, 8, "client2"));
+        assertEquals("flags after test", 0, testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 3, 12, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("disable range 1", testManager.disableRange(3, 5, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 6, 12, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("disable range 4", testManager.disableRange(6, 12, "client3"));
+        assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
+                testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+    }
+
+    public void testAddSingleDigitChannels2() {
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(2, 2, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 2, 2, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(1, 1, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 1, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 2, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+    }
+
+    public void testAddSingleDigitChannels3() {
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(1, 1, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 1, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(3, 5, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 3, 5, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 3", testManager.enableRange(2, 2, "client3"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 2, 2, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 5, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        // test disable
+        testManager.reset();
+        assertTrue("disabling range 1", testManager.disableRange(1, 1, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 2, 5, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+    }
+
+    public void testAddSingleDigitChannels4() {
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(1, 1, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 1, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(2, 2, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 2, 2, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 2, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        // test disable
+        testManager.reset();
+        assertFalse("disabling range 1", testManager.disableRange(1, 2, "client1"));
+        assertEquals("flags after test", 0, testManager.flags);
+        assertEquals("configlist size",0, testManager.mConfigList.size());
+    }
+
+    private void verifyAddChannel(
+            TestIntRangeManager testManager, int startId, int endId, String client) {
+        testManager.reset();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range", testManager.enableRange(startId, endId, client));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), startId, endId, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+    }
+
+    public void testAddSingleDigitChannels5() {
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        for (int i = 0; i <= 10; i++) {
+            verifyAddChannel(testManager, i, i, "client1");
+        }
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 0, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+
+        // test disable
+        testManager.reset();
+        assertTrue("disabling range", testManager.disableRange(2, 2, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 2, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 0, 1, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 3, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("disabling range", testManager.disableRange(9, 9, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 3, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 0, 1, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 3, 8, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(2), 10, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(2, 2, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 2, 2, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 2, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 0, 8, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 10, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+    }
+
+    // new [1, 5] existing [1, 2] [1, 4] [1, 7] [2, 5]
+    public void testClientInsert() {
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(1, 2, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 2, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(1, 4, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 3, 4, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 3", testManager.enableRange(2, 5, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 5, 5, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 4", testManager.enableRange(1, 7, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 6, 7, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 5", testManager.enableRange(1, 5, "client2"));
+        assertEquals("flags after test", 0, testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 7, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        // test disable
+        testManager.reset();
+        assertTrue("disabling range 5", testManager.disableRange(1, 5, "client2"));
+        assertEquals("flags after test", 0, testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+        testManager.reset();
+    }
+
+    public void testAddTwoSameChannelsDifferentClient() {
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(1, 5, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 5, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(1, 5, "client2"));
+        assertEquals("flags after test", 0, testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 5, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        // now try disabling/deleting "client2" only
+        testManager.reset();
+        assertTrue("disabling range 1", testManager.disableRange(1, 5, "client2"));
+        assertEquals("flags after test", 0, testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 5, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+    }
+
+    public void testAddTwoSameChannelsSameClient() {
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(1, 1, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 1, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(1, 1, "client1"));
+        assertEquals("flags after test", 0, testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 1, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        // now try disabling/deleting
+        testManager.reset();
+        // trying to delete non-existing "client2"
+        assertFalse("disabling range 2", testManager.disableRange(1, 1, "client2"));
+        assertEquals("flags after test", 0, testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+        testManager.reset();
+        // delete "client1"
+        assertTrue("disabling range 1", testManager.disableRange(1, 1, "client1"));
+        assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
+                testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
+                testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+    }
+
+    public void testAddTwoChannels2() {
+        // test non contiguous case where 2nd range precedes 2nd range
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(200, 250, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 200, 250, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(100, 120, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 100, 120, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 2, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 100, 120, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 200, 250, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+    }
+
+    // new [2, 10] existing [1, 4] [7, 15]
+    public void testAddThreeChannels() {
+        // 3rd range can include first two ranges.  Test combine case.
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(1, 4, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 4, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(7, 15, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 7, 15, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 3", testManager.enableRange(2, 10, "client3"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 5, 6, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 15, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+
+        //test disable
+        testManager.reset();
+        assertTrue("disabling range 2", testManager.disableRange(7, 15, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("disabling range 1", testManager.disableRange(1, 4, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 2, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("disabling range 3", testManager.disableRange(2, 10, "client3"));
+        assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
+                testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+    }
+
+    public void testAddThreeChannels2() {
+        // 3rd range can include first two ranges.  Test combine case.
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(2, 3, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 2, 3, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(5, 6, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 5, 6, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 3", testManager.enableRange(1, 10, "client3"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+
+        //test disable:
+        testManager.reset();
+        assertTrue("disabling range 3", testManager.disableRange(1, 10, "client3"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 2, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 2, 3, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 5, 6, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 2, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 2, 3, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 5, 6, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+
+    }
+
+    public void testAddChannels() {
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(2, 3, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 2, 3, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(5, 6, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 5, 6, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 3", testManager.enableRange(14, 15, "client3"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 14, 15, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 4", testManager.enableRange(1, 10, "client4"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 2, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 14, 15, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        // test disable
+        testManager.reset();
+        assertTrue("disabling range 4", testManager.disableRange(1, 10, "client4"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 3, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 2, 3, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 5, 6, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(2), 14, 15, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+    }
+
+    public void testAddChannels2() {
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(2, 3, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 2, 3, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 2", testManager.enableRange(5, 15, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 5, 15, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 3", testManager.enableRange(1, 10, "client3"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 4, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 15, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        // test disable
+        testManager.reset();
+        assertTrue("disabling range 2", testManager.disableRange(5, 15, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("disabling range 1", testManager.disableRange(2, 3, "client1"));
+        assertEquals("flags after test", 0, testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+        testManager.reset();
+        assertTrue("disabling range 3", testManager.disableRange(1, 10, "client3"));
+        assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
+                testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+    }
+
+
+    public void testAddChannels3() {
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(1, 4, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 4, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 2", testManager.enableRange(7, 8, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 7, 8, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 3", testManager.enableRange(2, 10, "client3"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 5, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        // test disable
+        testManager.reset();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("disabling range 2", testManager.disableRange(7, 8, "client2"));
+        assertEquals("flags after test", 0, testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+    }
+
+    public void testAddChannels4() {
+        // new [2, 10] existing [1, 4] [6, 6] [8, 9] [12, 14]
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(1, 4, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 4, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 2", testManager.enableRange(6, 6, "client2"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 6, 6, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 3", testManager.enableRange(8, 9, "client3"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 8, 9, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 4", testManager.enableRange(12, 14, "client4"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 12, 14, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("enabling range 5", testManager.enableRange(2, 10, "client5"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 5, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 2, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 12, 14, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+
+        // test disable
+        testManager.reset();
+        assertTrue("disabling range", testManager.disableRange(8, 9, "client3"));
+        assertEquals("flags after test", 0, testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 2, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 10, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 12, 14, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("disabling range", testManager.disableRange(2, 10, "client5"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 3, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 4, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 6, 6, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(2), 12, 14, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 3, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 4, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(1), 6, 6, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        checkConfigInfo(testManager.mConfigList.get(2), 12, 14, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+    }
+
+    public void testAddChannels5() {
+        // range already enclosed in existing: new [3, 3], [1,3]
+        TestIntRangeManager testManager = new TestIntRangeManager();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 1", testManager.enableRange(1, 3, "client1"));
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 3, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertEquals("flags before test", 0, testManager.flags);
+        assertTrue("enabling range 2", testManager.enableRange(3, 3, "client1"));
+        assertEquals("flags after test", 0, testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 3, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+
+        // test disable
+        testManager.reset();
+        assertTrue("disabling range", testManager.disableRange(3, 3, "client1"));
+        assertEquals("flags after test", 0, testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
+        testManager.reset();
+        assertTrue("updating ranges", testManager.updateRanges());
+        assertEquals("flags after test", ALL_FLAGS_SET, testManager.flags);
+        assertEquals("configlist size", 1, testManager.mConfigList.size());
+        checkConfigInfo(testManager.mConfigList.get(0), 1, 3, SMS_CB_CODE_SCHEME_MIN,
+                SMS_CB_CODE_SCHEME_MAX, true);
+        testManager.reset();
+        assertTrue("disabling range", testManager.disableRange(1, 3, "client1"));
+        assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
+                testManager.flags);
+        assertEquals("configlist size", 0, testManager.mConfigList.size());
         testManager.reset();
         assertTrue("updating ranges", testManager.updateRanges());
         assertEquals("flags after test", FLAG_START_UPDATE_CALLED | FLAG_FINISH_UPDATE_CALLED,
