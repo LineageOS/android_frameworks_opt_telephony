@@ -120,10 +120,10 @@ public class CDMALTEPhone extends CDMAPhone {
             // removeReferences() have already been called
 
             ret = PhoneConstants.DataState.DISCONNECTED;
-        } else if (mDataConnectionTracker.isApnTypeEnabled(apnType) == false) {
+        } else if (mDcTracker.isApnTypeEnabled(apnType) == false) {
             ret = PhoneConstants.DataState.DISCONNECTED;
         } else {
-            switch (mDataConnectionTracker.getState(apnType)) {
+            switch (mDcTracker.getState(apnType)) {
                 case FAILED:
                 case IDLE:
                     ret = PhoneConstants.DataState.DISCONNECTED;

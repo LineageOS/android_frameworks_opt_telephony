@@ -69,7 +69,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * {@hide}
  */
-public abstract class DataConnectionTrackerBase extends Handler {
+public abstract class DcTrackerBase extends Handler {
     protected static final boolean DBG = true;
     protected static final boolean VDBG = false; // STOPSHIP if true
     protected static final boolean VDBG_STALL = true; // STOPSHIP if true
@@ -228,8 +228,8 @@ public abstract class DataConnectionTrackerBase extends Handler {
         new HashMap<Integer, DataConnection>();
 
     /** The data connection async channels */
-    protected HashMap<Integer, DataConnectionAc> mDataConnectionAcHashMap =
-        new HashMap<Integer, DataConnectionAc>();
+    protected HashMap<Integer, DcAsyncChannel> mDataConnectionAcHashMap =
+        new HashMap<Integer, DcAsyncChannel>();
 
     /** Convert an ApnType string to Id (TODO: Use "enumeration" instead of String for ApnType) */
     protected HashMap<String, Integer> mApnToDataConnectionId =
@@ -457,7 +457,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
     /**
      * Default constructor
      */
-    protected DataConnectionTrackerBase(PhoneBase phone) {
+    protected DcTrackerBase(PhoneBase phone) {
         super();
         if (DBG) log("DCT.constructor");
         mPhone = phone;
@@ -506,7 +506,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
 
     public void dispose() {
         if (DBG) log("DCT.dispose");
-        for (DataConnectionAc dcac : mDataConnectionAcHashMap.values()) {
+        for (DcAsyncChannel dcac : mDataConnectionAcHashMap.values()) {
             dcac.disconnect();
         }
         mDataConnectionAcHashMap.clear();
@@ -633,7 +633,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
         switch (msg.what) {
             case AsyncChannel.CMD_CHANNEL_DISCONNECTED: {
                 log("DISCONNECTED_CONNECTED: msg=" + msg);
-                DataConnectionAc dcac = (DataConnectionAc) msg.obj;
+                DcAsyncChannel dcac = (DcAsyncChannel) msg.obj;
                 mDataConnectionAcHashMap.remove(dcac.getDataConnectionIdSync());
                 dcac.disconnected();
                 break;
@@ -824,7 +824,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
         int id = apnTypeToId(apnType);
 
         if (isApnIdEnabled(id)) {
-            DataConnectionAc dcac = mDataConnectionAcHashMap.get(0);
+            DcAsyncChannel dcac = mDataConnectionAcHashMap.get(0);
             return dcac.getLinkPropertiesSync();
         } else {
             return new LinkProperties();
@@ -834,7 +834,7 @@ public abstract class DataConnectionTrackerBase extends Handler {
     public LinkCapabilities getLinkCapabilities(String apnType) {
         int id = apnTypeToId(apnType);
         if (isApnIdEnabled(id)) {
-            DataConnectionAc dcac = mDataConnectionAcHashMap.get(0);
+            DcAsyncChannel dcac = mDataConnectionAcHashMap.get(0);
             return dcac.getLinkCapabilitiesSync();
         } else {
             return new LinkCapabilities();

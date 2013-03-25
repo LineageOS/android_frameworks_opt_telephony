@@ -36,7 +36,7 @@ import android.text.TextUtils;
 import android.telephony.Rlog;
 
 import com.android.internal.R;
-import com.android.internal.telephony.dataconnection.DataConnectionTrackerBase;
+import com.android.internal.telephony.dataconnection.DcTrackerBase;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -124,7 +124,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     /* Instance Variables */
     public CommandsInterface mCi;
     boolean mDnsCheckDisabled;
-    public DataConnectionTrackerBase mDataConnectionTracker;
+    public DcTrackerBase mDcTracker;
     boolean mDoesRilSendMultipleCallRing;
     int mCallRingContinueToken;
     int mCallRingDelay;
@@ -306,7 +306,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
             mCi.unSetOnCallRing(this);
             // Must cleanup all connectionS and needs to use sendMessage!
-            mDataConnectionTracker.cleanUpAllConnections(null);
+            mDcTracker.cleanUpAllConnections(null);
             mIsTheCurrentActivePhone = false;
             // Dispose the SMS usage and storage monitors
             mSmsStorageMonitor.dispose();
@@ -326,7 +326,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         mSMS = null;
         mIccRecords.set(null);
         mUiccApplication.set(null);
-        mDataConnectionTracker = null;
+        mDcTracker = null;
         mUiccController = null;
     }
 
@@ -1184,32 +1184,32 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public String[] getActiveApnTypes() {
-        return mDataConnectionTracker.getActiveApnTypes();
+        return mDcTracker.getActiveApnTypes();
     }
 
     @Override
     public String getActiveApnHost(String apnType) {
-        return mDataConnectionTracker.getActiveApnString(apnType);
+        return mDcTracker.getActiveApnString(apnType);
     }
 
     @Override
     public LinkProperties getLinkProperties(String apnType) {
-        return mDataConnectionTracker.getLinkProperties(apnType);
+        return mDcTracker.getLinkProperties(apnType);
     }
 
     @Override
     public LinkCapabilities getLinkCapabilities(String apnType) {
-        return mDataConnectionTracker.getLinkCapabilities(apnType);
+        return mDcTracker.getLinkCapabilities(apnType);
     }
 
     @Override
     public int enableApnType(String type) {
-        return mDataConnectionTracker.enableApnType(type);
+        return mDcTracker.enableApnType(type);
     }
 
     @Override
     public int disableApnType(String type) {
-        return mDataConnectionTracker.disableApnType(type);
+        return mDcTracker.disableApnType(type);
     }
 
     @Override
@@ -1219,8 +1219,8 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public boolean isDataConnectivityPossible(String apnType) {
-        return ((mDataConnectionTracker != null) &&
-                (mDataConnectionTracker.isDataPossible(apnType)));
+        return ((mDcTracker != null) &&
+                (mDcTracker.isDataPossible(apnType)));
     }
 
     /**
@@ -1358,7 +1358,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         pw.println("PhoneBase:");
         pw.println(" mCi=" + mCi);
         pw.println(" mDnsCheckDisabled=" + mDnsCheckDisabled);
-        pw.println(" mDataConnectionTracker=" + mDataConnectionTracker);
+        pw.println(" mDcTracker=" + mDcTracker);
         pw.println(" mDoesRilSendMultipleCallRing=" + mDoesRilSendMultipleCallRing);
         pw.println(" mCallRingContinueToken=" + mCallRingContinueToken);
         pw.println(" mCallRingDelay=" + mCallRingDelay);

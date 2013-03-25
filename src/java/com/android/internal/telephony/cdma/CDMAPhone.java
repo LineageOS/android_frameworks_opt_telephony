@@ -59,7 +59,7 @@ import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.dataconnection.DataConnectionTracker;
+import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.uicc.IccException;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.RuimRecords;
@@ -160,7 +160,7 @@ public class CDMAPhone extends PhoneBase {
         mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context, mCi, this,
                 EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
         mSMS = new CdmaSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
-        mDataConnectionTracker = new DataConnectionTracker (this);
+        mDcTracker = new DcTracker(this);
         mRuimPhoneBookInterfaceManager = new RuimPhoneBookInterfaceManager(this);
         mRuimSmsInterfaceManager = new RuimSmsInterfaceManager(this, mSMS);
         mSubInfo = new PhoneSubInfo(this);
@@ -232,7 +232,7 @@ public class CDMAPhone extends PhoneBase {
 
             //Force all referenced classes to unregister their former registered events
             mCT.dispose();
-            mDataConnectionTracker.dispose();
+            mDcTracker.dispose();
             mSST.dispose();
             mCdmaSSM.dispose(this);
             mSMS.dispose();
@@ -338,7 +338,7 @@ public class CDMAPhone extends PhoneBase {
 
         if (mSST.getCurrentDataConnectionState() == ServiceState.STATE_IN_SERVICE) {
 
-            switch (mDataConnectionTracker.getActivity()) {
+            switch (mDcTracker.getActivity()) {
                 case DATAIN:
                     ret = DataActivityState.DATAIN;
                 break;
@@ -590,7 +590,7 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public void setDataRoamingEnabled(boolean enable) {
-        mDataConnectionTracker.setDataOnRoamingEnabled(enable);
+        mDcTracker.setDataOnRoamingEnabled(enable);
     }
 
     @Override
@@ -665,11 +665,11 @@ public class CDMAPhone extends PhoneBase {
             // If we're out of service, open TCP sockets may still work
             // but no data will flow
             ret = PhoneConstants.DataState.DISCONNECTED;
-        } else if (mDataConnectionTracker.isApnTypeEnabled(apnType) == false ||
-                mDataConnectionTracker.isApnTypeActive(apnType) == false) {
+        } else if (mDcTracker.isApnTypeEnabled(apnType) == false ||
+                mDcTracker.isApnTypeActive(apnType) == false) {
             ret = PhoneConstants.DataState.DISCONNECTED;
         } else {
-            switch (mDataConnectionTracker.getState(apnType)) {
+            switch (mDcTracker.getState(apnType)) {
                 case FAILED:
                 case IDLE:
                     ret = PhoneConstants.DataState.DISCONNECTED;
@@ -772,7 +772,7 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public boolean getDataRoamingEnabled() {
-        return mDataConnectionTracker.getDataOnRoamingEnabled();
+        return mDcTracker.getDataOnRoamingEnabled();
     }
 
     @Override
@@ -983,7 +983,7 @@ public class CDMAPhone extends PhoneBase {
             // send an Intent
             sendEmergencyCallbackModeChange();
             // Re-initiate data connection
-            mDataConnectionTracker.setInternalDataEnabled(true);
+            mDcTracker.setInternalDataEnabled(true);
         }
     }
 
