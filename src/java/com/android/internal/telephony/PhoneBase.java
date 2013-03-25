@@ -22,6 +22,7 @@ import android.net.LinkCapabilities;
 import android.net.LinkProperties;
 import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -65,7 +66,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class PhoneBase extends Handler implements Phone {
     private static final String LOG_TAG = "PhoneBase";
-    protected static final boolean DEBUGGABLE = SystemProperties.getInt("ro.debuggable", 0) == 1;
 
     // Key used to read and write the saved network selection numeric value
     public static final String NETWORK_SELECTION_KEY = "network_selection_key";
@@ -255,7 +255,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         mActionDetached = this.getClass().getPackage().getName() + ".action_detached";
         mActionAttached = this.getClass().getPackage().getName() + ".action_attached";
 
-        if (DEBUGGABLE) {
+        if (Build.IS_DEBUGGABLE) {
             mTelephonyTester = new TelephonyTester(this);
         }
 
