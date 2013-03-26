@@ -734,7 +734,7 @@ public interface CommandsInterface {
 
     void changeBarringPassword(String facility, String oldPwd, String newPwd, Message result);
 
-    void supplyNetworkDepersonalization(String netpin, Message result);
+    void supplyDepersonalization(String netpin, int type, Message result);
 
     /**
      *  returned message
