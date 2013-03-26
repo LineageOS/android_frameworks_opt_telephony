@@ -83,7 +83,7 @@ public class UiccCardApplication {
 
     private RegistrantList mReadyRegistrants = new RegistrantList();
     private RegistrantList mPinLockedRegistrants = new RegistrantList();
-    private RegistrantList mNetworkLockedRegistrants = new RegistrantList();
+    private RegistrantList mPersoLockedRegistrants = new RegistrantList();
 
     UiccCardApplication(UiccCard uiccCard,
                         IccCardApplicationStatus as,
@@ -143,8 +143,8 @@ public class UiccCardApplication {
             }
 
             if (mPersoSubState != oldPersoSubState &&
-                    mPersoSubState == PersoSubState.PERSOSUBSTATE_SIM_NETWORK) {
-                notifyNetworkLockedRegistrantsIfNeeded(null);
+                    isPersoLocked()) {
+                notifyPersoLockedRegistrantsIfNeeded(null);
             }
 
             if (mAppState != oldAppState) {
@@ -450,19 +450,19 @@ public class UiccCardApplication {
     }
 
     /**
-     * Notifies handler of any transition into State.NETWORK_LOCKED
+     * Notifies handler of any transition into State.PERSO_LOCKED
      */
-    public void registerForNetworkLocked(Handler h, int what, Object obj) {
+    public void registerForPersoLocked(Handler h, int what, Object obj) {
         synchronized (mLock) {
             Registrant r = new Registrant (h, what, obj);
-            mNetworkLockedRegistrants.add(r);
-            notifyNetworkLockedRegistrantsIfNeeded(r);
+            mPersoLockedRegistrants.add(r);
+            notifyPersoLockedRegistrantsIfNeeded(r);
         }
     }
 
-    public void unregisterForNetworkLocked(Handler h) {
+    public void unregisterForPersoLocked(Handler h) {
         synchronized (mLock) {
-            mNetworkLockedRegistrants.remove(h);
+            mPersoLockedRegistrants.remove(h);
         }
     }
 
@@ -526,19 +526,20 @@ public class UiccCardApplication {
      *
      * @param r Registrant to be notified. If null - all registrants will be notified
      */
-    private void notifyNetworkLockedRegistrantsIfNeeded(Registrant r) {
+    private void notifyPersoLockedRegistrantsIfNeeded(Registrant r) {
         if (mDestroyed) {
             return;
         }
 
         if (mAppState == AppState.APPSTATE_SUBSCRIPTION_PERSO &&
-                mPersoSubState == PersoSubState.PERSOSUBSTATE_SIM_NETWORK) {
+                isPersoLocked()) {
+            AsyncResult ar = new AsyncResult(null, mPersoSubState.ordinal(), null);
             if (r == null) {
-                if (DBG) log("Notifying registrants: NETWORK_LOCKED");
-                mNetworkLockedRegistrants.notifyRegistrants();
+                if (DBG) log("Notifying registrants: PERSO_LOCKED");
+                mPersoLockedRegistrants.notifyRegistrants(ar);
             } else {
-                if (DBG) log("Notifying 1 registrant: NETWORK_LOCED");
-                r.notifyRegistrant(new AsyncResult(null, null, null));
+                if (DBG) log("Notifying 1 registrant: PERSO_LOCKED");
+                r.notifyRegistrant(ar);
             }
         }
     }
@@ -625,6 +626,17 @@ public class UiccCardApplication {
         }
     }
 
+    public boolean isPersoLocked() {
+        switch (mPersoSubState) {
+            case PERSOSUBSTATE_UNKNOWN:
+            case PERSOSUBSTATE_IN_PROGRESS:
+            case PERSOSUBSTATE_READY:
+                return false;
+            default:
+                return true;
+        }
+    }
+
     /**
      * Supply the ICC PIN to the ICC
      *
@@ -694,10 +706,10 @@ public class UiccCardApplication {
         }
     }
 
-    public void supplyNetworkDepersonalization (String pin, Message onComplete) {
+    public void supplyDepersonalization (String pin, String type, Message onComplete) {
         synchronized (mLock) {
-            if (DBG) log("supplyNetworkDepersonalization");
-            mCi.supplyNetworkDepersonalization(pin, onComplete);
+            if (DBG) log("Network Despersonalization: pin = **** , type = " + type);
+            mCi.supplyDepersonalization(pin, type, onComplete);
         }
     }
 
@@ -897,10 +909,10 @@ public class UiccCardApplication {
             pw.println("  mPinLockedRegistrants[" + i + "]="
                     + ((Registrant)mPinLockedRegistrants.get(i)).getHandler());
         }
-        pw.println(" mNetworkLockedRegistrants: size=" + mNetworkLockedRegistrants.size());
-        for (int i = 0; i < mNetworkLockedRegistrants.size(); i++) {
-            pw.println("  mNetworkLockedRegistrants[" + i + "]="
-                    + ((Registrant)mNetworkLockedRegistrants.get(i)).getHandler());
+        pw.println(" mPersoLockedRegistrants: size=" + mPersoLockedRegistrants.size());
+        for (int i = 0; i < mPersoLockedRegistrants.size(); i++) {
+            pw.println("  mPersoLockedRegistrants[" + i + "]="
+                    + ((Registrant)mPersoLockedRegistrants.get(i)).getHandler());
         }
         pw.flush();
     }
