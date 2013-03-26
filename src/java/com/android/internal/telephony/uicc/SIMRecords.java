@@ -124,8 +124,6 @@ public class SIMRecords extends IccRecords {
     private static final int CPHS_SST_MBN_ENABLED = 0x30;
 
     // ***** Event Constants
-
-    private static final int EVENT_APP_READY = 1;
     private static final int EVENT_GET_IMSI_DONE = 3;
     private static final int EVENT_GET_ICCID_DONE = 4;
     private static final int EVENT_GET_MBI_DONE = 5;
@@ -1206,8 +1204,7 @@ public class SIMRecords extends IccRecords {
             case IccRefreshResponse.REFRESH_RESULT_INIT:
                 if (DBG) log("handleSimRefresh with SIM_REFRESH_INIT");
                 // need to reload all files (that we care about)
-                mAdnCache.reset();
-                fetchSimRecords();
+                onIccRefreshInit();
                 break;
             case IccRefreshResponse.REFRESH_RESULT_RESET:
                 if (DBG) log("handleSimRefresh with SIM_REFRESH_RESET");
