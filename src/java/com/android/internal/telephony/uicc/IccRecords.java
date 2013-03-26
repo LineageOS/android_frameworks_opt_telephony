@@ -24,6 +24,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -91,6 +92,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public static final int EVENT_SPN = 2; // Service Provider Name
 
     public static final int EVENT_GET_ICC_RECORD_DONE = 100;
+    protected static final int EVENT_APP_READY = 1;
 
     @Override
     public String toString() {
@@ -366,6 +368,17 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     public abstract void onRefresh(boolean fileChanged, int[] fileList);
 
+    /**
+     * Called by subclasses (SimRecords and RuimRecords) whenever
+     * IccRefreshResponse.REFRESH_RESULT_INIT event received
+     */
+    protected void onIccRefreshInit() {
+        mAdnCache.reset();
+        if (mParentApp.getState() == AppState.APPSTATE_READY) {
+            // This will cause files to be reread
+            sendMessage(obtainMessage(EVENT_APP_READY));
+        }
+    }
 
     public boolean getRecordsLoaded() {
         if (mRecordsToLoad == 0 && mRecordsRequested == true) {

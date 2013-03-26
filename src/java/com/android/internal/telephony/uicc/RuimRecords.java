@@ -82,7 +82,6 @@ public final class RuimRecords extends IccRecords {
     }
 
     // ***** Event Constants
-    private static final int EVENT_APP_READY = 1;
     private static final int EVENT_GET_IMSI_DONE = 3;
     private static final int EVENT_GET_DEVICE_IDENTITY_DONE = 4;
     private static final int EVENT_GET_ICCID_DONE = 5;
@@ -774,7 +773,7 @@ public final class RuimRecords extends IccRecords {
             case IccRefreshResponse.REFRESH_RESULT_INIT:
                 if (DBG) log("handleRuimRefresh with SIM_REFRESH_INIT");
                 // need to reload all files (that we care about)
-                fetchRuimRecords();
+                onIccRefreshInit();
                 break;
             case IccRefreshResponse.REFRESH_RESULT_RESET:
                 if (DBG) log("handleRuimRefresh with SIM_REFRESH_RESET");
