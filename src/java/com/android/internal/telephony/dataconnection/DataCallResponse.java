@@ -211,9 +211,8 @@ public class DataCallResponse {
                     } catch (IllegalArgumentException e) {
                         throw new UnknownHostException("Non-numeric gateway addr=" + addr);
                     }
-                    if (! ia.isAnyLocalAddress()) {
-                        linkProperties.addRoute(new RouteInfo(ia));
-                    }
+                    // Allow 0.0.0.0 or :: as a gateway; this indicates a point-to-point interface.
+                    linkProperties.addRoute(new RouteInfo(ia));
                 }
 
                 result = SetupResult.SUCCESS;
