@@ -183,8 +183,12 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, status);
             AdnRecord oldAdn = new AdnRecord(oldTag, oldPhoneNumber);
             AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber);
-            adnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
-            waitForResult(status);
+            if (adnCache != null) {
+                adnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
+                waitForResult(status);
+            } else {
+                loge("Failure while trying to update by search due to uninitialised adncache");
+            }
         }
         return success;
     }
@@ -226,8 +230,12 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
             AtomicBoolean status = new AtomicBoolean(false);
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, status);
             AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber);
-            adnCache.updateAdnByIndex(efid, newAdn, index, pin2, response);
-            waitForResult(status);
+            if (adnCache != null) {
+                adnCache.updateAdnByIndex(efid, newAdn, index, pin2, response);
+                waitForResult(status);
+            } else {
+                loge("Failure while trying to update by index due to uninitialised adncache");
+            }
         }
         return success;
     }
@@ -268,8 +276,12 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
             checkThread();
             AtomicBoolean status = new AtomicBoolean(false);
             Message response = mBaseHandler.obtainMessage(EVENT_LOAD_DONE, status);
-            adnCache.requestLoadAllAdnLike(efid, adnCache.extensionEfForEf(efid), response);
-            waitForResult(status);
+            if (adnCache != null) {
+                adnCache.requestLoadAllAdnLike(efid, adnCache.extensionEfForEf(efid), response);
+                waitForResult(status);
+            } else {
+                loge("Failure while trying to load from SIM due to uninitialised adncache");
+            }
         }
         return records;
     }
