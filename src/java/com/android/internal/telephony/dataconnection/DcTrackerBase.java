@@ -518,12 +518,6 @@ public abstract class DcTrackerBase extends Handler {
         mDcTesterFailBringUpAll.dispose();
     }
 
-    protected void broadcastMessenger() {
-        Intent intent = new Intent(DctConstants.ACTION_DATA_CONNECTION_TRACKER_MESSENGER);
-        intent.putExtra(DctConstants.EXTRA_MESSENGER, new Messenger(this));
-        mPhone.getContext().sendBroadcast(intent);
-    }
-
     public DctConstants.Activity getActivity() {
         return mActivity;
     }
