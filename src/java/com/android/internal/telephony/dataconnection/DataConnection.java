@@ -1146,7 +1146,10 @@ public final class DataConnection extends StateMachine {
                                     + " != cp:" + cp);
                         }
                     }
-                    if (DBG) log("DcActivatingState onSetupConnectionCompleted result=" + result);
+                    if (DBG) {
+                        log("DcActivatingState onSetupConnectionCompleted result=" + result
+                                + " dc=" + DataConnection.this);
+                    }
                     switch (result) {
                         case SUCCESS:
                             // All is well
@@ -1173,6 +1176,11 @@ public final class DataConnection extends StateMachine {
                         case ERR_RilError:
                             int delay = mDcRetryAlarmController.getSuggestedRetryTime(
                                                                     DataConnection.this, ar);
+                            if (DBG) {
+                                log("DcActivatingState: ERR_RilError "
+                                        + " delay=" + delay
+                                        + " isRetryNeeded=" + mRetryManager.isRetryNeeded());
+                            }
                             if (delay >= 0) {
                                 mDcRetryAlarmController.startRetryAlarm(EVENT_RETRY_CONNECTION,
                                                             mTag, delay);
@@ -1203,10 +1211,6 @@ public final class DataConnection extends StateMachine {
 
                         DcFailCause cause = DcFailCause.UNKNOWN;
 
-                        if (DBG) {
-                            log("DcActivatingState msg.what=EVENT_GET_LAST_FAIL_DONE"
-                                    + " RefCount=" + mApnContexts.size());
-                        }
                         if (ar.exception == null) {
                             int rilFailCause = ((int[]) (ar.result))[0];
                             cause = DcFailCause.fromInt(rilFailCause);
@@ -1214,6 +1218,13 @@ public final class DataConnection extends StateMachine {
                         mDcFailCause = cause;
 
                         int retryDelay = mRetryManager.getRetryTimer();
+                        if (DBG) {
+                            log("DcActivatingState msg.what=EVENT_GET_LAST_FAIL_DONE"
+                                    + " cause=" + cause
+                                    + " retryDelay=" + retryDelay
+                                    + " isRetryNeeded=" + mRetryManager.isRetryNeeded()
+                                    + " dc=" + DataConnection.this);
+                        }
                         if (mRetryManager.isRetryNeeded()) {
                             mDcRetryAlarmController.startRetryAlarm(EVENT_RETRY_CONNECTION, mTag,
                                                             retryDelay);
@@ -1277,9 +1288,11 @@ public final class DataConnection extends StateMachine {
             switch (msg.what) {
                 case EVENT_CONNECT: {
                     ConnectionParams cp = (ConnectionParams) msg.obj;
+                    if (DBG) {
+                        log("DcActiveState: EVENT_CONNECT cp=" + cp + " dc=" + DataConnection.this);
+                    }
                     if (mApnContexts.contains(cp.mApnContext)) {
-                        log("DcActiveState ERROR already added apnContext=" + cp.mApnContext
-                                    + " to this DC=" + this);
+                        log("DcActiveState ERROR already added apnContext=" + cp.mApnContext);
                     } else {
                         mApnContexts.add(cp.mApnContext);
                         if (DBG) {
@@ -1293,6 +1306,10 @@ public final class DataConnection extends StateMachine {
                 }
                 case EVENT_DISCONNECT: {
                     DisconnectParams dp = (DisconnectParams) msg.obj;
+                    if (DBG) {
+                        log("DcActiveState: EVENT_DISCONNECT dp=" + dp
+                                + " dc=" + DataConnection.this);
+                    }
                     if (mApnContexts.contains(dp.mApnContext)) {
                         if (DBG) {
                             log("DcActiveState msg.what=EVENT_DISCONNECT RefCount="
@@ -1312,7 +1329,7 @@ public final class DataConnection extends StateMachine {
                         }
                     } else {
                         log("DcActiveState ERROR no such apnContext=" + dp.mApnContext
-                                + " in this DC=" + this);
+                                + " in this dc=" + DataConnection.this);
                         notifyDisconnectCompleted(dp, false);
                     }
                     retVal = HANDLED;
@@ -1320,8 +1337,8 @@ public final class DataConnection extends StateMachine {
                 }
                 case EVENT_DISCONNECT_ALL: {
                     if (DBG) {
-                        log("DcActiveState msg.what=EVENT_DISCONNECT_ALL RefCount="
-                                + mApnContexts.size() + " clearing apn contexts");
+                        log("DcActiveState EVENT_DISCONNECT clearing apn contexts,"
+                                + " dc=" + DataConnection.this);
                     }
                     mApnContexts.clear();
                     DisconnectParams dp = (DisconnectParams) msg.obj;
@@ -1334,6 +1351,9 @@ public final class DataConnection extends StateMachine {
                     break;
                 }
                 case EVENT_LOST_CONNECTION: {
+                    if (DBG) {
+                        log("DcActiveState EVENT_LOST_CONNECTION dc=" + DataConnection.this);
+                    }
                     if (mRetryManager.isRetryNeeded()) {
                         // We're going to retry
                         int delayMillis = mRetryManager.getRetryTimer();
