@@ -428,6 +428,10 @@ public abstract class DcTrackerBase extends Handler {
                 if (DBG) {
                     log("onActionIntentReconnectAlarm: state is FAILED|IDLE, disassociate");
                 }
+                DcAsyncChannel dcac = apnContext.getDcAc();
+                if (dcac != null) {
+                    dcac.tearDown(apnContext, "", null);
+                }
                 apnContext.setDataConnectionAc(null);
                 apnContext.setState(DctConstants.State.IDLE);
             } else {

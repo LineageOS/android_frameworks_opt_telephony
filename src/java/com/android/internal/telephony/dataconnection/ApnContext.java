@@ -87,11 +87,6 @@ public class ApnContext {
             log("setDataConnectionAc: old dcac=" + mDcAc + " new dcac=" + dcac
                     + " this=" + this);
         }
-        if ((dcac == null) && (mDcAc != null)) {
-            // TODO: This tearDown should be done by caller, but for now we'll do it
-            if (DBG) log("setDataConnection: call tearDown");
-            mDcAc.tearDown(this, "", null);
-        }
         mDcAc = dcac;
     }
 

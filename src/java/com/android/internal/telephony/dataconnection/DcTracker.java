@@ -745,6 +745,9 @@ public final class DcTracker extends DcTrackerBase {
                 // If apnContext is not enabled anymore, break the linkage to the DCAC/DC.
                 apnContext.setState(DctConstants.State.IDLE);
                 if (!apnContext.isReady()) {
+                    if (dcac != null) {
+                        dcac.tearDown(apnContext, "", null);
+                    }
                     apnContext.setDataConnectionAc(null);
                 }
             } else {
