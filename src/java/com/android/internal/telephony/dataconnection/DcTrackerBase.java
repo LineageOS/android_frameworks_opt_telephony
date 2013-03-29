@@ -674,12 +674,12 @@ public abstract class DcTrackerBase extends Handler {
                 break;
 
             case DctConstants.EVENT_DISCONNECT_DONE:
-                log("DataConnectoinTracker.handleMessage: EVENT_DISCONNECT_DONE msg=" + msg);
+                log("DataConnectionTracker.handleMessage: EVENT_DISCONNECT_DONE msg=" + msg);
                 onDisconnectDone(msg.arg1, (AsyncResult) msg.obj);
                 break;
 
             case DctConstants.EVENT_DISCONNECT_DC_RETRYING:
-                log("DataConnectoinTracker.handleMessage: EVENT_DISCONNECT_DC_RETRYING msg=" + msg);
+                log("DataConnectionTracker.handleMessage: EVENT_DISCONNECT_DC_RETRYING msg=" + msg);
                 onDisconnectDcRetrying(msg.arg1, (AsyncResult) msg.obj);
                 break;
 

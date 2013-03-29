@@ -300,6 +300,7 @@ public class GSMPhone extends PhoneBase {
             ret = PhoneConstants.DataState.DISCONNECTED;
         } else { /* mSST.gprsState == ServiceState.STATE_IN_SERVICE */
             switch (mDcTracker.getState(apnType)) {
+                case RETRYING:
                 case FAILED:
                 case IDLE:
                     ret = PhoneConstants.DataState.DISCONNECTED;
@@ -315,7 +316,6 @@ public class GSMPhone extends PhoneBase {
                     }
                 break;
 
-                case RETRYING:
                 case CONNECTING:
                 case SCANNING:
                     ret = PhoneConstants.DataState.CONNECTING;

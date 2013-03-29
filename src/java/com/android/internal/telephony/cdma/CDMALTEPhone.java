@@ -124,6 +124,7 @@ public class CDMALTEPhone extends CDMAPhone {
             ret = PhoneConstants.DataState.DISCONNECTED;
         } else {
             switch (mDcTracker.getState(apnType)) {
+                case RETRYING:
                 case FAILED:
                 case IDLE:
                     ret = PhoneConstants.DataState.DISCONNECTED;
@@ -139,7 +140,6 @@ public class CDMALTEPhone extends CDMAPhone {
                     }
                     break;
 
-                case RETRYING:
                 case CONNECTING:
                 case SCANNING:
                     ret = PhoneConstants.DataState.CONNECTING;
