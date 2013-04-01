@@ -89,6 +89,11 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
     @Override
     public void
     setRadioPower(boolean on, Message result) {
+        boolean allow = SystemProperties.getBoolean("persist.ril.enable", true);
+        if (!allow) {
+            return;
+        }
+
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_RADIO_POWER, result);
 
         if (on) {
