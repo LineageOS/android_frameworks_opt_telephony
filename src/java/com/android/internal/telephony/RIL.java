@@ -1433,6 +1433,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     public void
     setRadioPower(boolean on, Message result) {
+        boolean allow = SystemProperties.getBoolean("persist.ril.enable", true);
+        if (!allow) {
+            return;
+        }
+
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_RADIO_POWER, result);
 
         rr.mp.writeInt(1);
