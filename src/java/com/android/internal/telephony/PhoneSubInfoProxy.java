@@ -55,6 +55,13 @@ public class PhoneSubInfoProxy extends IPhoneSubInfo.Stub {
     }
 
     /**
+     * Retrieves the Group Identifier Level1 for GSM phones.
+     */
+    public String getGroupIdLevel1() {
+        return mPhoneSubInfo.getGroupIdLevel1();
+    }
+
+    /**
      * Retrieves the serial number of the ICC, if applicable.
      */
     @Override

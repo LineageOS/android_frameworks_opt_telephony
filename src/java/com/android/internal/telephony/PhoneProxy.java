@@ -902,6 +902,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public String getGroupIdLevel1() {
+        return mActivePhone.getGroupIdLevel1();
+    }
+
+    @Override
     public String getIccSerialNumber() {
         return mActivePhone.getIccSerialNumber();
     }
