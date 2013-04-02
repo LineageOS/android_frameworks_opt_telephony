@@ -507,6 +507,12 @@ public class CDMAPhone extends PhoneBase {
     }
 
     @Override
+    public String getGroupIdLevel1() {
+        Rlog.e(LOG_TAG, "GID1 is not available in CDMA");
+        return null;
+    }
+
+    @Override
     public String getImei() {
         Rlog.e(LOG_TAG, "IMEI is not available in CDMA");
         return null;

@@ -1319,6 +1319,11 @@ public interface Phone {
     String getSubscriberId();
 
     /**
+     * Retrieves the Group Identifier Level1 for GSM phones.
+     */
+    String getGroupIdLevel1();
+
+    /**
      * Retrieves the serial number of the ICC, if applicable.
      */
     String getIccSerialNumber();
