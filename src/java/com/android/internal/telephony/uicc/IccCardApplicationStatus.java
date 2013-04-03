@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.telephony.Rlog;
+
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
 
 
@@ -106,8 +108,8 @@ public class IccCardApplicationStatus {
     public String         app_label;
     // applicable to USIM and CSIM
     public int            pin1_replaced;
-    public PinState            pin1;
-    public PinState            pin2;
+    public PinState       pin1;
+    public PinState       pin2;
 
     public AppType AppTypeFromRILInt(int type) {
         AppType newType;
@@ -120,8 +122,8 @@ public class IccCardApplicationStatus {
             case 4: newType = AppType.APPTYPE_CSIM;    break;
             case 5: newType = AppType.APPTYPE_ISIM;    break;
             default:
-                throw new RuntimeException(
-                            "Unrecognized RIL_AppType: " +type);
+                newType = AppType.APPTYPE_UNKNOWN;
+                loge("AppTypeFromRILInt: bad RIL_AppType: " + type + " use APPTYPE_UNKNOWN");
         }
         return newType;
     }
@@ -137,8 +139,8 @@ public class IccCardApplicationStatus {
             case 4: newState = AppState.APPSTATE_SUBSCRIPTION_PERSO; break;
             case 5: newState = AppState.APPSTATE_READY; break;
             default:
-                throw new RuntimeException(
-                            "Unrecognized RIL_AppState: " +state);
+                newState = AppState.APPSTATE_UNKNOWN;
+                loge("AppStateFromRILInt: bad state: " + state + " use APPSTATE_UNKNOWN");
         }
         return newState;
     }
@@ -173,8 +175,9 @@ public class IccCardApplicationStatus {
             case 23: newSubState = PersoSubState.PERSOSUBSTATE_RUIM_SERVICE_PROVIDER_PUK; break;
             case 24: newSubState = PersoSubState.PERSOSUBSTATE_RUIM_RUIM_PUK; break;
             default:
-                throw new RuntimeException(
-                            "Unrecognized RIL_PersoSubstate: " +substate);
+                newSubState = PersoSubState.PERSOSUBSTATE_UNKNOWN;
+                loge("PersoSubstateFromRILInt: bad substate: " + substate
+                        + " use PERSOSUBSTATE_UNKNOWN");
         }
         return newSubState;
     }
@@ -201,7 +204,8 @@ public class IccCardApplicationStatus {
                 newPinState = PinState.PINSTATE_ENABLED_PERM_BLOCKED;
                 break;
             default:
-                throw new RuntimeException("Unrecognized RIL_PinState: " + state);
+                newPinState = PinState.PINSTATE_UNKNOWN;
+                loge("PinStateFromRILInt: bad pin state: " + state + " use PINSTATE_UNKNOWN");
         }
         return newPinState;
     }
@@ -222,5 +226,9 @@ public class IccCardApplicationStatus {
         }
         sb.append("}");
         return sb.toString();
+    }
+
+    private void loge(String s) {
+        Rlog.e("IccCardApplicationStatus", s);
     }
 }
