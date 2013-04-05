@@ -22,60 +22,37 @@ import com.android.internal.telephony.RILConstants;
 /**
  * This class represents a apn setting for create PDP link
  */
-public class ApnSetting {
+public class ApnSetting extends DataProfile {
 
     static final String V2_FORMAT_REGEX = "^\\[ApnSettingV2\\]\\s*";
 
     public final String carrier;
-    public final String apn;
     public final String proxy;
     public final String port;
     public final String mmsc;
     public final String mmsProxy;
     public final String mmsPort;
-    public final String user;
-    public final String password;
-    public final int authType;
-    public final String[] types;
-    public final int id;
-    public final String numeric;
-    public final String protocol;
-    public final String roamingProtocol;
     /**
       * Current status of APN
       * true : enabled APN, false : disabled APN.
       */
     public final boolean carrierEnabled;
-    /**
-      * Radio Access Technology info
-      * To check what values can hold, refer to ServiceState.java.
-      * This should be spread to other technologies,
-      * but currently only used for LTE(14) and EHRPD(13).
-      */
-    public final int bearer;
 
     public ApnSetting(int id, String numeric, String carrier, String apn,
             String proxy, String port,
             String mmsc, String mmsProxy, String mmsPort,
             String user, String password, int authType, String[] types,
             String protocol, String roamingProtocol, boolean carrierEnabled, int bearer) {
-        this.id = id;
-        this.numeric = numeric;
+        super(id, numeric, apn, user, password, authType,
+                types, protocol, roamingProtocol, bearer);
+
         this.carrier = carrier;
-        this.apn = apn;
         this.proxy = proxy;
         this.port = port;
         this.mmsc = mmsc;
         this.mmsProxy = mmsProxy;
         this.mmsPort = mmsPort;
-        this.user = user;
-        this.password = password;
-        this.authType = authType;
-        this.types = types;
-        this.protocol = protocol;
-        this.roamingProtocol = roamingProtocol;
         this.carrierEnabled = carrierEnabled;
-        this.bearer = bearer;
     }
 
     /**
@@ -180,6 +157,17 @@ public class ApnSetting {
         return sb.toString();
     }
 
+    @Override
+    public DataProfileType getDataProfileType() {
+        return DataProfileType.PROFILE_TYPE_APN;
+    }
+
+    @Override
+    public int getProfileId() {
+        return id;
+    }
+
+    @Override
     public boolean canHandleType(String type) {
         for (String t : types) {
             // DEFAULT handles all, and HIPRI is handled by DEFAULT
@@ -199,5 +187,15 @@ public class ApnSetting {
     public boolean equals(Object o) {
         if (o instanceof ApnSetting == false) return false;
         return (toString().equals(o.toString()));
+    }
+
+    @Override
+    public String toShortString() {
+        return "ApnSetting";
+    }
+
+    @Override
+    public String toHash() {
+        return this.toString();
     }
 }

@@ -211,8 +211,8 @@ public class DcAsyncChannel extends AsyncChannel {
      * @param response Message
      * @return ApnSetting, maybe null
      */
-    public ApnSetting rspApnSetting(Message response) {
-        ApnSetting retVal = (ApnSetting) response.obj;
+    public DataProfile rspApnSetting(Message response) {
+        DataProfile retVal = (ApnSetting) response.obj;
         if (DBG) log("rspApnSetting=" + retVal);
         return retVal;
     }
@@ -222,8 +222,8 @@ public class DcAsyncChannel extends AsyncChannel {
      *
      * @return ApnSetting or null if an error
      */
-    public ApnSetting getApnSettingSync() {
-        ApnSetting value;
+    public DataProfile getApnSettingSync() {
+        DataProfile value;
         if (isCallerOnDifferentThread()) {
             Message response = sendMessageSynchronously(REQ_GET_APNSETTING);
             if ((response != null) && (response.what == RSP_GET_APNSETTING)) {
@@ -233,7 +233,7 @@ public class DcAsyncChannel extends AsyncChannel {
                 value = null;
             }
         } else {
-            value = mDc.getApnSetting();
+            value = mDc.getDataProfile();
         }
         return value;
     }

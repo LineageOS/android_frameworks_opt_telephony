@@ -150,7 +150,7 @@ public final class DataConnection extends StateMachine {
         }
     }
 
-    private ApnSetting mApnSetting;
+    private DataProfile mApnSetting;
     private ConnectionParams mConnectionParams;
     private DisconnectParams mDisconnectParams;
     private DcFailCause mDcFailCause;
@@ -262,7 +262,7 @@ public final class DataConnection extends StateMachine {
         return mCid;
     }
 
-    ApnSetting getApnSetting() {
+    DataProfile getDataProfile() {
         return mApnSetting;
     }
 
@@ -399,9 +399,7 @@ public final class DataConnection extends StateMachine {
      * @param cp is the connection parameters
      */
     private void onConnect(ConnectionParams cp) {
-        if (DBG) log("onConnect: carrier='" + mApnSetting.carrier
-                + "' APN='" + mApnSetting.apn
-                + "' proxy='" + mApnSetting.proxy + "' port='" + mApnSetting.port + "'");
+        if (DBG) log("onConnect: " + mApnSetting);
 
         // Check if we should fake an error.
         if (mDcTesterFailBringUpAll.getDcFailBringUp().mCounter  > 0) {
@@ -685,12 +683,13 @@ public final class DataConnection extends StateMachine {
             // Do not apply the race condition workaround for MMS APN
             // if Proxy is an IP-address.
             // Otherwise, the default APN will not be restored anymore.
-            if (!mApnSetting.types[0].equals(PhoneConstants.APN_TYPE_MMS)
-                || !isIpAddress(mApnSetting.mmsProxy)) {
+            ApnSetting apnSetting = (ApnSetting)mApnSetting;
+            if (!apnSetting.types[0].equals(PhoneConstants.APN_TYPE_MMS)
+                || !isIpAddress(apnSetting.mmsProxy)) {
                 log(String.format(
                         "isDnsOk: return false apn.types[0]=%s APN_TYPE_MMS=%s isIpAddress(%s)=%s",
-                        mApnSetting.types[0], PhoneConstants.APN_TYPE_MMS, mApnSetting.mmsProxy,
-                        isIpAddress(mApnSetting.mmsProxy)));
+                        apnSetting.types[0], PhoneConstants.APN_TYPE_MMS, apnSetting.mmsProxy,
+                        isIpAddress(apnSetting.mmsProxy)));
                 return false;
             }
         }
@@ -729,8 +728,8 @@ public final class DataConnection extends StateMachine {
         if (mApnSetting == null) {
             // Only change apn setting if it isn't set, it will
             // only NOT be set only if we're in DcInactiveState.
-            mApnSetting = apnContext.getApnSetting();
-        } else if (mApnSetting.canHandleType(apnContext.getApnType())) {
+            mApnSetting = apnContext.getDataProfile();
+        } else if (mApnSetting.canHandleType(apnContext.getDataProfileType())) {
             // All is good.
         } else {
             if (DBG) {
@@ -845,7 +844,7 @@ public final class DataConnection extends StateMachine {
                     break;
                 }
                 case DcAsyncChannel.REQ_GET_APNSETTING: {
-                    ApnSetting apnSetting = getApnSetting();
+                    DataProfile apnSetting = getDataProfile();
                     if (VDBG) log("REQ_GET_APNSETTING  mApnSetting=" + apnSetting);
                     mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_APNSETTING, apnSetting);
                     break;
