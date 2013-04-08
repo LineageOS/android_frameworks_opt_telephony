@@ -3056,15 +3056,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         response = p.readStringArray();
 
-        if (RILJ_LOGV) {
-            num = p.readInt();
-
-            response = new String[num];
-            for (int i = 0; i < num; i++) {
-                response[i] = p.readString();
-            }
-        }
-
         return response;
     }
 
@@ -3475,7 +3466,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     private Object
     responseSignalStrength(Parcel p) {
-        SignalStrength signalStrength = new SignalStrength(p);
+        // Assume this is gsm, but doesn't matter as ServiceStateTracker
+        // sets the proper value.
+        SignalStrength signalStrength = SignalStrength.makeSignalStrengthFromRilParcel(p);
         return signalStrength;
     }
 
