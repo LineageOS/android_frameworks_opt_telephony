@@ -62,6 +62,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mExitEmergencyCallbackModeRegistrants = new RegistrantList();
     protected RegistrantList mRilConnectedRegistrants = new RegistrantList();
     protected RegistrantList mIccRefreshRegistrants = new RegistrantList();
+    protected RegistrantList mRilCellInfoListRegistrants = new RegistrantList();
 
     protected Registrant mGsmSmsRegistrant;
     protected Registrant mCdmaSmsRegistrant;
@@ -704,6 +705,19 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public int getLteOnCdmaMode() {
         return TelephonyManager.getLteOnCdmaModeStatic();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void registerForCellInfoList(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mRilCellInfoListRegistrants.add(r);
+    }
+    @Override
+    public void unregisterForCellInfoList(Handler h) {
+        mRilCellInfoListRegistrants.remove(h);
     }
 
     @Override
