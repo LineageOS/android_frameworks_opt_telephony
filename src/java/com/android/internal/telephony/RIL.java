@@ -70,6 +70,8 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -2948,8 +2950,14 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 break;
 
             case RIL_UNSOL_OEM_HOOK_RAW:
-                if (RILJ_LOGD) unsljLogvRet(response, IccUtils.bytesToHexString((byte[])ret));
-                if (mUnsolOemHookRawRegistrant != null) {
+                if (RILJ_LOGD) unsljLogvRet(response, IccUtils.bytesToHexString((byte[]) ret));
+                ByteBuffer oemHookResponse = ByteBuffer.wrap((byte[]) ret);
+                oemHookResponse.order(ByteOrder.nativeOrder());
+                if (isQcUnsolOemHookResp(oemHookResponse)) {
+                    Rlog.d(RILJ_LOG_TAG, "OEM ID check Passed");
+                    processUnsolOemhookResponse(oemHookResponse);
+                } else if (mUnsolOemHookRawRegistrant != null) {
+                    Rlog.d(RILJ_LOG_TAG, "External OEM message, to be notified");
                     mUnsolOemHookRawRegistrant.notifyRegistrant(new AsyncResult(null, ret, null));
                 }
                 break;
@@ -3042,6 +3050,109 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             mRilConnectedRegistrants.notifyRegistrants(
                                 new AsyncResult (null, new Integer(rilVer), null));
         }
+    }
+
+    private boolean isQcUnsolOemHookResp(ByteBuffer oemHookResponse) {
+        String mOemIdentifier = "QUALCOMM";
+        int INT_SIZE = 4;
+        int mHeaderSize = mOemIdentifier.length() + 2 * INT_SIZE;
+
+        /* Check OEM ID in UnsolOemHook response */
+        if (oemHookResponse.capacity() < mHeaderSize) {
+            /*
+             * size of UnsolOemHook message is less than expected, considered as
+             * External OEM's message
+             */
+            Rlog.d(RILJ_LOG_TAG, "RIL_UNSOL_OEM_HOOK_RAW data size is " + oemHookResponse.capacity());
+            return false;
+        } else {
+            byte[] oem_id_bytes = new byte[mOemIdentifier.length()];
+            oemHookResponse.get(oem_id_bytes);
+            String oem_id_str = new String(oem_id_bytes);
+            Rlog.d(RILJ_LOG_TAG, "Oem ID in RIL_UNSOL_OEM_HOOK_RAW is " + oem_id_str);
+            if (!oem_id_str.equals(mOemIdentifier)) {
+                /* OEM ID not matched, considered as External OEM's message */
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void processUnsolOemhookResponse(ByteBuffer oemHookResponse) {
+        /** Starting number for QCRILHOOK request and response IDs */
+        final int QCRILHOOK_BASE = 0x80000;
+
+        /** qcrilhook unsolicited response IDs */
+        final int QCRILHOOK_UNSOL_CDMA_BURST_DTMF = QCRILHOOK_BASE + 1001;
+        final int QCRILHOOK_UNSOL_CDMA_CONT_DTMF_START = QCRILHOOK_BASE + 1002;
+        final int QCRILHOOK_UNSOL_CDMA_CONT_DTMF_STOP = QCRILHOOK_BASE + 1003;
+        final int QCRILHOOK_UNSOL_WMS_READY = QCRILHOOK_BASE + 1009;
+
+        int response_id = 0, response_size = 0;
+
+        response_id = oemHookResponse.getInt();
+        Rlog.d(RILJ_LOG_TAG, "Response ID in RIL_UNSOL_OEM_HOOK_RAW is " + response_id);
+
+        response_size = oemHookResponse.getInt();
+        if (response_size < 0) {
+            Rlog.e(RILJ_LOG_TAG, "Response Size is Invalid " + response_size);
+            return;
+        }
+        byte[] response_data = new byte[response_size];
+        if (oemHookResponse.remaining() == response_size) {
+            oemHookResponse.get(response_data, 0, response_size);
+        } else {
+            Rlog.e(RILJ_LOG_TAG, "Response Size(" + response_size + ") doesnot match remaining bytes(" +
+                    oemHookResponse.remaining() + ") in the buffer. So, don't process further");
+            return;
+        }
+
+        switch (response_id) {
+            case QCRILHOOK_UNSOL_CDMA_BURST_DTMF:
+                notifyCdmaFwdBurstDtmf(response_data);
+                break;
+
+            case QCRILHOOK_UNSOL_CDMA_CONT_DTMF_START:
+                notifyCdmaFwdContDtmfStart(response_data);
+                break;
+
+            case QCRILHOOK_UNSOL_CDMA_CONT_DTMF_STOP:
+                notifyCdmaFwdContDtmfStop();
+                break;
+
+            case QCRILHOOK_UNSOL_WMS_READY:
+                notifyWmsReady(response_data);
+                break;
+
+            default:
+                Rlog.d(RILJ_LOG_TAG, "Response ID " + response_id + " is not served in this process.");
+                break;
+        }
+    }
+
+    /** Notify registrants of FWD Burst DTMF Tone. */
+    protected void notifyCdmaFwdBurstDtmf(byte[] data) {
+        AsyncResult ar = new AsyncResult(null, data, null);
+        mCdmaFwdBurstDtmfRegistrants.notifyRegistrants(ar);
+    }
+
+    /** Notify registrants of FWD Continuous DTMF Tone Start. */
+    protected void notifyCdmaFwdContDtmfStart(byte[] data) {
+        AsyncResult ar = new AsyncResult(null, data, null);
+        mCdmaFwdContDtmfStartRegistrants.notifyRegistrants(ar);
+    }
+
+    /** Notify registrants of FWD Continuous DTMF Tone Stop. */
+    protected void notifyCdmaFwdContDtmfStop() {
+        AsyncResult ar = new AsyncResult(null, null, null);
+        mCdmaFwdContDtmfStopRegistrants.notifyRegistrants(ar);
+    }
+
+    /** Notify registrants of WMS_READY event. */
+    protected void notifyWmsReady(byte[] data) {
+        AsyncResult ar = new AsyncResult(null, data, null);
+        mWmsReadyRegistrants.notifyRegistrants(ar);
+        Rlog.d(RILJ_LOG_TAG, "WMS_READY notified to registrants");
     }
 
     private Object
