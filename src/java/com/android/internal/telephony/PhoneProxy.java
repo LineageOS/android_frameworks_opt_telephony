@@ -272,6 +272,14 @@ public class PhoneProxy extends Handler implements Phone {
         return mActivePhone.getAllCellInfo();
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setCellInfoListRate(int rateInMillis) {
+        mActivePhone.setCellInfoListRate(rateInMillis);
+    }
+
     @Override
     public PhoneConstants.DataState getDataConnectionState() {
         return mActivePhone.getDataConnectionState(PhoneConstants.APN_TYPE_DEFAULT);

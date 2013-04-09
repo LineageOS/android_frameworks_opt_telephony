@@ -186,6 +186,18 @@ public interface Phone {
     public List<CellInfo> getAllCellInfo();
 
     /**
+     * Sets the minimum time in milli-seconds between {@link PhoneStateListener#onCellInfoChanged
+     * PhoneStateListener.onCellInfoChanged} will be invoked.
+     *
+     * The default, 0, means invoke onCellInfoChanged when any of the reported
+     * information changes. Setting the value to INT_MAX(0x7fffffff) means never issue
+     * A onCellInfoChanged.
+     *
+     * @param rateInMillis the rate
+     */
+    public void setCellInfoListRate(int rateInMillis);
+
+    /**
      * Get the current for the default apn DataState. No change notification
      * exists at this interface -- use
      * {@link android.telephony.PhoneStateListener} instead.

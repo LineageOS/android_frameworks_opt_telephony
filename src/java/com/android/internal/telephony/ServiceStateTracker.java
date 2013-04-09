@@ -28,6 +28,7 @@ import android.util.TimeUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
@@ -40,6 +41,9 @@ import com.android.internal.telephony.uicc.UiccController;
  * {@hide}
  */
 public abstract class ServiceStateTracker extends Handler {
+    protected  static final boolean DBG = true;
+    protected static final boolean VDBG = false;
+
     protected static final String PROP_FORCE_ROAMING = "telephony.test.forceRoaming";
 
     protected CommandsInterface mCi;
@@ -52,6 +56,7 @@ public abstract class ServiceStateTracker extends Handler {
     public ServiceState mSS = new ServiceState();
     protected ServiceState mNewSS = new ServiceState();
 
+    protected List<CellInfo> mLastCellInfoList = null;
     protected CellInfo mLastCellInfo = null;
 
     // This is final as subclasses alias to a more specific type
@@ -95,8 +100,6 @@ public abstract class ServiceStateTracker extends Handler {
     /* Radio power off pending flag and tag counter */
     private boolean mPendingRadioPowerOffAfterDataOff = false;
     private int mPendingRadioPowerOffAfterDataOffTag = 0;
-
-    protected  static final boolean DBG = true;
 
     /** Signal strength poll rate. */
     protected static final int POLL_PERIOD_MILLIS = 20 * 1000;
@@ -146,6 +149,8 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final int EVENT_CDMA_PRL_VERSION_CHANGED          = 40;
     protected static final int EVENT_RADIO_ON                          = 41;
     protected static final int EVENT_ICC_CHANGED                       = 42;
+    protected static final int EVENT_GET_CELL_INFO_LIST                = 43;
+    protected static final int EVENT_UNSOL_CELL_INFO_LIST              = 44;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -178,6 +183,11 @@ public abstract class ServiceStateTracker extends Handler {
         "tg", // Togo
     };
 
+    private class CellInfoResult {
+        List<CellInfo> list;
+        Object lockObj = new Object();
+    }
+
     /** Reason for registration denial. */
     protected static final String REGISTRATION_DENIED_GEN  = "General";
     protected static final String REGISTRATION_DENIED_AUTH = "Authentication Failure";
@@ -189,11 +199,13 @@ public abstract class ServiceStateTracker extends Handler {
         mUiccController = UiccController.getInstance();
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
+        mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
     }
 
     public void dispose() {
         mCi.unSetOnSignalStrengthUpdate(this);
         mUiccController.unregisterForIccChanged(this);
+        mCi.unregisterForCellInfoList(this);
     }
 
     public boolean getDesiredPowerState() {
@@ -340,6 +352,43 @@ public abstract class ServiceStateTracker extends Handler {
             case EVENT_ICC_CHANGED:
                 onUpdateIccAvailability();
                 break;
+
+            case EVENT_GET_CELL_INFO_LIST: {
+                AsyncResult ar = (AsyncResult) msg.obj;
+                CellInfoResult result = (CellInfoResult) ar.userObj;
+                synchronized(result.lockObj) {
+                    if (ar.exception != null) {
+                        log("EVENT_GET_CELL_INFO_LIST: error ret null, e=" + ar.exception);
+                        result.list = null;
+                    } else {
+                        result.list = (List<CellInfo>) ar.result;
+
+                        if (VDBG) {
+                            log("EVENT_GET_CELL_INFO_LIST: size=" + result.list.size()
+                                    + " list=" + result.list);
+                        }
+                    }
+                    mLastCellInfoList = result.list;
+                    result.lockObj.notify();
+                }
+                break;
+            }
+
+            case EVENT_UNSOL_CELL_INFO_LIST: {
+                AsyncResult ar = (AsyncResult) msg.obj;
+                if (ar.exception != null) {
+                    log("EVENT_UNSOL_CELL_INFO_LIST: error ignoring, e=" + ar.exception);
+                } else {
+                    List<CellInfo> list = (List<CellInfo>) ar.result;
+                    if (DBG) {
+                        log("EVENT_UNSOL_CELL_INFO_LIST: size=" + list.size()
+                                + " list=" + list);
+                    }
+                    mLastCellInfoList = list;
+                    mPhoneBase.notifyCellInfo(list);
+                }
+                break;
+            }
 
             default:
                 log("Unhandled message with number: " + msg.what);
@@ -596,7 +645,38 @@ public abstract class ServiceStateTracker extends Handler {
      * @return all available cell information or null if none.
      */
     public List<CellInfo> getAllCellInfo() {
-        return null;
+        CellInfoResult result = new CellInfoResult();
+        if (VDBG) log("SST.getAllCellInfo(): E");
+        int ver = mCi.getRilVersion();
+        if (ver >= 8) {
+            if (isCallerOnDifferentThread()) {
+                Message msg = obtainMessage(EVENT_GET_CELL_INFO_LIST, result);
+                synchronized(result.lockObj) {
+                    mCi.getCellInfoList(msg);
+                    try {
+                        result.lockObj.wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        result.list = null;
+                    }
+                }
+            } else {
+                log("SST.getAllCellInfo(): X return last, same thread probably RadioInfo");
+                result.list = mLastCellInfoList;
+            }
+        } else {
+            log("SST.getAllCellInfo(): X not implemented");
+            result.list = null;
+        }
+        if (DBG) {
+            if (result.list != null) {
+                log("SST.getAllCellInfo(): X size=" + result.list.size()
+                        + " list=" + result.list);
+            } else {
+                log("SST.getAllCellInfo(): X size=0 list=null");
+            }
+        }
+        return result.list;
     }
 
     /**
@@ -634,5 +714,11 @@ public abstract class ServiceStateTracker extends Handler {
             throw new RuntimeException(
                     "ServiceStateTracker must be used from within one thread");
         }
+    }
+
+    protected boolean isCallerOnDifferentThread() {
+        boolean value = Thread.currentThread() != getLooper().getThread();
+        if (VDBG) log("isCallerOnDifferentThread: " + value);
+        return value;
     }
 }

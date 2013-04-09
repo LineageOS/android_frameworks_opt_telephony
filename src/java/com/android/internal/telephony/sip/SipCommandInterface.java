@@ -528,4 +528,12 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     @Override
     public void getVoiceRadioTechnology(Message result) {
     }
+
+    @Override
+    public void getCellInfoList(Message result) {
+    }
+
+    @Override
+    public void setCellInfoListRate(int rateInMillis, Message response) {
+    }
 }

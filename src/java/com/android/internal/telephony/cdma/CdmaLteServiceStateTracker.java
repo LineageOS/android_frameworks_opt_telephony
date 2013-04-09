@@ -538,17 +538,23 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     }
 
     /**
+     * TODO: Remove when we get new ril/modem for Galaxy Nexus.
+     *
      * @return all available cell information, the returned List maybe empty but never null.
      */
     @Override
     public List<CellInfo> getAllCellInfo() {
-        ArrayList<CellInfo> arrayList = new ArrayList<CellInfo>();
-        CellInfo ci;
-        synchronized(mCellInfo) {
-            arrayList.add(mCellInfoLte);
+        if (mCi.getRilVersion() >= 8) {
+            return super.getAllCellInfo();
+        } else {
+            ArrayList<CellInfo> arrayList = new ArrayList<CellInfo>();
+            CellInfo ci;
+            synchronized(mCellInfo) {
+                arrayList.add(mCellInfoLte);
+            }
+            if (DBG) log ("getAllCellInfo: arrayList=" + arrayList);
+            return arrayList;
         }
-        if (DBG) log ("getAllCellInfo: arrayList=" + arrayList);
-        return arrayList;
     }
 
     @Override
