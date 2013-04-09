@@ -791,6 +791,14 @@ public abstract class PhoneBase extends Handler implements Phone {
         return getServiceStateTracker().getAllCellInfo();
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setCellInfoListRate(int rateInMillis) {
+        mCi.setCellInfoListRate(rateInMillis, null);
+    }
+
     @Override
     public boolean getMessageWaitingIndicator() {
         IccRecords r = mIccRecords.get();

@@ -1731,14 +1731,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         }
     }
 
-    /**
-     * @return all available cell information or null if none.
-     */
-    @Override
-    public List<CellInfo> getAllCellInfo() {
-        return null;
-    }
-
     @Override
     protected void log(String s) {
         Rlog.d(LOG_TAG, "[CdmaSST] " + s);
