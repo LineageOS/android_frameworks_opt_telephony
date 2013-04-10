@@ -615,6 +615,14 @@ class UsimDataDownloadCommands extends BaseCommands {
     }
 
     @Override
+    public void getCellInfoList(Message result) {
+    }
+
+    @Override
+    public void setCellInfoListRate(int rateInMillis, Message response) {
+    }
+
+    @Override
     public void getIMSIForApp(String aid, Message result) {
     }
 

@@ -16,10 +16,11 @@
 
 package com.android.internal.telephony;
 
-import junit.framework.TestCase;
-import android.telephony.Rlog;
-
 import android.test.suitebuilder.annotation.SmallTest;
+
+import com.android.internal.telephony.dataconnection.ApnSetting;
+
+import junit.framework.TestCase;
 
 public class ApnSettingTest extends TestCase {
 
