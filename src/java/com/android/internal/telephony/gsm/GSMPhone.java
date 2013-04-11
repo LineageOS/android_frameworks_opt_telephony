@@ -896,13 +896,13 @@ public class GSMPhone extends PhoneBase {
     @Override
     public String getMsisdn() {
         IccRecords r = mIccRecords.get();
-        return (r != null) ? r.getMsisdnNumber() : "";
+        return (r != null) ? r.getMsisdnNumber() : null;
     }
 
     @Override
     public String getLine1AlphaTag() {
         IccRecords r = mIccRecords.get();
-        return (r != null) ? r.getMsisdnAlphaTag() : "";
+        return (r != null) ? r.getMsisdnAlphaTag() : null;
     }
 
     @Override
