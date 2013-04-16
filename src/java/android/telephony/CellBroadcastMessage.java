@@ -22,10 +22,6 @@ import android.database.Cursor;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.provider.Telephony;
-import android.telephony.SmsCbCmasInfo;
-import android.telephony.SmsCbEtwsInfo;
-import android.telephony.SmsCbLocation;
-import android.telephony.SmsCbMessage;
 import android.text.format.DateUtils;
 
 /**
@@ -323,20 +319,12 @@ public class CellBroadcastMessage implements Parcelable {
 
     /**
      * Returns whether the broadcast is an emergency (PWS) message type,
-     * including test messages, but excluding lower priority Amber alert broadcasts.
+     * including test messages and AMBER alerts.
      *
-     * @return true if the message is PWS type, excluding Amber alerts
+     * @return true if the message is PWS type (ETWS or CMAS)
      */
     public boolean isEmergencyAlertMessage() {
-        if (!mSmsCbMessage.isEmergencyMessage()) {
-            return false;
-        }
-        SmsCbCmasInfo cmasInfo = mSmsCbMessage.getCmasWarningInfo();
-        if (cmasInfo != null &&
-                cmasInfo.getMessageClass() == SmsCbCmasInfo.CMAS_CLASS_CHILD_ABDUCTION_EMERGENCY) {
-            return false;
-        }
-        return true;
+        return mSmsCbMessage.isEmergencyMessage();
     }
 
     /**
