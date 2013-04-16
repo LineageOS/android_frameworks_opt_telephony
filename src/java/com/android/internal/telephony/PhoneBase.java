@@ -690,6 +690,16 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
+    public void registerForUnsolVoiceSystemId(Handler h, int what, Object obj) {
+        mCi.registerForUnsolVoiceSystemId(h,what,obj);
+    }
+
+    @Override
+    public void unregisterForUnsolVoiceSystemId(Handler h) {
+        mCi.unregisterForUnsolVoiceSystemId(h);
+    }
+
+    @Override
     public void setEchoSuppressionEnabled(boolean enabled) {
         // no need for regular phone
     }
@@ -1515,5 +1525,25 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     public int getSubscription() {
         return DEFAULT_SUBSCRIPTION;
+    }
+
+    @Override
+    public void setTuneAway(boolean tuneAway, Message response) {
+        mCi.setTuneAway(tuneAway, response);
+    }
+
+    @Override
+    public void setPrioritySub(int subIndex, Message response) {
+        mCi.setPrioritySub(subIndex, response);
+    }
+
+    @Override
+    public void setDefaultVoiceSub(int subIndex, Message response) {
+        mCi.setDefaultVoiceSub(subIndex, response);
+    }
+
+    @Override
+    public void setLocalCallHold(int lchStatus, Message response) {
+        mCi.setLocalCallHold(lchStatus, response);
     }
 }

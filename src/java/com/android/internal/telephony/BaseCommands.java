@@ -21,6 +21,7 @@ package com.android.internal.telephony;
 
 
 import android.content.Context;
+import android.os.Message;
 import android.os.RegistrantList;
 import android.os.Registrant;
 import android.os.Handler;
@@ -73,6 +74,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mCdmaFwdContDtmfStartRegistrants = new RegistrantList();
     protected RegistrantList mCdmaFwdContDtmfStopRegistrants = new RegistrantList();
     protected RegistrantList mWmsReadyRegistrants = new RegistrantList();
+    protected RegistrantList mVoiceSystemIdRegistrants = new RegistrantList();
 
     protected Registrant mGsmSmsRegistrant;
     protected Registrant mCdmaSmsRegistrant;
@@ -725,6 +727,14 @@ public abstract class BaseCommands implements CommandsInterface {
         mWmsReadyRegistrants.remove(h);
     }
 
+    public void registerForUnsolVoiceSystemId(Handler h, int what, Object obj) {
+        mVoiceSystemIdRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForUnsolVoiceSystemId(Handler h) {
+        mVoiceSystemIdRegistrants.remove(h);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -779,6 +789,18 @@ public abstract class BaseCommands implements CommandsInterface {
     }
 
     protected void onRadioAvailable() {
+    }
+
+    public void setTuneAway(boolean tuneAway, Message response) {
+    }
+
+    public void setPrioritySub(int subIndex, Message response) {
+    }
+
+    public void setDefaultVoiceSub(int subIndex, Message response) {
+    }
+
+    public void setLocalCallHold(int lchStatus, Message response) {
     }
 
     /**

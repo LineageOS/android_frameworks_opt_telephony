@@ -600,6 +600,17 @@ public interface CommandsInterface {
      void unregisterForRilConnected(Handler h);
 
     /**
+     * Registers the handler for voice system id changed events
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     *
+     */
+    void registerForUnsolVoiceSystemId(Handler h, int what, Object obj);
+    void unregisterForUnsolVoiceSystemId(Handler h);
+
+    /**
      * Supply the ICC PIN to the ICC card
      *
      *  returned message
@@ -1720,4 +1731,31 @@ public interface CommandsInterface {
      */
     public void setDataSubscription (Message result);
 
+    /**
+     * Request to enable or disable the tune away state.
+     * @param tuneAway true to enable, false to disable
+     * @param response is callback message
+     */
+    void setTuneAway(boolean tuneAway, Message response);
+
+    /**
+     * Sets the provided subIndex as priority subscription index.
+     * @param subIndex Subscription index
+     * @param response is callback message
+     */
+    void setPrioritySub(int subIndex, Message response);
+
+    /**
+     * Set the default voice subscription id.
+     * @param subIndex subscription index
+     * @param response is callback message
+     */
+    void setDefaultVoiceSub(int subIndex, Message response);
+
+    /**
+     * Request to update the current local call hold state.
+     * @param lchStatus, true if call is in lch state
+     * @param response is callback message
+     */
+    void setLocalCallHold(int lchStatus, Message response);
 }

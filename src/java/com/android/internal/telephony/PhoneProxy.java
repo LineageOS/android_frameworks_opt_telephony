@@ -562,6 +562,16 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public void registerForUnsolVoiceSystemId(Handler h, int what, Object obj) {
+        mActivePhone.registerForUnsolVoiceSystemId(h,what,obj);
+    }
+
+    @Override
+    public void unregisterForUnsolVoiceSystemId(Handler h) {
+        mActivePhone.unregisterForUnsolVoiceSystemId(h);
+    }
+
+    @Override
     public boolean getIccRecordsLoaded() {
         return mIccCardProxy.getIccRecordsLoaded();
     }
@@ -1253,5 +1263,25 @@ public class PhoneProxy extends Handler implements Phone {
 
     public int getSubscription() {
         return mActivePhone.getSubscription();
+    }
+
+    @Override
+    public void setTuneAway(boolean tuneAway, Message response) {
+        mActivePhone.setTuneAway(tuneAway, response);
+    }
+
+    @Override
+    public void setPrioritySub(int subIndex, Message response) {
+        mActivePhone.setPrioritySub(subIndex, response);
+    }
+
+    @Override
+    public void setDefaultVoiceSub(int subIndex, Message response) {
+        mActivePhone.setDefaultVoiceSub(subIndex, response);
+    }
+
+    @Override
+    public void setLocalCallHold(int lchStatus, Message response) {
+        mActivePhone.setLocalCallHold(lchStatus, response);
     }
 }

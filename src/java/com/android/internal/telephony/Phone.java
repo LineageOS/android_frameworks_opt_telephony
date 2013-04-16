@@ -685,6 +685,20 @@ public interface Phone {
      */
     public void unregisterForSimRecordsLoaded(Handler h);
 
+     /**
+     * Registration point for Voice system id change
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForUnsolVoiceSystemId(Handler h, int what, Object obj);
+
+    /**
+     * Unregister for notifications for Voice system id change
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForUnsolVoiceSystemId(Handler h);
+
     /**
      * Returns SIM record load state. Use
      * <code>getSimCard().registerForReady()</code> for change notification.
@@ -1927,4 +1941,32 @@ public interface Phone {
      * Returns the subscription id.
      */
     public int getSubscription();
+
+    /**
+     * Request to enable or disable the tune away state.
+     * @param tuneAway true to enable, false to disable
+     * @param response is callback message
+     */
+    void setTuneAway(boolean tuneAway, Message response);
+
+    /**
+     * Sets the provided subIndex as priority subscription index.
+     * @param subIndex Subscription index
+     * @param response is callback message
+     */
+    void setPrioritySub(int subIndex, Message response);
+
+    /**
+     * Set the default voice subscription id.
+     * @param subIndex subscription index
+     * @param response is callback message
+     */
+    void setDefaultVoiceSub(int subIndex, Message response);
+
+    /**
+     * Request to update the current local call hold state.
+     * @param lchStatus, true if call is in lch state
+     * @param response is callback message
+     */
+    void setLocalCallHold(int lchStatus, Message response);
 }

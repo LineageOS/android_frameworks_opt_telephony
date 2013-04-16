@@ -260,12 +260,8 @@ public class ExtCallManager extends CallManager {
         // Update state only if the new state is different
         if (lchStatus != mLchStatus[sub]) {
             Rlog.d(LOG_TAG, " setLocal Call Hold to  = " + lchStatus);
-            PhoneBase basePhone = (PhoneBase)getPhoneBase(offHookPhone);
-            RIL rilCi = (RIL)basePhone.mCi;
 
-            /* TODO enable after merging oem hook changes
-            rilCi.setLocalCallHold(lchStatus, mHandler.obtainMessage(EVENT_LOCAL_CALL_HOLD));
-            */
+            offHookPhone.setLocalCallHold(lchStatus, mHandler.obtainMessage(EVENT_LOCAL_CALL_HOLD));
             mLchStatus[sub] = lchStatus;
         }
     }
@@ -431,19 +427,15 @@ public class ExtCallManager extends CallManager {
     protected void registerForPhoneStates(Phone phone) {
         super.registerForPhoneStates(phone);
 
-        /* TODO enable after merging telephony change
         phone.registerForUnsolVoiceSystemId(mHandler, EVENT_VOICE_SYSTEM_ID,
                 phone.getSubscription());
-        */
     }
 
     @Override
     protected void unregisterForPhoneStates(Phone phone) {
         super.unregisterForPhoneStates(phone);
 
-        /* TODO enable after merging telephony change
-        unregisterForUnsolVoiceSystemId(mHandler);
-        */
+        phone.unregisterForUnsolVoiceSystemId(mHandler);
     }
 
     /**
@@ -634,7 +626,7 @@ public class ExtCallManager extends CallManager {
         sub = (Integer)(ar.userObj);
         if (ar.result != null && sub != -1) {
             vsidVoice[sub] = ((Integer) (ar.result)).longValue();
-            Rlog.d(LOG_TAG, "Voice System ID:" + vsidVoice[sub]);
+            Rlog.d(LOG_TAG, "Voice System ID:" + vsidVoice[sub] + " sub = " + sub);
         }
     }
 
