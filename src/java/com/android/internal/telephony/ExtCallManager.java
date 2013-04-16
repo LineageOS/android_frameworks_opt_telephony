@@ -320,9 +320,7 @@ public class ExtCallManager extends CallManager {
                 Rlog.d(LOG_TAG, "Set parameters for Lch sub = " + sub);
                 setAudioParameters(sub);
             }
-            /* Unsol OEM Hook changes are required to enable it.
             offHookPhone.setLocalCallHold(lchStatus, mHandler.obtainMessage(EVENT_LOCAL_CALL_HOLD));
-            */
             mLchStatus[sub] = lchStatus;
         }
     }
@@ -509,11 +507,14 @@ public class ExtCallManager extends CallManager {
     @Override
     protected void registerForPhoneStates(Phone phone) {
         super.registerForPhoneStates(phone);
+        phone.registerForUnsolVoiceSystemId(mHandler, EVENT_VOICE_SYSTEM_ID,
+                phone.getSubscription());
     }
 
     @Override
     protected void unregisterForPhoneStates(Phone phone) {
         super.unregisterForPhoneStates(phone);
+        phone.unregisterForUnsolVoiceSystemId(mHandler);
     }
 
     /**

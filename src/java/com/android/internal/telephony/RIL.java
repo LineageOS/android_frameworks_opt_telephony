@@ -232,15 +232,28 @@ public final class RIL extends BaseCommands implements CommandsInterface {
      * the vendor ril.
      */
     private static final int DEFAULT_WAKE_LOCK_TIMEOUT = 60000;
-
     /** Starting number for OEMHOOK request and response IDs */
-    final int OEMHOOK_BASE = 0x80000;
+    private static final int OEMHOOK_BASE = 0x80000;
+    /** Set Tune Away */
+    private static final int OEMHOOK_EVT_HOOK_SET_TUNEAWAY = OEMHOOK_BASE + 5;
+    /** Set Priority subscription */
+    private static final int OEMHOOK_EVT_HOOK_SET_PAGING_PRIORITY = OEMHOOK_BASE + 7;
+    /** Set Default Voice subscription */
+    private static final int OEMHOOK_EVT_HOOK_SET_DEFAULT_VOICE_SUB = OEMHOOK_BASE + 12;
+    /** Set Local Call Hold subscription */
+    private static final int OEMHOOK_EVT_HOOK_SET_LOCAL_CALL_HOLD = OEMHOOK_BASE + 13;
+
+    private static final int BYTE_SIZE = 1;
+    private static final int INT_SIZE = 4;
+    private static final String OEM_IDENTIFIER = "QOEMHOOK";
+    int mHeaderSize = OEM_IDENTIFIER.length() + 2 * INT_SIZE;
 
     /** qcrilhook unsolicited response IDs */
     final int OEMHOOK_UNSOL_CDMA_BURST_DTMF = OEMHOOK_BASE + 1001;
     final int OEMHOOK_UNSOL_CDMA_CONT_DTMF_START = OEMHOOK_BASE + 1002;
     final int OEMHOOK_UNSOL_CDMA_CONT_DTMF_STOP = OEMHOOK_BASE + 1003;
     final int OEMHOOK_UNSOL_WMS_READY = OEMHOOK_BASE + 1009;
+    final int OEMHOOK_UNSOL_VOICE_SYSTEM_ID = OEMHOOK_BASE + 1010;
 
     //***** Instance Variables
 
@@ -1898,6 +1911,55 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void setTuneAway(boolean tuneAway, Message response) {
+        byte payload = (byte)(tuneAway ? 1 : 0);
+
+        Rlog.d(RILJ_LOG_TAG, "setTuneAway: TuneAway flag is " + payload);
+        sendOemRilRequestRaw(OEMHOOK_EVT_HOOK_SET_TUNEAWAY, payload, response);
+    }
+
+    @Override
+    public void setPrioritySub(int subIndex, Message response) {
+        byte payload = (byte)(subIndex & 0x7F);
+        Rlog.d(RILJ_LOG_TAG, "setPrioritySub: subIndex is " + subIndex);
+
+        sendOemRilRequestRaw(OEMHOOK_EVT_HOOK_SET_PAGING_PRIORITY, payload, response);
+    }
+
+    @Override
+    public void setDefaultVoiceSub(int subIndex, Message response) {
+        byte payload = (byte)(subIndex & 0x7F);
+        Rlog.d(RILJ_LOG_TAG, "setDefaultVoiceSub: subIndex is " + subIndex);
+
+        sendOemRilRequestRaw(OEMHOOK_EVT_HOOK_SET_DEFAULT_VOICE_SUB, payload, response);
+    }
+
+    @Override
+    public void setLocalCallHold(int lchStatus, Message response) {
+        byte payload = (byte)(lchStatus & 0x7F);
+        Rlog.d(RILJ_LOG_TAG, "setLocalCallHold: lchStatus is " + lchStatus);
+
+        sendOemRilRequestRaw(OEMHOOK_EVT_HOOK_SET_LOCAL_CALL_HOLD, payload, response);
+    }
+
+    private void sendOemRilRequestRaw(int requestId, byte payload, Message response) {
+        byte[] request = new byte[mHeaderSize + BYTE_SIZE];
+
+        ByteBuffer buf= ByteBuffer.wrap(request);
+        buf.order(ByteOrder.nativeOrder());
+
+        // Add OEM identifier String
+        buf.put(OEM_IDENTIFIER.getBytes());
+        // Add Request ID
+        buf.putInt(requestId);
+        // Add Request payload length
+        buf.putInt(BYTE_SIZE);
+        buf.put(payload);
+
+        invokeOemRilRequestRaw(request, response);
+    }
+
+    @Override
     public void invokeOemRilRequestRaw(byte[] data, Message response) {
         RILRequest rr
                 = RILRequest.obtain(RIL_REQUEST_OEM_HOOK_RAW, response);
@@ -3145,9 +3207,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private boolean isQcUnsolOemHookResp(ByteBuffer oemHookResponse) {
-        String mOemIdentifier = "QOEMHOOK";
-        int INT_SIZE = 4;
-        int mHeaderSize = mOemIdentifier.length() + 2 * INT_SIZE;
 
         /* Check OEM ID in UnsolOemHook response */
         if (oemHookResponse.capacity() < mHeaderSize) {
@@ -3159,11 +3218,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     "RIL_UNSOL_OEM_HOOK_RAW data size is " + oemHookResponse.capacity());
             return false;
         } else {
-            byte[] oemIdBytes = new byte[mOemIdentifier.length()];
+            byte[] oemIdBytes = new byte[OEM_IDENTIFIER.length()];
             oemHookResponse.get(oemIdBytes);
             String oemIdString = new String(oemIdBytes);
             Rlog.d(RILJ_LOG_TAG, "Oem ID in RIL_UNSOL_OEM_HOOK_RAW is " + oemIdString);
-            if (!oemIdString.equals(mOemIdentifier)) {
+            if (!oemIdString.equals(OEM_IDENTIFIER)) {
                 /* OEM ID not matched, considered as External OEM's message */
                 return false;
             }
@@ -3172,7 +3231,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private void processUnsolOemhookResponse(ByteBuffer oemHookResponse) {
-        int responseId = 0, responseSize = 0;
+        int responseId = 0, responseSize = 0, responseVoiceId = 0;
 
         responseId = oemHookResponse.getInt();
         Rlog.d(RILJ_LOG_TAG, "Response ID in RIL_UNSOL_OEM_HOOK_RAW is " + responseId);
@@ -3185,7 +3244,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         byte[] responseData = new byte[responseSize];
         if (oemHookResponse.remaining() == responseSize) {
-            oemHookResponse.get(responseData, 0, responseSize);
+            if (responseId == OEMHOOK_UNSOL_VOICE_SYSTEM_ID) {
+                responseVoiceId = oemHookResponse.getInt();
+            } else {
+                oemHookResponse.get(responseData, 0, responseSize);
+            }
         } else {
             Rlog.e(RILJ_LOG_TAG, "Response Size(" + responseSize
                     + ") doesnot match remaining bytes(" +
@@ -3208,6 +3271,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
             case OEMHOOK_UNSOL_WMS_READY:
                 notifyWmsReady(responseData);
+                break;
+
+            case OEMHOOK_UNSOL_VOICE_SYSTEM_ID:
+                Rlog.d(RILJ_LOG_TAG, "Response voice id in RIL_UNSOL_OEM_HOOK_RAW is "
+                        + responseVoiceId);
+                notifyVoiceSystemId(responseVoiceId);
                 break;
 
             default:
@@ -3240,6 +3309,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         AsyncResult ar = new AsyncResult(null, data, null);
         mWmsReadyRegistrants.notifyRegistrants(ar);
         Rlog.d(RILJ_LOG_TAG, "WMS_READY notified to registrants");
+    }
+
+    /** Notify registrants of Voice System Id. */
+    protected void notifyVoiceSystemId(int data) {
+        AsyncResult ar = new AsyncResult(null, new Integer(data), null);
+        mVoiceSystemIdRegistrants.notifyRegistrants(ar);
+        Rlog.d(RILJ_LOG_TAG, "VOICE_SYSTEM_ID notified to registrants");
     }
 
     private Object
