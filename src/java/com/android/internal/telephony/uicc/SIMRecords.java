@@ -499,7 +499,7 @@ public class SIMRecords extends IccRecords {
                         obtainMessage (EVENT_UPDATE_DONE, EF_CFF_CPHS));
             }
         } catch (ArrayIndexOutOfBoundsException ex) {
-            logw("Error saving call fowarding flag to SIM. "
+            logw("Error saving call forwarding flag to SIM. "
                             + "Probably malformed SIM record", ex);
 
         }
@@ -896,14 +896,14 @@ public class SIMRecords extends IccRecords {
                 log("EF_CFF_CPHS: " + IccUtils.bytesToHexString(data));
                 mEfCff = data;
 
-                if (validEfCfis(mEfCfis)) {
+                // if EF_CFIS is valid, prefer it to EF_CFF_CPHS
+                if (!validEfCfis(mEfCfis)) {
                     mCallForwardingEnabled =
                         ((data[0] & CFF_LINE1_MASK) == CFF_UNCONDITIONAL_ACTIVE);
 
                     mRecordsEventsRegistrants.notifyResult(EVENT_CFI);
                 } else {
-                    log("EVENT_GET_CFF_DONE: invalid mEfCfis="
-                            + IccUtils.bytesToHexString(mEfCfis));
+                    log("EVENT_GET_CFF_DONE: EF_CFIS is valid, ignoring EF_CFF_CPHS");
                 }
                 break;
 
@@ -1102,7 +1102,7 @@ public class SIMRecords extends IccRecords {
 
                     // Refer TS 51.011 Section 10.3.46 for the content description
                     mCallForwardingEnabled = ((data[1] & 0x01) != 0);
-                    log("EF_CFIS: callFordwardingEnabled=" + mCallForwardingEnabled);
+                    log("EF_CFIS: callForwardingEnabled=" + mCallForwardingEnabled);
 
                     mRecordsEventsRegistrants.notifyResult(EVENT_CFI);
                 } else {
@@ -1225,9 +1225,8 @@ public class SIMRecords extends IccRecords {
     }
 
     /**
-     * Dispatch 3GPP format message. Overridden for CDMA/LTE phones by
-     * {@link com.android.internal.telephony.cdma.CdmaLteUiccRecords}
-     * to send messages to the secondary 3GPP format SMS dispatcher.
+     * Dispatch 3GPP format message to registrant ({@code GSMPhone} or {@code CDMALTEPhone})
+     * to pass to the 3GPP SMS dispatcher for delivery.
      */
     protected int dispatchGsmMessage(SmsMessageBase message) {
         mNewSmsRegistrants.notifyResult(message);
@@ -1695,7 +1694,7 @@ public class SIMRecords extends IccRecords {
         // Normally this is programmed as 10th service after the standard
         // services.
         int usedCspGroups = data.length / 2;
-        // This is the "Servive Group Number" of "Value Added Services Group".
+        // This is the "Service Group Number" of "Value Added Services Group".
         byte valueAddedServicesGroup = (byte)0xC0;
 
         mCspPlmnEnabled = true;
