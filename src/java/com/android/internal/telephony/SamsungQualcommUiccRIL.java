@@ -27,8 +27,10 @@ import android.os.AsyncResult;
 import android.telephony.SignalStrength;
 import android.text.TextUtils;
 import android.util.Log;
+import android.telephony.PhoneNumberUtils;
 import com.android.internal.telephony.RILConstants;
 
+import java.util.Collections;
 import java.util.ArrayList;
 
 /**
@@ -228,6 +230,78 @@ public class SamsungQualcommUiccRIL extends QualcommSharedRIL implements Command
         return status;
     }
 
+    @Override
+    protected Object
+    responseCallList(Parcel p) {
+        if (mRilVersion < 7)
+            return super.responseCallList(p);
+
+        int num;
+        int voiceSettings;
+        ArrayList<DriverCall> response;
+        DriverCall dc;
+
+        num = p.readInt();
+        response = new ArrayList<DriverCall>(num);
+
+        for (int i = 0 ; i < num ; i++) {
+            dc = new DriverCall();
+
+            dc.state = DriverCall.stateFromCLCC(p.readInt());
+            dc.index = p.readInt();
+            dc.TOA = p.readInt();
+            dc.isMpty = (0 != p.readInt());
+            dc.isMT = (0 != p.readInt());
+            dc.als = p.readInt();
+            voiceSettings = p.readInt();
+            dc.isVoice = (0 == voiceSettings) ? false : true;
+            //Some Samsung magic data for Videocalls
+            // hack taken from smdk4210ril class
+            voiceSettings = p.readInt();
+            //printing it to cosole for later investigation
+            Log.d(LOG_TAG, "Samsung magic = " + voiceSettings);
+            dc.isVoicePrivacy = (0 != p.readInt());
+            dc.number = p.readString();
+            int np = p.readInt();
+            dc.numberPresentation = DriverCall.presentationFromCLIP(np);
+            dc.name = p.readString();
+            dc.namePresentation = p.readInt();
+            int uusInfoPresent = p.readInt();
+            if (uusInfoPresent == 1) {
+                dc.uusInfo = new UUSInfo();
+                dc.uusInfo.setType(p.readInt());
+                dc.uusInfo.setDcs(p.readInt());
+                byte[] userData = p.createByteArray();
+                dc.uusInfo.setUserData(userData);
+                riljLogv(String.format("Incoming UUS : type=%d, dcs=%d, length=%d",
+                                       dc.uusInfo.getType(), dc.uusInfo.getDcs(),
+                                       dc.uusInfo.getUserData().length));
+                riljLogv("Incoming UUS : data (string)="
+                         + new String(dc.uusInfo.getUserData()));
+                riljLogv("Incoming UUS : data (hex): "
+                         + IccUtils.bytesToHexString(dc.uusInfo.getUserData()));
+            } else {
+                riljLogv("Incoming UUS : NOT present!");
+            }
+
+            // Make sure there's a leading + on addresses with a TOA of 145
+            dc.number = PhoneNumberUtils.stringFromStringAndTOA(dc.number, dc.TOA);
+
+            response.add(dc);
+
+            if (dc.isVoicePrivacy) {
+                mVoicePrivacyOnRegistrants.notifyRegistrants();
+                riljLog("InCall VoicePrivacy is enabled");
+            } else {
+                mVoicePrivacyOffRegistrants.notifyRegistrants();
+                riljLog("InCall VoicePrivacy is disabled");
+            }
+        }
+
+        Collections.sort(response);
+
+        return response;
+    }
     @Override
     protected Object
     responseSignalStrength(Parcel p) {
