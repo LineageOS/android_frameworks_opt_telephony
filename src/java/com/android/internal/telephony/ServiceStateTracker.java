@@ -53,6 +53,8 @@ public abstract class ServiceStateTracker extends Handler {
 
     protected PhoneBase mPhoneBase;
 
+    protected boolean mVoiceCapable;
+
     public ServiceState mSS = new ServiceState();
     protected ServiceState mNewSS = new ServiceState();
 
@@ -196,6 +198,8 @@ public abstract class ServiceStateTracker extends Handler {
         mPhoneBase = phoneBase;
         mCellInfo = cellInfo;
         mCi = ci;
+        mVoiceCapable = mPhoneBase.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_voice_capable);
         mUiccController = UiccController.getInstance();
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
@@ -228,6 +232,22 @@ public abstract class ServiceStateTracker extends Handler {
         }
         return notified;
     }
+
+    /**
+     * Some operators have been known to report registration failure
+     * data only devices, to fix that use DataRegState.
+     */
+    protected void useDataRegStateForDataOnlyDevices() {
+        if (mVoiceCapable == false) {
+            if (DBG) {
+                log("useDataRegStateForDataOnlyDevice: VoiceRegState=" + mNewSS.getVoiceRegState()
+                    + " DataRegState=" + mNewSS.getDataRegState());
+            }
+            // TODO: Consider not lying and instead have callers know the difference. 
+            mNewSS.setVoiceRegState(mNewSS.getDataRegState());
+        }
+    }
+
 
     /**
      * Registration point for combined roaming on
