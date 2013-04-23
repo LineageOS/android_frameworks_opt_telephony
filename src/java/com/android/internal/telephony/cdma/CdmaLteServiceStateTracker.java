@@ -251,6 +251,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     protected void pollStateDone() {
         log("pollStateDone: lte 1 ss=[" + mSS + "] newSS=[" + mNewSS + "]");
 
+        useDataRegStateForDataOnlyDevices();
+
         boolean hasRegistered = mSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE
                 && mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE;
 

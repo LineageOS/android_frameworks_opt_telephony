@@ -806,6 +806,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             mNewSS.setRoaming(true);
         }
 
+        useDataRegStateForDataOnlyDevices();
+
         boolean hasRegistered =
             mSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE
             && mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE;
