@@ -56,10 +56,12 @@ import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.SmsBroadcastUndelivered;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 import com.android.internal.telephony.uicc.IccException;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.RuimRecords;
@@ -105,6 +107,8 @@ public class CDMAPhone extends PhoneBase {
     PhoneSubInfo mSubInfo;
     EriManager mEriManager;
     WakeLock mWakeLock;
+
+    protected CdmaInboundSmsHandler mCdmaInboundSmsHandler;
 
     // mEriFileLoadedRegistrants are informed after the ERI text has been loaded
     private final RegistrantList mEriFileLoadedRegistrants = new RegistrantList();
@@ -154,12 +158,41 @@ public class CDMAPhone extends PhoneBase {
         mSST = new CdmaServiceStateTracker(this);
     }
 
+    /**
+     * Implemented in {@link CDMALTEPhone} to create SMSDispatcher and InboundSmsHandler for 3GPP.
+     * @return the new GsmInboundSmsHandler (to pass to SmsBroadcastUndelivered), or null
+     */
+    protected GsmInboundSmsHandler initGsmSmsDispatcher() {
+        return null;
+    }
+
+    /**
+     * Create SMS dispatcher(s) and inbound SMS handler(s), and start worker thread for
+     * {@link SmsBroadcastUndelivered}.
+     */
+    protected void initSmsDispatcher() {
+        // Create 3GPP2 SMS dispatcher for outgoing messages.
+        mSMS = new CdmaSMSDispatcher(this, mSmsUsageMonitor);
+
+        // Create 3GPP2 inbound SMS handler.
+        mCdmaInboundSmsHandler = CdmaInboundSmsHandler.makeInboundSmsHandler(mContext,
+                mSmsStorageMonitor, this, (CdmaSMSDispatcher) mSMS);
+
+        // Create 3GPP dispatcher and handler for CDMA/LTE devices.
+        GsmInboundSmsHandler gsmInboundSmsHandler = initGsmSmsDispatcher();
+
+        // Find undelivered messages in raw table and send to inbound SMS handler to broadcast.
+        Thread broadcastThread = new Thread(new SmsBroadcastUndelivered(mContext,
+                gsmInboundSmsHandler, mCdmaInboundSmsHandler));
+        broadcastThread.start();
+    }
+
     protected void init(Context context, PhoneNotifier notifier) {
         mCi.setPhoneType(PhoneConstants.PHONE_TYPE_CDMA);
         mCT = new CdmaCallTracker(this);
         mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context, mCi, this,
                 EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
-        mSMS = new CdmaSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
+        initSmsDispatcher();
         mDcTracker = new DcTracker(this);
         mRuimPhoneBookInterfaceManager = new RuimPhoneBookInterfaceManager(this);
         mRuimSmsInterfaceManager = new RuimSmsInterfaceManager(this, mSMS);
@@ -236,6 +269,7 @@ public class CDMAPhone extends PhoneBase {
             mSST.dispose();
             mCdmaSSM.dispose(this);
             mSMS.dispose();
+            mCdmaInboundSmsHandler.dispose();
             mRuimPhoneBookInterfaceManager.dispose();
             mRuimSmsInterfaceManager.dispose();
             mSubInfo.dispose();
