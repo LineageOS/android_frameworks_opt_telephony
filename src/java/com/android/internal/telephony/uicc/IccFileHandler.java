@@ -324,16 +324,13 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 onLoaded);
 
         logd("IccFileHandler: loadEFImgTransparent fileid = " + fileid
-                + " filePath = " + getEFPath(fileid) + " highOffset = " + highOffset
+                + " filePath = " + getEFPath(EF_IMG) + " highOffset = " + highOffset
                 + " lowOffset = " + lowOffset + " length = " + length);
-        /*
-         * Per TS 31.102, for displaying of Icon, under
-         * DF Telecom and DF Graphics , EF instance(s) (4FXX,transparent files)
-         * are present. The possible image file identifiers (EF instance) for
-         * EF img ( 4F20, linear fixed file) are : 4F01 ... 4F05.
-         */
-        mCi.iccIOForApp(COMMAND_READ_BINARY, fileid, getEFPath(fileid),
-                highOffset, lowOffset, length, null, null, mAid, response);
+
+        //As per TS 31.102 and TS 11.11, all the image related EF_IIDF's
+        //are located at MF_SIM + DF_TELECOM + DF_GRAPHICS, same path as EF_IMG.
+        mCi.iccIOForApp(COMMAND_READ_BINARY, fileid, getEFPath(EF_IMG),
+                highOffset, lowOffset,length, null, null, mAid, response);
     }
 
     /**

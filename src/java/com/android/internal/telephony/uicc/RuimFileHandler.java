@@ -42,7 +42,9 @@ public final class RuimFileHandler extends IccFileHandler {
         Message response = obtainMessage(EVENT_READ_ICON_DONE, fileid, 0,
                 onLoaded);
 
-        mCi.iccIOForApp(COMMAND_GET_RESPONSE, fileid, getEFPath(fileid), 0, 0,
+        //As per TS 31.102 and TS 11.11, all the image related EF_IIDF's
+        //are located at MF_SIM + DF_TELECOM + DF_GRAPHICS, same path as EF_IMG.
+        mCi.iccIOForApp(COMMAND_GET_RESPONSE, fileid, getEFPath(EF_IMG), 0, 0,
                 GET_RESPONSE_EF_IMG_SIZE_BYTES, null, null,
                 mAid, response);
     }
