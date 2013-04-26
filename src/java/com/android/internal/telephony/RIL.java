@@ -250,6 +250,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     //***** Constants
 
+    // TODO: To move it to RilConstants.java.
+    static final int RIL_REQUEST_SET_INITIAL_ATTACH_APN = 111;
+
     // match with constant in ril.cpp
     static final int RIL_MAX_COMMAND_BYTES = (8 * 1024);
     static final int RESPONSE_SOLICITED = 0;
@@ -2384,6 +2387,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_VOICE_RADIO_TECH: ret = responseInts(p); break;
             case RIL_REQUEST_GET_CELL_INFO_LIST: ret = responseCellInfoList(p); break;
             case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE: ret = responseVoid(p); break;
+            case RIL_REQUEST_SET_INITIAL_ATTACH_APN: ret = responseVoid(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -3680,6 +3684,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_VOICE_RADIO_TECH: return "RIL_REQUEST_VOICE_RADIO_TECH";
             case RIL_REQUEST_GET_CELL_INFO_LIST: return "RIL_REQUEST_GET_CELL_INFO_LIST";
             case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE: return "RIL_REQUEST_SET_CELL_INFO_LIST_RATE";
+            case RIL_REQUEST_SET_INITIAL_ATTACH_APN: return "RIL_REQUEST_SET_INITIAL_ATTACH_APN";
             default: return "<unknown request>";
         }
     }
@@ -3993,6 +3998,25 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         rr.mParcel.writeInt(rateInMillis);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
+    }
+
+    public void setInitialAttachApn(String apn, String protocol, int authType, String username,
+            String password, Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_INITIAL_ATTACH_APN, null);
+
+        if (RILJ_LOGD) riljLog("Set RIL_REQUEST_SET_INITIAL_ATTACH_APN");
+
+        rr.mParcel.writeString(apn);
+        rr.mParcel.writeString(protocol);
+        rr.mParcel.writeInt(authType);
+        rr.mParcel.writeString(username);
+        rr.mParcel.writeString(password);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                + ", apn:" + apn + ", protocol:" + protocol + ", authType:" + authType
+                + ", username:" + username + ", password:" + password);
 
         send(rr);
     }

@@ -1060,6 +1060,7 @@ public final class DcTracker extends DcTrackerBase {
         // match the current operator.
         if (DBG) log("onApnChanged: createAllApnList and cleanUpAllConnections");
         createAllApnList();
+        setInitialAttachApn();
         cleanUpAllConnections(!isDisconnected, Phone.REASON_APN_CHANGED);
         if (isDisconnected) {
             setupDataOnConnectableApns(Phone.REASON_APN_CHANGED);
@@ -1240,6 +1241,7 @@ public final class DcTracker extends DcTrackerBase {
     private void onRecordsLoaded() {
         if (DBG) log("onRecordsLoaded: createAllApnList");
         createAllApnList();
+        setInitialAttachApn();
         if (mPhone.mCi.getRadioState().isOn()) {
             if (DBG) log("onRecordsLoaded: notifying data availability");
             notifyOffApnsOfAvailability(Phone.REASON_SIM_LOADED);

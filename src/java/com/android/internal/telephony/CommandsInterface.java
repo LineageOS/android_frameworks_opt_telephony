@@ -1613,6 +1613,27 @@ public interface CommandsInterface {
     void unregisterForCellInfoList(Handler h);
 
     /**
+     * Set Initial Attach Apn
+     *
+     * @param apn
+     *            the APN to connect to if radio technology is GSM/UMTS.
+     * @param protocol
+     *            one of the PDP_type values in TS 27.007 section 10.1.1.
+     *            For example, "IP", "IPV6", "IPV4V6", or "PPP".
+     * @param authType
+     *            authentication protocol used for this PDP context
+     *            (None: 0, PAP: 1, CHAP: 2, PAP&CHAP: 3)
+     * @param username
+     *            the username for APN, or NULL
+     * @param password
+     *            the password for APN, or NULL
+     * @param result
+     *            callback message contains the information of SUCCESS/FAILURE
+     */
+    public void setInitialAttachApn(String apn, String protocol, int authType, String username,
+            String password, Message result);
+
+    /**
      * Notifiy that we are testing an emergency call
      */
     public void testingEmergencyCall();

@@ -536,4 +536,9 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     @Override
     public void setCellInfoListRate(int rateInMillis, Message response) {
     }
+
+    @Override
+    public void setInitialAttachApn(String apn, String protocol, int authType, String username,
+            String password, Message result) {
+    }
 }

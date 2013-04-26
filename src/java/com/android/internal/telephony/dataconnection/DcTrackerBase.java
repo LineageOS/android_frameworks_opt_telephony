@@ -1467,6 +1467,37 @@ public abstract class DcTrackerBase extends Handler {
         startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
     }
 
+    protected void setInitialAttachApn() {
+        ApnSetting apnSetting = null;
+
+        if (mPreferredApn != null) {
+            apnSetting = (ApnSetting)mPreferredApn;
+        } else if (mAllApnSettings != null && !mAllApnSettings.isEmpty()) {
+            for (ApnSetting apn : mAllApnSettings) {
+                if (apnSetting == null) {
+                    apnSetting = apn;
+                }
+                if (apn.canHandleType(PhoneConstants.APN_TYPE_DEFAULT)) {
+                    apnSetting = apn;
+                    break;
+                }
+            }
+        } else {
+            if (DBG) log("setInitialAttachApn : mAllApnSettings is null or empty");
+            return;
+        }
+
+        if (apnSetting == null) {
+            if (DBG) log("setInitialAttachApn : There in no available apn");
+            return;
+        }
+
+        if (DBG) log("setInitialAttachApn : selected Apn=" + apnSetting);
+
+        mPhone.mCi.setInitialAttachApn(apnSetting.apn, apnSetting.protocol, apnSetting.authType,
+                apnSetting.user, apnSetting.password, null);
+    }
+
     void sendCleanUpConnection(boolean tearDown, ApnContext apnContext) {
         if (DBG)log("sendCleanUpConnection: tearDown=" + tearDown + " apnContext=" + apnContext);
         Message msg = obtainMessage(DctConstants.EVENT_CLEAN_UP_CONNECTION);
