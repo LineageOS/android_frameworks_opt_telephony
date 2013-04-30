@@ -212,7 +212,7 @@ public class ApnContext {
     }
 
     @Override
-    public String toString() {
+    public synchronized String toString() {
         // We don't print mDataConnection because its recursive.
         return "{mApnType=" + mApnType + " mState=" + getState() + " mWaitingApns={" + mWaitingApns +
                 "} mWaitingApnsPermanentFailureCountDown=" + mWaitingApnsPermanentFailureCountDown +
