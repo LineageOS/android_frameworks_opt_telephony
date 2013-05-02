@@ -35,6 +35,11 @@ public class CatCmdMessage implements Parcelable {
     private CallSettings mCallSettings = null;
     private boolean mLoadIconFailed = false;
 
+    // Command Qualifier values for refresh command
+    static final int REFRESH_NAA_INIT_AND_FULL_FILE_CHANGE  = 0x00;
+    static final int REFRESH_NAA_INIT_AND_FILE_CHANGE       = 0x02;
+    static final int REFRESH_NAA_INIT                       = 0x03;
+    static final int REFRESH_UICC_RESET                     = 0x04;
     /*
      * Container for Launch Browser command settings.
      */
@@ -63,6 +68,7 @@ public class CatCmdMessage implements Parcelable {
         case SET_UP_IDLE_MODE_TEXT:
         case SEND_DTMF:
         case SEND_SMS:
+        case REFRESH:
         case SEND_SS:
         case SEND_USSD:
             mTextMsg = ((DisplayTextParams) cmdParams).mTextMsg;
@@ -98,7 +104,6 @@ public class CatCmdMessage implements Parcelable {
             mTextMsg = param.mTextMsg;
             break;
         case PROVIDE_LOCAL_INFORMATION:
-        case REFRESH:
         case SET_UP_EVENT_LIST:
         default:
             break;
@@ -206,5 +211,16 @@ public class CatCmdMessage implements Parcelable {
      */
     public boolean hasIconLoadFailed() {
         return mLoadIconFailed;
+    }
+
+    public boolean isRefreshResetOrInit() {
+        if ((mCmdDet.commandQualifier == REFRESH_NAA_INIT_AND_FULL_FILE_CHANGE)
+            || (mCmdDet.commandQualifier == REFRESH_NAA_INIT_AND_FILE_CHANGE )
+            || (mCmdDet.commandQualifier == REFRESH_NAA_INIT)
+            || (mCmdDet.commandQualifier == REFRESH_UICC_RESET)) {
+            return true;
+        } else {
+            return false;
+        }
     }
 }

@@ -339,9 +339,8 @@ public class CatService extends Handler implements AppInterface {
                 }
                 break;
             case REFRESH:
-                // ME side only handles refresh commands which meant to remove IDLE
-                // MODE TEXT.
-                cmdParams.mCmdDet.typeOfCommand = CommandType.SET_UP_IDLE_MODE_TEXT.value();
+                //Stk app service displays alpha id to user if it is present, nothing to do here
+                CatLog.d(this, "Pass Refresh to Stk app");
                 break;
             case SET_UP_IDLE_MODE_TEXT:
                 resultCode = cmdParams.mLoadIconFailed ? ResultCode.PRFRMD_ICON_NOT_DISPLAYED
