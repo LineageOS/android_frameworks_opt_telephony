@@ -843,39 +843,43 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 mNewSS.getVoiceRegState(), mNewSS.getDataRegState());
         }
 
-        ServiceState tss;
-        tss = mSS;
-        mSS = mNewSS;
-        mNewSS = tss;
-        // clean slate for next time
-        mNewSS.setStateOutOfService();
-
-        GsmCellLocation tcl = mCellLoc;
-        mCellLoc = mNewCellLoc;
-        mNewCellLoc = tcl;
-
         // Add an event log when network type switched
         // TODO: we may add filtering to reduce the event logged,
         // i.e. check preferred network setting, only switch to 2G, etc
         if (hasRilVoiceRadioTechnologyChanged) {
             int cid = -1;
-            GsmCellLocation loc = ((GsmCellLocation)mPhone.getCellLocation());
+            GsmCellLocation loc = mNewCellLoc;
             if (loc != null) cid = loc.getCid();
-            EventLog.writeEvent(EventLogTags.GSM_RAT_SWITCHED, cid, mSS.getRilVoiceRadioTechnology(),
+            // NOTE: this code was previously located after mSS and mNewSS are swapped, so
+            // existing logs were incorrectly using the new state for "network_from"
+            // and STATE_OUT_OF_SERVICE for "network_to". To avoid confusion, use a new log tag
+            // to record the correct states.
+            EventLog.writeEvent(EventLogTags.GSM_RAT_SWITCHED_NEW, cid,
+                    mSS.getRilVoiceRadioTechnology(),
                     mNewSS.getRilVoiceRadioTechnology());
             if (DBG) {
                 log("RAT switched "
                         + ServiceState.rilRadioTechnologyToString(mSS.getRilVoiceRadioTechnology())
                         + " -> "
-                        + ServiceState.rilRadioTechnologyToString(mNewSS.getRilVoiceRadioTechnology()) +
-                        " at cell " + cid);
+                        + ServiceState.rilRadioTechnologyToString(
+                                mNewSS.getRilVoiceRadioTechnology()) + " at cell " + cid);
             }
         }
 
+        // swap mSS and mNewSS to put new state in mSS
+        ServiceState tss = mSS;
+        mSS = mNewSS;
+        mNewSS = tss;
+        // clean slate for next time
+        mNewSS.setStateOutOfService();
+
+        // swap mCellLoc and mNewCellLoc to put new state in mCellLoc
+        GsmCellLocation tcl = mCellLoc;
+        mCellLoc = mNewCellLoc;
+        mNewCellLoc = tcl;
+
         mReasonDataDenied = mNewReasonDataDenied;
         mMaxDataCalls = mNewMaxDataCalls;
-
-        mNewSS.setStateOutOfService(); // clean slate for next time
 
         if (hasRilVoiceRadioTechnologyChanged) {
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
