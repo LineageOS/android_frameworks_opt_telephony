@@ -25,25 +25,24 @@ sendMessageSynchronously blocks.
 
 == Testing ==
 
-There are three Intents that can be sent for testing pruproses:
+The following are Intents that can be sent for testing pruproses on
+DEBUGGABLE builds (userdebug, eng)
 
-The first two cause bringUp and retry requests to fail and the first
-causes all DC's to fail the second causes a specific DC to fail:
+*) Causes bringUp and retry requests to fail for all DC's
 
   adb shell am broadcast -a com.android.internal.telephony.dataconnection.action_fail_bringup --ei counter 2 --ei fail_cause -3
-  adb shell am broadcast -a com.android.internal.telephony.dataconnection.DC-1.action_fail_bringup --ei counter 2 --ei fail_cause -3
 
-The other causes all DC's to get torn down, simulating a temporary network outage:
+*) Causes all DC's to get torn down, simulating a temporary network outage:
 
   adb shell am broadcast -a com.android.internal.telephony.dataconnection.action_deactivate_all
 
-To simplify testing we also have detach and attach simulations below where {x} is gsm, cdma or sip
+*) To simplify testing we also have detach and attach simulations below where {x} is gsm, cdma or sip
 
   adb shell am broadcast -a com.android.internal.telephony.{x}.action_detached
   adb shell am broadcast -a com.android.internal.telephony.{x}.action_attached
 
 
-== Testing on Debuggable Builds ==
+== System properties for Testing ==
 
 On debuggable builds (userdebug, eng) you can change additional
 settings through system properties.  These properties can be set with
