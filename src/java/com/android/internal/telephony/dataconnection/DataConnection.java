@@ -716,6 +716,48 @@ public final class DataConnection extends StateMachine {
     }
 
     /**
+     * Initialize connection, this will fail if the
+     * apnSettings are not compatible.
+     *
+     * @param cp the Connection paramemters
+     * @return true if initialization was successful.
+     */
+    private boolean initConnection(ConnectionParams cp) {
+        ApnContext apnContext = cp.mApnContext;
+        if (mApnSetting == null) {
+            // Only change apn setting if it isn't set, it will
+            // only NOT be set only if we're in DcInactiveState.
+            mApnSetting = apnContext.getApnSetting();
+        } else if (mApnSetting.canHandleType(apnContext.getApnType())) {
+            // All is good.
+        } else {
+            if (DBG) {
+                log("initConnection: incompatible apnSetting in ConnectionParams cp=" + cp
+                        + " dc=" + DataConnection.this);
+            }
+            return false;
+        }
+        mTag += 1;
+        mConnectionParams = cp;
+        mConnectionParams.mTag = mTag;
+
+        if (!mApnContexts.contains(apnContext)) {
+            mApnContexts.add(apnContext);
+        }
+        configureRetry(mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT));
+        mRetryManager.setRetryCount(0);
+        mRetryManager.setCurMaxRetryCount(mConnectionParams.mInitialMaxRetry);
+
+        if (DBG) {
+            log("initConnection: "
+                    + " RefCount=" + mApnContexts.size()
+                    + " mApnList=" + mApnContexts
+                    + " mConnectionParams=" + mConnectionParams);
+        }
+        return true;
+    }
+
+    /**
      * The parent state for all other states.
      */
     private class DcDefaultState extends State {
@@ -907,13 +949,6 @@ public final class DataConnection extends StateMachine {
             mDcFailCause = cause;
         }
 
-        // We won't be informing anyone
-        public void setEnterNotificationParams() {
-            mConnectionParams = null;
-            mDisconnectParams = null;
-            mDcFailCause = null;
-        }
-
         @Override
         public void enter() {
             mTag += 1;
@@ -964,25 +999,18 @@ public final class DataConnection extends StateMachine {
                     break;
 
                 case EVENT_CONNECT:
-                    mConnectionParams = (ConnectionParams) msg.obj;
-                    mConnectionParams.mTag = mTag;
-
-                    ApnContext apnContext = mConnectionParams.mApnContext;
-                    mApnSetting = apnContext.getApnSetting();
-                    mApnContexts.add(apnContext);
-                    configureRetry(mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT));
-                    mRetryManager.setRetryCount(0);
-                    mRetryManager.setCurMaxRetryCount(mConnectionParams.mInitialMaxRetry);
-
-                    if (DBG) {
-                        log("DcInactiveState msg.what=EVENT_CONNECT"
-                                + " RefCount=" + mApnContexts.size()
-                                + " mApnList=" + mApnContexts
-                                + " mConnectionParams=" + mConnectionParams);
+                    if (DBG) log("DcInactiveState: mag.what=EVENT_CONNECT");
+                    ConnectionParams cp = (ConnectionParams) msg.obj;
+                    if (initConnection(cp)) {
+                        onConnect(mConnectionParams);
+                        transitionTo(mActivatingState);
+                    } else {
+                        if (DBG) {
+                            log("DcInactiveState: msg.what=EVENT_CONNECT initConnection failed");
+                        }
+                        notifyConnectCompleted(cp, DcFailCause.UNACCEPTABLE_NETWORK_PARAMETER,
+                                false);
                     }
-
-                    onConnect(mConnectionParams);
-                    transitionTo(mActivatingState);
                     retVal = HANDLED;
                     break;
 
@@ -1063,17 +1091,22 @@ public final class DataConnection extends StateMachine {
                     break;
                 }
                 case EVENT_CONNECT: {
+                    ConnectionParams cp = (ConnectionParams) msg.obj;
                     if (DBG) {
-                        ConnectionParams cp = (ConnectionParams) msg.obj;
-                        log("DcRetryingState msg.what=EVENT_CONNECT "
-                                + "RefCount=" + mApnContexts.size() + " cp=" + cp
+                        log("DcRetryingState: msg.what=EVENT_CONNECT"
+                                + " RefCount=" + mApnContexts.size() + " cp=" + cp
                                 + " mConnectionParams=" + mConnectionParams);
                     }
-                    // Enter inactive state and skip notification as
-                    // it will be assumed this EVENT_CONNECT failed.
-                    mInactiveState.setEnterNotificationParams();
-                    deferMessage(msg);
-                    transitionTo(mInactiveState);
+                    if (initConnection(cp)) {
+                        onConnect(mConnectionParams);
+                        transitionTo(mActivatingState);
+                    } else {
+                        if (DBG) {
+                            log("DcRetryingState: msg.what=EVENT_CONNECT initConnection failed");
+                        }
+                        notifyConnectCompleted(cp, DcFailCause.UNACCEPTABLE_NETWORK_PARAMETER,
+                                false);
+                    }
                     retVal = HANDLED;
                     break;
                 }
@@ -1088,7 +1121,7 @@ public final class DataConnection extends StateMachine {
                         mInactiveState.setEnterNotificationParams(dp);
                         transitionTo(mInactiveState);
                     } else {
-                        if (DBG) log("DcInactiveState: msg.what=EVENT_DISCONNECT");
+                        if (DBG) log("DcRetryingState: msg.what=EVENT_DISCONNECT");
                         notifyDisconnectCompleted(dp, false);
                     }
                     retVal = HANDLED;
