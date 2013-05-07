@@ -172,7 +172,7 @@ CommandsInterface {
         return new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7], response[8], response[9], response[10], response[11], false);
 
     }
-
+    private boolean driverCallHack= needsOldRilFeature("newDriverCall");
     @Override
     protected Object responseCallList(Parcel p) {
         int num;
@@ -196,9 +196,11 @@ CommandsInterface {
             dc.isVoice = (0 == voiceSettings) ? false : true;
             // Some Samsung magic data for Videocalls
             // hack taken from smdk4210ril class
-            voiceSettings = p.readInt();
-            // printing it to cosole for later investigation
-            Log.d(LOG_TAG, "Samsung magic = " + voiceSettings);
+            if(!driverCallHack){
+                voiceSettings = p.readInt();
+                // printing it to cosole for later investigation
+                Log.d(LOG_TAG, "Samsung magic = " + voiceSettings);
+            }
             dc.isVoicePrivacy = (0 != p.readInt());
             dc.number = p.readString();
             int np = p.readInt();
