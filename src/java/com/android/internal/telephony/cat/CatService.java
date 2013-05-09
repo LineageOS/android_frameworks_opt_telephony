@@ -396,7 +396,10 @@ public class CatService extends Handler implements AppInterface {
         buf.write(DEV_ID_UICC); // destination device id
 
         // result
-        tag = 0x80 | ComprehensionTlvTag.RESULT.value();
+        tag = ComprehensionTlvTag.RESULT.value();
+        if (cmdDet.compRequired) {
+            tag |= 0x80;
+        }
         buf.write(tag);
         int length = includeAdditionalInfo ? 2 : 1;
         buf.write(length);
