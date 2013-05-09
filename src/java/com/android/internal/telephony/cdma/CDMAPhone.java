@@ -1299,11 +1299,25 @@ public class CDMAPhone extends PhoneBase {
         return  mUiccController.getUiccCardApplication(mPhoneId, UiccController.APP_FAM_3GPP2);
     }
 
+    // Set the Card into the Phone Book.
+    @Override
+    protected void setCardInPhoneBook() {
+        if (mUiccController == null ) {
+            return;
+        }
+
+        mRuimPhoneBookInterfaceManager.setIccCard(mUiccController.getUiccCard(mPhoneId));
+    }
+
     @Override
     protected void onUpdateIccAvailability() {
         if (mUiccController == null ) {
             return;
         }
+
+        // Get the latest info on the card and
+        // send this to Phone Book
+        setCardInPhoneBook();
 
         UiccCardApplication newUiccApplication = getUiccCardApplication();
 
