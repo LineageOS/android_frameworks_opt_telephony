@@ -405,6 +405,10 @@ public abstract class PhoneBase extends Handler implements Phone {
         return mContext;
     }
 
+    // Set the Card into the Phone Book.
+    protected void setCardInPhoneBook() {
+    }
+
     // Will be called when icc changed
     protected abstract void onUpdateIccAvailability();
 

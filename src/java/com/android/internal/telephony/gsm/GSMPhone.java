@@ -116,7 +116,7 @@ public class GSMPhone extends PhoneBase {
     GsmCallTracker mCT;
     protected GsmServiceStateTracker mSST;
     ArrayList <GsmMmiCode> mPendingMMIs = new ArrayList<GsmMmiCode>();
-    SimPhoneBookInterfaceManager mSimPhoneBookIntManager;
+    protected SimPhoneBookInterfaceManager mSimPhoneBookIntManager;
     PhoneSubInfo mSubInfo;
 
     Registrant mPostDialHandler;
@@ -1510,11 +1510,25 @@ public class GSMPhone extends PhoneBase {
         return  mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
     }
 
+    // Set the Card into the Phone Book.
+    @Override
+    protected void setCardInPhoneBook() {
+        if (mUiccController == null ) {
+            return;
+        }
+
+        mSimPhoneBookIntManager.setIccCard(mUiccController.getUiccCard());
+    }
+
     @Override
     protected void onUpdateIccAvailability() {
         if (mUiccController == null ) {
             return;
         }
+
+        // Get the latest info on the card and
+        // send this to Phone Book
+        setCardInPhoneBook();
 
         UiccCardApplication newUiccApplication = getUiccCardApplication();
 
@@ -1524,7 +1538,6 @@ public class GSMPhone extends PhoneBase {
                 if (LOCAL_DEBUG) log("Removing stale icc objects.");
                 if (mIccRecords.get() != null) {
                     unregisterForSimRecordEvents();
-                    mSimPhoneBookIntManager.updateIccRecords(null);
                 }
                 mIccRecords.set(null);
                 mUiccApplication.set(null);
@@ -1534,7 +1547,6 @@ public class GSMPhone extends PhoneBase {
                 mUiccApplication.set(newUiccApplication);
                 mIccRecords.set(newUiccApplication.getIccRecords());
                 registerForSimRecordEvents();
-                mSimPhoneBookIntManager.updateIccRecords(mIccRecords.get());
             }
         }
     }
