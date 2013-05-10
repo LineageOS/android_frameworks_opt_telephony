@@ -338,7 +338,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
         mNewSS.setStateOutOfService(); // clean slate for next time
 
-        if (hasVoiceRadioTechnologyChanged) {
+        if (hasDataRadioTechnologyChanged) {
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
                     ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
         }
