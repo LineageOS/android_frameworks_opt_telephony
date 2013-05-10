@@ -824,8 +824,17 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
                 && mNewSS.getDataRegState() != ServiceState.STATE_IN_SERVICE;
 
+        boolean hasDataRegStateChanged =
+                mSS.getDataRegState() != mNewSS.getDataRegState();
+
+        boolean hasVoiceRegStateChanged =
+                mSS.getVoiceRegState() != mNewSS.getVoiceRegState();
+
         boolean hasRilVoiceRadioTechnologyChanged =
                 mSS.getRilVoiceRadioTechnology() != mNewSS.getRilVoiceRadioTechnology();
+
+        boolean hasRilDataRadioTechnologyChanged =
+                mSS.getRilDataRadioTechnology() != mNewSS.getRilDataRadioTechnology();
 
         boolean hasChanged = !mNewSS.equals(mSS);
 
@@ -836,8 +845,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
         // Add an event log when connection state changes
-        if (mSS.getVoiceRegState() != mNewSS.getVoiceRegState()
-                || mSS.getDataRegState() != mNewSS.getDataRegState()) {
+        if (hasVoiceRegStateChanged || hasDataRegStateChanged) {
             EventLog.writeEvent(EventLogTags.GSM_SERVICE_STATE_CHANGE,
                 mSS.getVoiceRegState(), mSS.getDataRegState(),
                 mNewSS.getVoiceRegState(), mNewSS.getDataRegState());
@@ -877,7 +885,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         mNewSS.setStateOutOfService(); // clean slate for next time
 
-        if (hasRilVoiceRadioTechnologyChanged) {
+        if (hasRilDataRadioTechnologyChanged) {
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
                     ServiceState.rilRadioTechnologyToString(mSS.getRilVoiceRadioTechnology()));
         }
@@ -1035,8 +1043,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             mDetachedRegistrants.notifyRegistrants();
         }
 
-        if (hasRilVoiceRadioTechnologyChanged) {
-            mPhone.notifyDataConnection(Phone.REASON_NW_TYPE_CHANGED);
+        if (hasDataRegStateChanged || hasRilDataRadioTechnologyChanged) {
+            mPhone.notifyDataConnection(null);
         }
 
         if (hasRoamingOn) {
