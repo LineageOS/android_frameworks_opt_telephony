@@ -41,15 +41,16 @@ import java.util.ArrayList;
  *
  * {@hide}
  */
-public class HTCQualcommRIL extends RIL implements CommandsInterface {
+public class HTCQualcommRIL extends QualcommSharedRIL implements CommandsInterface {
 
-    private static final int RIL_UNSOL_ENTER_LPM = 1523;
-    private static final int RIL_UNSOL_CDMA_3G_INDICATOR = 3009;
-    private static final int RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR = 3012;
-    private static final int RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE = 6002;
+    private static final int RIL_UNSOL_ENTER_LPM = 3023;
+    private static final int RIL_UNSOL_TPMR_ID = 3024;
+    private static final int RIL_UNSOL_CDMA_3G_INDICATOR = 4259;
+    private static final int RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR = 4262;
+    private static final int RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE = 4802;
     private static final int RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED = 21004;
-    private static final int RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED = 21005;
-    private static final int RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED = 21007;
+    private static final int RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED = 5755;
+    private static final int RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED = 5757;
 
     public HTCQualcommRIL(Context context, int networkMode, int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
@@ -63,6 +64,9 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
         // use old needsOldRilFeature method for feature. it would be redundant to make
         // a new method just for naming sake.
         boolean oldRil = needsOldRilFeature("icccardstatus");
+
+        // force CDMA + LTE network type
+        boolean forceCdmaLteNetworkType = needsOldRilFeature("forceCdmaLteNetworkType");
 
         IccCardStatus cardStatus = new IccCardStatus();
         cardStatus.setCardState(p.readInt());
@@ -101,7 +105,26 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
             appStatus.pin2           = appStatus.PinStateFromRILInt(p.readInt());
             cardStatus.mApplications[i] = appStatus;
         }
+
+        // pretty hack way to do it. but keeps it out of CM telephony stack
+        if (forceCdmaLteNetworkType)
+            setPreferredNetworkType(8, null);
+
         return cardStatus;
+    }
+
+    @Override
+    public void setPreferredNetworkType(int networkType , Message response) {
+        /**
+          * If not using a USIM, ignore LTE mode and go to 3G
+          */
+        if (!mUSIM && networkType == RILConstants.NETWORK_MODE_LTE_GSM_WCDMA &&
+                 mSetPreferredNetworkType >= RILConstants.NETWORK_MODE_WCDMA_PREF) {
+            networkType = RILConstants.NETWORK_MODE_WCDMA_PREF;
+        }
+        mSetPreferredNetworkType = networkType;
+
+        super.setPreferredNetworkType(networkType, response);
     }
 
     @Override
@@ -156,6 +179,7 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
 
         switch(response) {
             case RIL_UNSOL_ENTER_LPM: ret = responseVoid(p); break;
+            case RIL_UNSOL_TPMR_ID: ret = responseVoid(p); break;
             case RIL_UNSOL_CDMA_3G_INDICATOR:  ret = responseInts(p); break;
             case RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR:  ret = responseInts(p); break;
             case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE:  ret = responseInts(p); break;
@@ -174,6 +198,7 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
 
         switch(response) {
             case RIL_UNSOL_ENTER_LPM:
+            case RIL_UNSOL_TPMR_ID:
             case RIL_UNSOL_CDMA_3G_INDICATOR:
             case RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR:
             case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE:
