@@ -204,8 +204,60 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                         log("handlePollStateResultMessage: mNewLteCellIdentity=" +
                                 mNewCellIdentityLte);
                     }
-                }
-            }
+		} else if (type == 14) {
+		    // Certain RILs (Qualcomm for example) report TAC and ECI in base 16 in states[1] and states[2]
+		    int mcc;
+		    int mnc;
+		    int tac;
+		    int pci = Integer.MAX_VALUE;
+		    int eci;
+		    int csgid = Integer.MAX_VALUE;
+		    String operatorNumeric = null;
+
+		    try {
+			operatorNumeric = mLteSS.getOperatorNumeric();
+			mcc = Integer.parseInt(operatorNumeric.substring(0,3));
+		    } catch (Exception e) {
+			try {
+			    operatorNumeric = ss.getOperatorNumeric();
+			    mcc = Integer.parseInt(operatorNumeric.substring(0,3));
+			} catch (Exception ex) {
+			    loge("handlePollStateResultMessage: bad mcc operatorNumeric=" +
+				    operatorNumeric + " ex=" + ex);
+			    operatorNumeric = "";
+			    mcc = Integer.MAX_VALUE;
+			}
+		    }
+		    try {
+			mnc = Integer.parseInt(operatorNumeric.substring(3));
+		    } catch (Exception e) {
+			loge("handlePollStateResultMessage: bad mnc operatorNumeric=" +
+				operatorNumeric + " e=" + e);
+			mnc = Integer.MAX_VALUE;
+		    }
+
+		    // These values are always in unprefixed hexadecimal
+		    try {
+			tac = Integer.valueOf(states[1], 16);
+		    } catch (Exception e) {
+			loge("handlePollStateResultMessage: bad tac states[6]=" +
+				states[6] + " e=" + e);
+			tac = Integer.MAX_VALUE;
+		    }
+		    try {
+			eci = Integer.valueOf(states[2], 16);
+		    } catch (Exception e) {
+			loge("handlePollStateResultMessage: bad eci states[8]=" +
+				states[8] + " e=" + e);
+			eci = Integer.MAX_VALUE;
+		    }
+		    mNewCellIdentityLte = new CellIdentityLte(mcc, mnc, eci, pci, tac);
+		    if (DBG) {
+			log("handlePollStateResultMessage: mNewLteCellIdentity=" +
+				mNewCellIdentityLte);
+		    }
+		}
+	    }
 
             mLteSS.setRadioTechnology(type);
             mLteSS.setState(regCodeToServiceState(regState));
