@@ -428,7 +428,7 @@ public class QualcommSharedRIL extends RIL implements CommandsInterface {
             case RIL_REQUEST_LAST_CALL_FAIL_CAUSE: ret =  responseInts(p); break;
             case RIL_REQUEST_SIGNAL_STRENGTH: ret =  responseSignalStrength(p); break;
             case RIL_REQUEST_VOICE_REGISTRATION_STATE: ret =  responseStrings(p); break;
-            case RIL_REQUEST_DATA_REGISTRATION_STATE: ret =  responseStrings(p); break;
+            case RIL_REQUEST_DATA_REGISTRATION_STATE: ret =  responseDataRegistrationState(p); break;
             case RIL_REQUEST_OPERATOR: ret =  responseStrings(p); break;
             case RIL_REQUEST_RADIO_POWER: ret =  responseVoid(p); break;
             case RIL_REQUEST_DTMF: ret =  responseVoid(p); break;
@@ -551,6 +551,35 @@ public class QualcommSharedRIL extends RIL implements CommandsInterface {
         }
 
         rr.release();
+    }
+
+    // Adjust LTE registration messages in nonstandard format
+    private String[]
+    responseDataRegistrationState(Parcel p) {
+        String[] response = (String[]) responseStrings(p);
+        if(response.length == 6 && (response[3] != null) && Integer.parseInt(response[3]) == 14) {
+            String[] newresponse = new String[11];
+
+            for(int i=0; i<6; i++)
+                newresponse[i] = response[i];
+
+            // TAC and ECI are in hexadecimal without a prefix, so decode won't work
+            if(response[1] == null) { // TAC
+                newresponse[6] = Integer.toString(Integer.MAX_VALUE);
+            } else {
+                newresponse[6] = Integer.toString(Integer.parseInt(response[1], 16));
+            }
+            if(response[2] == null) { // ECI
+                newresponse[8] = Integer.toString(Integer.MAX_VALUE);
+            } else {
+                newresponse[8] = Integer.toString(Integer.parseInt(response[2], 16));
+            }
+            // PCI, CSGID, and TADV
+            newresponse[7] = newresponse[9] = newresponse[10] = Integer.toString(Integer.MAX_VALUE);
+            return newresponse;
+        } else {
+            return response;
+        }
     }
 
     @Override
