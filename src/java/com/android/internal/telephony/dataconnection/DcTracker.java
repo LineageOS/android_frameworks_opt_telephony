@@ -1267,8 +1267,28 @@ public final class DcTracker extends DcTrackerBase {
                     apnContext.getDependencyMet() +"))");
         }
         if (apnContext.isReady()) {
-            if (enabled && met) return;
-            if (!enabled) {
+            if (enabled && met) {
+                DctConstants.State state = apnContext.getState();
+                switch(state) {
+                    case CONNECTING:
+                    case SCANNING:
+                    case CONNECTED:
+                    case DISCONNECTING:
+                        // We're "READY" and active so just return
+                        if (DBG) log("applyNewState: 'ready' so return");
+                        return;
+                    case IDLE:
+                        // fall through: this is unexpected but if it happens cleanup and try setup
+                    case FAILED:
+                    case RETRYING: {
+                        // We're "READY" but not active so disconnect (cleanup = true) and
+                        // connect (trySetup = true) to be sure we retry the connection.
+                        trySetup = true;
+                        apnContext.setReason(Phone.REASON_DATA_ENABLED);
+                        break;
+                    }
+                }
+            } else if (!enabled) {
                 apnContext.setReason(Phone.REASON_DATA_DISABLED);
             } else {
                 apnContext.setReason(Phone.REASON_DATA_DEPENDENCY_UNMET);
