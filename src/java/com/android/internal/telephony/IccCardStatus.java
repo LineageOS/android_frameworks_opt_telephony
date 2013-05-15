@@ -121,7 +121,7 @@ public class IccCardStatus {
             sb.append(app == null ? "null" : app);
         }
 
-        sb.append(",cmda_id=").append(mCdmaSubscriptionAppIndex);
+        sb.append(",cdma_id=").append(mCdmaSubscriptionAppIndex);
         if (mCdmaSubscriptionAppIndex >=0
                 && mCdmaSubscriptionAppIndex <CARD_MAX_APPS) {
             app = mApplications[mCdmaSubscriptionAppIndex];
