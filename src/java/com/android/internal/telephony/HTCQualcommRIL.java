@@ -61,10 +61,6 @@ public class HTCQualcommRIL extends QualcommSharedRIL implements CommandsInterfa
     responseIccCardStatus(Parcel p) {
         IccCardApplicationStatus appStatus;
 
-        // use old needsOldRilFeature method for feature. it would be redundant to make
-        // a new method just for naming sake.
-        boolean oldRil = needsOldRilFeature("icccardstatus");
-
         // force CDMA + LTE network type
         boolean forceCdmaLteNetworkType = needsOldRilFeature("forceCdmaLteNetworkType");
 
@@ -73,9 +69,7 @@ public class HTCQualcommRIL extends QualcommSharedRIL implements CommandsInterfa
         cardStatus.setUniversalPinState(p.readInt());
         cardStatus.mGsmUmtsSubscriptionAppIndex = p.readInt();
         cardStatus.mCdmaSubscriptionAppIndex = p.readInt();
-
-        if (!oldRil)
-            cardStatus.mImsSubscriptionAppIndex = p.readInt();
+        cardStatus.mImsSubscriptionAppIndex = p.readInt();
 
         int numApplications = p.readInt();
 
@@ -147,6 +141,8 @@ public class HTCQualcommRIL extends QualcommSharedRIL implements CommandsInterfa
          * 13: LTE_SignalStrength.cqi
          */
 
+        int parcelSize = p.dataSize();
+
         int gsmSignalStrength = p.readInt();
         int gsmBitErrorRate = p.readInt();
         int cdmaDbm = p.readInt();
@@ -154,8 +150,11 @@ public class HTCQualcommRIL extends QualcommSharedRIL implements CommandsInterfa
         int evdoDbm = p.readInt();
         int evdoEcio = p.readInt();
         int evdoSnr = p.readInt();
-        p.readInt(); // ATT_SignalStrength.dbm
-        p.readInt(); // ATT_SignalStrength.ecno
+        if (parcelSize == 14) {
+            /* Signal strength parcel contains HTC ATT signal strength */
+            p.readInt(); // ATT_SignalStrength.dbm
+            p.readInt(); // ATT_SignalStrength.ecno
+        }
         int lteSignalStrength = p.readInt();
         int lteRsrp = p.readInt();
         int lteRsrq = p.readInt();
