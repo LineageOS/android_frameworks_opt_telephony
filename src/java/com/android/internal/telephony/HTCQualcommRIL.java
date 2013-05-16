@@ -41,7 +41,7 @@ import java.util.ArrayList;
  *
  * {@hide}
  */
-public class HTCQualcommRIL extends QualcommSharedRIL implements CommandsInterface {
+public class HTCQualcommRIL extends RIL implements CommandsInterface {
 
     private static final int RIL_UNSOL_ENTER_LPM = 3023;
     private static final int RIL_UNSOL_TPMR_ID = 3024;
@@ -191,6 +191,7 @@ public class HTCQualcommRIL extends QualcommSharedRIL implements CommandsInterfa
             case RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED: ret = responseVoid(p); break;
             case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED: ret = responseVoid(p); break;
             case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED: ret = responseVoid(p); break;
+            case RIL_UNSOL_RIL_CONNECTED: ret = responseInts(p); break;
 
             default:
                 // Rewind the Parcel
@@ -217,7 +218,33 @@ public class HTCQualcommRIL extends QualcommSharedRIL implements CommandsInterfa
                                         new AsyncResult (null, null, null));
                 }
                 break;
+            case RIL_UNSOL_RIL_CONNECTED: {
+                if (RILJ_LOGD) unsljLogRet(response, ret);
+
+                boolean skipRadioPowerOff = needsOldRilFeature("skipradiooff");
+
+                // Initial conditions
+                if (!skipRadioPowerOff) {
+                    setRadioPower(false, null);
+                }
+                setPreferredNetworkType(mPreferredNetworkType, null);
+                setCdmaSubscriptionSource(mCdmaSubscription, null);
+                notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
+                break;
+            }
         }
     }
 
+    /**
+     * Notify all registrants that the ril has connected or disconnected.
+     *
+     * @param rilVer is the version of the ril or -1 if disconnected.
+     */
+    private void notifyRegistrantsRilConnectionChanged(int rilVer) {
+        mRilVersion = rilVer;
+        if (mRilConnectedRegistrants != null) {
+            mRilConnectedRegistrants.notifyRegistrants(
+                                new AsyncResult (null, new Integer(rilVer), null));
+        }
+    }
 }
