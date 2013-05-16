@@ -147,6 +147,8 @@ public class HTCQualcommRIL extends QualcommSharedRIL implements CommandsInterfa
          * 13: LTE_SignalStrength.cqi
          */
 
+        int parcelSize = p.dataSize();
+
         int gsmSignalStrength = p.readInt();
         int gsmBitErrorRate = p.readInt();
         int cdmaDbm = p.readInt();
@@ -154,8 +156,11 @@ public class HTCQualcommRIL extends QualcommSharedRIL implements CommandsInterfa
         int evdoDbm = p.readInt();
         int evdoEcio = p.readInt();
         int evdoSnr = p.readInt();
-        p.readInt(); // ATT_SignalStrength.dbm
-        p.readInt(); // ATT_SignalStrength.ecno
+        if (parcelSize == 14) {
+            /* Signal strength parcel contains HTC ATT signal strength */
+            p.readInt(); // ATT_SignalStrength.dbm
+            p.readInt(); // ATT_SignalStrength.ecno
+        }
         int lteSignalStrength = p.readInt();
         int lteRsrp = p.readInt();
         int lteRsrq = p.readInt();
