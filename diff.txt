@@ -1,0 +1,107 @@
+diff --git a/src/java/com/android/internal/telephony/SamsungQualcommRIL.java b/src/java/com/android/internal/telephony/SamsungQualcommRIL.java
+index 87aa646..a558431 100644
+--- a/src/java/com/android/internal/telephony/SamsungQualcommRIL.java
++++ b/src/java/com/android/internal/telephony/SamsungQualcommRIL.java
+@@ -56,13 +56,10 @@ CommandsInterface {
+     private boolean mIsSendingSMS = false;
+     private boolean isGSM;
+     public static final long SEND_SMS_TIMEOUT_IN_MS = 30000;
+-    private boolean samsungTimeDS;
+ 
+     public SamsungQualcommRIL(Context context, int networkMode,
+             int cdmaSubscription) {
+         super(context, networkMode, cdmaSubscription);
+-        samsungDriverCall = ( ( !(needsOldRilFeature("newDriverCall"))) && (mRilVersion >= 7));
+-        samsungTimeDS = (needsOldRilFeature("needSamsungTimeDS"));
+         isGSM = (mPhoneType != RILConstants.CDMA_PHONE);
+     }
+ 
+@@ -117,6 +114,11 @@ CommandsInterface {
+         return cardStatus;
+     }
+ 
++    protected Object
++    responseCallList(Parcel p) {
++        samsungDriverCall = (mRilVersion < 7) ? false : true;
++        return super.responseCallList(p);
++    }
+ 
+     @Override
+     public void
+@@ -203,18 +205,12 @@ CommandsInterface {
+         int response = p.readInt();
+ 
+         switch(response) {
+-            case RIL_UNSOL_RIL_CONNECTED:
+-                ret = responseInts(p);
+-                notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
+-                break;
+             case RIL_UNSOL_NITZ_TIME_RECEIVED:
+-                if (samsungTimeDS){
+-                    handleNitzTimeReceived(p);
+-                    break;
+-                }
+-            case 1035: ret = responseVoid(p); break; // RIL_UNSOL_VOICE_RADIO_TECH_CHANGED
+-            case 1036: ret = responseVoid(p); break; // RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED
+-            case 1038: ret = responseVoid(p); break; // RIL_UNSOL_DATA_NETWORK_STATE_CHANGED
++                handleNitzTimeReceived(p);
++                break;
++            case 1038: // RIL_UNSOL_DATA_NETWORK_STATE_CHANGE
++                ret = responseVoid(p);
++                break;
+ 
+             default:
+                 // Rewind the Parcel
+@@ -227,18 +223,6 @@ CommandsInterface {
+ 
+     }
+ 
+-	/**
+-     * Notify all registrants that the ril has connected or disconnected.
+-     *
+-     * @param rilVer is the version of the ril or -1 if disconnected.
+-     */
+-    private void notifyRegistrantsRilConnectionChanged(int rilVer) {
+-        mRilVersion = rilVer;
+-        if (mRilConnectedRegistrants != null) {
+-            mRilConnectedRegistrants.notifyRegistrants(new AsyncResult (null, new Integer(rilVer), null));
+-            }
+-        }
+-
+     // Workaround for Samsung CDMA "ring of death" bug:
+     //
+     // Symptom: As soon as the phone receives notice of an incoming call, an
+@@ -296,7 +280,7 @@ CommandsInterface {
+         super.notifyRegistrantsCdmaInfoRec(infoRec);
+     }
+ 
+-    protected void
++    private void
+     handleNitzTimeReceived(Parcel p) {
+         String nitz = (String)responseString(p);
+         //if (RILJ_LOGD) unsljLogRet(RIL_UNSOL_NITZ_TIME_RECEIVED, nitz);
+@@ -317,13 +301,19 @@ CommandsInterface {
+         result[0] = fixedNitz;
+         result[1] = Long.valueOf(nitzReceiveTime);
+ 
+-        if (mNITZTimeRegistrant != null) {
++        boolean ignoreNitz = SystemProperties.getBoolean(
++                        TelephonyProperties.PROPERTY_IGNORE_NITZ, false);
+ 
+-            mNITZTimeRegistrant
+-            .notifyRegistrant(new AsyncResult (null, result, null));
++        if (ignoreNitz) {
++            if (RILJ_LOGD) riljLog("ignoring UNSOL_NITZ_TIME_RECEIVED");
+         } else {
+-            // in case NITZ time registrant isnt registered yet
+-            mLastNITZTimeInfo = result;
++            if (mNITZTimeRegistrant != null) {
++                mNITZTimeRegistrant
++                .notifyRegistrant(new AsyncResult (null, result, null));
++            } else {
++                // in case NITZ time registrant isnt registered yet
++                mLastNITZTimeInfo = result;
++            }
+         }
+     }
+ 
