@@ -230,6 +230,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static final String RILJ_LOG_TAG = "RILJ";
     static final boolean RILJ_LOGD = true;
     static final boolean RILJ_LOGV = false; // STOPSHIP if true
+    protected boolean samsungDriverCall = false;
 
     /**
      * Wake lock timeout should be longer than the longest timeout in
@@ -3294,7 +3295,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
      *
      * @param rilVer is the version of the ril or -1 if disconnected.
      */
-    private void notifyRegistrantsRilConnectionChanged(int rilVer) {
+    protected void notifyRegistrantsRilConnectionChanged(int rilVer) {
         mRilVersion = rilVer;
         if (mRilConnectedRegistrants != null) {
             mRilConnectedRegistrants.notifyRegistrants(
@@ -3609,6 +3610,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
             dc.als = p.readInt();
             voiceSettings = p.readInt();
             dc.isVoice = (0 == voiceSettings) ? false : true;
+            if(samsungDriverCall)
+                 p.readInt();
             dc.isVoicePrivacy = (0 != p.readInt());
             dc.number = p.readString();
             int np = p.readInt();
