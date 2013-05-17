@@ -52,15 +52,10 @@ import java.util.Collections;
  */
 public class SamsungCDMAQualcommRIL extends RIL implements
 CommandsInterface {
-    protected HandlerThread mIccThread;
-    protected IccHandler mIccHandler;
     private Object mSMSLock = new Object();
     private boolean mIsSendingSMS = false;
     public static final long SEND_SMS_TIMEOUT_IN_MS = 30000;
-
-    private final int RIL_INT_RADIO_OFF = 0;
-    private final int RIL_INT_RADIO_UNAVALIABLE = 1;
-    private final int RIL_INT_RADIO_ON = 2;
+    protected boolean samsungDriverCall = (!needsOldRilFeature("newDriverCall"));
 
     public SamsungCDMAQualcommRIL(Context context, int networkMode,
             int cdmaSubscription) {
@@ -68,51 +63,56 @@ CommandsInterface {
     }
 
     @Override
-    protected Object responseIccCardStatus(Parcel p) {
-        IccCardApplicationStatus ca;
-
-        IccCardStatus status = new IccCardStatus();
-        status.setCardState(p.readInt());
-        status.setUniversalPinState(p.readInt());
-        status.mGsmUmtsSubscriptionAppIndex = p.readInt();
-        status.mCdmaSubscriptionAppIndex = p.readInt();
-        status.mImsSubscriptionAppIndex = p.readInt();
-
+    protected Object
+    responseIccCardStatus(Parcel p) {
+        IccCardApplicationStatus appStatus;
+        
+        IccCardStatus cardStatus = new IccCardStatus();
+        cardStatus.setCardState(p.readInt());
+        cardStatus.setUniversalPinState(p.readInt());
+        cardStatus.mGsmUmtsSubscriptionAppIndex = p.readInt();
+        cardStatus.mCdmaSubscriptionAppIndex = p.readInt();
+        cardStatus.mImsSubscriptionAppIndex = p.readInt();
+        
         int numApplications = p.readInt();
-
+        
         // limit to maximum allowed applications
         if (numApplications > IccCardStatus.CARD_MAX_APPS) {
             numApplications = IccCardStatus.CARD_MAX_APPS;
         }
-        status.mApplications = new IccCardApplicationStatus[numApplications];
+        cardStatus.mApplications = new IccCardApplicationStatus[numApplications];
+        
+        for (int i = 0 ; i < numApplications ; i++) {
+            appStatus = new IccCardApplicationStatus();
 
-        for (int i = 0; i < numApplications; i++) {
-            ca = new IccCardApplicationStatus();
-            ca.app_type = ca.AppTypeFromRILInt(p.readInt());
-            ca.app_state = ca.AppStateFromRILInt(p.readInt());
-            ca.perso_substate = ca.PersoSubstateFromRILInt(p.readInt());
-            if ((ca.app_state == IccCardApplicationStatus.AppState.APPSTATE_SUBSCRIPTION_PERSO) &&
-                ((ca.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_READY) ||
-                 (ca.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_UNKNOWN))) {
+
+            
+            appStatus.app_type       = appStatus.AppTypeFromRILInt(p.readInt());
+            appStatus.app_state      = appStatus.AppStateFromRILInt(p.readInt());
+            appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(p.readInt());
+            if ((appStatus.app_state == IccCardApplicationStatus.AppState.APPSTATE_SUBSCRIPTION_PERSO) &&
+                ((appStatus.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_READY) ||
+                 (appStatus.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_UNKNOWN))) {
                     // ridiculous hack for network SIM unlock pin
-                    ca.app_state = IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN;
+                    appStatus.app_state = IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN;
                     Log.d(LOG_TAG, "ca.app_state == AppState.APPSTATE_SUBSCRIPTION_PERSO");
                     Log.d(LOG_TAG, "ca.perso_substate == PersoSubState.PERSOSUBSTATE_READY");
                 }
-            ca.aid = p.readString();
-            ca.app_label = p.readString();
-            ca.pin1_replaced = p.readInt();
-            ca.pin1 = ca.PinStateFromRILInt(p.readInt());
-            ca.pin2 = ca.PinStateFromRILInt(p.readInt());
+            appStatus.aid            = p.readString();
+            appStatus.app_label      = p.readString();
+            appStatus.pin1_replaced  = p.readInt();
+            appStatus.pin1           = appStatus.PinStateFromRILInt(p.readInt());
+            appStatus.pin2           = appStatus.PinStateFromRILInt(p.readInt());
             p.readInt(); // remaining_count_pin1 - pin1_num_retries
             p.readInt(); // remaining_count_puk1 - puk1_num_retries
             p.readInt(); // remaining_count_pin2 - pin2_num_retries
             p.readInt(); // remaining_count_puk2 - puk2_num_retries
             p.readInt(); // - perso_unblock_retries
-            status.mApplications[i] = ca;
+            cardStatus.mApplications[i] = appStatus;
         }
-        return status;
+        return cardStatus;
     }
+
 
     @Override
     public void
@@ -172,257 +172,26 @@ CommandsInterface {
         return new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7], response[8], response[9], response[10], response[11], false);
 
     }
-    private boolean driverCallHack= needsOldRilFeature("newDriverCall");
+
+    
     @Override
-    protected Object responseCallList(Parcel p) {
-        int num;
-        int voiceSettings;
-        ArrayList<DriverCall> response;
-        DriverCall dc;
-
-        num = p.readInt();
-        response = new ArrayList<DriverCall>(num);
-
-        for (int i = 0; i < num; i++) {
-            dc = new DriverCall();
-
-            dc.state = DriverCall.stateFromCLCC(p.readInt());
-            dc.index = p.readInt();
-            dc.TOA = p.readInt();
-            dc.isMpty = (0 != p.readInt());
-            dc.isMT = (0 != p.readInt());
-            dc.als = p.readInt();
-            voiceSettings = p.readInt();
-            dc.isVoice = (0 == voiceSettings) ? false : true;
-            // Some Samsung magic data for Videocalls
-            // hack taken from smdk4210ril class
-            if(!driverCallHack){
-                voiceSettings = p.readInt();
-                // printing it to cosole for later investigation
-                Log.d(LOG_TAG, "Samsung magic = " + voiceSettings);
-            }
-            dc.isVoicePrivacy = (0 != p.readInt());
-            dc.number = p.readString();
-            int np = p.readInt();
-            dc.numberPresentation = DriverCall.presentationFromCLIP(np);
-            dc.name = p.readString();
-            dc.namePresentation = p.readInt();
-            int uusInfoPresent = p.readInt();
-            if (uusInfoPresent == 1) {
-                dc.uusInfo = new UUSInfo();
-                dc.uusInfo.setType(p.readInt());
-                dc.uusInfo.setDcs(p.readInt());
-                byte[] userData = p.createByteArray();
-                dc.uusInfo.setUserData(userData);
-                riljLogv(String.format(
-                        "Incoming UUS : type=%d, dcs=%d, length=%d",
-                        dc.uusInfo.getType(), dc.uusInfo.getDcs(),
-                        dc.uusInfo.getUserData().length));
-                riljLogv("Incoming UUS : data (string)="
-                        + new String(dc.uusInfo.getUserData()));
-                riljLogv("Incoming UUS : data (hex): "
-                        + IccUtils.bytesToHexString(dc.uusInfo.getUserData()));
-            } else {
-                riljLogv("Incoming UUS : NOT present!");
-            }
-
-            // Make sure there's a leading + on addresses with a TOA of 145
-            dc.number = PhoneNumberUtils.stringFromStringAndTOA(dc.number,
-                    dc.TOA);
-
-            response.add(dc);
-
-            if (dc.isVoicePrivacy) {
-                mVoicePrivacyOnRegistrants.notifyRegistrants();
-                riljLog("InCall VoicePrivacy is enabled");
-            } else {
-                mVoicePrivacyOffRegistrants.notifyRegistrants();
-                riljLog("InCall VoicePrivacy is disabled");
-            }
-        }
-
-        Collections.sort(response);
-
-        return response;
-    }
-
-    @Override
-    protected void
-    processUnsolicited (Parcel p) {
-        Object ret;
-        int dataPosition = p.dataPosition(); // save off position within the Parcel
-        int response = p.readInt();
-
-        switch(response) {
-            case RIL_UNSOL_RIL_CONNECTED: ret = responseInts(p); break;
-            case 1035: ret = responseVoid(p); break; // RIL_UNSOL_VOICE_RADIO_TECH_CHANGED
-            case 1036: ret = responseVoid(p); break; // RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED
-            case 1037: ret = responseVoid(p); break; // RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE
-            case 1038: ret = responseVoid(p); break; // RIL_UNSOL_DATA_NETWORK_STATE_CHANGED
-
+    protected RadioState getRadioStateFromInt(int stateInt) {
+        RadioState state;
+        
+        /* RIL_RadioState ril.h */
+        // on sim devices, some states are used for provisioning,
+        switch(stateInt) {
+            case 0: state = RadioState.RADIO_OFF; break;
+            case 1: state = RadioState.RADIO_UNAVAILABLE; break;
+            case 2: state = RadioState.RADIO_ON; break;
+                
             default:
-                // Rewind the Parcel
-                p.setDataPosition(dataPosition);
-
-                // Forward responses that we are not overriding to the super class
-                super.processUnsolicited(p);
-                return;
+                throw new RuntimeException(
+                                           "Unrecognized RIL_RadioState: " + stateInt);
         }
-
-        switch(response) {
-            case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED:
-                int state = p.readInt();
-                setRadioStateFromRILInt(state);
-                break;
-            case RIL_UNSOL_RIL_CONNECTED:
-                notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
-                break;
-            case 1035:
-            case 1036:
-                break;
-            case 1037: // RIL_UNSOL_EXIT_EMERGENCY_CALLBACK_MODE
-                if (mExitEmergencyCallbackModeRegistrants != null) {
-                    mExitEmergencyCallbackModeRegistrants.notifyRegistrants(
-                                        new AsyncResult (null, null, null));
-                }
-                break;
-            case 1038:
-                break;
-        }
+        return state;
     }
 
-    /**
-     * Notify all registrants that the ril has connected or disconnected.
-     *
-     * @param rilVer is the version of the ril or -1 if disconnected.
-     */
-    private void notifyRegistrantsRilConnectionChanged(int rilVer) {
-        mRilVersion = rilVer;
-        if (mRilConnectedRegistrants != null) {
-            mRilConnectedRegistrants.notifyRegistrants(
-                                new AsyncResult (null, new Integer(rilVer), null));
-        }
-    }
-
-    private void setRadioStateFromRILInt (int stateCode) {
-        CommandsInterface.RadioState radioState;
-        HandlerThread handlerThread;
-        Looper looper;
-        IccHandler iccHandler;
-
-        switch (stateCode) {
-            case RIL_INT_RADIO_OFF:
-                radioState = CommandsInterface.RadioState.RADIO_OFF;
-                if (mIccHandler != null) {
-                    mIccThread = null;
-                    mIccHandler = null;
-                }
-                break;
-            case RIL_INT_RADIO_UNAVALIABLE:
-                radioState = CommandsInterface.RadioState.RADIO_UNAVAILABLE;
-                break;
-            case RIL_INT_RADIO_ON:
-                if (mIccHandler == null) {
-                    handlerThread = new HandlerThread("IccHandler");
-                    mIccThread = handlerThread;
-
-                    mIccThread.start();
-
-                    looper = mIccThread.getLooper();
-                    mIccHandler = new IccHandler(this,looper);
-                    mIccHandler.run();
-                }
-                radioState = CommandsInterface.RadioState.RADIO_ON;
-                break;
-            default:
-                throw new RuntimeException("Unrecognized RIL_RadioState: " + stateCode);
-        }
-
-        setRadioState (radioState);
-    }
-
-    class IccHandler extends Handler implements Runnable {
-        private static final int EVENT_RADIO_ON = 1;
-        private static final int EVENT_ICC_STATUS_CHANGED = 2;
-        private static final int EVENT_GET_ICC_STATUS_DONE = 3;
-        private static final int EVENT_RADIO_OFF_OR_UNAVAILABLE = 4;
-
-        private RIL mRil;
-        private boolean mRadioOn = false;
-
-        public IccHandler (RIL ril, Looper looper) {
-            super (looper);
-            mRil = ril;
-        }
-
-        public void handleMessage (Message paramMessage) {
-            switch (paramMessage.what) {
-                case EVENT_RADIO_ON:
-                    mRadioOn = true;
-                    sendMessage(obtainMessage(EVENT_ICC_STATUS_CHANGED));
-                    break;
-                case EVENT_GET_ICC_STATUS_DONE:
-                    AsyncResult asyncResult = (AsyncResult) paramMessage.obj;
-                    if (asyncResult.exception != null) {
-                        break;
-                    }
-                    IccCardStatus status = (IccCardStatus) asyncResult.result;
-                    if (status.mApplications == null || status.mApplications.length == 0) {
-                        if (!mRil.getRadioState().isOn()) {
-                            break;
-                        }
-
-                        mRil.setRadioState(CommandsInterface.RadioState.RADIO_ON);
-                    } else {
-                        int appIndex = status.mCdmaSubscriptionAppIndex;
-                        IccCardApplicationStatus application = status.mApplications[appIndex];
-                        IccCardApplicationStatus.AppState app_state = application.app_state;
-                        IccCardApplicationStatus.AppType app_type = application.app_type;
-                        switch (app_state) {
-                            case APPSTATE_PIN:
-                            case APPSTATE_PUK:
-                                switch (app_type) {
-                                    case APPTYPE_USIM:
-                                    case APPTYPE_RUIM:
-                                        mRil.setRadioState(CommandsInterface.RadioState.RADIO_ON);
-                                        break;
-                                    default:
-                                        return;
-                                }
-                                break;
-                            case APPSTATE_READY:
-                                switch (app_type) {
-                                    case APPTYPE_USIM:
-                                    case APPTYPE_RUIM:
-                                        mRil.setRadioState(CommandsInterface.RadioState.RADIO_ON);
-                                        break;
-                                    default:
-                                        return;
-                                }
-                                break;
-                            default:
-                                return;
-                        }
-                    }
-                    break;
-                case EVENT_ICC_STATUS_CHANGED:
-                    if (mRadioOn) {
-                        mRil.getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE, paramMessage.obj));
-                    }
-                    break;
-                case EVENT_RADIO_OFF_OR_UNAVAILABLE:
-                    mRadioOn = false;
-                default:
-                    break;
-            }
-        }
-
-        public void run () {
-            mRil.registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, null);
-            Message msg = obtainMessage(EVENT_RADIO_ON);
-            mRil.getIccCardStatus(msg);
-        }
-    }
 
     // Workaround for Samsung CDMA "ring of death" bug:
     //
