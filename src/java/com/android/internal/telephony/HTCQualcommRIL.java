@@ -103,6 +103,8 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
             cardStatus.mApplications[i] = appStatus;
         }
 
+        setCurrentPreferredNetworkType();
+
         return cardStatus;
     }
 
