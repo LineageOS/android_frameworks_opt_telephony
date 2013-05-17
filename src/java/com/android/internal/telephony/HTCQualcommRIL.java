@@ -58,56 +58,6 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
 
     @Override
     protected Object
-    responseIccCardStatus(Parcel p) {
-        IccCardApplicationStatus appStatus;
-
-        // use old needsOldRilFeature method for feature. it would be redundant to make
-        // a new method just for naming sake.
-        boolean oldRil = needsOldRilFeature("icccardstatus");
-
-        IccCardStatus cardStatus = new IccCardStatus();
-        cardStatus.setCardState(p.readInt());
-        cardStatus.setUniversalPinState(p.readInt());
-        cardStatus.mGsmUmtsSubscriptionAppIndex = p.readInt();
-        cardStatus.mCdmaSubscriptionAppIndex = p.readInt();
-
-        if (!oldRil)
-            cardStatus.mImsSubscriptionAppIndex = p.readInt();
-
-        int numApplications = p.readInt();
-
-        // limit to maximum allowed applications
-        if (numApplications > IccCardStatus.CARD_MAX_APPS) {
-            numApplications = IccCardStatus.CARD_MAX_APPS;
-        }
-        cardStatus.mApplications = new IccCardApplicationStatus[numApplications];
-
-        for (int i = 0 ; i < numApplications ; i++) {
-            appStatus = new IccCardApplicationStatus();
-            appStatus.app_type       = appStatus.AppTypeFromRILInt(p.readInt());
-            appStatus.app_state      = appStatus.AppStateFromRILInt(p.readInt());
-            appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(p.readInt());
-            if ((appStatus.app_state == IccCardApplicationStatus.AppState.APPSTATE_SUBSCRIPTION_PERSO) &&
-                ((appStatus.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_READY) ||
-                (appStatus.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_UNKNOWN))) {
-                // ridiculous HTC hack
-                appStatus.app_state = IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN;
-                Log.d(LOG_TAG, "ca.app_state == AppState.APPSTATE_SUBSCRIPTION_PERSO");
-                Log.d(LOG_TAG, "ca.perso_substate == PersoSubState.PERSOSUBSTATE_READY");
-            }
-            appStatus.aid            = p.readString();
-            appStatus.app_label      = p.readString();
-            appStatus.pin1_replaced  = p.readInt();
-            appStatus.pin1           = appStatus.PinStateFromRILInt(p.readInt());
-            appStatus.pin2           = appStatus.PinStateFromRILInt(p.readInt());
-            cardStatus.mApplications[i] = appStatus;
-        }
-
-        return cardStatus;
-    }
-
-    @Override
-    protected Object
     responseSignalStrength(Parcel p) {
         /* HTC signal strength format:
          * 0: GW_SignalStrength
