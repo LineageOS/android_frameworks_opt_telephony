@@ -741,19 +741,6 @@ public class SamsungExynos4RIL extends RIL implements CommandsInterface {
     }
 
     /**
-     * Notifiy all registrants that the ril has connected or disconnected.
-     *
-     * @param rilVer is the version of the ril or -1 if disconnected.
-     */
-    private void notifyRegistrantsRilConnectionChanged(int rilVer) {
-        mRilVersion = rilVer;
-        if (mRilConnectedRegistrants != null) {
-            mRilConnectedRegistrants.notifyRegistrants(
-                                new AsyncResult (null, new Integer(rilVer), null));
-        }
-    }
-
-    /**
      * Set audio parameter "wb_amr" for HD-Voice (Wideband AMR).
      *
      * @param state: 0 = unsupported, 1 = supported.
