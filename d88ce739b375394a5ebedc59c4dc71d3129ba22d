@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "hha6DOI",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 12
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-18T05:59:45Z",
+      "side": 1,
+      "message": "Need another ) at the end here.",
+      "revId": "d88ce739b375394a5ebedc59c4dc71d3129ba22d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "htazhAk",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 12
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-18T05:59:45Z",
+      "side": 1,
+      "message": "semicolon ; missing",
+      "revId": "d88ce739b375394a5ebedc59c4dc71d3129ba22d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "hva.gNM",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 12
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-18T05:59:45Z",
+      "side": 1,
+      "message": "Tabs make arcee cry",
+      "revId": "d88ce739b375394a5ebedc59c4dc71d3129ba22d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
