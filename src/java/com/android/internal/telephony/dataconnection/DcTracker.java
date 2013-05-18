@@ -140,6 +140,14 @@ public final class DcTracker extends DcTrackerBase {
 
         initApnContextsAndDataConnection();
 
+        for (ApnContext apnContext : mApnContexts.values()) {
+            // Register the reconnect and restart actions.
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(INTENT_RECONNECT_ALARM + '.' + apnContext.getApnType());
+            filter.addAction(INTENT_RESTART_TRYSETUP_ALARM + '.' + apnContext.getApnType());
+            mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
+        }
+
         ConnectivityManager cm = (ConnectivityManager)p.getContext().getSystemService(
                 Context.CONNECTIVITY_SERVICE);
         cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE, new Messenger(this));
@@ -1186,20 +1194,16 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private void startAlarmForReconnect(int delay, ApnContext apnContext) {
-        DcAsyncChannel dcac = apnContext.getDcAc();
-
-        if (dcac == null) {
-            // should not happen, but just in case.
-            loge("startAlarmForReconnect: null dcac or dc.");
-            return;
-        }
-
-        Intent intent = new Intent(INTENT_RECONNECT_ALARM + '.' +
-                                   dcac.getDataConnectionIdSync());
-        String reason = apnContext.getReason();
-        intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON, reason);
         String apnType = apnContext.getApnType();
+
+        Intent intent = new Intent(INTENT_RECONNECT_ALARM + "." + apnType);
+        intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON, apnContext.getReason());
         intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE, apnType);
+
+        if (DBG) {
+            log("startAlarmForReconnect: delay=" + delay + " action=" + intent.getAction()
+                    + " apn=" + apnContext);
+        }
 
         PendingIntent alarmIntent = PendingIntent.getBroadcast (mPhone.getContext(), 0,
                                         intent, PendingIntent.FLAG_UPDATE_CURRENT);
@@ -1209,10 +1213,14 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private void startAlarmForRestartTrySetup(int delay, ApnContext apnContext) {
-        Intent intent = new Intent(INTENT_RESTART_TRYSETUP_ALARM);
         String apnType = apnContext.getApnType();
+        Intent intent = new Intent(INTENT_RESTART_TRYSETUP_ALARM + "." + apnType);
         intent.putExtra(INTENT_RESTART_TRYSETUP_ALARM_EXTRA_TYPE, apnType);
 
+        if (DBG) {
+            log("startAlarmForRestartTrySetup: delay=" + delay + " action=" + intent.getAction()
+                    + " apn=" + apnContext);
+        }
         PendingIntent alarmIntent = PendingIntent.getBroadcast (mPhone.getContext(), 0,
                                         intent, PendingIntent.FLAG_UPDATE_CURRENT);
         apnContext.setReconnectIntent(alarmIntent);
@@ -1833,12 +1841,6 @@ public final class DcTracker extends DcTrackerBase {
         } else {
             loge("createDataConnection: Could not connect to dcac=" + dcac + " status=" + status);
         }
-
-        // install reconnect intent filter for this data connection.
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(INTENT_RECONNECT_ALARM + '.' + id);
-        filter.addAction(INTENT_RESTART_TRYSETUP_ALARM);
-        mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
 
         if (DBG) log("createDataConnection() X id=" + id + " dc=" + conn);
         return dcac;
