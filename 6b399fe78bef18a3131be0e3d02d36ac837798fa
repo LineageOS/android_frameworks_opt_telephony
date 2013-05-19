@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "hhGI1iE",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 20
+      },
+      "lineNbr": 294,
+      "author": {
+        "id": 3671
+      },
+      "writtenOn": "2013-05-19T00:14:56Z",
+      "side": 1,
+      "message": "frameworks/opt/telephony/src/java/com/android/internal/telephony/SamsungQualcommRIL.java:294: method does not override or implement a method from a supertype",
+      "revId": "6b399fe78bef18a3131be0e3d02d36ac837798fa",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
