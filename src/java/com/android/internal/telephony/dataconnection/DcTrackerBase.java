@@ -447,6 +447,11 @@ public abstract class DcTrackerBase extends Handler {
     protected void onActionIntentRestartTrySetupAlarm(Intent intent) {
         String apnType = intent.getStringExtra(INTENT_RESTART_TRYSETUP_ALARM_EXTRA_TYPE);
         ApnContext apnContext = mApnContexts.get(apnType);
+        if (DBG) {
+            log("onActionIntentRestartTrySetupAlarm: mState=" + mState +
+                    " apnType=" + apnType + " apnContext=" + apnContext +
+                    " mDataConnectionAsyncChannels=" + mDataConnectionAcHashMap);
+        }
         sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, apnContext));
     }
 
@@ -473,7 +478,6 @@ public abstract class DcTrackerBase extends Handler {
 
 
         IntentFilter filter = new IntentFilter();
-        filter.addAction(INTENT_RECONNECT_ALARM);
         filter.addAction(Intent.ACTION_SCREEN_ON);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
