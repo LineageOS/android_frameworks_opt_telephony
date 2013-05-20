@@ -1247,6 +1247,13 @@ public final class DataConnection extends StateMachine {
                         if (ar.exception == null) {
                             int rilFailCause = ((int[]) (ar.result))[0];
                             cause = DcFailCause.fromInt(rilFailCause);
+                            if (cause == DcFailCause.NONE) {
+                                if (DBG) {
+                                    log("DcActivatingState msg.what=EVENT_GET_LAST_FAIL_DONE"
+                                            + " BAD: error was NONE, change to UNKNOWN");
+                                }
+                                cause = DcFailCause.UNKNOWN;
+                            }
                         }
                         mDcFailCause = cause;
 
