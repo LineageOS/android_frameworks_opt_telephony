@@ -1618,18 +1618,23 @@ public final class DcTracker extends DcTrackerBase {
 
             apnContext.setDataConnectionAc(null);
 
+            int delay;
             if (apnContext.getWaitingApnsPermFailCount() == 0) {
+                delay = APN_DELAY_MILLIS_RESTART_TRYSETUP_LONG;
                 if (DBG) {
-                    log("onDataSetupComplete: All APN's had permanent failures, stop retrying");
+                    log("onDataSetupCompleteError: All APN's had permanent failures delay="
+                            + delay);
                 }
             } else {
+                delay = APN_DELAY_MILLIS_RESTART_TRYSETUP_SHORT;
                 if (DBG) {
-                    log("onDataSetupComplete: Not all APN's had permanent failures, retry");
+                    log("onDataSetupCompleteError: Not all APN's had permanent failures delay="
+                            + delay);
                 }
-                startAlarmForRestartTrySetup(APN_DELAY_MILLIS, apnContext);
             }
+            startAlarmForRestartTrySetup(delay, apnContext);
         } else {
-            if (DBG) log("onDataSetupComplete: Try next APN");
+            if (DBG) log("onDataSetupCompleteError: Try next APN");
             apnContext.setState(DctConstants.State.SCANNING);
             // Wait a bit before trying the next APN, so that
             // we're not tying up the RIL command channel
