@@ -100,7 +100,7 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
         int evdoDbm = p.readInt();
         int evdoEcio = p.readInt();
         int evdoSnr = p.readInt();
-        if (parcelSize == 14) {
+        if (parcelSize >= 14) {
             /* Signal strength parcel contains HTC ATT signal strength */
             p.readInt(); // ATT_SignalStrength.dbm
             p.readInt(); // ATT_SignalStrength.ecno
