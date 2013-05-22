@@ -174,4 +174,14 @@ class RilMessageDecoder extends StateMachine {
         }
         return decodingStarted;
     }
+
+    public void dispose() {
+        mStateStart = null;
+        mStateCmdParamsReady = null;
+        mCmdParamsFactory.dispose();
+        mCmdParamsFactory = null;
+        mCurrentRilMessage = null;
+        mCaller = null;
+        sInstance = null;
+    }
 }
