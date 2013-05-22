@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "iD1Je9E",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 25
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-05-22T22:50:39Z",
+      "side": 1,
+      "message": "delete this",
+      "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iF08Ly8",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 25
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-05-22T22:50:39Z",
+      "side": 1,
+      "message": "delete this",
+      "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iJ05p0Q",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 25
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-05-22T22:50:39Z",
+      "side": 1,
+      "message": "delete the ifstatememt",
+      "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iH0-8yU",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 25
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-05-22T22:50:39Z",
+      "side": 1,
+      "message": "delete the bracket",
+      "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iN0vH-U",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 25
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-05-22T22:50:39Z",
+      "side": 1,
+      "message": "else\n return super.handleNitzTimeReceived(p);",
+      "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
