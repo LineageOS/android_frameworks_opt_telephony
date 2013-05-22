@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "iN2fH7M",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 23
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-05-22T09:08:38Z",
+      "side": 1,
+      "message": "protected boolean samsungDriverCall\u003dfalse;",
+      "revId": "9c3ae27a240cf028ecd0c94894da829cf42f6791",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iL2kawg",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 23
+      },
+      "lineNbr": 646,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-05-22T09:08:38Z",
+      "side": 1,
+      "message": "delete that line",
+      "revId": "9c3ae27a240cf028ecd0c94894da829cf42f6791",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
