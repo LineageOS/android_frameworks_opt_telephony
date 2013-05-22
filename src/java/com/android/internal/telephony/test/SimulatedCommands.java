@@ -1655,4 +1655,9 @@ public final class SimulatedCommands extends BaseCommands
     public void setCellInfoListRate(int rateInMillis, Message response) {
         unimplemented(response);
     }
+
+    @Override
+    public void setInitialAttachApn(String apn, String protocol, int authType, String username,
+            String password, Message result) {
+    }
 }
