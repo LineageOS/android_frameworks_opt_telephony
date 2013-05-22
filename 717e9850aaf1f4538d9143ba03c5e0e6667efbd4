@@ -19,6 +19,23 @@
     },
     {
       "key": {
+        "uuid": "iH0m0xc",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 25
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-22T23:06:30Z",
+      "side": 1,
+      "message": "mRilVersion is actually not always known at the time of SamsungQualcommRIL construction.  That is why it works on first boot when RIL java bring up is delayed as \"Android is upgrading..\" runs.  But on subsequent boots, the RIL java comes up first, before the radio tells the java its version.\n\nWe can\u0027t do it this way. I would prefer we remove line 64 all together.  See my comment around line 121 for an alternative solution.",
+      "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "iF08Ly8",
         "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
         "patchSetId": 25
@@ -30,6 +47,23 @@
       "writtenOn": "2013-05-22T22:50:39Z",
       "side": 1,
       "message": "delete this",
+      "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iD0gW-c",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 25
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-22T23:06:30Z",
+      "side": 1,
+      "message": "Add the following here.  At this point, the radio is up and mRilVersion is known.  Unless we know of a v7 modem that does *not* require samsungDriverCall to be true, I would request that we not complicate things with a build.prop property.\n\n    protected Object\n    responseCallList(Parcel p) {\n        samsungDriverCall \u003d (mRilVersion \u003c 7) ? false : true;\n        return super.responseCallList(p);\n    }",
       "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
@@ -81,6 +115,40 @@
       "writtenOn": "2013-05-22T22:50:39Z",
       "side": 1,
       "message": "else\n return super.handleNitzTimeReceived(p);",
+      "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iB0dl70",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 25
+      },
+      "lineNbr": 316,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-22T23:06:30Z",
+      "side": 1,
+      "message": "Unfortunately, there is no RIL::handleNitzTimeReceived(). Nitz It is all done in RIL:processUnsolicited().\n\nBUT: This code is perfectly safe for everyone to use.  If nitzParts.length !\u003d 4, then this function should be equivalent to RIL\u0027s version.",
+      "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iJ2HZ9c",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 25
+      },
+      "lineNbr": 327,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-22T23:06:30Z",
+      "side": 1,
+      "message": "Replace 320-327 with the following code.  This will make it completely equivalent to RIL\u0027s handling in processUnsolicited().\n\nboolean ignoreNitz \u003d SystemProperties.getBoolean(\n                TelephonyProperties.PROPERTY_IGNORE_NITZ, false);\n\nif (ignoreNitz) {\n    if (RILJ_LOGD) riljLog(\"ignoring UNSOL_NITZ_TIME_RECEIVED\");\n} else {\n    if (mNITZTimeRegistrant !\u003d null) {\n\n        mNITZTimeRegistrant\n            .notifyRegistrant(new AsyncResult (null, result, null));\n    } else {\n        // in case NITZ time registrant isnt registered yet\n        mLastNITZTimeInfo \u003d result;\n    }\n}",
       "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
