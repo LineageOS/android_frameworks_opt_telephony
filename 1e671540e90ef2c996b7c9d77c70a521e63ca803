@@ -33,6 +33,24 @@
       "revId": "1e671540e90ef2c996b7c9d77c70a521e63ca803",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iMBs0go",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 29
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-23T16:01:43Z",
+      "side": 1,
+      "message": "Changing notifyRegistrantsRilConnectionChange() to protected in the RIL base class would also require removing it from HTCQualcommRIL, QualcommSharedRIL, and SamsungExynos4RIL, all of which have identical code.  However, I can understand if you don\u0027t want to take that on in this gerrit.\n\nI can submit a separate gerrit for making this function protected.",
+      "parentUuid": "iCD5Tk4",
+      "revId": "1e671540e90ef2c996b7c9d77c70a521e63ca803",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
