@@ -918,7 +918,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         rr.mp.writeString(address);
         rr.mp.writeInt(clirMode);
-        rr.mp.writeInt(0); // UUS information is absent
 
         if (uusInfo == null) {
             rr.mp.writeInt(0); // UUS information is absent
