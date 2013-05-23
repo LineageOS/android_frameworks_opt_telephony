@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "iIATelw",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 27
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 3671
+      },
+      "writtenOn": "2013-05-23T01:25:10Z",
+      "side": 1,
+      "message": "i believe we still need\nhttp://pastie.org/7944976\n\njf is rilv7 and does not want samsungDriverCall",
+      "revId": "cd16d7454a1513b1f7565646e36e70f66f3a452a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
