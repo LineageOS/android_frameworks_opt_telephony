@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "iCCQLuw",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 29
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-23T15:18:23Z",
+      "side": 1,
+      "message": "GSM devices don\u0027t need this NV/RUIM fix, so can we preserve the behavior of the RIL base class for GSM?\n\ncase RIL_UNSOL_RIL_CONNECTED:\n    ret \u003d responseInts(p);\n    if (RILJ_LOGD) unsljLogRet(response, ret);\n\n    if (isGSM) {\n        // Initial conditions\n        setRadioPower(false, null);\n        setPreferredNetworkType(mPreferredNetworkType, null);\n    }\n    notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);\n    samsungDriverCall \u003d needsOldRilFeature(\"newDriverCall\") || mRilVersion \u003c 7 ? false : true;\n    break;",
+      "revId": "1e671540e90ef2c996b7c9d77c70a521e63ca803",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iCD5Tk4",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 29
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-23T15:18:23Z",
+      "side": 1,
+      "message": "Since we are already changing RIL.java, could we just change notifyRegistrantsRilConnectionChanged() to protected? Then we could not reintroduce it.",
+      "revId": "1e671540e90ef2c996b7c9d77c70a521e63ca803",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
