@@ -54,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "iD2qmxo",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 25
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-23T00:09:12Z",
+      "side": 1,
+      "message": "See the log here (grep for mRilVersion):\nhttps://www.dropbox.com/s/rzqumvnufvjbaus/radio_mRilVersion.log\n\nI added prints of mRilVersion in the SamsungQualcommRIL() constructor, in notifyRilConnection(), and in responseCallList().  You can see that in the constructor, mRilVersion\u003d-1.\n\nSo since mRilVersion is not reliable in the constructor, we can\u0027t use it to set samsungDriverCall there.\n\nPlease let me know what other information you need.",
+      "parentUuid": "iB10d-s",
+      "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "iF08Ly8",
         "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
         "patchSetId": 25
@@ -106,6 +124,41 @@
     },
     {
       "key": {
+        "uuid": "iB2n11A",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 25
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-23T00:09:12Z",
+      "side": 1,
+      "message": "This is a reliable way of setting the samsungDriverCall bool. It seems okay to me.",
+      "parentUuid": "iL1ZC5E",
+      "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iL1sawk",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 25
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-23T00:09:12Z",
+      "side": 1,
+      "message": "Can we remove the handling of RIL_UNSOL_RIL_CONNECTED here? The notifyRegistrantsRilConnectionChanged() implemented in this file is identical to the one in the RIL base class.",
+      "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "iJ05p0Q",
         "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
         "patchSetId": 25
@@ -134,6 +187,23 @@
       "writtenOn": "2013-05-22T22:50:39Z",
       "side": 1,
       "message": "delete the bracket",
+      "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iP1i4xU",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 25
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-05-23T00:09:12Z",
+      "side": 1,
+      "message": "Can we remove this function?  It is identical to the notifyRegistrantsRilConnectionChanged() in the RIL base class.",
       "revId": "717e9850aaf1f4538d9143ba03c5e0e6667efbd4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
