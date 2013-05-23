@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "iCCcrmg",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 28
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-05-23T06:19:55Z",
+      "side": 1,
+      "message": "this is totally wrong\ntrue or true \u003d\u003d jf situation \nin d2 \u003d\u003d false or true \n\n  samsungDriverCall \u003d ( ( !(needsOldRilFeature(\"newDriverCall\"))) \u0026\u0026 (mRilVersion \u003e\u003d 7));",
+      "revId": "c5279d21696a9805ea6d0e738909134f47c6357e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
