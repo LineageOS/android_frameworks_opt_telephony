@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "iHRRSGI",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 30
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-05-23T22:45:25Z",
+      "side": 1,
+      "message": "that if statement is not needed because we are skipping the  \nsetCdmaSubscriptionSource(mCdmaSubscription, null);\nstuff in the orig nv and sim subscription..",
+      "revId": "d495264804b2a3cf0f4602e6a1b6ad352f66f046",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iFRORMI",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 30
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-05-23T22:45:25Z",
+      "side": 1,
+      "message": "get rid of this }",
+      "revId": "d495264804b2a3cf0f4602e6a1b6ad352f66f046",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
