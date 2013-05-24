@@ -1214,7 +1214,7 @@ public final class DataConnection extends StateMachine {
                                         + " delay=" + delay
                                         + " isRetryNeeded=" + mRetryManager.isRetryNeeded());
                             }
-                            if (delay >= 0) {
+                            if ((delay >= 0) && (result.mFailCause.isPermanentFail() == false)) {
                                 mDcRetryAlarmController.startRetryAlarm(EVENT_RETRY_CONNECTION,
                                                             mTag, delay);
                                 transitionTo(mRetryingState);
@@ -1265,7 +1265,7 @@ public final class DataConnection extends StateMachine {
                                     + " isRetryNeeded=" + mRetryManager.isRetryNeeded()
                                     + " dc=" + DataConnection.this);
                         }
-                        if (mRetryManager.isRetryNeeded()) {
+                        if (mRetryManager.isRetryNeeded() && (cause.isPermanentFail() == false)) {
                             mDcRetryAlarmController.startRetryAlarm(EVENT_RETRY_CONNECTION, mTag,
                                                             retryDelay);
                             transitionTo(mRetryingState);
