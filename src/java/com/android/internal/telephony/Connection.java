@@ -287,6 +287,12 @@ public abstract class Connection {
     public abstract UUSInfo getUUSInfo();
 
     /**
+     * Returns the CallFail reason provided by the RIL with the result of
+     * RIL_REQUEST_LAST_CALL_FAIL_CAUSE
+     */
+    public abstract int getPreciseDisconnectCause();
+
+    /**
      * Build a human representation of a connection instance, suitable for debugging.
      * Don't log personal stuff unless in debug mode.
      * @return a string representing the internal state of this connection.
