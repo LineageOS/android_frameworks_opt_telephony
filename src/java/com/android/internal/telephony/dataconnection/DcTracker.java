@@ -138,7 +138,7 @@ public final class DcTracker extends DcTrackerBase {
         p.getContext().getContentResolver().registerContentObserver(
                 Telephony.Carriers.CONTENT_URI, true, mApnObserver);
 
-        initApnContextsAndDataConnection();
+        initApnContexts();
 
         for (ApnContext apnContext : mApnContexts.values()) {
             // Register the reconnect and restart actions.
@@ -223,14 +223,14 @@ public final class DcTracker extends DcTrackerBase {
         if(DBG) log("finalize");
     }
 
-    private ApnContext addApnContext(String type) {
+    private ApnContext addApnContext(String type, NetworkConfig networkConfig) {
         ApnContext apnContext = new ApnContext(type, LOG_TAG);
-        apnContext.setDependencyMet(false);
+        apnContext.setDependencyMet(networkConfig.dependencyMet);
         mApnContexts.put(type, apnContext);
         return apnContext;
     }
 
-    protected void initApnContextsAndDataConnection() {
+    protected void initApnContexts() {
         boolean defaultEnabled = SystemProperties.getBoolean(DEFALUT_DATA_ON_BOOT_PROP, true);
         // Load device network attributes from resources
         String[] networkConfigStrings = mPhone.getContext().getResources().getStringArray(
@@ -241,44 +241,35 @@ public final class DcTracker extends DcTrackerBase {
 
             switch (networkConfig.type) {
             case ConnectivityManager.TYPE_MOBILE:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_DEFAULT);
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_DEFAULT, networkConfig);
                 apnContext.setEnabled(defaultEnabled);
                 break;
             case ConnectivityManager.TYPE_MOBILE_MMS:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_MMS);
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_MMS, networkConfig);
                 break;
             case ConnectivityManager.TYPE_MOBILE_SUPL:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_SUPL);
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_SUPL, networkConfig);
                 break;
             case ConnectivityManager.TYPE_MOBILE_DUN:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_DUN);
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_DUN, networkConfig);
                 break;
             case ConnectivityManager.TYPE_MOBILE_HIPRI:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_HIPRI);
-                ApnContext defaultContext = mApnContexts.get(PhoneConstants.APN_TYPE_DEFAULT);
-                if (defaultContext != null) {
-                    applyNewState(apnContext, apnContext.isEnabled(),
-                            defaultContext.getDependencyMet());
-                } else {
-                    // the default will set the hipri dep-met when it is created
-                }
+                // Hipri is configured the same as default
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_HIPRI, networkConfig);
+                apnContext.setEnabled(defaultEnabled);
                 continue;
             case ConnectivityManager.TYPE_MOBILE_FOTA:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_FOTA);
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_FOTA, networkConfig);
                 break;
             case ConnectivityManager.TYPE_MOBILE_IMS:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_IMS);
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_IMS, networkConfig);
                 break;
             case ConnectivityManager.TYPE_MOBILE_CBS:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_CBS);
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_CBS, networkConfig);
                 break;
             default:
-                // skip unknown types
+                log("initApnContexts: skipping unknown type=" + networkConfig.type);
                 continue;
-            }
-            if (apnContext != null) {
-                // set the prop, but also apply the newly set enabled and dependency values
-                onSetDependencyMet(apnContext.getApnType(), networkConfig.dependencyMet);
             }
         }
     }
