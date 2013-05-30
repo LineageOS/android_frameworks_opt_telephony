@@ -171,7 +171,16 @@ public class SmsMessage extends SmsMessageBase {
         }
 
         addr.origBytes = data;
-
+        // Add + for international numbers if + is not existing
+        if (addr.ton == addr.TON_INTERNATIONAL_OR_IP) {
+            if (data[0] != '+') {
+                addr.numberOfDigits ++;
+                byte[] tmpData = new byte[addr.numberOfDigits];
+                tmpData[0] = '+';
+                System.arraycopy(data, 0, tmpData, 1, count);
+                addr.origBytes = tmpData;
+            }
+        }
         subaddr.type = p.readInt(); // p_cur->sSubAddress.subaddressType
         subaddr.odd = p.readByte();     // p_cur->sSubAddress.odd
         count = p.readByte();           // p_cur->sSubAddress.number_of_digits
