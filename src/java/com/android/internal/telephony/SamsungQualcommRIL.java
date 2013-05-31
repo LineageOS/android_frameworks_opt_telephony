@@ -204,8 +204,8 @@ CommandsInterface {
                 setRadioPower(false, null);
                 setPreferredNetworkType(mPreferredNetworkType, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
-                samsungDriverCall = (needsOldRilFeature("newDriverCall") && !isGSM) || mRilVersion < 7 ? false : true;
                 isGSM = (mPhoneType != RILConstants.CDMA_PHONE);
+                samsungDriverCall = (needsOldRilFeature("newDriverCall") && !isGSM) || mRilVersion < 7 ? false : true;
                 break;
             case RIL_UNSOL_NITZ_TIME_RECEIVED:
                 handleNitzTimeReceived(p);
