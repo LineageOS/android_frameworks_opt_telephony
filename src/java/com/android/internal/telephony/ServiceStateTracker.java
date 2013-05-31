@@ -24,6 +24,7 @@ import android.os.RegistrantList;
 import android.telephony.CellInfo;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.util.Pair;
 import android.util.TimeUtils;
 
 import java.io.FileDescriptor;
@@ -95,6 +96,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected RegistrantList mRoamingOffRegistrants = new RegistrantList();
     protected RegistrantList mAttachedRegistrants = new RegistrantList();
     protected RegistrantList mDetachedRegistrants = new RegistrantList();
+    protected RegistrantList mDataRegStateOrRatChangedRegistrants = new RegistrantList();
     protected RegistrantList mNetworkAttachedRegistrants = new RegistrantList();
     protected RegistrantList mPsRestrictEnabledRegistrants = new RegistrantList();
     protected RegistrantList mPsRestrictDisabledRegistrants = new RegistrantList();
@@ -231,6 +233,20 @@ public abstract class ServiceStateTracker extends Handler {
             }
         }
         return notified;
+    }
+
+    /**
+     * Notify all mDataConnectionRatChangeRegistrants using an
+     * AsyncResult in msg.obj where AsyncResult#result contains the
+     * new RAT as an Integer Object.
+     */
+    protected void notifyDataRegStateRilRadioTechnologyChanged() {
+        int rat = mSS.getRilDataRadioTechnology();
+        int drs = mSS.getDataRegState();
+        if (DBG) log("notifyDataRegStateRilRadioTechnologyChanged: drs=" + drs + " rat=" + rat);
+        mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
+                ServiceState.rilRadioTechnologyToString(rat));
+        mDataRegStateOrRatChangedRegistrants.notifyResult(new Pair<Integer, Integer>(drs, rat));
     }
 
     /**
@@ -461,6 +477,24 @@ public abstract class ServiceStateTracker extends Handler {
     }
     public void unregisterForDataConnectionDetached(Handler h) {
         mDetachedRegistrants.remove(h);
+    }
+
+    /**
+     * Registration for DataConnection RIL Data Radio Technology changing. The
+     * new radio technology will be returned AsyncResult#result as an Integer Object.
+     * The AsyncResult will be in the notification Message#obj.
+     *
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForDataRegStateOrRatChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mDataRegStateOrRatChangedRegistrants.add(r);
+        notifyDataRegStateRilRadioTechnologyChanged();
+    }
+    public void unregisterForDataRegStateOrRatChanged(Handler h) {
+        mDataRegStateOrRatChangedRegistrants.remove(h);
     }
 
     /**

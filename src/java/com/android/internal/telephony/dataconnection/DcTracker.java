@@ -638,8 +638,11 @@ public final class DcTracker extends DcTrackerBase {
                 if (DBG) log("trySetupData: make a FAILED ApnContext IDLE so its reusable");
                 apnContext.setState(DctConstants.State.IDLE);
             }
+            int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
             if (apnContext.getState() == DctConstants.State.IDLE) {
-                ArrayList<ApnSetting> waitingApns = buildWaitingApns(apnContext.getApnType());
+
+                ArrayList<ApnSetting> waitingApns = buildWaitingApns(apnContext.getApnType(),
+                        radioTech);
                 if (waitingApns.isEmpty()) {
                     notifyNoData(DcFailCause.MISSING_UNKNOWN_APN, apnContext);
                     notifyOffApnsOfAvailability(apnContext.getReason());
@@ -658,7 +661,7 @@ public final class DcTracker extends DcTrackerBase {
                 log("trySetupData: call setupData, waitingApns : "
                         + apnListToString(apnContext.getWaitingApns()));
             }
-            boolean retValue = setupData(apnContext);
+            boolean retValue = setupData(apnContext, radioTech);
             notifyOffApnsOfAvailability(apnContext.getReason());
 
             if (DBG) log("trySetupData: X retValue=" + retValue);
@@ -990,7 +993,7 @@ public final class DcTracker extends DcTrackerBase {
         return null;
     }
 
-    private boolean setupData(ApnContext apnContext) {
+    private boolean setupData(ApnContext apnContext, int radioTech) {
         if (DBG) log("setupData: apnContext=" + apnContext);
         ApnSetting apnSetting;
         DcAsyncChannel dcac;
@@ -1033,7 +1036,7 @@ public final class DcTracker extends DcTrackerBase {
         Message msg = obtainMessage();
         msg.what = DctConstants.EVENT_DATA_SETUP_COMPLETE;
         msg.obj = apnContext;
-        dcac.bringUp(apnContext, getInitialMaxRetry(), profileId, msg);
+        dcac.bringUp(apnContext, getInitialMaxRetry(), profileId, radioTech, msg);
 
         if (DBG) log("setupData: initing!");
         return true;
@@ -1866,7 +1869,7 @@ public final class DcTracker extends DcTrackerBase {
      * @return waitingApns list to be used to create PDP
      *          error when waitingApns.isEmpty()
      */
-    private ArrayList<ApnSetting> buildWaitingApns(String requestedApnType) {
+    private ArrayList<ApnSetting> buildWaitingApns(String requestedApnType, int radioTech) {
         if (DBG) log("buildWaitingApns: E requestedApnType=" + requestedApnType);
         ArrayList<ApnSetting> apnList = new ArrayList<ApnSetting>();
 
@@ -1881,7 +1884,6 @@ public final class DcTracker extends DcTrackerBase {
 
         IccRecords r = mIccRecords.get();
         String operator = (r != null) ? r.getOperatorNumeric() : "";
-        int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
 
         // This is a workaround for a bug (7305641) where we don't failover to other
         // suitable APNs if our preferred APN fails.  On prepaid ATT sims we need to
