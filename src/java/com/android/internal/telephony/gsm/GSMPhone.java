@@ -160,7 +160,7 @@ public class GSMPhone extends PhoneBase {
         mCM.setOnUSSD(this, EVENT_USSD, null);
         mCM.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
-        
+
         // problem with javac 7 (create an empty class)
 
         // if (false) {
