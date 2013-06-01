@@ -651,7 +651,7 @@ public class SamsungCDMAv6RIL extends RIL implements CommandsInterface {
             response[5], response[6], false);
         return signalStrength;
     }
-
+    @Override
     protected Object
     responseVoiceRegistrationState(Parcel p) {
         String response[] = (String[])responseStrings(p);
