@@ -194,6 +194,12 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
 
     }
 
+    @Override
+    public void setPhoneType(int phoneType){
+        super.setPhoneType(phoneType);
+        isGSM = (phoneType != RILConstants.CDMA_PHONE);
+        samsungDriverCall = (needsOldRilFeature("newDriverCall") && !isGSM) || mRilVersion < 7 ? false : true;
+    }
 
     @Override
     protected void
@@ -210,8 +216,6 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 setRadioPower(false, null);
                 setPreferredNetworkType(mPreferredNetworkType, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
-                isGSM = (mPhoneType != RILConstants.CDMA_PHONE);
-                samsungDriverCall = (needsOldRilFeature("newDriverCall") && !isGSM) || mRilVersion < 7 ? false : true;
                 break;
             case RIL_UNSOL_NITZ_TIME_RECEIVED:
                 handleNitzTimeReceived(p);
