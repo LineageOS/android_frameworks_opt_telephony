@@ -216,43 +216,10 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
             case RIL_UNSOL_NITZ_TIME_RECEIVED:
                 handleNitzTimeReceived(p);
                 break;
-
-            // SAMSUNG STATES
-            case SamsungExynos4RIL.RIL_UNSOL_AM:
-                ret = responseString(p);
-                if (RILJ_LOGD) samsungUnsljLogRet(response, ret);
-                String amString = (String) ret;
-                Log.d(LOG_TAG, "Executing AM: " + amString);
-
-                try {
-                    Runtime.getRuntime().exec("am " + amString);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    Log.e(LOG_TAG, "am " + amString + " could not be executed.");
-                }
-                break;
-            case SamsungExynos4RIL.RIL_UNSOL_DUN_PIN_CONTROL_SIGNAL:
-                ret = responseVoid(p);
-                if (RILJ_LOGD)  samsungUnsljLogRet(response, ret);
-                break;
-            case SamsungExynos4RIL.RIL_UNSOL_DATA_SUSPEND_RESUME:
-                ret = responseInts(p);
-                if (RILJ_LOGD) samsungUnsljLogRet(response, ret);
-                break;
-            case SamsungExynos4RIL.RIL_UNSOL_STK_CALL_CONTROL_RESULT:
-                ret = responseVoid(p);
-                if (RILJ_LOGD) samsungUnsljLogRet(response, ret);
-                break;
-            case SamsungExynos4RIL.RIL_UNSOL_TWO_MIC_STATE:
-                ret = responseInts(p);
-                if (RILJ_LOGD) samsungUnsljLogRet(response, ret);
-                break;
             case SamsungExynos4RIL.RIL_UNSOL_WB_AMR_STATE:
                 ret = responseInts(p);
-                if (RILJ_LOGD) samsungUnsljLogRet(response, ret);
                 setWbAmr(((int[])ret)[0]);
                 break;
-
             default:
                 // Rewind the Parcel
                 p.setDataPosition(dataPosition);
@@ -262,10 +229,6 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 return;
         }
 
-    }
-
-    protected void samsungUnsljLogRet(int response, Object ret) {
-        riljLog("[UNSL]< " + SamsungExynos4RIL.samsungResponseToString(response) + " " + retToString(response, ret));
     }
 
     /**
