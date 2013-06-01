@@ -1162,7 +1162,21 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         send(rr);
     }
-
+    protected Object
+    responseDataRegistrationState(Parcel p) {
+        String response[] = (String[])responseStrings(p);
+        return response;
+    }
+    protected Object
+    responseVoiceRegistrationState(Parcel p) {
+        String response[] = (String[])responseStrings(p);
+        return response;
+    }
+    protected Object
+    operatorCheck(Parcel p) {
+        String response[] = (String[])responseStrings(p);
+        return response;
+    }
     public void
     getVoiceRegistrationState (Message result) {
         RILRequest rr
@@ -2316,9 +2330,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_UDUB: ret =  responseVoid(p); break;
             case RIL_REQUEST_LAST_CALL_FAIL_CAUSE: ret =  responseInts(p); break;
             case RIL_REQUEST_SIGNAL_STRENGTH: ret =  responseSignalStrength(p); break;
-            case RIL_REQUEST_VOICE_REGISTRATION_STATE: ret =  responseStrings(p); break;
-            case RIL_REQUEST_DATA_REGISTRATION_STATE: ret =  responseStrings(p); break;
-            case RIL_REQUEST_OPERATOR: ret =  responseStrings(p); break;
+            case RIL_REQUEST_VOICE_REGISTRATION_STATE: ret =  responseDataRegistrationState(p); break;
+            case RIL_REQUEST_DATA_REGISTRATION_STATE: ret =  responseDataRegistrationState(p); break;
+            case RIL_REQUEST_OPERATOR: ret =  operatorCheck(p); break;
             case RIL_REQUEST_RADIO_POWER: ret =  responseVoid(p); break;
             case RIL_REQUEST_DTMF: ret =  responseVoid(p); break;
             case RIL_REQUEST_SEND_SMS: ret =  responseSMS(p); break;
@@ -3982,6 +3996,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         send(rr);
     }
 
+    
     /* (non-Javadoc)
      * @see com.android.internal.telephony.BaseCommands#testingEmergencyCall()
      */

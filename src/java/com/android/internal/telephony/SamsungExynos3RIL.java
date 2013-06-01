@@ -643,7 +643,7 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
             response[5], response[6], !mIsSamsungCdma);
         return signalStrength;
     }
-
+    @Override
     protected Object
     responseVoiceRegistrationState(Parcel p) {
         String response[] = (String[])responseStrings(p);

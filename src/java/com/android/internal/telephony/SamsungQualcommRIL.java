@@ -60,7 +60,8 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     private boolean mIsSendingSMS = false;
     private boolean isGSM = false;
     public static final long SEND_SMS_TIMEOUT_IN_MS = 30000;
-
+    int homeOperator= SystemProperties.getInt("ro.cdma.home.operator.numeric", -1);
+    String operator= SystemProperties.get("ro.cdma.home.operator.alpha");
     public SamsungQualcommRIL(Context context, int networkMode,
             int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
@@ -89,20 +90,9 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
 
         for (int i = 0 ; i < numApplications ; i++) {
             appStatus = new IccCardApplicationStatus();
-
-
-
             appStatus.app_type       = appStatus.AppTypeFromRILInt(p.readInt());
             appStatus.app_state      = appStatus.AppStateFromRILInt(p.readInt());
             appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(p.readInt());
-            if ((appStatus.app_state == IccCardApplicationStatus.AppState.APPSTATE_SUBSCRIPTION_PERSO) &&
-                ((appStatus.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_READY) ||
-                 (appStatus.perso_substate == IccCardApplicationStatus.PersoSubState.PERSOSUBSTATE_UNKNOWN))) {
-                    // ridiculous hack for network SIM unlock pin
-                    appStatus.app_state = IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN;
-                    Log.d(LOG_TAG, "ca.app_state == AppState.APPSTATE_SUBSCRIPTION_PERSO");
-                    Log.d(LOG_TAG, "ca.perso_substate == PersoSubState.PERSOSUBSTATE_READY");
-                }
             appStatus.aid            = p.readString();
             appStatus.app_label      = p.readString();
             appStatus.pin1_replaced  = p.readInt();
@@ -112,7 +102,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
             p.readInt(); // remaining_count_puk1 - puk1_num_retries
             p.readInt(); // remaining_count_pin2 - pin2_num_retries
             p.readInt(); // remaining_count_puk2 - puk2_num_retries
-            p.readInt(); // - perso_unblock_retries
+            p.readInt(); // - perso_unblock_retries 
             cardStatus.mApplications[i] = appStatus;
         }
         return cardStatus;
@@ -226,11 +216,8 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
             case RIL_UNSOL_NITZ_TIME_RECEIVED:
                 handleNitzTimeReceived(p);
                 break;
-
-            // SAMSUNG STATES
             case SamsungExynos4RIL.RIL_UNSOL_AM:
                 ret = responseString(p);
-                if (RILJ_LOGD) samsungUnsljLogRet(response, ret);
                 String amString = (String) ret;
                 Log.d(LOG_TAG, "Executing AM: " + amString);
 
@@ -241,28 +228,16 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                     Log.e(LOG_TAG, "am " + amString + " could not be executed.");
                 }
                 break;
-            case SamsungExynos4RIL.RIL_UNSOL_DUN_PIN_CONTROL_SIGNAL:
+            case SamsungExynos4RIL.RIL_UNSOL_RESPONSE_HANDOVER:
                 ret = responseVoid(p);
-                if (RILJ_LOGD)  samsungUnsljLogRet(response, ret);
                 break;
-            case SamsungExynos4RIL.RIL_UNSOL_DATA_SUSPEND_RESUME:
-                ret = responseInts(p);
-                if (RILJ_LOGD) samsungUnsljLogRet(response, ret);
-                break;
-            case SamsungExynos4RIL.RIL_UNSOL_STK_CALL_CONTROL_RESULT:
+            case 1036:
                 ret = responseVoid(p);
-                if (RILJ_LOGD) samsungUnsljLogRet(response, ret);
-                break;
-            case SamsungExynos4RIL.RIL_UNSOL_TWO_MIC_STATE:
-                ret = responseInts(p);
-                if (RILJ_LOGD) samsungUnsljLogRet(response, ret);
                 break;
             case SamsungExynos4RIL.RIL_UNSOL_WB_AMR_STATE:
                 ret = responseInts(p);
-                if (RILJ_LOGD) samsungUnsljLogRet(response, ret);
                 setWbAmr(((int[])ret)[0]);
                 break;
-
             default:
                 // Rewind the Parcel
                 p.setDataPosition(dataPosition);
@@ -273,11 +248,35 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
         }
 
     }
-
-    protected void samsungUnsljLogRet(int response, Object ret) {
-        riljLog("[UNSL]< " + SamsungExynos4RIL.samsungResponseToString(response) + " " + retToString(response, ret));
+    
+    @Override
+    protected Object
+    operatorCheck(Parcel p) {
+        String response[] = (String[])responseStrings(p);
+        Log.w(LOG_TAG, " SHAREEf debug before : "
+              +  s(response));
+        for(int i=0; i<response.length; i++){
+            if (response[i]!= null)
+                if (response[i].equals("       Empty"))
+                    response[i]=operator;
+                if (response[i].equals("31000"))
+                    response[i]=Integer.toString(homeOperator);
+            
+        }
+        Log.w(LOG_TAG, " SHAREEf debug after : "
+              +  s(response));
+        return response;
     }
-
+   static  String s(String a[]){
+        StringBuffer result = new StringBuffer();
+       
+        for (int i = 0; i < a.length; i++) {
+            result.append( a[i] );
+            result.append("," );
+        }
+        return result.toString();
+    }
+    
     /**
      * Set audio parameter "wb_amr" for HD-Voice (Wideband AMR).
      *
@@ -291,6 +290,35 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
             Log.d(LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=off");
             mAudioManager.setParameters("wb_amr=off");
         }
+    }
+    @Override
+    protected Object
+    responseDataRegistrationState(Parcel p) {
+        Object response =  responseVoiceDataRegistrationState(p);
+        return response;
+    }
+    @Override
+    protected Object
+    responseVoiceRegistrationState(Parcel p) {
+        Object response =  responseVoiceDataRegistrationState(p);
+        return response;
+    }
+
+    private Object
+    responseVoiceDataRegistrationState(Parcel p) {
+        String response[] = (String[])responseStrings(p);
+        Log.w(LOG_TAG, " SHAREEf debug before : "
+              +  s(response));
+        if ( response.length>=10){
+            for(int i=6; i<=9; i++){
+                if (response[i]== null)
+                    response[i]=Integer.toString(Integer.MAX_VALUE);
+            }
+        }
+    
+        Log.w(LOG_TAG, " SHAREEf debug after : "
+              +  s(response));
+        return response;
     }
 
     // Workaround for Samsung CDMA "ring of death" bug:
