@@ -198,7 +198,13 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     public void setPhoneType(int phoneType){
         super.setPhoneType(phoneType);
         isGSM = (phoneType != RILConstants.CDMA_PHONE);
+    }
+
+    @Override
+    protected Object
+    responseCallList(Parcel p) {
         samsungDriverCall = (needsOldRilFeature("newDriverCall") && !isGSM) || mRilVersion < 7 ? false : true;
+        return super.responseCallList(p);
     }
 
     @Override
