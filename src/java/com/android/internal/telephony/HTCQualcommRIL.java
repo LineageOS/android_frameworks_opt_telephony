@@ -24,6 +24,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
+import android.os.SystemProperties;
 import android.telephony.SignalStrength;
 import android.text.TextUtils;
 import android.util.Log;
@@ -61,11 +62,13 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
     responseIccCardStatus(Parcel p) {
         Object ret = super.responseIccCardStatus(p);
 
-        // force CDMA + LTE network mode
-        boolean forceCdmaLte = needsOldRilFeature("forceCdmaLteNetworkType");
+        // force network mode
+        // preferred network type. uses "ro.telephony.default_network to determine
+        boolean forcePrefNetworkType = needsOldRilFeature("forcePrefNetworkType");
 
-        if (forceCdmaLte) {
-            setPreferredNetworkType(NETWORK_MODE_LTE_CDMA_EVDO, null);
+        if (forcePrefNetworkType) {
+            int mode = SystemProperties.getInt("ro.telephony.default_network", -3);
+            setPreferredNetworkType(mode, null);
         }
 
         return ret;
