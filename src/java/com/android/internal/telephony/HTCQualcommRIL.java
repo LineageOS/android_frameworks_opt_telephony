@@ -63,9 +63,14 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
 
         // force CDMA + LTE network mode
         boolean forceCdmaLte = needsOldRilFeature("forceCdmaLteNetworkType");
+        boolean forceGsmLte = needsOldRilFeature("forceGsmLteNetworkType");
 
         if (forceCdmaLte) {
             setPreferredNetworkType(NETWORK_MODE_LTE_CDMA_EVDO, null);
+        }
+
+        if (forceGsmLte) {
+            setPreferredNetworkType(9, null);
         }
 
         return ret;
