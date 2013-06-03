@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "iPE-nNQ",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-06-03T22:28:05Z",
+      "side": 0,
+      "message": "I don\u0027t think we can get rid of this function quite yet, since there seems to be an issue setting default LTE modes for m7.",
+      "revId": "61406f17b3041299a4350203682ff27bc15322e5",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
