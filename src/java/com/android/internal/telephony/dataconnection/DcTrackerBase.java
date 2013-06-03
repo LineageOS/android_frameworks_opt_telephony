@@ -86,7 +86,7 @@ public abstract class DcTrackerBase extends Handler {
     /** Delay between APN attempts.
         Note the property override mechanism is there just for testing purpose only. */
     protected static final int APN_DELAY_MILLIS =
-                                SystemProperties.getInt("persist.radio.apn_delay", 5000);
+                                SystemProperties.getInt("persist.radio.apn_delay", 20000);
 
     AlarmManager mAlarmManager;
 
