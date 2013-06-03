@@ -57,18 +57,18 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
     }
 
     @Override
-    protected Object
-    responseIccCardStatus(Parcel p) {
-        Object ret = super.responseIccCardStatus(p);
+    protected Object responseGetPreferredNetworkType(Parcel p) {
+        int [] response = (int[]) responseInts(p);
 
-        // force CDMA + LTE network mode
-        boolean forceCdmaLte = needsOldRilFeature("forceCdmaLteNetworkType");
-
-        if (forceCdmaLte) {
-            setPreferredNetworkType(NETWORK_MODE_LTE_CDMA_EVDO, null);
+        boolean useDefaultNetworkType = needsOldRilFeature("useDefaultNetworkType");
+        if (!useDefaultNetworkType && response.length >= 1) {
+            // Since this is the response for getPreferredNetworkType
+            // we'll assume that it should be the value we want the
+            // vendor ril to take if we reestablish a connection to it.
+            mPreferredNetworkType = response[0];
         }
 
-        return ret;
+        return response;
     }
 
     @Override
