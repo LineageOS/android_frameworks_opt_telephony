@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "iJEvQKE",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-06-03T23:11:51Z",
+      "side": 1,
+      "message": "This case duplicates the one several lines down. It also completely breaks the skip radio power off hack.",
+      "revId": "5d3edc7d2f4c849f861dabd8a1b1b1fcea0f769b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
