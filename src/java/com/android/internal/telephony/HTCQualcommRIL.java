@@ -58,21 +58,6 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
 
     @Override
     protected Object
-    responseIccCardStatus(Parcel p) {
-        Object ret = super.responseIccCardStatus(p);
-
-        // force CDMA + LTE network mode
-        boolean forceCdmaLte = needsOldRilFeature("forceCdmaLteNetworkType");
-
-        if (forceCdmaLte) {
-            setPreferredNetworkType(NETWORK_MODE_LTE_CDMA_EVDO, null);
-        }
-
-        return ret;
-    }
-
-    @Override
-    protected Object
     responseSignalStrength(Parcel p) {
         /* HTC signal strength format:
          * 0: GW_SignalStrength
@@ -127,6 +112,18 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
         int response = p.readInt();
 
         switch(response) {
+                
+            case RIL_UNSOL_RIL_CONNECTED: {
+                // don't set the initial condition of the htc ril, it set the ril to 0 which is default
+                //On every boot, the htc ril actually sets the initial condition  before the ril init
+                
+                ret = responseInts(p);
+                
+                // Initial conditions
+                setRadioPower(false, null);
+                setCdmaSubscriptionSource(mCdmaSubscription, null);
+                notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
+                break;
             case RIL_UNSOL_ENTER_LPM: ret = responseVoid(p); break;
             case RIL_UNSOL_TPMR_ID: ret = responseVoid(p); break;
             case RIL_UNSOL_CDMA_3G_INDICATOR:  ret = responseInts(p); break;
