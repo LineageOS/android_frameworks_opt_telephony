@@ -1975,6 +1975,13 @@ public final class Telephony {
           * gid: 4E, 33, ...
           */
         public static final String MVNO_MATCH_DATA = "mvno_match_data";
+
+        /**
+         * Initial Preferred APN
+         * true : initial preferred APN, false : not initial preferred APN.
+         * Default is false.
+         */
+        public static final String PREFERRED = "preferred";
     }
 
     /**
