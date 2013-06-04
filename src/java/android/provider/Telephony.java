@@ -2790,8 +2790,8 @@ public final class Telephony {
         public static final String CATEGORY = "category";
 
         public static final String STATE = "state";
+    }
 
-=======
     /**
      * Contains phone numbers that are blacklisted
      * for phone and/or message purposes.
