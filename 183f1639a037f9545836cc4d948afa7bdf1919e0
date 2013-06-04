@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "iHw0g90",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-06-04T01:55:37Z",
+      "side": 1,
+      "message": "maybe this?",
+      "revId": "183f1639a037f9545836cc4d948afa7bdf1919e0",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
