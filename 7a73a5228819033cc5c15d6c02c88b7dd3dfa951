@@ -1,0 +1,191 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "iOK6KG4",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-06-06T17:30:07Z",
+      "side": 1,
+      "message": "I liked the \"// SAMSUNG STATES\" delimiter here.",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iAKfXAQ",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-06-06T17:30:07Z",
+      "side": 1,
+      "message": "We shouldn\u0027t be referencing constants from a RIL with an Exynos chipset.  We can leave this in for this patch, but we need to clean this up.",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iAK2PIo",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-06-06T17:30:07Z",
+      "side": 1,
+      "message": "Can you add some comments about why you are having to override the standard behavior of simply returning responseStings()?",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iGKQWO0",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 421,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-06-06T17:30:07Z",
+      "side": 1,
+      "message": "Add a \"//modification start\" like you did above",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iCLBQOU",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 423,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-06-06T17:30:07Z",
+      "side": 1,
+      "message": "Can you add some comments about what this does and what problem this is solving?",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iEK8NGw",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 452,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-06-06T17:30:07Z",
+      "side": 1,
+      "message": "Add a \"//modification end\" like you did above",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iIL8jD8",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 459,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-06-06T17:30:07Z",
+      "side": 1,
+      "message": "If this is CDMA only, can you enclose the contents of this function in \"if (!isGSM) { }\" ?",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iOLsaJE",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-06-06T17:30:07Z",
+      "side": 1,
+      "message": "please remove",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iKL-kDM",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 479,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-06-06T17:30:07Z",
+      "side": 1,
+      "message": "please remove",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iMIChD4",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 495,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-06-06T17:30:07Z",
+      "side": 1,
+      "message": "please remove",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iKKtUDM",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 516,
+      "author": {
+        "id": 3304
+      },
+      "writtenOn": "2013-06-06T17:30:07Z",
+      "side": 1,
+      "message": "Could you add a comment describing which devices this is for?",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
