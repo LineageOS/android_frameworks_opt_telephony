@@ -343,8 +343,10 @@ public final class GsmCallTracker extends CallTracker {
 
     boolean
     canTransfer() {
-        return mForegroundCall.getState() == GsmCall.State.ACTIVE
-                && mBackgroundCall.getState() == GsmCall.State.HOLDING;
+        return (mForegroundCall.getState() == GsmCall.State.ACTIVE
+                || mForegroundCall.getState() == GsmCall.State.ALERTING
+                || mForegroundCall.getState() == GsmCall.State.DIALING)
+            && mBackgroundCall.getState() == GsmCall.State.HOLDING;
     }
 
     //***** Private Instance Methods
