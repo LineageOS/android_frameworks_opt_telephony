@@ -70,6 +70,8 @@ import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DcFailCause;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
+import com.android.internal.telephony.dataconnection.DataProfileOmh;
+import com.android.internal.telephony.dataconnection.DataProfile;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -772,6 +774,21 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     public void setDataSubscription(Message result) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_DATA_SUBSCRIPTION, result);
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        send(rr);
+    }
+
+    public void
+    getDataCallProfile(int appType, Message result) {
+        RILRequest rr = RILRequest.obtain(
+                RILConstants.RIL_REQUEST_GET_DATA_CALL_PROFILE, result);
+
+        // count of ints
+        rr.mParcel.writeInt(1);
+        rr.mParcel.writeInt(appType);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                + " : " + appType);
+
         send(rr);
     }
 
@@ -2599,6 +2616,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_REPORT_SMS_MEMORY_STATUS: ret = responseVoid(p); break;
             case RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING: ret = responseVoid(p); break;
             case RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE: ret =  responseInts(p); break;
+            case RIL_REQUEST_GET_DATA_CALL_PROFILE: ret =  responseGetDataCallProfile(p); break;
             case RIL_REQUEST_ISIM_AUTHENTICATION: ret =  responseString(p); break;
             case RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU: ret = responseVoid(p); break;
             case RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS: ret = responseICC_IO(p); break;
@@ -3925,6 +3943,26 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return null;
     }
 
+    private ArrayList<DataProfile> responseGetDataCallProfile(Parcel p) {
+        int nProfiles = p.readInt();
+        if (RILJ_LOGD) riljLog("# data call profiles:" + nProfiles);
+
+        ArrayList<DataProfile> response = new ArrayList<DataProfile>(nProfiles);
+
+        int profileId = 0;
+        int priority = 0;
+        for (int i = 0; i < nProfiles; i++) {
+            profileId = p.readInt();
+            priority = p.readInt();
+            DataProfileOmh profile = new DataProfileOmh(profileId, priority);
+            if (RILJ_LOGD) riljLog("responseGetDataCallProfile()" +
+                    profile.getProfileId() + ":" + profile.getPriority());
+            response.add(profile);
+        }
+
+        return response;
+    }
+
     private void
     notifyRegistrantsCdmaInfoRec(CdmaInformationRecords infoRec) {
         int response = RIL_UNSOL_CDMA_INFO_REC;
@@ -4104,6 +4142,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_REPORT_SMS_MEMORY_STATUS: return "RIL_REQUEST_REPORT_SMS_MEMORY_STATUS";
             case RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING: return "RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING";
             case RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE: return "RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE";
+            case RIL_REQUEST_GET_DATA_CALL_PROFILE: return "RIL_REQUEST_GET_DATA_CALL_PROFILE";
             case RIL_REQUEST_ISIM_AUTHENTICATION: return "RIL_REQUEST_ISIM_AUTHENTICATION";
             case RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU: return "RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU";
             case RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS: return "RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS";

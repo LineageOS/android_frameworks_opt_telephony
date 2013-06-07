@@ -266,7 +266,7 @@ public abstract class DcTrackerBase extends Handler {
     protected DataProfile mActiveDp;
 
     /** Holds all data profiles */
-    protected ArrayList<DataProfile> mAllDps = null;
+    protected ArrayList<DataProfile> mAllDps = new ArrayList<DataProfile>();
 
     /** preferred data profile */
     protected DataProfile mPreferredDp = null;
