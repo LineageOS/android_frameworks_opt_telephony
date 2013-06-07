@@ -70,6 +70,24 @@
     },
     {
       "key": {
+        "uuid": "iB0xAaM",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 421,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-06-07T00:08:53Z",
+      "side": 1,
+      "message": "This is from standard ril",
+      "parentUuid": "iGKQWO0",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "iCLBQOU",
         "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
         "patchSetId": 16
@@ -81,6 +99,24 @@
       "writtenOn": "2013-06-06T17:30:07Z",
       "side": 1,
       "message": "Can you add some comments about what this does and what problem this is solving?",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iP0lLVw",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 423,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-06-07T00:08:53Z",
+      "side": 1,
+      "message": "this is from standard ril",
+      "parentUuid": "iCLBQOU",
       "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
@@ -104,6 +140,24 @@
     },
     {
       "key": {
+        "uuid": "iN0qaSw",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 452,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-06-07T00:08:53Z",
+      "side": 1,
+      "message": "from standard ril",
+      "parentUuid": "iEK8NGw",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "iIL8jD8",
         "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
         "patchSetId": 16
@@ -115,6 +169,24 @@
       "writtenOn": "2013-06-06T17:30:07Z",
       "side": 1,
       "message": "If this is CDMA only, can you enclose the contents of this function in \"if (!isGSM) { }\" ?",
+      "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "iL0g1Uo",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 16
+      },
+      "lineNbr": 459,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-06-07T00:08:53Z",
+      "side": 1,
+      "message": "erm, this is defined in the  processsolicated.\nthe function is private so no other class can use it",
+      "parentUuid": "iIL8jD8",
       "revId": "7a73a5228819033cc5c15d6c02c88b7dd3dfa951",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
