@@ -75,6 +75,11 @@ public final class CdmaCallTracker extends CallTracker {
 
     CdmaConnection pendingMO;
     boolean hangupPendingMO;
+
+    //Used to re-request the list of current calls
+    int slow_modem = SystemProperties.getInt("ro.telephony.slow_modem",0);
+    boolean hangingup = false;
+
     boolean pendingCallInEcm=false;
     boolean mIsInEmergencyCall = false;
     CDMAPhone phone;
@@ -184,6 +189,7 @@ public final class CdmaCallTracker extends CallTracker {
      */
     Connection
     dial (String dialString, int clirMode) throws CallStateException {
+        if(slow_modem == 1) hangingup = false;
         // note that this triggers call state changed notif
         clearDisconnected();
 
@@ -496,6 +502,19 @@ public final class CdmaCallTracker extends CallTracker {
         boolean needsPollDelay = false;
         boolean unknownConnectionAppeared = false;
 
+        if(slow_modem == 1){
+            if(polledCalls.size() == 0 && !hangingup){
+                // Build in a slight delay to avoid contiously requesting current calls
+                try {
+                    Thread.sleep(250);
+                } catch(InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+                lastRelevantPoll = obtainMessage(EVENT_POLL_CALLS_RESULT);
+                cm.getCurrentCalls(lastRelevantPoll);
+                return;
+            }
+        }
         for (int i = 0, curDC = 0, dcSize = polledCalls.size()
                 ; i < connections.length; i++) {
             CdmaConnection conn = connections[i];
@@ -722,6 +741,7 @@ public final class CdmaCallTracker extends CallTracker {
     //***** Called from CdmaConnection
     /*package*/ void
     hangup (CdmaConnection conn) throws CallStateException {
+        if(slow_modem == 1) hangingup = true;
         if (conn.owner != this) {
             throw new CallStateException ("CdmaConnection " + conn
                                     + "does not belong to CdmaCallTracker " + this);
@@ -799,6 +819,7 @@ public final class CdmaCallTracker extends CallTracker {
 
     /* package */ void
     hangup (CdmaCall call) throws CallStateException {
+        if(slow_modem == 1) hangingup = true;
         if (call.getConnections().size() == 0) {
             throw new CallStateException("no connections in call");
         }
