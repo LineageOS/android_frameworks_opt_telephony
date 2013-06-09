@@ -81,6 +81,10 @@ public final class GsmCallTracker extends CallTracker {
     GsmConnection pendingMO;
     boolean hangupPendingMO;
 
+    //Used to re-request the list of current calls
+    int slow_modem = Integer.parseInt(SystemProperties.get("ro.telephony.slow_modem"));
+    boolean hangingup = false;
+
     GSMPhone phone;
 
     boolean desiredMute = false;    // false = mute off
@@ -172,6 +176,7 @@ public final class GsmCallTracker extends CallTracker {
      */
     synchronized Connection
     dial (String dialString, int clirMode, UUSInfo uusInfo) throws CallStateException {
+        if(slow_modem == 1) hangingup = false;
         // note that this triggers call state changed notif
         clearDisconnected();
 
@@ -432,6 +437,20 @@ public final class GsmCallTracker extends CallTracker {
         boolean needsPollDelay = false;
         boolean unknownConnectionAppeared = false;
 
+        if(slow_modem == 1){
+            if(polledCalls.size() == 0 && !hangingup){
+                // Build in a slight delay to avoid contiously requesting current calls
+                try {
+                    Thread.sleep(250);
+                } catch(InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+                lastRelevantPoll = obtainMessage(EVENT_POLL_CALLS_RESULT);
+                cm.getCurrentCalls(lastRelevantPoll);
+                return;
+            }
+        }
+
         for (int i = 0, curDC = 0, dcSize = polledCalls.size()
                 ; i < connections.length; i++) {
             GsmConnection conn = connections[i];
@@ -669,6 +688,7 @@ public final class GsmCallTracker extends CallTracker {
 
     /*package*/ void
     hangup (GsmConnection conn) throws CallStateException {
+        if(slow_modem == 1) hangingup = true;
         if (conn.owner != this) {
             throw new CallStateException ("GsmConnection " + conn
                                     + "does not belong to GsmCallTracker " + this);
