@@ -83,6 +83,10 @@ public final class GsmCallTracker extends CallTracker {
 
     boolean callSwitchPending = false;
 
+
+    //Used to re-request the list of current calls
+    boolean slowModem = (SystemProperties.getInt("ro.telephony.slowModem",0) != 0);
+
     GSMPhone mPhone;
 
     boolean mDesiredMute = false;    // false = mute off
@@ -516,6 +520,14 @@ public final class GsmCallTracker extends CallTracker {
         boolean needsPollDelay = false;
         boolean unknownConnectionAppeared = false;
 
+        if (slowModem) {
+            if (polledCalls.size() == 0 && !hangupPendingMO && pendingMO != null) {
+                lastRelevantPoll = obtainMessage(EVENT_POLL_CALLS_RESULT);
+                cm.getCurrentCalls(lastRelevantPoll);
+                return;
+            }
+        }
+
         for (int i = 0, curDC = 0, dcSize = polledCalls.size()
                 ; i < mConnections.length; i++) {
             GsmConnection conn = mConnections[i];
@@ -844,6 +856,7 @@ public final class GsmCallTracker extends CallTracker {
                     "does not belong to GsmCallTracker " + this);
         }
 
+        hangupPendingMO = true;
         call.onHangupLocal();
         mPhone.notifyPreciseCallStateChanged();
     }
