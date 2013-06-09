@@ -61,7 +61,7 @@ public class SipPhone extends SipPhoneBase {
     private SipManager mSipManager;
     private SipProfile mProfile;
 
-    SipPhone (Context context, PhoneNotifier notifier, SipProfile profile) {
+    public SipPhone (Context context, PhoneNotifier notifier, SipProfile profile) {
         super(context, notifier);
 
         if (DEBUG) Log.d(LOG_TAG, "new SipPhone: " + profile.getUriString());

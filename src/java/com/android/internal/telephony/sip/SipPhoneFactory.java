@@ -21,6 +21,7 @@ import com.android.internal.telephony.PhoneNotifier;
 import android.content.Context;
 import android.net.sip.SipProfile;
 import android.util.Log;
+import android.privacy.surrogate.PrivacySipPhone;
 
 import java.text.ParseException;
 
@@ -40,7 +41,7 @@ public class SipPhoneFactory {
             PhoneNotifier phoneNotifier) {
         try {
             SipProfile profile = new SipProfile.Builder(sipUri).build();
-            return new SipPhone(context, phoneNotifier, profile);
+            return new PrivacySipPhone(context, phoneNotifier, profile);
         } catch (ParseException e) {
             Log.w("SipPhoneFactory", "makePhone", e);
             return null;

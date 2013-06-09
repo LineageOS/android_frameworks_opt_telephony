@@ -822,7 +822,7 @@ public class CDMAPhone extends PhoneBase {
          super.notifyServiceStateChangedP(ss);
      }
 
-     void notifyLocationChanged() {
+     public void notifyLocationChanged() {
          mNotifier.notifyCellLocation(this);
      }
 

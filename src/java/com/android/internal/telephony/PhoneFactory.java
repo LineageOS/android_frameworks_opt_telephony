@@ -16,6 +16,19 @@
 
 package com.android.internal.telephony;
 
+//BEGIN PRIVACY ADDED
+//--------------------------------------------------------
+//import com.android.internal.telephony.cdma.CDMAPhone;
+//import com.android.internal.telephony.cdma.CDMALTEPhone;
+//import com.android.internal.telephony.gsm.GSMPhone;
+import android.privacy.surrogate.PrivacyCDMAPhone;
+import android.privacy.surrogate.PrivacyCDMALTEPhone;
+import android.privacy.surrogate.PrivacyGSMPhone;
+import android.privacy.surrogate.PrivacySipPhone;
+import android.privacy.surrogate.PrivacyPhoneProxy;
+//--------------------------------------------------------
+//END PRIVACY ADDED
+
 import android.content.Context;
 import android.net.LocalServerSocket;
 import android.os.Looper;
@@ -24,10 +37,7 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.os.SystemProperties;
 
-import com.android.internal.telephony.cdma.CDMAPhone;
-import com.android.internal.telephony.cdma.CDMALTEPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
-import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.sip.SipPhone;
 import com.android.internal.telephony.sip.SipPhoneFactory;
 import com.android.internal.telephony.uicc.UiccController;
@@ -144,20 +154,32 @@ public class PhoneFactory {
                 int phoneType = TelephonyManager.getPhoneType(networkMode);
                 if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
                     Log.i(LOG_TAG, "Creating GSMPhone");
-                    sProxyPhone = new PhoneProxy(new GSMPhone(context,
-                            sCommandsInterface, sPhoneNotifier));
+                    //BEGIN PRIVACY ADDED
+                    //sProxyPhone = new PhoneProxy(new GSMPhone(context,
+                    //        sCommandsInterface, sPhoneNotifier));
+                    sProxyPhone = new PrivacyPhoneProxy(new PrivacyGSMPhone(context,
+                            sCommandsInterface, sPhoneNotifier),context);
+                    //END PRIVACY ADDED
                 } else if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
                     switch (TelephonyManager.getLteOnCdmaModeStatic()) {
                         case PhoneConstants.LTE_ON_CDMA_TRUE:
                             Log.i(LOG_TAG, "Creating CDMALTEPhone");
-                            sProxyPhone = new PhoneProxy(new CDMALTEPhone(context,
-                                sCommandsInterface, sPhoneNotifier));
+                            //BEGIN PRIVACY ADDED
+                            //sProxyPhone = new PhoneProxy(new CDMALTEPhone(context,
+                            //    sCommandsInterface, sPhoneNotifier));
+                            sProxyPhone = new PrivacyPhoneProxy(new PrivacyCDMALTEPhone(context,
+                                sCommandsInterface, sPhoneNotifier),context);
+                            //END PRIVACY ADDED
                             break;
                         case PhoneConstants.LTE_ON_CDMA_FALSE:
                         default:
                             Log.i(LOG_TAG, "Creating CDMAPhone");
-                            sProxyPhone = new PhoneProxy(new CDMAPhone(context,
-                                    sCommandsInterface, sPhoneNotifier));
+                            //BEGIN PRIVACY ADDED
+                            //sProxyPhone = new PhoneProxy(new CDMAPhone(context,
+                            //        sCommandsInterface, sPhoneNotifier));
+                            sProxyPhone = new PrivacyPhoneProxy(new PrivacyCDMAPhone(context,
+                                    sCommandsInterface, sPhoneNotifier),context);
+                            //END PRIVACY ADDED
                             break;
                     }
                 }
@@ -184,13 +206,19 @@ public class PhoneFactory {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
             switch (TelephonyManager.getLteOnCdmaModeStatic()) {
                 case PhoneConstants.LTE_ON_CDMA_TRUE: {
-                    phone = new CDMALTEPhone(sContext, sCommandsInterface, sPhoneNotifier);
+                    //BEGIN PRIVACY ADDED
+                    //phone = new CDMALTEPhone(sContext, sCommandsInterface, sPhoneNotifier);
+                    phone = new PrivacyCDMALTEPhone(sContext, sCommandsInterface, sPhoneNotifier);
+                    //END PRIVACY ADDED
                     break;
                 }
                 case PhoneConstants.LTE_ON_CDMA_FALSE:
                 case PhoneConstants.LTE_ON_CDMA_UNKNOWN:
                 default: {
-                    phone = new CDMAPhone(sContext, sCommandsInterface, sPhoneNotifier);
+                    //BEGIN PRIVACY ADDED
+                    //phone = new CDMAPhone(sContext, sCommandsInterface, sPhoneNotifier);
+                    phone = new PrivacyCDMAPhone(sContext, sCommandsInterface, sPhoneNotifier);
+                    //END PRIVACY ADDED
                     break;
                 }
             }
@@ -200,7 +228,7 @@ public class PhoneFactory {
 
     public static Phone getGsmPhone() {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
-            Phone phone = new GSMPhone(sContext, sCommandsInterface, sPhoneNotifier);
+            Phone phone = new PrivacyGSMPhone(sContext, sCommandsInterface, sPhoneNotifier);
             return phone;
         }
     }
