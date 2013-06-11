@@ -337,7 +337,11 @@ public class SipPhone extends SipPhoneBase {
         // to something like onSpeaerphoneStateChanged(). Echo suppression may
         // not be available on every device.
         synchronized (SipPhone.class) {
-            mForegroundCall.setAudioGroupMode();
+            AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
+            String echoSuppression = audioManager.getParameters("ec_supported");
+            if (echoSuppression.contains("off")) {
+                mForegroundCall.setAudioGroupMode();
+            }
         }
     }
 
