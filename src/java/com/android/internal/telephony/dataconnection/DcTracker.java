@@ -1620,9 +1620,8 @@ public final class DcTracker extends DcTrackerBase {
 
             if (apnContext.getWaitingApnsPermFailCount() == 0) {
                 if (DBG) {
-                    log("onDataSetupComplete: All APN's had permanent failures, long delay");
+                    log("onDataSetupComplete: All APN's had permanent failures, stop retrying");
                 }
-                startAlarmForRestartTrySetup(APN_DELAY_MILLIS * 3, apnContext);
             } else {
                 if (DBG) {
                     log("onDataSetupComplete: Not all APN's had permanent failures, short delay");
