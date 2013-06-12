@@ -1619,21 +1619,18 @@ public final class DcTracker extends DcTrackerBase {
 
             apnContext.setDataConnectionAc(null);
 
-            int delay;
             if (apnContext.getWaitingApnsPermFailCount() == 0) {
-                delay = APN_DELAY_MILLIS_RESTART_TRYSETUP_LONG;
                 if (DBG) {
-                    log("onDataSetupCompleteError: All APN's had permanent failures delay="
-                            + delay);
+                    log("onDataSetupCompleteError: All APN's had permanent failures, stop retrying");
                 }
             } else {
-                delay = APN_DELAY_MILLIS_RESTART_TRYSETUP_SHORT;
+                int delay = APN_DELAY_MILLIS_RESTART_TRYSETUP_SHORT;
                 if (DBG) {
                     log("onDataSetupCompleteError: Not all APN's had permanent failures delay="
                             + delay);
                 }
+                startAlarmForRestartTrySetup(delay, apnContext);
             }
-            startAlarmForRestartTrySetup(delay, apnContext);
         } else {
             if (DBG) log("onDataSetupCompleteError: Try next APN");
             apnContext.setState(DctConstants.State.SCANNING);

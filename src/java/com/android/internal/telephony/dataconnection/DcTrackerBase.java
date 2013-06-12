@@ -91,9 +91,6 @@ public abstract class DcTrackerBase extends Handler {
     /** Delay After all APNs have been tried and not all had permanent errors */
     protected static final int APN_DELAY_MILLIS_RESTART_TRYSETUP_SHORT = APN_DELAY_MILLIS;
 
-    /** Delay After all APNs have been tried and all had permanent errors */
-    protected static final int APN_DELAY_MILLIS_RESTART_TRYSETUP_LONG = APN_DELAY_MILLIS * 3;
-
     AlarmManager mAlarmManager;
 
     protected Object mDataEnabledLock = new Object();
