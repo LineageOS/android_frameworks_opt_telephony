@@ -33,6 +33,7 @@ public class CatCmdMessage implements Parcelable {
     private BrowserSettings mBrowserSettings = null;
     private ToneSettings mToneSettings = null;
     private CallSettings mCallSettings = null;
+    private SetupEventListSettings mSetupEventListSettings = null;
     private boolean mLoadIconFailed = false;
 
     // Command Qualifier values for refresh command
@@ -54,6 +55,24 @@ public class CatCmdMessage implements Parcelable {
     public class CallSettings {
         public TextMessage confirmMsg;
         public TextMessage callMsg;
+    }
+
+    public class SetupEventListSettings {
+        public int[] eventList;
+    }
+
+    public final class SetupEventListConstants {
+        // Event values in SETUP_EVENT_LIST Proactive Command as per ETSI 102.223
+        public static final int USER_ACTIVITY_EVENT          = 0x04;
+        public static final int IDLE_SCREEN_AVAILABLE_EVENT  = 0x05;
+        public static final int LANGUAGE_SELECTION_EVENT     = 0x07;
+        public static final int BROWSER_TERMINATION_EVENT    = 0x08;
+        public static final int BROWSING_STATUS_EVENT        = 0x0F;
+    }
+
+    public final class BrowserTerminationCauses {
+        public static final int USER_TERMINATION             = 0x00;
+        public static final int ERROR_TERMINATION            = 0x01;
     }
 
     CatCmdMessage(CommandParams cmdParams) {
@@ -103,8 +122,11 @@ public class CatCmdMessage implements Parcelable {
             BIPClientParams param = (BIPClientParams) cmdParams;
             mTextMsg = param.mTextMsg;
             break;
-        case PROVIDE_LOCAL_INFORMATION:
         case SET_UP_EVENT_LIST:
+            mSetupEventListSettings = new SetupEventListSettings();
+            mSetupEventListSettings.eventList = ((SetEventListParams) cmdParams).mEventInfo;
+            break;
+        case PROVIDE_LOCAL_INFORMATION:
         default:
             break;
         }
@@ -130,6 +152,14 @@ public class CatCmdMessage implements Parcelable {
             mCallSettings.confirmMsg = in.readParcelable(null);
             mCallSettings.callMsg = in.readParcelable(null);
             break;
+        case SET_UP_EVENT_LIST:
+            mSetupEventListSettings = new SetupEventListSettings();
+            int length = in.readInt();
+            mSetupEventListSettings.eventList = new int[length];
+            for (int i = 0; i < length; i++) {
+                mSetupEventListSettings.eventList[i] = in.readInt();
+            }
+            break;
         default:
             break;
         }
@@ -153,6 +183,9 @@ public class CatCmdMessage implements Parcelable {
         case SET_UP_CALL:
             dest.writeParcelable(mCallSettings.confirmMsg, 0);
             dest.writeParcelable(mCallSettings.callMsg, 0);
+            break;
+        case SET_UP_EVENT_LIST:
+            dest.writeIntArray(mSetupEventListSettings.eventList);
             break;
         default:
             break;
@@ -222,5 +255,9 @@ public class CatCmdMessage implements Parcelable {
         } else {
             return false;
         }
+    }
+
+    public SetupEventListSettings getSetEventList() {
+        return mSetupEventListSettings;
     }
 }
