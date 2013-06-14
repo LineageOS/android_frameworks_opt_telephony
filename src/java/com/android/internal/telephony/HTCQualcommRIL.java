@@ -27,6 +27,7 @@ import android.os.Parcel;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.IccCardApplicationStatus;
 import com.android.internal.telephony.IccCardStatus;
 
@@ -77,13 +78,18 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
                 boolean skipRadioPowerOff = needsOldRilFeature("skipradiooff");
+                boolean forceRuimSubscribe = needsOldRilFeature("force_ruim_sub");
 
                 // Initial conditions
                 if (!skipRadioPowerOff) {
                     setRadioPower(false, null);
                 }
                 setPreferredNetworkType(mPreferredNetworkType, null);
-                setCdmaSubscriptionSource(mCdmaSubscription, null);
+                if (forceRuimSubscribe) {
+                    setCdmaSubscriptionSource(CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM, null);
+                } else {
+                    setCdmaSubscriptionSource(mCdmaSubscription, null);
+                }
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
                 break;
             }
