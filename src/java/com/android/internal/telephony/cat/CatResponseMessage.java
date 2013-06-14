@@ -25,6 +25,9 @@ public class CatResponseMessage {
         boolean mUsersConfirm = false;
         boolean mIncludeAdditionalInfo = false;
         int mAdditionalInfo = 0;
+        int mEventValue = -1;
+        byte[] mAddedInfo = null;
+
         public CatResponseMessage(CatCmdMessage cmdMsg) {
             mCmdDet = cmdMsg.mCmdDet;
         }
@@ -39,6 +42,11 @@ public class CatResponseMessage {
 
         public void setInput(String input) {
             mUsersInput = input;
+        }
+
+        public void setEventDownload(int event, byte[] addedInfo) {
+            this.mEventValue = event;
+            this.mAddedInfo = addedInfo;
         }
 
         public void setYesNo(boolean yesNo) {
