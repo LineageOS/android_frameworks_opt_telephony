@@ -74,6 +74,7 @@ public class IccCardStatus {
             mCardState = CardState.CARDSTATE_PRESENT;
             break;
         case 2:
+        case 3:
             mCardState = CardState.CARDSTATE_ERROR;
             break;
         default:
