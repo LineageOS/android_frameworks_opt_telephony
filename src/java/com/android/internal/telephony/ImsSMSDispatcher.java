@@ -205,6 +205,18 @@ public class ImsSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
+    protected void sendTextWithPriority(String destAddr, String scAddr, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+        Rlog.d(TAG, "sendTextWithPriority");
+        if (isCdmaMo()) {
+            mCdmaDispatcher.sendTextWithPriority(destAddr, scAddr,
+                    text, sentIntent, deliveryIntent, priority);
+        } else {
+            Rlog.e(TAG, "priority is not supported in 3gpp text message!");
+        }
+    }
+
+    @Override
     public void sendRetrySms(SmsTracker tracker) {
         String oldFormat = tracker.mFormat;
 
