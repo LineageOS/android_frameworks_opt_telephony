@@ -40,12 +40,12 @@ import static com.android.internal.telephony.cat.CatCmdMessage.
  * into a CommandParams object.
  *
  */
-class CommandParamsFactory extends Handler {
+public class CommandParamsFactory extends Handler {
     private static CommandParamsFactory sInstance = null;
-    private IconLoader mIconLoader;
+    protected IconLoader mIconLoader;
     private CommandParams mCmdParams = null;
     private int mIconLoadState = LOAD_NO_ICON;
-    private RilMessageDecoder mCaller = null;
+    protected RilMessageDecoder mCaller = null;
     private boolean mloadIcon = false;
 
     // constants
@@ -96,6 +96,9 @@ class CommandParamsFactory extends Handler {
     private CommandParamsFactory(RilMessageDecoder caller, IccFileHandler fh) {
         mCaller = caller;
         mIconLoader = IconLoader.getInstance(this, fh);
+    }
+
+    protected CommandParamsFactory() {
     }
 
     private CommandDetails processCommandDetails(List<ComprehensionTlv> ctlvs) {
