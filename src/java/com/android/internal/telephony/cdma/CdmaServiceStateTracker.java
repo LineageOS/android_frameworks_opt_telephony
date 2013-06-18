@@ -1162,10 +1162,11 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             mPhone.notifyServiceStateChanged(mSS);
         }
 
-        if (hasCdmaDataConnectionAttached) {
-            mAttachedRegistrants.notifyRegistrants();
-        }
-
+        // First notify detached, then rat changed, then attached - that's the way it
+        // happens in the modem.
+        // Behavior of recipients (DcTracker, for instance) depends on this sequence
+        // since DcTracker reloads profiles on "rat_changed" notification and sets up
+        // data call on "attached" notification.
         if (hasCdmaDataConnectionDetached) {
             mDetachedRegistrants.notifyRegistrants();
         }
@@ -1173,6 +1174,10 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         if (hasCdmaDataConnectionChanged || hasRilDataRadioTechnologyChanged) {
             notifyDataRegStateRilRadioTechnologyChanged();
             mPhone.notifyDataConnection(null);
+        }
+
+        if (hasCdmaDataConnectionAttached) {
+            mAttachedRegistrants.notifyRegistrants();
         }
 
         if (hasRoamingOn) {
