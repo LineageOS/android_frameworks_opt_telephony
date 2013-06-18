@@ -761,7 +761,7 @@ public abstract class DcTrackerBase extends Handler {
     protected abstract void onCleanUpConnection(boolean tearDown, int apnId, String reason);
     protected abstract void onCleanUpAllConnections(String cause);
     public abstract boolean isDataPossible(String apnType);
-    protected abstract void onUpdateIcc();
+    protected abstract boolean onUpdateIcc();
     protected abstract void completeConnection(ApnContext apnContext);
     public abstract void setDataAllowed(boolean enable, Message response);
     public abstract String[] getPcscfAddress(String apnType);
