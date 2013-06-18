@@ -50,7 +50,23 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
     @Override
     protected Object
     responseIccCardStatus(Parcel p) {
-        Object ret = super.responseIccCardStatus(p);
+        Object ret;
+
+        boolean extraIccCardStates = needsOldRilFeature("extraicccardstates");
+
+        if (extraIccCardStates) {
+            int dataPosition = p.dataPosition();
+            int cardState = p.readInt();
+
+            if (cardState >= 3) {
+                ret = responseVoid(p);
+            } else {
+                p.setDataPosition(dataPosition);
+                ret = super.responseIccCardStatus(p);
+            }
+        } else {
+            ret = super.responseIccCardStatus(p);
+        }
 
         // force CDMA + LTE network mode
         boolean forceCdmaLte = needsOldRilFeature("forceCdmaLteNetworkType");
