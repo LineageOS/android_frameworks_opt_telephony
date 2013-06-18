@@ -702,7 +702,7 @@ public abstract class DcTrackerBase extends Handler {
     protected abstract void onCleanUpConnection(boolean tearDown, int apnId, String reason);
     protected abstract void onCleanUpAllConnections(String cause);
     public abstract boolean isDataPossible(String apnType);
-    protected abstract void onUpdateIcc();
+    protected abstract boolean onUpdateIcc();
     protected abstract void completeConnection(ApnContext apnContext);
     /* If multiple calls (mms, supl etc) cannot be supported at the same time
      * (e.g: MPDN not supported), disconnect a lower priority call

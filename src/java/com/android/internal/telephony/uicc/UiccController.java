@@ -24,6 +24,8 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.telephony.Rlog;
 
+import android.telephony.ServiceState;
+
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
@@ -74,6 +76,7 @@ public class UiccController extends Handler {
     private static final boolean DBG = true;
     private static final String LOG_TAG = "UiccController";
 
+    public static final int APP_FAM_UNKNOWN =  -1;
     public static final int APP_FAM_3GPP =  1;
     public static final int APP_FAM_3GPP2 = 2;
     public static final int APP_FAM_IMS   = 3;
@@ -150,6 +153,18 @@ public class UiccController extends Handler {
                 }
             }
             return null;
+        }
+    }
+
+    public static int getFamilyFromRadioTechnology(int radioTechnology) {
+        if (ServiceState.isGsm(radioTechnology) ||
+                radioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD) {
+            return  UiccController.APP_FAM_3GPP;
+        } else if (ServiceState.isCdma(radioTechnology)) {
+            return  UiccController.APP_FAM_3GPP2;
+        } else {
+            // If it is UNKNOWN rat
+            return UiccController.APP_FAM_UNKNOWN;
         }
     }
 
