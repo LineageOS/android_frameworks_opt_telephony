@@ -1,6 +1,8 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -95,6 +97,28 @@ public class SmsMessage {
      * @hide
      */
     public SmsMessageBase mWrappedSmsMessage;
+
+    /** Indicates the subId
+     *
+     * @hide
+     */
+    private int mSubId = 0;
+
+    /** set Subscription information
+     *
+     * @hide
+     */
+    public void setSubId(int subId) {
+        mSubId = subId;
+    }
+
+    /** get Subscription information
+     *
+     * @hide
+     */
+    public int getSubId() {
+        return mSubId;
+    }
 
     public static class SubmitPdu {
 

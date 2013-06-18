@@ -1,6 +1,8 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,8 +51,8 @@ import static android.telephony.SmsManager.STATUS_ON_ICC_UNREAD;
  * access Sms in Icc.
  */
 public class IccSmsInterfaceManager extends ISms.Stub {
-    static final String LOG_TAG = "IccSmsInterfaceManager";
-    static final boolean DBG = true;
+    protected static final String LOG_TAG = "IccSmsInterfaceManager";
+    protected static final boolean DBG = true;
 
     protected final Object mLock = new Object();
     protected boolean mSuccess;
@@ -153,11 +155,16 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         mPhone = phone;
         mContext = phone.getContext();
         mAppOps = (AppOpsManager)mContext.getSystemService(Context.APP_OPS_SERVICE);
-        mDispatcher = new ImsSMSDispatcher(phone,
-                phone.mSmsStorageMonitor, phone.mSmsUsageMonitor);
+        initDispatchers();
         if(ServiceManager.getService("isms") == null) {
             ServiceManager.addService("isms", this);
         }
+    }
+
+    protected void initDispatchers() {
+        if(DBG) Log.d(LOG_TAG, "IccSmsInterfaceManager: initDispatchers()");
+        mDispatcher = new ImsSMSDispatcher(mPhone,
+                mPhone.mSmsStorageMonitor, mPhone.mSmsUsageMonitor);
     }
 
     public void dispose() {

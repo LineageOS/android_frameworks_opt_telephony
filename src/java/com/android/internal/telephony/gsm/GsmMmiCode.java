@@ -563,6 +563,11 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         return mMessage;
     }
 
+    public Phone
+    getPhone() {
+        return ((Phone) mPhone);
+    }
+
     // inherited javadoc suffices
     @Override
     public void

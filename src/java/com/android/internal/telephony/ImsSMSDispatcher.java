@@ -1,6 +1,8 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,11 +34,11 @@ import android.telephony.Rlog;
 import com.android.internal.telephony.cdma.CdmaSMSDispatcher;
 import com.android.internal.telephony.gsm.GsmSMSDispatcher;
 
-public final class ImsSMSDispatcher extends SMSDispatcher {
+public class ImsSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "RIL_ImsSms";
 
-    private SMSDispatcher mCdmaDispatcher;
-    private SMSDispatcher mGsmDispatcher;
+    protected SMSDispatcher mCdmaDispatcher;
+    protected SMSDispatcher mGsmDispatcher;
 
     /** true if IMS is registered and sms is supported, false otherwise.*/
     private boolean mIms = false;
@@ -45,13 +47,20 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     public ImsSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
             SmsUsageMonitor usageMonitor) {
         super(phone, storageMonitor, usageMonitor);
+
+        initDispatchers(phone, storageMonitor, usageMonitor);
+
+        mCi.registerForOn(this, EVENT_RADIO_ON, null);
+        mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
+    }
+
+    protected void initDispatchers(PhoneBase phone, SmsStorageMonitor storageMonitor,
+            SmsUsageMonitor usageMonitor) {
+        Rlog.d(TAG, "ImsSMSDispatcher: initDispatchers()");
         mCdmaDispatcher = new CdmaSMSDispatcher(phone,
                 storageMonitor, usageMonitor, this);
         mGsmDispatcher = new GsmSMSDispatcher(phone,
                 storageMonitor, usageMonitor, this);
-
-        mCi.registerForOn(this, EVENT_RADIO_ON, null);
-        mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
     }
 
     /* Updates the phone object when there is a change */

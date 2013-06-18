@@ -1037,8 +1037,9 @@ public class SmsMessage extends SmsMessageBase {
     /**
      * Returns the list of service category program data, if present.
      * @return a list of CdmaSmsCbProgramData objects, or null if not present
+     * @hide
      */
-    ArrayList<CdmaSmsCbProgramData> getSmsCbProgramData() {
+    public ArrayList<CdmaSmsCbProgramData> getSmsCbProgramData() {
         return mBearerData.serviceCategoryProgramData;
     }
 }

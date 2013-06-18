@@ -2,6 +2,8 @@
  * Copyright (C) 2006 The Android Open Source Project
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
+ * Not a Contribution.
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -56,11 +58,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicReference;
 
-public final class GsmSMSDispatcher extends SMSDispatcher {
+public class GsmSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "GsmSMSDispatcher";
     private static final boolean VDBG = false;
+
     private ImsSMSDispatcher mImsSMSDispatcher;
-    private UiccController mUiccController = null;
+    protected UiccController mUiccController = null;
     private AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
     private AtomicReference<UiccCardApplication> mUiccApplication =
             new AtomicReference<UiccCardApplication>();
@@ -433,13 +436,16 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         }
     }
 
+    protected UiccCardApplication getUiccCardApplication() {
+        return mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
+    }
+
     private void onUpdateIccAvailability() {
         if (mUiccController == null ) {
             return;
         }
 
-        UiccCardApplication newUiccApplication =
-                mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
+        UiccCardApplication newUiccApplication = getUiccCardApplication();
 
         UiccCardApplication app = mUiccApplication.get();
         if (app != newUiccApplication) {

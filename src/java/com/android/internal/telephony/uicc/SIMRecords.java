@@ -1,9 +1,8 @@
 /*
- * Copyright (c) 2013, Linux Foundation. All rights reserved.
- * Not a Contribution, Apache license notifications and license are retained
- * for attribution purposes only.
- *
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2013, Linux Foundation. All rights reserved.
+ *
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +27,7 @@ import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.telephony.MSimTelephonyManager;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 import android.util.Log;
@@ -238,9 +238,9 @@ public class SIMRecords extends IccRecords {
         mAdnCache.reset();
 
         log("SIMRecords: onRadioOffOrNotAvailable set 'gsm.sim.operator.numeric' to operator=null");
-        SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, null);
-        SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, null);
-        SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, null);
+        setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, null);
+        setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, null);
+        setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, null);
 
         // recordsRequested is set to false indicating that the SIM
         // read requests made so far are not valid. This is set to
@@ -1386,11 +1386,11 @@ public class SIMRecords extends IccRecords {
 
         log("SIMRecords: onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
                 operator + "'");
-        SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
-        SystemProperties.set(PROPERTY_APN_SIM_OPERATOR_NUMERIC, operator);
+        setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
+        setSystemProperty(PROPERTY_APN_SIM_OPERATOR_NUMERIC, operator);
 
         if (mImsi != null) {
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
+            setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
                     MccTable.countryCodeForMcc(Integer.parseInt(mImsi.substring(0,3))));
         }
         else {
@@ -1628,7 +1628,7 @@ public class SIMRecords extends IccRecords {
 
                     if (DBG) log("Load EF_SPN: " + mSpn
                             + " spnDisplayCondition: " + mSpnDisplayCondition);
-                    SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
 
                     mSpnState = GetSpnFsmState.IDLE;
                 } else {
@@ -1649,7 +1649,7 @@ public class SIMRecords extends IccRecords {
                     mSpn = IccUtils.adnStringFieldToString(data, 0, data.length);
 
                     if (DBG) log("Load EF_SPN_CPHS: " + mSpn);
-                    SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
 
                     mSpnState = GetSpnFsmState.IDLE;
                 } else {
@@ -1666,7 +1666,7 @@ public class SIMRecords extends IccRecords {
                     mSpn = IccUtils.adnStringFieldToString(data, 0, data.length);
 
                     if (DBG) log("Load EF_SPN_SHORT_CPHS: " + mSpn);
-                    SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
                 }else {
                     if (DBG) log("No SPN loaded in either CHPS or 3GPP");
                 }
@@ -1816,5 +1816,13 @@ public class SIMRecords extends IccRecords {
         pw.println(" mUsimServiceTable=" + mUsimServiceTable);
         pw.println(" mGid1=" + mGid1);
         pw.flush();
+    }
+
+    private void setSystemProperty(String key, String val) {
+        // Update the system properties only in case NON-DSDS.
+        // TODO: Shall have a better approach!
+        if (!MSimTelephonyManager.getDefault().isMultiSimEnabled()) {
+            SystemProperties.set(key, val);
+        }
     }
 }

@@ -1,7 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
- *
  * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -1687,6 +1686,17 @@ public final class SimulatedCommands extends BaseCommands
     @Override
     public void sendImsGsmSms(String smscPDU, String pdu,
             int retry, int messageRef, Message response){
+        unimplemented(response);
+    }
+
+    @Override
+    public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
+            Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void setDataSubscription (Message response) {
         unimplemented(response);
     }
 }

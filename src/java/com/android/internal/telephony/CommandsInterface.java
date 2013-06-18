@@ -1,7 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
- *
  * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -193,6 +192,16 @@ public interface CommandsInterface {
     void unregisterForInCallVoicePrivacyOn(Handler h);
     void registerForInCallVoicePrivacyOff(Handler h, int what, Object obj);
     void unregisterForInCallVoicePrivacyOff(Handler h);
+
+    /**
+     * Handlers for subscription status change indications.
+     *
+     * @param h Handler for subscription status change messages.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    void registerForSubscriptionStatusChanged(Handler h, int what, Object obj);
+    void unregisterForSubscriptionStatusChanged(Handler h);
 
     /**
      * unlike the register* methods, there's only one new 3GPP format SMS handler.
@@ -1657,11 +1666,11 @@ public interface CommandsInterface {
      * Sets the minimum time in milli-seconds between when RIL_UNSOL_CELL_INFO_LIST
      * should be invoked.
      *
-     * The default, 0, means invoke RIL_UNSOL_CELL_INFO_LIST when any of the reported 
+     * The default, 0, means invoke RIL_UNSOL_CELL_INFO_LIST when any of the reported
      * information changes. Setting the value to INT_MAX(0x7fffffff) means never issue
      * A RIL_UNSOL_CELL_INFO_LIST.
      *
-     * 
+     *
 
      * @param rateInMillis is sent back to handler and result.obj is a AsyncResult
      * @param response.obj is AsyncResult ar when sent to associated handler
@@ -1686,4 +1695,29 @@ public interface CommandsInterface {
      * @return version of the ril.
      */
     int getRilVersion();
+   /**
+     * Sets user selected subscription at Modem.
+     *
+     * @param slotId
+     *          Slot.
+     * @param appIndex
+     *          Application index in the card.
+     * @param subId
+     *          Indicates subscription 0 or subscription 1.
+     * @param subStatus
+     *          Activation status, 1 = activate and 0 = deactivate.
+     * @param result
+     *          Callback message contains the information of SUCCESS/FAILURE.
+     */
+    public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
+            Message result);
+
+    /**
+     * Set Data Subscription preference at Modem.
+     *
+     * @param result
+     *          Callback message contains the information of SUCCESS/FAILURE.
+     */
+    public void setDataSubscription (Message result);
+
 }

@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2012-13, The Linux Foundation. All rights reserved.
- * Not a Contribution, Apache license notifications and license are retained
- * for attribution purposes only.
+ * Not a Contribution.
  *
  * Copyright (C) 2007 The Android Open Source Project
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
@@ -59,6 +58,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static com.android.internal.telephony.MSimConstants.DEFAULT_SUBSCRIPTION;
 
 /**
  * (<em>Not for SDK use</em>)
@@ -1498,4 +1498,11 @@ public abstract class PhoneBase extends Handler implements Phone {
                 + this);
     }
 
+    /**
+     * Returns the subscription id.
+     * Always returns default subscription(ie., 0).
+     */
+    public int getSubscription() {
+        return DEFAULT_SUBSCRIPTION;
+    }
 }

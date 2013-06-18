@@ -1,6 +1,8 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,7 +67,7 @@ import java.util.HashMap;
 
 
 public class CdmaSMSDispatcher extends SMSDispatcher {
-    private static final String TAG = "CdmaSMSDispatcher";
+    protected static final String TAG = "CdmaSMSDispatcher";
     private static final boolean VDBG = false;
     private ImsSMSDispatcher mImsSMSDispatcher;
 
@@ -484,10 +486,13 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         return false;
     }
 
-    // Receiver for Service Category Program Data results.
-    // We already ACK'd the original SCPD SMS, so this sends a new response SMS.
-    // TODO: handle retries if the RIL returns an error.
-    private final BroadcastReceiver mScpResultsReceiver = new BroadcastReceiver() {
+    /**
+     * Receiver for Service Category Program Data results.
+     * We already ACK'd the original SCPD SMS, so this sends a new response SMS.
+     * TODO: handle retries if the RIL returns an error.
+     * @hide
+     */
+    protected final BroadcastReceiver mScpResultsReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             int rc = getResultCode();

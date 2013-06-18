@@ -158,6 +158,10 @@ public class CatService extends Handler implements AppInterface {
     }
 
     public void dispose() {
+        if (sInstance == null) {
+            return;
+        }
+
         mIccRecords.unregisterForRecordsLoaded(this);
 
         // Clean up stk icon if dispose is called

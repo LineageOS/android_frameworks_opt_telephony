@@ -1,5 +1,8 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,7 +72,7 @@ import java.util.HashMap;
 /**
  * {@hide}
  */
-public final class DcTracker extends DcTrackerBase {
+public class DcTracker extends DcTrackerBase {
     protected final String LOG_TAG = "DCT";
 
     /**
@@ -775,7 +778,7 @@ public final class DcTracker extends DcTrackerBase {
         cleanUpAllConnections(true, cause);
     }
 
-    private void cleanUpConnection(boolean tearDown, ApnContext apnContext) {
+    protected void cleanUpConnection(boolean tearDown, ApnContext apnContext) {
 
         if (apnContext == null) {
             if (DBG) log("cleanUpConnection: apn context is null");
@@ -859,7 +862,7 @@ public final class DcTracker extends DcTrackerBase {
      *
      * @param apnContext on which the alarm should be stopped.
      */
-    private void cancelReconnectAlarm(ApnContext apnContext) {
+    protected void cancelReconnectAlarm(ApnContext apnContext) {
         if (apnContext == null) return;
 
         PendingIntent intent = apnContext.getReconnectIntent();
@@ -2248,13 +2251,20 @@ public final class DcTracker extends DcTrackerBase {
         return cid;
     }
 
+    protected IccRecords getUiccCardApplication() {
+        return  mUiccController.getIccRecords(UiccController.APP_FAM_3GPP);
+    }
+
     @Override
     protected void onUpdateIcc() {
         if (mUiccController == null ) {
             return;
         }
 
-        IccRecords newIccRecords = mUiccController.getIccRecords(UiccController.APP_FAM_3GPP);
+        IccRecords newIccRecords = getUiccCardApplication();
+        if (newIccRecords == null) {
+            return;
+        }
 
         IccRecords r = mIccRecords.get();
         if (r != newIccRecords) {
