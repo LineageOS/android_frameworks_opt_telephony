@@ -44,6 +44,7 @@ import com.android.internal.telephony.uicc.UsimServiceTable;
 import com.android.internal.telephony.CallManager;
 
 import java.util.List;
+import java.util.Map;
 
 public class PhoneProxy extends Handler implements Phone {
     public final static Object lockForRadioTechnologyChange = new Object();
@@ -605,6 +606,24 @@ public class PhoneProxy extends Handler implements Phone {
     @Override
     public void conference() throws CallStateException {
         mActivePhone.conference();
+    }
+
+    public void changeConnectionType(Message msg, Connection conn,
+            int newCallType, Map<String, String> newExtras) throws CallStateException {
+        mActivePhone.changeConnectionType(msg, conn, newCallType, newExtras);
+    }
+
+    public void acceptConnectionTypeChange(Connection conn, Map<String, String> newExtras)
+            throws CallStateException {
+        mActivePhone.acceptConnectionTypeChange(conn, newExtras);
+    }
+
+    public void rejectConnectionTypeChange(Connection conn) throws CallStateException {
+        mActivePhone.rejectConnectionTypeChange(conn);
+    }
+
+    public int getProposedConnectionType(Connection conn) throws CallStateException {
+        return mActivePhone.getProposedConnectionType(conn);
     }
 
     @Override
@@ -1233,4 +1252,23 @@ public class PhoneProxy extends Handler implements Phone {
     public boolean isRadioOn() {
         return mCommandsInterface.getRadioState().isOn();
     }
+
+    public void registerForModifyCallRequest(Handler h, int what, Object obj)
+            throws CallStateException {
+        mActivePhone.registerForModifyCallRequest(h, what, obj);
+    }
+
+    public void unregisterForModifyCallRequest(Handler h) throws CallStateException {
+        mActivePhone.unregisterForModifyCallRequest(h);
+    }
+
+    public void registerForAvpUpgradeFailure(Handler h, int what, Object obj)
+            throws CallStateException {
+        mActivePhone.registerForAvpUpgradeFailure(h, what, obj);
+    }
+
+    public void unregisterForAvpUpgradeFailure(Handler h) throws CallStateException {
+        mActivePhone.unregisterForAvpUpgradeFailure(h);
+    }
+
 }
