@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import java.util.Hashtable;
+
 import android.app.PendingIntent;
 import android.os.ServiceManager;
 
@@ -23,6 +25,7 @@ import java.util.List;
 
 public class IccSmsInterfaceManagerProxy extends ISms.Stub {
     private IccSmsInterfaceManager mIccSmsInterfaceManager;
+    private Hashtable<String, ISmsMiddleware> mMiddleware = new Hashtable<String, ISmsMiddleware>();
 
     public IccSmsInterfaceManagerProxy(IccSmsInterfaceManager
             iccSmsInterfaceManager) {
@@ -35,7 +38,12 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
     public void setmIccSmsInterfaceManager(IccSmsInterfaceManager iccSmsInterfaceManager) {
         this.mIccSmsInterfaceManager = iccSmsInterfaceManager;
     }
-
+    
+    @Override
+    public void registerSmsMiddleware(String name, ISmsMiddleware middleware) throws android.os.RemoteException {
+        mMiddleware.put(name, middleware);
+    }
+    
     public boolean
     updateMessageOnIccEf(int index, int status, byte[] pdu) throws android.os.RemoteException {
          return mIccSmsInterfaceManager.updateMessageOnIccEf(index, status, pdu);
@@ -58,12 +66,30 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
 
     public void sendText(String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        for (ISmsMiddleware middleware: mMiddleware.values()) {
+            try {
+                if (middleware.onSendText(destAddr, scAddr, text, sentIntent, deliveryIntent))
+                    return;
+            }
+            catch (Exception e) {
+                // TOOD: remove the busted middleware?                
+            }
+        }
         mIccSmsInterfaceManager.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent);
     }
 
     public void sendMultipartText(String destAddr, String scAddr,
             List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents) throws android.os.RemoteException {
+        for (ISmsMiddleware middleware: mMiddleware.values()) {
+            try {
+                if (middleware.onSendMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents))
+                    return;
+            }
+            catch (Exception e) {
+                // TOOD: remove the busted middleware?                
+            }
+        }
         mIccSmsInterfaceManager.sendMultipartText(destAddr, scAddr,
                 parts, sentIntents, deliveryIntents);
     }

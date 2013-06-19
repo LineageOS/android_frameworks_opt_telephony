@@ -47,6 +47,10 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
         mContext.enforceCallingPermission(
                 "android.permission.SEND_SMS", message);
     }
+    
+    @Override
+    public void registerSmsMiddleware(String name, ISmsMiddleware middleware) throws android.os.RemoteException {
+    }
 
     /**
      * Send a data based SMS to a specific application port.

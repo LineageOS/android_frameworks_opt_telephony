@@ -19,6 +19,7 @@ include $(CLEAR_VARS)
 LOCAL_AIDL_INCLUDES := $(LOCAL_PATH)/src/java
 LOCAL_SRC_FILES := \
 	src/java/com/android/internal/telephony/ISms.aidl \
+	src/java/com/android/internal/telephony/ISmsMiddleware.aidl \
     src/java/com/android/internal/telephony/IIccPhoneBook.aidl \
     src/java/com/android/internal/telephony/EventLogTags.logtags \
 
