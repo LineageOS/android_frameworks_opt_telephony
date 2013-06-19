@@ -176,6 +176,67 @@ public interface Phone {
     public static final int CDMA_OTA_PROVISION_STATUS_OTAPA_STOPPED = 10;
     public static final int CDMA_OTA_PROVISION_STATUS_OTAPA_ABORTED = 11;
 
+    /*
+     * Type of the call based on the media type and the direction of the media.
+     */
+
+    public static final int CALL_TYPE_VOICE = 0; /*
+                                                  * Voice call-audio in both
+                                                  * directions
+                                                  */
+
+    public static final int CALL_TYPE_VT_TX = 1; /*
+                                                  * PS Video telephony call: one
+                                                  * way TX video, two way audio
+                                                  */
+
+    public static final int CALL_TYPE_VT_RX = 2; /*
+                                                  * Video telephony call: one
+                                                  * way RX video, two way audio
+                                                  */
+
+    public static final int CALL_TYPE_VT = 3; /*
+                                               * Video telephony call: two way
+                                               * video, two way audio
+                                               */
+
+    public static final int CALL_TYPE_VT_NODIR = 4; /*
+                                                     * Video telephony call: no
+                                                     * direction, two way audio,
+                                                     * intermediate state in a
+                                                     * video call till video
+                                                     * link is setup
+                                                     */
+
+    public static final int CALL_TYPE_UNKNOWN = 10; /*
+                                                     * Unknown Call type, may be
+                                                     * used for answering call
+                                                     * with same call type as
+                                                     * incoming call. This is
+                                                     * only for telephony, not
+                                                     * meant to be passed to RIL
+                                                     */
+
+    public static final int CALL_DOMAIN_CS = 1; /*
+                                                 * Circuit switched domain
+                                                 */
+    public static final int CALL_DOMAIN_PS = 2; /*
+                                                 * Packet switched domain
+                                                 */
+    public static final int CALL_DOMAIN_AUTOMATIC = 3; /*
+                                                        * Automatic domain. Sent
+                                                        * by Android to indicate
+                                                        * that the domain for a
+                                                        * new call should be
+                                                        * selected by modem
+                                                        */
+    public static final int CALL_DOMAIN_NOT_SET = 4; /*
+                                                      * Init value used
+                                                      * internally by telephony
+                                                      * until domain is set
+                                                      */
+
+    public static final String EXTRAS_IS_CONFERENCE_URI = "isConferenceUri";
 
     /**
      * Get the current ServiceState. Use
@@ -638,7 +699,7 @@ public interface Phone {
     /**
      * Gets call type for IMS calls.
      *
-     * @return one of the call types in {@link CallDetails}
+     * @return one of the call types in {@link Phone}
      * @throws CallStateException
      */
     int getCallType(Call call) throws CallStateException;
@@ -646,7 +707,7 @@ public interface Phone {
     /**
      * Gets call domain for IMS calls.
      *
-     * @return one of the call domains in {@link CallDetails}
+     * @return one of the call domains in {@link Phone}
      * @throws CallStateException
      */
     int getCallDomain(Call call) throws CallStateException;

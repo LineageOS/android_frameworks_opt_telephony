@@ -561,7 +561,7 @@ public final class CallManager {
      * @exception CallStateException when call is not ringing or waiting
      */
     public void acceptCall(Call ringingCall) throws CallStateException {
-        acceptCall(ringingCall, CallDetails.CALL_TYPE_VOICE);
+        acceptCall(ringingCall, Phone.CALL_TYPE_VOICE);
     }
 
     /**
@@ -575,7 +575,7 @@ public final class CallManager {
      *
      * @param ringingCall The call to answer
      * @param callType The call type to use to answer the call. Values from
-     *            CallDetails.RIL_CALL_TYPE
+     *            Phone.RIL_CALL_TYPE
      * @exception CallStateException when call is not ringing or waiting
      */
     public void acceptCall(Call ringingCall, int callType) throws CallStateException {
@@ -810,7 +810,7 @@ public final class CallManager {
      * handled asynchronously.
      */
     public Connection dial(Phone phone, String dialString) throws CallStateException {
-        return dial(phone, dialString, CallDetails.CALL_TYPE_VOICE, null);
+        return dial(phone, dialString, Phone.CALL_TYPE_VOICE, null);
     }
 
     /**
