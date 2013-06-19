@@ -231,6 +231,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected final RegistrantList mCallModifyRegistrants
             = new RegistrantList();
 
+    protected final RegistrantList mAvpUpgradeFailureRegistrants
+            = new RegistrantList();
+
     protected Looper mLooper; /* to insure registrants are in correct thread*/
 
     protected final Context mContext;
@@ -1437,6 +1440,50 @@ public abstract class PhoneBase extends Handler implements Phone {
     public Connection dial(String dialString, int CallType, String[] extras)
             throws CallStateException {
         throw new CallStateException("Dial with CallDetails is not supported in this phone "
+                + this);
+    }
+
+    public void registerForModifyCallRequest(Handler h, int what, Object obj)
+            throws CallStateException {
+        throw new CallStateException("registerForModifyCallRequest is not supported in this phone "
+                + this);
+    }
+
+    public void unregisterForModifyCallRequest(Handler h) throws CallStateException {
+        throw new CallStateException(
+                "unregisterForModifyCallRequest is not supported in this phone " + this);
+    }
+
+    public void registerForAvpUpgradeFailure(Handler h, int what, Object obj)
+            throws CallStateException {
+        throw new CallStateException("registerForAvpUpgradeFailure is not supported in this phone "
+                + this);
+    }
+
+    public void unregisterForAvpUpgradeFailure(Handler h) throws CallStateException {
+        throw new CallStateException(
+                "unregisterForAvpUpgradeFailure is not supported in this phone "
+                        + this);
+    }
+
+    public void changeConnectionType(Message msg, Connection conn,
+            int newCallType, Map<String, String> newExtras) throws CallStateException {
+        throw new CallStateException("changeConnectionType is not supported in this phone " + this);
+    }
+
+    public void acceptConnectionTypeChange(Connection conn, Map<String, String> newExtras)
+            throws CallStateException {
+        throw new CallStateException("acceptConnectionTypeChange is not supported in this phone "
+                + this);
+    }
+
+    public void rejectConnectionTypeChange(Connection conn) throws CallStateException {
+        throw new CallStateException("rejectConnectionTypeChange is not supported in this phone "
+                + this);
+    }
+
+    public int getProposedConnectionType(Connection conn) throws CallStateException {
+        throw new CallStateException("getProposedConnectionType is not supported in this phone "
                 + this);
     }
 

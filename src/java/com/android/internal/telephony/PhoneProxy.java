@@ -591,6 +591,24 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone.conference();
     }
 
+    public void changeConnectionType(Message msg, Connection conn,
+            int newCallType, Map<String, String> newExtras) throws CallStateException {
+        mActivePhone.changeConnectionType(msg, conn, newCallType, newExtras);
+    }
+
+    public void acceptConnectionTypeChange(Connection conn, Map<String, String> newExtras)
+            throws CallStateException {
+        mActivePhone.acceptConnectionTypeChange(conn, newExtras);
+    }
+
+    public void rejectConnectionTypeChange(Connection conn) throws CallStateException {
+        mActivePhone.rejectConnectionTypeChange(conn);
+    }
+
+    public int getProposedConnectionType(Connection conn) throws CallStateException {
+        return mActivePhone.getProposedConnectionType(conn);
+    }
+
     @Override
     public void enableEnhancedVoicePrivacy(boolean enable, Message onComplete) {
         mActivePhone.enableEnhancedVoicePrivacy(enable, onComplete);
@@ -1189,6 +1207,24 @@ public class PhoneProxy extends Handler implements Phone {
     public void removeReferences() {
         mActivePhone = null;
         mCommandsInterface = null;
+    }
+
+    public void registerForModifyCallRequest(Handler h, int what, Object obj)
+            throws CallStateException {
+        mActivePhone.registerForModifyCallRequest(h, what, obj);
+    }
+
+    public void unregisterForModifyCallRequest(Handler h) throws CallStateException {
+        mActivePhone.unregisterForModifyCallRequest(h);
+    }
+
+    public void registerForAvpUpgradeFailure(Handler h, int what, Object obj)
+            throws CallStateException {
+        mActivePhone.registerForAvpUpgradeFailure(h, what, obj);
+    }
+
+    public void unregisterForAvpUpgradeFailure(Handler h) throws CallStateException {
+        mActivePhone.unregisterForAvpUpgradeFailure(h);
     }
 
 }
