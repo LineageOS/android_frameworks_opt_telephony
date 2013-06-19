@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.app.PendingIntent;
 import android.content.Context;
+import android.os.RemoteException;
 import android.util.Log;
 
 import com.android.internal.util.HexDump;
@@ -46,6 +47,14 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
                 "android.permission.RECEIVE_SMS", message);
         mContext.enforceCallingPermission(
                 "android.permission.SEND_SMS", message);
+    }
+
+    @Override
+    public void registerSmsMiddleware(String name, ISmsMiddleware middleware) throws android.os.RemoteException {
+    }
+
+    @Override
+    public void synthesizeMessages(String originatingAddress, String scAddress, List<String> messages, long timestampMillis) throws RemoteException {
     }
 
     /**
