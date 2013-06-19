@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.app.PendingIntent;
 import com.android.internal.telephony.SmsRawData;
+import com.android.internal.telephony.ISmsMiddleware;
 
 /** Interface for applications to access the ICC phone book.
  *
@@ -34,6 +35,9 @@ import com.android.internal.telephony.SmsRawData;
  */
 
 interface ISms {
+    void registerSmsMiddleware(String name, ISmsMiddleware middleware);
+    void synthesizeMessage(String originatingAddress, String scAddress, String messageBody, long timestampMillis);
+
     /**
      * Retrieves all messages currently stored on ICC.
      *
