@@ -1996,4 +1996,62 @@ public final class Telephony {
                 CMAS_CERTAINTY
         };
     }
+
+    public static final class Blacklist implements BaseColumns {
+        /**
+         * The content:// style URL for this table
+         */
+        public static final Uri CONTENT_URI =
+                Uri.parse("content://blacklist");
+
+        /**
+         * The content:// style URL for this table to match by id
+         */
+        public static final Uri CONTENT_BYID_URI =
+                Uri.parse("content://blacklist/by-id");
+
+        /**
+         * The content:// style URL for filtering this table on phone numbers
+         */
+        public static final Uri CONTENT_PHONE_URI =
+                Uri.parse("content://blacklist/phone");
+
+        /**
+         * The content:// style URL for filtering this table on message numbers
+         */
+        public static final Uri CONTENT_MESSAGE_URI =
+                Uri.parse("content://blacklist/message");
+
+
+        /**
+         * Query parameter used to match numbers by regular-expression like
+         * matching. Supported are the '*' and the '.' operators.
+         * <p>
+         * TYPE: boolean
+         */
+        public static final String REGEX_KEY = "regex";
+
+        /**
+         * The default sort order for this table
+         */
+        public static final String DEFAULT_SORT_ORDER = "number ASC";
+
+        /**
+         * The phone number as the user entered it.
+         * <P>Type: TEXT</P>
+         */
+        public static final String NUMBER = "number";
+
+        /**
+         * Blacklisting mode for phone calls
+         * <P>Type: INTEGER (int)</P>
+         */
+        public static final String PHONE_MODE = "phone";
+
+        /**
+         * Blacklisting mode for messages
+         * <P>Type: INTEGER (int)</P>
+         */
+        public static final String MESSAGE_MODE = "message";
+    }
 }
