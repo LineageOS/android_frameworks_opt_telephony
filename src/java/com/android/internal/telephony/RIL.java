@@ -18,6 +18,7 @@
 
 package com.android.internal.telephony;
 
+import static android.Manifest.permission.READ_PHONE_STATE;
 import static com.android.internal.telephony.RILConstants.*;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_UNKNOWN;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_EDGE;
@@ -27,6 +28,7 @@ import static android.telephony.TelephonyManager.NETWORK_TYPE_HSDPA;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_HSUPA;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_HSPA;
 
+import android.app.ActivityManagerNative;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -42,6 +44,7 @@ import android.os.Message;
 import android.os.Parcel;
 import android.os.PowerManager;
 import android.os.SystemProperties;
+import android.os.UserHandle;
 import android.os.PowerManager.WakeLock;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.CellInfo;
@@ -52,6 +55,7 @@ import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SsData;
@@ -73,9 +77,11 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -276,6 +282,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     private static final int CDMA_BSI_NO_OF_INTS_STRUCT = 3;
 
     private static final int CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES = 31;
+
+    private static final String ACTION_SAFE_WIFI_CHANNELS_CHANGED =
+            "qualcomm.intent.action.SAFE_WIFI_CHANNELS_CHANGED";
 
     BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
@@ -3180,6 +3189,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         final int QCRILHOOK_UNSOL_CDMA_BURST_DTMF = QCRILHOOK_BASE + 1001;
         final int QCRILHOOK_UNSOL_CDMA_CONT_DTMF_START = QCRILHOOK_BASE + 1002;
         final int QCRILHOOK_UNSOL_CDMA_CONT_DTMF_STOP = QCRILHOOK_BASE + 1003;
+        final int QCRILHOOK_UNSOL_WIFI_SAFE_CHANNELS_CHANGED = QCRILHOOK_BASE + 1008;
         final int QCRILHOOK_UNSOL_WMS_READY = QCRILHOOK_BASE + 1009;
 
         int response_id = 0, response_size = 0;
@@ -3218,6 +3228,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 notifyWmsReady(response_data);
                 break;
 
+            case QCRILHOOK_UNSOL_WIFI_SAFE_CHANNELS_CHANGED:
+                broadcastWifiChannelsChangedIntent(response_data);
+                break;
+
             default:
                 Rlog.d(RILJ_LOG_TAG, "Response ID " + response_id + " is not served in this process.");
                 break;
@@ -3240,6 +3254,31 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     protected void notifyCdmaFwdContDtmfStop() {
         AsyncResult ar = new AsyncResult(null, null, null);
         mCdmaFwdContDtmfStopRegistrants.notifyRegistrants(ar);
+    }
+
+    private void broadcastWifiChannelsChangedIntent(byte[] data) {
+        Intent intent = new Intent(ACTION_SAFE_WIFI_CHANNELS_CHANGED);
+        Rlog.d(RILJ_LOG_TAG, "WifiSafeChannels " + Arrays.toString(data));
+
+        String s;
+        try {
+            s = new String(data, "US-ASCII");
+        } catch (UnsupportedEncodingException e) {
+            Rlog.e(RILJ_LOG_TAG, "Decoding failed: " + e);
+            return;
+        }
+
+        Rlog.d(RILJ_LOG_TAG, "Decoded string " + s);
+        // Channels info is divided by commas
+        String[] channels = s.split(",");
+        Rlog.d(RILJ_LOG_TAG, "Parsed channels " + Arrays.toString(channels));
+        intent.putExtra("current_channel", Integer.parseInt(channels[0]));
+        intent.putExtra("start_safe_channel", Integer.parseInt(channels[1]));
+        intent.putExtra("end_safe_channel", Integer.parseInt(channels[2]));
+
+        Rlog.d(RILJ_LOG_TAG, "Broadcasting intent ACTION_SAFE_WIFI_CHANNELS_CHANGED ");
+        ActivityManagerNative.broadcastStickyIntent(intent, READ_PHONE_STATE,
+                UserHandle.USER_ALL);
     }
 
     /** Notify registrants of WMS_READY event. */
