@@ -212,6 +212,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static final boolean RILJ_LOGV = false; // STOP SHIP if true
     protected boolean samsungDriverCall = false;
 
+    private static final int RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE = 4802;
+
     /**
      * Wake lock timeout should be longer than the longest timeout in
      * the vendor ril.
@@ -2587,6 +2589,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RIL_CONNECTED: ret = responseInts(p); break;
             case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: ret =  responseInts(p); break;
             case RIL_UNSOL_STK_SEND_SMS_RESULT: ret = responseInts(p); break; // Samsung STK
+            case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE: ret = responseInts(p); break; // htc m7ul
 
             default:
                 throw new RuntimeException("Unrecognized unsol response: " + response);
@@ -2612,6 +2615,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     .notifyRegistrants(new AsyncResult(null, null, null));
             break;
             case RIL_UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED:
+                if (RILJ_LOGD) unsljLog(response);
+
+                mVoiceNetworkStateRegistrants
+                    .notifyRegistrants(new AsyncResult(null, null, null));
+            break;
+            case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE:
                 if (RILJ_LOGD) unsljLog(response);
 
                 mVoiceNetworkStateRegistrants
