@@ -793,6 +793,11 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         doReturn(true).when(mPhone).isPhoneTypeGsm();
         sst.mSS.setRilVoiceRadioTechnology(sst.mSS.RIL_RADIO_TECHNOLOGY_HSPA);
         assertEquals(true, sst.isConcurrentVoiceAndDataAllowed());
+        sst.mSS.setRilVoiceRadioTechnology(sst.mSS.RIL_RADIO_TECHNOLOGY_EDGE);
+        sst.mSS.setCssIndicator(1);
+        assertTrue(sst.isConcurrentVoiceAndDataAllowed());
+        sst.mSS.setCssIndicator(0);
+        assertFalse(sst.isConcurrentVoiceAndDataAllowed());
 
         doReturn(false).when(mPhone).isPhoneTypeGsm();
         doReturn(true).when(mPhone).isPhoneTypeCdma();
