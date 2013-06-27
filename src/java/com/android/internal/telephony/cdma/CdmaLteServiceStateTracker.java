@@ -354,6 +354,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
+        boolean hasCssIndicatorChanged = (mSS.getCssIndicator() != mNewSS.getCssIndicator());
         boolean has4gHandoff =
                 mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE &&
                 (((mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) &&
@@ -569,6 +570,10 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
         if (hasLocationChanged) {
             mPhone.notifyLocationChanged();
+        }
+
+        if (hasCssIndicatorChanged) {
+            mPhone.notifyDataConnection(Phone.REASON_CSS_INDICATOR_CHANGED);
         }
 
         ArrayList<CellInfo> arrayCi = new ArrayList<CellInfo>();
