@@ -63,6 +63,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     private String homeOperator= SystemProperties.get("ro.cdma.home.operator.numeric");
     private String operator= SystemProperties.get("ro.cdma.home.operator.alpha");
     private boolean oldRilState = needsOldRilFeature("exynos4RadioState");
+    private boolean googleEditionSS = needsOldRilFeature("googleEditionSS");
     public SamsungQualcommRIL(Context context, int networkMode,
             int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
@@ -169,7 +170,9 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
         response[4] %= 256;
 
         // RIL_LTE_SignalStrength
-        if (response[7] == 99) {
+        if (googleEditionSS && !isGSM){
+            response[8] = response[2];
+        }else if (response[7] == 99) {
             // If LTE is not enabled, clear LTE results
             // 7-11 must be -1 for GSM signal strength to be used (see
             // frameworks/base/telephony/java/android/telephony/SignalStrength.java)
@@ -180,7 +183,6 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
         }else{ // lte is gsm on samsung/qualcomm cdma stack
             response[7] &= 0xff;
         }
-
         return new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7], response[8], response[9], response[10], response[11], isGSM);
 
     }
