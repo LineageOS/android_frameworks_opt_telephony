@@ -1595,10 +1595,22 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     /**
+     * @return number of milli-seconds to delay between trying apns'
+     */
+    private int getApnDelay() {
+        if (mFailFast) {
+            return SystemProperties.getInt("persist.radio.apn_ff_delay",
+                    APN_FAIL_FAST_DELAY_DEFAULT_MILLIS);
+        } else {
+            return SystemProperties.getInt("persist.radio.apn_delay", APN_DELAY_DEFAULT_MILLIS);
+        }
+    }
+
+    /**
      * Error has occurred during the SETUP {aka bringUP} request and the DCT
      * should either try the next waiting APN or start over from the
      * beginning if the list is empty. Between each SETUP request there will
-     * be a delay defined by {@link #APN_DELAY_MILLIS}.
+     * be a delay defined by {@link #getApnDelay()}.
      */
     @Override
     protected void onDataSetupCompleteError(AsyncResult ar) {
@@ -1626,14 +1638,14 @@ public final class DcTracker extends DcTrackerBase {
                 if (DBG) {
                     log("onDataSetupComplete: Not all APN's had permanent failures, short delay");
                 }
-                startAlarmForRestartTrySetup(APN_DELAY_MILLIS, apnContext);
+                startAlarmForRestartTrySetup(getApnDelay(), apnContext);
             }
         } else {
             if (DBG) log("onDataSetupComplete: Try next APN");
             apnContext.setState(DctConstants.State.SCANNING);
             // Wait a bit before trying the next APN, so that
             // we're not tying up the RIL command channel
-            startAlarmForReconnect(APN_DELAY_MILLIS, apnContext);
+            startAlarmForReconnect(getApnDelay(), apnContext);
         }
     }
 
@@ -1673,7 +1685,7 @@ public final class DcTracker extends DcTrackerBase {
             // Wait a bit before trying the next APN, so that
             // we're not tying up the RIL command channel.
             // This also helps in any external dependency to turn off the context.
-            startAlarmForReconnect(APN_DELAY_MILLIS, apnContext);
+            startAlarmForReconnect(getApnDelay(), apnContext);
         } else {
             apnContext.setApnSetting(null);
             apnContext.setDataConnectionAc(null);
@@ -1712,6 +1724,7 @@ public final class DcTracker extends DcTrackerBase {
     @Override
     protected void onVoiceCallStarted() {
         if (DBG) log("onVoiceCallStarted");
+        mInVoiceCall = true;
         if (isConnected() && ! mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
             if (DBG) log("onVoiceCallStarted stop polling");
             stopNetStatPoll();
@@ -1723,6 +1736,7 @@ public final class DcTracker extends DcTrackerBase {
     @Override
     protected void onVoiceCallEnded() {
         if (DBG) log("onVoiceCallEnded");
+        mInVoiceCall = false;
         if (isConnected()) {
             if (!mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
                 startNetStatPoll();
