@@ -437,6 +437,11 @@ public final class GsmCallTracker extends CallTracker {
 
         if (slow_modem) {
             if (polledCalls.size() == 0 && !hangupPendingMO){
+                try {
+                   Thread.sleep(250);
+                }  catch(InterruptedException ex) {
+                     Thread.currentThread().interrupt();
+                }
                 lastRelevantPoll = obtainMessage(EVENT_POLL_CALLS_RESULT);
                 cm.getCurrentCalls(lastRelevantPoll);
                 return;
