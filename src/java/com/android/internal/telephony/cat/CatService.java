@@ -20,6 +20,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.Resources.NotFoundException;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -293,11 +294,27 @@ public class CatService extends Handler implements AppInterface {
             case RECEIVE_DATA:
             case SEND_DATA:
                 BIPClientParams cmd = (BIPClientParams) cmdParams;
-                if (cmd.mHasAlphaId && (cmd.mTextMsg.text == null)) {
+                /* Per 3GPP specification 102.223,
+                 * if the alpha identifier is not provided by the UICC,
+                 * the terminal MAY give information to the user
+                 * noAlphaUsrCnf defines if you need to show user confirmation or not
+                 */
+                boolean noAlphaUsrCnf = false;
+                try {
+                    noAlphaUsrCnf = mContext.getResources().getBoolean(
+                            com.android.internal.R.bool.config_stkNoAlphaUsrCnf);
+                } catch (NotFoundException e) {
+                    noAlphaUsrCnf = false;
+                }
+                if ((cmd.mTextMsg.text == null) && (cmd.mHasAlphaId || noAlphaUsrCnf)) {
                     CatLog.d(this, "cmd " + cmdParams.getCommandType() + " with null alpha id");
                     // If alpha length is zero, we just respond with OK.
                     if (isProactiveCmd) {
-                        sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
+                        if (cmdParams.getCommandType() == CommandType.OPEN_CHANNEL) {
+                            mCmdIf.handleCallSetupRequestFromSim(true, null);
+                        } else {
+                            sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
+                        }
                     }
                     return;
                 }
