@@ -605,6 +605,24 @@ public class MSimSmsManager {
         }
     }
 
+   /**
+     * Get SMS prompt property,  enabled or not
+     *
+     * @return true if enabled, false otherwise
+     * @hide
+     */
+    public boolean isSMSPromptEnabled() {
+        ISmsMSim iccISms = null;
+        try {
+            iccISms = ISmsMSim.Stub.asInterface(ServiceManager.getService("isms_msim"));
+            return iccISms.isSMSPromptEnabled();
+        } catch (RemoteException ex) {
+            return false;
+        } catch (NullPointerException ex) {
+            return false;
+        }
+    }
+
     // see SmsMessage.getStatusOnIcc
 
     /** Free space (TS 51.011 10.5.3 / 3GPP2 C.S0023 3.4.27). */

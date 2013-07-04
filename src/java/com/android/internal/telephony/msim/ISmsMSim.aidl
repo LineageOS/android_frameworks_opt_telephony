@@ -266,4 +266,11 @@ interface ISmsMSim {
      */
     int getPreferredSmsSubscription();
 
+    /*
+     * Get SMS prompt property,  enabled or not
+     * @return true if enabled, false otherwise
+     */
+    boolean isSMSPromptEnabled();
+
+
 }
