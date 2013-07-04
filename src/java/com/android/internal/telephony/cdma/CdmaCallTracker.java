@@ -501,7 +501,7 @@ public final class CdmaCallTracker extends CallTracker {
         boolean unknownConnectionAppeared = false;
 
         if (slow_modem) {
-            if (polledCalls.size() == 0 && !hangupPendingMO){
+            if (polledCalls.size() == 0 && !hangupPendingMO && pendingMO != null){
                 try {
                    Thread.sleep(250);
                 }  catch(InterruptedException ex) {
