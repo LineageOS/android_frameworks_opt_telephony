@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dac4157f_d811645f",
+        "filename": "src/java/com/android/internal/telephony/gsm/GsmCallTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-07-04T12:45:23Z",
+      "side": 1,
+      "message": "Can you - while you\u0027re at it - please fix up the coding style?\n\n- slow_modem -\u003e slowModem\n- add the missing space before {\n\nThanks.",
+      "revId": "72ebe987e5bdbd3e9e43f27d0236686a3b8a1323",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
