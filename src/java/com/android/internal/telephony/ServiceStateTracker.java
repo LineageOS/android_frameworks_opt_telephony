@@ -21,6 +21,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.SystemClock;
 import android.telephony.CellInfo;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -58,8 +59,9 @@ public abstract class ServiceStateTracker extends Handler {
     public ServiceState mSS = new ServiceState();
     protected ServiceState mNewSS = new ServiceState();
 
+    private static final long LAST_CELL_INFO_LIST_MAX_AGE_MS = 2000;
+    protected long mLastCellInfoListTime;
     protected List<CellInfo> mLastCellInfoList = null;
-    protected CellInfo mLastCellInfo = null;
 
     // This is final as subclasses alias to a more specific type
     // so we don't want the reference to change.
@@ -388,6 +390,7 @@ public abstract class ServiceStateTracker extends Handler {
                                     + " list=" + result.list);
                         }
                     }
+                    mLastCellInfoListTime = SystemClock.elapsedRealtime();
                     mLastCellInfoList = result.list;
                     result.lockObj.notify();
                 }
@@ -404,6 +407,7 @@ public abstract class ServiceStateTracker extends Handler {
                         log("EVENT_UNSOL_CELL_INFO_LIST: size=" + list.size()
                                 + " list=" + list);
                     }
+                    mLastCellInfoListTime = SystemClock.elapsedRealtime();
                     mLastCellInfoList = list;
                     mPhoneBase.notifyCellInfo(list);
                 }
@@ -670,22 +674,28 @@ public abstract class ServiceStateTracker extends Handler {
         int ver = mCi.getRilVersion();
         if (ver >= 8) {
             if (isCallerOnDifferentThread()) {
-                Message msg = obtainMessage(EVENT_GET_CELL_INFO_LIST, result);
-                synchronized(result.lockObj) {
-                    mCi.getCellInfoList(msg);
-                    try {
-                        result.lockObj.wait();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                        result.list = null;
+                if ((SystemClock.elapsedRealtime() - mLastCellInfoListTime)
+                        > LAST_CELL_INFO_LIST_MAX_AGE_MS) {
+                    Message msg = obtainMessage(EVENT_GET_CELL_INFO_LIST, result);
+                    synchronized(result.lockObj) {
+                        mCi.getCellInfoList(msg);
+                        try {
+                            result.lockObj.wait();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                            result.list = null;
+                        }
                     }
+                } else {
+                    if (DBG) log("SST.getAllCellInfo(): return last, back to back calls");
+                    result.list = mLastCellInfoList;
                 }
             } else {
-                log("SST.getAllCellInfo(): X return last, same thread probably RadioInfo");
+                if (DBG) log("SST.getAllCellInfo(): return last, same thread can't block");
                 result.list = mLastCellInfoList;
             }
         } else {
-            log("SST.getAllCellInfo(): X not implemented");
+            if (DBG) log("SST.getAllCellInfo(): not implemented");
             result.list = null;
         }
         if (DBG) {

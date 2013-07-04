@@ -249,7 +249,7 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public CellLocation getCellLocation() {
-        return mSST.mCellLoc;
+        return mSST.getCellLocation();
     }
 
     @Override
