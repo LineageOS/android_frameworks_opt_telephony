@@ -86,7 +86,7 @@ public class IccCardProxy extends Handler implements IccCard {
     private static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 11;
 
     protected final Object mLock = new Object();
-    private Context mContext;
+    protected Context mContext;
     private CommandsInterface mCi;
 
     protected RegistrantList mAbsentRegistrants = new RegistrantList();
