@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dac4157f_47d0cc53",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManager.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-07-08T13:02:47Z",
+      "side": 1,
+      "message": "Can\u0027t you drop the permission check here now that it\u0027s one level above?",
+      "revId": "893f285e59b43fd97d511c2865f4444d74dc9281",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_07cad4a1",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-07-08T13:02:47Z",
+      "side": 1,
+      "message": "{} missing",
+      "revId": "893f285e59b43fd97d511c2865f4444d74dc9281",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_e7cec0b3",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-07-08T13:02:47Z",
+      "side": 1,
+      "message": "destAddr, scAddr, sendIntent can be pulled out of the if...else blocks to make them shorter.",
+      "revId": "893f285e59b43fd97d511c2865f4444d74dc9281",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_a7c1e882",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-07-08T13:02:47Z",
+      "side": 1,
+      "message": "Catch-all clauses shouldn\u0027t be used according to the code style guidelines. Please catch only what can be thrown.",
+      "revId": "893f285e59b43fd97d511c2865f4444d74dc9281",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_87bee4fd",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-07-08T13:02:47Z",
+      "side": 1,
+      "message": "{} missing",
+      "revId": "893f285e59b43fd97d511c2865f4444d74dc9281",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_4737acb0",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-07-08T13:02:47Z",
+      "side": 1,
+      "message": "false -\u003e true",
+      "revId": "893f285e59b43fd97d511c2865f4444d74dc9281",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_67bbd00f",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 186,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-07-08T13:02:47Z",
+      "side": 1,
+      "message": "{} missing",
+      "revId": "893f285e59b43fd97d511c2865f4444d74dc9281",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
