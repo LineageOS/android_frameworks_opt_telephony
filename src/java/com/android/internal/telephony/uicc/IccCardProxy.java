@@ -313,6 +313,10 @@ public class IccCardProxy extends Handler implements IccCard {
         }
     }
 
+    protected void HandleDetectedState() {
+        setExternalState(State.UNKNOWN);
+    }
+
     protected void updateExternalState() {
         if (mUiccCard == null || mUiccCard.getCardState() == CardState.CARDSTATE_ABSENT) {
             if (mRadioOn) {
@@ -335,8 +339,10 @@ public class IccCardProxy extends Handler implements IccCard {
 
         switch (mUiccApplication.getState()) {
             case APPSTATE_UNKNOWN:
-            case APPSTATE_DETECTED:
                 setExternalState(State.UNKNOWN);
+                break;
+            case APPSTATE_DETECTED:
+                HandleDetectedState();
                 break;
             case APPSTATE_PIN:
                 setExternalState(State.PIN_REQUIRED);
