@@ -3063,7 +3063,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     private Object
     responseICC_IO(Parcel p) {
         int sw1, sw2;
-        byte data[] = null;
         Message ret;
 
         sw1 = p.readInt();
