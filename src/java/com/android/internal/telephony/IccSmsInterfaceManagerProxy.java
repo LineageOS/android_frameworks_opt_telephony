@@ -16,23 +16,53 @@
 
 package com.android.internal.telephony;
 
-import java.util.Hashtable;
+import java.util.ArrayList;
 import java.util.List;
 
 import android.app.Activity;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.PowerManager;
 import android.os.RemoteException;
 import android.os.ServiceManager;
-import android.os.SystemProperties;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.SmsMessage;
 
 public class IccSmsInterfaceManagerProxy extends ISms.Stub {
+    private static final String INTERCEPT_SMS_PERMISSION = "android.permission.INTERCEPT_SMS";
+
     private IccSmsInterfaceManager mIccSmsInterfaceManager;
-    private Hashtable<String, ISmsMiddleware> mMiddleware = new Hashtable<String, ISmsMiddleware>();
+
+    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            // check if the message was aborted
+            if (getResultCode() != Activity.RESULT_OK) {
+                return;
+            }
+            String destAddr = intent.getStringExtra("destAddr");
+            String scAddr = intent.getStringExtra("scAddr");
+            if (!intent.getBooleanExtra("multipart", false)) {
+                String text = intent.getStringExtra("text");
+                PendingIntent sentIntent = intent
+                        .getParcelableExtra("sentIntent");
+                PendingIntent deliveryIntent = intent
+                        .getParcelableExtra("deliveryIntent");
+                mIccSmsInterfaceManager.sendText(destAddr, scAddr, text,
+                        sentIntent, deliveryIntent);
+            } else {
+                ArrayList<String> parts = intent
+                        .getStringArrayListExtra("parts");
+                ArrayList<PendingIntent> sentIntents = intent
+                        .getParcelableArrayListExtra("sentIntent");
+                ArrayList<PendingIntent> deliveryIntents = intent
+                        .getParcelableArrayListExtra("deliveryIntents");
+                mIccSmsInterfaceManager.sendMultipartText(destAddr, scAddr,
+                        parts, sentIntents, deliveryIntents);
+            }
+        }
+    };
 
     public IccSmsInterfaceManagerProxy(Context context,
             IccSmsInterfaceManager iccSmsInterfaceManager) {
@@ -55,15 +85,6 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
         mWakeLock.setReferenceCounted(true);
     }
 
-    @Override
-    public void registerSmsMiddleware(String name, ISmsMiddleware middleware) throws android.os.RemoteException {
-        if (!"1".equals(SystemProperties.get("persist.sys.sms_debug", "0"))) {
-            mContext.enforceCallingPermission(
-                    "android.permission.INTERCEPT_SMS", "");
-        }
-        mMiddleware.put(name, middleware);
-    }
-
     private Context mContext;
     private PowerManager.WakeLock mWakeLock;
     private static final int WAKE_LOCK_TIMEOUT = 5000;
@@ -83,11 +104,8 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
 
     @Override
     public void synthesizeMessages(String originatingAddress, String scAddress, List<String> messages, long timestampMillis) throws RemoteException {
-        // if not running in debug mode
-        if (!"1".equals(SystemProperties.get("persist.sys.sms_debug", "0"))) {
-            mContext.enforceCallingPermission(
-                    "android.permission.BROADCAST_SMS", "");
-        }
+        mContext.enforceCallingPermission(
+                "android.permission.BROADCAST_SMS", "");
         byte[][] pdus = new byte[messages.size()][];
         for (int i = 0; i < messages.size(); i++) {
             SyntheticSmsMessage message = new SyntheticSmsMessage(originatingAddress, scAddress, messages.get(i), timestampMillis);
@@ -116,34 +134,46 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
                 sentIntent, deliveryIntent);
     }
 
+    private Intent createOutgoingSmsIntent(String destAddr, String scAddr) {
+        Intent broadcast = new Intent(Intent.ACTION_NEW_OUTGOING_SMS);
+        broadcast.putExtra("destAddr", destAddr);
+        broadcast.putExtra("scAddr", scAddr);
+        return broadcast;
+    }
+
+    private void broadcastOutgoingSms(Intent broadcast) {
+        mContext.sendOrderedBroadcast(broadcast, INTERCEPT_SMS_PERMISSION,
+                mReceiver, null, Activity.RESULT_OK, null, null);
+    }
+
     public void sendText(String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        for (ISmsMiddleware middleware: mMiddleware.values()) {
-            try {
-                if (middleware.onSendText(destAddr, scAddr, text, sentIntent, deliveryIntent))
-                    return;
-            }
-            catch (Exception e) {
-                // TOOD: remove the busted middleware?
-            }
-        }
-        mIccSmsInterfaceManager.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent);
+        mContext.enforceCallingPermission(
+                "android.permission.SEND_SMS",
+                "Sending SMS message");
+        Intent broadcast = createOutgoingSmsIntent(destAddr, scAddr);
+        broadcast.putExtra("multipart", false);
+        broadcast.putExtra("text", text);
+        broadcast.putExtra("sentIntent", sentIntent);
+        broadcast.putExtra("deliveryIntent", deliveryIntent);
+        broadcastOutgoingSms(broadcast);
     }
 
     public void sendMultipartText(String destAddr, String scAddr,
             List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents) throws android.os.RemoteException {
-        for (ISmsMiddleware middleware: mMiddleware.values()) {
-            try {
-                if (middleware.onSendMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents))
-                    return;
-            }
-            catch (Exception e) {
-                // TOOD: remove the busted middleware?
-            }
-        }
-        mIccSmsInterfaceManager.sendMultipartText(destAddr, scAddr,
-                parts, sentIntents, deliveryIntents);
+        mContext.enforceCallingPermission(
+                "android.permission.SEND_SMS",
+                "Sending SMS message");
+        Intent broadcast = createOutgoingSmsIntent(destAddr, scAddr);
+        broadcast.putExtra("multipart", true);
+        broadcast.putStringArrayListExtra("parts", new ArrayList<String>(
+                parts));
+        broadcast.putParcelableArrayListExtra("sentIntents",
+                new ArrayList<PendingIntent>(sentIntents));
+        broadcast.putParcelableArrayListExtra("deliveryIntents",
+                new ArrayList<PendingIntent>(deliveryIntents));
+        broadcastOutgoingSms(broadcast);
     }
 
     public boolean enableCellBroadcast(int messageIdentifier) throws android.os.RemoteException {
