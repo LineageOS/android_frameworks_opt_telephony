@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "dac4157f_87770402",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManager.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 65
+      },
+      "writtenOn": "2013-07-08T21:30:58Z",
+      "side": 1,
+      "message": "I initially had it done that way, but I am unsure as to whether this can be invoked via a Binder transaction directly in other ways.\n\nBetter safe than sorry.",
+      "parentUuid": "dac4157f_47d0cc53",
+      "revId": "893f285e59b43fd97d511c2865f4444d74dc9281",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dac4157f_07cad4a1",
         "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2013-07-08T13:02:47Z",
       "side": 1,
       "message": "{} missing",
+      "revId": "893f285e59b43fd97d511c2865f4444d74dc9281",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_6774f0fc",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 65
+      },
+      "writtenOn": "2013-07-08T21:30:58Z",
+      "side": 1,
+      "message": "Ah, thats my personal code style for 1 liners kicking in. I\u0027ll fix this.",
+      "parentUuid": "dac4157f_07cad4a1",
       "revId": "893f285e59b43fd97d511c2865f4444d74dc9281",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
