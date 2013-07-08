@@ -58,6 +58,7 @@ public class PhoneProxy extends Handler implements Phone {
     private IccPhoneBookInterfaceManagerProxy mIccPhoneBookInterfaceManagerProxy;
     private PhoneSubInfoProxy mPhoneSubInfoProxy;
     private IccCardProxy mIccCardProxy;
+    protected IccSmsInterfaceManagerProxy mIccSmsInterfaceManagerProxy;
 
     private boolean mResetModemOnRadioTechnologyChange = false;
 
@@ -88,9 +89,13 @@ public class PhoneProxy extends Handler implements Phone {
         mCommandsInterface.registerForVoiceRadioTechChanged(
                              this, EVENT_VOICE_RADIO_TECH_CHANGED, null);
         mPhoneId = phone.getPhoneId();
+        mIccCardProxy = new IccCardProxy(mActivePhone.getContext(),
+                mCommandsInterface, mActivePhone.getPhoneId());
         mIccSmsInterfaceManager =
                 new IccSmsInterfaceManager((PhoneBase)this.mActivePhone);
-        mIccCardProxy = new IccCardProxy(mActivePhone.getContext(), mCommandsInterface, mActivePhone.getPhoneId());
+        mIccSmsInterfaceManagerProxy =
+                new IccSmsInterfaceManagerProxy(mActivePhone.getContext(), mIccSmsInterfaceManager);
+        mIccSmsInterfaceManagerProxy.setmIccSmsInterfaceManager(mIccSmsInterfaceManager);
 
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
             // For the purpose of IccCardProxy we only care about the technology family
@@ -240,7 +245,6 @@ public class PhoneProxy extends Handler implements Phone {
         intent.putExtra(PhoneConstants.PHONE_NAME_KEY, mActivePhone.getPhoneName());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhoneId);
         ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
-
     }
 
     private void deleteAndCreatePhone(int newVoiceRadioTech) {
