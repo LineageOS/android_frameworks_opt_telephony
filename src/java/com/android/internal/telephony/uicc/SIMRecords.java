@@ -165,7 +165,6 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_SET_CPHS_MAILBOX_DONE = 25;
     private static final int EVENT_GET_INFO_CPHS_DONE = 26;
     // private static final int EVENT_SET_MSISDN_DONE = 30; Defined in IccRecords as 30
-    private static final int EVENT_SIM_REFRESH = 31;
     private static final int EVENT_GET_CFIS_DONE = 32;
     private static final int EVENT_GET_CSP_CPHS_DONE = 33;
     private static final int EVENT_GET_GID1_DONE = 34;
@@ -208,8 +207,6 @@ public class SIMRecords extends IccRecords {
         // recordsToLoad is set to 0 because no requests are made yet
         mRecordsToLoad = 0;
 
-        mCi.registerForIccRefresh(this, EVENT_SIM_REFRESH, null);
-
         // Start off by setting empty state
         resetRecords();
         mParentApp.registerForReady(this, EVENT_APP_READY, null);
@@ -221,7 +218,6 @@ public class SIMRecords extends IccRecords {
     public void dispose() {
         if (DBG) log("Disposing SIMRecords this=" + this);
         //Unregister for all events
-        mCi.unregisterForIccRefresh(this);
         mParentApp.unregisterForReady(this);
         mParentApp.unregisterForLocked(this);
         resetRecords();
@@ -1132,14 +1128,6 @@ public class SIMRecords extends IccRecords {
                     ((Message) ar.userObj).sendToTarget();
                 }
                 break;
-            case EVENT_SIM_REFRESH:
-                isRecordLoadResponse = false;
-                ar = (AsyncResult)msg.obj;
-                if (DBG) log("Sim REFRESH with exception: " + ar.exception);
-                if (ar.exception == null) {
-                    handleSimRefresh((IccRefreshResponse)ar.result);
-                }
-                break;
             case EVENT_GET_CFIS_DONE:
                 isRecordLoadResponse = true;
 
@@ -1233,7 +1221,8 @@ public class SIMRecords extends IccRecords {
         }
     }
 
-    private void handleFileUpdate(int efid) {
+    @Override
+    protected void handleFileUpdate(int efid) {
         switch(efid) {
             case EF_MBDN:
                 mRecordsToLoad++;
@@ -1278,49 +1267,6 @@ public class SIMRecords extends IccRecords {
                 // TODO: Handle other cases, instead of fetching all.
                 mAdnCache.reset();
                 fetchSimRecords();
-                break;
-        }
-    }
-
-    private void handleSimRefresh(IccRefreshResponse refreshResponse){
-        if (refreshResponse == null) {
-            if (DBG) log("handleSimRefresh received without input");
-            return;
-        }
-
-        if (refreshResponse.aid != null &&
-                !refreshResponse.aid.equals(mParentApp.getAid())) {
-            // This is for different app. Ignore.
-            return;
-        }
-
-        switch (refreshResponse.refreshResult) {
-            case IccRefreshResponse.REFRESH_RESULT_FILE_UPDATE:
-                if (DBG) log("handleSimRefresh with SIM_FILE_UPDATED");
-                handleFileUpdate(refreshResponse.efId);
-                break;
-            case IccRefreshResponse.REFRESH_RESULT_INIT:
-                if (DBG) log("handleSimRefresh with SIM_REFRESH_INIT");
-                // need to reload all files (that we care about)
-                onIccRefreshInit();
-                break;
-            case IccRefreshResponse.REFRESH_RESULT_RESET:
-                if (DBG) log("handleSimRefresh with SIM_REFRESH_RESET");
-                if (requirePowerOffOnSimRefreshReset()) {
-                    mCi.setRadioPower(false, null);
-                    /* Note: no need to call setRadioPower(true).  Assuming the desired
-                    * radio power state is still ON (as tracked by ServiceStateTracker),
-                    * ServiceStateTracker will call setRadioPower when it receives the
-                    * RADIO_STATE_CHANGED notification for the power off.  And if the
-                    * desired power state has changed in the interim, we don't want to
-                    * override it with an unconditional power on.
-                    */
-                }
-                mAdnCache.reset();
-                break;
-            default:
-                // unknown refresh operation
-                if (DBG) log("handleSimRefresh with unknown operation");
                 break;
         }
     }

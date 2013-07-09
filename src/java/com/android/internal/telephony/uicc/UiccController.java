@@ -30,6 +30,7 @@ import android.telephony.ServiceState;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -86,6 +87,7 @@ public class UiccController extends Handler {
     private static final int EVENT_ICC_STATUS_CHANGED = 1;
     private static final int EVENT_GET_ICC_STATUS_DONE = 2;
     private static final int EVENT_RADIO_UNAVAILABLE = 3;
+    private static final int EVENT_REFRESH = 4;
 
     private CommandsInterface[] mCis;
     private UiccCard[] mUiccCards = new UiccCard[TelephonyManager.getDefault().getPhoneCount()];
@@ -133,6 +135,7 @@ public class UiccController extends Handler {
             // TODO remove this once modem correctly notifies the unsols
             mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
             mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, index);
+            mCis[i].registerForIccRefresh(this, EVENT_REFRESH, null);
         }
     }
 
@@ -282,6 +285,15 @@ public class UiccController extends Handler {
                     mUiccCards[index] = null;
                     mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, index, null));
                     break;
+                case EVENT_REFRESH:
+                    ar = (AsyncResult)msg.obj;
+                    if (DBG) log("Sim REFRESH received");
+                    if (ar.exception == null) {
+                        handleRefresh((IccRefreshResponse)ar.result, index);
+                    } else {
+                        log ("Exception on refresh " + ar.exception);
+                    }
+                    break;
                 default:
                     Rlog.e(LOG_TAG, " Unknown Event " + msg.what);
             }
@@ -310,6 +322,20 @@ public class UiccController extends Handler {
         return index;
     }
 
+    private void handleRefresh(IccRefreshResponse refreshResponse, int index){
+        if (refreshResponse == null) {
+            log("handleRefresh received without input");
+            return;
+        }
+
+        // Let the card know right away that a refresh has occurred
+        if (mUiccCards[index] != null) {
+            mUiccCards[index].onRefresh(refreshResponse);
+        }
+        // The card status could have changed. Get the latest state
+        mCis[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE));
+    }
+
 /*
     private UiccController(Context c, CommandsInterface ci) {
         if (DBG) log("Creating UiccController");
@@ -320,7 +346,6 @@ public class UiccController extends Handler {
         mCi.registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, null);
     }
 */
-
     // Easy to use API
     public UiccCardApplication getUiccCardApplication(int slotId, int family) {
         synchronized (mLock) {
