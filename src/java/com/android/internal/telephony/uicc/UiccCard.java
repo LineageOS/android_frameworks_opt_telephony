@@ -365,6 +365,15 @@ public class UiccCard {
         return count;
     }
 
+    void onRefresh(IccRefreshResponse refreshResponse){
+        for ( int i = 0; i < mUiccApplications.length; i++) {
+            if (mUiccApplications[i] != null) {
+                // Let the app know that the refresh occurred
+                mUiccApplications[i].onRefresh(refreshResponse);
+            }
+        }
+    }
+
     protected void log(String msg) {
         Rlog.d(LOG_TAG, msg);
     }
