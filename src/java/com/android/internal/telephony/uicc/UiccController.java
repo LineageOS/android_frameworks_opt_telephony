@@ -30,6 +30,7 @@ import android.text.format.Time;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -229,7 +230,11 @@ public class UiccController extends Handler {
                     break;
                 case EVENT_SIM_REFRESH:
                     if (DBG) log("Received EVENT_SIM_REFRESH");
-                    onSimRefresh(ar, index);
+                    if (ar.exception == null) {
+                        onSimRefresh(ar, index);
+                    } else  {
+                        log ("Exception on refresh " + ar.exception);
+                    }
                     break;
                 default:
                     Rlog.e(LOG_TAG, " Unknown Event " + msg.what);
@@ -312,30 +317,39 @@ public class UiccController extends Handler {
 
         IccRefreshResponse resp = (IccRefreshResponse) ar.result;
         Rlog.d(LOG_TAG, "onSimRefresh: " + resp);
-
+  
+        if (resp == null) {
+            Rlog.e(LOG_TAG, "onSimRefresh: received without input");
+            return;
+        }    
+      
         if (mUiccCards[index] == null) {
             Rlog.e(LOG_TAG,"onSimRefresh: refresh on null card : " + index);
             return;
         }
 
-        if (resp.refreshResult != IccRefreshResponse.REFRESH_RESULT_RESET) {
-          Rlog.d(LOG_TAG, "Ignoring non reset refresh: " + resp);
-          return;
+        Rlog.d(LOG_TAG, "Handling refresh: " + resp);
+        
+        boolean changed = false;
+        switch(resp.refreshResult) {
+            case IccRefreshResponse.REFRESH_RESULT_RESET:
+            case IccRefreshResponse.REFRESH_RESULT_INIT:
+                 // Reset the required apps when we know about the refresh so that
+                 // anyone interested does not get stale state.
+                 changed = mUiccCards[index].resetAppWithAid(resp.aid);
+                 break;
         }
 
-        Rlog.d(LOG_TAG, "Handling refresh reset: " + resp);
-
-        boolean changed = mUiccCards[index].resetAppWithAid(resp.aid);
-        if (changed) {
+        if (changed && resp.refreshResult == IccRefreshResponse.REFRESH_RESULT_RESET) {
             boolean requirePowerOffOnSimRefreshReset = mContext.getResources().getBoolean(
                 com.android.internal.R.bool.config_requireRadioPowerOffOnSimRefreshReset);
             if (requirePowerOffOnSimRefreshReset) {
                 mCis[index].setRadioPower(false, null);
-            } else {
-                mCis[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE));
-            }
-            mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, index, null));
+            }   
         }
+
+        // The card status could have changed. Get the latest state.
+        mCis[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE));
     }
 
     private boolean isValidCardIndex(int index) {

@@ -52,7 +52,6 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     public static final String INTENT_ISIM_REFRESH = "com.android.intent.isim_refresh";
 
     private static final int EVENT_APP_READY = 1;
-    private static final int EVENT_ISIM_REFRESH = 31;
     private static final int EVENT_AKA_AUTHENTICATE_DONE          = 90;
 
     // ISIM EF records (see 3GPP TS 31.103)
@@ -86,7 +85,6 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
         mRecordsToLoad = 0;
         // Start off by setting empty state
         resetRecords();
-        mCi.registerForIccRefresh(this, EVENT_ISIM_REFRESH, null);
 
         mParentApp.registerForReady(this, EVENT_APP_READY, null);
         if (DBG) log("IsimUiccRecords X ctor this=" + this);
@@ -96,7 +94,6 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     public void dispose() {
         log("Disposing " + this);
         //Unregister for all events
-        mCi.unregisterForIccRefresh(this);
         mParentApp.unregisterForReady(this);
         resetRecords();
         super.dispose();
@@ -117,17 +114,6 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
             switch (msg.what) {
                 case EVENT_APP_READY:
                     onReady();
-                    break;
-
-                case EVENT_ISIM_REFRESH:
-                    ar = (AsyncResult)msg.obj;
-                    loge("ISim REFRESH(EVENT_ISIM_REFRESH) with exception: " + ar.exception);
-                    if (ar.exception == null) {
-                        Intent intent = new Intent(INTENT_ISIM_REFRESH);
-                        loge("send ISim REFRESH: " + INTENT_ISIM_REFRESH);
-                        mContext.sendBroadcast(intent);
-                        handleIsimRefresh((IccRefreshResponse)ar.result);
-                    }
                     break;
 
                 case EVENT_AKA_AUTHENTICATE_DONE:
@@ -303,7 +289,8 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
                 new AsyncResult(null, null, null));
     }
 
-    private void handleFileUpdate(int efid) {
+    @Override
+    protected void handleFileUpdate(int efid) {
         switch (efid) {
             case EF_IMPI:
                 mFh.loadEFTransparent(EF_IMPI, obtainMessage(
@@ -340,42 +327,11 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
         }
     }
 
-    private void handleIsimRefresh(IccRefreshResponse refreshResponse) {
-        if (refreshResponse == null) {
-            if (DBG) log("handleIsimRefresh received without input");
-            return;
-        }
-
-        if (refreshResponse.aid != null &&
-                !refreshResponse.aid.equals(mParentApp.getAid())) {
-            // This is for different app. Ignore.
-            if (DBG) log("handleIsimRefresh received different app");
-            return;
-        }
-
-        switch (refreshResponse.refreshResult) {
-            case IccRefreshResponse.REFRESH_RESULT_FILE_UPDATE:
-                if (DBG) log("handleIsimRefresh with REFRESH_RESULT_FILE_UPDATE");
-                handleFileUpdate(refreshResponse.efId);
-                break;
-
-            case IccRefreshResponse.REFRESH_RESULT_INIT:
-                if (DBG) log("handleIsimRefresh with REFRESH_RESULT_INIT");
-                // need to reload all files (that we care about)
-                // onIccRefreshInit();
-                fetchIsimRecords();
-                break;
-
-            case IccRefreshResponse.REFRESH_RESULT_RESET:
-                // Refresh reset is handled by the UiccCard object.
-                if (DBG) log("handleIsimRefresh with REFRESH_RESULT_RESET");
-                break;
-
-            default:
-                // unknown refresh operation
-                if (DBG) log("handleIsimRefresh with unknown operation");
-                break;
-        }
+    @Override
+    protected void broadcastRefresh() {
+        Intent intent = new Intent(INTENT_ISIM_REFRESH);
+        log("send ISim REFRESH: " + INTENT_ISIM_REFRESH);
+        mContext.sendBroadcast(intent);
     }
 
     /**
