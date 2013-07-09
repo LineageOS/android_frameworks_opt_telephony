@@ -1637,7 +1637,7 @@ public class GSMPhone extends PhoneBase {
 
         int nwMode = Phone.PREFERRED_NT_MODE;
 
-        nwMode = android.provider.Settings.Secure.getInt(mContext.getContentResolver(),
+        nwMode = android.provider.Settings.Global.getInt(mContext.getContentResolver(),
                     android.provider.Settings.Global.PREFERRED_NETWORK_MODE, nwMode);
 
         Rlog.d(LOG_TAG, "isManualNetSelAllowed in mode = " + nwMode);

@@ -2114,13 +2114,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     public void setCurrentPreferredNetworkType() {
         try {
             if (mInstanceId == null) {
-                mSetPreferredNetworkType = android.provider.Settings.Secure.getInt(
-                        mContext.getContentResolver(),
+                mSetPreferredNetworkType = android.provider.Settings.Global.
+                        getInt(mContext.getContentResolver(),
                         android.provider.Settings.Global.PREFERRED_NETWORK_MODE,
                         Phone.PREFERRED_NT_MODE);
             } else {
-                mSetPreferredNetworkType = android.provider.Settings.Secure.getInt(
-                        mContext.getContentResolver(),
+                mSetPreferredNetworkType = android.telephony.MSimTelephonyManager.
+                        getIntAtIndex(mContext.getContentResolver(),
                         android.provider.Settings.Global.PREFERRED_NETWORK_MODE,
                         mInstanceId);
             }
