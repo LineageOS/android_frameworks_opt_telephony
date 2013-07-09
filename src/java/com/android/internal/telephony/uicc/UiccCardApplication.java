@@ -343,6 +343,31 @@ public class UiccCardApplication {
         }
     };
 
+    void onRefresh(IccRefreshResponse refreshResponse){
+        if (refreshResponse == null) {
+            loge("onRefresh received without input");
+            return;
+        }
+
+        if (refreshResponse.aid == null ||
+                refreshResponse.aid.equals(mAid)) {
+            log("refresh for app " + refreshResponse.aid);
+        } else {
+         // This is for a different app. Ignore.
+            return;
+        }
+
+        switch (refreshResponse.refreshResult) {
+            case IccRefreshResponse.REFRESH_RESULT_INIT:
+            case IccRefreshResponse.REFRESH_RESULT_RESET:
+                log("onRefresh: Setting app state to unknown");
+                // Move our state to Unknown as soon as we know about a refresh
+                // so that anyone interested does not get a stale state.
+                mAppState = AppState.APPSTATE_UNKNOWN;
+                break;
+        }
+    }
+
     public void registerForReady(Handler h, int what, Object obj) {
         synchronized (mLock) {
             Registrant r = new Registrant (h, what, obj);

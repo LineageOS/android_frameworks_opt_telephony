@@ -251,6 +251,11 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     }
 
     @Override
+    protected void handleFileUpdate(int efid) {
+        // We do not handle it in Isim
+    }
+
+    @Override
     public void onRefresh(boolean fileChanged, int[] fileList) {
         // We do not handle it in Isim
     }
