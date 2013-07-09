@@ -642,10 +642,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     mNewSS.setState(regCodeToServiceState(regState));
                     mNewSS.setRilVoiceRadioTechnology(type);
 
-                    if (regState == ServiceState.RIL_REG_STATE_DENIED_EMERGENCY_CALL_ENABLED
+                    boolean isVoiceCapable = mPhoneBase.getContext().getResources()
+                            .getBoolean(com.android.internal.R.bool.config_voice_capable);
+                    if ((regState == ServiceState.RIL_REG_STATE_DENIED_EMERGENCY_CALL_ENABLED
                          || regState == ServiceState.RIL_REG_STATE_NOT_REG_EMERGENCY_CALL_ENABLED
                          || regState == ServiceState.RIL_REG_STATE_SEARCHING_EMERGENCY_CALL_ENABLED
-                         || regState == ServiceState.RIL_REG_STATE_UNKNOWN_EMERGENCY_CALL_ENABLED) {
+                         || regState == ServiceState.RIL_REG_STATE_UNKNOWN_EMERGENCY_CALL_ENABLED)
+                         && isVoiceCapable) {
                         mEmergencyOnly = true;
                     } else {
                         mEmergencyOnly = false;
