@@ -116,12 +116,12 @@ public class CatCmdMessage implements Parcelable {
             BIPClientParams param = (BIPClientParams) cmdParams;
             mTextMsg = param.mTextMsg;
             break;
-        case PROVIDE_LOCAL_INFORMATION:
-        case REFRESH:
         case SET_UP_EVENT_LIST:
             mSetupEventListSettings = new SetupEventListSettings();
             mSetupEventListSettings.eventList = ((SetEventListParams) cmdParams).mEventInfo;
             break;
+        case PROVIDE_LOCAL_INFORMATION:
+        case REFRESH:
         default:
             break;
         }
