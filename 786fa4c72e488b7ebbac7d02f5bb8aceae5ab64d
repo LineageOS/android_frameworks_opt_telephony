@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "dac4157f_b6547854",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 65
+      },
+      "writtenOn": "2013-07-11T21:31:25Z",
+      "side": 1,
+      "message": "Yes, it is needed. If a result receiver is specified, it always seems to get the result. I thought otherwise. Apparently the ordered broadcast only aborts for other normal receivers down the line.",
+      "parentUuid": "dac4157f_56487c5b",
+      "revId": "786fa4c72e488b7ebbac7d02f5bb8aceae5ab64d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dac4157f_16520414",
         "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2013-07-11T15:15:01Z",
       "side": 1,
       "message": "As the multipart extra is nowhere set, this will never be true. I think this can be replaced by \u0027if (parts.size() \u003e 1)\u0027.",
+      "revId": "786fa4c72e488b7ebbac7d02f5bb8aceae5ab64d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_36c74814",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 65
+      },
+      "writtenOn": "2013-07-11T21:31:25Z",
+      "side": 1,
+      "message": "Hm, got lost in translation.",
+      "parentUuid": "dac4157f_16520414",
       "revId": "786fa4c72e488b7ebbac7d02f5bb8aceae5ab64d",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "dac4157f_764ee0c2",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 65
+      },
+      "writtenOn": "2013-07-11T21:31:25Z",
+      "side": 1,
+      "message": "Derp, will fix.",
+      "parentUuid": "dac4157f_d65b6c2d",
+      "revId": "786fa4c72e488b7ebbac7d02f5bb8aceae5ab64d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dac4157f_b641183c",
         "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
         "patchSetId": 4
@@ -64,6 +118,24 @@
       "writtenOn": "2013-07-11T15:15:01Z",
       "side": 1,
       "message": "Use sendOrderedBroadcastAsUser() with USER_OWNER like the phone app here?",
+      "revId": "786fa4c72e488b7ebbac7d02f5bb8aceae5ab64d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_16cc4434",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 65
+      },
+      "writtenOn": "2013-07-11T21:31:25Z",
+      "side": 1,
+      "message": "ok",
+      "parentUuid": "dac4157f_b641183c",
       "revId": "786fa4c72e488b7ebbac7d02f5bb8aceae5ab64d",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
