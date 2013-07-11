@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dac4157f_56487c5b",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-07-11T15:15:01Z",
+      "side": 1,
+      "message": "Is this check even needed? If any other receiver calls abortBroadcast(), this receiver won\u0027t be called.",
+      "revId": "786fa4c72e488b7ebbac7d02f5bb8aceae5ab64d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_16520414",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-07-11T15:15:01Z",
+      "side": 1,
+      "message": "As the multipart extra is nowhere set, this will never be true. I think this can be replaced by \u0027if (parts.size() \u003e 1)\u0027.",
+      "revId": "786fa4c72e488b7ebbac7d02f5bb8aceae5ab64d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_d65b6c2d",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 152,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-07-11T15:15:01Z",
+      "side": 1,
+      "message": "The additional wrapping of the passed ArrayList into another one seems to be unnecessary to me.",
+      "revId": "786fa4c72e488b7ebbac7d02f5bb8aceae5ab64d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_b641183c",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-07-11T15:15:01Z",
+      "side": 1,
+      "message": "Use sendOrderedBroadcastAsUser() with USER_OWNER like the phone app here?",
+      "revId": "786fa4c72e488b7ebbac7d02f5bb8aceae5ab64d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
