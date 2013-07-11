@@ -31,7 +31,6 @@ import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
-import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.android.internal.telephony.cdma.CDMAPhone;
@@ -56,6 +55,8 @@ public class PhoneProxy extends Handler implements Phone {
     private boolean mResetModemOnRadioTechnologyChange = false;
 
     private int mRilVersion;
+    private boolean mRilV7NeedsCDMALTEPhone = SystemProperties.getBoolean(
+                    "telephony.rilV7NeedCDMALTEPhone", false);
 
     private static final int EVENT_VOICE_RADIO_TECH_CHANGED = 1;
     private static final int EVENT_RADIO_ON = 2;
@@ -147,10 +148,10 @@ public class PhoneProxy extends Handler implements Phone {
     private void updatePhoneObject(int newVoiceRadioTech) {
 
         if (mActivePhone != null) {
-            int phoneType = TelephonyManager.getPhoneType(TelephonyManager.getDefault().getNetworkType());
-            if(mRilVersion >= 6 && getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE && phoneType != PhoneConstants.PHONE_TYPE_GSM) {
+            if((mRilVersion == 6 && getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) ||
+                mRilV7NeedsCDMALTEPhone) {
                 /*
-                 * On v6 RIL or greater, when LTE_ON_CDMA is TRUE, always create CDMALTEPhone
+                 * On v6 RIL, when LTE_ON_CDMA is TRUE, always create CDMALTEPhone
                  * irrespective of the voice radio tech reported.
                  */
                 if (mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
