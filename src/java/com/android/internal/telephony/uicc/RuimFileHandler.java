@@ -42,7 +42,13 @@ public final class RuimFileHandler extends IccFileHandler {
         Message response = obtainMessage(EVENT_READ_ICON_DONE, fileid, 0,
                 onLoaded);
 
-        mCi.iccIOForApp(COMMAND_GET_RESPONSE, fileid, getEFPath(fileid), 0, 0,
+        /* Per TS 31.102, for displaying of Icon, under
+         * DF Telecom and DF Graphics , EF instance(s) (4FXX,transparent files)
+         * are present. The possible image file identifiers (EF instance) for
+         * EF img ( 4F20, linear fixed file) are : 4F01 ... 4F05.
+         * It should be MF_SIM + DF_TELECOM + DF_GRAPHICS, same path as EF IMG
+         */
+        mCi.iccIOForApp(COMMAND_GET_RESPONSE, fileid, getEFPath(EF_IMG), 0, 0,
                 GET_RESPONSE_EF_IMG_SIZE_BYTES, null, null,
                 mAid, response);
     }
