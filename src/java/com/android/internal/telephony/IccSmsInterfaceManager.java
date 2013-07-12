@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.app.PendingIntent;
 import android.content.Context;
+import android.os.Binder;
 import android.os.RemoteException;
 import android.util.Log;
 
@@ -47,10 +48,6 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
                 "android.permission.RECEIVE_SMS", message);
         mContext.enforceCallingPermission(
                 "android.permission.SEND_SMS", message);
-    }
-
-    @Override
-    public void registerSmsMiddleware(String name, ISmsMiddleware middleware) throws android.os.RemoteException {
     }
 
     @Override
@@ -121,9 +118,11 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      */
     public void sendText(String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        mPhone.getContext().enforceCallingPermission(
-                "android.permission.SEND_SMS",
-                "Sending SMS message");
+        if (Binder.getCallingPid() != android.os.Process.myPid()) {
+            mPhone.getContext().enforceCallingPermission(
+                    "android.permission.SEND_SMS",
+                    "Sending SMS message");
+        }
         if (Log.isLoggable("SMS", Log.VERBOSE)) {
             log("sendText: destAddr=" + destAddr + " scAddr=" + scAddr +
                 " text='"+ text + "' sentIntent=" +
@@ -159,9 +158,11 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      */
     public void sendMultipartText(String destAddr, String scAddr, List<String> parts,
             List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents) {
-        mPhone.getContext().enforceCallingPermission(
-                "android.permission.SEND_SMS",
-                "Sending SMS message");
+        if (Binder.getCallingPid() != android.os.Process.myPid()) {
+            mPhone.getContext().enforceCallingPermission(
+                    "android.permission.SEND_SMS",
+                    "Sending SMS message");
+        }
         if (Log.isLoggable("SMS", Log.VERBOSE)) {
             int i = 0;
             for (String part : parts) {
