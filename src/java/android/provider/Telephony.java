@@ -26,16 +26,21 @@ import android.database.Cursor;
 import android.database.sqlite.SqliteWrapper;
 import android.net.Uri;
 import android.os.Environment;
+import android.os.UserHandle;
 import android.telephony.SmsMessage;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.Patterns;
 
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.android.internal.telephony.CallerInfo;
 
 /**
  * The Telephony provider contains data related to phone operation.
@@ -44,7 +49,7 @@ import java.util.regex.Pattern;
  */
 public final class Telephony {
     private static final String TAG = "Telephony";
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
     private static final boolean LOCAL_LOGV = false;
 
     // Constructor
@@ -2029,7 +2034,6 @@ public final class Telephony {
         public static final Uri CONTENT_MESSAGE_URI =
                 Uri.parse("content://blacklist/message");
 
-
         /**
          * Query parameter used to match numbers by regular-expression like
          * matching. Supported are the '*' and the '.' operators.
@@ -2067,4 +2071,155 @@ public final class Telephony {
          */
         public static final String MESSAGE_MODE = "message";
     }
+
+    /**
+     * Blacklist Utility Class
+     * @hide
+     */
+    public static class BlacklistUtils {
+
+        public final static String PRIVATE_NUMBER = "0000";
+
+        // Blacklist matching type
+        public final static int MATCH_NONE = 0;
+        public final static int MATCH_PRIVATE = 1;
+        public final static int MATCH_UNKNOWN = 2;
+        public final static int MATCH_LIST = 3;
+        public final static int MATCH_REGEX = 4;
+
+        public final static int BLOCK_CALLS = 1;
+        public final static int BLOCK_MESSAGES = 2;
+        public final static int BLOCK_BOTH = 3;
+
+        public static boolean add(Context context, String s, int mode) {
+            ContentValues cv = new ContentValues();
+            cv.put(Blacklist.NUMBER, s);
+
+            if (mode == BLOCK_CALLS || mode == BLOCK_BOTH) {
+                cv.put(Blacklist.PHONE_MODE, 1);
+            }
+
+            if (mode == BLOCK_MESSAGES || mode == BLOCK_BOTH) {
+                cv.put(Blacklist.MESSAGE_MODE, 1);
+            }
+
+            Uri uri = context.getContentResolver().insert(Blacklist.CONTENT_URI, cv);
+            return uri != null;
+        }
+
+        public static void delete(Context context, String s) {
+            Uri uri = Uri.withAppendedPath(Blacklist.CONTENT_FILTER_BYNUMBER_URI, s);
+            context.getContentResolver().delete(uri, null, null);
+        }
+
+        /**
+         * Check if the number is in the blacklist
+         * @param s: Number to check
+         * @return one of: MATCH_NONE, MATCH_PRIVATE, MATCH_UNKNOWN, MATCH_LIST or MATCH_REGEX
+         */
+        public static int isListed(Context context, String s, int mode) {
+            if (!isBlacklistEnabled(context)) {
+                return MATCH_NONE;
+            }
+
+            if (DEBUG)
+                Log.d(TAG, "Checking number " + s + " against the Blacklist for mode " + mode);
+
+            // Private and unknown number matching
+            if (s.equals(PRIVATE_NUMBER)) {
+                if (isBlacklistPrivateNumberEnabled(context)) {
+                    return MATCH_PRIVATE;
+                }
+                return MATCH_NONE;
+            }
+
+            if (isBlacklistUnknownNumberEnabled(context)) {
+                CallerInfo ci = CallerInfo.getCallerInfo(context, s);
+                if (!ci.contactExists) {
+                    return MATCH_UNKNOWN;
+                }
+            }
+
+            Uri.Builder builder = Blacklist.CONTENT_FILTER_BYNUMBER_URI.buildUpon();
+            builder.appendPath(s);
+            if (isBlacklistRegexEnabled(context)) {
+                builder.appendQueryParameter(Blacklist.REGEX_KEY, "1");
+            }
+
+            Cursor c = null;
+            int result = MATCH_NONE;
+            if (mode == BLOCK_CALLS) {
+                if (DEBUG)
+                    Log.d(TAG, "Checking if an incoming call should be blocked");
+                c = context.getContentResolver().query(builder.build(), null,
+                        Blacklist.PHONE_MODE + " != 0", null, null);
+            } else if (mode == BLOCK_MESSAGES) {
+                if (DEBUG)
+                    Log.d(TAG, "Checking if an incoming message should be blocked");
+                c = context.getContentResolver().query(builder.build(), null,
+                        Blacklist.MESSAGE_MODE + " != 0", null, null);
+            }
+            if (c != null) {
+                if (DEBUG)
+                    Log.d(TAG, "A match was found in the blacklist");
+                if (c.getCount() > 1) {
+                    // as the numbers are unique, this is guaranteed to be a regex match
+                    result = MATCH_REGEX;
+                } else if (c.moveToFirst()) {
+                    boolean isRegex = c.getInt(c.getColumnIndex(Blacklist.IS_REGEX)) != 0;
+                    result = isRegex ? MATCH_REGEX : MATCH_LIST;
+                }
+                c.close();
+            }
+
+            return result;
+        }
+
+        public static List<String> getItems(Context context) {
+            List<String> items = new ArrayList<String>();
+            Cursor c = context.getContentResolver().query(Blacklist.CONTENT_PHONE_URI,
+                    null, null, null, null);
+            if (c != null) {
+                int columnIndex = c.getColumnIndex(Blacklist.NUMBER);
+                c.moveToPosition(-1);
+                while (c.moveToNext()) {
+                    items.add(c.getString(columnIndex));
+                }
+                c.close();
+            }
+
+            return items;
+        }
+
+        public static boolean isBlacklistEnabled(Context context) {
+            return Settings.System.getIntForUser(context.getContentResolver(),
+                    Settings.System.PHONE_BLACKLIST_ENABLED, 1,
+                    UserHandle.USER_CURRENT_OR_SELF) != 0;
+        }
+
+        public static boolean isBlacklistNotifyEnabled(Context context) {
+            return Settings.System.getIntForUser(context.getContentResolver(),
+                    Settings.System.PHONE_BLACKLIST_NOTIFY_ENABLED, 1,
+                    UserHandle.USER_CURRENT_OR_SELF) != 0;
+        }
+
+        public static boolean isBlacklistPrivateNumberEnabled(Context context) {
+            return Settings.System.getIntForUser(context.getContentResolver(),
+                    Settings.System.PHONE_BLACKLIST_PRIVATE_NUMBER_ENABLED, 1,
+                    UserHandle.USER_CURRENT_OR_SELF) != 0;
+        }
+
+        public static boolean isBlacklistUnknownNumberEnabled(Context context) {
+            return Settings.System.getIntForUser(context.getContentResolver(),
+                    Settings.System.PHONE_BLACKLIST_UNKNOWN_NUMBER_ENABLED, 1,
+                    UserHandle.USER_CURRENT_OR_SELF) != 0;
+        }
+
+        public static boolean isBlacklistRegexEnabled(Context context) {
+            return Settings.System.getIntForUser(context.getContentResolver(),
+                    Settings.System.PHONE_BLACKLIST_REGEX_ENABLED, 1,
+                    UserHandle.USER_CURRENT_OR_SELF) != 0;
+        }
+    }
+
 }
