@@ -31,7 +31,6 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.util.Patterns;
 
-
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -44,7 +43,7 @@ import java.util.regex.Pattern;
  */
 public final class Telephony {
     private static final String TAG = "Telephony";
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
     private static final boolean LOCAL_LOGV = false;
 
     // Constructor
@@ -2028,7 +2027,6 @@ public final class Telephony {
          */
         public static final Uri CONTENT_MESSAGE_URI =
                 Uri.parse("content://blacklist/message");
-
 
         /**
          * Query parameter used to match numbers by regular-expression like
