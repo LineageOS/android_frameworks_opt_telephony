@@ -87,6 +87,10 @@ public class CallManager {
 
     private static final String PROPERTY_QCHAT_ENABLED = "persist.atel.qchat_enabled";
 
+    // Used to route the audio in SgLte scenarios
+    protected static final String SGLTE = "sglte";
+    protected static final String SGLTE_TYPE2 = "sglte2";
+
     // Singleton instance
     protected static CallManager INSTANCE;
 
@@ -111,6 +115,10 @@ public class CallManager {
     private boolean mSpeedUpAudioForMtCall = false;
 
     protected CmHandler mHandler;
+
+    // This variable tells us the type of baseband
+    protected static String sBaseband = SystemProperties.get(
+            ExtTelephonyProperties.PROPERTY_BASEBAND, "msm");
 
     // state registrants
     protected final RegistrantList mPreciseCallStateRegistrants
@@ -206,7 +214,8 @@ public class CallManager {
     private static boolean isUseExtCallManager() {
         if (SystemProperties.getBoolean(TelephonyProperties.CALLS_ON_IMS_ENABLED_PROPERTY,
                 false) || MSimTelephonyManager.getDefault().isMultiSimEnabled() ||
-                SystemProperties.getBoolean(PROPERTY_QCHAT_ENABLED, false)) {
+                SystemProperties.getBoolean(PROPERTY_QCHAT_ENABLED, false) ||
+                sBaseband.equals(SGLTE) || sBaseband.equals(SGLTE_TYPE2)) {
             return true;
         }
         return false;

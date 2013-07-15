@@ -69,6 +69,10 @@ public class ExtCallManager extends CallManager {
     private static final int EVENT_VOICE_SYSTEM_ID = 201;
     private static final int EVENT_LOCAL_CALL_HOLD = 202;
 
+    private static final String PROPERTY_VOICE_MODEM_INDEX = "persist.radio.voice.modem.index";
+    private static final int LOCAL_MODEM = 0;
+    private static final int REMOTE_MODEM = 1;
+
     // Holds the current active SUB, all actions would be
     // taken on this sub.
     private static int mActiveSub = 0;
@@ -81,6 +85,8 @@ public class ExtCallManager extends CallManager {
 
     // Holds the LCH status of subscription
     private int [] mLchStatus = {0, 0, 0};
+
+    private AudioManager mAudioManager = null;
 
     private final RegistrantList mActiveSubChangeRegistrants
     = new RegistrantList();
@@ -183,6 +189,23 @@ public class ExtCallManager extends CallManager {
     }
 
     /**
+     * Register phone to ExtCallManager
+     * @param phone to be registered
+     * @return true if register successfully
+     */
+    @Override
+    public boolean registerPhone(Phone phone) {
+        boolean retVal = super.registerPhone(phone);
+
+        Context context = getContext();
+        if (context != null && mAudioManager == null) {
+            mAudioManager = (AudioManager)
+                    context.getSystemService(Context.AUDIO_SERVICE);
+        }
+        return retVal;
+    }
+
+    /**
      * @return the phone associated with the foreground call
      * of a particular subscription
      */
@@ -236,7 +259,8 @@ public class ExtCallManager extends CallManager {
         return mActiveSub;
     }
 
-    // Update the local call hold state
+    // Update the local call hold state and sets audio parameters for
+    // LCH subscription
     // 1 -- if call on local hold, 0 -- if call is not on local hold
     private void updateLchStatus(int sub) {
         int lchStatus = 0;
@@ -261,18 +285,26 @@ public class ExtCallManager extends CallManager {
         if (lchStatus != mLchStatus[sub]) {
             Rlog.d(LOG_TAG, " setLocal Call Hold to  = " + lchStatus);
 
+            if (getActiveSubscription() != sub) {
+                Rlog.d(LOG_TAG, "Set parameters for Lch sub = " + sub);
+                setAudioParameters(sub);
+            }
             offHookPhone.setLocalCallHold(lchStatus, mHandler.obtainMessage(EVENT_LOCAL_CALL_HOLD));
             mLchStatus[sub] = lchStatus;
         }
     }
 
-    private void setAudioStateParam(long vsid, int state, AudioManager audioManager) {
+    private void setAudioStateParam(long vsid, int state) {
+        if (mAudioManager == null) {
+            Rlog.e(LOG_TAG, " Audio Service is null!! ");
+            return;
+        }
         String keyValPairs = new String(AudioManager.VSID_KEY + "=" + vsid + ";"
                 + AudioManager.CALL_STATE_KEY + "=" + state);
 
         Rlog.d(LOG_TAG, "Setting audio state to: " + keyValPairs);
 
-        audioManager.setParameters(keyValPairs);
+        mAudioManager.setParameters(keyValPairs);
     }
 
     private int getAudioCallState(Call call) {
@@ -306,24 +338,32 @@ public class ExtCallManager extends CallManager {
             case PhoneConstants.PHONE_TYPE_SIP:
                 //TODO VSID type for SIP phone ? and callStat for SIP phone ??
                 //vsid = ??;
-                Rlog.d(LOG_TAG, "setAudioParameters for SIP");
+                Rlog.d(LOG_TAG, "getVsid for SIP");
                 break;
             case PhoneConstants.PHONE_TYPE_IMS:
                 vsid = AudioManager.IMS_VSID;
-                Rlog.d(LOG_TAG, "setAudioParameters for IMS");
+                Rlog.d(LOG_TAG, "getVsid for IMS");
                 break;
             default:
-                // TODO VSID support for SGLTE ?
-                if (vsidVoice[sub] == -1) {
-                    vsidVoice[sub] = vsidVoiceDef[sub];
+                int voiceModemIndex = LOCAL_MODEM;
+
+                if (sBaseband.equals(SGLTE) || sBaseband.equals(SGLTE_TYPE2)) {
+                    voiceModemIndex =
+                            SystemProperties.getInt(PROPERTY_VOICE_MODEM_INDEX, LOCAL_MODEM);
                 }
+
+                if (vsidVoice[sub] == -1) {
+                    vsidVoice[sub] = vsidVoiceDef[voiceModemIndex];
+                }
+                Rlog.d(LOG_TAG, "getVsid modem index " + voiceModemIndex
+                        + " vsid = " + vsidVoice[sub] + "sub = " + sub);
                 vsid = vsidVoice[sub];
                 break;
         }
         return vsid;
     }
 
-    private void setAudioParameters(int sub, AudioManager audioManager) {
+    private void setAudioParameters(int sub) {
         long vsid = 0;
         int newCallState = AudioManager.CALL_INACTIVE;
 
@@ -341,7 +381,7 @@ public class ExtCallManager extends CallManager {
                 vsid = getVsid(phone, sub);
 
                 Rlog.d(LOG_TAG, "setAudioParams callstate=" + newCallState + " vsid = " + vsid);
-                setAudioStateParam(vsid, newCallState, audioManager);
+                setAudioStateParam(vsid, newCallState);
             }
         }
     }
@@ -349,35 +389,32 @@ public class ExtCallManager extends CallManager {
     @Override
     public void setAudioMode() {
         if (VDBG) Rlog.d(LOG_TAG, "in setAudioMode State = " + getState());
-        Context context = getContext();
-        if (context == null) return;
-        AudioManager audioManager = (AudioManager)
-                context.getSystemService(Context.AUDIO_SERVICE);
+        if (mAudioManager == null) {
+            Rlog.e(LOG_TAG, "setAudioMode: Audio Service is null!! ");
+            return;
+        }
 
         int mode = AudioManager.MODE_NORMAL;
         switch (getState()) {
             case RINGING:
                 if (VDBG) Rlog.d(LOG_TAG, "setAudioMode RINGING");
-                if (audioManager.getMode() != AudioManager.MODE_RINGTONE) {
+                if (mAudioManager.getMode() != AudioManager.MODE_RINGTONE) {
                     // only request audio focus if the ringtone is going to be heard
-                    if (audioManager.getStreamVolume(AudioManager.STREAM_RING) > 0) {
+                    if (mAudioManager.getStreamVolume(AudioManager.STREAM_RING) > 0) {
                         Rlog.d(LOG_TAG, "requestAudioFocus on STREAM_RING");
-                        audioManager.requestAudioFocusForCall(AudioManager.STREAM_RING,
+                        mAudioManager.requestAudioFocusForCall(AudioManager.STREAM_RING,
                                 AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
                     }
-                    audioManager.setMode(AudioManager.MODE_RINGTONE);
+                    mAudioManager.setMode(AudioManager.MODE_RINGTONE);
                     if (DBG) Rlog.d(LOG_TAG, "setAudioMode RINGING");
                 }
                 break;
             case OFFHOOK:
                 for (int sub = 0; sub < MSimTelephonyManager.getDefault().getPhoneCount(); sub++) {
                     // First put the calls on other SUB in LCH.
-                    // In IMS, SGLTE and Single standby cases this will become false.
-                    if (getActiveSubscription() != sub)
-                        setAudioParameters(sub, audioManager);
                     updateLchStatus(sub);
                 }
-                setAudioParameters(getActiveSubscription(), audioManager);
+                setAudioParameters(getActiveSubscription());
 
                 Phone offHookPhone = getFgPhone();
                 int newAudioMode = AudioManager.MODE_IN_CALL;
@@ -391,31 +428,29 @@ public class ExtCallManager extends CallManager {
 
                 if (VDBG) Rlog.d(LOG_TAG, "setAudioMode OFFHOOK mode=" + newAudioMode);
                 //Need to discuss with Linux audio on getMode per sub capability?
-                int currMode = audioManager.getMode();
+                int currMode = mAudioManager.getMode();
                 if (currMode != newAudioMode) {
                     // request audio focus before setting the new mode
-                    audioManager.requestAudioFocusForCall(AudioManager.STREAM_VOICE_CALL,
+                    mAudioManager.requestAudioFocusForCall(AudioManager.STREAM_VOICE_CALL,
                            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
                     Rlog.d(LOG_TAG, "setAudioMode Setting audio mode from "
                             + currMode + " to " + newAudioMode);
-                    audioManager.setMode(newAudioMode);
+                    mAudioManager.setMode(newAudioMode);
                 }
                 break;
             case IDLE:
                 if (VDBG) Rlog.d(LOG_TAG, "in setAudioMode before setmode IDLE");
-                if (audioManager.getMode() != AudioManager.MODE_NORMAL) {
-                    setAudioParameters(getActiveSubscription(), audioManager);
+                if (mAudioManager.getMode() != AudioManager.MODE_NORMAL) {
+                    setAudioParameters(getActiveSubscription());
                     for (int sub = 0; sub < MSimTelephonyManager.getDefault().getPhoneCount();
                             sub++) {
-                        if (getActiveSubscription() != sub)
-                            setAudioParameters(sub, audioManager);
                         updateLchStatus(sub);
                     }
 
-                    audioManager.setMode(AudioManager.MODE_NORMAL);
+                    mAudioManager.setMode(AudioManager.MODE_NORMAL);
                     Rlog.d(LOG_TAG, "abandonAudioFocus");
                     // abandon audio focus after the mode has been set back to normal
-                    audioManager.abandonAudioFocusForCall();
+                    mAudioManager.abandonAudioFocusForCall();
                 }
                 break;
         }
