@@ -25,6 +25,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.Registrant;
+import android.os.SystemProperties;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.Rlog;
@@ -224,6 +225,13 @@ public final class CallManager {
      */
     public static boolean isSamePhone(Phone p1, Phone p2) {
         return (getPhoneBase(p1) == getPhoneBase(p2));
+    }
+
+    /**
+     * Returns true if Android supports Csvt calls.
+     */
+    public static boolean isCallOnCsvtEnabled() {
+        return SystemProperties.getBoolean(TelephonyProperties.PROPERTY_CSVT_ENABLED, false);
     }
 
     /**
