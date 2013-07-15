@@ -276,6 +276,14 @@ public class CallManager {
     }
 
     /**
+     * Returns true if Android supports Csvt calls.
+     */
+    public static boolean isCallOnCsvtEnabled() {
+        return isCallOnImsEnabled() && SystemProperties.getBoolean(
+                TelephonyProperties.PROPERTY_CSVT_ENABLED, false);
+    }
+
+    /**
      * Returns all the registered phone objects.
      * @return all the registered phone objects.
      */
