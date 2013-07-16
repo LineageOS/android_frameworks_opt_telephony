@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dac4157f_35e295d6",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-07-16T03:17:46Z",
+      "side": 1,
+      "message": "this is i9305 spefic",
+      "revId": "71d54966dd5b231ed284cbb34cfe0431c4892de5",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
