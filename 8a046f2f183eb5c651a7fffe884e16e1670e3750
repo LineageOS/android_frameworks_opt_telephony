@@ -2,6 +2,40 @@
   "comments": [
     {
       "key": {
+        "uuid": "dac4157f_952600b9",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-07-16T06:39:20Z",
+      "side": 1,
+      "message": "this is samsung spefic",
+      "revId": "8a046f2f183eb5c651a7fffe884e16e1670e3750",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_752b6c83",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-07-16T06:39:20Z",
+      "side": 1,
+      "message": "this is samsung spefic",
+      "revId": "8a046f2f183eb5c651a7fffe884e16e1670e3750",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dac4157f_15143042",
         "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
         "patchSetId": 4
@@ -19,6 +53,23 @@
     },
     {
       "key": {
+        "uuid": "dac4157f_153b10d3",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 466,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-07-16T06:39:20Z",
+      "side": 1,
+      "message": "you can remove",
+      "revId": "8a046f2f183eb5c651a7fffe884e16e1670e3750",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dac4157f_f5109c50",
         "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
         "patchSetId": 4
@@ -30,6 +81,40 @@
       "writtenOn": "2013-07-16T06:27:54Z",
       "side": 1,
       "message": "trailing whitespace",
+      "revId": "8a046f2f183eb5c651a7fffe884e16e1670e3750",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_5520689b",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 507,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-07-16T06:39:20Z",
+      "side": 1,
+      "message": "this is samsung spefic",
+      "revId": "8a046f2f183eb5c651a7fffe884e16e1670e3750",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_f5377ce1",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-07-16T06:39:20Z",
+      "side": 1,
+      "message": "samsung spefic",
       "revId": "8a046f2f183eb5c651a7fffe884e16e1670e3750",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
