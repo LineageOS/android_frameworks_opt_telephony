@@ -149,7 +149,11 @@ public class CatCmdMessage implements Parcelable {
             break;
         case SET_UP_EVENT_LIST:
             mSetupEventListSettings = new SetupEventListSettings();
-            in.readIntArray(mSetupEventListSettings.eventList);
+            int length = in.readInt();
+            mSetupEventListSettings.eventList = new int[length];
+            for (int i = 0; i < length; i++) {
+                mSetupEventListSettings.eventList[i] = in.readInt();
+            }
             break;
         default:
             break;
