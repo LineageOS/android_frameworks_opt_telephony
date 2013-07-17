@@ -542,7 +542,7 @@ public class DcTracker extends DcTrackerBase {
         }
     }
 
-    private boolean isDataAllowed(ApnContext apnContext) {
+    protected boolean isDataAllowed(ApnContext apnContext) {
         return apnContext.isReady() && isDataAllowed();
     }
 
