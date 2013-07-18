@@ -554,7 +554,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
      * part of the new csd binary
      */
     private void setWbAmr(int state) {
-        if (state == 1) {
+        if (true) {
             Log.d(LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=on");
             mAudioManager.setParameters("wb_amr=on");
         } else {
