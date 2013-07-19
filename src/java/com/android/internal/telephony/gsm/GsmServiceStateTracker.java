@@ -729,12 +729,12 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
              *  There is an exception for the above rule. The new SS is not set
              *  as roaming while gsm service reports roaming but indeed it is
              *  not roaming between operators.
+             *
+             *  And specific operators do not report roaming in national roaming
              */
-            boolean roaming = (mGsmRoaming || mDataRoaming);
-            if (mGsmRoaming && !isRoamingBetweenOperators(mGsmRoaming, mNewSS)) {
-                roaming = false;
-            }
-            mNewSS.setRoaming(roaming);
+            mNewSS.setRoaming(mDataRoaming
+                    || (mGsmRoaming && !(isSameNamedOperators(mNewSS)
+                            || isOperatorConsideredNonRoaming(mNewSS))));
             mNewSS.setEmergencyOnly(mEmergencyOnly);
             pollStateDone();
         }
@@ -1287,13 +1287,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     }
 
     /**
-     * Set roaming state when gsmRoaming is true and, if operator mcc is the
-     * same as sim mcc, ons is different from spn
-     * @param gsmRoaming TS 27.007 7.2 CREG registered roaming
+     * Set roaming state if operator mcc is the same as sim mcc
+     * and ons is different from spn
+     *
      * @param s ServiceState hold current ons
-     * @return true for roaming state set
+     * @return true if same operator
      */
-    private boolean isRoamingBetweenOperators(boolean gsmRoaming, ServiceState s) {
+    private boolean isSameNamedOperators(ServiceState s) {
         String spn = SystemProperties.get(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA, "empty");
 
         String onsl = s.getOperatorAlphaLong();
@@ -1302,18 +1302,54 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         boolean equalsOnsl = onsl != null && spn.equals(onsl);
         boolean equalsOnss = onss != null && spn.equals(onss);
 
+        return currentMccEqualsSimMcc(s) && (equalsOnsl || equalsOnss);
+    }
+
+    /**
+     * Compare SIM MCC with Operator MCC
+     *
+     * @param s ServiceState hold current ons
+     * @return true if both are same
+     */
+    private boolean currentMccEqualsSimMcc(ServiceState s) {
         String simNumeric = SystemProperties.get(
                 TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
-        String  operatorNumeric = s.getOperatorNumeric();
-
+        String operatorNumeric = s.getOperatorNumeric();
         boolean equalsMcc = true;
+
         try {
             equalsMcc = simNumeric.substring(0, 3).
                     equals(operatorNumeric.substring(0, 3));
         } catch (Exception e){
         }
+        return equalsMcc;
+    }
 
-        return gsmRoaming && !(equalsMcc && (equalsOnsl || equalsOnss));
+    /**
+     * Do not set roaming state in case of oprators considered non-roaming.
+     *
+     + Can use mcc or mcc+mnc as item of config_operatorConsideredNonRoaming.
+     * For example, 302 or 21407. If mcc or mcc+mnc match with operator,
+     * don't set roaming state.
+     *
+     * @param s ServiceState hold current ons
+     * @return false for roaming state set
+     */
+    private boolean isOperatorConsideredNonRoaming(ServiceState s) {
+        String operatorNumeric = s.getOperatorNumeric();
+        String[] numericArray = mPhone.getContext().getResources().getStringArray(
+                    com.android.internal.R.array.config_operatorConsideredNonRoaming);
+
+        if (numericArray.length == 0 || operatorNumeric == null)
+            return false;
+
+        for (String numeric : numericArray) {
+            if (operatorNumeric.startsWith(numeric))
+                return true;
+            else
+                return false;
+        }
+        return false;
     }
 
     /**
