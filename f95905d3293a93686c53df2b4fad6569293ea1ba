@@ -2,6 +2,40 @@
   "comments": [
     {
       "key": {
+        "uuid": "dac4157f_8fbf05d0",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 15
+      },
+      "lineNbr": 123,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-07-19T09:17:45Z",
+      "side": 1,
+      "message": "if(parcelsize \u003c 14)\nsuper.responseSignalStrength(p)",
+      "revId": "f95905d3293a93686c53df2b4fad6569293ea1ba",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dac4157f_4fb9ede8",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 15
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-07-19T09:17:45Z",
+      "side": 1,
+      "message": "boolean isgsm\u003d(p.readInt() !\u003d 0",
+      "revId": "f95905d3293a93686c53df2b4fad6569293ea1ba",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "dac4157f_cf697d8d",
         "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
         "patchSetId": 15
