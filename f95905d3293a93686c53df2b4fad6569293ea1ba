@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dac4157f_cf697d8d",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 15
+      },
+      "lineNbr": 739,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-07-19T07:32:38Z",
+      "side": 1,
+      "message": "revert this\n\nif (dataCall.active !\u003d 0){\ndataCall.ifname \u003d Resources.getSystem().getString(com.android.internal.R.string.config_d\natause_iface); \n}else{\n throw\n}",
+      "revId": "f95905d3293a93686c53df2b4fad6569293ea1ba",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
