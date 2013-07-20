@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bab921fb_5892fd58",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 19
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-07-20T04:59:54Z",
+      "side": 1,
+      "message": "were we using extraicccardstates?",
+      "revId": "00ca42e2ca77700cbfb1a2cf2237e7bdc1680275",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab921fb_189c8568",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 19
+      },
+      "lineNbr": 670,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-07-20T04:59:54Z",
+      "side": 1,
+      "message": "I suppose if you really wanted you could throw out the unused sections of this function too.",
+      "revId": "00ca42e2ca77700cbfb1a2cf2237e7bdc1680275",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab921fb_389f4961",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 19
+      },
+      "lineNbr": 688,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-07-20T04:59:54Z",
+      "side": 1,
+      "message": "there\u0027s a tab here",
+      "revId": "00ca42e2ca77700cbfb1a2cf2237e7bdc1680275",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
