@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "bab921fb_3b4bc35b",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 20
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 6265
+      },
+      "writtenOn": "2013-07-20T14:08:50Z",
+      "side": 1,
+      "message": "two issues: the data size appears to be in bytes; need 14*4 or 56 here. also, we need to use p.dataAvail() since p.dataSize() includes the header dispatched on in processSolicited. \n\nso this line should be changed to:\n\nif(p.dataAvail() \u003c 56)",
+      "revId": "3ff8426aafd26b46b10e4654776024197649a0e2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bab921fb_184b65b2",
         "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
         "patchSetId": 20
