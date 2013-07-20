@@ -521,11 +521,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 if (response[i]== null){
                     response[i]=Integer.toString(Integer.MAX_VALUE);
                 } else {
-                    try {
-                        Integer.parseInt(response[i]);
-                    } catch(NumberFormatException e) {
-                        response[i]=Integer.toString(Integer.parseInt(response[i],16));
-                    }
+                    response[i]=Integer.toString(Integer.parseInt(response[i],16));
                 }
             }
         }
