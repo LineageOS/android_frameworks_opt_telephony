@@ -503,14 +503,14 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 if (i<2){
                     if (response[i].equals("       Empty") || (response[i].equals("") && !isGSM))
                         response[i]=operator;
-                    else if (response[i].equals("23410")||response[i].equals("26207"))
+                    else if (response[i].equals("23410")||response[i].equals("26207")||response[i].equals("23002"))
                         response[i]="O2";
-                    else if (response[i].equals("310260") || response[i].equals("23430")|| response[i].equals("23203")||response[i].equals("26201"))
+                    else if (response[i].equals("310260") || response[i].equals("23430")|| response[i].equals("23203")||response[i].equals("26201")||response[i].equals("23001"))
                         response[i]="T-Mobile";
                     else if (response[i].equals("23201"))
                         response[i]="A1";
-                    else if (response[i].equals("22210"))
-                        response[i]="Vodafone Italia";
+                    else if (response[i].equals("22210")||response[i].equals("23003"))
+                        response[i]="Vodafone";
                     else if (response[i].equals("20810"))
                         response[i]="SFR";
                     else if (response[i].equals("20801")||response[i].equals("23205"))
@@ -543,6 +543,18 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                         response[i]="Optimus";
                     else if (response[i].equals("21910"))
                         response[i]="VIPnet";
+                    else if (response[i].equals("22201"))
+                        response[i]="TIM";
+                    else if (response[i].equals("22299"))
+                        response[i]="H3G";
+                    else if (response[i].equals("29340"))
+                        response[i]="Si.mobil";
+                    else if (response[i].equals("29341"))
+                        response[i]="Mobitel";
+                    else if (response[i].equals("29364"))
+                        response[i]="T-2";
+                    else if (response[i].equals("29370"))
+                        response[i]="Tušmobil";
                 }
                 else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || (response[i].equals("") && !isGSM))
                         response[i]=homeOperator;
