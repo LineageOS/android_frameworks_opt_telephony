@@ -1000,7 +1000,7 @@ public abstract class SMSDispatcher extends Handler {
             if (which == DialogInterface.BUTTON_POSITIVE) {
                 Rlog.d(TAG, "CONFIRM sending SMS");
                 // XXX this is lossy- apps can have more than one signature
-                EventLog.writeEvent(EventLogTags.SMS_SENT_BY_USER,
+                EventLog.writeEvent(EventLogTags.EXP_DET_SMS_SENT_BY_USER,
                                     mTracker.mAppInfo.signatures[0].toCharsString());
                 sendMessage(obtainMessage(EVENT_SEND_CONFIRMED_SMS, mTracker));
                 if (mRememberChoice) {
@@ -1009,7 +1009,7 @@ public abstract class SMSDispatcher extends Handler {
             } else if (which == DialogInterface.BUTTON_NEGATIVE) {
                 Rlog.d(TAG, "DENY sending SMS");
                 // XXX this is lossy- apps can have more than one signature
-                EventLog.writeEvent(EventLogTags.SMS_DENIED_BY_USER,
+                EventLog.writeEvent(EventLogTags.EXP_DET_SMS_DENIED_BY_USER,
                                     mTracker.mAppInfo.signatures[0].toCharsString());
                 sendMessage(obtainMessage(EVENT_STOP_SENDING, mTracker));
                 if (mRememberChoice) {
