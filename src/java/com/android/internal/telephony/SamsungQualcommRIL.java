@@ -231,6 +231,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     protected Object
     responseCallList(Parcel p) {
         samsungDriverCall = (needsOldRilFeature("newDriverCall") && !isGSM) || mRilVersion < 7 ? false : true;
+        mAudioManager.setParameters("wide_voice_enable=false");
         return super.responseCallList(p);
     }
 
@@ -552,10 +553,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     private void setWbAmr(int state) {
         if (state == 1) {
             Log.d(LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=on");
-            mAudioManager.setParameters("wb_amr=on");
-        } else {
-            Log.d(LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=off");
-            mAudioManager.setParameters("wb_amr=off");
+            mAudioManager.setParameters("wide_voice_enable=true");
         }
     }
 
