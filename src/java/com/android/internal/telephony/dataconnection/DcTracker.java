@@ -234,6 +234,7 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     protected void initApnContexts() {
+        log("initApnContexts: E");
         boolean defaultEnabled = SystemProperties.getBoolean(DEFALUT_DATA_ON_BOOT_PROP, true);
         // Load device network attributes from resources
         String[] networkConfigStrings = mPhone.getContext().getResources().getStringArray(
@@ -257,10 +258,8 @@ public final class DcTracker extends DcTrackerBase {
                 apnContext = addApnContext(PhoneConstants.APN_TYPE_DUN, networkConfig);
                 break;
             case ConnectivityManager.TYPE_MOBILE_HIPRI:
-                // Hipri is configured the same as default
                 apnContext = addApnContext(PhoneConstants.APN_TYPE_HIPRI, networkConfig);
-                apnContext.setEnabled(defaultEnabled);
-                continue;
+                break;
             case ConnectivityManager.TYPE_MOBILE_FOTA:
                 apnContext = addApnContext(PhoneConstants.APN_TYPE_FOTA, networkConfig);
                 break;
@@ -274,7 +273,9 @@ public final class DcTracker extends DcTrackerBase {
                 log("initApnContexts: skipping unknown type=" + networkConfig.type);
                 continue;
             }
+            log("initApnContexts: apnContext=" + apnContext);
         }
+        log("initApnContexts: X mApnContexts=" + mApnContexts);
     }
 
     @Override
