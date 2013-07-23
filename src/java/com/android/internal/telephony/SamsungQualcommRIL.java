@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 The CyanogenMod Project
+ * Copyright (C) 2012-2013 The CyanogenMod Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,11 +59,13 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     private Object mSMSLock = new Object();
     private boolean mIsSendingSMS = false;
     private boolean isGSM = false;
+    private boolean passedCheck=true;
     public static final long SEND_SMS_TIMEOUT_IN_MS = 30000;
     private String homeOperator= SystemProperties.get("ro.cdma.home.operator.numeric");
     private String operator= SystemProperties.get("ro.cdma.home.operator.alpha");
     private boolean oldRilState = needsOldRilFeature("exynos4RadioState");
     private boolean googleEditionSS = needsOldRilFeature("googleEditionSS");
+    private boolean driverCall = needsOldRilFeature("newDriverCall");
     public SamsungQualcommRIL(Context context, int networkMode,
             int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
@@ -230,8 +232,9 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     @Override
     protected Object
     responseCallList(Parcel p) {
-        samsungDriverCall = (needsOldRilFeature("newDriverCall") && !isGSM) || mRilVersion < 7 ? false : true;
-        mAudioManager.setParameters("wide_voice_enable=false");
+        samsungDriverCall = (driverCall && !isGSM) || mRilVersion < 7 ? false : true;
+        if(driverCall && passedCheck)
+            mAudioManager.setParameters("wide_voice_enable=false");
         return super.responseCallList(p);
     }
 
@@ -500,65 +503,23 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     operatorCheck(Parcel p) {
         String response[] = (String[])responseStrings(p);
         for(int i=0; i<response.length; i++){
-            if (response[i]!= null){
-                if (i<2){
-                    if (response[i].equals("       Empty") || (response[i].equals("") && !isGSM))
-                        response[i]=operator;
-                    else if (response[i].equals("23410")||response[i].equals("26207")||response[i].equals("23002"))
-                        response[i]="O2";
-                    else if (response[i].equals("310260") || response[i].equals("23430")|| response[i].equals("23203")||response[i].equals("26201")||response[i].equals("23001"))
-                        response[i]="T-Mobile";
-                    else if (response[i].equals("23201"))
-                        response[i]="A1";
-                    else if (response[i].equals("22210")||response[i].equals("23003"))
-                        response[i]="Vodafone";
-                    else if (response[i].equals("20810"))
-                        response[i]="SFR";
-                    else if (response[i].equals("20801")||response[i].equals("23205"))
-                        response[i]="Orange";
-                    else if (response[i].equals("24201"))
-                        response[i]="N Telenor";
-                    else if (response[i].equals("24202"))
-                        response[i]="N NetCom";
-                    else if (response[i].equals("24205"))
-                        response[i]="Mobile Norway";
-                    else if (response[i].equals("23433"))
-                        response[i]="EE";
-                    else if (response[i].equals("50212"))
-                        response[i]="Maxis";
-                    else if (response[i].equals("23210"))
-                        response[i]="3";
-                    else if (response[i].equals("26203"))
-                        response[i]="E-Plus";
-                    else if (response[i].equals("24412")||response[i].equals("24403"))
-                        response[i]="DNA";
-                    else if (response[i].equals("24414"))
-                        response[i]="AMT";
-                    else if (response[i].equals("24405"))
-                        response[i]="Elisa";
-                    else if (response[i].equals("24421"))
-                        response[i]="Saunalahti";
-                    else if (response[i].equals("24491"))
-                        response[i]="Sonera";
-                    else if (response[i].equals("26803"))
-                        response[i]="Optimus";
-                    else if (response[i].equals("21910"))
-                        response[i]="VIPnet";
-                    else if (response[i].equals("22201"))
-                        response[i]="TIM";
-                    else if (response[i].equals("22299"))
-                        response[i]="H3G";
-                    else if (response[i].equals("29340"))
-                        response[i]="Si.mobil";
-                    else if (response[i].equals("29341"))
-                        response[i]="Mobitel";
-                    else if (response[i].equals("29364"))
-                        response[i]="T-2";
-                    else if (response[i].equals("29370"))
-                        response[i]="Tušmobil";
+            if (response[i]!= null&&i<2){
+                if (response[i].equals("       Empty") || (response[i].equals("") && !isGSM)) {
+                    response[i]=operator;
+                } else if (!response[i].equals(""))  {
+                    try {
+                        Integer.parseInt(response[i]);
+                        response[i]=Operators.operatorReplace(response[i]);
+                        //optimize
+                        if(i==0)
+                            response[i+1]=response[i];
+                    }  catch(NumberFormatException E){
+                        // do nothing
+                    }
                 }
-                else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || (response[i].equals("") && !isGSM))
-                        response[i]=homeOperator;
+                else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || (response[i].equals("") && !isGSM)){
+                    response[i]=homeOperator;
+                }
             }
         }
         return response;
@@ -607,7 +568,13 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
         if (state == 1) {
             Log.d(LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=on");
             mAudioManager.setParameters("wide_voice_enable=true");
+        }else if (state == 0) {
+            Log.d(LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=on");
+            mAudioManager.setParameters("wide_voice_enable=false");
         }
+        //prevent race conditions when the two meeets
+        if (passedCheck)
+            passedCheck=false;
     }
 
     // Workaround for Samsung CDMA "ring of death" bug:
