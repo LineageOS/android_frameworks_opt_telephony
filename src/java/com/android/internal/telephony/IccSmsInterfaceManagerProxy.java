@@ -48,7 +48,7 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
             ArrayList<PendingIntent> deliveryIntents = intent.getParcelableArrayListExtra("deliveryIntents");
 
             if (intent.getBooleanExtra("multipart", false)) {
-                mIccSmsInterfaceManager.sendMultipartText(destAddr, scAddr,
+                mIccSmsInterfaceManager.sendMultipartText(callingPackage, destAddr, scAddr,
                         parts, sentIntents, deliveryIntents);
                 return;
             }
@@ -108,7 +108,6 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
         mContext.sendOrderedBroadcast(intent, permission);
     }
 
-    @Override
     public void synthesizeMessages(String originatingAddress, String scAddress, List<String> messages, long timestampMillis) throws RemoteException {
         mContext.enforceCallingPermission(
                 android.Manifest.permission.BROADCAST_SMS, "");

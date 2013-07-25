@@ -490,8 +490,8 @@ public final class CdmaCallTracker extends CallTracker {
 
         if (mSlowModem) {
             if (polledCalls.size() == 0 && !mHangupPendingMO && mPendingMO != null) {
-                lastRelevantPoll = obtainMessage(EVENT_POLL_CALLS_RESULT);
-                cm.getCurrentCalls(lastRelevantPoll);
+                mLastRelevantPoll = obtainMessage(EVENT_POLL_CALLS_RESULT);
+                mCi.getCurrentCalls(mLastRelevantPoll);
                 return;
             }
         }

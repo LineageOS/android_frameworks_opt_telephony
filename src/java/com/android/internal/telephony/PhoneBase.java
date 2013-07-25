@@ -1342,7 +1342,7 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     @Override
     public int getLteOnGsmMode() {
-        return mCM.getLteOnGsmMode();
+        return mCi.getLteOnGsmMode();
     }
 
     /**

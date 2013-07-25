@@ -327,9 +327,9 @@ public class CatService extends Handler implements AppInterface {
                  */
                 boolean alphaUsrCnf = SystemProperties.getBoolean(
                          TelephonyProperties.PROPERTY_ALPHA_USRCNF, false);
-                CatLog.d(this, "alphaUsrCnf: " + alphaUsrCnf + ", bHasAlphaId: " + cmd.bHasAlphaId);
+                CatLog.d(this, "alphaUsrCnf: " + alphaUsrCnf + ", bHasAlphaId: " + cmd.mHasAlphaId);
 
-                if (( cmd.mTextMsg.text == null) && ( cmd.bHasAlphaId || !alphaUsrCnf)) {
+                if (( cmd.mTextMsg.text == null) && ( cmd.mHasAlphaId || !alphaUsrCnf)) {
                     CatLog.d(this, "cmd " + cmdParams.getCommandType() + " with null alpha id");
                     // If alpha length is zero, we just respond with OK.
                     if (isProactiveCmd) {

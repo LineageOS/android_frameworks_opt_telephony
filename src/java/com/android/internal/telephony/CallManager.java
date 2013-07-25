@@ -479,10 +479,10 @@ public final class CallManager {
             }
 
             if (audioManager.getMode() == AudioManager.MODE_IN_CALL) {
-                Log.d(LOG_TAG, "setAudioMode(): " + aPValues[0] + "=" + aPValues[1]);
+                Rlog.d(LOG_TAG, "setAudioMode(): " + aPValues[0] + "=" + aPValues[1]);
                 audioManager.setParameters(aPValues[0] + "=" + aPValues[1]);
             } else if (audioManager.getMode() == AudioManager.MODE_NORMAL) {
-                Log.d(LOG_TAG, "setAudioMode(): " + aPValues[0] + "=" + aPValues[2]);
+                Rlog.d(LOG_TAG, "setAudioMode(): " + aPValues[0] + "=" + aPValues[2]);
                 audioManager.setParameters(aPValues[0] + "=" + aPValues[2]);
             }
         }
@@ -499,7 +499,7 @@ public final class CallManager {
                         // other sound sources
                         : AudioManager.AUDIOFOCUS_GAIN_TRANSIENT;
 
-        if (VDBG) Log.d(LOG_TAG, "requestAudioFocus on STREAM_RING");
+        if (VDBG) Rlog.d(LOG_TAG, "requestAudioFocus on STREAM_RING");
         audioManager.requestAudioFocusForCall(AudioManager.STREAM_RING, hint);
     }
 
@@ -1931,7 +1931,7 @@ public final class CallManager {
                     mSuppServiceFailedRegistrants.notifyRegistrants((AsyncResult) msg.obj);
                     break;
                 case EVENT_SUPP_SERVICE_NOTIFY:
-                    if (VDBG) Log.d(LOG_TAG, " handleMessage (EVENT_SUPP_SERVICE_NOTIFICATION)");
+                    if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_SUPP_SERVICE_NOTIFICATION)");
                     mSuppServiceNotificationRegistrants.notifyRegistrants((AsyncResult) msg.obj);
                     break;
                 case EVENT_SERVICE_STATE_CHANGED:

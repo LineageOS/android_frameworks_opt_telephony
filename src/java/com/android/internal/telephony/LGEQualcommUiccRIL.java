@@ -28,6 +28,10 @@ import android.util.Log;
 
 import java.util.ArrayList;
 
+import com.android.internal.telephony.uicc.IccCardApplicationStatus;
+import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.dataconnection.DataCallResponse;
+
 /**
  * Custom Qualcomm No SimReady RIL for LGE using the latest Uicc stack
  *
@@ -85,7 +89,7 @@ public class LGEQualcommUiccRIL extends QualcommSharedRIL implements CommandsInt
     @Override
     protected Object
     responseSetupDataCall(Parcel p) {
-        DataCallState dataCall;
+        DataCallResponse dataCall;
 
         boolean oldRil = needsOldRilFeature("datacall");
 

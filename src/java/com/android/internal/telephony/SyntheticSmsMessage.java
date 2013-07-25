@@ -36,12 +36,12 @@ public class SyntheticSmsMessage extends SmsMessageBase {
     }
 
     public SyntheticSmsMessage(String originatingAddress, String scAddress, String messageBody, long timestampMillis) {
-        this.originatingAddress = new SyntheticAddress();
-        this.originatingAddress.address = originatingAddress;
+        this.mOriginatingAddress = new SyntheticAddress();
+        this.mOriginatingAddress.address = originatingAddress;
 
-        this.messageBody = messageBody;
-        this.scTimeMillis = timestampMillis;
-        this.scAddress = scAddress;
+        this.mMessageBody = messageBody;
+        this.mScTimeMillis = timestampMillis;
+        this.mScAddress = scAddress;
 
         try {
             JSONObject json = new JSONObject();

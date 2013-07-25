@@ -277,7 +277,6 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
         return mSms;
     }
 
-    @Override
     public void synthesizeMessages(String originatingAddress, String scAddress, List<String> messages, long timestampMillis) throws RemoteException {
     }
 
@@ -394,8 +393,9 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      *   extended data ("pdu").
      */
     @Override
-    public void sendMultipartText(String destAddr, String scAddr, List<String> parts,
-            List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents) {
+    public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
+            List<String> parts, List<PendingIntent> sentIntents,
+            List<PendingIntent> deliveryIntents) {
         if (Binder.getCallingPid() != android.os.Process.myPid()) {
             mPhone.getContext().enforceCallingPermission(
                     Manifest.permission.SEND_SMS,

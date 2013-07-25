@@ -42,19 +42,19 @@ import static com.android.internal.telephony.RILConstants.*;
 
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CommandException;
-import com.android.internal.telephony.DataCallState;
-import com.android.internal.telephony.DataConnection.FailCause;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
-import com.android.internal.telephony.IccCardApplicationStatus;
-import com.android.internal.telephony.IccCardStatus;
-import com.android.internal.telephony.IccUtils;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus;
+import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SmsResponse;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaInformationRecords.CdmaSignalInfoRec;
 import com.android.internal.telephony.cdma.SignalToneUtil;
+import com.android.internal.telephony.dataconnection.DataCallResponse;
+import com.android.internal.telephony.dataconnection.DcFailCause;
 
 import android.util.Log;
 
@@ -97,12 +97,12 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_RADIO_POWER, result);
 
         if (on) {
-            rr.mp.writeInt(1);
-            rr.mp.writeInt(1);
+            rr.mParcel.writeInt(1);
+            rr.mParcel.writeInt(1);
         } else {
-            rr.mp.writeInt(2);
-            rr.mp.writeInt(0);
-            rr.mp.writeInt(0);
+            rr.mParcel.writeInt(2);
+            rr.mParcel.writeInt(0);
+            rr.mParcel.writeInt(0);
         }
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
@@ -306,17 +306,17 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
         }
 
         rr = RILRequest.obtain(RIL_REQUEST_DIAL, result);
-        rr.mp.writeString(address);
-        rr.mp.writeInt(clirMode);
-        rr.mp.writeInt(0); // UUS information is absent
+        rr.mParcel.writeString(address);
+        rr.mParcel.writeInt(clirMode);
+        rr.mParcel.writeInt(0); // UUS information is absent
 
         if (uusInfo == null) {
-            rr.mp.writeInt(0); // UUS information is absent
+            rr.mParcel.writeInt(0); // UUS information is absent
         } else {
-            rr.mp.writeInt(1); // UUS information is present
-            rr.mp.writeInt(uusInfo.getType());
-            rr.mp.writeInt(uusInfo.getDcs());
-            rr.mp.writeByteArray(uusInfo.getUserData());
+            rr.mParcel.writeInt(1); // UUS information is present
+            rr.mParcel.writeInt(uusInfo.getType());
+            rr.mParcel.writeInt(uusInfo.getDcs());
+            rr.mParcel.writeByteArray(uusInfo.getUserData());
         }
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
@@ -330,10 +330,10 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
         Log.v(LOG_TAG, "Emergency dial: " + address);
 
         rr = RILRequest.obtain(RIL_REQUEST_DIAL_EMERGENCY, result);
-        rr.mp.writeString(address + "/");
-        rr.mp.writeInt(clirMode);
-        rr.mp.writeInt(0);
-        rr.mp.writeInt(0);
+        rr.mParcel.writeString(address + "/");
+        rr.mParcel.writeInt(clirMode);
+        rr.mParcel.writeInt(0);
+        rr.mParcel.writeInt(0);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
@@ -674,7 +674,7 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
     @Override
     protected Object
     responseSetupDataCall(Parcel p) {
-        DataCallState dataCall = new DataCallState();
+        DataCallResponse dataCall = new DataCallResponse();
         String strings[] = (String []) responseStrings(p);
 
         if (strings.length >= 2) {
@@ -684,7 +684,7 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
                 // We're responsible for starting/stopping the pppd_cdma service.
                 if (!startPppdCdmaService(strings[1])) {
                     // pppd_cdma service didn't respond timely.
-                    dataCall.status = FailCause.ERROR_UNSPECIFIED.getErrorCode();
+                    dataCall.status = DcFailCause.ERROR_UNSPECIFIED.getErrorCode();
                     return dataCall;
                 }
 
@@ -712,7 +712,7 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
                 SystemProperties.set("ril.cdma.data_state", "0");
             }
 
-            dataCall.status = FailCause.ERROR_UNSPECIFIED.getErrorCode(); // Who knows?
+            dataCall.status = DcFailCause.ERROR_UNSPECIFIED.getErrorCode(); // Who knows?
         }
 
         return dataCall;
@@ -893,8 +893,8 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
         RILRequest rr = RILRequest.obtain(
                 RILConstants.RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE, response);
 
-        rr.mp.writeInt(1);
-        rr.mp.writeInt(networkType);
+        rr.mParcel.writeInt(1);
+        rr.mParcel.writeInt(networkType);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
                 + " : " + networkType);
