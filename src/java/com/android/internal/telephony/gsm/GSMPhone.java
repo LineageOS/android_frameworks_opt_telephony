@@ -177,6 +177,7 @@ public class GSMPhone extends PhoneBase {
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         mCi.setOnSs(this, EVENT_SS, null);
 
+/* This block blows up java 7
         if (DBG_PORT) {
             try {
                 //debugSocket = new LocalServerSocket("com.android.internal.telephony.debug");
@@ -211,6 +212,7 @@ public class GSMPhone extends PhoneBase {
                 Rlog.w(LOG_TAG, "Failure to open com.android.internal.telephony.debug socket", ex);
             }
         }
+*/
         setProperties();
     }
 

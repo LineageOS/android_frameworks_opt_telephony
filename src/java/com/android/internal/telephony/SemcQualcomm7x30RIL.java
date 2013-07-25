@@ -28,7 +28,9 @@ import android.os.Parcel;
 import android.text.TextUtils;
 import android.util.Log;
 
-import com.android.internal.telephony.IccCardApplicationStatus;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus;
+import com.android.internal.telephony.dataconnection.DataCallResponse;
+import com.android.internal.telephony.dataconnection.DcFailCause;
 
 import java.util.ArrayList;
 
@@ -54,8 +56,8 @@ public class SemcQualcomm7x30RIL extends RIL implements CommandsInterface {
     }
 
     @Override
-    protected DataCallState getDataCallState(Parcel p, int version) {
-        DataCallState dataCall = new DataCallState();
+    protected DataCallResponse getDataCallResponse(Parcel p, int version) {
+        DataCallResponse dataCall = new DataCallResponse();
 
         dataCall.version = version;
         if (version < 5) {
@@ -66,7 +68,7 @@ public class SemcQualcomm7x30RIL extends RIL implements CommandsInterface {
             if (!TextUtils.isEmpty(addresses)) {
                 dataCall.addresses = addresses.split(" ");
             }
-            // DataCallState needs an ifname. Since we don't have one use the name from the ThrottleService resource (default=rmnet0).
+            // DataCallResponse needs an ifname. Since we don't have one use the name from the ThrottleService resource (default=rmnet0).
             dataCall.ifname = "rmnet0";
         } else {
             dataCall.status = p.readInt();
@@ -75,9 +77,9 @@ public class SemcQualcomm7x30RIL extends RIL implements CommandsInterface {
             dataCall.active = p.readInt();
             dataCall.type = p.readString();
             dataCall.ifname = p.readString();
-            if ((dataCall.status == DataConnection.FailCause.NONE.getErrorCode()) &&
+            if ((dataCall.status == DcFailCause.NONE.getErrorCode()) &&
                     TextUtils.isEmpty(dataCall.ifname)) {
-              throw new RuntimeException("getDataCallState, no ifname");
+              throw new RuntimeException("getDataCallResponse, no ifname");
             }
             String addresses = p.readString();
             if (!TextUtils.isEmpty(addresses)) {
@@ -157,7 +159,7 @@ public class SemcQualcomm7x30RIL extends RIL implements CommandsInterface {
     getIMSIForApp(String aid, Message result) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_IMSI, result);
 
-        rr.mp.writeString(aid);
+        rr.mParcel.writeString(aid);
 
         if (RILJ_LOGD) riljLog(rr.serialString() +
                               "> getIMSI: " + requestToString(rr.mRequest)
@@ -171,19 +173,19 @@ public class SemcQualcomm7x30RIL extends RIL implements CommandsInterface {
     dial(String address, int clirMode, UUSInfo uusInfo, Message result) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_DIAL, result);
 
-        rr.mp.writeString(address);
-        rr.mp.writeInt(clirMode);
-        rr.mp.writeInt(0);
+        rr.mParcel.writeString(address);
+        rr.mParcel.writeInt(clirMode);
+        rr.mParcel.writeInt(0);
 
         if (uusInfo == null) {
-            rr.mp.writeInt(0); // UUS information is absent
+            rr.mParcel.writeInt(0); // UUS information is absent
         } else {
-            rr.mp.writeInt(1); // UUS information is present
-            rr.mp.writeInt(uusInfo.getType());
-            rr.mp.writeInt(uusInfo.getDcs());
-            rr.mp.writeByteArray(uusInfo.getUserData());
+            rr.mParcel.writeInt(1); // UUS information is present
+            rr.mParcel.writeInt(uusInfo.getType());
+            rr.mParcel.writeInt(uusInfo.getDcs());
+            rr.mParcel.writeByteArray(uusInfo.getUserData());
         }
-        rr.mp.writeInt(255);
+        rr.mParcel.writeInt(255);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
@@ -199,8 +201,8 @@ public class SemcQualcomm7x30RIL extends RIL implements CommandsInterface {
         else
             rr = RILRequest.obtain(RIL_REQUEST_SET_NETWORK_SELECTION_MANUAL, response);
 
-        rr.mp.writeString(operatorNumeric);
-        rr.mp.writeInt(-1);
+        rr.mParcel.writeString(operatorNumeric);
+        rr.mParcel.writeInt(-1);
 
         send(rr);
     }
