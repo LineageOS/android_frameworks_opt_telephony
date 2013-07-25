@@ -219,6 +219,7 @@ class RILRequest {
  */
 public class RIL extends BaseCommands implements CommandsInterface {
     static final String RILJ_LOG_TAG = "RILJ";
+    static final String LOG_TAG = RILJ_LOG_TAG;
     static final boolean RILJ_LOGD = true;
     static final boolean RILJ_LOGV = false; // STOPSHIP if true
     protected boolean samsungDriverCall = false;
@@ -528,11 +529,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
                     byte[] data = str.getBytes();
                     try {
                         mSocket.getOutputStream().write(data);
-                        Log.i(LOG_TAG, "Data sent!!");
+                        Rlog.i(LOG_TAG, "Data sent!!");
                     } catch (IOException ex) {
-                            Log.e(LOG_TAG, "IOException", ex);
+                            Rlog.e(LOG_TAG, "IOException", ex);
                     } catch (RuntimeException exc) {
-                        Log.e(LOG_TAG, "Uncaught exception ", exc);
+                        Rlog.e(LOG_TAG, "Uncaught exception ", exc);
                     }
                 }
 
@@ -2827,7 +2828,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
                 boolean oldRil = needsOldRilFeature("skipbrokendatacall");
-                if (oldRil && "IP".equals(((ArrayList<DataCallState>)ret).get(0).type))
+                if (oldRil && "IP".equals(((ArrayList<DataCallResponse>)ret).get(0).type))
                     break;
 
                 mDataNetworkStateRegistrants.notifyRegistrants(new AsyncResult(null, ret, null));

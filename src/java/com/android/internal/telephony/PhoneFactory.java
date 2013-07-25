@@ -20,6 +20,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.net.LocalServerSocket;
 import android.os.Looper;
+import android.os.SystemProperties;
 import android.provider.Settings;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
@@ -116,12 +117,12 @@ public class PhoneFactory {
                 int cdmaSubscription;
                 cdmaSubscription = Settings.Global.getInt(context.getContentResolver(),
                                 Settings.Global.CDMA_SUBSCRIPTION_MODE,
-                                preferredCdmaSubscription);
+                                sPreferredCdmaSubscription);
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
 
                 //reads the system properties and makes commandsinterface
                 String sRILClassname = SystemProperties.get("ro.telephony.ril_class", "RIL");
-                Log.i(LOG_TAG, "RILClassname is " + sRILClassname);
+                Rlog.i(LOG_TAG, "RILClassname is " + sRILClassname);
 
                 // Use reflection to construct the RIL class (defaults to RIL)
                 try {
@@ -131,7 +132,7 @@ public class PhoneFactory {
                 } catch (Exception e) {
                     // 6 different types of exceptions are thrown here that it's
                     // easier to just catch Exception as our "error handling" is the same.
-                    Log.wtf(LOG_TAG, "Unable to construct command interface", e);
+                    Rlog.i(LOG_TAG, "Unable to construct command interface", e);
                     throw new RuntimeException(e);
                 }
 

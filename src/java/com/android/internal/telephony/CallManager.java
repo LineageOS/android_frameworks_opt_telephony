@@ -1854,7 +1854,7 @@ public final class CallManager {
                     mSuppServiceFailedRegistrants.notifyRegistrants((AsyncResult) msg.obj);
                     break;
                 case EVENT_SUPP_SERVICE_NOTIFY:
-                    if (VDBG) Log.d(LOG_TAG, " handleMessage (EVENT_SUPP_SERVICE_NOTIFICATION)");
+                    if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_SUPP_SERVICE_NOTIFICATION)");
                     mSuppServiceNotificationRegistrants.notifyRegistrants((AsyncResult) msg.obj);
                     break;
                 case EVENT_SERVICE_STATE_CHANGED:
