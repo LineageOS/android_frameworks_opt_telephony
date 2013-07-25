@@ -22,161 +22,174 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.UUSInfo;
 
-import android.net.sip.SipAudioCall;
 import android.os.SystemClock;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.telephony.PhoneNumberUtils;
 
 abstract class SipConnectionBase extends Connection {
-    private static final String LOG_TAG = "SIP_CONN";
+    private static final String LOG_TAG = "SipConnBase";
+    private static final boolean DBG = true;
+    private static final boolean VDBG = false; // STOPSHIP if true
 
-    private SipAudioCall mSipAudioCall;
-
-    private String dialString;          // outgoing calls only
-    private String postDialString;      // outgoing calls only
-    private int nextPostDialChar;       // index into postDialString
-    private boolean isIncoming;
-
+    private String mPostDialString;      // outgoing calls only
+    private int mNextPostDialChar;       // index into postDialString
     /*
      * These time/timespan values are based on System.currentTimeMillis(),
      * i.e., "wall clock" time.
      */
-    private long createTime;
-    private long connectTime;
-    private long disconnectTime;
+    private long mCreateTime;
+    private long mConnectTime;
+    private long mDisconnectTime;
 
     /*
      * These time/timespan values are based on SystemClock.elapsedRealTime(),
      * i.e., time since boot.  They are appropriate for comparison and
      * calculating deltas.
      */
-    private long connectTimeReal;
-    private long duration = -1L;
-    private long holdingStartTime;  // The time when the Connection last transitioned
+    private long mConnectTimeReal;
+    private long mDuration = -1L;
+    private long mHoldingStartTime;  // The time when the Connection last transitioned
                             // into HOLDING
 
     private DisconnectCause mCause = DisconnectCause.NOT_DISCONNECTED;
-    private PostDialState postDialState = PostDialState.NOT_STARTED;
+    private PostDialState mPostDialState = PostDialState.NOT_STARTED;
 
     SipConnectionBase(String dialString) {
-        this.dialString = dialString;
+        if (DBG) log("SipConnectionBase: ctor dialString=" + dialString);
+        mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
 
-        postDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
-
-        isIncoming = false;
-        createTime = System.currentTimeMillis();
+        mCreateTime = System.currentTimeMillis();
     }
 
     protected void setState(Call.State state) {
+        if (DBG) log("setState: state=" + state);
         switch (state) {
             case ACTIVE:
-                if (connectTime == 0) {
-                    connectTimeReal = SystemClock.elapsedRealtime();
-                    connectTime = System.currentTimeMillis();
+                if (mConnectTime == 0) {
+                    mConnectTimeReal = SystemClock.elapsedRealtime();
+                    mConnectTime = System.currentTimeMillis();
                 }
                 break;
             case DISCONNECTED:
-                duration = getDurationMillis();
-                disconnectTime = System.currentTimeMillis();
+                mDuration = getDurationMillis();
+                mDisconnectTime = System.currentTimeMillis();
                 break;
             case HOLDING:
-                holdingStartTime = SystemClock.elapsedRealtime();
+                mHoldingStartTime = SystemClock.elapsedRealtime();
+                break;
+            default:
+                // Ignore
                 break;
         }
     }
 
     @Override
     public long getCreateTime() {
-        return createTime;
+        if (VDBG) log("getCreateTime: ret=" + mCreateTime);
+        return mCreateTime;
     }
 
     @Override
     public long getConnectTime() {
-        return connectTime;
+        if (VDBG) log("getConnectTime: ret=" + mConnectTime);
+        return mConnectTime;
     }
 
     @Override
     public long getDisconnectTime() {
-        return disconnectTime;
+        if (VDBG) log("getDisconnectTime: ret=" + mDisconnectTime);
+        return mDisconnectTime;
     }
 
     @Override
     public long getDurationMillis() {
-        if (connectTimeReal == 0) {
-            return 0;
-        } else if (duration < 0) {
-            return SystemClock.elapsedRealtime() - connectTimeReal;
+        long dur;
+        if (mConnectTimeReal == 0) {
+            dur = 0;
+        } else if (mDuration < 0) {
+            dur = SystemClock.elapsedRealtime() - mConnectTimeReal;
         } else {
-            return duration;
+            dur = mDuration;
         }
+        if (VDBG) log("getDurationMillis: ret=" + dur);
+        return dur;
     }
 
     @Override
     public long getHoldDurationMillis() {
+        long dur;
         if (getState() != Call.State.HOLDING) {
             // If not holding, return 0
-            return 0;
+            dur = 0;
         } else {
-            return SystemClock.elapsedRealtime() - holdingStartTime;
+            dur = SystemClock.elapsedRealtime() - mHoldingStartTime;
         }
+        if (VDBG) log("getHoldDurationMillis: ret=" + dur);
+        return dur;
     }
 
     @Override
     public DisconnectCause getDisconnectCause() {
+        if (VDBG) log("getDisconnectCause: ret=" + mCause);
         return mCause;
     }
 
     void setDisconnectCause(DisconnectCause cause) {
+        if (DBG) log("setDisconnectCause: prev=" + mCause + " new=" + cause);
         mCause = cause;
     }
 
     @Override
     public PostDialState getPostDialState() {
-        return postDialState;
+        if (VDBG) log("getPostDialState: ret=" + mPostDialState);
+        return mPostDialState;
     }
 
     @Override
     public void proceedAfterWaitChar() {
-        // TODO
+        if (DBG) log("proceedAfterWaitChar: ignore");
     }
 
     @Override
     public void proceedAfterWildChar(String str) {
-        // TODO
+        if (DBG) log("proceedAfterWildChar: ignore");
     }
 
     @Override
     public void cancelPostDial() {
-        // TODO
+        if (DBG) log("cancelPostDial: ignore");
     }
 
     protected abstract Phone getPhone();
 
     @Override
     public String getRemainingPostDialString() {
-        if (postDialState == PostDialState.CANCELLED
-            || postDialState == PostDialState.COMPLETE
-            || postDialString == null
-            || postDialString.length() <= nextPostDialChar) {
+        if (mPostDialState == PostDialState.CANCELLED
+            || mPostDialState == PostDialState.COMPLETE
+            || mPostDialString == null
+            || mPostDialString.length() <= mNextPostDialChar) {
+            if (DBG) log("getRemaingPostDialString: ret empty string");
             return "";
         }
 
-        return postDialString.substring(nextPostDialChar);
+        return mPostDialString.substring(mNextPostDialChar);
     }
 
     private void log(String msg) {
-        Log.d(LOG_TAG, "[SipConn] " + msg);
+        Rlog.d(LOG_TAG, msg);
     }
 
     @Override
     public int getNumberPresentation() {
         // TODO: add PRESENTATION_URL
+        if (VDBG) log("getNumberPresentation: ret=PRESENTATION_ALLOWED");
         return PhoneConstants.PRESENTATION_ALLOWED;
     }
 
     @Override
     public UUSInfo getUUSInfo() {
         // FIXME: what's this for SIP?
+        if (VDBG) log("getUUSInfo: ? ret=null");
         return null;
     }
 }

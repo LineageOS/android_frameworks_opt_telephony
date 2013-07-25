@@ -16,13 +16,13 @@
 
 package com.android.internal.telephony.gsm;
 
+import android.telephony.Rlog;
 import android.telephony.SmsCbEtwsInfo;
 import android.telephony.SmsCbLocation;
 import android.telephony.SmsCbMessage;
 import android.test.AndroidTestCase;
-import android.util.Log;
 
-import com.android.internal.telephony.IccUtils;
+import com.android.internal.telephony.uicc.IccUtils;
 
 import java.util.Random;
 
@@ -709,7 +709,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
 
     public void testEtwsMessageNormal() {
         SmsCbMessage msg = createFromPdu(etwsMessageNormal);
-        Log.d(TAG, msg.toString());
+        Rlog.d(TAG, msg.toString());
         assertEquals("GS mismatch", 0, msg.getGeographicalScope());
         assertEquals("serial number mismatch", 0, msg.getSerialNumber());
         assertEquals("message ID mismatch", 0x1100, msg.getServiceCategory());
@@ -719,7 +719,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
 
     public void testEtwsMessageCancel() {
         SmsCbMessage msg = createFromPdu(etwsMessageCancel);
-        Log.d(TAG, msg.toString());
+        Rlog.d(TAG, msg.toString());
         assertEquals("GS mismatch", 0, msg.getGeographicalScope());
         assertEquals("serial number mismatch", 0, msg.getSerialNumber());
         assertEquals("message ID mismatch", 0x1100, msg.getServiceCategory());
@@ -729,7 +729,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
 
     public void testEtwsMessageTest() {
         SmsCbMessage msg = createFromPdu(etwsMessageTest);
-        Log.d(TAG, msg.toString());
+        Rlog.d(TAG, msg.toString());
         assertEquals("GS mismatch", 0, msg.getGeographicalScope());
         assertEquals("serial number mismatch", 0, msg.getSerialNumber());
         assertEquals("message ID mismatch", 0x1103, msg.getServiceCategory());
@@ -750,7 +750,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
                 // this should return a SmsCbMessage object or null for invalid data
                 SmsCbMessage msg = createFromPdu(data);
             } catch (Exception e) {
-                Log.d(TAG, "exception thrown", e);
+                Rlog.d(TAG, "exception thrown", e);
                 fail("Exception in decoder at run " + run + " length " + len + ": " + e);
             }
         }

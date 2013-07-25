@@ -19,18 +19,10 @@ package android.telephony;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
-import android.graphics.Typeface;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.provider.Telephony;
-import android.telephony.SmsCbCmasInfo;
-import android.telephony.SmsCbEtwsInfo;
-import android.telephony.SmsCbLocation;
-import android.telephony.SmsCbMessage;
-import android.text.Spannable;
-import android.text.SpannableStringBuilder;
 import android.text.format.DateUtils;
-import android.text.style.StyleSpan;
 
 /**
  * Application wrapper for {@link SmsCbMessage}. This is Parcelable so that
@@ -76,10 +68,12 @@ public class CellBroadcastMessage implements Parcelable {
     }
 
     /** Parcelable: no special flags. */
+    @Override
     public int describeContents() {
         return 0;
     }
 
+    @Override
     public void writeToParcel(Parcel out, int flags) {
         mSmsCbMessage.writeToParcel(out, flags);
         out.writeLong(mDeliveryTime);
@@ -88,10 +82,12 @@ public class CellBroadcastMessage implements Parcelable {
 
     public static final Parcelable.Creator<CellBroadcastMessage> CREATOR
             = new Parcelable.Creator<CellBroadcastMessage>() {
+        @Override
         public CellBroadcastMessage createFromParcel(Parcel in) {
             return new CellBroadcastMessage(in);
         }
 
+        @Override
         public CellBroadcastMessage[] newArray(int size) {
             return new CellBroadcastMessage[size];
         }
@@ -323,20 +319,12 @@ public class CellBroadcastMessage implements Parcelable {
 
     /**
      * Returns whether the broadcast is an emergency (PWS) message type,
-     * including test messages, but excluding lower priority Amber alert broadcasts.
+     * including test messages and AMBER alerts.
      *
-     * @return true if the message is PWS type, excluding Amber alerts
+     * @return true if the message is PWS type (ETWS or CMAS)
      */
     public boolean isEmergencyAlertMessage() {
-        if (!mSmsCbMessage.isEmergencyMessage()) {
-            return false;
-        }
-        SmsCbCmasInfo cmasInfo = mSmsCbMessage.getCmasWarningInfo();
-        if (cmasInfo != null &&
-                cmasInfo.getMessageClass() == SmsCbCmasInfo.CMAS_CLASS_CHILD_ABDUCTION_EMERGENCY) {
-            return false;
-        }
-        return true;
+        return mSmsCbMessage.isEmergencyMessage();
     }
 
     /**

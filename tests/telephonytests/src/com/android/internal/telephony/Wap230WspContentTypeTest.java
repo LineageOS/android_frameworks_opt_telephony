@@ -188,7 +188,7 @@ public class Wap230WspContentTypeTest extends TestCase {
     }
 
     final int WSP_DEFINED_SHORT_MIME_TYPE_COUNT = 85;
-    final int WSP_DEFINED_LONG_MIME_TYPE_COUNT = 85;
+    final int WSP_DEFINED_LONG_MIME_TYPE_COUNT = 40;
 
     private static final byte WSP_STRING_TERMINATOR = 0x00;
     private static final byte WSP_SHORT_INTEGER_MASK = (byte) 0x80;

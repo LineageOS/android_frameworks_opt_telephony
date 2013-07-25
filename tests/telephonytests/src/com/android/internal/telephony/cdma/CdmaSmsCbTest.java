@@ -21,14 +21,14 @@ import android.telephony.SmsCbCmasInfo;
 import android.telephony.SmsCbMessage;
 import android.telephony.cdma.CdmaSmsCbProgramData;
 import android.test.AndroidTestCase;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.GsmAlphabet;
-import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.cdma.sms.BearerData;
 import com.android.internal.telephony.cdma.sms.CdmaSmsAddress;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.telephony.cdma.sms.UserData;
+import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.util.BitwiseOutputStream;
 
 import java.util.Arrays;
@@ -525,7 +525,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
             for (int i = 0; i < len; i++) {
                 data[i] = (byte) r.nextInt(256);
             }
-            // Log.d("CdmaSmsCbTest", "trying random bearer data run " + run + " length " + len);
+            // Rlog.d("CdmaSmsCbTest", "trying random bearer data run " + run + " length " + len);
             try {
                 int category = 0x0ff0 + r.nextInt(32);  // half CMAS, half non-CMAS
                 Parcel p = createBroadcastParcel(category);
@@ -533,10 +533,10 @@ public class CdmaSmsCbTest extends AndroidTestCase {
                 SmsCbMessage cbMessage = msg.parseBroadcastSms();
                 // with random input, cbMessage will almost always be null (log when it isn't)
                 if (cbMessage != null) {
-                    Log.d("CdmaSmsCbTest", "success: " + cbMessage);
+                    Rlog.d("CdmaSmsCbTest", "success: " + cbMessage);
                 }
             } catch (Exception e) {
-                Log.d("CdmaSmsCbTest", "exception thrown", e);
+                Rlog.d("CdmaSmsCbTest", "exception thrown", e);
                 fail("Exception in decoder at run " + run + " length " + len + ": " + e);
             }
         }
@@ -549,7 +549,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
             int category = 0x0ff0 + r.nextInt(32);  // half CMAS, half non-CMAS
             Parcel p = createBroadcastParcel(category);
             int len = r.nextInt(140);
-            // Log.d("CdmaSmsCbTest", "trying random user data run " + run + " length " + len);
+            // Rlog.d("CdmaSmsCbTest", "trying random user data run " + run + " length " + len);
 
             try {
                 BitwiseOutputStream bos = createBearerDataStream(r.nextInt(65536), r.nextInt(4),
@@ -565,7 +565,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
                 SmsMessage msg = createMessageFromParcel(p, bos.toByteArray());
                 SmsCbMessage cbMessage = msg.parseBroadcastSms();
             } catch (Exception e) {
-                Log.d("CdmaSmsCbTest", "exception thrown", e);
+                Rlog.d("CdmaSmsCbTest", "exception thrown", e);
                 fail("Exception in decoder at run " + run + " length " + len + ": " + e);
             }
         }

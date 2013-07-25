@@ -16,14 +16,17 @@
 
 package com.android.internal.telephony;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import android.util.Log;
+import android.telephony.Rlog;
 
 /**
  * {@hide}
  */
 public abstract class Call {
+    protected final String LOG_TAG = "Call";
+
     /* Enums */
 
     public enum State {
@@ -45,8 +48,9 @@ public abstract class Call {
 
     /* Instance Variables */
 
-    public State state = State.IDLE;
+    public State mState = State.IDLE;
 
+    public ArrayList<Connection> mConnections = new ArrayList<Connection>();
 
     // Flag to indicate if the current calling/caller information
     // is accurate. If false the information is known to be accurate.
@@ -54,9 +58,7 @@ public abstract class Call {
     // For CDMA, during call waiting/3 way, there is no network response
     // if call waiting is answered, network timed out, dropped, 3 way
     // merged, etc.
-    protected boolean isGeneric = false;
-
-    protected final String LOG_TAG = "Call";
+    protected boolean mIsGeneric = false;
 
     /* Instance Methods */
 
@@ -85,7 +87,7 @@ public abstract class Call {
      * @return true if the call contains one or more connections
      */
     public boolean hasConnections() {
-        List connections = getConnections();
+        List<Connection> connections = getConnections();
 
         if (connections == null) {
             return false;
@@ -99,7 +101,7 @@ public abstract class Call {
      * @return state of class call
      */
     public State getState() {
-        return state;
+        return mState;
     }
 
     /**
@@ -118,7 +120,7 @@ public abstract class Call {
      */
     public Connection
     getEarliestConnection() {
-        List l;
+        List<Connection> l;
         long time = Long.MAX_VALUE;
         Connection c;
         Connection earliest = null;
@@ -130,7 +132,7 @@ public abstract class Call {
         }
 
         for (int i = 0, s = l.size() ; i < s ; i++) {
-            c = (Connection) l.get(i);
+            c = l.get(i);
             long t;
 
             t = c.getCreateTime();
@@ -146,7 +148,7 @@ public abstract class Call {
 
     public long
     getEarliestCreateTime() {
-        List l;
+        List<Connection> l;
         long time = Long.MAX_VALUE;
 
         l = getConnections();
@@ -156,7 +158,7 @@ public abstract class Call {
         }
 
         for (int i = 0, s = l.size() ; i < s ; i++) {
-            Connection c = (Connection) l.get(i);
+            Connection c = l.get(i);
             long t;
 
             t = c.getCreateTime();
@@ -170,14 +172,14 @@ public abstract class Call {
     public long
     getEarliestConnectTime() {
         long time = Long.MAX_VALUE;
-        List l = getConnections();
+        List<Connection> l = getConnections();
 
         if (l.size() == 0) {
             return 0;
         }
 
         for (int i = 0, s = l.size() ; i < s ; i++) {
-            Connection c = (Connection) l.get(i);
+            Connection c = l.get(i);
             long t;
 
             t = c.getConnectTime();
@@ -205,7 +207,7 @@ public abstract class Call {
      */
     public Connection
     getLatestConnection() {
-        List l = getConnections();
+        List<Connection> l = getConnections();
         if (l.size() == 0) {
             return null;
         }
@@ -213,7 +215,7 @@ public abstract class Call {
         long time = 0;
         Connection latest = null;
         for (int i = 0, s = l.size() ; i < s ; i++) {
-            Connection c = (Connection) l.get(i);
+            Connection c = l.get(i);
             long t = c.getCreateTime();
 
             if (t > time) {
@@ -230,14 +232,14 @@ public abstract class Call {
      * or not. false means accurate. Only used for CDMA.
      */
     public boolean isGeneric() {
-        return isGeneric;
+        return mIsGeneric;
     }
 
     /**
      * Set the generic instance variable
      */
     public void setGeneric(boolean generic) {
-        isGeneric = generic;
+        mIsGeneric = generic;
     }
 
     /**
@@ -248,7 +250,7 @@ public abstract class Call {
             try {
                 hangup();
             } catch (CallStateException ex) {
-                Log.w(LOG_TAG, " hangupIfActive: caught " + ex);
+                Rlog.w(LOG_TAG, " hangupIfActive: caught " + ex);
             }
         }
     }

@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.app.ActivityThread;
 import android.os.ServiceManager;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.Suppress;
@@ -33,7 +34,7 @@ public class SimSmsTest extends TestCase {
         ISms sms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
         assertNotNull(sms);
 
-        List<SmsRawData> records = sms.getAllMessagesFromIccEf();
+        List<SmsRawData> records = sms.getAllMessagesFromIccEf(ActivityThread.currentPackageName());
         assertNotNull(records);
         assertTrue(records.size() >= 0);
 

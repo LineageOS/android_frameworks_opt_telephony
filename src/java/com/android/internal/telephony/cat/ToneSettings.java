@@ -40,10 +40,12 @@ public class ToneSettings implements Parcelable {
         vibrate = in.readInt() == 1;
     }
 
+    @Override
     public int describeContents() {
         return 0;
     }
 
+    @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeParcelable(duration, 0);
         dest.writeParcelable(tone, 0);
@@ -51,10 +53,12 @@ public class ToneSettings implements Parcelable {
     }
 
     public static final Parcelable.Creator<ToneSettings> CREATOR = new Parcelable.Creator<ToneSettings>() {
+        @Override
         public ToneSettings createFromParcel(Parcel in) {
             return new ToneSettings(in);
         }
 
+        @Override
         public ToneSettings[] newArray(int size) {
             return new ToneSettings[size];
         }

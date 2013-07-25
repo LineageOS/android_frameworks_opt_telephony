@@ -19,8 +19,6 @@ package com.android.internal.telephony.cdma;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.RILConstants;
-
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -28,13 +26,13 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.provider.Settings;
-import android.util.Log;
+import android.telephony.Rlog;
 
 /**
  * Class that handles the CDMA subscription source changed events from RIL
  */
 public class CdmaSubscriptionSourceManager extends Handler {
-    static final String LOG_TAG = "CDMA";
+    static final String LOG_TAG = "CdmaSSM";
     private static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 1;
     private static final int EVENT_GET_CDMA_SUBSCRIPTION_SOURCE     = 2;
     private static final int EVENT_RADIO_ON                         = 3;
@@ -49,7 +47,7 @@ public class CdmaSubscriptionSourceManager extends Handler {
     private static int sReferenceCount = 0;
 
     // ***** Instance Variables
-    private CommandsInterface mCM;
+    private CommandsInterface mCi;
     private Context mContext;
     private RegistrantList mCdmaSubscriptionSourceChangedRegistrants = new RegistrantList();
 
@@ -59,9 +57,9 @@ public class CdmaSubscriptionSourceManager extends Handler {
     // Constructor
     private CdmaSubscriptionSourceManager(Context context, CommandsInterface ci) {
         mContext = context;
-        mCM = ci;
-        mCM.registerForCdmaSubscriptionChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
-        mCM.registerForOn(this, EVENT_RADIO_ON, null);
+        mCi = ci;
+        mCi.registerForCdmaSubscriptionChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
+        mCi.registerForOn(this, EVENT_RADIO_ON, null);
         int subscriptionSource = getDefaultCdmaSubscriptionSource();
         mCdmaSubscriptionSource.set(subscriptionSource);
     }
@@ -77,7 +75,7 @@ public class CdmaSubscriptionSourceManager extends Handler {
             if (null == sInstance) {
                 sInstance = new CdmaSubscriptionSourceManager(context, ci);
             }
-            sInstance.sReferenceCount++;
+            CdmaSubscriptionSourceManager.sReferenceCount++;
         }
         sInstance.registerForCdmaSubscriptionSourceChanged(h, what, obj);
         return sInstance;
@@ -91,8 +89,8 @@ public class CdmaSubscriptionSourceManager extends Handler {
         synchronized (sReferenceCountMonitor) {
             sReferenceCount--;
             if (sReferenceCount <= 0) {
-                mCM.unregisterForCdmaSubscriptionChanged(this);
-                mCM.unregisterForOn(this);
+                mCi.unregisterForCdmaSubscriptionChanged(this);
+                mCi.unregisterForOn(this);
                 sInstance = null;
             }
         }
@@ -115,7 +113,7 @@ public class CdmaSubscriptionSourceManager extends Handler {
             }
             break;
             case EVENT_RADIO_ON: {
-                mCM.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
+                mCi.getCdmaSubscriptionSource(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_SOURCE));
             }
             break;
             default:
@@ -182,15 +180,11 @@ public class CdmaSubscriptionSourceManager extends Handler {
     }
 
     private void log(String s) {
-        Log.d(LOG_TAG, "[CdmaSSM] " + s);
-    }
-
-    private void loge(String s) {
-        Log.e(LOG_TAG, "[CdmaSSM] " + s);
+        Rlog.d(LOG_TAG, s);
     }
 
     private void logw(String s) {
-        Log.w(LOG_TAG, "[CdmaSSM] " + s);
+        Rlog.w(LOG_TAG, s);
     }
 
 }

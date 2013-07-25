@@ -20,7 +20,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.format.Time;
 
-import com.android.internal.telephony.IccUtils;
+import com.android.internal.telephony.uicc.IccUtils;
 
 import java.util.Arrays;
 
@@ -163,7 +163,7 @@ public class SmsCbEtwsInfo implements Parcelable {
         time.second = second;
 
         // Timezone offset is in quarter hours.
-        return time.toMillis(true) - (long) (timezoneOffset * 15 * 60 * 1000);
+        return time.toMillis(true) - timezoneOffset * 15 * 60 * 1000;
     }
 
     /**
@@ -195,10 +195,12 @@ public class SmsCbEtwsInfo implements Parcelable {
 
     /** Creator for unparcelling objects. */
     public static final Creator<SmsCbEtwsInfo> CREATOR = new Creator<SmsCbEtwsInfo>() {
+        @Override
         public SmsCbEtwsInfo createFromParcel(Parcel in) {
             return new SmsCbEtwsInfo(in);
         }
 
+        @Override
         public SmsCbEtwsInfo[] newArray(int size) {
             return new SmsCbEtwsInfo[size];
         }

@@ -16,16 +16,10 @@
 
 package com.android.internal.telephony;
 
-import android.content.pm.PackageManager;
-import android.os.AsyncResult;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
 import android.os.ServiceManager;
-import android.telephony.PhoneNumberUtils;
-import android.util.Log;
+import com.android.internal.telephony.uicc.AdnRecord;
 
-import java.util.ArrayList;
+
 import java.util.List;
 
 
@@ -46,30 +40,34 @@ public class IccPhoneBookInterfaceManagerProxy extends IIccPhoneBook.Stub {
 
     public void setmIccPhoneBookInterfaceManager(
             IccPhoneBookInterfaceManager iccPhoneBookInterfaceManager) {
-        this.mIccPhoneBookInterfaceManager = iccPhoneBookInterfaceManager;
+        mIccPhoneBookInterfaceManager = iccPhoneBookInterfaceManager;
     }
 
+    @Override
     public boolean
     updateAdnRecordsInEfBySearch (int efid,
             String oldTag, String oldPhoneNumber,
             String newTag, String newPhoneNumber,
-            String pin2) throws android.os.RemoteException {
+            String pin2) {
         return mIccPhoneBookInterfaceManager.updateAdnRecordsInEfBySearch(
                 efid, oldTag, oldPhoneNumber, newTag, newPhoneNumber, pin2);
     }
 
+    @Override
     public boolean
     updateAdnRecordsInEfByIndex(int efid, String newTag,
-            String newPhoneNumber, int index, String pin2) throws android.os.RemoteException {
+            String newPhoneNumber, int index, String pin2) {
         return mIccPhoneBookInterfaceManager.updateAdnRecordsInEfByIndex(efid,
                 newTag, newPhoneNumber, index, pin2);
     }
 
-    public int[] getAdnRecordsSize(int efid) throws android.os.RemoteException {
+    @Override
+    public int[] getAdnRecordsSize(int efid) {
         return mIccPhoneBookInterfaceManager.getAdnRecordsSize(efid);
     }
 
-    public List<AdnRecord> getAdnRecordsInEf(int efid) throws android.os.RemoteException {
+    @Override
+    public List<AdnRecord> getAdnRecordsInEf(int efid) {
         return mIccPhoneBookInterfaceManager.getAdnRecordsInEf(efid);
     }
 }

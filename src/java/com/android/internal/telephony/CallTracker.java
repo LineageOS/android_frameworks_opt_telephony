@@ -21,8 +21,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.text.TextUtils;
-import android.util.Log;
-
 import com.android.internal.telephony.CommandException;
 
 import java.io.FileDescriptor;
@@ -40,11 +38,11 @@ public abstract class CallTracker extends Handler {
 
     static final int POLL_DELAY_MSEC = 250;
 
-    protected int pendingOperations;
-    protected boolean needsPoll;
-    protected Message lastRelevantPoll;
+    protected int mPendingOperations;
+    protected boolean mNeedsPoll;
+    protected Message mLastRelevantPoll;
 
-    public CommandsInterface cm;
+    public CommandsInterface mCi;
 
 
     //***** Events
@@ -66,11 +64,11 @@ public abstract class CallTracker extends Handler {
     protected static final int EVENT_THREE_WAY_DIAL_L2_RESULT_CDMA = 16;
 
     protected void pollCallsWhenSafe() {
-        needsPoll = true;
+        mNeedsPoll = true;
 
         if (checkNoOperationsPending()) {
-            lastRelevantPoll = obtainMessage(EVENT_POLL_CALLS_RESULT);
-            cm.getCurrentCalls(lastRelevantPoll);
+            mLastRelevantPoll = obtainMessage(EVENT_POLL_CALLS_RESULT);
+            mCi.getCurrentCalls(mLastRelevantPoll);
         }
     }
 
@@ -105,8 +103,8 @@ public abstract class CallTracker extends Handler {
      */
     protected Message
     obtainNoPollCompleteMessage(int what) {
-        pendingOperations++;
-        lastRelevantPoll = null;
+        mPendingOperations++;
+        mLastRelevantPoll = null;
         return obtainMessage(what);
     }
 
@@ -117,8 +115,8 @@ public abstract class CallTracker extends Handler {
     private boolean
     checkNoOperationsPending() {
         if (DBG_POLL) log("checkNoOperationsPending: pendingOperations=" +
-                pendingOperations);
-        return pendingOperations == 0;
+                mPendingOperations);
+        return mPendingOperations == 0;
     }
 
     /**
@@ -139,7 +137,7 @@ public abstract class CallTracker extends Handler {
      * To test Dial 112 take call then hang up on MO device to enter ECM
      * see RIL#processSolicited RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND
      *
-     * @param number to test if it should be remapped
+     * @param dialString to test if it should be remapped
      * @return the same number or the remapped number.
      */
     protected String checkForTestEmergencyNumber(String dialString) {
@@ -154,7 +152,7 @@ public abstract class CallTracker extends Handler {
             if (values.length == 2) {
                 if (values[0].equals(
                         android.telephony.PhoneNumberUtils.stripSeparators(dialString))) {
-                    cm.testingEmergencyCall();
+                    mCi.testingEmergencyCall();
                     log("checkForTestEmergencyNumber: remap " +
                             dialString + " to " + values[1]);
                     dialString = values[1];
@@ -165,6 +163,7 @@ public abstract class CallTracker extends Handler {
     }
 
     //***** Overridden from Handler
+    @Override
     public abstract void handleMessage (Message msg);
     public abstract void registerForVoiceCallStarted(Handler h, int what, Object obj);
     public abstract void unregisterForVoiceCallStarted(Handler h);
@@ -175,8 +174,8 @@ public abstract class CallTracker extends Handler {
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("CallTracker:");
-        pw.println(" pendingOperations=" + pendingOperations);
-        pw.println(" needsPoll=" + needsPoll);
-        pw.println(" lastRelevantPoll=" + lastRelevantPoll);
+        pw.println(" mPendingOperations=" + mPendingOperations);
+        pw.println(" mNeedsPoll=" + mNeedsPoll);
+        pw.println(" mLastRelevantPoll=" + mLastRelevantPoll);
     }
 }

@@ -20,12 +20,10 @@ import android.content.res.Resources;
 import android.content.res.Resources.NotFoundException;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.GsmAlphabet;
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 
 /**
  * Various methods, useful for dealing with SIM data.
@@ -118,7 +116,7 @@ public class IccUtils {
     }
 
     /**
-     * Decodes a CDMA style BCD byte like {@link gsmBcdByteToInt}, but
+     * Decodes a CDMA style BCD byte like {@link #gsmBcdByteToInt}, but
      * opposite nibble format. The least significant BCD digit
      * is in the least significant nibble and the most significant
      * is in the most significant nibble.
@@ -187,7 +185,7 @@ public class IccUtils {
                 try {
                     ret = new String(data, offset + 1, ucslen * 2, "utf-16be");
                 } catch (UnsupportedEncodingException ex) {
-                    Log.e(LOG_TAG, "implausible UnsupportedEncodingException",
+                    Rlog.e(LOG_TAG, "implausible UnsupportedEncodingException",
                           ex);
                 }
 
@@ -360,7 +358,7 @@ public class IccUtils {
                             offset + 1, length - 1, "utf-16");
                 } catch (UnsupportedEncodingException ex) {
                     ret = "";
-                    Log.e(LOG_TAG,"implausible UnsupportedEncodingException", ex);
+                    Rlog.e(LOG_TAG,"implausible UnsupportedEncodingException", ex);
                 }
             break;
 
@@ -406,10 +404,10 @@ public class IccUtils {
                 bitIndex = 7;
             }
             pixels[pixelIndex++] = bitToRGB((currentByte >> bitIndex-- ) & 0x01);
-        };
+        }
 
         if (pixelIndex != numOfPixels) {
-            Log.e(LOG_TAG, "parse end and size error");
+            Rlog.e(LOG_TAG, "parse end and size error");
         }
         return Bitmap.createBitmap(pixels, width, height, Bitmap.Config.ARGB_8888);
     }
@@ -461,7 +459,7 @@ public class IccUtils {
     private static int[] mapTo2OrderBitColor(byte[] data, int valueIndex,
             int length, int[] colorArray, int bits) {
         if (0 != (8 % bits)) {
-            Log.e(LOG_TAG, "not event number of color");
+            Rlog.e(LOG_TAG, "not event number of color");
             return mapToNon2OrderBitColor(data, valueIndex, length, colorArray,
                     bits);
         }
@@ -499,7 +497,7 @@ public class IccUtils {
     private static int[] mapToNon2OrderBitColor(byte[] data, int valueIndex,
             int length, int[] colorArray, int bits) {
         if (0 == (8 % bits)) {
-            Log.e(LOG_TAG, "not odd number of color");
+            Rlog.e(LOG_TAG, "not odd number of color");
             return mapTo2OrderBitColor(data, valueIndex, length, colorArray,
                     bits);
         }

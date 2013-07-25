@@ -24,7 +24,6 @@ import android.os.ServiceManager;
 import android.telephony.CellInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
-import android.util.Log;
 
 import com.android.internal.telephony.ITelephonyRegistry;
 
@@ -35,8 +34,6 @@ import java.util.List;
  */
 public class DefaultPhoneNotifier implements PhoneNotifier {
 
-    static final String LOG_TAG = "GSM";
-    private static final boolean DBG = true;
     private ITelephonyRegistry mRegistry;
 
     /*package*/
@@ -45,6 +42,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
                     "telephony.registry"));
     }
 
+    @Override
     public void notifyPhoneState(Phone sender) {
         Call ringingCall = sender.getRingingCall();
         String incomingNumber = "";
@@ -58,6 +56,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    @Override
     public void notifyServiceState(Phone sender) {
         ServiceState ss = sender.getServiceState();
         if (ss == null) {
@@ -71,6 +70,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    @Override
     public void notifySignalStrength(Phone sender) {
         try {
             mRegistry.notifySignalStrength(sender.getSignalStrength());
@@ -79,6 +79,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    @Override
     public void notifyMessageWaitingChanged(Phone sender) {
         try {
             mRegistry.notifyMessageWaitingChanged(sender.getMessageWaitingIndicator());
@@ -87,6 +88,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    @Override
     public void notifyCallForwardingChanged(Phone sender) {
         try {
             mRegistry.notifyCallForwardingChanged(sender.getCallForwardingIndicator());
@@ -95,6 +97,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    @Override
     public void notifyDataActivity(Phone sender) {
         try {
             mRegistry.notifyDataActivity(convertDataActivityState(sender.getDataActivityState()));
@@ -103,6 +106,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    @Override
     public void notifyDataConnection(Phone sender, String reason, String apnType,
             PhoneConstants.DataState state) {
         doNotifyDataConnection(sender, reason, apnType, state);
@@ -141,6 +145,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    @Override
     public void notifyDataConnectionFailed(Phone sender, String reason, String apnType) {
         try {
             mRegistry.notifyDataConnectionFailed(reason, apnType);
@@ -149,6 +154,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    @Override
     public void notifyCellLocation(Phone sender) {
         Bundle data = new Bundle();
         sender.getCellLocation().fillInNotifierBundle(data);
@@ -159,6 +165,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    @Override
     public void notifyCellInfo(Phone sender, List<CellInfo> cellInfo) {
         try {
             mRegistry.notifyCellInfo(cellInfo);
@@ -167,6 +174,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    @Override
     public void notifyOtaspChanged(Phone sender, int otaspMode) {
         try {
             mRegistry.notifyOtaspChanged(otaspMode);
@@ -175,13 +183,9 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
-    private void log(String s) {
-        Log.d(LOG_TAG, "[PhoneNotifier] " + s);
-    }
-
     /**
-     * Convert the {@link State} enum into the TelephonyManager.CALL_STATE_* constants
-     * for the public API.
+     * Convert the {@link PhoneConstants.State} enum into the TelephonyManager.CALL_STATE_*
+     * constants for the public API.
      */
     public static int convertCallState(PhoneConstants.State state) {
         switch (state) {
@@ -195,8 +199,8 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     /**
-     * Convert the TelephonyManager.CALL_STATE_* constants into the {@link State} enum
-     * for the public API.
+     * Convert the TelephonyManager.CALL_STATE_* constants into the
+     * {@link PhoneConstants.State} enum for the public API.
      */
     public static PhoneConstants.State convertCallState(int state) {
         switch (state) {
@@ -210,7 +214,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     /**
-     * Convert the {@link DataState} enum into the TelephonyManager.DATA_* constants
+     * Convert the {@link PhoneConstants.DataState} enum into the TelephonyManager.DATA_* constants
      * for the public API.
      */
     public static int convertDataState(PhoneConstants.DataState state) {
@@ -227,7 +231,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     /**
-     * Convert the TelephonyManager.DATA_* constants into {@link DataState} enum
+     * Convert the TelephonyManager.DATA_* constants into {@link PhoneConstants.DataState} enum
      * for the public API.
      */
     public static PhoneConstants.DataState convertDataState(int state) {
@@ -244,7 +248,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     /**
-     * Convert the {@link DataState} enum into the TelephonyManager.DATA_* constants
+     * Convert the {@link Phone.DataActivityState} enum into the TelephonyManager.DATA_* constants
      * for the public API.
      */
     public static int convertDataActivityState(Phone.DataActivityState state) {
@@ -263,7 +267,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     }
 
     /**
-     * Convert the TelephonyManager.DATA_* constants into the {@link DataState} enum
+     * Convert the TelephonyManager.DATA_* constants into the {@link Phone.DataActivityState} enum
      * for the public API.
      */
     public static Phone.DataActivityState convertDataActivityState(int state) {

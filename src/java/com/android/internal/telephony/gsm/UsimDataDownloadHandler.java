@@ -21,12 +21,12 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccIoResult;
-import com.android.internal.telephony.IccUtils;
 import com.android.internal.telephony.cat.ComprehensionTlvTag;
+import com.android.internal.telephony.uicc.IccIoResult;
+import com.android.internal.telephony.uicc.IccUtils;
 
 /**
  * Handler for SMS-PP data download messages.
@@ -50,10 +50,10 @@ public class UsimDataDownloadHandler extends Handler {
     /** Response to SMS-PP download envelope command. */
     private static final int EVENT_SEND_ENVELOPE_RESPONSE = 2;
 
-    private final CommandsInterface mCI;
+    private final CommandsInterface mCi;
 
     public UsimDataDownloadHandler(CommandsInterface commandsInterface) {
-        mCI = commandsInterface;
+        mCi = commandsInterface;
     }
 
     /**
@@ -67,7 +67,7 @@ public class UsimDataDownloadHandler extends Handler {
         if (sendMessage(obtainMessage(EVENT_START_DATA_DOWNLOAD, smsMessage))) {
             return Activity.RESULT_OK;  // we will send SMS ACK/ERROR based on UICC response
         } else {
-            Log.e(TAG, "startDataDownload failed to send message to start data download.");
+            Rlog.e(TAG, "startDataDownload failed to send message to start data download.");
             return Intents.RESULT_SMS_GENERIC_ERROR;
         }
     }
@@ -122,13 +122,13 @@ public class UsimDataDownloadHandler extends Handler {
 
         // Verify that we calculated the payload size correctly.
         if (index != envelope.length) {
-            Log.e(TAG, "startDataDownload() calculated incorrect envelope length, aborting.");
+            Rlog.e(TAG, "startDataDownload() calculated incorrect envelope length, aborting.");
             acknowledgeSmsWithError(CommandsInterface.GSM_SMS_FAIL_CAUSE_UNSPECIFIED_ERROR);
             return;
         }
 
         String encodedEnvelope = IccUtils.bytesToHexString(envelope);
-        mCI.sendEnvelopeWithStatus(encodedEnvelope, obtainMessage(
+        mCi.sendEnvelopeWithStatus(encodedEnvelope, obtainMessage(
                 EVENT_SEND_ENVELOPE_RESPONSE, new int[]{ dcs, pid }));
     }
 
@@ -164,24 +164,24 @@ public class UsimDataDownloadHandler extends Handler {
 
         boolean success;
         if ((sw1 == 0x90 && sw2 == 0x00) || sw1 == 0x91) {
-            Log.d(TAG, "USIM data download succeeded: " + response.toString());
+            Rlog.d(TAG, "USIM data download succeeded: " + response.toString());
             success = true;
         } else if (sw1 == 0x93 && sw2 == 0x00) {
-            Log.e(TAG, "USIM data download failed: Toolkit busy");
+            Rlog.e(TAG, "USIM data download failed: Toolkit busy");
             acknowledgeSmsWithError(CommandsInterface.GSM_SMS_FAIL_CAUSE_USIM_APP_TOOLKIT_BUSY);
             return;
         } else if (sw1 == 0x62 || sw1 == 0x63) {
-            Log.e(TAG, "USIM data download failed: " + response.toString());
+            Rlog.e(TAG, "USIM data download failed: " + response.toString());
             success = false;
         } else {
-            Log.e(TAG, "Unexpected SW1/SW2 response from UICC: " + response.toString());
+            Rlog.e(TAG, "Unexpected SW1/SW2 response from UICC: " + response.toString());
             success = false;
         }
 
         byte[] responseBytes = response.payload;
         if (responseBytes == null || responseBytes.length == 0) {
             if (success) {
-                mCI.acknowledgeLastIncomingGsmSms(true, 0, null);
+                mCi.acknowledgeLastIncomingGsmSms(true, 0, null);
             } else {
                 acknowledgeSmsWithError(
                         CommandsInterface.GSM_SMS_FAIL_CAUSE_USIM_DATA_DOWNLOAD_ERROR);
@@ -215,12 +215,12 @@ public class UsimDataDownloadHandler extends Handler {
 
         System.arraycopy(responseBytes, 0, smsAckPdu, index, responseBytes.length);
 
-        mCI.acknowledgeIncomingGsmSmsWithPdu(success,
+        mCi.acknowledgeIncomingGsmSmsWithPdu(success,
                 IccUtils.bytesToHexString(smsAckPdu), null);
     }
 
     private void acknowledgeSmsWithError(int cause) {
-        mCI.acknowledgeLastIncomingGsmSms(false, cause, null);
+        mCi.acknowledgeLastIncomingGsmSms(false, cause, null);
     }
 
     /**
@@ -250,7 +250,7 @@ public class UsimDataDownloadHandler extends Handler {
                 AsyncResult ar = (AsyncResult) msg.obj;
 
                 if (ar.exception != null) {
-                    Log.e(TAG, "UICC Send Envelope failure, exception: " + ar.exception);
+                    Rlog.e(TAG, "UICC Send Envelope failure, exception: " + ar.exception);
                     acknowledgeSmsWithError(
                             CommandsInterface.GSM_SMS_FAIL_CAUSE_USIM_DATA_DOWNLOAD_ERROR);
                     return;
@@ -261,7 +261,7 @@ public class UsimDataDownloadHandler extends Handler {
                 break;
 
             default:
-                Log.e(TAG, "Ignoring unexpected message, what=" + msg.what);
+                Rlog.e(TAG, "Ignoring unexpected message, what=" + msg.what);
         }
     }
 }

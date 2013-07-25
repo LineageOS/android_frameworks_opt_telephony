@@ -21,17 +21,15 @@ import android.net.LinkCapabilities;
 import android.net.LinkProperties;
 import android.os.Handler;
 import android.os.Message;
-import android.os.SystemProperties;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 
-import com.android.internal.telephony.DataConnection;
-import com.android.internal.telephony.gsm.UsimServiceTable;
-import com.android.internal.telephony.ims.IsimRecords;
 import com.android.internal.telephony.test.SimulatedRadioControl;
+import com.android.internal.telephony.uicc.IsimRecords;
+import com.android.internal.telephony.uicc.UsimServiceTable;
 
 import com.android.internal.telephony.PhoneConstants.*; // ???? 
 
@@ -62,11 +60,11 @@ public interface Phone {
          * </ul>
          */
         NONE, DATAIN, DATAOUT, DATAINANDOUT, DORMANT;
-    };
+    }
 
     enum SuppService {
       UNKNOWN, SWITCH, SEPARATE, TRANSFER, CONFERENCE, REJECT, HANGUP;
-    };
+    }
 
     // "Features" accessible through the connectivity manager
     static final String FEATURE_ENABLE_MMS = "enableMMS";
@@ -103,6 +101,8 @@ public interface Phone {
     static final String REASON_NW_TYPE_CHANGED = "nwTypeChanged";
     static final String REASON_DATA_DEPENDENCY_MET = "dependencyMet";
     static final String REASON_DATA_DEPENDENCY_UNMET = "dependencyUnmet";
+    static final String REASON_LOST_DATA_CONNECTION = "lostDataConnection";
+    static final String REASON_CONNECTED = "connected";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = 0; // selected by baseband automatically
@@ -184,6 +184,18 @@ public interface Phone {
      * @return all available cell information or null if none.
      */
     public List<CellInfo> getAllCellInfo();
+
+    /**
+     * Sets the minimum time in milli-seconds between {@link PhoneStateListener#onCellInfoChanged
+     * PhoneStateListener.onCellInfoChanged} will be invoked.
+     *
+     * The default, 0, means invoke onCellInfoChanged when any of the reported
+     * information changes. Setting the value to INT_MAX(0x7fffffff) means never issue
+     * A onCellInfoChanged.
+     *
+     * @param rateInMillis the rate
+     */
+    public void setCellInfoListRate(int rateInMillis);
 
     /**
      * Get the current for the default apn DataState. No change notification
@@ -300,7 +312,7 @@ public interface Phone {
     /**
      * Register for getting notifications for change in the Call State {@link Call.State}
      * This is called PreciseCallState because the call state is more precise than the
-     * {@link Phone.State} which can be obtained using the {@link PhoneStateListener}
+     * {@link PhoneConstants.State} which can be obtained using the {@link PhoneStateListener}
      *
      * Resulting events will have an AsyncResult in <code>Message.obj</code>.
      * AsyncResult.userData will be set to the obj argument here.
@@ -543,7 +555,7 @@ public interface Phone {
     void registerForInCallVoicePrivacyOff(Handler h, int what, Object obj);
 
     /**
-     * Unegister for notifications when a sInCall VoicePrivacy is disabled
+     * Unregister for notifications when a sInCall VoicePrivacy is disabled
      *
      * @param h Handler to be removed from the registrant list.
      */
@@ -559,7 +571,7 @@ public interface Phone {
     void registerForCdmaOtaStatusChange(Handler h, int what, Object obj);
 
     /**
-     * Unegister for notifications when CDMA OTA Provision status change
+     * Unregister for notifications when CDMA OTA Provision status change
      * @param h Handler to be removed from the registrant list.
      */
     void unregisterForCdmaOtaStatusChange(Handler h);
@@ -1255,7 +1267,7 @@ public interface Phone {
 
     /**
      * If this is a simulated phone interface, returns a SimulatedRadioControl.
-     * @ return A SimulatedRadioControl if this is a simulated interface;
+     * @return SimulatedRadioControl if this is a simulated interface;
      * otherwise, null.
      */
     SimulatedRadioControl getSimulatedRadioControl();
@@ -1263,7 +1275,7 @@ public interface Phone {
     /**
      * Enables the specified APN type. Only works for "special" APN types,
      * i.e., not the default APN.
-     * @param type The desired APN type. Cannot be {@link #APN_TYPE_DEFAULT}.
+     * @param type The desired APN type. Cannot be {@link PhoneConstants#APN_TYPE_DEFAULT}.
      * @return <code>APN_ALREADY_ACTIVE</code> if the current APN
      * services the requested type.<br/>
      * <code>APN_TYPE_NOT_AVAILABLE</code> if the carrier does not
@@ -1278,10 +1290,10 @@ public interface Phone {
     /**
      * Disables the specified APN type, and switches back to the default APN,
      * if necessary. Switching to the default APN will not happen if default
-     * data traffic has been explicitly disabled via a call to {@link #disableDataConnectivity}.
+     * data traffic has been explicitly disabled via a call to ITelephony#disableDataConnectivity.
      * <p/>Only works for "special" APN types,
      * i.e., not the default APN.
-     * @param type The desired APN type. Cannot be {@link #APN_TYPE_DEFAULT}.
+     * @param type The desired APN type. Cannot be {@link PhoneConstants#APN_TYPE_DEFAULT}.
      * @return <code>APN_ALREADY_ACTIVE</code> if the default APN
      * is already active.<br/>
      * <code>APN_REQUEST_STARTED</code> if the request to switch to the default
@@ -1317,6 +1329,11 @@ public interface Phone {
      * Retrieves the unique subscriber ID, e.g., IMSI for GSM phones.
      */
     String getSubscriberId();
+
+    /**
+     * Retrieves the Group Identifier Level1 for GSM phones.
+     */
+    String getGroupIdLevel1();
 
     /**
      * Retrieves the serial number of the ICC, if applicable.
@@ -1645,7 +1662,8 @@ public interface Phone {
      * is a tri-state return value as for a period of time
      * the mode may be unknown.
      *
-     * @return {@link #LTE_ON_CDMA_UNKNOWN}, {@link #LTE_ON_CDMA_FALSE} or {@link #LTE_ON_CDMA_TRUE}
+     * @return {@link PhoneConstants#LTE_ON_CDMA_UNKNOWN}, {@link PhoneConstants#LTE_ON_CDMA_FALSE}
+     * or {@link PhoneConstants#LTE_ON_CDMA_TRUE}
      */
     public int getLteOnCdmaMode();
 

@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import com.android.internal.telephony.GsmAlphabet;
+import com.android.internal.telephony.uicc.IccUtils;
 
 import junit.framework.TestCase;
 

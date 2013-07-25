@@ -22,15 +22,12 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccCardStatus;
-import com.android.internal.telephony.IccFileHandler;
-import com.android.internal.telephony.IccRecords;
-import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.UiccCard;
-import com.android.internal.telephony.UiccCardApplication;
+
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 
 /**
  * This class is responsible for keeping all knowledge about
@@ -70,11 +67,11 @@ import com.android.internal.telephony.UiccCardApplication;
  *         ^ stands for Generalization
  *
  * See also {@link com.android.internal.telephony.IccCard}
- * and {@link com.android.internal.telephony.IccCardProxy}
+ * and {@link com.android.internal.telephony.uicc.IccCardProxy}
  */
 public class UiccController extends Handler {
     private static final boolean DBG = true;
-    private static final String LOG_TAG = "RIL_UiccController";
+    private static final String LOG_TAG = "UiccController";
 
     public static final int APP_FAM_3GPP =  1;
     public static final int APP_FAM_3GPP2 = 2;
@@ -185,7 +182,7 @@ public class UiccController extends Handler {
                     onGetIccCardStatusDone(ar);
                     break;
                 default:
-                    Log.e(LOG_TAG, " Unknown Event " + msg.what);
+                    Rlog.e(LOG_TAG, " Unknown Event " + msg.what);
             }
         }
     }
@@ -201,7 +198,7 @@ public class UiccController extends Handler {
 
     private synchronized void onGetIccCardStatusDone(AsyncResult ar) {
         if (ar.exception != null) {
-            Log.e(LOG_TAG,"Error getting ICC status. "
+            Rlog.e(LOG_TAG,"Error getting ICC status. "
                     + "RIL_REQUEST_GET_ICC_STATUS should "
                     + "never return an error", ar.exception);
             return;
@@ -222,6 +219,24 @@ public class UiccController extends Handler {
     }
 
     private void log(String string) {
-        Log.d(LOG_TAG, string);
+        Rlog.d(LOG_TAG, string);
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("UiccController: " + this);
+        pw.println(" mContext=" + mContext);
+        pw.println(" mInstance=" + mInstance);
+        pw.println(" mCi=" + mCi);
+        pw.println(" mUiccCard=" + mUiccCard);
+        pw.println(" mIccChangedRegistrants: size=" + mIccChangedRegistrants.size());
+        for (int i = 0; i < mIccChangedRegistrants.size(); i++) {
+            pw.println("  mIccChangedRegistrants[" + i + "]="
+                    + ((Registrant)mIccChangedRegistrants.get(i)).getHandler());
+        }
+        pw.println();
+        pw.flush();
+        if (mUiccCard != null) {
+            mUiccCard.dump(fd, pw, args);
+        }
     }
 }

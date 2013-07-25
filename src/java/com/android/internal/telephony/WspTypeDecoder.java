@@ -196,15 +196,15 @@ public class WspTypeDecoder {
     public static final String CONTENT_TYPE_B_MMS = "application/vnd.wap.mms-message";
     public static final String CONTENT_TYPE_B_PUSH_SYNCML_NOTI = "application/vnd.syncml.notification";
 
-    byte[] wspData;
-    int    dataLength;
-    long   unsigned32bit;
-    String stringValue;
+    byte[] mWspData;
+    int    mDataLength;
+    long   mUnsigned32bit;
+    String mStringValue;
 
-    HashMap<String, String> contentParameters;
+    HashMap<String, String> mContentParameters;
 
     public WspTypeDecoder(byte[] pdu) {
-        wspData = pdu;
+        mWspData = pdu;
     }
 
     /**
@@ -218,14 +218,14 @@ public class WspTypeDecoder {
      */
     public boolean decodeTextString(int startIndex) {
         int index = startIndex;
-        while (wspData[index] != 0) {
+        while (mWspData[index] != 0) {
             index++;
         }
-        dataLength = index - startIndex + 1;
-        if (wspData[startIndex] == 127) {
-            stringValue = new String(wspData, startIndex + 1, dataLength - 2);
+        mDataLength = index - startIndex + 1;
+        if (mWspData[startIndex] == 127) {
+            mStringValue = new String(mWspData, startIndex + 1, mDataLength - 2);
         } else {
-            stringValue = new String(wspData, startIndex, dataLength - 1);
+            mStringValue = new String(mWspData, startIndex, mDataLength - 1);
         }
         return true;
     }
@@ -241,11 +241,11 @@ public class WspTypeDecoder {
      */
     public boolean decodeTokenText(int startIndex) {
         int index = startIndex;
-        while (wspData[index] != 0) {
+        while (mWspData[index] != 0) {
             index++;
         }
-        dataLength = index - startIndex + 1;
-        stringValue = new String(wspData, startIndex, dataLength - 1);
+        mDataLength = index - startIndex + 1;
+        mStringValue = new String(mWspData, startIndex, mDataLength - 1);
 
         return true;
     }
@@ -260,11 +260,11 @@ public class WspTypeDecoder {
      *         length of data in pdu can be retrieved by getDecodedDataLength() method
      */
     public boolean decodeShortInteger(int startIndex) {
-        if ((wspData[startIndex] & 0x80) == 0) {
+        if ((mWspData[startIndex] & 0x80) == 0) {
             return false;
         }
-        unsigned32bit = wspData[startIndex] & 0x7f;
-        dataLength = 1;
+        mUnsigned32bit = mWspData[startIndex] & 0x7f;
+        mDataLength = 1;
         return true;
     }
 
@@ -278,16 +278,16 @@ public class WspTypeDecoder {
      *         length of data in pdu can be retrieved by getDecodedDataLength() method
      */
     public boolean decodeLongInteger(int startIndex) {
-        int lengthMultiOctet = wspData[startIndex] & 0xff;
+        int lengthMultiOctet = mWspData[startIndex] & 0xff;
 
         if (lengthMultiOctet > WAP_PDU_SHORT_LENGTH_MAX) {
             return false;
         }
-        unsigned32bit = 0;
+        mUnsigned32bit = 0;
         for (int i = 1; i <= lengthMultiOctet; i++) {
-            unsigned32bit = (unsigned32bit << 8) | (wspData[startIndex + i] & 0xff);
+            mUnsigned32bit = (mUnsigned32bit << 8) | (mWspData[startIndex + i] & 0xff);
         }
-        dataLength = 1 + lengthMultiOctet;
+        mDataLength = 1 + lengthMultiOctet;
         return true;
     }
 
@@ -319,16 +319,16 @@ public class WspTypeDecoder {
     public boolean decodeUintvarInteger(int startIndex) {
         int index = startIndex;
 
-        unsigned32bit = 0;
-        while ((wspData[index] & 0x80) != 0) {
+        mUnsigned32bit = 0;
+        while ((mWspData[index] & 0x80) != 0) {
             if ((index - startIndex) >= 4) {
                 return false;
             }
-            unsigned32bit = (unsigned32bit << 7) | (wspData[index] & 0x7f);
+            mUnsigned32bit = (mUnsigned32bit << 7) | (mWspData[index] & 0x7f);
             index++;
         }
-        unsigned32bit = (unsigned32bit << 7) | (wspData[index] & 0x7f);
-        dataLength = index - startIndex + 1;
+        mUnsigned32bit = (mUnsigned32bit << 7) | (mWspData[index] & 0x7f);
+        mDataLength = index - startIndex + 1;
         return true;
     }
 
@@ -342,15 +342,15 @@ public class WspTypeDecoder {
      *         length of data in pdu can be retrieved by getDecodedDataLength() method
      */
     public boolean decodeValueLength(int startIndex) {
-        if ((wspData[startIndex] & 0xff) > WAP_PDU_LENGTH_QUOTE) {
+        if ((mWspData[startIndex] & 0xff) > WAP_PDU_LENGTH_QUOTE) {
             return false;
         }
-        if (wspData[startIndex] < WAP_PDU_LENGTH_QUOTE) {
-            unsigned32bit = wspData[startIndex];
-            dataLength = 1;
+        if (mWspData[startIndex] < WAP_PDU_LENGTH_QUOTE) {
+            mUnsigned32bit = mWspData[startIndex];
+            mDataLength = 1;
         } else {
             decodeUintvarInteger(startIndex + 1);
-            dataLength++;
+            mDataLength++;
         }
         return true;
     }
@@ -367,17 +367,17 @@ public class WspTypeDecoder {
      */
     public boolean decodeExtensionMedia(int startIndex) {
         int index = startIndex;
-        dataLength = 0;
-        stringValue = null;
-        int length = wspData.length;
+        mDataLength = 0;
+        mStringValue = null;
+        int length = mWspData.length;
         boolean rtrn = index < length;
 
-        while (index < length && wspData[index] != 0) {
+        while (index < length && mWspData[index] != 0) {
             index++;
         }
 
-        dataLength = index - startIndex + 1;
-        stringValue = new String(wspData, startIndex, dataLength - 1);
+        mDataLength = index - startIndex + 1;
+        mStringValue = new String(mWspData, startIndex, mDataLength - 1);
 
         return rtrn;
     }
@@ -393,7 +393,7 @@ public class WspTypeDecoder {
      */
     public boolean decodeConstrainedEncoding(int startIndex) {
         if (decodeShortInteger(startIndex) == true) {
-            stringValue = null;
+            mStringValue = null;
             return true;
         }
         return decodeExtensionMedia(startIndex);
@@ -414,7 +414,7 @@ public class WspTypeDecoder {
      */
     public boolean decodeContentType(int startIndex) {
         int mediaPrefixLength;
-        contentParameters = new HashMap<String, String>();
+        mContentParameters = new HashMap<String, String>();
 
         try {
             if (decodeValueLength(startIndex) == false) {
@@ -424,35 +424,35 @@ public class WspTypeDecoder {
                 }
                 return found;
             }
-            int headersLength = (int) unsigned32bit;
+            int headersLength = (int) mUnsigned32bit;
             mediaPrefixLength = getDecodedDataLength();
             if (decodeIntegerValue(startIndex + mediaPrefixLength) == true) {
-                dataLength += mediaPrefixLength;
-                int readLength = dataLength;
-                stringValue = null;
+                mDataLength += mediaPrefixLength;
+                int readLength = mDataLength;
+                mStringValue = null;
                 expandWellKnownMimeType();
-                long wellKnownValue = unsigned32bit;
-                String mimeType = stringValue;
-                if (readContentParameters(startIndex + dataLength,
-                        (headersLength - (dataLength - mediaPrefixLength)), 0)) {
-                    dataLength += readLength;
-                    unsigned32bit = wellKnownValue;
-                    stringValue = mimeType;
+                long wellKnownValue = mUnsigned32bit;
+                String mimeType = mStringValue;
+                if (readContentParameters(startIndex + mDataLength,
+                        (headersLength - (mDataLength - mediaPrefixLength)), 0)) {
+                    mDataLength += readLength;
+                    mUnsigned32bit = wellKnownValue;
+                    mStringValue = mimeType;
                     return true;
                 }
                 return false;
             }
             if (decodeExtensionMedia(startIndex + mediaPrefixLength) == true) {
-                dataLength += mediaPrefixLength;
-                int readLength = dataLength;
+                mDataLength += mediaPrefixLength;
+                int readLength = mDataLength;
                 expandWellKnownMimeType();
-                long wellKnownValue = unsigned32bit;
-                String mimeType = stringValue;
-                if (readContentParameters(startIndex + dataLength,
-                        (headersLength - (dataLength - mediaPrefixLength)), 0)) {
-                    dataLength += readLength;
-                    unsigned32bit = wellKnownValue;
-                    stringValue = mimeType;
+                long wellKnownValue = mUnsigned32bit;
+                String mimeType = mStringValue;
+                if (readContentParameters(startIndex + mDataLength,
+                        (headersLength - (mDataLength - mediaPrefixLength)), 0)) {
+                    mDataLength += readLength;
+                    mUnsigned32bit = wellKnownValue;
+                    mStringValue = mimeType;
                     return true;
                 }
             }
@@ -468,17 +468,17 @@ public class WspTypeDecoder {
         int totalRead = 0;
 
         if (leftToRead > 0) {
-            byte nextByte = wspData[startIndex];
+            byte nextByte = mWspData[startIndex];
             String value = null;
             String param = null;
             if ((nextByte & 0x80) == 0x00 && nextByte > 31) { // untyped
                 decodeTokenText(startIndex);
-                param = stringValue;
-                totalRead += dataLength;
+                param = mStringValue;
+                totalRead += mDataLength;
             } else { // typed
                 if (decodeIntegerValue(startIndex)) {
-                    totalRead += dataLength;
-                    int wellKnownParameterValue = (int) unsigned32bit;
+                    totalRead += mDataLength;
+                    int wellKnownParameterValue = (int) mUnsigned32bit;
                     param = WELL_KNOWN_PARAMETERS.get(wellKnownParameterValue);
                     if (param == null) {
                         param = "unassigned/0x" + Long.toHexString(wellKnownParameterValue);
@@ -486,9 +486,9 @@ public class WspTypeDecoder {
                     // special case for the "Q" parameter, value is a uintvar
                     if (wellKnownParameterValue == Q_VALUE) {
                         if (decodeUintvarInteger(startIndex + totalRead)) {
-                            totalRead += dataLength;
-                            value = String.valueOf(unsigned32bit);
-                            contentParameters.put(param, value);
+                            totalRead += mDataLength;
+                            value = String.valueOf(mUnsigned32bit);
+                            mContentParameters.put(param, value);
                             return readContentParameters(startIndex + totalRead, leftToRead
                                                             - totalRead, accumulator + totalRead);
                         } else {
@@ -501,27 +501,27 @@ public class WspTypeDecoder {
             }
 
             if (decodeNoValue(startIndex + totalRead)) {
-                totalRead += dataLength;
+                totalRead += mDataLength;
                 value = null;
             } else if (decodeIntegerValue(startIndex + totalRead)) {
-                totalRead += dataLength;
-                int intValue = (int) unsigned32bit;
+                totalRead += mDataLength;
+                int intValue = (int) mUnsigned32bit;
                 value = String.valueOf(intValue);
             } else {
                 decodeTokenText(startIndex + totalRead);
-                totalRead += dataLength;
-                value = stringValue;
+                totalRead += mDataLength;
+                value = mStringValue;
                 if (value.startsWith("\"")) {
                     // quoted string, so remove the quote
                     value = value.substring(1);
                 }
             }
-            contentParameters.put(param, value);
+            mContentParameters.put(param, value);
             return readContentParameters(startIndex + totalRead, leftToRead - totalRead,
                                             accumulator + totalRead);
 
         } else {
-            dataLength = accumulator;
+            mDataLength = accumulator;
             return true;
         }
     }
@@ -534,8 +534,8 @@ public class WspTypeDecoder {
      * @return true if and only if the next byte is 0x00
      */
     private boolean decodeNoValue(int startIndex) {
-        if (wspData[startIndex] == 0) {
-            dataLength = 1;
+        if (mWspData[startIndex] == 0) {
+            mDataLength = 1;
             return true;
         } else {
             return false;
@@ -548,11 +548,11 @@ public class WspTypeDecoder {
      * Sets unsigned32bit to -1 if stringValue is already populated
      */
     private void expandWellKnownMimeType() {
-        if (stringValue == null) {
-            int binaryContentType = (int) unsigned32bit;
-            stringValue = WELL_KNOWN_MIME_TYPES.get(binaryContentType);
+        if (mStringValue == null) {
+            int binaryContentType = (int) mUnsigned32bit;
+            mStringValue = WELL_KNOWN_MIME_TYPES.get(binaryContentType);
         } else {
-            unsigned32bit = -1;
+            mUnsigned32bit = -1;
         }
     }
 
@@ -594,7 +594,7 @@ public class WspTypeDecoder {
      */
     public boolean decodeXWapApplicationId(int startIndex) {
         if (decodeIntegerValue(startIndex) == true) {
-            stringValue = null;
+            mStringValue = null;
             return true;
         }
         return decodeTextString(startIndex);
@@ -622,7 +622,7 @@ public class WspTypeDecoder {
                     int fieldValue = (int) getValue32();
 
                     if (fieldValue == PARAMETER_ID_X_WAP_APPLICATION_ID) {
-                        unsigned32bit = index + 1;
+                        mUnsigned32bit = index + 1;
                         return true;
                     }
                 } else {
@@ -642,9 +642,9 @@ public class WspTypeDecoder {
                         (NUL character)
                  * 128 - 255 It is an encoded 7-bit value; this header has no more data
                  */
-                byte val = wspData[index];
+                byte val = mWspData[index];
                 if (0 <= val && val <= WAP_PDU_SHORT_LENGTH_MAX) {
-                    index += wspData[index] + 1;
+                    index += mWspData[index] + 1;
                 } else if (val == WAP_PDU_LENGTH_QUOTE) {
                     if (index + 1 >= endIndex) return false;
                     index++;
@@ -694,21 +694,21 @@ public class WspTypeDecoder {
      * The data length of latest operation.
      */
     public int getDecodedDataLength() {
-        return dataLength;
+        return mDataLength;
     }
 
     /**
      * The 32-bits result of latest operation.
      */
     public long getValue32() {
-        return unsigned32bit;
+        return mUnsigned32bit;
     }
 
     /**
      * The String result of latest operation.
      */
     public String getValueString() {
-        return stringValue;
+        return mStringValue;
     }
 
     /**
@@ -722,6 +722,6 @@ public class WspTypeDecoder {
      *
      */
     public HashMap<String, String> getContentParameters() {
-        return contentParameters;
+        return mContentParameters;
     }
 }

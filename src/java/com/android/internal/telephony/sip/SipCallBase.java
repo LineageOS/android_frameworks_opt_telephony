@@ -17,39 +17,36 @@
 package com.android.internal.telephony.sip;
 
 import com.android.internal.telephony.Call;
-import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
-import com.android.internal.telephony.Phone;
-
-import android.net.sip.SipManager;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 abstract class SipCallBase extends Call {
-    protected List<Connection> connections = new ArrayList<Connection>();
 
     protected abstract void setState(State newState);
 
+    @Override
     public List<Connection> getConnections() {
         // FIXME should return Collections.unmodifiableList();
-        return connections;
+        return mConnections;
     }
 
+    @Override
     public boolean isMultiparty() {
-        return connections.size() > 1;
+        return mConnections.size() > 1;
     }
 
+    @Override
     public String toString() {
-        return state.toString() + ":" + super.toString();
+        return mState.toString() + ":" + super.toString();
     }
 
     void clearDisconnected() {
-        for (Iterator<Connection> it = connections.iterator(); it.hasNext(); ) {
+        for (Iterator<Connection> it = mConnections.iterator(); it.hasNext(); ) {
             Connection c = it.next();
             if (c.getState() == State.DISCONNECTED) it.remove();
         }
 
-        if (connections.isEmpty()) setState(State.IDLE);
+        if (mConnections.isEmpty()) setState(State.IDLE);
     }
 }

@@ -16,12 +16,11 @@
 
 package com.android.internal.telephony.cdma;
 
-import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.EventLogTags;
-import com.android.internal.telephony.RILConstants;
-import com.android.internal.telephony.IccCard;
+import com.android.internal.telephony.uicc.RuimRecords;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 import android.telephony.CellInfo;
 import android.telephony.CellInfoLte;
@@ -36,13 +35,8 @@ import android.os.Message;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 
-import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.util.EventLog;
-
-import com.android.internal.telephony.IccCardApplicationStatus.AppState;
-import com.android.internal.telephony.gsm.GsmDataConnectionTracker;
-import com.android.internal.telephony.IccCardConstants;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -53,8 +47,6 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     private CDMALTEPhone mCdmaLtePhone;
     private final CellInfoLte mCellInfoLte;
 
-    private ServiceState  mLteSS;  // The last LTE state from Voice Registration
-    private boolean getSVDO = SystemProperties.getBoolean(TelephonyProperties.PROPERTY_SVDATA, false);
     private CellIdentityLte mNewCellIdentityLte = new CellIdentityLte();
     private CellIdentityLte mLasteCellIdentityLte = new CellIdentityLte();
 
@@ -63,7 +55,6 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         mCdmaLtePhone = phone;
         mCellInfoLte = (CellInfoLte) mCellInfo;
 
-        mLteSS = new ServiceState();
         ((CellInfoLte)mCellInfo).setCellSignalStrength(new CellSignalStrengthLte());
         ((CellInfoLte)mCellInfo).setCellIdentity(new CellIdentityLte());
 
@@ -87,7 +78,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 mMdn = ruim.getMdn();
                 mMin = ruim.getMin();
                 parseSidNid(ruim.getSid(), ruim.getNid());
-                mPrlVersion = ruim.getPrlVersion();;
+                mPrlVersion = ruim.getPrlVersion();
                 mIsMinInfoReady = true;
                 updateOtaspState();
             }
@@ -99,16 +90,6 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         default:
             super.handleMessage(msg);
         }
-    }
-
-    /**
-     * Set the cdmaSS for EVENT_POLL_STATE_REGISTRATION_CDMA
-     */
-    @Override
-    protected void setCdmaTechnology(int radioTechnology) {
-        // Called on voice registration state response.
-        // Just record new CDMA radio technology
-        newSS.setRadioTechnology(radioTechnology);
     }
 
     /**
@@ -147,11 +128,11 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                     String operatorNumeric = null;
 
                     try {
-                        operatorNumeric = mLteSS.getOperatorNumeric();
+                        operatorNumeric = mNewSS.getOperatorNumeric();
                         mcc = Integer.parseInt(operatorNumeric.substring(0,3));
                     } catch (Exception e) {
                         try {
-                            operatorNumeric = ss.getOperatorNumeric();
+                            operatorNumeric = mSS.getOperatorNumeric();
                             mcc = Integer.parseInt(operatorNumeric.substring(0,3));
                         } catch (Exception ex) {
                             loge("handlePollStateResultMessage: bad mcc operatorNumeric=" +
@@ -207,8 +188,14 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 }
             }
 
-            mLteSS.setRadioTechnology(type);
-            mLteSS.setState(regCodeToServiceState(regState));
+            mNewSS.setRilDataRadioTechnology(type);
+            int dataRegState = regCodeToServiceState(regState);
+            mNewSS.setDataRegState(dataRegState);
+            if (DBG) {
+                log("handlPollStateResultMessage: CdmaLteSST setDataRegState=" + dataRegState
+                        + " regState=" + regState
+                        + " dataRadioTechnology=" + type);
+            }
         } else {
             super.handlePollStateResultMessage(what, ar);
         }
@@ -216,13 +203,13 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
     @Override
     protected void pollState() {
-        pollingContext = new int[1];
-        pollingContext[0] = 0;
+        mPollingContext = new int[1];
+        mPollingContext[0] = 0;
 
-        switch (cm.getRadioState()) {
+        switch (mCi.getRadioState()) {
             case RADIO_UNAVAILABLE:
-                newSS.setStateOutOfService();
-                newCellLoc.setStateInvalid();
+                mNewSS.setStateOutOfService();
+                mNewCellLoc.setStateInvalid();
                 setSignalStrengthDefaultValues();
                 mGotCountryCode = false;
 
@@ -230,8 +217,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 break;
 
             case RADIO_OFF:
-                newSS.setStateOff();
-                newCellLoc.setStateInvalid();
+                mNewSS.setStateOff();
+                mNewCellLoc.setStateInvalid();
                 setSignalStrengthDefaultValues();
                 mGotCountryCode = false;
 
@@ -243,107 +230,76 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 // down the responses which are allowed to arrive
                 // out-of-order.
 
-                pollingContext[0]++;
+                mPollingContext[0]++;
                 // RIL_REQUEST_OPERATOR is necessary for CDMA
-                cm.getOperator(obtainMessage(EVENT_POLL_STATE_OPERATOR_CDMA, pollingContext));
+                mCi.getOperator(obtainMessage(EVENT_POLL_STATE_OPERATOR_CDMA, mPollingContext));
 
-                pollingContext[0]++;
+                mPollingContext[0]++;
                 // RIL_REQUEST_VOICE_REGISTRATION_STATE is necessary for CDMA
-                cm.getVoiceRegistrationState(obtainMessage(EVENT_POLL_STATE_REGISTRATION_CDMA,
-                        pollingContext));
+                mCi.getVoiceRegistrationState(obtainMessage(EVENT_POLL_STATE_REGISTRATION_CDMA,
+                        mPollingContext));
 
-                pollingContext[0]++;
+                mPollingContext[0]++;
                 // RIL_REQUEST_DATA_REGISTRATION_STATE
-                cm.getDataRegistrationState(obtainMessage(EVENT_POLL_STATE_GPRS,
-                                            pollingContext));
+                mCi.getDataRegistrationState(obtainMessage(EVENT_POLL_STATE_GPRS,
+                                            mPollingContext));
                 break;
         }
     }
 
     @Override
     protected void pollStateDone() {
-        // determine data RadioTechnology from both LET and CDMA SS
-        if (mLteSS.getState() == ServiceState.STATE_IN_SERVICE) {
-            //in LTE service
-            mNewRilRadioTechnology = mLteSS.getRilRadioTechnology();
-            mNewDataConnectionState = mLteSS.getState();
-            newSS.setRadioTechnology(mNewRilRadioTechnology);
-            log("pollStateDone LTE/eHRPD STATE_IN_SERVICE mNewRilRadioTechnology = " +
-                    mNewRilRadioTechnology);
-        } else {
-            // LTE out of service, get CDMA Service State
-            mNewRilRadioTechnology = newSS.getRilRadioTechnology();
-            mNewDataConnectionState = radioTechnologyToDataServiceState(mNewRilRadioTechnology);
-            log("pollStateDone CDMA STATE_IN_SERVICE mNewRilRadioTechnology = " +
-                    mNewRilRadioTechnology + " mNewDataConnectionState = " +
-                    mNewDataConnectionState);
-        }
+        log("pollStateDone: lte 1 ss=[" + mSS + "] newSS=[" + mNewSS + "]");
 
-        // TODO: Add proper support for LTE Only, we should be looking at
-        //       the preferred network mode, to know when newSS state should
-        //       be coming from mLteSs state. This was needed to pass a VZW
-        //       LTE Only test.
-        //
-        // If CDMA service is OOS, double check if the device is running with LTE only
-        // mode. If that is the case, derive the service state from LTE side.
-        // To set in LTE only mode, sqlite3 /data/data/com.android.providers.settings/
-        // databases/settings.db "update secure set value='11' where name='preferred_network_mode'"
-        if (newSS.getState() == ServiceState.STATE_OUT_OF_SERVICE) {
-            int networkMode = android.provider.Settings.Global.getInt(phone.getContext()
-                                  .getContentResolver(),
-                                  android.provider.Settings.Global.PREFERRED_NETWORK_MODE,
-                                  RILConstants.PREFERRED_NETWORK_MODE);
-            if (networkMode == RILConstants.NETWORK_MODE_LTE_ONLY) {
-                if (DBG) log("pollState: LTE Only mode");
-                newSS.setState(mLteSS.getState());
-            }
-        }
+        useDataRegStateForDataOnlyDevices();
 
-        if (DBG) log("pollStateDone: oldSS=[" + ss + "] newSS=[" + newSS + "]");
+        boolean hasRegistered = mSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE
+                && mNewSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE;
 
-        boolean hasRegistered = ss.getState() != ServiceState.STATE_IN_SERVICE
-                && newSS.getState() == ServiceState.STATE_IN_SERVICE;
-
-        boolean hasDeregistered = ss.getState() == ServiceState.STATE_IN_SERVICE
-                && newSS.getState() != ServiceState.STATE_IN_SERVICE;
+        boolean hasDeregistered = mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE
+                && mNewSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE;
 
         boolean hasCdmaDataConnectionAttached =
-            mDataConnectionState != ServiceState.STATE_IN_SERVICE
-                && mNewDataConnectionState == ServiceState.STATE_IN_SERVICE;
+            mSS.getDataRegState() != ServiceState.STATE_IN_SERVICE
+                && mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE;
 
         boolean hasCdmaDataConnectionDetached =
-            mDataConnectionState == ServiceState.STATE_IN_SERVICE
-                && mNewDataConnectionState != ServiceState.STATE_IN_SERVICE;
+                mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE
+                && mNewSS.getDataRegState() != ServiceState.STATE_IN_SERVICE;
 
         boolean hasCdmaDataConnectionChanged =
-            mDataConnectionState != mNewDataConnectionState;
+            mSS.getDataRegState() != mNewSS.getDataRegState();
 
-        boolean hasRadioTechnologyChanged = mRilRadioTechnology != mNewRilRadioTechnology;
+        boolean hasVoiceRadioTechnologyChanged = mSS.getRilVoiceRadioTechnology()
+                != mNewSS.getRilVoiceRadioTechnology();
 
-        boolean hasChanged = !newSS.equals(ss);
+        boolean hasDataRadioTechnologyChanged = mSS.getRilDataRadioTechnology()
+                != mNewSS.getRilDataRadioTechnology();
 
-        boolean hasRoamingOn = !ss.getRoaming() && newSS.getRoaming();
+        boolean hasChanged = !mNewSS.equals(mSS);
 
-        boolean hasRoamingOff = ss.getRoaming() && !newSS.getRoaming();
+        boolean hasRoamingOn = !mSS.getRoaming() && mNewSS.getRoaming();
 
-        boolean hasLocationChanged = !newCellLoc.equals(cellLoc);
+        boolean hasRoamingOff = mSS.getRoaming() && !mNewSS.getRoaming();
+
+        boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
         boolean has4gHandoff =
-                mNewDataConnectionState == ServiceState.STATE_IN_SERVICE &&
-                (((mRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) &&
-                  (mNewRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)) ||
-                 ((mRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD) &&
-                  (mNewRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_LTE)));
+                mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE &&
+                (((mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) &&
+                  (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)) ||
+                 ((mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD) &&
+                  (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE)));
 
         boolean hasMultiApnSupport =
-                (((mNewRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) ||
-                  (mNewRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)) &&
-                 ((mRilRadioTechnology != ServiceState.RIL_RADIO_TECHNOLOGY_LTE) &&
-                  (mRilRadioTechnology != ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)));
+                (((mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) ||
+                  (mNewSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)) &&
+                 ((mSS.getRilDataRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_LTE) &&
+                  (mSS.getRilDataRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD)));
 
         boolean hasLostMultiApnSupport =
-            ((mNewRilRadioTechnology >= ServiceState.RIL_RADIO_TECHNOLOGY_IS95A) &&
-             (mNewRilRadioTechnology <= ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A));
+            ((mNewSS.getRilDataRadioTechnology() >= ServiceState.RIL_RADIO_TECHNOLOGY_IS95A) &&
+             (mNewSS.getRilDataRadioTechnology() <= ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A));
 
         if (DBG) {
             log("pollStateDone:"
@@ -352,7 +308,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 + " hasCdmaDataConnectionAttached=" + hasCdmaDataConnectionAttached
                 + " hasCdmaDataConnectionDetached=" + hasCdmaDataConnectionDetached
                 + " hasCdmaDataConnectionChanged=" + hasCdmaDataConnectionChanged
-                + " hasRadioTechnologyChanged = " + hasRadioTechnologyChanged
+                + " hasVoiceRadioTechnologyChanged= " + hasVoiceRadioTechnologyChanged
+                + " hasDataRadioTechnologyChanged=" + hasDataRadioTechnologyChanged
                 + " hasChanged=" + hasChanged
                 + " hasRoamingOn=" + hasRoamingOn
                 + " hasRoamingOff=" + hasRoamingOff
@@ -362,47 +319,28 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 + " hasLostMultiApnSupport=" + hasLostMultiApnSupport);
         }
         // Add an event log when connection state changes
-        if (ss.getState() != newSS.getState()
-                || mDataConnectionState != mNewDataConnectionState) {
-            EventLog.writeEvent(EventLogTags.CDMA_SERVICE_STATE_CHANGE, ss.getState(),
-                    mDataConnectionState, newSS.getState(), mNewDataConnectionState);
+        if (mSS.getVoiceRegState() != mNewSS.getVoiceRegState()
+                || mSS.getDataRegState() != mNewSS.getDataRegState()) {
+            EventLog.writeEvent(EventLogTags.CDMA_SERVICE_STATE_CHANGE, mSS.getVoiceRegState(),
+                    mSS.getDataRegState(), mNewSS.getVoiceRegState(), mNewSS.getDataRegState());
         }
 
         ServiceState tss;
-        tss = ss;
-        ss = newSS;
-        newSS = tss;
+        tss = mSS;
+        mSS = mNewSS;
+        mNewSS = tss;
         // clean slate for next time
-        newSS.setStateOutOfService();
-        mLteSS.setStateOutOfService();
+        mNewSS.setStateOutOfService();
 
-        if ((hasMultiApnSupport)
-                && (phone.mDataConnectionTracker instanceof CdmaDataConnectionTracker)) {
-            if (DBG) log("GsmDataConnectionTracker Created");
-            phone.mDataConnectionTracker.dispose();
-            phone.mDataConnectionTracker = new GsmDataConnectionTracker(mCdmaLtePhone);
-        }
+        CdmaCellLocation tcl = mCellLoc;
+        mCellLoc = mNewCellLoc;
+        mNewCellLoc = tcl;
 
-        if ((hasLostMultiApnSupport)
-                && (phone.mDataConnectionTracker instanceof GsmDataConnectionTracker)) {
-            if (DBG)log("GsmDataConnectionTracker disposed");
-            phone.mDataConnectionTracker.dispose();
-            phone.mDataConnectionTracker = new CdmaDataConnectionTracker(phone);
-        }
+        mNewSS.setStateOutOfService(); // clean slate for next time
 
-        CdmaCellLocation tcl = cellLoc;
-        cellLoc = newCellLoc;
-        newCellLoc = tcl;
-
-        mDataConnectionState = mNewDataConnectionState;
-        mRilRadioTechnology = mNewRilRadioTechnology;
-        mNewRilRadioTechnology = 0;
-
-        newSS.setStateOutOfService(); // clean slate for next time
-
-        if (hasRadioTechnologyChanged) {
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
-                    ServiceState.rilRadioTechnologyToString(mRilRadioTechnology));
+        if (hasDataRadioTechnologyChanged) {
+            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
+                    ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
         }
 
         if (hasRegistered) {
@@ -410,13 +348,13 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         }
 
         if (hasChanged) {
-            if (phone.isEriFileLoaded()) {
+            if (mPhone.isEriFileLoaded()) {
                 String eriText;
                 // Now the CDMAPhone sees the new ServiceState so it can get the
                 // new ERI text
-                if (ss.getState() == ServiceState.STATE_IN_SERVICE) {
-                    eriText = phone.getCdmaEriText();
-                } else if (ss.getState() == ServiceState.STATE_POWER_OFF) {
+                if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+                    eriText = mPhone.getCdmaEriText();
+                } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF) {
                     eriText = (mIccRecords != null) ? mIccRecords.getServiceProviderName() : null;
                     if (TextUtils.isEmpty(eriText)) {
                         // Sets operator alpha property by retrieving from
@@ -426,40 +364,40 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 } else {
                     // Note that ServiceState.STATE_OUT_OF_SERVICE is valid used
                     // for mRegistrationState 0,2,3 and 4
-                    eriText = phone.getContext()
+                    eriText = mPhone.getContext()
                             .getText(com.android.internal.R.string.roamingTextSearching).toString();
                 }
-                ss.setOperatorAlphaLong(eriText);
+                mSS.setOperatorAlphaLong(eriText);
             }
 
             if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY &&
                     mIccRecords != null) {
                 // SIM is found on the device. If ERI roaming is OFF, and SID/NID matches
-                // one configfured in SIM, use operator name  from CSIM record.
+                // one configured in SIM, use operator name  from CSIM record.
                 boolean showSpn =
                     ((RuimRecords)mIccRecords).getCsimSpnDisplayCondition();
-                int iconIndex = ss.getCdmaEriIconIndex();
+                int iconIndex = mSS.getCdmaEriIconIndex();
 
                 if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF) &&
-                    isInHomeSidNid(ss.getSystemId(), ss.getNetworkId()) &&
+                    isInHomeSidNid(mSS.getSystemId(), mSS.getNetworkId()) &&
                     mIccRecords != null) {
-                    ss.setOperatorAlphaLong(mIccRecords.getServiceProviderName());
+                    mSS.setOperatorAlphaLong(mIccRecords.getServiceProviderName());
                 }
             }
 
             String operatorNumeric;
 
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ALPHA,
-                    ss.getOperatorAlphaLong());
+            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ALPHA,
+                    mSS.getOperatorAlphaLong());
 
             String prevOperatorNumeric =
                     SystemProperties.get(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, "");
-            operatorNumeric = ss.getOperatorNumeric();
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, operatorNumeric);
+            operatorNumeric = mSS.getOperatorNumeric();
+            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, operatorNumeric);
 
             if (operatorNumeric == null) {
                 if (DBG) log("operatorNumeric is null");
-                phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
+                mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
                 mGotCountryCode = false;
             } else {
                 String isoCountryCode = "";
@@ -473,21 +411,21 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                     loge("countryCodeForMcc error" + ex);
                 }
 
-                phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
+                mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
                         isoCountryCode);
                 mGotCountryCode = true;
 
-                if (shouldFixTimeZoneNow(phone, operatorNumeric, prevOperatorNumeric,
+                if (shouldFixTimeZoneNow(mPhone, operatorNumeric, prevOperatorNumeric,
                         mNeedFixZone)) {
                     fixTimeZone(isoCountryCode);
                 }
             }
 
-            phone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
-                    ss.getRoaming() ? "true" : "false");
+            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
+                    mSS.getRoaming() ? "true" : "false");
 
             updateSpnDisplay();
-            phone.notifyServiceStateChanged(ss);
+            mPhone.notifyServiceStateChanged(mSS);
         }
 
         if (hasCdmaDataConnectionAttached || has4gHandoff) {
@@ -498,8 +436,9 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             mDetachedRegistrants.notifyRegistrants();
         }
 
-        if ((hasCdmaDataConnectionChanged || hasRadioTechnologyChanged)) {
-            phone.notifyDataConnection(null);
+        if ((hasCdmaDataConnectionChanged || hasDataRadioTechnologyChanged)) {
+            log("pollStateDone: call notifyDataConnection");
+            mPhone.notifyDataConnection(null);
         }
 
         if (hasRoamingOn) {
@@ -511,7 +450,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         }
 
         if (hasLocationChanged) {
-            phone.notifyLocationChanged();
+            mPhone.notifyLocationChanged();
         }
 
         ArrayList<CellInfo> arrayCi = new ArrayList<CellInfo>();
@@ -522,7 +461,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             if (hasRegistered || hasDeregistered || cidChanged) {
                 // TODO: Handle the absence of LteCellIdentity
                 long timeStamp = SystemClock.elapsedRealtime() * 1000;
-                boolean registered = ss.getState() == ServiceState.STATE_IN_SERVICE;
+                boolean registered = mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE;
                 mLasteCellIdentityLte = mNewCellIdentityLte;
 
                 cil.setRegisterd(registered);
@@ -541,13 +480,13 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
     @Override
     protected boolean onSignalStrengthResult(AsyncResult ar, boolean isGsm) {
-        if (mRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+        if (mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
             isGsm = true;
         }
         boolean ssChanged = super.onSignalStrengthResult(ar, isGsm);
 
         synchronized (mCellInfo) {
-            if (mRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+            if (mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
                 mCellInfoLte.setTimeStamp(SystemClock.elapsedRealtime() * 1000);
                 mCellInfoLte.setTimeStampType(CellInfo.TIMESTAMP_TYPE_JAVA_RIL);
                 mCellInfoLte.getCellSignalStrength()
@@ -564,14 +503,12 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
     @Override
     public boolean isConcurrentVoiceAndDataAllowed() {
-        // For non-LTE, look at the CSS indicator to check on SV capability
-        if (mRilRadioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_LTE)
+        // For non-LTE, look at the CSS indicator to check on Concurrent V & D capability
+        if (mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
             return true;
-        else if ((getSVDO) && (mLteSS.getRadioTechnology() !=
-                    ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT))
-            return true;
-        else
-            return ss.getCssIndicator() == 1;
+        } else {
+            return mSS.getCssIndicator() == 1;
+        }
     }
 
     /**
@@ -603,27 +540,33 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     }
 
     /**
+     * TODO: Remove when we get new ril/modem for Galaxy Nexus.
+     *
      * @return all available cell information, the returned List maybe empty but never null.
      */
     @Override
     public List<CellInfo> getAllCellInfo() {
-        ArrayList<CellInfo> arrayList = new ArrayList<CellInfo>();
-        CellInfo ci;
-        synchronized(mCellInfo) {
-            arrayList.add(mCellInfoLte);
+        if (mCi.getRilVersion() >= 8) {
+            return super.getAllCellInfo();
+        } else {
+            ArrayList<CellInfo> arrayList = new ArrayList<CellInfo>();
+            CellInfo ci;
+            synchronized(mCellInfo) {
+                arrayList.add(mCellInfoLte);
+            }
+            if (DBG) log ("getAllCellInfo: arrayList=" + arrayList);
+            return arrayList;
         }
-        if (DBG) log ("getAllCellInfo: arrayList=" + arrayList);
-        return arrayList;
     }
 
     @Override
     protected void log(String s) {
-        Log.d(LOG_TAG, "[CdmaLteSST] " + s);
+        Rlog.d(LOG_TAG, "[CdmaLteSST] " + s);
     }
 
     @Override
     protected void loge(String s) {
-        Log.e(LOG_TAG, "[CdmaLteSST] " + s);
+        Rlog.e(LOG_TAG, "[CdmaLteSST] " + s);
     }
 
     @Override
@@ -631,6 +574,5 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         pw.println("CdmaLteServiceStateTracker extends:");
         super.dump(fd, pw, args);
         pw.println(" mCdmaLtePhone=" + mCdmaLtePhone);
-        pw.println(" mLteSS=" + mLteSS);
     }
 }

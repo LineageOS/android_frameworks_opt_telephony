@@ -51,11 +51,11 @@ public class CatCmdMessage implements Parcelable {
     }
 
     CatCmdMessage(CommandParams cmdParams) {
-        mCmdDet = cmdParams.cmdDet;
+        mCmdDet = cmdParams.mCmdDet;
         switch(getCmdType()) {
         case SET_UP_MENU:
         case SELECT_ITEM:
-            mMenu = ((SelectItemParams) cmdParams).menu;
+            mMenu = ((SelectItemParams) cmdParams).mMenu;
             break;
         case DISPLAY_TEXT:
         case SET_UP_IDLE_MODE_TEXT:
@@ -63,34 +63,42 @@ public class CatCmdMessage implements Parcelable {
         case SEND_SMS:
         case SEND_SS:
         case SEND_USSD:
-            mTextMsg = ((DisplayTextParams) cmdParams).textMsg;
+            mTextMsg = ((DisplayTextParams) cmdParams).mTextMsg;
             break;
         case GET_INPUT:
         case GET_INKEY:
-            mInput = ((GetInputParams) cmdParams).input;
+            mInput = ((GetInputParams) cmdParams).mInput;
             break;
         case LAUNCH_BROWSER:
-            mTextMsg = ((LaunchBrowserParams) cmdParams).confirmMsg;
+            mTextMsg = ((LaunchBrowserParams) cmdParams).mConfirmMsg;
             mBrowserSettings = new BrowserSettings();
-            mBrowserSettings.url = ((LaunchBrowserParams) cmdParams).url;
-            mBrowserSettings.mode = ((LaunchBrowserParams) cmdParams).mode;
+            mBrowserSettings.url = ((LaunchBrowserParams) cmdParams).mUrl;
+            mBrowserSettings.mode = ((LaunchBrowserParams) cmdParams).mMode;
             break;
         case PLAY_TONE:
             PlayToneParams params = (PlayToneParams) cmdParams;
-            mToneSettings = params.settings;
-            mTextMsg = params.textMsg;
+            mToneSettings = params.mSettings;
+            mTextMsg = params.mTextMsg;
+            break;
+        case GET_CHANNEL_STATUS:
+            mTextMsg = ((CallSetupParams) cmdParams).mConfirmMsg;
             break;
         case SET_UP_CALL:
             mCallSettings = new CallSettings();
-            mCallSettings.confirmMsg = ((CallSetupParams) cmdParams).confirmMsg;
-            mCallSettings.callMsg = ((CallSetupParams) cmdParams).callMsg;
+            mCallSettings.confirmMsg = ((CallSetupParams) cmdParams).mConfirmMsg;
+            mCallSettings.callMsg = ((CallSetupParams) cmdParams).mCallMsg;
             break;
         case OPEN_CHANNEL:
         case CLOSE_CHANNEL:
         case RECEIVE_DATA:
         case SEND_DATA:
             BIPClientParams param = (BIPClientParams) cmdParams;
-            mTextMsg = param.textMsg;
+            mTextMsg = param.mTextMsg;
+            break;
+        case PROVIDE_LOCAL_INFORMATION:
+        case REFRESH:
+        case SET_UP_EVENT_LIST:
+        default:
             break;
         }
     }
@@ -114,9 +122,12 @@ public class CatCmdMessage implements Parcelable {
             mCallSettings.confirmMsg = in.readParcelable(null);
             mCallSettings.callMsg = in.readParcelable(null);
             break;
+        default:
+            break;
         }
     }
 
+    @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeParcelable(mCmdDet, 0);
         dest.writeParcelable(mTextMsg, 0);
@@ -134,19 +145,24 @@ public class CatCmdMessage implements Parcelable {
             dest.writeParcelable(mCallSettings.confirmMsg, 0);
             dest.writeParcelable(mCallSettings.callMsg, 0);
             break;
+        default:
+            break;
         }
     }
 
     public static final Parcelable.Creator<CatCmdMessage> CREATOR = new Parcelable.Creator<CatCmdMessage>() {
+        @Override
         public CatCmdMessage createFromParcel(Parcel in) {
             return new CatCmdMessage(in);
         }
 
+        @Override
         public CatCmdMessage[] newArray(int size) {
             return new CatCmdMessage[size];
         }
     };
 
+    @Override
     public int describeContents() {
         return 0;
     }

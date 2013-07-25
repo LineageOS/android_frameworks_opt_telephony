@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.Phone;
 
@@ -104,7 +104,7 @@ public class TelephonyCapabilities {
         } else if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
             return com.android.internal.R.string.meid;
         } else {
-            Log.w(LOG_TAG, "getDeviceIdLabel: no known label for phone "
+            Rlog.w(LOG_TAG, "getDeviceIdLabel: no known label for phone "
                   + phone.getPhoneName());
             return 0;
         }
@@ -163,7 +163,7 @@ public class TelephonyCapabilities {
      * (Abbreviated Dialing Numbers).
      *
      * Currently this returns true when the phone type is GSM
-     * ({@link Phone#PHONE_TYPE_GSM}).
+     * ({@link PhoneConstants#PHONE_TYPE_GSM}).
      *
      * This is using int for an argument for letting apps outside
      * Phone process access to it, while other methods in this class is

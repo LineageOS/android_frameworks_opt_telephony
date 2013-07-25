@@ -25,10 +25,9 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SqliteWrapper;
 import android.net.Uri;
-import android.os.Environment;
 import android.telephony.SmsMessage;
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 import android.util.Patterns;
 
 
@@ -44,8 +43,6 @@ import java.util.regex.Pattern;
  */
 public final class Telephony {
     private static final String TAG = "Telephony";
-    private static final boolean DEBUG = true;
-    private static final boolean LOCAL_LOGV = false;
 
     // Constructor
     public Telephony() {
@@ -1243,7 +1240,6 @@ public final class Telephony {
      */
     public static final class Threads implements ThreadsColumns {
         private static final String[] ID_PROJECTION = { BaseColumns._ID };
-        private static final String STANDARD_ENCODING = "UTF-8";
         private static final Uri THREAD_ID_CONTENT_URI = Uri.parse(
                 "content://mms-sms/threadID");
         public static final Uri CONTENT_URI = Uri.withAppendedPath(
@@ -1293,7 +1289,7 @@ public final class Telephony {
             }
 
             Uri uri = uriBuilder.build();
-            //if (DEBUG) Log.v(TAG, "getOrCreateThreadId uri: " + uri);
+            //if (DEBUG) Rlog.v(TAG, "getOrCreateThreadId uri: " + uri);
 
             Cursor cursor = SqliteWrapper.query(context, context.getContentResolver(),
                     uri, ID_PROJECTION, null, null, null);
@@ -1302,14 +1298,14 @@ public final class Telephony {
                     if (cursor.moveToFirst()) {
                         return cursor.getLong(0);
                     } else {
-                        Log.e(TAG, "getOrCreateThreadId returned no rows!");
+                        Rlog.e(TAG, "getOrCreateThreadId returned no rows!");
                     }
                 } finally {
                     cursor.close();
                 }
             }
 
-            Log.e(TAG, "getOrCreateThreadId failed with uri " + uri.toString());
+            Rlog.e(TAG, "getOrCreateThreadId failed with uri " + uri.toString());
             throw new IllegalArgumentException("Unable to find or allocate a thread ID.");
         }
     }
@@ -1820,6 +1816,21 @@ public final class Telephony {
           * but currently only used for LTE(14) and EHRPD(13).
           */
         public static final String BEARER = "bearer";
+
+        /**
+          * MVNO type
+          * spn(Service Provider Name), imsi, gid(Group Identifier Level 1)
+          */
+        public static final String MVNO_TYPE = "mvno_type";
+
+        /**
+          * MVNO data
+          * Use the following examples.
+          * spn: A MOBILE, BEN NL, ...
+          * imsi: 302720x94, 2060188, ...
+          * gid: 4E, 33, ...
+          */
+        public static final String MVNO_MATCH_DATA = "mvno_match_data";
     }
 
     /**

@@ -23,35 +23,36 @@ import android.graphics.Bitmap;
  *
  */
 class CommandParams {
-    CommandDetails cmdDet;
+    CommandDetails mCmdDet;
 
     CommandParams(CommandDetails cmdDet) {
-        this.cmdDet = cmdDet;
+        mCmdDet = cmdDet;
     }
 
     AppInterface.CommandType getCommandType() {
-        return AppInterface.CommandType.fromInt(cmdDet.typeOfCommand);
+        return AppInterface.CommandType.fromInt(mCmdDet.typeOfCommand);
     }
 
     boolean setIcon(Bitmap icon) { return true; }
 
     @Override
     public String toString() {
-        return cmdDet.toString();
+        return mCmdDet.toString();
     }
 }
 
 class DisplayTextParams extends CommandParams {
-    TextMessage textMsg;
+    TextMessage mTextMsg;
 
     DisplayTextParams(CommandDetails cmdDet, TextMessage textMsg) {
         super(cmdDet);
-        this.textMsg = textMsg;
+        mTextMsg = textMsg;
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
-        if (icon != null && textMsg != null) {
-            textMsg.icon = icon;
+        if (icon != null && mTextMsg != null) {
+            mTextMsg.icon = icon;
             return true;
         }
         return false;
@@ -59,21 +60,22 @@ class DisplayTextParams extends CommandParams {
 }
 
 class LaunchBrowserParams extends CommandParams {
-    TextMessage confirmMsg;
-    LaunchBrowserMode mode;
-    String url;
+    TextMessage mConfirmMsg;
+    LaunchBrowserMode mMode;
+    String mUrl;
 
     LaunchBrowserParams(CommandDetails cmdDet, TextMessage confirmMsg,
             String url, LaunchBrowserMode mode) {
         super(cmdDet);
-        this.confirmMsg = confirmMsg;
-        this.mode = mode;
-        this.url = url;
+        mConfirmMsg = confirmMsg;
+        mMode = mode;
+        mUrl = url;
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
-        if (icon != null && confirmMsg != null) {
-            confirmMsg.icon = icon;
+        if (icon != null && mConfirmMsg != null) {
+            mConfirmMsg.icon = icon;
             return true;
         }
         return false;
@@ -81,19 +83,20 @@ class LaunchBrowserParams extends CommandParams {
 }
 
 class PlayToneParams extends CommandParams {
-    TextMessage textMsg;
-    ToneSettings settings;
+    TextMessage mTextMsg;
+    ToneSettings mSettings;
 
     PlayToneParams(CommandDetails cmdDet, TextMessage textMsg,
             Tone tone, Duration duration, boolean vibrate) {
         super(cmdDet);
-        this.textMsg = textMsg;
-        this.settings = new ToneSettings(duration, tone, vibrate);
+        mTextMsg = textMsg;
+        mSettings = new ToneSettings(duration, tone, vibrate);
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
-        if (icon != null && textMsg != null) {
-            textMsg.icon = icon;
+        if (icon != null && mTextMsg != null) {
+            mTextMsg.icon = icon;
             return true;
         }
         return false;
@@ -101,25 +104,26 @@ class PlayToneParams extends CommandParams {
 }
 
 class CallSetupParams extends CommandParams {
-    TextMessage confirmMsg;
-    TextMessage callMsg;
+    TextMessage mConfirmMsg;
+    TextMessage mCallMsg;
 
     CallSetupParams(CommandDetails cmdDet, TextMessage confirmMsg,
             TextMessage callMsg) {
         super(cmdDet);
-        this.confirmMsg = confirmMsg;
-        this.callMsg = callMsg;
+        mConfirmMsg = confirmMsg;
+        mCallMsg = callMsg;
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
         if (icon == null) {
             return false;
         }
-        if (confirmMsg != null && confirmMsg.icon == null) {
-            confirmMsg.icon = icon;
+        if (mConfirmMsg != null && mConfirmMsg.icon == null) {
+            mConfirmMsg.icon = icon;
             return true;
-        } else if (callMsg != null && callMsg.icon == null) {
-            callMsg.icon = icon;
+        } else if (mCallMsg != null && mCallMsg.icon == null) {
+            mCallMsg.icon = icon;
             return true;
         }
         return false;
@@ -127,21 +131,22 @@ class CallSetupParams extends CommandParams {
 }
 
 class SelectItemParams extends CommandParams {
-    Menu menu = null;
-    boolean loadTitleIcon = false;
+    Menu mMenu = null;
+    boolean mLoadTitleIcon = false;
 
     SelectItemParams(CommandDetails cmdDet, Menu menu, boolean loadTitleIcon) {
         super(cmdDet);
-        this.menu = menu;
-        this.loadTitleIcon = loadTitleIcon;
+        mMenu = menu;
+        mLoadTitleIcon = loadTitleIcon;
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
-        if (icon != null && menu != null) {
-            if (loadTitleIcon && menu.titleIcon == null) {
-                menu.titleIcon = icon;
+        if (icon != null && mMenu != null) {
+            if (mLoadTitleIcon && mMenu.titleIcon == null) {
+                mMenu.titleIcon = icon;
             } else {
-                for (Item item : menu.items) {
+                for (Item item : mMenu.items) {
                     if (item.icon != null) {
                         continue;
                     }
@@ -156,16 +161,17 @@ class SelectItemParams extends CommandParams {
 }
 
 class GetInputParams extends CommandParams {
-    Input input = null;
+    Input mInput = null;
 
     GetInputParams(CommandDetails cmdDet, Input input) {
         super(cmdDet);
-        this.input = input;
+        mInput = input;
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
-        if (icon != null && input != null) {
-            input.icon = icon;
+        if (icon != null && mInput != null) {
+            mInput.icon = icon;
         }
         return true;
     }
@@ -180,18 +186,19 @@ class GetInputParams extends CommandParams {
  * the details of proactive commands procedures and their structures.
  */
 class BIPClientParams extends CommandParams {
-    TextMessage textMsg;
-    boolean bHasAlphaId;
+    TextMessage mTextMsg;
+    boolean mHasAlphaId;
 
     BIPClientParams(CommandDetails cmdDet, TextMessage textMsg, boolean has_alpha_id) {
         super(cmdDet);
-        this.textMsg = textMsg;
-        this.bHasAlphaId = has_alpha_id;
+        mTextMsg = textMsg;
+        mHasAlphaId = has_alpha_id;
     }
 
+    @Override
     boolean setIcon(Bitmap icon) {
-        if (icon != null && textMsg != null) {
-            textMsg.icon = icon;
+        if (icon != null && mTextMsg != null) {
+            mTextMsg.icon = icon;
             return true;
         }
         return false;

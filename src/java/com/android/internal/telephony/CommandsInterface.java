@@ -16,11 +16,12 @@
 
 package com.android.internal.telephony;
 
+import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.uicc.IccCardStatus;
 
 import android.os.Message;
 import android.os.Handler;
-import android.util.Log;
 
 /**
  * {@hide}
@@ -107,8 +108,6 @@ public interface CommandsInterface {
 
     //***** Methods
     RadioState getRadioState();
-
-    void getVoiceRadioTechnology(Message result);
 
     /**
      * Fires on any RadioState transition
@@ -704,7 +703,7 @@ public interface CommandsInterface {
      *  retMsg.obj = AsyncResult ar
      *  ar.exception carries exception on failure
      *  ar.userObject contains the orignal value of result.obj
-     *  ar.result contains a List of DataCallState
+     *  ar.result contains a List of DataCallResponse
      *  @deprecated Do not use.
      */
     @Deprecated
@@ -715,7 +714,7 @@ public interface CommandsInterface {
      *  retMsg.obj = AsyncResult ar
      *  ar.exception carries exception on failure
      *  ar.userObject contains the orignal value of result.obj
-     *  ar.result contains a List of DataCallState
+     *  ar.result contains a List of DataCallResponse
      */
     void getDataCallList(Message result);
 
@@ -1470,8 +1469,8 @@ public interface CommandsInterface {
 
     /**
      * Setup a packet data connection On successful completion, the result
-     * message will return a {@link DataCallState} object containing the connection
-     * information.
+     * message will return a {@link com.android.internal.telephony.dataconnection.DataCallResponse}
+     * object containing the connection information.
      *
      * @param radioTechnology
      *            indicates whether to setup connection on radio technology CDMA
@@ -1522,11 +1521,10 @@ public interface CommandsInterface {
     /**
      * Configure cdma cell broadcast SMS.
      *
-     * @param result
+     * @param response
      *            Callback message is empty on completion
      */
-    // TODO: Change the configValuesArray to a RIL_BroadcastSMSConfig
-    public void setCdmaBroadcastConfig(int[] configValuesArray, Message result);
+    public void setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs, Message response);
 
     /**
      * Query the current configuration of cdma cell broadcast SMS.
@@ -1557,8 +1555,8 @@ public interface CommandsInterface {
      * is a tri-state return value as for a period of time
      * the mode may be unknown.
      *
-     * @return {@link Phone#LTE_ON_CDMA_UNKNOWN}, {@link Phone#LTE_ON_CDMA_FALSE}
-     * or {@link Phone#LTE_ON_CDMA_TRUE}
+     * @return {@link PhoneConstants#LTE_ON_CDMA_UNKNOWN}, {@link PhoneConstants#LTE_ON_CDMA_FALSE}
+     * or {@link PhoneConstants#LTE_ON_CDMA_TRUE}
      */
     public int getLteOnCdmaMode();
 
@@ -1579,6 +1577,48 @@ public interface CommandsInterface {
     public void requestIsimAuthentication(String nonce, Message response);
 
     /**
+     * Get the current Voice Radio Technology.
+     *
+     * AsyncResult.result is an int array with the first value
+     * being one of the ServiceState.RIL_RADIO_TECHNOLOGY_xxx values.
+     *
+     * @param result is sent back to handler and result.obj is a AsyncResult
+     */
+    void getVoiceRadioTechnology(Message result);
+
+    /**
+     * Return the current set of CellInfo records
+     *
+     * AsyncResult.result is a of Collection<CellInfo>
+     *
+     * @param result is sent back to handler and result.obj is a AsyncResult
+     */
+    void getCellInfoList(Message result);
+
+    /**
+     * Sets the minimum time in milli-seconds between when RIL_UNSOL_CELL_INFO_LIST
+     * should be invoked.
+     *
+     * The default, 0, means invoke RIL_UNSOL_CELL_INFO_LIST when any of the reported 
+     * information changes. Setting the value to INT_MAX(0x7fffffff) means never issue
+     * A RIL_UNSOL_CELL_INFO_LIST.
+     *
+     * 
+
+     * @param rateInMillis is sent back to handler and result.obj is a AsyncResult
+     * @param response.obj is AsyncResult ar when sent to associated handler
+     *                        ar.exception carries exception on failure or null on success
+     *                        otherwise the error.
+     */
+    void setCellInfoListRate(int rateInMillis, Message response);
+
+    /**
+     * Fires when RIL_UNSOL_CELL_INFO_LIST is received from the RIL.
+     */
+    void registerForCellInfoList(Handler h, int what, Object obj);
+    void unregisterForCellInfoList(Handler h);
+
+    /**
      * Notifiy that we are testing an emergency call
      */
     public void testingEmergencyCall();
@@ -1596,4 +1636,9 @@ public interface CommandsInterface {
      */
     void setOnCatSendSmsResult(Handler h, int what, Object obj);
     void unSetOnCatSendSmsResult(Handler h);
+
+    /**
+     * @return version of the ril.
+     */
+    int getRilVersion();
 }

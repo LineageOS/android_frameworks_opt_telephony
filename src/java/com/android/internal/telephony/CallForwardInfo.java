@@ -31,6 +31,7 @@ public class CallForwardInfo {
     public String          number;      /* "number" from TS 27.007 7.11 */
     public int             timeSeconds; /* for CF no reply only */
 
+    @Override
     public String toString() {
         return super.toString() + (status == 0 ? " not active " : " active ")
             + " reason: " + reason

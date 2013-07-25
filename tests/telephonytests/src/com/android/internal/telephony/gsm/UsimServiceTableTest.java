@@ -19,6 +19,8 @@ package com.android.internal.telephony.gsm;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.telephony.uicc.UsimServiceTable;
+
 /**
  * Test UsimServiceTable class.
  */

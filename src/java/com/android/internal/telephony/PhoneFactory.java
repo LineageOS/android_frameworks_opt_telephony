@@ -21,9 +21,7 @@ import android.net.LocalServerSocket;
 import android.os.Looper;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
-import android.util.Log;
-import android.os.SystemProperties;
-
+import android.telephony.Rlog;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CDMALTEPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
@@ -38,7 +36,7 @@ import java.lang.reflect.Constructor;
  * {@hide}
  */
 public class PhoneFactory {
-    static final String LOG_TAG = "PHONE";
+    static final String LOG_TAG = "PhoneFactory";
     static final int SOCKET_OPEN_RETRY_MILLIS = 2 * 1000;
     static final int SOCKET_OPEN_MAX_RETRY = 3;
 
@@ -52,7 +50,7 @@ public class PhoneFactory {
     static private Looper sLooper;
     static private Context sContext;
 
-    static final int preferredCdmaSubscription =
+    static final int sPreferredCdmaSubscription =
                          CdmaSubscriptionSourceManager.PREFERRED_CDMA_SUBSCRIPTION;
 
     //***** Class Methods
@@ -113,14 +111,14 @@ public class PhoneFactory {
                 }
                 int networkMode = Settings.Global.getInt(context.getContentResolver(),
                         Settings.Global.PREFERRED_NETWORK_MODE, preferredNetworkMode);
-                Log.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkMode));
+                Rlog.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkMode));
 
                 // Get cdmaSubscription mode from Settings.Global
                 int cdmaSubscription;
                 cdmaSubscription = Settings.Global.getInt(context.getContentResolver(),
                                 Settings.Global.CDMA_SUBSCRIPTION_MODE,
                                 preferredCdmaSubscription);
-                Log.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
+                Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
 
                 //reads the system properties and makes commandsinterface
                 String sRILClassname = SystemProperties.get("ro.telephony.ril_class", "RIL");
@@ -143,19 +141,19 @@ public class PhoneFactory {
 
                 int phoneType = TelephonyManager.getPhoneType(networkMode);
                 if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
-                    Log.i(LOG_TAG, "Creating GSMPhone");
+                    Rlog.i(LOG_TAG, "Creating GSMPhone");
                     sProxyPhone = new PhoneProxy(new GSMPhone(context,
                             sCommandsInterface, sPhoneNotifier));
                 } else if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
                     switch (TelephonyManager.getLteOnCdmaModeStatic()) {
                         case PhoneConstants.LTE_ON_CDMA_TRUE:
-                            Log.i(LOG_TAG, "Creating CDMALTEPhone");
+                            Rlog.i(LOG_TAG, "Creating CDMALTEPhone");
                             sProxyPhone = new PhoneProxy(new CDMALTEPhone(context,
                                 sCommandsInterface, sPhoneNotifier));
                             break;
                         case PhoneConstants.LTE_ON_CDMA_FALSE:
                         default:
-                            Log.i(LOG_TAG, "Creating CDMAPhone");
+                            Rlog.i(LOG_TAG, "Creating CDMAPhone");
                             sProxyPhone = new PhoneProxy(new CDMAPhone(context,
                                     sCommandsInterface, sPhoneNotifier));
                             break;

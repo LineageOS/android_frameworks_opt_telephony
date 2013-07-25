@@ -19,10 +19,10 @@ package com.android.internal.telephony.cdma;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 
-import com.android.internal.telephony.IccFileHandler;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
+import com.android.internal.telephony.uicc.IccFileHandler;
 
 /**
  * RuimPhoneBookInterfaceManager to provide an inter-process communication to
@@ -31,37 +31,40 @@ import com.android.internal.telephony.IccPhoneBookInterfaceManager;
 
 
 public class RuimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager {
-    static final String LOG_TAG = "CDMA";
+    static final String LOG_TAG = "RuimPhoneBookIM";
 
     public RuimPhoneBookInterfaceManager(CDMAPhone phone) {
         super(phone);
         //NOTE service "simphonebook" added by IccSmsInterfaceManagerProxy
     }
 
+    @Override
     public void dispose() {
         super.dispose();
     }
 
+    @Override
     protected void finalize() {
         try {
             super.finalize();
         } catch (Throwable throwable) {
-            Log.e(LOG_TAG, "Error while finalizing:", throwable);
+            Rlog.e(LOG_TAG, "Error while finalizing:", throwable);
         }
-        if(DBG) Log.d(LOG_TAG, "RuimPhoneBookInterfaceManager finalized");
+        if(DBG) Rlog.d(LOG_TAG, "RuimPhoneBookInterfaceManager finalized");
     }
 
+    @Override
     public int[] getAdnRecordsSize(int efid) {
         if (DBG) logd("getAdnRecordsSize: efid=" + efid);
         synchronized(mLock) {
             checkThread();
-            recordSize = new int[3];
+            mRecordSize = new int[3];
 
             //Using mBaseHandler, no difference in EVENT_GET_SIZE_DONE handling
             AtomicBoolean status = new AtomicBoolean(false);
             Message response = mBaseHandler.obtainMessage(EVENT_GET_SIZE_DONE, status);
 
-            IccFileHandler fh = phone.getIccFileHandler();
+            IccFileHandler fh = mPhone.getIccFileHandler();
             //IccFileHandler can be null if there is no icc card present.
             if (fh != null) {
                 fh.getEFLinearRecordSize(efid, response);
@@ -69,15 +72,17 @@ public class RuimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager 
             }
         }
 
-        return recordSize;
+        return mRecordSize;
     }
 
+    @Override
     protected void logd(String msg) {
-        Log.d(LOG_TAG, "[RuimPbInterfaceManager] " + msg);
+        Rlog.d(LOG_TAG, "[RuimPbInterfaceManager] " + msg);
     }
 
+    @Override
     protected void loge(String msg) {
-        Log.e(LOG_TAG, "[RuimPbInterfaceManager] " + msg);
+        Rlog.e(LOG_TAG, "[RuimPbInterfaceManager] " + msg);
     }
 }
 

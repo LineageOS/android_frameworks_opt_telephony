@@ -40,7 +40,7 @@ import static com.android.internal.telephony.RILConstants.*;
 
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CommandException;
-import com.android.internal.telephony.DataCallState;
+import com.android.internal.telephony.DataCallResponse;
 import com.android.internal.telephony.DataConnection.FailCause;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
@@ -580,8 +580,8 @@ public class SamsungCDMAv6RIL extends RIL implements CommandsInterface {
     }
 
     @Override
-    protected DataCallState getDataCallState(Parcel p, int version) {
-        DataCallState dataCall = new DataCallState();
+    protected DataCallResponse getDataCallResponse(Parcel p, int version) {
+        DataCallResponse dataCall = new DataCallResponse();
 
         dataCall.version = version;
         dataCall.status = p.readInt();
@@ -592,7 +592,7 @@ public class SamsungCDMAv6RIL extends RIL implements CommandsInterface {
         dataCall.ifname = SystemProperties.get("net.cdma.ppp.interface");
         if ((dataCall.status == DataConnection.FailCause.NONE.getErrorCode()) &&
                 TextUtils.isEmpty(dataCall.ifname)) {
-            throw new RuntimeException("getDataCallState, no ifname");
+            throw new RuntimeException("getDataCallResponse, no ifname");
         }
         String addresses = p.readString();
         if (!TextUtils.isEmpty(addresses)) {
@@ -674,7 +674,7 @@ public class SamsungCDMAv6RIL extends RIL implements CommandsInterface {
     @Override
     protected Object
     responseSetupDataCall(Parcel p) {
-        DataCallState dataCall = new DataCallState();
+        DataCallResponse dataCall = new DataCallResponse();
         String strings[] = (String []) responseStrings(p);
 
         if (strings.length >= 2) {

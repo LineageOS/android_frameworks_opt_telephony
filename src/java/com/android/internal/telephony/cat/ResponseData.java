@@ -48,11 +48,11 @@ abstract class ResponseData {
 
 class SelectItemResponseData extends ResponseData {
     // members
-    private int id;
+    private int mId;
 
     public SelectItemResponseData(int id) {
         super();
-        this.id = id;
+        mId = id;
     }
 
     @Override
@@ -61,7 +61,7 @@ class SelectItemResponseData extends ResponseData {
         int tag = 0x80 | ComprehensionTlvTag.ITEM_ID.value();
         buf.write(tag); // tag
         buf.write(1); // length
-        buf.write(id); // identifier of item chosen
+        buf.write(mId); // identifier of item chosen
     }
 }
 
@@ -79,19 +79,19 @@ class GetInkeyInputResponseData extends ResponseData {
 
     public GetInkeyInputResponseData(String inData, boolean ucs2, boolean packed) {
         super();
-        this.mIsUcs2 = ucs2;
-        this.mIsPacked = packed;
-        this.mInData = inData;
-        this.mIsYesNo = false;
+        mIsUcs2 = ucs2;
+        mIsPacked = packed;
+        mInData = inData;
+        mIsYesNo = false;
     }
 
     public GetInkeyInputResponseData(boolean yesNoResponse) {
         super();
-        this.mIsUcs2 = false;
-        this.mIsPacked = false;
-        this.mInData = "";
-        this.mIsYesNo = true;
-        this.mYesNoResponse = yesNoResponse;
+        mIsUcs2 = false;
+        mIsPacked = false;
+        mInData = "";
+        mIsYesNo = true;
+        mYesNoResponse = yesNoResponse;
     }
 
     @Override
@@ -160,11 +160,11 @@ class GetInkeyInputResponseData extends ResponseData {
 // See TS 31.111 section 6.4.15/ETSI TS 102 223
 // TS 31.124 section 27.22.4.15 for test spec
 class LanguageResponseData extends ResponseData {
-    private String lang;
+    private String mLang;
 
     public LanguageResponseData(String lang) {
         super();
-        this.lang = lang;
+        mLang = lang;
     }
 
     @Override
@@ -179,8 +179,8 @@ class LanguageResponseData extends ResponseData {
 
         byte[] data;
 
-        if (lang != null && lang.length() > 0) {
-            data = GsmAlphabet.stringToGsm8BitPacked(lang);
+        if (mLang != null && mLang.length() > 0) {
+            data = GsmAlphabet.stringToGsm8BitPacked(mLang);
         }
         else {
             data = new byte[0];
@@ -198,11 +198,11 @@ class LanguageResponseData extends ResponseData {
 // See TS 31.111 section 6.4.15/ETSI TS 102 223
 // TS 31.124 section 27.22.4.15 for test spec
 class DTTZResponseData extends ResponseData {
-    private Calendar calendar;
+    private Calendar mCalendar;
 
     public DTTZResponseData(Calendar cal) {
         super();
-        calendar = cal;
+        mCalendar = cal;
     }
 
     @Override
@@ -219,26 +219,26 @@ class DTTZResponseData extends ResponseData {
 
         data[0] = 0x07; // Write length of DTTZ data
 
-        if (calendar == null) {
-            calendar = Calendar.getInstance();
+        if (mCalendar == null) {
+            mCalendar = Calendar.getInstance();
         }
         // Fill year byte
-        data[1] = byteToBCD(calendar.get(java.util.Calendar.YEAR) % 100);
+        data[1] = byteToBCD(mCalendar.get(java.util.Calendar.YEAR) % 100);
 
         // Fill month byte
-        data[2] = byteToBCD(calendar.get(java.util.Calendar.MONTH) + 1);
+        data[2] = byteToBCD(mCalendar.get(java.util.Calendar.MONTH) + 1);
 
         // Fill day byte
-        data[3] = byteToBCD(calendar.get(java.util.Calendar.DATE));
+        data[3] = byteToBCD(mCalendar.get(java.util.Calendar.DATE));
 
         // Fill hour byte
-        data[4] = byteToBCD(calendar.get(java.util.Calendar.HOUR_OF_DAY));
+        data[4] = byteToBCD(mCalendar.get(java.util.Calendar.HOUR_OF_DAY));
 
         // Fill minute byte
-        data[5] = byteToBCD(calendar.get(java.util.Calendar.MINUTE));
+        data[5] = byteToBCD(mCalendar.get(java.util.Calendar.MINUTE));
 
         // Fill second byte
-        data[6] = byteToBCD(calendar.get(java.util.Calendar.SECOND));
+        data[6] = byteToBCD(mCalendar.get(java.util.Calendar.SECOND));
 
         String tz = SystemProperties.get("persist.sys.timezone", "");
         if (TextUtils.isEmpty(tz)) {

@@ -15,7 +15,7 @@
  */
 
 package com.android.internal.telephony.cdma;
-import static com.android.internal.telephony.RILConstants.*;
+
 import android.os.Parcel;
 
 public final class CdmaInformationRecords {

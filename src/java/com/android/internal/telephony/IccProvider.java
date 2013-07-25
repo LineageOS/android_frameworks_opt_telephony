@@ -25,13 +25,13 @@ import android.net.Uri;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.util.List;
 
-import com.android.internal.telephony.IccConstants;
-import com.android.internal.telephony.AdnRecord;
 import com.android.internal.telephony.IIccPhoneBook;
+import com.android.internal.telephony.uicc.AdnRecord;
+import com.android.internal.telephony.uicc.IccConstants;
 
 
 /**
@@ -207,12 +207,7 @@ public class IccProvider extends ContentProvider {
             String param = tokens[n];
             if (DBG) log("parsing '" + param + "'");
 
-            String[] pair = param.split("=");
-
-            if (pair.length != 2) {
-                Log.e(TAG, "resolve: bad whereClause parameter: " + param);
-                continue;
-            }
+            String[] pair = param.split("=", 2);
 
             String key = pair[0].trim();
             String val = pair[1].trim();
@@ -312,7 +307,7 @@ public class IccProvider extends ContentProvider {
             return cursor;
         } else {
             // No results to load
-            Log.w(TAG, "Cannot load ADN records");
+            Rlog.w(TAG, "Cannot load ADN records");
             return new MatrixCursor(ADDRESS_BOOK_COLUMN_NAMES);
         }
     }
@@ -425,7 +420,7 @@ public class IccProvider extends ContentProvider {
     }
 
     private void log(String msg) {
-        Log.d(TAG, "[IccProvider] " + msg);
+        Rlog.d(TAG, "[IccProvider] " + msg);
     }
 
 }

@@ -24,7 +24,7 @@ import com.android.internal.telephony.MmiCode;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -36,7 +36,7 @@ import java.util.regex.Matcher;
  *
  */
 public final class CdmaMmiCode  extends Handler implements MmiCode {
-    static final String LOG_TAG = "CDMA_MMI";
+    static final String LOG_TAG = "CdmaMmiCode";
 
     // Constants
 
@@ -52,18 +52,18 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
 
     // Instance Variables
 
-    CDMAPhone phone;
-    Context context;
+    CDMAPhone mPhone;
+    Context mContext;
 
-    String action;              // ACTION_REGISTER
-    String sc;                  // Service Code
-    String sia, sib, sic;       // Service Info a,b,c
-    String poundString;         // Entire MMI string up to and including #
-    String dialingNumber;
-    String pwd;                 // For password registration
+    String mAction;              // ACTION_REGISTER
+    String mSc;                  // Service Code
+    String mSia, mSib, mSic;     // Service Info a,b,c
+    String mPoundString;         // Entire MMI string up to and including #
+    String mDialingNumber;
+    String mPwd;                 // For password registration
 
-    State state = State.PENDING;
-    CharSequence message;
+    State mState = State.PENDING;
+    CharSequence mMessage;
 
     // Class Variables
 
@@ -107,14 +107,14 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
         // Is this formatted like a standard supplementary service code?
         if (m.matches()) {
             ret = new CdmaMmiCode(phone);
-            ret.poundString = makeEmptyNull(m.group(MATCH_GROUP_POUND_STRING));
-            ret.action = makeEmptyNull(m.group(MATCH_GROUP_ACTION));
-            ret.sc = makeEmptyNull(m.group(MATCH_GROUP_SERVICE_CODE));
-            ret.sia = makeEmptyNull(m.group(MATCH_GROUP_SIA));
-            ret.sib = makeEmptyNull(m.group(MATCH_GROUP_SIB));
-            ret.sic = makeEmptyNull(m.group(MATCH_GROUP_SIC));
-            ret.pwd = makeEmptyNull(m.group(MATCH_GROUP_PWD_CONFIRM));
-            ret.dialingNumber = makeEmptyNull(m.group(MATCH_GROUP_DIALING_NUMBER));
+            ret.mPoundString = makeEmptyNull(m.group(MATCH_GROUP_POUND_STRING));
+            ret.mAction = makeEmptyNull(m.group(MATCH_GROUP_ACTION));
+            ret.mSc = makeEmptyNull(m.group(MATCH_GROUP_SERVICE_CODE));
+            ret.mSia = makeEmptyNull(m.group(MATCH_GROUP_SIA));
+            ret.mSib = makeEmptyNull(m.group(MATCH_GROUP_SIB));
+            ret.mSic = makeEmptyNull(m.group(MATCH_GROUP_SIC));
+            ret.mPwd = makeEmptyNull(m.group(MATCH_GROUP_PWD_CONFIRM));
+            ret.mDialingNumber = makeEmptyNull(m.group(MATCH_GROUP_DIALING_NUMBER));
 
         }
 
@@ -137,34 +137,38 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
 
     CdmaMmiCode (CDMAPhone phone) {
         super(phone.getHandler().getLooper());
-        this.phone = phone;
-        this.context = phone.getContext();
+        mPhone = phone;
+        mContext = phone.getContext();
     }
 
     // MmiCode implementation
 
+    @Override
     public State
     getState() {
-        return state;
+        return mState;
     }
 
+    @Override
     public CharSequence
     getMessage() {
-        return message;
+        return mMessage;
     }
 
     // inherited javadoc suffices
+    @Override
     public void
     cancel() {
         // Complete or failed cannot be cancelled
-        if (state == State.COMPLETE || state == State.FAILED) {
+        if (mState == State.COMPLETE || mState == State.FAILED) {
             return;
         }
 
-        state = State.CANCELLED;
-        phone.onMMIDone (this);
+        mState = State.CANCELLED;
+        mPhone.onMMIDone (this);
     }
 
+    @Override
     public boolean isCancelable() {
         return false;
     }
@@ -175,15 +179,16 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
      * @return true if the Service Code is PIN/PIN2/PUK/PUK2-related
      */
     boolean isPukCommand() {
-        return sc != null && sc.equals(SC_PUK);
+        return mSc != null && mSc.equals(SC_PUK);
      }
 
     boolean isRegister() {
-        return action != null && action.equals(ACTION_REGISTER);
+        return mAction != null && mAction.equals(ACTION_REGISTER);
     }
 
+    @Override
     public boolean isUssdRequest() {
-        Log.w(LOG_TAG, "isUssdRequest is not implemented in CdmaMmiCode");
+        Rlog.w(LOG_TAG, "isUssdRequest is not implemented in CdmaMmiCode");
         return false;
     }
 
@@ -195,18 +200,18 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
                 // sia = old PUK
                 // sib = new PIN
                 // sic = new PIN
-                String oldPinOrPuk = sia;
-                String newPin = sib;
+                String oldPinOrPuk = mSia;
+                String newPin = mSib;
                 int pinLen = newPin.length();
                 if (isRegister()) {
-                    if (!newPin.equals(sic)) {
+                    if (!newPin.equals(mSic)) {
                         // password mismatch; return error
                         handlePasswordError(com.android.internal.R.string.mismatchPin);
                     } else if (pinLen < 4 || pinLen > 8 ) {
                         // invalid length
                         handlePasswordError(com.android.internal.R.string.invalidPin);
                     } else {
-                        phone.mCM.supplyIccPuk(oldPinOrPuk, newPin,
+                        mPhone.mCi.supplyIccPuk(oldPinOrPuk, newPin,
                                 obtainMessage(EVENT_SET_COMPLETE, this));
                     }
                 } else {
@@ -216,21 +221,22 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
                 throw new RuntimeException ("Invalid or Unsupported MMI Code");
             }
         } catch (RuntimeException exc) {
-            state = State.FAILED;
-            message = context.getText(com.android.internal.R.string.mmiError);
-            phone.onMMIDone(this);
+            mState = State.FAILED;
+            mMessage = mContext.getText(com.android.internal.R.string.mmiError);
+            mPhone.onMMIDone(this);
         }
     }
 
     private void handlePasswordError(int res) {
-        state = State.FAILED;
+        mState = State.FAILED;
         StringBuilder sb = new StringBuilder(getScString());
         sb.append("\n");
-        sb.append(context.getText(res));
-        message = sb;
-        phone.onMMIDone(this);
+        sb.append(mContext.getText(res));
+        mMessage = sb;
+        mPhone.onMMIDone(this);
     }
 
+    @Override
     public void
     handleMessage (Message msg) {
         AsyncResult ar;
@@ -239,15 +245,15 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
             ar = (AsyncResult) (msg.obj);
             onSetComplete(ar);
         } else {
-            Log.e(LOG_TAG, "Unexpected reply");
+            Rlog.e(LOG_TAG, "Unexpected reply");
         }
     }
     // Private instance methods
 
     private CharSequence getScString() {
-        if (sc != null) {
+        if (mSc != null) {
             if (isPukCommand()) {
-                return context.getText(com.android.internal.R.string.PinMmi);
+                return mContext.getText(com.android.internal.R.string.PinMmi);
             }
         }
 
@@ -260,37 +266,37 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
         sb.append("\n");
 
         if (ar.exception != null) {
-            state = State.FAILED;
+            mState = State.FAILED;
             if (ar.exception instanceof CommandException) {
                 CommandException.Error err = ((CommandException)(ar.exception)).getCommandError();
                 if (err == CommandException.Error.PASSWORD_INCORRECT) {
                     if (isPukCommand()) {
-                        sb.append(context.getText(
+                        sb.append(mContext.getText(
                                 com.android.internal.R.string.badPuk));
                     } else {
-                        sb.append(context.getText(
+                        sb.append(mContext.getText(
                                 com.android.internal.R.string.passwordIncorrect));
                     }
                 } else {
-                    sb.append(context.getText(
+                    sb.append(mContext.getText(
                             com.android.internal.R.string.mmiError));
                 }
             } else {
-                sb.append(context.getText(
+                sb.append(mContext.getText(
                         com.android.internal.R.string.mmiError));
             }
         } else if (isRegister()) {
-            state = State.COMPLETE;
-            sb.append(context.getText(
+            mState = State.COMPLETE;
+            sb.append(mContext.getText(
                     com.android.internal.R.string.serviceRegistered));
         } else {
-            state = State.FAILED;
-            sb.append(context.getText(
+            mState = State.FAILED;
+            sb.append(mContext.getText(
                     com.android.internal.R.string.mmiError));
         }
 
-        message = sb;
-        phone.onMMIDone(this);
+        mMessage = sb;
+        mPhone.onMMIDone(this);
     }
 
 }

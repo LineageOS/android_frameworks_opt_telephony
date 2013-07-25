@@ -170,19 +170,23 @@ public enum Tone implements Parcelable {
         mValue = in.readInt();
     }
 
+    @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeInt(ordinal());
     }
 
+    @Override
     public int describeContents() {
         return 0;
     }
 
     public static final Parcelable.Creator<Tone> CREATOR = new Parcelable.Creator<Tone>() {
+        @Override
         public Tone createFromParcel(Parcel in) {
             return Tone.values()[in.readInt()];
         }
 
+        @Override
         public Tone[] newArray(int size) {
             return new Tone[size];
         }

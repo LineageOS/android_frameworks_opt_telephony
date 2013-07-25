@@ -16,9 +16,11 @@
 
 package com.android.internal.telephony;
 
-import junit.framework.TestCase;
-
 import android.test.suitebuilder.annotation.SmallTest;
+
+import com.android.internal.telephony.dataconnection.ApnSetting;
+
+import junit.framework.TestCase;
 
 public class ApnSettingTest extends TestCase {
 
@@ -83,14 +85,6 @@ public class ApnSettingTest extends TestCase {
 
         testString = "Name,apn,,,,,,,,,123, 45,";
         assertEquals(null, ApnSetting.fromString(testString));
-
-        // Parse (incorrect) V2 format without the tag as V1.
-        testString = "Name,apn,,,,,,,,,123, 45,,mms|*,IPV6,true,14";
-        String[] incorrectTypes = {"mms|*", "IPV6"};
-        expected_apn =  new ApnSetting(
-                -1, "12345", "Name", "apn", "", "",
-                "", "", "", "", "", 0, incorrectTypes, "IP", "IP",true,14);
-        assertApnSettingEqual(expected_apn, ApnSetting.fromString(testString));
     }
 
 

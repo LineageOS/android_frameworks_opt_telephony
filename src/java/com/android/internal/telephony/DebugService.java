@@ -16,7 +16,10 @@
 
 package com.android.internal.telephony;
 
-import android.util.Log;
+import android.telephony.Rlog;
+
+import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.IccCardProxy;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -72,7 +75,7 @@ public class DebugService {
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
         try {
-            phoneBase.mDataConnectionTracker.dump(fd, pw, args);
+            phoneBase.mDcTracker.dump(fd, pw, args);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -93,7 +96,21 @@ public class DebugService {
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
         try {
-            ((RIL)phoneBase.mCM).dump(fd, pw, args);
+            ((RIL)phoneBase.mCi).dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+        try {
+            UiccController.getInstance().dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+        try {
+            ((IccCardProxy)phoneProxy.getIccCard()).dump(fd, pw, args);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -103,6 +120,6 @@ public class DebugService {
     }
 
     private static void log(String s) {
-        Log.d(TAG, "DebugService " + s);
+        Rlog.d(TAG, "DebugService " + s);
     }
 }

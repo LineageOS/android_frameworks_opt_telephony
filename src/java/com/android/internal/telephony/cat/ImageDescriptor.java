@@ -21,13 +21,13 @@ package com.android.internal.telephony.cat;
  */
 public class ImageDescriptor {
     // members
-    int width;
-    int height;
-    int codingScheme;
-    int imageId;
-    int highOffset;
-    int lowOffset;
-    int length;
+    int mWidth;
+    int mHeight;
+    int mCodingScheme;
+    int mImageId;
+    int mHighOffset;
+    int mLowOffset;
+    int mLength;
 
     // constants
     static final int CODING_SCHEME_BASIC = 0x11;
@@ -37,13 +37,13 @@ public class ImageDescriptor {
     // ID_LENGTH substituted by IccFileHandlerBase.GET_RESPONSE_EF_IMG_SIZE_BYTES
 
     ImageDescriptor() {
-        width = 0;
-        height = 0;
-        codingScheme = 0;
-        imageId = 0;
-        highOffset = 0;
-        lowOffset = 0;
-        length = 0;
+        mWidth = 0;
+        mHeight = 0;
+        mCodingScheme = 0;
+        mImageId = 0;
+        mHighOffset = 0;
+        mLowOffset = 0;
+        mLength = 0;
     }
 
     /**
@@ -56,18 +56,18 @@ public class ImageDescriptor {
     static ImageDescriptor parse(byte[] rawData, int valueIndex) {
         ImageDescriptor d = new ImageDescriptor();
         try {
-            d.width = rawData[valueIndex++] & 0xff;
-            d.height = rawData[valueIndex++] & 0xff;
-            d.codingScheme = rawData[valueIndex++] & 0xff;
+            d.mWidth = rawData[valueIndex++] & 0xff;
+            d.mHeight = rawData[valueIndex++] & 0xff;
+            d.mCodingScheme = rawData[valueIndex++] & 0xff;
 
             // parse image id
-            d.imageId = (rawData[valueIndex++] & 0xff) << 8;
-            d.imageId |= rawData[valueIndex++] & 0xff;
+            d.mImageId = (rawData[valueIndex++] & 0xff) << 8;
+            d.mImageId |= rawData[valueIndex++] & 0xff;
             // parse offset
-            d.highOffset = (rawData[valueIndex++] & 0xff); // high byte offset
-            d.lowOffset = rawData[valueIndex++] & 0xff; // low byte offset
+            d.mHighOffset = (rawData[valueIndex++] & 0xff); // high byte offset
+            d.mLowOffset = rawData[valueIndex++] & 0xff; // low byte offset
 
-            d.length = ((rawData[valueIndex++] & 0xff) << 8 | (rawData[valueIndex++] & 0xff));
+            d.mLength = ((rawData[valueIndex++] & 0xff) << 8 | (rawData[valueIndex++] & 0xff));
         } catch (IndexOutOfBoundsException e) {
             CatLog.d("ImageDescripter", "parse; failed parsing image descriptor");
             d = null;

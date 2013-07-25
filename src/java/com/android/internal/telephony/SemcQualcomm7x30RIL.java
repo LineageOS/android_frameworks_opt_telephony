@@ -54,8 +54,8 @@ public class SemcQualcomm7x30RIL extends RIL implements CommandsInterface {
     }
 
     @Override
-    protected DataCallState getDataCallState(Parcel p, int version) {
-        DataCallState dataCall = new DataCallState();
+    protected DataCallResponse getDataCallResponse(Parcel p, int version) {
+        DataCallResponse dataCall = new DataCallResponse();
 
         dataCall.version = version;
         if (version < 5) {
@@ -66,7 +66,7 @@ public class SemcQualcomm7x30RIL extends RIL implements CommandsInterface {
             if (!TextUtils.isEmpty(addresses)) {
                 dataCall.addresses = addresses.split(" ");
             }
-            // DataCallState needs an ifname. Since we don't have one use the name from the ThrottleService resource (default=rmnet0).
+            // DataCallResponse needs an ifname. Since we don't have one use the name from the ThrottleService resource (default=rmnet0).
             dataCall.ifname = "rmnet0";
         } else {
             dataCall.status = p.readInt();
@@ -77,7 +77,7 @@ public class SemcQualcomm7x30RIL extends RIL implements CommandsInterface {
             dataCall.ifname = p.readString();
             if ((dataCall.status == DataConnection.FailCause.NONE.getErrorCode()) &&
                     TextUtils.isEmpty(dataCall.ifname)) {
-              throw new RuntimeException("getDataCallState, no ifname");
+              throw new RuntimeException("getDataCallResponse, no ifname");
             }
             String addresses = p.readString();
             if (!TextUtils.isEmpty(addresses)) {
