@@ -174,8 +174,10 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
         mContext.enforceCallingPermission(
                 android.Manifest.permission.SEND_SMS,
                 "Sending SMS message");
-        broadcastOutgoingSms(destAddr, scAddr, true, new ArrayList<String>(parts),
-                new ArrayList<PendingIntent>(sentIntents), new ArrayList<PendingIntent>(deliveryIntents));
+        broadcastOutgoingSms(destAddr, scAddr, true,
+                parts != null ? new ArrayList<String>(parts) : null,
+                sentIntents != null ? new ArrayList<PendingIntent>(sentIntents) : null,
+                deliveryIntents != null ? new ArrayList<PendingIntent>(deliveryIntents) : null);
     }
 
     public boolean enableCellBroadcast(int messageIdentifier) throws android.os.RemoteException {
