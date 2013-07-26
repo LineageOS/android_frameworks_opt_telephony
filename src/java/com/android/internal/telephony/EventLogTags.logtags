@@ -81,5 +81,5 @@ option java_package com.android.internal.telephony;
 50123 gsm_rat_switched_new (cid|1|5), (network_from|1|5), (network_to|1|5)
 
 # SMS denied by user
-50125 sms_denied_by_user (app_signature|3)
-50128 sms_sent_by_user (app_signature|3)
+50125 exp_det_sms_denied_by_user (app_signature|3)
+50128 exp_det_sms_sent_by_user (app_signature|3)
