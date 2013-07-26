@@ -595,8 +595,23 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         return disableCellBroadcastRange(messageIdentifier, messageIdentifier);
     }
 
-    synchronized public boolean enableCellBroadcastRange(int startMessageId, int endMessageId) {
-        if (DBG) log("enableCellBroadcastRange");
+    public boolean enableCellBroadcastRange(int startMessageId, int endMessageId) {
+        if (PhoneConstants.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+            return enableGsmBroadcastRange(startMessageId, endMessageId);
+        } else {
+            return enableCdmaBroadcastRange(startMessageId, endMessageId);
+        }
+    }
+
+    public boolean disableCellBroadcastRange(int startMessageId, int endMessageId) {
+        if (PhoneConstants.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+            return disableGsmBroadcastRange(startMessageId, endMessageId);
+        } else {
+            return disableCdmaBroadcastRange(startMessageId, endMessageId);
+        }
+    }
+    synchronized public boolean enableGsmBroadcastRange(int startMessageId, int endMessageId) {
+        if (DBG) log("enableGsmBroadcastRange");
 
         Context context = mPhone.getContext();
 
@@ -622,8 +637,8 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         return true;
     }
 
-    synchronized public boolean disableCellBroadcastRange(int startMessageId, int endMessageId) {
-        if (DBG) log("disableCellBroadcastRange");
+    synchronized public boolean disableGsmBroadcastRange(int startMessageId, int endMessageId) {
+        if (DBG) log("disableGsmBroadcastRange");
 
         Context context = mPhone.getContext();
 
