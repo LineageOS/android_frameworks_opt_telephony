@@ -827,6 +827,8 @@ public abstract class DcTrackerBase extends Handler {
             return DctConstants.APN_FOTA_ID;
         } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_CBS)) {
             return DctConstants.APN_CBS_ID;
+        } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_IA)) {
+            return DctConstants.APN_IA_ID;
         } else {
             return DctConstants.APN_INVALID_ID;
         }
@@ -850,6 +852,8 @@ public abstract class DcTrackerBase extends Handler {
             return PhoneConstants.APN_TYPE_FOTA;
         case DctConstants.APN_CBS_ID:
             return PhoneConstants.APN_TYPE_CBS;
+        case DctConstants.APN_IA_ID:
+            return PhoneConstants.APN_TYPE_IA;
         default:
             log("Unknown id (" + id + ") in apnIdToType");
             return PhoneConstants.APN_TYPE_DEFAULT;
@@ -1497,34 +1501,62 @@ public abstract class DcTrackerBase extends Handler {
     }
 
     protected void setInitialAttachApn() {
-        ApnSetting apnSetting = null;
+        ApnSetting iaApnSetting = null;
+        ApnSetting defaultApnSetting = null;
+        ApnSetting firstApnSetting = null;
 
-        if (mPreferredApn != null) {
-            apnSetting = (ApnSetting)mPreferredApn;
-        } else if (mAllApnSettings != null && !mAllApnSettings.isEmpty()) {
+        log("setInitialApn: E mPreferredApn=" + mPreferredApn);
+
+        if (mAllApnSettings != null && !mAllApnSettings.isEmpty()) {
+            firstApnSetting = mAllApnSettings.get(0);
+            log("setInitialApn: firstApnSetting=" + firstApnSetting);
+
+            // Search for Initial APN setting and the first apn that can handle default
             for (ApnSetting apn : mAllApnSettings) {
-                if (apnSetting == null) {
-                    apnSetting = apn;
-                }
-                if (apn.canHandleType(PhoneConstants.APN_TYPE_DEFAULT)) {
-                    apnSetting = apn;
+                if (apn.canHandleType(PhoneConstants.APN_TYPE_IA)) {
+                    // The Initial Attach APN is highest priority so use it if there is one
+                    log("setInitialApn: iaApnSetting=" + apn);
+                    iaApnSetting = apn;
                     break;
+                } else if ((defaultApnSetting == null)
+                        && (apn.canHandleType(PhoneConstants.APN_TYPE_DEFAULT))) {
+                    // Use the first default apn if no better choice
+                    log("setInitialApn: defaultApnSetting=" + apn);
+                    defaultApnSetting = apn;
                 }
             }
+        }
+
+        // The priority of apn candidates from highest to lowest is:
+        //   1) APN_TYPE_IA (Inital Attach)
+        //   2) mPreferredApn, i.e. the current preferred apn
+        //   3) The first apn that than handle APN_TYPE_DEFAULT
+        //   4) The first APN we can find.
+
+        ApnSetting initialAttachApnSetting = null;
+        if (iaApnSetting != null) {
+            if (DBG) log("setInitialAttachApn: using iaApnSetting");
+            initialAttachApnSetting = iaApnSetting;
+        } else if (mPreferredApn != null) {
+            if (DBG) log("setInitialAttachApn: using mPreferredApn");
+            initialAttachApnSetting = mPreferredApn;
+        } else if (defaultApnSetting != null) {
+            if (DBG) log("setInitialAttachApn: using defaultApnSetting");
+            initialAttachApnSetting = defaultApnSetting;
+        } else if (firstApnSetting != null) {
+            if (DBG) log("setInitialAttachApn: using firstApnSetting");
+            initialAttachApnSetting = firstApnSetting;
+        }
+
+        if (initialAttachApnSetting == null) {
+            if (DBG) log("setInitialAttachApn: X There in no available apn");
         } else {
-            if (DBG) log("setInitialAttachApn : mAllApnSettings is null or empty");
-            return;
+            if (DBG) log("setInitialAttachApn: X selected Apn=" + initialAttachApnSetting);
+
+            mPhone.mCi.setInitialAttachApn(initialAttachApnSetting.apn,
+                    initialAttachApnSetting.protocol, initialAttachApnSetting.authType,
+                    initialAttachApnSetting.user, initialAttachApnSetting.password, null);
         }
-
-        if (apnSetting == null) {
-            if (DBG) log("setInitialAttachApn : There in no available apn");
-            return;
-        }
-
-        if (DBG) log("setInitialAttachApn : selected Apn=" + apnSetting);
-
-        mPhone.mCi.setInitialAttachApn(apnSetting.apn, apnSetting.protocol, apnSetting.authType,
-                apnSetting.user, apnSetting.password, null);
     }
 
     void sendCleanUpConnection(boolean tearDown, ApnContext apnContext) {

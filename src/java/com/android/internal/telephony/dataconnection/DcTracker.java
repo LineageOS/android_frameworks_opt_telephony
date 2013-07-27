@@ -269,6 +269,9 @@ public final class DcTracker extends DcTrackerBase {
             case ConnectivityManager.TYPE_MOBILE_CBS:
                 apnContext = addApnContext(PhoneConstants.APN_TYPE_CBS, networkConfig);
                 break;
+            case ConnectivityManager.TYPE_MOBILE_IA:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_IA, networkConfig);
+                break;
             default:
                 log("initApnContexts: skipping unknown type=" + networkConfig.type);
                 continue;
@@ -2142,6 +2145,8 @@ public final class DcTracker extends DcTrackerBase {
             return RILConstants.DATA_PROFILE_FOTA;
         } else if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_CBS)) {
             return RILConstants.DATA_PROFILE_CBS;
+        } else if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_IA)) {
+            return RILConstants.DATA_PROFILE_DEFAULT; // DEFAULT for now
         } else {
             return RILConstants.DATA_PROFILE_DEFAULT;
         }
