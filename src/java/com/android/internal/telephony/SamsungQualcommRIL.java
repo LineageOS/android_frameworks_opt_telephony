@@ -520,9 +520,8 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                         // do nothing
                     }
                 }
-                else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || (response[i].equals("") && !isGSM)){
+            } else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || (response[i].equals("") && !isGSM)){
                     response[i]=homeOperator;
-                }
             }
         }
         return response;
