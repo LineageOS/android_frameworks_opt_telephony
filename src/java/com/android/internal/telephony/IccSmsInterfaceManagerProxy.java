@@ -47,6 +47,10 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
             ArrayList<PendingIntent> sentIntents = intent.getParcelableArrayListExtra("sentIntents");
             ArrayList<PendingIntent> deliveryIntents = intent.getParcelableArrayListExtra("deliveryIntents");
 
+            if (intent.getIntExtra("callingUid", 0) != 0) {
+                callingPackage = callingPackage + "\\" + intent.getIntExtra("callingUid", 0);
+            }
+
             if (intent.getBooleanExtra("multipart", false)) {
                 mIccSmsInterfaceManager.sendMultipartText(callingPackage, destAddr, scAddr,
                         parts, sentIntents, deliveryIntents);
@@ -151,6 +155,7 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
         broadcast.putExtra("scAddr", scAddr);
         broadcast.putExtra("multipart", multipart);
         broadcast.putExtra("callingPackage", callingPackage);
+        broadcast.putExtra("callingUid", android.os.Binder.getCallingUid());
         broadcast.putStringArrayListExtra("parts", parts);
         broadcast.putParcelableArrayListExtra("sentIntents", sentIntents);
         broadcast.putParcelableArrayListExtra("deliveryIntents", deliveryIntents);
