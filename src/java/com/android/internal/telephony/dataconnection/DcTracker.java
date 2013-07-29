@@ -1174,6 +1174,7 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private boolean trySetupData(ApnContext apnContext) {
+        boolean retValue = false;
         if (DBG) {
             log("trySetupData for type:" + apnContext.getApnType() +
                     " due to " + apnContext.getReason() + " apnContext=" + apnContext);
@@ -1216,10 +1217,13 @@ public final class DcTracker extends DcTrackerBase {
                 ArrayList<ApnSetting> waitingApns = buildWaitingApns(apnContext.getApnType(),
                         radioTech);
                 if (waitingApns.isEmpty()) {
-                    notifyNoData(DcFailCause.MISSING_UNKNOWN_APN, apnContext);
                     notifyOffApnsOfAvailability(apnContext.getReason());
-                    if (DBG) log("trySetupData: X No APN found retValue=false");
-                    return false;
+                    retValue = setupData(apnContext, radioTech);
+                    if(!retValue) {
+                        notifyNoData(DcFailCause.MISSING_UNKNOWN_APN, apnContext);
+                    }
+                    notifyOffApnsOfAvailability(apnContext.getReason());
+                    return retValue;
                 } else {
                     apnContext.setWaitingApns(waitingApns);
                     if (DBG) {
@@ -1233,7 +1237,9 @@ public final class DcTracker extends DcTrackerBase {
                 log("trySetupData: call setupData, waitingApns : "
                         + apnListToString(apnContext.getWaitingApns()));
             }
-            boolean retValue = setupData(apnContext, radioTech);
+
+            retValue = setupData(apnContext, radioTech);
+
             notifyOffApnsOfAvailability(apnContext.getReason());
 
             if (DBG) log("trySetupData: X retValue=" + retValue);
@@ -1639,8 +1645,38 @@ public final class DcTracker extends DcTrackerBase {
 
         apnSetting = apnContext.getNextWaitingApn();
         if (apnSetting == null) {
-            if (DBG) log("setupData: return for no apn found!");
-            return false;
+            if(PhoneConstants.PHONE_TYPE_CDMA==mPhone.getPhoneType()) {
+                String[] mDunApnTypes = { PhoneConstants.APN_TYPE_DUN };
+                final int mDefaultApnId = DctConstants.APN_DEFAULT_ID;
+                final String[] mDefaultApnTypes = {
+                    PhoneConstants.APN_TYPE_DEFAULT,
+                    PhoneConstants.APN_TYPE_MMS,
+                    PhoneConstants.APN_TYPE_SUPL,
+                    PhoneConstants.APN_TYPE_HIPRI,
+                    PhoneConstants.APN_TYPE_FOTA,
+                    PhoneConstants.APN_TYPE_IMS,
+                    PhoneConstants.APN_TYPE_CBS};
+
+
+                String[] types;
+                int apnId;
+                if (mRequestedApnType.equals(PhoneConstants.APN_TYPE_DUN)) {
+                    types = mDunApnTypes;
+                    apnId = DctConstants.APN_DUN_ID;
+                } else {
+                    types = mDefaultApnTypes;
+                    apnId = mDefaultApnId;
+                }
+                apnSetting = new ApnSetting(apnId, getOperatorNumeric(), null, null,
+                                null, null, null, null, null, null, null,
+                    RILConstants.SETUP_DATA_AUTH_PAP_CHAP, types,
+                    PROPERTY_CDMA_IPPROTOCOL, PROPERTY_CDMA_ROAMING_IPPROTOCOL, true, 0,
+                    0, false, 0, 0, 0, PhoneConstants.UNSET_MTU, "", "");
+                if (DBG) log("setupData: CDMA detected and apnSetting == null, use stubbed CDMA APN setting= " + apnSetting);
+            } else {
+                if (DBG) log("setupData: return for no apn found!");
+                return false;
+            }
         }
 
         int profileId = apnSetting.profileId;
