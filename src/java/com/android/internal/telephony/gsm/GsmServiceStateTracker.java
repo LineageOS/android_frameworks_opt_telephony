@@ -37,8 +37,14 @@ import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
+import android.telephony.CellIdentityGsm;
+import android.telephony.CellIdentityLte;
+import android.telephony.CellIdentityWcdma;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
+import android.telephony.CellInfoLte;
+import android.telephony.CellInfoWcdma;
+import android.telephony.CellLocation;
 import android.telephony.Rlog;
 import android.telephony.CellInfoLte;
 import android.telephony.CellSignalStrengthLte;
@@ -670,10 +676,13 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
                         }
                     }
 
-                    if (regState == ServiceState.RIL_REG_STATE_DENIED_EMERGENCY_CALL_ENABLED
+                    boolean isVoiceCapable = mPhoneBase.getContext().getResources()
+                            .getBoolean(com.android.internal.R.bool.config_voice_capable);
+                    if ((regState == ServiceState.RIL_REG_STATE_DENIED_EMERGENCY_CALL_ENABLED
                          || regState == ServiceState.RIL_REG_STATE_NOT_REG_EMERGENCY_CALL_ENABLED
                          || regState == ServiceState.RIL_REG_STATE_SEARCHING_EMERGENCY_CALL_ENABLED
-                         || regState == ServiceState.RIL_REG_STATE_UNKNOWN_EMERGENCY_CALL_ENABLED) {
+                         || regState == ServiceState.RIL_REG_STATE_UNKNOWN_EMERGENCY_CALL_ENABLED)
+                         && isVoiceCapable) {
                         mEmergencyOnly = true;
                     } else {
                         mEmergencyOnly = false;
@@ -1456,6 +1465,76 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
     @Override
     public boolean isConcurrentVoiceAndDataAllowed() {
         return (mSS.getRilDataRadioTechnology() >= ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
+    }
+
+    /**
+     * @return the current cell location information. Prefer Gsm location
+     * information if available otherwise return LTE location information
+     */
+    public CellLocation getCellLocation() {
+        if ((mCellLoc.getLac() >= 0) && (mCellLoc.getCid() >= 0)) {
+            if (DBG) log("getCellLocation(): X good mCellLoc=" + mCellLoc);
+            return mCellLoc;
+        } else {
+            List<CellInfo> result = getAllCellInfo();
+            if (result != null) {
+                // A hack to allow tunneling of LTE information via GsmCellLocation
+                // so that older Network Location Providers can return some information
+                // on LTE only networks, see bug 9228974.
+                //
+                // We'll search the return CellInfo array preferring GSM/WCDMA
+                // data, but if there is none we'll tunnel the first LTE information
+                // in the list.
+                //
+                // The tunnel'd LTE information is returned as follows:
+                //   LAC = TAC field
+                //   CID = CI field
+                //   PSC = 0.
+                GsmCellLocation cellLocOther = new GsmCellLocation();
+                for (CellInfo ci : result) {
+                    if (ci instanceof CellInfoGsm) {
+                        CellInfoGsm cellInfoGsm = (CellInfoGsm)ci;
+                        CellIdentityGsm cellIdentityGsm = cellInfoGsm.getCellIdentity();
+                        cellLocOther.setLacAndCid(cellIdentityGsm.getLac(),
+                                cellIdentityGsm.getCid());
+                        cellLocOther.setPsc(cellIdentityGsm.getPsc());
+                        if (DBG) log("getCellLocation(): X ret GSM info=" + cellLocOther);
+                        return cellLocOther;
+                    } else if (ci instanceof CellInfoWcdma) {
+                        CellInfoWcdma cellInfoWcdma = (CellInfoWcdma)ci;
+                        CellIdentityWcdma cellIdentityWcdma = cellInfoWcdma.getCellIdentity();
+                        cellLocOther.setLacAndCid(cellIdentityWcdma.getLac(),
+                                cellIdentityWcdma.getCid());
+                        cellLocOther.setPsc(cellIdentityWcdma.getPsc());
+                        if (DBG) log("getCellLocation(): X ret WCDMA info=" + cellLocOther);
+                        return cellLocOther;
+                    } else if ((ci instanceof CellInfoLte) &&
+                            ((cellLocOther.getLac() < 0) || (cellLocOther.getCid() < 0))) {
+                        // We'll return the first good LTE info we get if there is no better answer
+                        CellInfoLte cellInfoLte = (CellInfoLte)ci;
+                        CellIdentityLte cellIdentityLte = cellInfoLte.getCellIdentity();
+                        if ((cellIdentityLte.getTac() != Integer.MAX_VALUE)
+                                && (cellIdentityLte.getCi() != Integer.MAX_VALUE)) {
+                            cellLocOther.setLacAndCid(cellIdentityLte.getTac(),
+                                    cellIdentityLte.getCi());
+                            cellLocOther.setPsc(0);
+                            if (DBG) {
+                                log("getCellLocation(): possible LTE cellLocOther=" + cellLocOther);
+                            }
+                        }
+                    }
+                }
+                if (DBG) {
+                    log("getCellLocation(): X ret best answer cellLocOther=" + cellLocOther);
+                }
+                return cellLocOther;
+            } else {
+                if (DBG) {
+                    log("getCellLocation(): X empty mCellLoc and CellInfo mCellLoc=" + mCellLoc);
+                }
+                return mCellLoc;
+            }
+        }
     }
 
     /**

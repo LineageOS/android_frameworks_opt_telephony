@@ -1407,21 +1407,26 @@ public class SIMRecords extends IccRecords {
 
     @Override
     protected void onAllRecordsLoaded() {
-        String operator = getOperatorNumeric();
+        if (DBG) log("record load complete");
 
         // Some fields require more than one SIM record to set
 
-        log("SIMRecords: onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
-                operator + "'");
-        setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
-        setSystemProperty(PROPERTY_APN_SIM_OPERATOR_NUMERIC, operator);
+        String operator = getOperatorNumeric();
+        if (!TextUtils.isEmpty(operator)) {
+            log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
+                    operator + "'");
+            setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
+            setSystemProperty(PROPERTY_APN_SIM_OPERATOR_NUMERIC, operator);
+        } else {
+            log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
+        }
 
-        if (mImsi != null) {
+        if (!TextUtils.isEmpty(mImsi)) {
+            log("onAllRecordsLoaded set mcc imsi=" + mImsi);
             setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
                     MccTable.countryCodeForMcc(Integer.parseInt(mImsi.substring(0,3))));
-        }
-        else {
-            loge("onAllRecordsLoaded: imsi is NULL!");
+        } else {
+            log("onAllRecordsLoaded empty imsi skipping setting mcc");
         }
 
         setVoiceMailByCountry(operator);
