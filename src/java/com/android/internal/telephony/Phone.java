@@ -1863,6 +1863,13 @@ public interface Phone {
      */
     void removeReferences();
 
+    void getCallBarringOption(String facility, String password, Message onComplete);
+
+    void setCallBarringOption(String facility, boolean lockState, String password,
+            Message onComplete);
+
+    void requestChangeCbPsw(String facility, String oldPwd, String newPwd, Message result);
+
     /**
      * When the remote party in an IMS Call wants to upgrade or downgrade a
      * call, a CallModifyRequest message is received. This function registers

@@ -1778,6 +1778,59 @@ public class GSMPhone extends PhoneBase {
         Rlog.d(LOG_TAG, "[GSMPhone] " + s);
     }
 
+    private boolean isValidFacilityString(String facility) {
+        if (facility.equals(CommandsInterface.CB_FACILITY_BAOC)) {
+            return true;
+        }
+        if (facility.equals(CommandsInterface.CB_FACILITY_BAOIC)) {
+            return true;
+        }
+        if (facility.equals(CommandsInterface.CB_FACILITY_BAOICxH)) {
+            return true;
+        }
+        if (facility.equals(CommandsInterface.CB_FACILITY_BAIC)) {
+            return true;
+        }
+        if (facility.equals(CommandsInterface.CB_FACILITY_BAICr)) {
+            return true;
+        }
+        if (facility.equals(CommandsInterface.CB_FACILITY_BA_ALL)) {
+            return true;
+        }
+        if (facility.equals(CommandsInterface.CB_FACILITY_BA_MO)) {
+            return true;
+        }
+        if (facility.equals(CommandsInterface.CB_FACILITY_BA_MT)) {
+            return true;
+        }
+        if (facility.equals(CommandsInterface.CB_FACILITY_BA_SIM)) {
+            return true;
+        }
+        if (facility.equals(CommandsInterface.CB_FACILITY_BA_FD)) {
+            return true;
+        }
+        return false;
+    }
+
+    public void getCallBarringOption(String facility, String password, Message onComplete) {
+        if (isValidFacilityString(facility)) {
+            mCi.queryFacilityLock(facility, password, CommandsInterface.SERVICE_CLASS_NONE,
+                    onComplete);
+        }
+    }
+
+    public void setCallBarringOption(String facility, boolean lockState, String password,
+            Message onComplete) {
+        if (isValidFacilityString(facility)) {
+            mCi.setFacilityLock(facility, lockState, password,
+                    CommandsInterface.SERVICE_CLASS_VOICE, onComplete);
+        }
+    }
+
+    public void requestChangeCbPsw(String facility, String oldPwd, String newPwd, Message result) {
+        mCi.changeBarringPassword(facility, oldPwd, newPwd, result);
+    }
+
     /** gets the voice mail count from preferences */
     private int getStoredVoiceMessageCount() {
         int countVoiceMessages = 0;
