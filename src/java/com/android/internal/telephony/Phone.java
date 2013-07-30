@@ -1860,6 +1860,22 @@ public interface Phone {
     void removeReferences();
 
     /**
+     * Query call barring option from network
+     */
+    void getCallBarringOption(String facility, String password, Message onComplete);
+
+    /**
+     * Set user desired call barring option
+     */
+    void setCallBarringOption(String facility, boolean lockState, String password,
+            Message onComplete);
+
+    /**
+     * Request to change call barring password
+     */
+    void requestChangeCbPsw(String facility, String oldPwd, String newPwd, Message result);
+
+    /**
      * Update the phone object if the voice radio technology has changed
      *
      * @param voiceRadioTech The new voice radio technology

@@ -1633,4 +1633,20 @@ public class PhoneProxy extends Handler implements Phone {
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
     }
+
+    @Override
+    public void getCallBarringOption(String facility, String password, Message onComplete) {
+        mActivePhone.getCallBarringOption(facility, password, onComplete);
+    }
+
+    @Override
+    public void setCallBarringOption(String facility, boolean lockState, String password,
+            Message onComplete) {
+        mActivePhone.setCallBarringOption(facility, lockState, password, onComplete);
+    }
+
+    @Override
+    public void requestChangeCbPsw(String facility, String oldPwd, String newPwd, Message result) {
+        mActivePhone.requestChangeCbPsw(facility, oldPwd, newPwd, result);
+    }
 }
