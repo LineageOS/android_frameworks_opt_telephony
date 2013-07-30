@@ -126,12 +126,16 @@ public class BlacklistUtils {
 
         if (c != null) {
             if (DEBUG) Log.d(TAG, "A match was found in the blacklist");
-            if (c.getCount() > 1) {
-                // as the numbers are unique, this is guaranteed to be a regex match
-                result = MATCH_REGEX;
-            } else if (c.moveToFirst()) {
-                boolean isRegex = c.getInt(c.getColumnIndex(Blacklist.IS_REGEX)) != 0;
-                result = isRegex ? MATCH_REGEX : MATCH_LIST;
+            int regexColumnIndex = c.getColumnIndexOrThrow(Blacklist.IS_REGEX);
+            c.moveToPosition(-1);
+            while (c.moveToNext()) {
+                boolean isRegex = c.getInt(regexColumnIndex) != 0;
+                if (!isRegex) {
+                    result = MATCH_LIST;
+                    break;
+                } else {
+                    result = MATCH_REGEX;
+                }
             }
             c.close();
         }
