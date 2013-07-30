@@ -1880,4 +1880,40 @@ public class GSMPhone extends PhoneBase {
     protected void log(String s) {
         Rlog.d(LOG_TAG, "[GSMPhone] " + s);
     }
+
+    private boolean isValidFacilityString(String facility) {
+        if ((facility.equals(CommandsInterface.CB_FACILITY_BAOC))
+                || (facility.equals(CommandsInterface.CB_FACILITY_BAOIC))
+                || (facility.equals(CommandsInterface.CB_FACILITY_BAOICxH))
+                || (facility.equals(CommandsInterface.CB_FACILITY_BAIC))
+                || (facility.equals(CommandsInterface.CB_FACILITY_BAICr))
+                || (facility.equals(CommandsInterface.CB_FACILITY_BA_ALL))
+                || (facility.equals(CommandsInterface.CB_FACILITY_BA_MO))
+                || (facility.equals(CommandsInterface.CB_FACILITY_BA_MT))
+                || (facility.equals(CommandsInterface.CB_FACILITY_BA_SIM))
+                || (facility.equals(CommandsInterface.CB_FACILITY_BA_FD))) {
+            return true;
+        }
+        Rlog.e(LOG_TAG, " Invalid facility String : "+facility);
+        return false;
+    }
+
+    public void getCallBarringOption(String facility, String password, Message onComplete) {
+        if (isValidFacilityString(facility)) {
+            mCi.queryFacilityLock(facility, password, CommandsInterface.SERVICE_CLASS_NONE,
+                    onComplete);
+        }
+    }
+
+    public void setCallBarringOption(String facility, boolean lockState, String password,
+            Message onComplete) {
+        if (isValidFacilityString(facility)) {
+            mCi.setFacilityLock(facility, lockState, password,
+                    CommandsInterface.SERVICE_CLASS_VOICE, onComplete);
+        }
+    }
+
+    public void requestChangeCbPsw(String facility, String oldPwd, String newPwd, Message result) {
+        mCi.changeBarringPassword(facility, oldPwd, newPwd, result);
+    }
 }
