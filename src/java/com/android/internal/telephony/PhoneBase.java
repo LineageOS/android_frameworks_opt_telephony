@@ -1445,4 +1445,17 @@ public abstract class PhoneBase extends Handler implements Phone {
         pw.println(" isDataConnectivityPossible()=" + isDataConnectivityPossible());
         pw.println(" needsOtaServiceProvisioning=" + needsOtaServiceProvisioning());
     }
+
+    public void getCallBarringOption(String facility, String password, Message onComplete) {
+        logUnexpectedCdmaMethodCall("getCallBarringOption");
+    }
+
+    public void setCallBarringOption(String facility, boolean lockState, String password,
+            Message onComplete) {
+        logUnexpectedCdmaMethodCall("setCallBarringOption");
+    }
+
+    public void requestChangeCbPsw(String facility, String oldPwd, String newPwd, Message result) {
+        logUnexpectedCdmaMethodCall("requestChangeCbPsw");
+    }
 }
