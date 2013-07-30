@@ -1755,6 +1755,13 @@ public interface Phone {
      */
     void removeReferences();
 
+    void getCallBarringOption(String facility, String password, Message onComplete);
+
+    void setCallBarringOption(String facility, boolean lockState, String password,
+            Message onComplete);
+
+    void requestChangeCbPsw(String facility, String oldPwd, String newPwd, Message result);
+
     /**
      * Update the phone object if the voice radio technology has changed
      *
