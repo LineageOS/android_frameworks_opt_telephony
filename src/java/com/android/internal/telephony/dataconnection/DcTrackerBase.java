@@ -93,8 +93,10 @@ public abstract class DcTrackerBase extends Handler {
 
     /** Delay between APN attempts.
         Note the property override mechanism is there just for testing purpose only. */
-    protected static final int APN_DELAY_MILLIS =
-                                SystemProperties.getInt("persist.radio.apn_delay", 20000);
+    protected static final int APN_DELAY_DEFAULT_MILLIS = 20000;
+
+    /** Delay between APN attempts when in fail fast mode */
+    protected static final int APN_FAIL_FAST_DELAY_DEFAULT_MILLIS = 3000;
 
     AlarmManager mAlarmManager;
 
@@ -210,6 +212,13 @@ public abstract class DcTrackerBase extends Handler {
     protected long mSentSinceLastRecv;
     // Controls when a simple recovery attempt it to be tried
     protected int mNoRecvPollCount = 0;
+    // True if data stall detection is enabled
+    protected volatile boolean mDataStallDetectionEnabled = true;
+
+    protected volatile boolean mFailFast = false;
+
+    // True when in voice call
+    protected boolean mInVoiceCall = false;
 
     // wifi connection status will be updated by sticky intent
     protected boolean mIsWifiConnected = false;
@@ -379,6 +388,9 @@ public abstract class DcTrackerBase extends Handler {
      */
     private static final int DEFAULT_MDC_INITIAL_RETRY = 1;
     protected int getInitialMaxRetry() {
+        if (mFailFast) {
+            return 0;
+        }
         // Get default value from system property or use DEFAULT_MDC_INITIAL_RETRY
         int value = SystemProperties.getInt(
                 Settings.Global.MDC_INITIAL_MAX_RETRY, DEFAULT_MDC_INITIAL_RETRY);
@@ -766,6 +778,28 @@ public abstract class DcTrackerBase extends Handler {
             case DctConstants.CMD_SET_POLICY_DATA_ENABLE: {
                 final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
                 onSetPolicyDataEnabled(enabled);
+                break;
+            }
+            case DctConstants.CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: {
+                final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
+                if (DBG) log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: enabled=" + enabled);
+                if (mFailFast != enabled) {
+                    mFailFast = enabled;
+                    mDataStallDetectionEnabled = !enabled;
+                    if (mDataStallDetectionEnabled
+                            && (getOverallState() == DctConstants.State.CONNECTED)
+                            && (!mInVoiceCall ||
+                                    mPhone.getServiceStateTracker()
+                                        .isConcurrentVoiceAndDataAllowed())) {
+                        if (DBG) log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: start data stall");
+                        stopDataStallAlarm();
+                        startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
+                    } else {
+                        if (DBG) log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: stop data stall");
+                        stopDataStallAlarm();
+                    }
+                }
+
                 break;
             }
             case DctConstants.EVENT_ICC_CHANGED: {
@@ -1224,7 +1258,8 @@ public abstract class DcTrackerBase extends Handler {
     protected abstract DctConstants.State getOverallState();
 
     protected void startNetStatPoll() {
-        if (getOverallState() == DctConstants.State.CONNECTED && mNetStatPollEnabled == false) {
+        if (getOverallState() == DctConstants.State.CONNECTED
+                && mNetStatPollEnabled == false) {
             if (DBG) log("startNetStatPoll");
             resetPollStats();
             mNetStatPollEnabled = true;
@@ -1444,7 +1479,7 @@ public abstract class DcTrackerBase extends Handler {
         int nextAction = getRecoveryAction();
         int delayInMs;
 
-        if (getOverallState() == DctConstants.State.CONNECTED) {
+        if (mDataStallDetectionEnabled && getOverallState() == DctConstants.State.CONNECTED) {
             // If screen is on or data stall is currently suspected, set the alarm
             // with an aggresive timeout.
             if (mIsScreenOn || suspectedStall || RecoveryAction.isAggressiveRecovery(nextAction)) {
@@ -1533,6 +1568,7 @@ public abstract class DcTrackerBase extends Handler {
         pw.println(" mNetStatPollEnabled=" + mNetStatPollEnabled);
         pw.println(" mDataStallTxRxSum=" + mDataStallTxRxSum);
         pw.println(" mDataStallAlarmTag=" + mDataStallAlarmTag);
+        pw.println(" mDataStallDetectionEanbled=" + mDataStallDetectionEnabled);
         pw.println(" mSentSinceLastRecv=" + mSentSinceLastRecv);
         pw.println(" mNoRecvPollCount=" + mNoRecvPollCount);
         pw.println(" mResolver=" + mResolver);
