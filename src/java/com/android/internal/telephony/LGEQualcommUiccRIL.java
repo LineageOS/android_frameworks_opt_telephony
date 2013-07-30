@@ -24,7 +24,7 @@ import android.os.Parcel;
 import android.os.SystemProperties;
 import android.telephony.SignalStrength;
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import java.util.ArrayList;
 
@@ -141,10 +141,10 @@ public class LGEQualcommUiccRIL extends QualcommSharedRIL implements CommandsInt
         int appIndex = -1;
         if (mPhoneType == RILConstants.CDMA_PHONE) {
             appIndex = status.mCdmaSubscriptionAppIndex;
-            Log.d(LOG_TAG, "This is a CDMA PHONE " + appIndex);
+            Rlog.d(RILJ_LOG_TAG, "This is a CDMA PHONE " + appIndex);
         } else {
             appIndex = status.mGsmUmtsSubscriptionAppIndex;
-            Log.d(LOG_TAG, "This is a GSM PHONE " + appIndex);
+            Rlog.d(RILJ_LOG_TAG, "This is a GSM PHONE " + appIndex);
         }
 
         if (numApplications > 0) {
@@ -156,7 +156,7 @@ public class LGEQualcommUiccRIL extends QualcommSharedRIL implements CommandsInt
 
             if (TextUtils.isEmpty(mAid))
                mAid = "";
-            Log.d(LOG_TAG, "mAid " + mAid);
+            Rlog.d(RILJ_LOG_TAG, "mAid " + mAid);
         }
 
         return status;
