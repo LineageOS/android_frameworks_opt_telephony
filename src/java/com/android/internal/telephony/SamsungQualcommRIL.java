@@ -30,7 +30,8 @@ import android.telephony.SmsMessage;
 import android.os.SystemProperties;
 import android.os.SystemClock;
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
+
 import android.telephony.SignalStrength;
 
 import android.telephony.PhoneNumberUtils;
@@ -137,7 +138,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
             long timeoutTime  = SystemClock.elapsedRealtime() + SEND_SMS_TIMEOUT_IN_MS;
             long waitTimeLeft = SEND_SMS_TIMEOUT_IN_MS;
             while (mIsSendingSMS && (waitTimeLeft > 0)) {
-                Log.d(LOG_TAG, "sendSMS() waiting for response of previous SEND_SMS");
+                Rlog.d(LOG_TAG, "sendSMS() waiting for response of previous SEND_SMS");
                 try {
                     mSMSLock.wait(waitTimeLeft);
                 } catch (InterruptedException ex) {
@@ -146,7 +147,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 waitTimeLeft = timeoutTime - SystemClock.elapsedRealtime();
             }
             if (waitTimeLeft <= 0) {
-                Log.e(LOG_TAG, "sendSms() timed out waiting for response of previous CDMA_SEND_SMS");
+                Rlog.e(LOG_TAG, "sendSms() timed out waiting for response of previous CDMA_SEND_SMS");
             }
             mIsSendingSMS = true;
         }
@@ -206,7 +207,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
             case 4:
                 // When SIM is PIN-unlocked, RIL doesn't respond with RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED.
                 // We notify the system here.
-                Log.d(LOG_TAG, "SIM is PIN-unlocked now");
+                Rlog.d(LOG_TAG, "SIM is PIN-unlocked now");
                 if (mIccStatusChangedRegistrants != null) {
                     mIccStatusChangedRegistrants.notifyRegistrants();
                 }
@@ -254,6 +255,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 ret = responseInts(p);
                 setRadioPower(false, null);
                 setPreferredNetworkType(mPreferredNetworkType, null);
+                setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
                 break;
             case RIL_UNSOL_NITZ_TIME_RECEIVED:
@@ -263,13 +265,13 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
             case SamsungExynos4RIL.RIL_UNSOL_AM:
                 ret = responseString(p);
                 String amString = (String) ret;
-                Log.d(LOG_TAG, "Executing AM: " + amString);
+                Rlog.d(LOG_TAG, "Executing AM: " + amString);
 
                 try {
                     Runtime.getRuntime().exec("am " + amString);
                 } catch (IOException e) {
                     e.printStackTrace();
-                    Log.e(LOG_TAG, "am " + amString + " could not be executed.");
+                    Rlog.e(LOG_TAG, "am " + amString + " could not be executed.");
                 }
                 break;
             case SamsungExynos4RIL.RIL_UNSOL_RESPONSE_HANDOVER:
@@ -307,7 +309,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
         rr = findAndRemoveRequestFromList(serial);
 
         if (rr == null) {
-            Log.w(LOG_TAG, "Unexpected solicited response! sn: "
+            Rlog.w(RILJ_LOG_TAG, "Unexpected solicited response! sn: "
                             + serial + " error: " + error);
             return;
         }
@@ -448,13 +450,15 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
             case RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU: ret = responseVoid(p); break;
             case RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS: ret = responseICC_IO(p); break;
             case RIL_REQUEST_VOICE_RADIO_TECH: ret = responseInts(p); break;
+            case RIL_REQUEST_GET_CELL_INFO_LIST: ret = responseCellInfoList(p); break;
+            case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE: ret = responseVoid(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
             }} catch (Throwable tr) {
                 // Exceptions here usually mean invalid RIL responses
 
-                Log.w(LOG_TAG, rr.serialString() + "< "
+                Rlog.w(RILJ_LOG_TAG, rr.serialString() + "< "
                         + requestToString(rr.mRequest)
                         + " exception, possible invalid RIL response", tr);
 
@@ -465,6 +469,22 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 rr.release();
                 return;
             }
+        }
+
+        // Here and below fake RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED, see b/7255789.
+        // This is needed otherwise we don't automatically transition to the main lock
+        // screen when the pin or puk is entered incorrectly.
+        switch (rr.mRequest) {
+            case RIL_REQUEST_ENTER_SIM_PUK:
+            case RIL_REQUEST_ENTER_SIM_PUK2:
+                if (mIccStatusChangedRegistrants != null) {
+                    if (RILJ_LOGD) {
+                        riljLog("ON enter sim puk fakeSimStatusChanged: reg count="
+                                + mIccStatusChangedRegistrants.size());
+                    }
+                    mIccStatusChangedRegistrants.notifyRegistrants();
+                }
+                break;
         }
 
         if (error != 0) {
@@ -499,7 +519,6 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
 
         rr.release();
     }
-
 
     // CDMA FIXES, this fixes  bogus values in nv/sim on d2/jf/t0 cdma family or bogus information from sim card
     private Object
@@ -574,10 +593,10 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
      */
     private void setWbAmr(int state) {
         if (state == 1) {
-            Log.d(LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=on");
+            Rlog.d(LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=on");
             mAudioManager.setParameters("wide_voice_enable=true");
         }else if (state == 0) {
-            Log.d(LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=on");
+            Rlog.d(LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=on");
             mAudioManager.setParameters("wide_voice_enable=false");
         }
         //prevent race conditions when the two meeets
@@ -632,7 +651,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                     && sir.alertPitch == SignalToneUtil.IS95_CONST_IR_ALERT_MED
                     && sir.signal == SignalToneUtil.IS95_CONST_IR_SIG_IS54B_L) {
 
-                Log.d(LOG_TAG, "Dropping \"" + responseToString(response) + " "
+                Rlog.d(LOG_TAG, "Dropping \"" + responseToString(response) + " "
                         + retToString(response, sir)
                         + "\" to prevent \"ring of death\" bug.");
                 return;
