@@ -1053,6 +1053,17 @@ public interface CommandsInterface {
     void sendSMS (String smscPDU, String pdu, Message response);
 
     /**
+     * Send an SMS message, Identical to sendSMS,
+     * except that more messages are expected to be sent soon.
+     * smscPDU is smsc address in PDU form GSM BCD format prefixed
+     *      by a length byte (as expected by TS 27.005) or NULL for default SMSC
+     * pdu is SMS in PDU format as an ASCII hex string
+     *      less the SMSC address
+     */
+    void sendSMSExpectMore (String smscPDU, String pdu, Message response);
+
+
+    /**
      * @param pdu is CDMA-SMS in internal pseudo-PDU format
      * @param response sent when operation completes
      */
