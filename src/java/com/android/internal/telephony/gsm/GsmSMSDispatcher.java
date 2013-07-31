@@ -199,7 +199,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
             HashMap map =  SmsTrackerMapFactory(destinationAddress, scAddress,
                     message, pdu);
             SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
-                    deliveryIntent, getFormat());
+                    deliveryIntent, getFormat(), !lastPart);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendNewSubmitPdu(): getSubmitPdu() returned null");
@@ -251,8 +251,13 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                     pdu[1] = (byte) tracker.mMessageRef; // TP-MR
                 }
             }
-            mCi.sendSMS(IccUtils.bytesToHexString(smsc),
-                    IccUtils.bytesToHexString(pdu), reply);
+            if (tracker.mRetryCount == 0 && tracker.mExpectMore) {
+                mCi.sendSMSExpectMore(IccUtils.bytesToHexString(smsc),
+                        IccUtils.bytesToHexString(pdu), reply);
+            } else {
+                mCi.sendSMS(IccUtils.bytesToHexString(smsc),
+                        IccUtils.bytesToHexString(pdu), reply);
+            }
         } else {
             mCi.sendImsGsmSms(IccUtils.bytesToHexString(smsc),
                     IccUtils.bytesToHexString(pdu), tracker.mImsRetry,
