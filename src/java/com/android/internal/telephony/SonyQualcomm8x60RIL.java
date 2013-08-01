@@ -23,7 +23,7 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.os.Parcel;
 import android.text.TextUtils;
-import android.util.Log;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 
