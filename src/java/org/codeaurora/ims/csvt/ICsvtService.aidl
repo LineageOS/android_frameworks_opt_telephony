@@ -73,6 +73,12 @@ interface ICsvtService {
     boolean isIdle();
 
     /**
+    * Checks if there is an active Csvt call.
+    * @return true if there is an active Csvt call.
+    */
+    boolean isActive();
+
+    /**
      * Checks if all non-CSVT calls are idle.
      * @return true if all non-CSVT calls are idle.
      */
