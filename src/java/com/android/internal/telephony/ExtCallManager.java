@@ -307,11 +307,8 @@ public class ExtCallManager extends CallManager {
         mAudioManager.setParameters(keyValPairs);
     }
 
-    private int getAudioCallState(Call call) {
-        Call.State state = call.getState();
-        int sub = call.getPhone().getSubscription();
+    private int getAudioStateFromCallState(int sub, Call.State state) {
         int callState = AudioManager.CALL_INACTIVE;
-
         if ((state == Call.State.ACTIVE) || (state == Call.State.DIALING)
                 || (state == Call.State.ALERTING)) {
             if (sub == getActiveSubscription()) {
@@ -329,6 +326,12 @@ public class ExtCallManager extends CallManager {
             callState = AudioManager.CALL_INACTIVE;
         }
         return callState;
+    }
+
+    private int getAudioCallState(Call call) {
+        Call.State state = call.getState();
+        int sub = call.getPhone().getSubscription();
+        return getAudioStateFromCallState(sub, state);
     }
 
     private long getVsid(Phone offHookPhone, int sub) {
@@ -457,6 +460,24 @@ public class ExtCallManager extends CallManager {
         Rlog.d(LOG_TAG, "setAudioMode State = " + getState());
     }
 
+    /**
+     * Set Voice call Drivers based on phone type and call state
+     */
+    @Override
+    public void setCallAudioDrivers(int phoneType, Call.State state) {
+        Rlog.d(LOG_TAG, "setCallAudioDrivers for " + phoneType + "state = " + state);
+        if (phoneType == PhoneConstants.PHONE_TYPE_NONE) {
+            phoneType = PhoneFactory.getDefaultPhone().getPhoneType();
+        }
+        for (Phone phone : mPhones) {
+            if (phone.getPhoneType() == phoneType) {
+                long vsid = getVsid(phone, phone.getSubscription());
+                setAudioStateParam(vsid,
+                        getAudioStateFromCallState(phone.getSubscription(), state));
+                break;
+            }
+        }
+    }
 
     @Override
     protected void registerForPhoneStates(Phone phone) {

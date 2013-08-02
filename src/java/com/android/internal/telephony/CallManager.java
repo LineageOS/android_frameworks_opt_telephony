@@ -2180,6 +2180,10 @@ public class CallManager {
         Rlog.e(LOG_TAG, " setActiveSubscription for subscription not supported");
     }
 
+    public void setCallAudioDrivers(int phoneType, Call.State state) {
+        Rlog.e(LOG_TAG, " setCallAudioDrivers not supported");
+    }
+
     public int getActiveSubscription() {
         Rlog.e(LOG_TAG, " getActiveSubscription for subscription not supported");
         return 0;
