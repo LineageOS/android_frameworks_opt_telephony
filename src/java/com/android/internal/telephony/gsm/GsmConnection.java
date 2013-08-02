@@ -411,8 +411,9 @@ public class GsmConnection extends Connection {
     }
 
     /** Called when the radio indicates the connection has been disconnected */
-    /*package*/ void
+    /*package*/ boolean
     onDisconnect(DisconnectCause cause) {
+        boolean changed = false;
         this.cause = cause;
 
         if (!disconnected) {
@@ -428,10 +429,11 @@ public class GsmConnection extends Connection {
             owner.phone.notifyDisconnect(this);
 
             if (parent != null) {
-                parent.connectionDisconnected(this);
+                changed = parent.connectionDisconnected(this);
             }
         }
         releaseWakeLock();
+        return changed;
     }
 
     // Returns true if state has changed, false if nothing changed
