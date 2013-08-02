@@ -53,6 +53,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
@@ -1830,6 +1831,23 @@ public final class DcTracker extends DcTrackerBase {
                 }
                 cursor.close();
             }
+        }
+
+        if (mAllApnSettings.isEmpty() && mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+            // Create dummy data profile.
+            if (DBG) log("createAllApnList: Creating dummy apn for cdma operator:" + operator);
+            String[] mDefaultApnTypes = {
+                    PhoneConstants.APN_TYPE_DEFAULT,
+                    PhoneConstants.APN_TYPE_MMS,
+                    PhoneConstants.APN_TYPE_SUPL,
+                    PhoneConstants.APN_TYPE_HIPRI,
+                    PhoneConstants.APN_TYPE_FOTA,
+                    PhoneConstants.APN_TYPE_IMS,
+                    PhoneConstants.APN_TYPE_CBS };
+            ApnSetting apn = new ApnSetting(apnTypeToId(PhoneConstants.APN_TYPE_DEFAULT), operator,
+                    null, null, null, null, null, null, null, null, null,
+                    RILConstants.SETUP_DATA_AUTH_PAP_CHAP, mDefaultApnTypes, "IP", "IP", true, 0);
+            mAllApnSettings.add(apn);
         }
 
         if (mAllApnSettings.isEmpty()) {
