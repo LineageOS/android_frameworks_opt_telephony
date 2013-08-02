@@ -160,7 +160,7 @@ public class IccCardProxy extends Handler implements IccCard {
      * This method sets the IccRecord, corresponding to the currently active
      * subscription, as the active record.
      */
-    private void updateActiveRecord() {
+    protected void updateActiveRecord() {
         log("updateActiveRecord app type = " + mCurrentAppType +
                 "mIccRecords = " + mIccRecords);
 
