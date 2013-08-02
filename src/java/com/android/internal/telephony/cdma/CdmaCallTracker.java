@@ -485,6 +485,7 @@ public final class CdmaCallTracker extends CallTracker {
         Connection newRinging = null; //or waiting
         boolean hasNonHangupStateChanged = false;   // Any change besides
                                                     // a dropped connection
+        boolean hasAnyCallDisconnected = false;
         boolean needsPollDelay = false;
         boolean unknownConnectionAppeared = false;
 
@@ -675,14 +676,11 @@ public final class CdmaCallTracker extends CallTracker {
                     log("setting cause to " + cause);
                 }
                 mDroppedDuringPoll.remove(i);
-                conn.onDisconnect(cause);
-            } else if (conn.mCause == Connection.DisconnectCause.LOCAL) {
-                // Local hangup
+                hasAnyCallDisconnected |= conn.onDisconnect(cause);
+            } else if (conn.mCause == Connection.DisconnectCause.LOCAL
+                    || conn.mCause == Connection.DisconnectCause.INVALID_NUMBER) {
                 mDroppedDuringPoll.remove(i);
-                conn.onDisconnect(Connection.DisconnectCause.LOCAL);
-            } else if (conn.mCause == Connection.DisconnectCause.INVALID_NUMBER) {
-                mDroppedDuringPoll.remove(i);
-                conn.onDisconnect(Connection.DisconnectCause.INVALID_NUMBER);
+                hasAnyCallDisconnected |= conn.onDisconnect(conn.mCause);
             }
         }
 
@@ -701,7 +699,7 @@ public final class CdmaCallTracker extends CallTracker {
         // 1) the phone has started to ring
         // 2) A Call/Connection object has changed state...
         //    we may have switched or held or answered (but not hung up)
-        if (newRinging != null || hasNonHangupStateChanged) {
+        if (newRinging != null || hasNonHangupStateChanged || hasAnyCallDisconnected) {
             internalClearDisconnected();
         }
 
@@ -711,7 +709,7 @@ public final class CdmaCallTracker extends CallTracker {
             mPhone.notifyUnknownConnection();
         }
 
-        if (hasNonHangupStateChanged || newRinging != null) {
+        if (hasNonHangupStateChanged || newRinging != null || hasAnyCallDisconnected) {
             mPhone.notifyPreciseCallStateChanged();
         }
 
