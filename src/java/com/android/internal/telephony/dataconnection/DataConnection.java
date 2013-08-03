@@ -580,7 +580,16 @@ public final class DataConnection extends StateMachine {
 
     private int getRilRadioTechnology() {
         int rilRadioTechnology;
-        if (mApnSetting.bearer > 0) {
+        if (mPhone.mCi.getRilVersion() < 6) {
+            int phoneType = mPhone.getPhoneType();
+            if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
+                return RILConstants.SETUP_DATA_TECH_GSM;
+            } else if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
+                return RILConstants.SETUP_DATA_TECH_CDMA;
+            } else {
+                throw new RuntimeException("Unknown phoneType " + phoneType + ", should not happen");
+            }
+        } else if (mApnSetting.bearer > 0) {
             rilRadioTechnology = mApnSetting.bearer + 2;
         } else {
             rilRadioTechnology = mPhone.getServiceState().getRilDataRadioTechnology() + 2;
