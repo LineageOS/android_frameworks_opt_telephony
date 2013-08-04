@@ -58,8 +58,10 @@ public class WapPushOverSms implements ServiceConnection {
 
     public WapPushOverSms(Context context) {
         mContext = context;
-        if (!context.bindService(new Intent(IWapPushManager.class.getName()),
-                this, Context.BIND_AUTO_CREATE)) {
+        Intent intent = new Intent(IWapPushManager.class.getName());
+        ComponentName comp = intent.resolveSystemService(context.getPackageManager(), 0);
+        intent.setComponent(comp);
+        if (comp == null || !context.bindService(intent, this, Context.BIND_AUTO_CREATE)) {
             Rlog.e(TAG, "bindService() for IWapPushManager failed");
         }
     }
