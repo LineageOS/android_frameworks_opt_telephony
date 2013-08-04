@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1aca2d91_06365f03",
+        "filename": "src/java/com/android/internal/telephony/gsm/GsmCallTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 602,
+      "author": {
+        "id": 6558
+      },
+      "writtenOn": "2013-08-04T08:10:51Z",
+      "side": 1,
+      "message": "Typo in this line breaks build - should still be droppedDuringPoll, correct?",
+      "revId": "83ce1e3ce54a3086bac73773f90f9b3d3b1b02a1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
