@@ -371,7 +371,7 @@ public class ExtCallManager extends CallManager {
             if (phone.getSubscription() == sub) {
                 Call call = phone.getForegroundCall();
 
-                if (call.getState() == Call.State.IDLE) {
+                if (call.isIdle()) {
                     // There is no active Fg calls, the OFFHOOK state
                     // is set by the Bg call. So set the phone to bgPhone.
                     call = phone.getBackgroundCall();
