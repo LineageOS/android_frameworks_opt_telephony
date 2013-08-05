@@ -204,6 +204,11 @@ public final class RuimRecords extends IccRecords {
         return digits;
     }
 
+    @Override
+    public String getOperatorNumeric() {
+        return getRUIMOperatorNumeric();
+    }
+
     /**
      * Returns the 5 or 6 digit MCC/MNC of the operator that
      *  provided the RUIM card. Returns null of RUIM is not yet ready
