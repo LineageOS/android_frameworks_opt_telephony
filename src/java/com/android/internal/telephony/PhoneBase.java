@@ -1546,4 +1546,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     public void setLocalCallHold(int lchStatus, Message response) {
         mCi.setLocalCallHold(lchStatus, response);
     }
+
+    @Override
+    public boolean isRadioOn() {
+        return mCi.getRadioState().isOn();
+    }
 }
