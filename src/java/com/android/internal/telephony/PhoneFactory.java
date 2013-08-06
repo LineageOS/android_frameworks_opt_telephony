@@ -127,9 +127,9 @@ public class PhoneFactory {
                     default:
                         //Get cdmaSubscription mode from Settings.System
                         cdmaSubscription = Settings.Global.getInt(context.getContentResolver(),
-                                Settings.Global.PREFERRED_CDMA_SUBSCRIPTION,
+                                Settings.Global.CDMA_SUBSCRIPTION_MODE,
                                 sPreferredCdmaSubscription);
-                        Rlog.i(LOG_TAG, "lteOnCdma not set, using PREFERRED_CDMA_SUBSCRIPTION");
+                        Rlog.i(LOG_TAG, "lteOnCdma not set, using CDMA_SUBSCRIPTION_MODE");
                         break;
                 }
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
