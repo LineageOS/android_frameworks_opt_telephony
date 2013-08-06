@@ -1001,7 +1001,8 @@ public abstract class SMSDispatcher extends Handler {
                 Rlog.d(TAG, "CONFIRM sending SMS");
                 // XXX this is lossy- apps can have more than one signature
                 EventLog.writeEvent(EventLogTags.EXP_DET_SMS_SENT_BY_USER,
-                                    mTracker.mAppInfo.signatures[0].toCharsString());
+                                    mTracker.mAppInfo.applicationInfo == null ?
+                                    -1 : mTracker.mAppInfo.applicationInfo.uid);
                 sendMessage(obtainMessage(EVENT_SEND_CONFIRMED_SMS, mTracker));
                 if (mRememberChoice) {
                     newSmsPermission = SmsUsageMonitor.PREMIUM_SMS_PERMISSION_ALWAYS_ALLOW;
@@ -1010,7 +1011,8 @@ public abstract class SMSDispatcher extends Handler {
                 Rlog.d(TAG, "DENY sending SMS");
                 // XXX this is lossy- apps can have more than one signature
                 EventLog.writeEvent(EventLogTags.EXP_DET_SMS_DENIED_BY_USER,
-                                    mTracker.mAppInfo.signatures[0].toCharsString());
+                                    mTracker.mAppInfo.applicationInfo == null ?
+                                    -1 :  mTracker.mAppInfo.applicationInfo.uid);
                 sendMessage(obtainMessage(EVENT_STOP_SENDING, mTracker));
                 if (mRememberChoice) {
                     newSmsPermission = SmsUsageMonitor.PREMIUM_SMS_PERMISSION_NEVER_ALLOW;
