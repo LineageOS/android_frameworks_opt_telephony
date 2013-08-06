@@ -446,8 +446,9 @@ public class CdmaConnection extends Connection {
     }
 
     /** Called when the radio indicates the connection has been disconnected */
-    /*package*/ void
+    /*package*/ boolean
     onDisconnect(DisconnectCause cause) {
+        boolean changed = false;
         this.cause = cause;
 
         if (!disconnected) {
@@ -458,10 +459,11 @@ public class CdmaConnection extends Connection {
             owner.phone.notifyDisconnect(this);
 
             if (parent != null) {
-                parent.connectionDisconnected(this);
+                changed = parent.connectionDisconnected(this);
             }
         }
         releaseWakeLock();
+        return changed;
     }
 
     /** Called when the call waiting connection has been hung up */
