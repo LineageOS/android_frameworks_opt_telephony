@@ -62,12 +62,19 @@ public class WapPushOverSms implements ServiceConnection {
         ComponentName comp = intent.resolveSystemService(context.getPackageManager(), 0);
         intent.setComponent(comp);
         if (comp == null || !context.bindService(intent, this, Context.BIND_AUTO_CREATE)) {
-            Rlog.e(TAG, "bindService() for IWapPushManager failed");
+            Rlog.e(TAG, "bindService() for wappush manager failed");
+        } else {
+            if (DBG) Rlog.v(TAG, "bindService() for wappush manager succeeded");
         }
     }
 
     void dispose() {
-        mContext.unbindService(this);
+        if (mWapPushManager != null) {
+            if (DBG) Rlog.v(TAG, "dispose: unbind wappush manager");
+            mContext.unbindService(this);
+        } else {
+            Rlog.e(TAG, "dispose: not bound to a wappush manager");
+        }
     }
 
     /**
