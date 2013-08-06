@@ -111,7 +111,7 @@ public final class CdmaCall extends Call {
     /**
      * Called by CdmaConnection when it has disconnected
      */
-    void
+    boolean
     connectionDisconnected(CdmaConnection conn) {
         if (mState != State.DISCONNECTED) {
             /* If only disconnected connections remain, we are disconnected*/
@@ -129,8 +129,11 @@ public final class CdmaCall extends Call {
 
             if (hasOnlyDisconnectedConnections) {
                 mState = State.DISCONNECTED;
+                return true;
             }
         }
+
+        return false;
     }
 
 
