@@ -1458,4 +1458,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     public void requestChangeCbPsw(String facility, String oldPwd, String newPwd, Message result) {
         logUnexpectedCdmaMethodCall("requestChangeCbPsw");
     }
+
+    @Override
+    public boolean isRadioOn() {
+        return mCi.getRadioState().isOn();
+    }
 }

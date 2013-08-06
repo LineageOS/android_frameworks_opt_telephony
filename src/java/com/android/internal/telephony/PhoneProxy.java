@@ -1200,4 +1200,9 @@ public class PhoneProxy extends Handler implements Phone {
     public void requestChangeCbPsw(String facility, String oldPwd, String newPwd, Message result) {
         mActivePhone.requestChangeCbPsw(facility, oldPwd, newPwd, result);
     }
+
+    @Override
+    public boolean isRadioOn() {
+        return mCommandsInterface.getRadioState().isOn();
+    }
 }

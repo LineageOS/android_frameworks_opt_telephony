@@ -1729,4 +1729,10 @@ public interface Phone {
      * @param voiceRadioTech The new voice radio technology
      */
     void updatePhoneObject(int voiceRadioTech);
+
+    /**
+     * Checks the radioState
+     * @return, true if radio state = RADIO_ON, false otherwise
+     */
+    boolean isRadioOn();
 }
