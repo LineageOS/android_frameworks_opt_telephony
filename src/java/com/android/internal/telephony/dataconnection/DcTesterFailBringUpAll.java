@@ -93,7 +93,9 @@ public class DcTesterFailBringUpAll {
     }
 
     void dispose() {
-        mPhone.getContext().unregisterReceiver(mIntentReceiver);
+        if (Build.IS_DEBUGGABLE) {
+            mPhone.getContext().unregisterReceiver(mIntentReceiver);
+        }
     }
 
     DcFailBringUp getDcFailBringUp() {
