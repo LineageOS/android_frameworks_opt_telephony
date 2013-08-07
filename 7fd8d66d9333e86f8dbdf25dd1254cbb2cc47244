@@ -16,6 +16,24 @@
       "revId": "7fd8d66d9333e86f8dbdf25dd1254cbb2cc47244",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fae47921_38ad1189",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 24
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-08-07T05:03:12Z",
+      "side": 1,
+      "message": "you will end up with a partial response. I tried it and it can\u0027t be done.. you can always create a function which wraps around the functions in ril.java and override them in device spefic rils.",
+      "parentUuid": "fae47921_989d1d5c",
+      "revId": "7fd8d66d9333e86f8dbdf25dd1254cbb2cc47244",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
