@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fae47921_989d1d5c",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 24
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 5531
+      },
+      "writtenOn": "2013-08-07T04:55:11Z",
+      "side": 1,
+      "message": "Is it really necessary to copy all this over from RIL.java?  Can we just define the modified cases here and rewind/forward the parcel to super if the matched case is not found?  Would require less updating in the future too in the event that processSolicited is updated in RIL.java.",
+      "revId": "7fd8d66d9333e86f8dbdf25dd1254cbb2cc47244",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
