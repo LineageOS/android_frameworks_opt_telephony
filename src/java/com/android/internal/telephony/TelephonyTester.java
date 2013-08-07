@@ -73,7 +73,9 @@ public class TelephonyTester {
     }
 
     void dispose() {
-        mPhone.getContext().unregisterReceiver(mIntentReceiver);
+        if (Build.IS_DEBUGGABLE) {
+            mPhone.getContext().unregisterReceiver(mIntentReceiver);
+        }
     }
 
     private static void log(String s) {
