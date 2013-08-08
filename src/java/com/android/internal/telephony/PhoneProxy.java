@@ -1284,4 +1284,9 @@ public class PhoneProxy extends Handler implements Phone {
     public void setLocalCallHold(int lchStatus, Message response) {
         mActivePhone.setLocalCallHold(lchStatus, response);
     }
+
+    @Override
+    public boolean isRadioOn() {
+        return mCommandsInterface.getRadioState().isOn();
+    }
 }
