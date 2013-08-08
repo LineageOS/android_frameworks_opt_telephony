@@ -37,6 +37,7 @@ public enum DcFailCause {
     SERVICE_OPTION_NOT_SUBSCRIBED(0x21),    /* no retry */
     SERVICE_OPTION_OUT_OF_ORDER(0x22),
     NSAPI_IN_USE(0x23),                     /* no retry */
+    REGULAR_DEACTIVATION(0x24),             /* Restart radio */
     ONLY_IPV4_ALLOWED(0x32),                /* no retry */
     ONLY_IPV6_ALLOWED(0x33),                /* no retry */
     ONLY_SINGLE_BEARER_ALLOWED(0x34),
@@ -76,6 +77,11 @@ public enum DcFailCause {
 
     public int getErrorCode() {
         return mErrorCode;
+    }
+
+    /** Radio has failed such that the radio should be restarted */
+    public boolean isRestartRadioFail() {
+        return (this == REGULAR_DEACTIVATION);
     }
 
     public boolean isPermanentFail() {
