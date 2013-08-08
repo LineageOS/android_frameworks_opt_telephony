@@ -578,9 +578,12 @@ public final class DataConnection extends StateMachine {
         if (DBG) log("NotifyDisconnectCompleted DisconnectParams=" + dp);
     }
 
+private boolean mRilUseLegacyRadioTech = SystemProperties.getBoolean(
+                    "telephony.rilUseLegacyRadioTech", false);
+
     private int getRilRadioTechnology() {
         int rilRadioTechnology;
-        if (mPhone.mCi.getRilVersion() < 6) {
+        if ((mPhone.mCi.getRilVersion() < 6) || mRilUseLegacyRadioTech) {
             int phoneType = mPhone.getPhoneType();
             if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
                 return RILConstants.SETUP_DATA_TECH_GSM;
