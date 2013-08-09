@@ -31,6 +31,7 @@ import android.net.NetworkInfo;
 import android.net.TrafficStats;
 import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -204,6 +205,8 @@ public abstract class DcTrackerBase extends Handler {
     protected long mSentSinceLastRecv;
     // Controls when a simple recovery attempt it to be tried
     protected int mNoRecvPollCount = 0;
+    // Refrence counter for enabling fail fast
+    protected int mEnableFailFastRefCounter = 0;
     // True if data stall detection is enabled
     protected volatile boolean mDataStallDetectionEnabled = true;
 
@@ -754,8 +757,25 @@ public abstract class DcTrackerBase extends Handler {
                 break;
             }
             case DctConstants.CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: {
-                final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
-                if (DBG) log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: enabled=" + enabled);
+                mEnableFailFastRefCounter += (msg.arg1 == DctConstants.ENABLED) ? 1 : -1;
+                if (DBG) {
+                    log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: "
+                            + " mEnableFailFastRefCounter=" + mEnableFailFastRefCounter);
+                }
+                if (mEnableFailFastRefCounter < 0) {
+                    final String s = "CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: "
+                            + "mEnableFailFastRefCounter < 0";
+                    if (Build.IS_DEBUGGABLE) {
+                        throw new RuntimeException(s);
+                    }
+                    loge(s);
+                    mEnableFailFastRefCounter = 0;
+                }
+                final boolean enabled = mEnableFailFastRefCounter > 0;
+                if (DBG) {
+                    log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: enabled=" + enabled
+                            + " mEnableFailFastRefCounter=" + mEnableFailFastRefCounter);
+                }
                 if (mFailFast != enabled) {
                     mFailFast = enabled;
                     mDataStallDetectionEnabled = !enabled;
