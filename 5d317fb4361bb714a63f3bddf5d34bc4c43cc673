@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fae47921_01bc146b",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 5531
+      },
+      "writtenOn": "2013-08-09T03:50:03Z",
+      "side": 1,
+      "message": "import android.telephony.Rlog;",
+      "revId": "5d317fb4361bb714a63f3bddf5d34bc4c43cc673",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fae47921_e1c0f0e2",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 5531
+      },
+      "writtenOn": "2013-08-09T03:50:03Z",
+      "side": 1,
+      "message": "Move above: import android.telephony.Rlog;",
+      "revId": "5d317fb4361bb714a63f3bddf5d34bc4c43cc673",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fae47921_a1bae86c",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 5531
+      },
+      "writtenOn": "2013-08-09T03:50:03Z",
+      "side": 1,
+      "message": "Rlog.w(RILJ_LOG_TAG, ...",
+      "revId": "5d317fb4361bb714a63f3bddf5d34bc4c43cc673",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fae47921_61ad2031",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 503,
+      "author": {
+        "id": 5531
+      },
+      "writtenOn": "2013-08-09T03:50:03Z",
+      "side": 1,
+      "message": "New lines:\n\n            case RIL_REQUEST_GET_CELL_INFO_LIST:\n                ret \u003d responseCellInfoList(p);\n                break;\n            case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE:\n                ret \u003d responseVoid(p);\n                break;",
+      "revId": "5d317fb4361bb714a63f3bddf5d34bc4c43cc673",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fae47921_41aa1c1b",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 511,
+      "author": {
+        "id": 5531
+      },
+      "writtenOn": "2013-08-09T03:50:03Z",
+      "side": 1,
+      "message": "Rlog.w(RILJ_LOG_TAG, ...",
+      "revId": "5d317fb4361bb714a63f3bddf5d34bc4c43cc673",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fae47921_21a71851",
+        "filename": "src/java/com/android/internal/telephony/HTCCDMAQualcommRIL.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 632,
+      "author": {
+        "id": 5531
+      },
+      "writtenOn": "2013-08-09T03:50:03Z",
+      "side": 1,
+      "message": "You can re-insert the getDataCallState override here, but now the function is called: getDataCallResponse",
+      "revId": "5d317fb4361bb714a63f3bddf5d34bc4c43cc673",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fae47921_219038ec",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 5531
+      },
+      "writtenOn": "2013-08-09T03:50:03Z",
+      "side": 1,
+      "message": "RIL.java evaluates a new function here: setCellInfoListRate(Integer.MAX_VALUE, null);",
+      "revId": "5d317fb4361bb714a63f3bddf5d34bc4c43cc673",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
