@@ -1129,7 +1129,12 @@ public class GSMPhone extends PhoneBase {
         // get the message
         Message msg = obtainMessage(EVENT_SET_NETWORK_MANUAL_COMPLETE, nsm);
 
-        mCi.setNetworkSelectionModeManual(network.getOperatorNumeric(), msg);
+        if (network.getRadioTech().equals("")) {
+            mCi.setNetworkSelectionModeManual(network.getOperatorNumeric(), msg);
+        } else {
+            mCi.setNetworkSelectionModeManual(network.getOperatorNumeric()
+                    + "+" + network.getRadioTech(), msg);
+        }
     }
 
     @Override
