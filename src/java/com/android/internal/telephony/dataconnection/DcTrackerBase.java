@@ -779,6 +779,10 @@ public abstract class DcTrackerBase extends Handler {
                 onUpdateIcc();
                 break;
             }
+            case DctConstants.EVENT_RESTART_RADIO: {
+                restartRadio();
+                break;
+            }
             default:
                 Rlog.e("DATA", "Unidentified event msg=" + msg);
                 break;
@@ -1565,6 +1569,12 @@ public abstract class DcTrackerBase extends Handler {
         msg.arg1 = tearDown ? 1 : 0;
         msg.arg2 = 0;
         msg.obj = apnContext;
+        sendMessage(msg);
+    }
+
+    void sendRestartRadio() {
+        if (DBG)log("sendRestartRadio:");
+        Message msg = obtainMessage(DctConstants.EVENT_RESTART_RADIO);
         sendMessage(msg);
     }
 
