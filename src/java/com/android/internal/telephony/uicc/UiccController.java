@@ -25,6 +25,7 @@ import android.os.RegistrantList;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -79,6 +80,7 @@ public class UiccController extends Handler {
 
     protected static final int EVENT_ICC_STATUS_CHANGED = 1;
     protected static final int EVENT_GET_ICC_STATUS_DONE = 2;
+    private static final int EVENT_REFRESH = 4;
 
     protected static final Object mLock = new Object();
     protected static UiccController mInstance;
@@ -181,10 +183,33 @@ public class UiccController extends Handler {
                     AsyncResult ar = (AsyncResult)msg.obj;
                     onGetIccCardStatusDone(ar);
                     break;
+                case EVENT_REFRESH:
+                    ar = (AsyncResult)msg.obj;
+                    if (DBG) log("Sim REFRESH received");
+                    if (ar.exception == null) {
+                        handleRefresh((IccRefreshResponse)ar.result);
+                    } else {
+                        log ("Exception on refresh " + ar.exception);
+                    }
+                    break;
                 default:
                     Rlog.e(LOG_TAG, " Unknown Event " + msg.what);
             }
         }
+    }
+
+    private void handleRefresh(IccRefreshResponse refreshResponse){
+        if (refreshResponse == null) {
+            log("handleRefresh received without input");
+            return;
+        }
+
+        // Let the card know right away that a refresh has occurred
+        if (mUiccCard != null) {
+            mUiccCard.onRefresh(refreshResponse);
+        }
+        // The card status could have changed. Get the latest state
+        mCi.getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE));
     }
 
     private UiccController(Context c, CommandsInterface ci) {
@@ -194,6 +219,7 @@ public class UiccController extends Handler {
         mCi.registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, null);
         // This is needed so that we query for sim status in the case when we boot in APM
         mCi.registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, null);
+        mCi.registerForIccRefresh(this, EVENT_REFRESH, null);
     }
 
     private synchronized void onGetIccCardStatusDone(AsyncResult ar) {
