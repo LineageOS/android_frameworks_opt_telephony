@@ -453,7 +453,8 @@ public final class DcTracker extends DcTrackerBase {
     @Override
     public synchronized int enableApnType(String apnType) {
         ApnContext apnContext = mApnContexts.get(apnType);
-        if (apnContext == null || !isApnTypeAvailable(apnType)) {
+        if (apnContext == null || (!TextUtils.equals(apnType, PhoneConstants.APN_TYPE_DEFAULT)
+                && !isApnTypeAvailable(apnType))) {
             if (DBG) log("enableApnType: " + apnType + " is type not available");
             return PhoneConstants.APN_TYPE_NOT_AVAILABLE;
         }
