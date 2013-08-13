@@ -247,7 +247,9 @@ public class GSMPhone extends PhoneBase {
             mCT.dispose();
             mDcTracker.dispose();
             mSST.dispose();
-            mSimPhoneBookIntManager.dispose();
+            if (mSimPhoneBookIntManager != null) {
+                mSimPhoneBookIntManager.dispose();
+            }
             mSubInfo.dispose();
         }
     }
@@ -1519,6 +1521,10 @@ public class GSMPhone extends PhoneBase {
     @Override
     protected void setCardInPhoneBook() {
         if (mUiccController == null ) {
+            return;
+        }
+
+        if (mSimPhoneBookIntManager == null) {
             return;
         }
 
