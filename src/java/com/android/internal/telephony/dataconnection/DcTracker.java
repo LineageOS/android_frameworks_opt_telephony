@@ -49,6 +49,7 @@ import android.text.TextUtils;
 import android.util.EventLog;
 import android.telephony.Rlog;
 
+import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.DctConstants;
@@ -70,6 +71,8 @@ import java.util.HashMap;
  */
 public final class DcTracker extends DcTrackerBase {
     protected final String LOG_TAG = "DCT";
+
+    private CdmaSubscriptionSourceManager mCdmaSSM;
 
     /**
      * Handles changes to the APN db.
@@ -131,6 +134,8 @@ public final class DcTracker extends DcTrackerBase {
                 DctConstants.EVENT_PS_RESTRICT_ENABLED, null);
         p.getServiceStateTracker().registerForPsRestrictedDisabled(this,
                 DctConstants.EVENT_PS_RESTRICT_DISABLED, null);
+        mCdmaSSM = CdmaSubscriptionSourceManager.getInstance (p.getContext(), p.mCi, this,
+                DctConstants.EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
 
         mDataConnectionTracker = this;
 
@@ -558,11 +563,13 @@ public final class DcTracker extends DcTrackerBase {
         int gprsState = mPhone.getServiceStateTracker().getCurrentDataConnectionState();
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
         IccRecords r = mIccRecords.get();
+        boolean subscriptionFromNv = (mCdmaSSM.getCdmaSubscriptionSource()
+                                       == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV);
         boolean recordsLoaded = (r != null) ? r.getRecordsLoaded() : false;
 
         boolean allowed =
                     (gprsState == ServiceState.STATE_IN_SERVICE || mAutoAttachOnCreation) &&
-                    recordsLoaded &&
+                    (subscriptionFromNv || recordsLoaded) &&
                     (mPhone.getState() == PhoneConstants.State.IDLE ||
                      mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
                     internalDataEnabled &&
