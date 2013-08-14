@@ -672,8 +672,7 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
     }
 
     @Override
-    protected Object
-    responseSetupDataCall(Parcel p) {
+    protected DataCallResponse getDataCallResponse(Parcel p, int version) {
         DataCallResponse dataCall = new DataCallResponse();
         String strings[] = (String []) responseStrings(p);
 
@@ -716,6 +715,20 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
         }
 
         return dataCall;
+    }
+
+    @Override
+    protected Object
+    responseSetupDataCall(Parcel p) {
+        return getDataCallResponse(p, 3);
+    }
+
+    @Override
+    protected Object
+    responseDataCallList(Parcel p) {
+        ArrayList<DataCallResponse> response = new ArrayList<DataCallResponse>(1);
+        response.add(getDataCallResponse(p, 3));
+        return response;
     }
 
     private boolean startPppdCdmaService(String ttyname) {
