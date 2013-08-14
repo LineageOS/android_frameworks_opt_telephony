@@ -62,6 +62,12 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
 
     private boolean mSignalbarCount = SystemProperties.getInt("ro.telephony.sends_barcount", 0) == 1 ? true : false;
     private boolean mIsSamsungCdma = SystemProperties.getBoolean("ro.ril.samsung_cdma", false);
+    private boolean mIsSamsungCdmaStart = false;
+    private String mIfname = "";
+    private String[] mAddresses = new String[] {};
+    private String[] mGateways  = new String[] {};
+    private String[] mDnses     = new String[] {};
+
     private Object mCatProCmdBuffer;
 
     public SamsungExynos3RIL(Context context, int networkMode, int cdmaSubscription) {
@@ -672,30 +678,38 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
     }
 
     @Override
-    protected Object
-    responseSetupDataCall(Parcel p) {
+    protected DataCallResponse getDataCallResponse(Parcel p, int version) {
         DataCallResponse dataCall = new DataCallResponse();
         String strings[] = (String []) responseStrings(p);
 
-        if (strings.length >= 2) {
+        if (strings.length >= 2 && strings[0] != null) {
             dataCall.cid = Integer.parseInt(strings[0]);
 
             if (mIsSamsungCdma) {
-                // We're responsible for starting/stopping the pppd_cdma service.
-                if (!startPppdCdmaService(strings[1])) {
-                    // pppd_cdma service didn't respond timely.
-                    dataCall.status = DcFailCause.ERROR_UNSPECIFIED.getErrorCode();
-                    return dataCall;
+                if (mIsSamsungCdmaStart) {
+                    mIsSamsungCdmaStart = false;
+                    // We're responsible for starting/stopping the pppd_cdma service.
+                    if (!startPppdCdmaService(strings[1])) {
+                        // pppd_cdma service didn't respond timely.
+                        dataCall.status = DcFailCause.ERROR_UNSPECIFIED.getErrorCode();
+                        destroyData();
+                        return dataCall;
+                    }
+
+                    // pppd_cdma service responded, pull network parameters set by ip-up script.
+
+                    mIfname = SystemProperties.get("net.cdma.ppp.interface");
+                    String   ifprop = "net." + dataCall.ifname;
+
+                    mAddresses = new String[] {SystemProperties.get(ifprop + ".local-ip")};
+                    mGateways  = new String[] {SystemProperties.get(ifprop + ".remote-ip")};
+                    mDnses     = new String[] {SystemProperties.get(ifprop + ".dns1"),
+                                              SystemProperties.get(ifprop + ".dns2")};
                 }
-
-                // pppd_cdma service responded, pull network parameters set by ip-up script.
-                dataCall.ifname = SystemProperties.get("net.cdma.ppp.interface");
-                String   ifprop = "net." + dataCall.ifname;
-
-                dataCall.addresses = new String[] {SystemProperties.get(ifprop + ".local-ip")};
-                dataCall.gateways  = new String[] {SystemProperties.get(ifprop + ".remote-ip")};
-                dataCall.dnses     = new String[] {SystemProperties.get(ifprop + ".dns1"),
-                                                   SystemProperties.get(ifprop + ".dns2")};
+                dataCall.ifname = mIfname;
+                dataCall.addresses = mAddresses;
+                dataCall.gateways = mGateways;
+                dataCall.dnses = mDnses;
             } else {
                 dataCall.ifname = strings[1];
 
@@ -710,12 +724,48 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
                 // is stopped now, so that the next setup attempt may succeed.
                 Rlog.d(RILJ_LOG_TAG, "Set ril.cdma.data_state=0 to make sure pppd_cdma is stopped.");
                 SystemProperties.set("ril.cdma.data_state", "0");
+                mIsSamsungCdmaStart = false;
+                destroyData();
             }
 
             dataCall.status = DcFailCause.ERROR_UNSPECIFIED.getErrorCode(); // Who knows?
         }
 
         return dataCall;
+    }
+
+    private void destroyData() {
+        mIfname = "";
+        mAddresses = new String[] {};
+        mGateways  = new String[] {};
+        mDnses     = new String[] {};
+    }
+
+    @Override
+    protected Object
+    responseSetupDataCall(Parcel p) {
+        if (mIsSamsungCdma) {
+            mIsSamsungCdmaStart = true;
+        }
+        return getDataCallResponse(p, 3);
+    }
+
+    @Override
+    protected Object
+    responseDataCallList(Parcel p) {
+        ArrayList<DataCallResponse> response;
+        int ver = p.readInt();
+        int num = p.readInt();
+        riljLog("responseDataCallList ver=" + ver + " num=" + num);
+        if (mIsSamsungCdma) {
+            mIsSamsungCdmaStart = false;
+        }
+        response = new ArrayList<DataCallResponse>(num);
+        for (int i = 0; i < num; i++) {
+            response.add(getDataCallResponse(p, ver));
+        }
+
+        return response;
     }
 
     private boolean startPppdCdmaService(String ttyname) {
@@ -760,6 +810,7 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
             // Disconnect: Set ril.cdma.data_state=0 to stop pppd_cdma service.
             Rlog.d(RILJ_LOG_TAG, "Set ril.cdma.data_state=0.");
             SystemProperties.set("ril.cdma.data_state", "0");
+            destroyData();
         }
 
         super.deactivateDataCall(cid, reason, result);
