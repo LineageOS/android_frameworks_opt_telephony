@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dae975fb_294db872",
+        "filename": "src/java/com/android/internal/telephony/SamsungExynos3RIL.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 737,
+      "author": {
+        "id": 1381
+      },
+      "writtenOn": "2013-08-15T13:23:26Z",
+      "side": 1,
+      "message": "the function name should probably be something that implies it \"clear the data variables\" rather than \"destroy the data connection\".",
+      "revId": "a39fe09e8bf96e838a1de4e872b6075113df183e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dae975fb_6934e0dd",
+        "filename": "src/java/com/android/internal/telephony/SamsungExynos3RIL.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 741,
+      "author": {
+        "id": 1381
+      },
+      "writtenOn": "2013-08-15T13:23:26Z",
+      "side": 1,
+      "message": "no \"pretty spacing\" please",
+      "revId": "a39fe09e8bf96e838a1de4e872b6075113df183e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dae975fb_a93ac8cb",
+        "filename": "src/java/com/android/internal/telephony/SamsungExynos3RIL.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 748,
+      "author": {
+        "id": 1381
+      },
+      "writtenOn": "2013-08-15T13:23:26Z",
+      "side": 1,
+      "message": "This should probably be parameter to getDataCallResponse instead of abusing an instance variable.",
+      "revId": "a39fe09e8bf96e838a1de4e872b6075113df183e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dae975fb_893704e3",
+        "filename": "src/java/com/android/internal/telephony/SamsungExynos3RIL.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 757,
+      "author": {
+        "id": 1381
+      },
+      "writtenOn": "2013-08-15T13:23:26Z",
+      "side": 1,
+      "message": "AFAIK, rilv3 does not have ver",
+      "revId": "a39fe09e8bf96e838a1de4e872b6075113df183e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
