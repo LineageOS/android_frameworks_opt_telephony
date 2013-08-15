@@ -140,7 +140,11 @@ public class ApnContext {
     }
 
     public synchronized ArrayList<ApnSetting> getWaitingApns() {
-        return mWaitingApns;
+        if (mWaitingApns != null) {
+            return mWaitingApns;
+        } else {
+            return new ArrayList<ApnSetting>();
+        }
     }
 
     public synchronized void setState(DctConstants.State s) {
