@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dae975fb_3fa169aa",
+        "filename": "src/java/com/android/internal/telephony/Phone.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-08-16T17:00:37Z",
+      "side": 1,
+      "message": "remove it. see dctracker.java for more info",
+      "revId": "ec010cffddbe3acb9e99eb0c7b3402d2b1523cc2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dae975fb_dfb81de8",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 595,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-08-16T17:00:37Z",
+      "side": 1,
+      "message": "\"- SIM or RUIM not loaded\"",
+      "revId": "ec010cffddbe3acb9e99eb0c7b3402d2b1523cc2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dae975fb_9fcbb572",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1338,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-08-16T17:00:37Z",
+      "side": 1,
+      "message": "It is essentially running on recordloaded check without checking for apn which may break ehrpd/lte when trying to switch back. \n Also, vzw is having the same same issue and it uses RUIM/SIM.  my recommendation is to remove it.",
+      "revId": "ec010cffddbe3acb9e99eb0c7b3402d2b1523cc2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dae975fb_7fc81175",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 2137,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-08-16T17:00:37Z",
+      "side": 1,
+      "message": "move the case here\n\ncase DctConstants.EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:",
+      "revId": "ec010cffddbe3acb9e99eb0c7b3402d2b1523cc2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dae975fb_5fc54d59",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 2220,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-08-16T17:00:37Z",
+      "side": 1,
+      "message": "move the case and get rid of the nv stuff, see my comment up there .",
+      "revId": "ec010cffddbe3acb9e99eb0c7b3402d2b1523cc2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
