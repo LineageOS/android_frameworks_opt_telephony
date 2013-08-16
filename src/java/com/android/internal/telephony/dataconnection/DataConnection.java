@@ -779,6 +779,11 @@ public final class DataConnection extends StateMachine {
         public void exit() {
             if (DBG) log("DcDefaultState: exit");
 
+            // Unregister for DRS or RAT change.
+            mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(getHandler());
+
+            // Remove ourselves from the DC lists
+            mDcController.removeDc(DataConnection.this);
 
             if (mAc != null) {
                 mAc.disconnected();
@@ -795,13 +800,6 @@ public final class DataConnection extends StateMachine {
             mLinkCapabilities = null;
             mLastFailCause = null;
             mUserData = null;
-
-            // Unregister for DRS or RAT change.
-            mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(getHandler());
-
-            // Remove ourselves from the DC lists
-            mDcController.removeDc(DataConnection.this);
-
             mDcController = null;
             mDcTesterFailBringUpAll = null;
         }
