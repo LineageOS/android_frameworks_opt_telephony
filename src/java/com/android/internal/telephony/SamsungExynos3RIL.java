@@ -243,6 +243,13 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
             case RIL_REQUEST_EXIT_EMERGENCY_CALLBACK_MODE: ret = responseVoid(p); break;
             case RIL_REQUEST_REPORT_SMS_MEMORY_STATUS: ret = responseVoid(p); break;
             case RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING: ret = responseVoid(p); break;
+            case RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE: ret =  responseInts(p); break;
+            case RIL_REQUEST_ISIM_AUTHENTICATION: ret =  responseString(p); break;
+            case RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU: ret = responseVoid(p); break;
+            case RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS: ret = responseICC_IO(p); break;
+            case RIL_REQUEST_VOICE_RADIO_TECH: ret = responseInts(p); break;
+            case RIL_REQUEST_GET_CELL_INFO_LIST: ret = responseCellInfoList(p); break;
+            case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE: ret = responseVoid(p); break;
             case RIL_REQUEST_DIAL_EMERGENCY: ret = responseVoid(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
@@ -261,6 +268,22 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
                 rr.release();
                 return;
             }
+        }
+
+        // Here and below fake RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED, see b/7255789.
+        // This is needed otherwise we don't automatically transition to the main lock
+        // screen when the pin or puk is entered incorrectly.
+        switch (rr.mRequest) {
+            case RIL_REQUEST_ENTER_SIM_PUK:
+            case RIL_REQUEST_ENTER_SIM_PUK2:
+                if (mIccStatusChangedRegistrants != null) {
+                    if (RILJ_LOGD) {
+                        riljLog("ON enter sim puk fakeSimStatusChanged: reg count="
+                                + mIccStatusChangedRegistrants.size());
+                    }
+                    mIccStatusChangedRegistrants.notifyRegistrants();
+                }
+                break;
         }
 
         if (error != 0) {
