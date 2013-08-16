@@ -1093,6 +1093,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         }
 
         if (hasCdmaDataConnectionChanged || hasRilDataRadioTechnologyChanged) {
+            notifyDataRegStateRilRadioTechnologyChanged();
             mPhone.notifyDataConnection(null);
         }
 

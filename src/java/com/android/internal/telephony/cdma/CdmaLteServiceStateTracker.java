@@ -437,7 +437,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         }
 
         if ((hasCdmaDataConnectionChanged || hasDataRadioTechnologyChanged)) {
-            log("pollStateDone: call notifyDataConnection");
+            notifyDataRegStateRilRadioTechnologyChanged();
             mPhone.notifyDataConnection(null);
         }
 
