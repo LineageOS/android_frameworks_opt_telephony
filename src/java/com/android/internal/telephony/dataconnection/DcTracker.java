@@ -63,6 +63,7 @@ import com.android.internal.util.AsyncChannel;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.HashMap;
 
 /**
@@ -102,6 +103,8 @@ public final class DcTracker extends DcTrackerBase {
     static final String APN_ID = "apn_id";
 
     private boolean mCanSetPreferApn = false;
+
+    private AtomicBoolean mAttached = new AtomicBoolean(false);
 
     /** Watches for changes to the APN db. */
     private ApnChangeObserver mApnObserver;
@@ -309,7 +312,7 @@ public final class DcTracker extends DcTrackerBase {
         ArrayList<String> result = new ArrayList<String>();
 
         for (ApnContext apnContext : mApnContexts.values()) {
-            if (apnContext.isReady()) {
+            if (mAttached.get() && apnContext.isReady()) {
                 result.add(apnContext.getApnType());
             }
         }
@@ -513,6 +516,7 @@ public final class DcTracker extends DcTrackerBase {
         stopNetStatPoll();
         stopDataStallAlarm();
         notifyDataConnection(Phone.REASON_DATA_DETACHED);
+        mAttached.set(false);
     }
 
     private void onDataConnectionAttached() {
@@ -527,6 +531,7 @@ public final class DcTracker extends DcTrackerBase {
             notifyOffApnsOfAvailability(Phone.REASON_DATA_ATTACHED);
         }
         mAutoAttachOnCreation = true;
+        mAttached.set(true);
         setupDataOnConnectableApns(Phone.REASON_DATA_ATTACHED);
     }
 
@@ -627,7 +632,7 @@ public final class DcTracker extends DcTrackerBase {
 
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
 
-        if (apnContext.isConnectable() &&
+        if (mAttached.get() && apnContext.isConnectable() &&
                 isDataAllowed(apnContext) && getAnyDataEnabled() && !isEmergency()) {
             if (apnContext.getState() == DctConstants.State.FAILED) {
                 if (DBG) log("trySetupData: make a FAILED ApnContext IDLE so its reusable");
@@ -673,14 +678,14 @@ public final class DcTracker extends DcTrackerBase {
     // Disabled apn's still need avail/unavail notificiations - send them out
     protected void notifyOffApnsOfAvailability(String reason) {
         for (ApnContext apnContext : mApnContexts.values()) {
-            if (!apnContext.isReady()) {
+            if (!mAttached.get() || !apnContext.isReady()) {
                 if (VDBG) log("notifyOffApnOfAvailability type:" + apnContext.getApnType());
                 mPhone.notifyDataConnection(reason != null ? reason : apnContext.getReason(),
                                             apnContext.getApnType(),
                                             PhoneConstants.DataState.DISCONNECTED);
             } else {
                 if (VDBG) {
-                    log("notifyOffApnsOfAvailability skipped apn due to isReady==true: " +
+                    log("notifyOffApnsOfAvailability skipped apn due to attached && isReady " +
                             apnContext.toString());
                 }
             }
@@ -1671,7 +1676,8 @@ public final class DcTracker extends DcTrackerBase {
         }
 
         // If APN is still enabled, try to bring it back up automatically
-        if (apnContext.isReady() && retryAfterDisconnected(apnContext.getReason())) {
+        if (mAttached.get() && apnContext.isReady()
+                && retryAfterDisconnected(apnContext.getReason())) {
             SystemProperties.set(PUPPET_MASTER_RADIO_STRESS_TEST, "false");
             // Wait a bit before trying the next APN, so that
             // we're not tying up the RIL command channel.
@@ -1780,8 +1786,8 @@ public final class DcTracker extends DcTrackerBase {
     protected void notifyDataConnection(String reason) {
         if (DBG) log("notifyDataConnection: reason=" + reason);
         for (ApnContext apnContext : mApnContexts.values()) {
-            if (apnContext.isReady()) {
-                if (DBG) log("notifyDataConnection: type:"+apnContext.getApnType());
+            if (mAttached.get() && apnContext.isReady()) {
+                if (DBG) log("notifyDataConnection: type:" + apnContext.getApnType());
                 mPhone.notifyDataConnection(reason != null ? reason : apnContext.getReason(),
                         apnContext.getApnType());
             }
@@ -2191,5 +2197,6 @@ public final class DcTracker extends DcTrackerBase {
         pw.println(" mApnObserver=" + mApnObserver);
         pw.println(" getOverallState=" + getOverallState());
         pw.println(" mDataConnectionAsyncChannels=%s\n" + mDataConnectionAcHashMap);
+        pw.println(" mAttached=" + mAttached.get());
     }
 }
