@@ -377,6 +377,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                         == mSS.getRilDataRadioTechnology())) {
                 handleIwlan();
             }
+            // Query Signalstrength when there is a change in PS RAT.
+            sendMessage(obtainMessage(EVENT_POLL_SIGNAL_STRENGTH));
         }
 
         if (hasRegistered) {
