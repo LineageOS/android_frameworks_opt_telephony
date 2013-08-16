@@ -54,6 +54,7 @@ import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.gsm.GSMPhone;
+import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -106,6 +107,8 @@ public final class DcTracker extends DcTrackerBase {
     /** Watches for changes to the APN db. */
     private ApnChangeObserver mApnObserver;
 
+    private CdmaSubscriptionSourceManager mCdmaSsm;
+
     //***** Constructor
 
     public DcTracker(PhoneBase p) {
@@ -131,6 +134,12 @@ public final class DcTracker extends DcTrackerBase {
                 DctConstants.EVENT_PS_RESTRICT_ENABLED, null);
         p.getServiceStateTracker().registerForPsRestrictedDisabled(this,
                 DctConstants.EVENT_PS_RESTRICT_DISABLED, null);
+
+        if (p.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+            mCdmaSsm = CdmaSubscriptionSourceManager.getInstance(
+                    p.getContext(), p.mCi, this,
+                    DctConstants.EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
+        }
 
         mDataConnectionTracker = this;
 
@@ -184,6 +193,10 @@ public final class DcTracker extends DcTrackerBase {
 
         mPhone.getContext().getContentResolver().unregisterContentObserver(mApnObserver);
         mApnContexts.clear();
+
+        if (mCdmaSsm != null) {
+            mCdmaSsm.dispose(this);
+        }
 
         destroyDataConnections();
     }
@@ -559,10 +572,14 @@ public final class DcTracker extends DcTrackerBase {
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
         IccRecords r = mIccRecords.get();
         boolean recordsLoaded = (r != null) ? r.getRecordsLoaded() : false;
+        boolean subscriptionFromNv = ( (mPhone.getPhoneType() ==
+                PhoneConstants.PHONE_TYPE_CDMA) &&
+                (mCdmaSsm.getCdmaSubscriptionSource()
+                == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV) );
 
         boolean allowed =
                     (gprsState == ServiceState.STATE_IN_SERVICE || mAutoAttachOnCreation) &&
-                    recordsLoaded &&
+                    (subscriptionFromNv || recordsLoaded) &&
                     (mPhone.getState() == PhoneConstants.State.IDLE ||
                      mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
                     internalDataEnabled &&
@@ -574,7 +591,9 @@ public final class DcTracker extends DcTrackerBase {
             if (!((gprsState == ServiceState.STATE_IN_SERVICE) || mAutoAttachOnCreation)) {
                 reason += " - gprs= " + gprsState;
             }
-            if (!recordsLoaded) reason += " - SIM not loaded";
+            if (!(subscriptionFromNv || recordsLoaded)) {
+                reason += " - SIM not loaded and not NV subscription";
+            }
             if (mPhone.getState() != PhoneConstants.State.IDLE &&
                     !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
                 reason += " - PhoneState= " + mPhone.getState();
@@ -1306,14 +1325,14 @@ public final class DcTracker extends DcTrackerBase {
         }
     }
 
-    private void onRecordsLoaded() {
+    private void onRecordsLoaded(String reason) {
         if (DBG) log("onRecordsLoaded: createAllApnList");
         createAllApnList();
         if (mPhone.mCi.getRadioState().isOn()) {
             if (DBG) log("onRecordsLoaded: notifying data availability");
-            notifyOffApnsOfAvailability(Phone.REASON_SIM_LOADED);
+            notifyOffApnsOfAvailability(reason);
         }
-        setupDataOnConnectableApns(Phone.REASON_SIM_LOADED);
+        setupDataOnConnectableApns(reason);
     }
 
     @Override
@@ -2112,7 +2131,7 @@ public final class DcTracker extends DcTrackerBase {
 
         switch (msg.what) {
             case DctConstants.EVENT_RECORDS_LOADED:
-                onRecordsLoaded();
+                onRecordsLoaded(Phone.REASON_SIM_LOADED);
                 break;
 
             case DctConstants.EVENT_DATA_CONNECTION_DETACHED:
@@ -2193,6 +2212,10 @@ public final class DcTracker extends DcTrackerBase {
                 }
                 break;
 
+            case DctConstants.EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
+                onRecordsLoaded(Phone.REASON_NV_READY);
+                break;
+
             default:
                 // handle the message in the super class DataConnectionTracker
                 super.handleMessage(msg);
@@ -2207,6 +2230,8 @@ public final class DcTracker extends DcTrackerBase {
             return RILConstants.DATA_PROFILE_FOTA;
         } else if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_CBS)) {
             return RILConstants.DATA_PROFILE_CBS;
+        } else if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_DUN)) {
+            return RILConstants.DATA_PROFILE_TETHERED;
         } else {
             return RILConstants.DATA_PROFILE_DEFAULT;
         }
