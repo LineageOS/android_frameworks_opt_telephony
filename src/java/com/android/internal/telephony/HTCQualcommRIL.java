@@ -30,6 +30,8 @@ import android.telephony.Rlog;
 
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.dataconnection.DcFailCause;
+import com.android.internal.telephony.dataconnection.DataCallResponse;
 
 import java.util.ArrayList;
 
@@ -46,6 +48,38 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
 
     public HTCQualcommRIL(Context context, int networkMode, int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
+    }
+
+    @Override
+    protected DataCallResponse getDataCallResponse(Parcel p, int version) {
+        DataCallResponse dataCall = new DataCallResponse();
+
+        dataCall.version = version;
+        dataCall.status = p.readInt();
+        dataCall.suggestedRetryTime = p.readInt();
+        dataCall.cid = p.readInt();
+        dataCall.active = p.readInt();
+        dataCall.type = p.readString();
+        dataCall.ifname = p.readString();
+        /* Check dataCall.active != 0 so address, dns, gateways are provided
+         * when switching LTE<->3G<->2G */
+        if ((dataCall.status == DcFailCause.NONE.getErrorCode()) &&
+                TextUtils.isEmpty(dataCall.ifname) && dataCall.active != 0) {
+            throw new RuntimeException("getDataCallResponse, no ifname");
+        }
+        String addresses = p.readString();
+        if (!TextUtils.isEmpty(addresses)) {
+            dataCall.addresses = addresses.split(" ");
+        }
+        String dnses = p.readString();
+        if (!TextUtils.isEmpty(dnses)) {
+            dataCall.dnses = dnses.split(" ");
+        }
+        String gateways = p.readString();
+        if (!TextUtils.isEmpty(gateways)) {
+            dataCall.gateways = gateways.split(" ");
+        }
+        return dataCall;
     }
 
     @Override
