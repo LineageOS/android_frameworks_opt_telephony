@@ -71,19 +71,6 @@ public class HTCCDMAQualcommRIL extends HTCQualcommRIL implements CommandsInterf
 
     @Override
     protected Object
-    responseIccCardStatus(Parcel p) {
-        // force CDMA + LTE network mode
-        boolean forceCdmaLte = needsOldRilFeature("forceCdmaLteNetworkType");
-
-        if (forceCdmaLte && !isGSM) {
-            setPreferredNetworkType(NETWORK_MODE_LTE_CDMA_EVDO, null);
-        }
-
-        return super.responseIccCardStatus(p);
-    }
-
-    @Override
-    protected Object
     responseSignalStrength(Parcel p) {
         /* HTC signal strength format:
          * 0: GW_SignalStrength
@@ -635,52 +622,5 @@ public class HTCCDMAQualcommRIL extends HTCQualcommRIL implements CommandsInterf
         } else {
             return responseVoiceRegistrationState(p) ;
         }
-    }
-    @Override
-    protected DataCallResponse getDataCallResponse(Parcel p, int version) {
-        DataCallResponse dataCall = new DataCallResponse();
-
-        dataCall.version = version;
-        if (version < 5) {
-            dataCall.cid = p.readInt();
-            dataCall.active = p.readInt();
-            dataCall.type = p.readString();
-            if (version < 4 || needsOldRilFeature("datacallapn")) {
-                p.readString(); // APN - not used
-            }
-            String addresses = p.readString();
-            if (!TextUtils.isEmpty(addresses)) {
-                dataCall.addresses = addresses.split(" ");
-            }
-            // DataCallState needs an ifname. Since we don't have one use the name from the ThrottleService resource (default=rmnet0).
-            dataCall.ifname = Resources.getSystem().getString(com.android.internal.R.string.config_datause_iface);
-        } else {
-            dataCall.status = p.readInt();
-            if (needsOldRilFeature("usehcradio"))
-                dataCall.suggestedRetryTime = -1;
-            else
-                dataCall.suggestedRetryTime = p.readInt();
-            dataCall.cid = p.readInt();
-            dataCall.active = p.readInt();
-            dataCall.type = p.readString();
-            dataCall.ifname = p.readString();
-            if ((dataCall.status == DcFailCause.NONE.getErrorCode()) &&
-                    TextUtils.isEmpty(dataCall.ifname)) {
-                dataCall.ifname = Resources.getSystem().getString(com.android.internal.R.string.config_datause_iface);
-            }
-            String addresses = p.readString();
-            if (!TextUtils.isEmpty(addresses)) {
-                dataCall.addresses = addresses.split(" ");
-            }
-            String dnses = p.readString();
-            if (!TextUtils.isEmpty(dnses)) {
-                dataCall.dnses = dnses.split(" ");
-            }
-            String gateways = p.readString();
-            if (!TextUtils.isEmpty(gateways)) {
-                dataCall.gateways = gateways.split(" ");
-            }
-        }
-        return dataCall;
     }
 }
