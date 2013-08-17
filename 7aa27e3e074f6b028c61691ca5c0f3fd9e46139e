@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dae975fb_65b6403f",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1338,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-08-17T07:47:22Z",
+      "side": 1,
+      "message": "Add:\n\ncreateAllApnList();",
+      "revId": "7aa27e3e074f6b028c61691ca5c0f3fd9e46139e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dae975fb_45821c54",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 2224,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-08-17T07:47:22Z",
+      "side": 1,
+      "message": "Add:\n\n} else {\n      onRecordsLoaded();\n}",
+      "revId": "7aa27e3e074f6b028c61691ca5c0f3fd9e46139e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
