@@ -48,6 +48,39 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
     }
 
     @Override
+    protected DataCallState getDataCallState(Parcel p, int version) {
+        DataCallState dataCall = new DataCallState();
+
+        dataCall.version = version;
+        dataCall.status = p.readInt();
+        dataCall.suggestedRetryTime = p.readInt();
+        dataCall.cid = p.readInt();
+        dataCall.active = p.readInt();
+        dataCall.type = p.readString();
+        dataCall.ifname = p.readString();
+        /* Check dataCall.active != 0 so address, dns, gateways are provided
+         * when switching LTE<->3G<->2G */
+        if ((dataCall.status == DataConnection.FailCause.NONE.getErrorCode()) &&
+                TextUtils.isEmpty(dataCall.ifname) && dataCall.active != 0) {
+            throw new RuntimeException("getDataCallState, no ifname");
+        }
+        String addresses = p.readString();
+        if (!TextUtils.isEmpty(addresses)) {
+            dataCall.addresses = addresses.split(" ");
+        }
+        String dnses = p.readString();
+        if (!TextUtils.isEmpty(dnses)) {
+            dataCall.dnses = dnses.split(" ");
+        }
+        String gateways = p.readString();
+        if (!TextUtils.isEmpty(gateways)) {
+            dataCall.gateways = gateways.split(" ");
+        }
+
+        return dataCall;
+    }
+
+    @Override
     protected void
     processUnsolicited (Parcel p) {
         Object ret;
