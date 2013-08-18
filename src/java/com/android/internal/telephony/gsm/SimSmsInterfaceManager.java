@@ -22,6 +22,7 @@ import android.os.Binder;
 import android.os.Message;
 import android.telephony.Rlog;
 
+import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.IccSmsInterfaceManager;
 import com.android.internal.telephony.IntRangeManager;
 import com.android.internal.telephony.SMSDispatcher;
@@ -44,6 +45,11 @@ public class SimSmsInterfaceManager extends IccSmsInterfaceManager {
     private static final int SMS_CB_CODE_SCHEME_MAX = 255;
 
     public SimSmsInterfaceManager(GSMPhone phone, SMSDispatcher dispatcher) {
+        super(phone);
+        mDispatcher = dispatcher;
+    }
+
+    public SimSmsInterfaceManager(CDMAPhone phone, SMSDispatcher dispatcher) {
         super(phone);
         mDispatcher = dispatcher;
     }

@@ -17,7 +17,7 @@
 package com.android.internal.telephony.gsm;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-
+import com.android.internal.telephony.cdma.CDMAPhone;
 import android.os.Message;
 import android.telephony.Rlog;
 
@@ -37,7 +37,10 @@ public class SimPhoneBookInterfaceManager extends IccPhoneBookInterfaceManager {
         super(phone);
         //NOTE service "simphonebook" added by IccSmsInterfaceManagerProxy
     }
-
+    public SimPhoneBookInterfaceManager(CDMAPhone phone) {
+        super(phone);
+        //NOTE service "simphonebook" added by IccSmsInterfaceManagerProxy
+    }
     @Override
     public void dispose() {
         super.dispose();

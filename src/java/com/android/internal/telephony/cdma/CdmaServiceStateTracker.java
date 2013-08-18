@@ -1711,6 +1711,11 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
         UiccCardApplication newUiccApplication =
                 mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP2);
+        if (newUiccApplication == null){
+            newUiccApplication =
+            mUiccController.getUiccCardApplication(UiccController.
+                                                    APP_FAM_3GPP);
+        }
 
         if (mUiccApplcation != newUiccApplication) {
             if (mUiccApplcation != null) {

@@ -141,7 +141,12 @@ public class IccCardProxy extends Handler implements IccCard {
             if (ServiceState.isGsm(radioTech)) {
                 mCurrentAppType = UiccController.APP_FAM_3GPP;
             } else {
-                mCurrentAppType = UiccController.APP_FAM_3GPP2;
+                if (UiccController.getInstance().
+                    getUiccCardApplication(UiccController.APP_FAM_3GPP2)==null) {
+                    mCurrentAppType = UiccController.APP_FAM_3GPP;
+                } else {
+                    mCurrentAppType = UiccController.APP_FAM_3GPP2;
+                }
             }
             updateQuietMode();
         }

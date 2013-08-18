@@ -45,6 +45,8 @@ import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
+import com.android.internal.telephony.gsm.SimPhoneBookInterfaceManager;
+import com.android.internal.telephony.gsm.SimSmsInterfaceManager;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
 import com.android.internal.telephony.IccSmsInterfaceManager;
 import com.android.internal.telephony.MccTable;
@@ -100,7 +102,9 @@ public class CDMAPhone extends PhoneBase {
     CdmaSubscriptionSourceManager mCdmaSSM;
     ArrayList <CdmaMmiCode> mPendingMmis = new ArrayList<CdmaMmiCode>();
     RuimPhoneBookInterfaceManager mRuimPhoneBookInterfaceManager;
+    SimPhoneBookInterfaceManager mSimPhoneBookIntManager;
     RuimSmsInterfaceManager mRuimSmsInterfaceManager;
+    SimSmsInterfaceManager mSimSmsIntManager;
     int mCdmaSubscriptionSource = CdmaSubscriptionSourceManager.SUBSCRIPTION_SOURCE_UNKNOWN;
     PhoneSubInfo mSubInfo;
     EriManager mEriManager;
@@ -123,6 +127,7 @@ public class CDMAPhone extends PhoneBase {
     private String mMeid;
     // string to define how the carrier specifies its own ota sp number
     private String mCarrierOtaSpNumSchema;
+    private boolean mGsmSim = false;
 
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
@@ -161,8 +166,10 @@ public class CDMAPhone extends PhoneBase {
                 EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
         mSMS = new CdmaSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
         mDcTracker = new DcTracker(this);
+        mSimPhoneBookIntManager = new SimPhoneBookInterfaceManager(this);
         mRuimPhoneBookInterfaceManager = new RuimPhoneBookInterfaceManager(this);
         mRuimSmsInterfaceManager = new RuimSmsInterfaceManager(this, mSMS);
+        mSimSmsIntManager = new SimSmsInterfaceManager(this, mSMS);
         mSubInfo = new PhoneSubInfo(this);
         mEriManager = new EriManager(this, context, EriManager.ERI_FROM_XML);
 
@@ -236,8 +243,10 @@ public class CDMAPhone extends PhoneBase {
             mSST.dispose();
             mCdmaSSM.dispose(this);
             mSMS.dispose();
+            mSimPhoneBookIntManager.dispose();
             mRuimPhoneBookInterfaceManager.dispose();
             mRuimSmsInterfaceManager.dispose();
+            mSimSmsIntManager.dispose();
             mSubInfo.dispose();
             mEriManager.dispose();
         }
@@ -246,8 +255,10 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public void removeReferences() {
         log("removeReferences");
+        mSimPhoneBookIntManager = null;
         mRuimPhoneBookInterfaceManager = null;
         mRuimSmsInterfaceManager = null;
+        mSimSmsIntManager = null;
         mSubInfo = null;
         mCT = null;
         mSST = null;
@@ -1149,27 +1160,38 @@ public class CDMAPhone extends PhoneBase {
         if (mUiccController == null ) {
             return;
         }
-
+        boolean gsmSim = false;
         UiccCardApplication newUiccApplication =
                 mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP2);
-
+        if (newUiccApplication == null){
+            newUiccApplication =
+            mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
+            gsmSim = true;
+        }
         UiccCardApplication app = mUiccApplication.get();
         if (app != newUiccApplication) {
             if (app != null) {
                 log("Removing stale icc objects.");
                 if (mIccRecords.get() != null) {
                     unregisterForRuimRecordEvents();
+                    mSimPhoneBookIntManager.updateIccRecords(null);
                     mRuimPhoneBookInterfaceManager.updateIccRecords(null);
                 }
                 mIccRecords.set(null);
                 mUiccApplication.set(null);
+                mGsmSim = false;
             }
             if (newUiccApplication != null) {
                 log("New Uicc application found");
                 mUiccApplication.set(newUiccApplication);
                 mIccRecords.set(newUiccApplication.getIccRecords());
                 registerForRuimRecordEvents();
-                mRuimPhoneBookInterfaceManager.updateIccRecords(mIccRecords.get());
+                if (gsmSim) {
+                    mSimPhoneBookIntManager.updateIccRecords(mIccRecords.get());
+                } else {
+                    mRuimPhoneBookInterfaceManager.updateIccRecords(mIccRecords.get());
+                }
+                mGsmSim = gsmSim;
             }
         }
     }
@@ -1214,6 +1236,9 @@ public class CDMAPhone extends PhoneBase {
      */
     @Override
     public IccSmsInterfaceManager getIccSmsInterfaceManager() {
+        if (mGsmSim) {
+            return mSimSmsIntManager;
+        }
         return mRuimSmsInterfaceManager;
     }
 
@@ -1222,6 +1247,9 @@ public class CDMAPhone extends PhoneBase {
      */
     @Override
     public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager() {
+        if (mGsmSim) {
+            return mSimPhoneBookIntManager;
+        }
         return mRuimPhoneBookInterfaceManager;
     }
 
