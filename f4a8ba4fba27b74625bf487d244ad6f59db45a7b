@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baee8101_13a7ce50",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-08-18T11:32:58Z",
+      "side": 1,
+      "message": "isGSM isn\u0027t defined anywhere in HTCQualcommRIL",
+      "revId": "f4a8ba4fba27b74625bf487d244ad6f59db45a7b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
