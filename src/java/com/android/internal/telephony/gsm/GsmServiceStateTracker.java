@@ -60,6 +60,7 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.MccTable;
+import com.android.internal.telephony.MSimConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RestrictedState;
@@ -666,9 +667,13 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
                             int rejCode = Integer.parseInt(states[13]);
                             // Check if rejCode is "Persistent location update reject",
                             if (rejCode == 10) {
-                                log(" Posting Managed roaming intent ");
+                                log(" Posting Managed roaming intent sub = "
+                                        + mPhone.getSubscription());
                                 Intent intent =
                                     new Intent(TelephonyIntents.ACTION_MANAGED_ROAMING_IND);
+                                    intent.putExtra(MSimConstants.SUBSCRIPTION_KEY,
+                                            mPhone.getSubscription());
+
                                 mPhone.getContext().sendBroadcast(intent);
                             }
                         } catch (NumberFormatException ex) {
