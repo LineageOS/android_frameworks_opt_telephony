@@ -73,7 +73,12 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             handlePollStateResult(msg.what, ar);
             break;
         case EVENT_RUIM_RECORDS_LOADED:
-            RuimRecords ruim = (RuimRecords)mIccRecords;
+                RuimRecords ruim;
+            try {
+                ruim = (RuimRecords)mIccRecords;
+            } catch (Exception e){
+                 ruim = null;
+            }
             if ((ruim != null) && ruim.isProvisioned()) {
                 mMdn = ruim.getMdn();
                 mMin = ruim.getMin();
@@ -374,8 +379,13 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                     mIccRecords != null) {
                 // SIM is found on the device. If ERI roaming is OFF, and SID/NID matches
                 // one configured in SIM, use operator name  from CSIM record.
-                boolean showSpn =
-                    ((RuimRecords)mIccRecords).getCsimSpnDisplayCondition();
+                boolean showSpn;
+                try {
+                    showSpn = ((RuimRecords)mIccRecords).getCsimSpnDisplayCondition();
+                } catch (Exception e){
+                    showSpn = false;
+                }
+
                 int iconIndex = mSS.getCdmaEriIconIndex();
 
                 if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF) &&
