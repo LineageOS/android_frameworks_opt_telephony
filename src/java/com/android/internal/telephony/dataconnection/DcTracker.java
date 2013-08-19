@@ -886,7 +886,9 @@ public final class DcTracker extends DcTrackerBase {
             }
         } else if (mvno_type.equalsIgnoreCase("gid")) {
             String gid1 = r.getGid1();
-            if ((gid1 != null) && gid1.startsWith(mvno_match_data)) {
+            int mvno_match_data_length = mvno_match_data.length();
+            if ((gid1 != null) && (gid1.length() >= mvno_match_data_length) &&
+                    gid1.substring(0, mvno_match_data_length).equalsIgnoreCase(mvno_match_data)) {
                 return true;
             }
         }
