@@ -41,6 +41,7 @@ import com.android.internal.telephony.MccTable;
 
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 
 /**
@@ -57,6 +58,7 @@ public final class RuimRecords extends IccRecords {
     private String mMin2Min1;
 
     private String mPrlVersion;
+    private boolean mRecordsRequired = false;
     // From CSIM application
     private byte[] mEFpl = null;
     private byte[] mEFli = null;
@@ -659,8 +661,36 @@ public final class RuimRecords extends IccRecords {
         mCi.getCDMASubscription(obtainMessage(EVENT_GET_CDMA_SUBSCRIPTION_DONE));
     }
 
+    /**
+     * Called by IccCardProxy before it requests records.
+     * We use this as a trigger to read records from the card.
+     */
+    void recordsRequired() {
+        if (DBG) log("recordsRequired");
+        mRecordsRequired = true;
+
+        // trigger to retrieve all records
+        fetchRuimRecords();
+    }
 
     private void fetchRuimRecords() {
+        /* Don't read records if we don't expect
+         * anyone to ask for them
+         *
+         * If we have already requested records OR
+         * records are not required by anyone OR
+         * the app is not ready
+         * then bail
+         */
+        if (mRecordsRequested || !mRecordsRequired
+            || AppState.APPSTATE_READY != mParentApp.getState()) {
+            if (DBG) log("fetchRuimRecords: Abort fetching records rRecordsRequested = "
+                            + mRecordsRequested
+                            + " state = " + mParentApp.getState()
+                            + " required = " + mRecordsRequired);
+            return;
+        }
+
         mRecordsRequested = true;
 
         if (DBG) log("fetchRuimRecords " + mRecordsToLoad);
