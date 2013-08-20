@@ -80,13 +80,16 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     protected Object
     responseIccCardStatus(Parcel p) {
         IccCardApplicationStatus appStatus;
-
+        IccCardApplicationStatus appStatus2;
+        IccCardApplicationStatus appStatus3;
         IccCardStatus cardStatus = new IccCardStatus();
         cardStatus.setCardState(p.readInt());
         cardStatus.setUniversalPinState(p.readInt());
         cardStatus.mGsmUmtsSubscriptionAppIndex = p.readInt();
-        cardStatus.mCdmaSubscriptionAppIndex = p.readInt();
-        cardStatus.mImsSubscriptionAppIndex = p.readInt();
+        cardStatus.mCdmaSubscriptionAppIndex = 1;
+        p.readInt();
+        cardStatus.mImsSubscriptionAppIndex = 2;
+        p.readInt();
 
         int numApplications = p.readInt();
 
@@ -94,8 +97,8 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
         if (numApplications > IccCardStatus.CARD_MAX_APPS) {
             numApplications = IccCardStatus.CARD_MAX_APPS;
         }
-        cardStatus.mApplications = new IccCardApplicationStatus[numApplications];
-
+        cardStatus.mApplications = new IccCardApplicationStatus[numApplications+2];
+        appStatus = new IccCardApplicationStatus();
         for (int i = 0 ; i < numApplications ; i++) {
             appStatus = new IccCardApplicationStatus();
             appStatus.app_type       = appStatus.AppTypeFromRILInt(p.readInt());
@@ -113,6 +116,26 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
             p.readInt(); // - perso_unblock_retries
             cardStatus.mApplications[i] = appStatus;
         }
+        appStatus2 = new IccCardApplicationStatus();
+        appStatus2.app_type       = appStatus2.AppTypeFromRILInt(3); // ruim state
+        appStatus2.app_state      = appStatus.app_state;
+        appStatus2.perso_substate = appStatus.perso_substate;
+        appStatus2.aid            = appStatus.aid;
+        appStatus2.app_label      = appStatus.app_label;
+        appStatus2.pin1_replaced  = appStatus.pin1_replaced;
+        appStatus2.pin1           = appStatus.pin1;
+        appStatus2.pin2           = appStatus.pin2;
+        cardStatus.mApplications[cardStatus.mCdmaSubscriptionAppIndex] = appStatus2;
+        appStatus3 = new IccCardApplicationStatus();
+        appStatus3.app_type       = appStatus3.AppTypeFromRILInt(5); // ims state
+        appStatus3.app_state      = appStatus.app_state;
+        appStatus3.perso_substate = appStatus.perso_substate;
+        appStatus3.aid            = appStatus.aid;
+        appStatus3.app_label      = appStatus.app_label;
+        appStatus3.pin1_replaced  = appStatus.pin1_replaced;
+        appStatus3.pin1           = appStatus.pin1;
+        appStatus3.pin2           = appStatus.pin2;
+        cardStatus.mApplications[cardStatus.mImsSubscriptionAppIndex] = appStatus3;
         return cardStatus;
     }
 
