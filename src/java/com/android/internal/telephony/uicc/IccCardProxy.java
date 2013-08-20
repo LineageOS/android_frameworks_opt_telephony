@@ -43,6 +43,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.Subscription;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -194,7 +195,11 @@ public class IccCardProxy extends Handler implements IccCard {
 
         if (mCurrentAppType == UiccController.APP_FAM_3GPP2) {
             int newSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
-            if (newSubscriptionSource == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM) {
+            // Allow RUIM to fetch in CDMA LTE mode if NV LTE mode.
+            // Fixes cases where iccid could be unknown on some CDMA NV devices.
+            if (newSubscriptionSource == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM
+                    || PhoneFactory.getDefaultPhone().getLteOnCdmaMode()
+                       == PhoneConstants.LTE_ON_CDMA_TRUE) {
                 // Set this as the Active record.
                 log("Setting Ruim Record as active");
                 mIccRecords.recordsRequired();
