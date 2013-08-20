@@ -40,12 +40,14 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.RuimRecords;
+
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -169,7 +171,11 @@ public class IccCardProxy extends Handler implements IccCard {
 
         if (mCurrentAppType == UiccController.APP_FAM_3GPP2) {
             int newSubscriptionSource = mCdmaSSM.getCdmaSubscriptionSource();
-            if (newSubscriptionSource == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM) {
+            // allow ruim to fetch in cdma lte mode, don't do it for devices don't have lte
+            // in nv mode. fixes cases where it iccid could be unknown on some cdma nv devices.
+            if (newSubscriptionSource == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM
+                || PhoneFactory.getDefaultPhone().getLteOnCdmaMode()
+                == PhoneConstants.LTE_ON_CDMA_TRUE) {
                 // Set this as the Active record.
                 log("Setting Ruim Record as active");
                 mIccRecords.recordsRequired();
