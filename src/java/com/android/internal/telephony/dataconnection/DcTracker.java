@@ -526,6 +526,7 @@ public final class DcTracker extends DcTrackerBase {
 
     private void onDataConnectionAttached() {
         if (DBG) log("onDataConnectionAttached");
+        mAttached.set(true);
         if (getOverallState() == DctConstants.State.CONNECTED) {
             if (DBG) log("onDataConnectionAttached: start polling notify attached");
             startNetStatPoll();
@@ -536,7 +537,6 @@ public final class DcTracker extends DcTrackerBase {
             notifyOffApnsOfAvailability(Phone.REASON_DATA_ATTACHED);
         }
         mAutoAttachOnCreation = true;
-        mAttached.set(true);
         setupDataOnConnectableApns(Phone.REASON_DATA_ATTACHED);
     }
 
