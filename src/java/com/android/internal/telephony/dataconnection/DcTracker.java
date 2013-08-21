@@ -2054,7 +2054,7 @@ public class DcTracker extends DcTrackerBase {
     }
 
     private DataProfile createDummyCdmaProfile(String requestedApnType) {
-        if (DBG) log("createDummyCdmaProfile");
+        if (DBG) log("createDummyCdmaProfile " + requestedApnType);
         final String[] defaultApnTypes = {
             PhoneConstants.APN_TYPE_DEFAULT,
             PhoneConstants.APN_TYPE_MMS,
@@ -2081,7 +2081,7 @@ public class DcTracker extends DcTrackerBase {
                 types = defaultApnTypes;
                 apnId = DctConstants.APN_DEFAULT_ID;
             }
-            profile = new ApnSetting(apnId, null, null, null, null, null,
+            profile = new ApnSetting(apnId, "", null, null, null, null,
                     null, null, null, null, null,
                     RILConstants.SETUP_DATA_AUTH_PAP_CHAP, types,"IP",
                     "IP", true, 0);
