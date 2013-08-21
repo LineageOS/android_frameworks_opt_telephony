@@ -2213,7 +2213,10 @@ public final class DcTracker extends DcTrackerBase {
                 break;
 
             case DctConstants.EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
-                onRecordsLoaded(Phone.REASON_NV_READY);
+                if (mCdmaSsm.getCdmaSubscriptionSource() ==
+                        CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV) {
+                    onRecordsLoaded(Phone.REASON_NV_READY);
+                }
                 break;
 
             default:
