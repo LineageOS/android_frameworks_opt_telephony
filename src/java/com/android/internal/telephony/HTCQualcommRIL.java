@@ -69,6 +69,9 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
 
         dataCall.version = version;
         dataCall.status = p.readInt();
+        if (dataCall.status == 65535) {
+            dataCall.status = 0;
+        }
         dataCall.suggestedRetryTime = p.readInt();
         dataCall.cid = p.readInt();
         dataCall.active = p.readInt();
