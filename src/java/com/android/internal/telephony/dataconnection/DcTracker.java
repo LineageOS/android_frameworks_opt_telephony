@@ -2198,7 +2198,7 @@ public class DcTracker extends DcTrackerBase {
                 mPreferredDp = null;
             }
         }
-        if (mAllDps != null) {
+        if (mAllDps != null && !mAllDps.isEmpty()) {
             if (DBG) log("buildWaitingApns: mAllDps=" + mAllDps);
             for (DataProfile apn : mAllDps) {
                 if (DBG) log("buildWaitingApns: apn=" + apn);
@@ -2220,7 +2220,7 @@ public class DcTracker extends DcTrackerBase {
                 }
             }
         } else {
-            log("mAllDps is empty!");
+            loge("mAllDps is empty!");
             // If there are no profiles found, create dummy profile
             // for 1x/eVDO data calls.
             if (radioTech != ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD
