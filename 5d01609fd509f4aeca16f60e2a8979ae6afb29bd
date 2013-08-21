@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baee8101_da11525f",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-08-21T18:47:29Z",
+      "side": 1,
+      "message": "Please fix the whitespace.",
+      "revId": "5d01609fd509f4aeca16f60e2a8979ae6afb29bd",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
