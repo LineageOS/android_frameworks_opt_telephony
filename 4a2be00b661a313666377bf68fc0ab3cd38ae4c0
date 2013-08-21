@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baee8101_0518a083",
+        "filename": "src/java/com/android/internal/telephony/HTCTegra3RIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-08-21T06:14:13Z",
+      "side": 1,
+      "message": "You probably meant for this to read something like \"HTC Tegra 3 RIL class\" ;)",
+      "revId": "4a2be00b661a313666377bf68fc0ab3cd38ae4c0",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baee8101_e51c7c79",
+        "filename": "src/java/com/android/internal/telephony/HTCTegra3RIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-08-21T06:14:13Z",
+      "side": 1,
+      "message": "It might be possible to get a name out of a decompiled HTC framework for this response.",
+      "revId": "4a2be00b661a313666377bf68fc0ab3cd38ae4c0",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baee8101_252cc4aa",
+        "filename": "src/java/com/android/internal/telephony/HTCTegra3RIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-08-21T06:14:13Z",
+      "side": 1,
+      "message": "trailing whitespace",
+      "revId": "4a2be00b661a313666377bf68fc0ab3cd38ae4c0",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baee8101_c511785f",
+        "filename": "src/java/com/android/internal/telephony/HTCTegra3RIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-08-21T06:14:13Z",
+      "side": 1,
+      "message": "Won\u0027t the superclass implementation of this function work fine as well?",
+      "revId": "4a2be00b661a313666377bf68fc0ab3cd38ae4c0",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
