@@ -540,10 +540,35 @@ public final class DcTracker extends DcTrackerBase {
          * We presently believe it is unnecessary to tear down the PDP context
          * when GPRS detaches, but we should stop the network polling.
          */
-        if (DBG) log ("onDataConnectionDetached: stop polling and notify detached");
-        stopNetStatPoll();
-        stopDataStallAlarm();
-        notifyDataConnection(Phone.REASON_DATA_DETACHED);
+        if ((mPhone.getPhoneType() ==  PhoneConstants.PHONE_TYPE_CDMA)) {
+            if (DBG) log("XXX: onDataConnectionDetached E");
+            if (mState == DctConstants.State.CONNECTED) {
+            if (DBG) log("XXX: CONNECTED");
+                startNetStatPoll();
+                startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
+                notifyDataConnection(Phone.REASON_DATA_DETACHED);
+            } else {
+                if (DBG) log("XXX: NOT CONNECTED");
+                if (mState == DctConstants.State.FAILED) {
+                    if (DBG) log("XXX: FAILED");
+// FIX
+//                    cleanUpConnection(false, Phone.REASON_DATA_DETACHED, false);
+//                    mDataConnections.get(0).resetRetryCount();
+
+                    CdmaCellLocation loc = (CdmaCellLocation)(mPhone.getCellLocation());
+                    EventLog.writeEvent(EventLogTags.CDMA_DATA_SETUP_FAILED,
+                            loc != null ? loc.getBaseStationId() : -1,
+                            TelephonyManager.getDefault().getNetworkType());
+                }
+                trySetupData(Phone.REASON_DATA_DETACHED,null);
+            }
+            if (DBG) log("XXX: onDataConnectionDetached X");
+        } else {
+            if (DBG) log ("onDataConnectionDetached: stop polling and notify detached");
+            stopNetStatPoll();
+            stopDataStallAlarm();
+            notifyDataConnection(Phone.REASON_DATA_DETACHED);
+        }
     }
 
     private void onDataConnectionAttached() {
@@ -630,6 +655,7 @@ public final class DcTracker extends DcTrackerBase {
         }
 
         if (type == null) {
+            if (DBG) log("XXX: Type Null");
             type = PhoneConstants.APN_TYPE_DEFAULT;
         }
 
