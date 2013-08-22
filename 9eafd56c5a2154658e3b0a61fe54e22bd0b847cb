@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baee8101_c1eba5af",
+        "filename": "src/java/com/android/internal/telephony/SamsungExynos3RIL.java",
+        "patchSetId": 8
+      },
+      "lineNbr": 708,
+      "author": {
+        "id": 1381
+      },
+      "writtenOn": "2013-08-22T21:35:39Z",
+      "side": 1,
+      "message": "spacing, please use constant instead of magic numbers.\n\nI\u0027d also prefer to add a new parameter instead of abusing the version parameter (doesn\u0027t matter if the function signature doesn\u0027t match the superclass).",
+      "revId": "9eafd56c5a2154658e3b0a61fe54e22bd0b847cb",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baee8101_81cebd58",
+        "filename": "src/java/com/android/internal/telephony/SamsungExynos3RIL.java",
+        "patchSetId": 8
+      },
+      "lineNbr": 775,
+      "author": {
+        "id": 1381
+      },
+      "writtenOn": "2013-08-22T21:35:39Z",
+      "side": 1,
+      "message": "The variable name should be \"ver\" or \"version\", as that\u0027s what it actually is.\n\nAlso see note above about not abusing version parameter.",
+      "revId": "9eafd56c5a2154658e3b0a61fe54e22bd0b847cb",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baee8101_41d8d51d",
+        "filename": "src/java/com/android/internal/telephony/SamsungExynos3RIL.java",
+        "patchSetId": 8
+      },
+      "lineNbr": 787,
+      "author": {
+        "id": 1381
+      },
+      "writtenOn": "2013-08-22T21:35:39Z",
+      "side": 1,
+      "message": "- variable name\n- the version parameter is NOT present in the Parcel for RILv3",
+      "revId": "9eafd56c5a2154658e3b0a61fe54e22bd0b847cb",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baee8101_2104b17c",
+        "filename": "src/java/com/android/internal/telephony/SamsungExynos3RIL.java",
+        "patchSetId": 8
+      },
+      "lineNbr": 846,
+      "author": {
+        "id": 1381
+      },
+      "writtenOn": "2013-08-22T21:35:39Z",
+      "side": 1,
+      "message": "What is mCid?\n\nShould be more descriptive here",
+      "revId": "9eafd56c5a2154658e3b0a61fe54e22bd0b847cb",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
