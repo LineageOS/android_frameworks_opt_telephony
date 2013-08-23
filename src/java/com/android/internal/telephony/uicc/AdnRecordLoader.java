@@ -194,8 +194,13 @@ public class AdnRecordLoader extends Handler {
                                 ar.exception);
                     }
 
-                    mFh.updateEFLinearFixed(mEf, mRecordNumber,
-                            data, mPin2, obtainMessage(EVENT_UPDATE_RECORD_DONE));
+                    if (mEf == IccConstants.EF_ADN) {
+                        mFh.updateEFLinearFixed(mEf, getEFPath(mEf), mRecordNumber,
+                                data, mPin2, obtainMessage(EVENT_UPDATE_RECORD_DONE));
+                    } else {
+                        mFh.updateEFLinearFixed(mEf, mRecordNumber,
+                                data, mPin2, obtainMessage(EVENT_UPDATE_RECORD_DONE));
+                    }
 
                     mPendingExtLoads = 1;
 
