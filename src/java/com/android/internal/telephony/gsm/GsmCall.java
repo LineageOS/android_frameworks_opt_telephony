@@ -114,7 +114,7 @@ class GsmCall extends Call {
     /**
      * Called by GsmConnection when it has disconnected
      */
-    void
+    boolean
     connectionDisconnected(GsmConnection conn) {
         if (mState != State.DISCONNECTED) {
             /* If only disconnected connections remain, we are disconnected*/
@@ -132,10 +132,12 @@ class GsmCall extends Call {
 
             if (hasOnlyDisconnectedConnections) {
                 mState = State.DISCONNECTED;
+                return true;
             }
         }
-    }
 
+        return false;
+    }
 
     /*package*/ void
     detach(GsmConnection conn) {
