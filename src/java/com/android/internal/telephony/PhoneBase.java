@@ -1456,6 +1456,19 @@ public abstract class PhoneBase extends Handler implements Phone {
         pw.println(" needsOtaServiceProvisioning=" + needsOtaServiceProvisioning());
     }
 
+    public void getCallBarringOption(String facility, String password, Message onComplete) {
+        logUnexpectedCdmaMethodCall("getCallBarringOption");
+    }
+
+    public void setCallBarringOption(String facility, boolean lockState, String password,
+            Message onComplete) {
+        logUnexpectedCdmaMethodCall("setCallBarringOption");
+    }
+
+    public void requestChangeCbPsw(String facility, String oldPwd, String newPwd, Message result) {
+        logUnexpectedCdmaMethodCall("requestChangeCbPsw");
+    }
+
     // IMS APIs - Implemented only in ImsPhone
     public void acceptCall(int callType) throws CallStateException {
         throw new CallStateException("Accept with CallType is not supported in this phone " + this);
