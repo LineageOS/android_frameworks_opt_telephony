@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baee8101_e286a812",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 543,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-08-23T12:05:37Z",
+      "side": 1,
+      "message": "if (mPhone.getPhoneType() \u003d\u003d PhoneConstants.PHONE_TYPE_CDMA \u0026\u0026 mPhone.getLteOnCdmaMode() !\u003d PhoneConstants.LTE_ON_CDMA_TRUE)",
+      "revId": "f2b6a4a0cfdfe20aeb5d26db3ebd74d4ec7c096c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
