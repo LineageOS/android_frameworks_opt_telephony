@@ -354,6 +354,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
             // Query Signalstrength when there is a change in PS RAT.
             sendMessage(obtainMessage(EVENT_POLL_SIGNAL_STRENGTH));
+            mDataRatChangedRegistrants.notifyRegistrants();
         }
 
         if (hasRegistered) {
