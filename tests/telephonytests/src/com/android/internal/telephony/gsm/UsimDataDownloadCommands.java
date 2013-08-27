@@ -656,4 +656,9 @@ class UsimDataDownloadCommands extends BaseCommands {
     @Override
     public void setDataSubscription (Message result) {
     }
+
+    @Override
+    public void getDataCallProfile(int appType, Message result) {
+    }
+
 }
