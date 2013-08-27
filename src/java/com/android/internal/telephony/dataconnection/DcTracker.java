@@ -665,8 +665,7 @@ public final class DcTracker extends DcTrackerBase {
 
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
 
-        if (apnContext.isConnectable() &&
-                isDataAllowed(apnContext) && getAnyDataEnabled() && !isEmergency()) {
+        if (canSetupData(apnContext)) {
             if (apnContext.getState() == DctConstants.State.FAILED) {
                 if (DBG) log("trySetupData: make a FAILED ApnContext IDLE so its reusable");
                 apnContext.setState(DctConstants.State.IDLE);
@@ -716,11 +715,8 @@ public final class DcTracker extends DcTrackerBase {
     * @return boolean
     */
     private boolean canSetupData(ApnContext apnContext) {
-        if (apnContext.getState() != DctConstants.State.IDLE && apnContext.getState() != DctConstants.State.SCANNING) {
-            return false;
-        }
-
-        if (isDataAllowed(apnContext) && getAnyDataEnabled() && !isEmergency()) {
+        if (apnContext.isConnectable() && isDataAllowed(apnContext)
+                && getAnyDataEnabled() && !isEmergency()) {
             return true;
         }
 
