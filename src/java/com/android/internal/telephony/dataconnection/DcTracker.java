@@ -540,10 +540,34 @@ public final class DcTracker extends DcTrackerBase {
          * We presently believe it is unnecessary to tear down the PDP context
          * when GPRS detaches, but we should stop the network polling.
          */
-        if (DBG) log ("onDataConnectionDetached: stop polling and notify detached");
-        stopNetStatPoll();
-        stopDataStallAlarm();
-        notifyDataConnection(Phone.REASON_DATA_DETACHED);
+        if(mPhone instanceof CDMAPhone) {
+            if (DBG) log("onDataConnectionDetached");
+            if (mState == DctConstants.State.CONNECTED) {
+            if (DBG) log("onDataConnectDetached: state - CONNECTED");
+                startNetStatPoll();
+                startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
+                notifyDataConnection(Phone.REASON_DATA_DETACHED);
+            } else {
+                if (DBG) log("onDataConnectDetached: state - NOT CONNECTED");
+                if (mState == DctConstants.State.FAILED) {
+                    if (DBG) log("onDataConnectDetached: state - FAILED");
+                    //Call clean up connection for logging purposes
+                    cleanUpConnection(false, null);
+                    //Destroy Data Connections -- Calls mDataConnections.clear()
+                    destroyDataConnections();
+                    CdmaCellLocation loc = (CdmaCellLocation)(mPhone.getCellLocation());
+                    EventLog.writeEvent(EventLogTags.CDMA_DATA_SETUP_FAILED,
+                            loc != null ? loc.getBaseStationId() : -1,
+                            TelephonyManager.getDefault().getNetworkType());
+                }
+                trySetupData(Phone.REASON_DATA_DETACHED,null);
+            }
+        } else {
+            if (DBG) log ("onDataConnectionDetached: stop polling and notify detached");
+            stopNetStatPoll();
+            stopDataStallAlarm();
+            notifyDataConnection(Phone.REASON_DATA_DETACHED);
+        }
     }
 
     private void onDataConnectionAttached() {
