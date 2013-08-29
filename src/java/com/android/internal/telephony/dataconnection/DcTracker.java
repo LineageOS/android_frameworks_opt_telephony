@@ -547,13 +547,13 @@ public final class DcTracker extends DcTrackerBase {
             internalDataEnabled = mInternalDataEnabled;
         }
 
-        int gprsState = mPhone.getServiceStateTracker().getCurrentDataConnectionState();
+        boolean attachedState = mAttached.get();
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
         IccRecords r = mIccRecords.get();
         boolean recordsLoaded = (r != null) ? r.getRecordsLoaded() : false;
 
         boolean allowed =
-                    (gprsState == ServiceState.STATE_IN_SERVICE || mAutoAttachOnCreation) &&
+                    (attachedState || mAutoAttachOnCreation) &&
                     recordsLoaded &&
                     (mPhone.getState() == PhoneConstants.State.IDLE ||
                      mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
@@ -563,8 +563,8 @@ public final class DcTracker extends DcTrackerBase {
                     desiredPowerState;
         if (!allowed && DBG) {
             String reason = "";
-            if (!((gprsState == ServiceState.STATE_IN_SERVICE) || mAutoAttachOnCreation)) {
-                reason += " - gprs= " + gprsState;
+            if (!(attachedState || mAutoAttachOnCreation)) {
+                reason += " - Attached= " + attachedState;
             }
             if (!recordsLoaded) reason += " - SIM not loaded";
             if (mPhone.getState() != PhoneConstants.State.IDLE &&
@@ -637,7 +637,7 @@ public final class DcTracker extends DcTrackerBase {
 
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
 
-        if (mAttached.get() && apnContext.isConnectable() &&
+        if (apnContext.isConnectable() &&
                 isDataAllowed(apnContext) && getAnyDataEnabled() && !isEmergency()) {
             if (apnContext.getState() == DctConstants.State.FAILED) {
                 if (DBG) log("trySetupData: make a FAILED ApnContext IDLE so its reusable");
