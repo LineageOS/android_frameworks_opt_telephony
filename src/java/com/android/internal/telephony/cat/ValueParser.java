@@ -20,6 +20,8 @@ import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.cat.Duration.TimeUnit;
 import com.android.internal.telephony.uicc.IccUtils;
 
+import android.content.res.Resources;
+import android.content.res.Resources.NotFoundException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
@@ -285,10 +287,24 @@ abstract class ValueParser {
                     throw new ResultException(ResultCode.CMD_DATA_NOT_UNDERSTOOD);
                 }
             } else {
+                CatLog.d("ValueParser", "Alpha Id length=" + length);
                 return null;
             }
         } else {
-            return CatService.STK_DEFAULT;
+            /* Per 3GPP specification 102.223,
+             * if the alpha identifier is not provided by the UICC,
+             * the terminal MAY give information to the user
+             * noAlphaUsrCnf defines if you need to show user confirmation or not
+             */
+            boolean noAlphaUsrCnf = false;
+            Resources resource = Resources.getSystem();
+            try {
+                noAlphaUsrCnf = resource.getBoolean(
+                        com.android.internal.R.bool.config_stkNoAlphaUsrCnf);
+            } catch (NotFoundException e) {
+                noAlphaUsrCnf = false;
+            }
+            return (noAlphaUsrCnf ? null : CatService.STK_DEFAULT);
         }
     }
 
