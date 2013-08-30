@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -112,6 +113,9 @@ public class SmsMessage extends SmsMessageBase {
             return msg;
         } catch (RuntimeException ex) {
             Rlog.e(LOG_TAG, "SMS PDU parsing failed: ", ex);
+            return null;
+        } catch (OutOfMemoryError e) {
+            Log.e(LOG_TAG, "SMS PDU parsing failed with out of memory: ", e);
             return null;
         }
     }
@@ -514,6 +518,13 @@ public class SmsMessage extends SmsMessageBase {
 
             length = dis.readUnsignedByte();
             addr.numberOfDigits = length;
+
+            // sanity check on the length
+            if (length > pdu.length) {
+                throw new RuntimeException(
+                        "createFromPdu: Invalid pdu, addr.numberOfDigits " + length
+                        + " > pdu len " + pdu.length);
+            }
             addr.origBytes = new byte[length];
             dis.read(addr.origBytes, 0, length); // digits
 
@@ -525,9 +536,18 @@ public class SmsMessage extends SmsMessageBase {
 
             //encoded BearerData:
             bearerDataLength = dis.readInt();
+            // sanity check on the length
+            if (bearerDataLength > pdu.length) {
+                throw new RuntimeException(
+                        "createFromPdu: Invalid pdu, bearerDataLength " + bearerDataLength
+                        + " > pdu len " + pdu.length);
+            }
             env.bearerData = new byte[bearerDataLength];
             dis.read(env.bearerData, 0, bearerDataLength);
             dis.close();
+        } catch (IOException ex) {
+            throw new RuntimeException(
+                    "createFromPdu: conversion from byte array to object failed: " + ex, ex);
         } catch (Exception ex) {
             Rlog.e(LOG_TAG, "createFromPdu: conversion from byte array to object failed: " + ex);
         }
