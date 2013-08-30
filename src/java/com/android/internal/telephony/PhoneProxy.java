@@ -147,14 +147,23 @@ public class PhoneProxy extends Handler implements Phone {
                 mRilV7NeedsCDMALTEPhone) {
                 /*
                  * On v6 RIL, when LTE_ON_CDMA is TRUE, always create CDMALTEPhone
-                 * irrespective of the voice radio tech reported.
+                 * irrespective of the voice radio tech reported. Handle instance
+                 * where device may be global phone, reporting as cdma device. Don't update
+                 * voice tech in that scenario.
                  */
-                if (mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+                if ((ServiceState.isCdma(newVoiceRadioTech) &&
+                        mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA)) {
                     logd("LTE ON CDMA property is set. Use CDMA Phone" +
                             " newVoiceRadioTech = " + newVoiceRadioTech +
                             " Active Phone = " + mActivePhone.getPhoneName());
                     // IccCardProxy needs to be kept in sync
                     mIccCardProxy.setVoiceRadioTech(newVoiceRadioTech);
+                    return;
+                } else if ((ServiceState.isGsm(newVoiceRadioTech) &&
+                        mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA)) {
+                    logd("LTE ON CDMA property is set. Already CDMA Phone" +
+                            " newVoiceRadioTech = " + newVoiceRadioTech +
+                            " Active Phone = " + mActivePhone.getPhoneName());
                     return;
                 } else {
                     logd("LTE ON CDMA property is set. Switch to CDMALTEPhone" +
