@@ -54,6 +54,7 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 
 /**
+ * This is used only for OMH data profiles
  * {@hide}
  */
 public final class CdmaDataProfileTracker extends Handler {
@@ -72,20 +73,11 @@ public final class CdmaDataProfileTracker extends Handler {
      */
     private ArrayList<DataProfile> mDataProfilesList = new ArrayList<DataProfile>();
 
-    private static final String[] mSupportedApnTypes = {
+    private static final String[] SUPPORTED_APN_TYPES = {
             PhoneConstants.APN_TYPE_DEFAULT,
             PhoneConstants.APN_TYPE_MMS,
             PhoneConstants.APN_TYPE_SUPL,
             PhoneConstants.APN_TYPE_DUN,
-            PhoneConstants.APN_TYPE_HIPRI,
-            PhoneConstants.APN_TYPE_FOTA,
-            PhoneConstants.APN_TYPE_IMS,
-            PhoneConstants.APN_TYPE_CBS };
-
-    private static final String[] mDefaultApnTypes = {
-            PhoneConstants.APN_TYPE_DEFAULT,
-            PhoneConstants.APN_TYPE_MMS,
-            PhoneConstants.APN_TYPE_SUPL,
             PhoneConstants.APN_TYPE_HIPRI,
             PhoneConstants.APN_TYPE_FOTA,
             PhoneConstants.APN_TYPE_IMS,
@@ -372,7 +364,7 @@ public final class CdmaDataProfileTracker extends Handler {
      * UNSPECIFIED/DEFAULT data profile.
      */
     private void addServiceTypeToUnSpecified() {
-        for (String apntype : mSupportedApnTypes) {
+        for (String apntype : SUPPORTED_APN_TYPES) {
             if(!mOmhServicePriorityMap.containsKey(apntype)) {
 
                 // ServiceType :apntype is not provisioned in the card,
@@ -437,7 +429,7 @@ public final class CdmaDataProfileTracker extends Handler {
     }
 
     protected boolean isApnTypeAvailable(String type) {
-        for (String s : mSupportedApnTypes) {
+        for (String s : SUPPORTED_APN_TYPES) {
             if (TextUtils.equals(type, s)) {
                 return true;
             }
