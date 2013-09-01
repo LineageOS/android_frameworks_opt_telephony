@@ -37,6 +37,8 @@ import java.util.ArrayList;
 
 public class HTCQualcommRIL extends RIL implements CommandsInterface {
 
+    // these are being called by libril-qc-qmi-1.so.
+    // to unify dupes we should prolly all use the same blob
     private static final int RIL_UNSOL_ENTER_LPM = 1523;
     private static final int RIL_UNSOL_CDMA_3G_INDICATOR = 3009;
     private static final int RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR = 3012;
@@ -77,7 +79,7 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
         /* Check dataCall.active != 0 so address, dns, gateways are provided
          * when switching LTE<->3G<->2G */
         if ((dataCall.status == DcFailCause.NONE.getErrorCode()) &&
-                TextUtils.isEmpty(dataCall.ifname) && dataCall.active != 0) {
+            TextUtils.isEmpty(dataCall.ifname) && dataCall.active != 0) {
             throw new RuntimeException("getDataCallResponse, no ifname");
         }
         String addresses = p.readString();
@@ -127,17 +129,27 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
             case RIL_UNSOL_CDMA_3G_INDICATOR:
             case RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR:
             case RIL_UNSOL_CDMA_NETWORK_BASE_PLUSCODE_DIAL:
-            case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE:
-            case RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED:
             case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
-            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED:
+            case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE: { break; }
+            case RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED: {
+                if (RILJ_LOGD) unsljLogRet(response, ret);
+
+                if (mVoiceRadioTechChangedRegistrants != null) {
+                    mVoiceRadioTechChangedRegistrants.notifyRegistrants(
+                                             new AsyncResult(null, ret, null));
+                }
+                break;
+            }
+            // removed in 4.3 libril-qc-qmi-1.so
+            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED: {
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
                 if (mExitEmergencyCallbackModeRegistrants != null) {
                     mExitEmergencyCallbackModeRegistrants.notifyRegistrants(
-                                        new AsyncResult (null, null, null));
+                                                 new AsyncResult (null, null, null));
                 }
                 break;
+            }
             case RIL_UNSOL_RIL_CONNECTED: {
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
@@ -147,9 +159,7 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
                 if (!skipRadioPowerOff) {
                     setRadioPower(false, null);
                 }
-                setPreferredNetworkType(mPreferredNetworkType, null);
-                setCdmaSubscriptionSource(mCdmaSubscription, null);
-                setCellInfoListRate(Integer.MAX_VALUE, null);
+
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
                 break;
             }
