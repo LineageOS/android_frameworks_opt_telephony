@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3ae2911b_fb177b52",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-09-01T18:48:56Z",
+      "side": 1,
+      "message": "leave the space between ; and break to be consistent",
+      "revId": "ee22b8e4e6f753c9df2385b961ed972d8e3d40d4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3ae2911b_db1cbf79",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-09-01T18:48:56Z",
+      "side": 1,
+      "message": "expand this to be consistent also",
+      "revId": "ee22b8e4e6f753c9df2385b961ed972d8e3d40d4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
