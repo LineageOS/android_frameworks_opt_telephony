@@ -16,6 +16,24 @@
       "revId": "9ce5514d47bfd17db4a9243219399b8dce5ebd5b",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3ae2911b_06a1cea9",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 314
+      },
+      "writtenOn": "2013-09-02T02:26:08Z",
+      "side": 1,
+      "message": "This mimics RIL_UNSOL_DATA_CALL_LIST_CHANGED which is depreciated according to libril. Returning void is actually what I want/need to do here and just pass null to mDataNetworkStateRegistrants instead. This also causes an issue I didn\u0027t see until late in the evening and didn\u0027t get to sort before bed.\n\nOn the plus side, using the GE props actually removes the need for this as it\u0027s been depreciated. I\u0027m still testing the GE props, but I suspect this can be removed for M7s and possibly S4s if libril-qc-qmi-1.so and dependencies can be updated as well.",
+      "parentUuid": "3ae2911b_a65b1a2e",
+      "revId": "9ce5514d47bfd17db4a9243219399b8dce5ebd5b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
