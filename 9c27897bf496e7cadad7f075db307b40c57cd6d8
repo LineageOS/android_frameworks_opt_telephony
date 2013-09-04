@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da1255d7_69af45e4",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-09-04T10:21:23Z",
+      "side": 1,
+      "message": "Comment is not really needed.",
+      "revId": "9c27897bf496e7cadad7f075db307b40c57cd6d8",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da1255d7_49ac81ed",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-09-04T10:21:23Z",
+      "side": 1,
+      "message": "PHONE_MODE_CHANGE: {\n    break;\n}",
+      "revId": "9c27897bf496e7cadad7f075db307b40c57cd6d8",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da1255d7_89a959e2",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-09-04T10:21:23Z",
+      "side": 1,
+      "message": "Comment is not really needed.",
+      "revId": "9c27897bf496e7cadad7f075db307b40c57cd6d8",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da1255d7_29b94d2f",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-09-04T10:21:23Z",
+      "side": 1,
+      "message": "Best make this a separate patchset.",
+      "revId": "9c27897bf496e7cadad7f075db307b40c57cd6d8",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
