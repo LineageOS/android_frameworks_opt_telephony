@@ -23,20 +23,19 @@ import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.telephony.SmsMessage;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MccTable;
-import com.android.internal.telephony.SmsMessageBase;
+import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.gsm.SimTlv;
-import com.android.internal.telephony.gsm.SmsMessage;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-
 
 /**
  * {@hide}
@@ -1228,7 +1227,7 @@ public class SIMRecords extends IccRecords {
      * Dispatch 3GPP format message to registrant ({@code GSMPhone} or {@code CDMALTEPhone})
      * to pass to the 3GPP SMS dispatcher for delivery.
      */
-    protected int dispatchGsmMessage(SmsMessageBase message) {
+    private int dispatchGsmMessage(SmsMessage message) {
         mNewSmsRegistrants.notifyResult(message);
         return 0;
     }
@@ -1246,7 +1245,7 @@ public class SIMRecords extends IccRecords {
             // should still parse correctly.
             byte[] pdu = new byte[n - 1];
             System.arraycopy(ba, 1, pdu, 0, n - 1);
-            SmsMessage message = SmsMessage.createFromPdu(pdu);
+            SmsMessage message = SmsMessage.createFromPdu(pdu, SmsConstants.FORMAT_3GPP);
 
             dispatchGsmMessage(message);
         }
@@ -1272,7 +1271,7 @@ public class SIMRecords extends IccRecords {
                 // should still parse correctly.
                 byte[] pdu = new byte[n - 1];
                 System.arraycopy(ba, 1, pdu, 0, n - 1);
-                SmsMessage message = SmsMessage.createFromPdu(pdu);
+                SmsMessage message = SmsMessage.createFromPdu(pdu, SmsConstants.FORMAT_3GPP);
 
                 dispatchGsmMessage(message);
 
