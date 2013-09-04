@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da1255d7_2955cdc5",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 2261,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-09-04T11:57:18Z",
+      "side": 1,
+      "message": "\u0026\u0026 cdma \u003d\u003d true",
+      "revId": "ae16e676e0ed83aadca7973b548af9fccf61b0fc",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
