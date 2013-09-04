@@ -95,6 +95,31 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
         return dataCall;
     }
 
+    // Ignore invalid CellInfo data rather than throwing exceptions
+    @Override
+    protected ArrayList<CellInfo> responseCellInfoList(Parcel p) {
+        int numberOfInfoRecs;
+        ArrayList<CellInfo> response;
+
+        /**
+         * Loop through all of the information records unmarshalling them
+         * and converting them to Java Objects.
+         */
+        numberOfInfoRecs = p.readInt();
+        response = new ArrayList<CellInfo>(numberOfInfoRecs);
+
+        for (int i = 0; i < numberOfInfoRecs; i++) {
+            int dataPosition = p.dataPosition(); // save position
+            int type = p.readInt();
+            if(type >= 1 && type <= 4) { // Types 1-4 valid; see CellInfo.java
+                p.setDataPosition(dataPosition); // rewind
+                CellInfo InfoRec = CellInfo.CREATOR.createFromParcel(p);
+                response.add(InfoRec);
+            }
+        }
+        return response;
+    }
+
     @Override
     protected void
     processUnsolicited (Parcel p) {
