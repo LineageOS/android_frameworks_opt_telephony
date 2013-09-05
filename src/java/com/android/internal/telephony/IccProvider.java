@@ -130,6 +130,12 @@ public class IccProvider extends ContentProvider {
 
         String tag = initialValues.getAsString("tag");
         String number = initialValues.getAsString("number");
+        /*As part of 3GPP 51.011, number field is mandatory while storing in the
+          SIM for both ADN and FDN */
+        if (TextUtils.isEmpty(number)) {
+            return null;
+        }
+
         // TODO(): Read email instead of sending null.
         boolean success = addIccRecordToEf(efType, tag, number, null, pin2);
 
@@ -228,10 +234,6 @@ public class IccProvider extends ContentProvider {
             } else if (STR_PIN2.equals(key)) {
                 pin2 = normalizeValue(val);
             }
-        }
-
-        if (TextUtils.isEmpty(number)) {
-            return 0;
         }
 
         if (efType == IccConstants.EF_FDN && TextUtils.isEmpty(pin2)) {
