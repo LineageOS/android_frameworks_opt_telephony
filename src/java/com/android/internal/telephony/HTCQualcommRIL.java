@@ -148,7 +148,10 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
                     setRadioPower(false, null);
                 }
                 setPreferredNetworkType(mPreferredNetworkType, null);
-                setCdmaSubscriptionSource(mCdmaSubscription, null);
+                /* Skip setCdmaSubscriptionSource because Qualcomm handles it
+                 * in the RIL binary
+                 */
+                // setCdmaSubscriptionSource(mCdmaSubscription, null);
                 setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
                 break;
