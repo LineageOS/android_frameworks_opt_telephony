@@ -194,6 +194,13 @@ public class ApnContext {
                                 || (mState == DctConstants.State.FAILED));
     }
 
+    public boolean isConnectedOrConnecting() {
+        return isReady() && ((mState == DctConstants.State.CONNECTED)
+                                || (mState == DctConstants.State.CONNECTING)
+                                || (mState == DctConstants.State.SCANNING)
+                                || (mState == DctConstants.State.RETRYING));
+    }
+
     public void setEnabled(boolean enabled) {
         if (DBG) {
             log("set enabled as " + enabled + ", current state is " + mDataEnabled.get());
