@@ -449,6 +449,16 @@ public class CDMAPhone extends PhoneBase {
     }
 
     @Override
+    public String getIccSerialNumber() {
+        IccRecords r = mIccRecords.get();
+        if (r == null) {
+            // to get ICCID form SIMRecords because it is on MF.
+            r = mUiccController.getIccRecords(UiccController.APP_FAM_3GPP);
+        }
+        return (r != null) ? r.getIccId() : null;
+    }
+
+    @Override
     public String getLine1Number() {
         return mSST.getMdnNumber();
     }
