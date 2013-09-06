@@ -722,19 +722,24 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         if (mPollingContext[0] == 0) {
             /**
-             *  Since the roaming states of gsm service (from +CREG) and
-             *  data service (from +CGREG) could be different, the new SS
-             *  is set roaming while either one is roaming.
+             * Since the roaming state of gsm service (from +CREG) and
+             * data service (from +CGREG) could be different, the new SS
+             * is set to roaming when either is true.
              *
-             *  There is an exception for the above rule. The new SS is not set
-             *  as roaming while gsm service reports roaming but indeed it is
-             *  not roaming between operators.
+             * There are exceptions for the above rule.
+             * The new SS is not set as roaming while gsm service reports
+             * roaming but indeed it is same operator.
+             * And the operator is considered non roaming.
              *
-             *  And specific operators do not report roaming in national roaming
+             * The test for the operators is to handle special roaming
+             * agreements and MVNO's.
              */
-            mNewSS.setRoaming(mDataRoaming
-                    || (mGsmRoaming && !(isSameNamedOperators(mNewSS)
-                            || isOperatorConsideredNonRoaming(mNewSS))));
+            boolean roaming = (mGsmRoaming || mDataRoaming);
+            if ((mGsmRoaming && isSameNamedOperators(mNewSS))
+                    || isOperatorConsideredNonRoaming(mNewSS)) {
+                roaming = false;
+            }
+            mNewSS.setRoaming(roaming);
             mNewSS.setEmergencyOnly(mEmergencyOnly);
             pollStateDone();
         }
