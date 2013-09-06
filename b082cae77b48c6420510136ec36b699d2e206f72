@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba076199_6edbcbee",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-09-06T12:13:33Z",
+      "side": 1,
+      "message": "don\u0027t comment lines out, just remove them, git tracks the history for us",
+      "revId": "b082cae77b48c6420510136ec36b699d2e206f72",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
