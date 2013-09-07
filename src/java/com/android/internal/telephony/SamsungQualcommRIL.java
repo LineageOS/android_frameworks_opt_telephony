@@ -29,6 +29,7 @@ import android.os.Parcel;
 import android.telephony.SmsMessage;
 import android.os.SystemProperties;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 
@@ -283,6 +284,10 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 ret = responseInts(p);
                 setRadioPower(false, null);
                 setPreferredNetworkType(mPreferredNetworkType, null);
+                int cdmaSubscription = Settings.Global.getInt(mContext.getContentResolver(), Settings.Global.CDMA_SUBSCRIPTION_MODE, -1);
+                if(cdmaSubscription != -1) {
+                    setCdmaSubscriptionSource(mCdmaSubscription, null);
+                }
                 setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
                 break;
