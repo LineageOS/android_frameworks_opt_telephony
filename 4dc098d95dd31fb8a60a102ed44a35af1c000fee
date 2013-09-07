@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba076199_b7e7d2ab",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 1890,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-09-07T19:04:11Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this be LTE also, because lte is also a  APN based connections, it uses data from csim card,\nso lets add this?\n\u0026\u0026 radioTech !\u003d ServiceState.RIL_RADIO_TECHNOLOGY_LTE",
+      "revId": "4dc098d95dd31fb8a60a102ed44a35af1c000fee",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba076199_97ecce90",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2268,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-09-07T19:04:11Z",
+      "side": 1,
+      "message": "see above",
+      "revId": "4dc098d95dd31fb8a60a102ed44a35af1c000fee",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba076199_77027a40",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2314,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-09-07T19:04:11Z",
+      "side": 1,
+      "message": "see above, you may need to add a cdma \u003dphone; thing also",
+      "revId": "4dc098d95dd31fb8a60a102ed44a35af1c000fee",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ba076199_57ff7634",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2317,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-09-07T19:04:11Z",
+      "side": 1,
+      "message": "this will break devices that don\u0027t have 3gpp2 index. such as htc nv devices, i already patched mine to support that also",
+      "revId": "4dc098d95dd31fb8a60a102ed44a35af1c000fee",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
