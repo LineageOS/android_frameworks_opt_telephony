@@ -720,6 +720,8 @@ public class CatService extends Handler implements AppInterface {
             case DISPLAY_TEXT:
             case LAUNCH_BROWSER:
                 break;
+            // 3GPP TS.102.223: Open Channel alpha confirmation should not send TR
+            case OPEN_CHANNEL:
             case SET_UP_CALL:
                 mCmdIf.handleCallSetupRequestFromSim(resMsg.mUsersConfirm, null);
                 // No need to send terminal response for SET UP CALL. The user's
