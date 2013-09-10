@@ -519,6 +519,11 @@ public final class Telephony {
             public static final int RESULT_SMS_UNSUPPORTED = 4;
 
             /**
+             * Set by BroadcastReceiver. Indicates the duplicated imcoming message.
+             */
+            public static final int RESULT_SMS_DUPLICATED = 5;
+
+            /**
              * Broadcast Action: A new text based SMS message has been received
              * by the device. The intent will have the following extra
              * values:</p>
