@@ -520,16 +520,21 @@ public abstract class InboundSmsHandler extends StateMachine {
      * Helper to add the tracker to the raw table and then send a message to broadcast it, if
      * successful. Returns the SMS intent status to return to the SMSC.
      * @param tracker the tracker to save to the raw table and then deliver
-     * @return {@link Intents#RESULT_SMS_HANDLED} or {@link Intents#RESULT_SMS_OUT_OF_MEMORY}
+     * @return {@link Intents#RESULT_SMS_HANDLED} or {@link Intents#RESULT_SMS_GENERIC_ERROR}
+     * or {@link Intents#RESULT_SMS_DUPLICATED}
      */
     protected int addTrackerToRawTableAndSendMessage(InboundSmsTracker tracker) {
-        if (addTrackerToRawTable(tracker)) {
-            // send as an ordered broadcast
+        switch(addTrackerToRawTable(tracker)) {
+        case Intents.RESULT_SMS_HANDLED:
             sendMessage(EVENT_BROADCAST_SMS, tracker);
             return Intents.RESULT_SMS_HANDLED;
-        } else {
-            // failed to save PDU to raw table: reject message
-            return Intents.RESULT_SMS_OUT_OF_MEMORY;
+
+        case Intents.RESULT_SMS_DUPLICATED:
+            return Intents.RESULT_SMS_HANDLED;
+
+        case Intents.RESULT_SMS_GENERIC_ERROR:
+        default:
+            return Intents.RESULT_SMS_GENERIC_ERROR;
         }
     }
 
@@ -670,7 +675,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param tracker the tracker to add to the raw table
      * @return true on success; false on failure to write to database
      */
-    private boolean addTrackerToRawTable(InboundSmsTracker tracker) {
+    private int addTrackerToRawTable(InboundSmsTracker tracker) {
         if (tracker.getMessageCount() != 1) {
             // check for duplicate message segments
             Cursor cursor = null;
@@ -705,12 +710,12 @@ public abstract class InboundSmsHandler extends StateMachine {
                         loge("Warning: dup message segment PDU of length " + pdu.length
                                 + " is different from existing PDU of length " + oldPdu.length);
                     }
-                    return false;   // reject message
+                    return Intents.RESULT_SMS_DUPLICATED;   // reject message
                 }
                 cursor.close();
             } catch (SQLException e) {
                 loge("Can't access multipart SMS database", e);
-                return false;       // reject message
+                return Intents.RESULT_SMS_GENERIC_ERROR;    // reject message
             } finally {
                 if (cursor != null) {
                     cursor.close();
@@ -730,10 +735,10 @@ public abstract class InboundSmsHandler extends StateMachine {
                 // set the delete selection args for single-part message
                 tracker.setDeleteWhere(SELECT_BY_ID, new String[]{Long.toString(rowId)});
             }
-            return true;
+            return Intents.RESULT_SMS_HANDLED;
         } catch (Exception e) {
             loge("error parsing URI for new row: " + newUri, e);
-            return false;
+            return Intents.RESULT_SMS_GENERIC_ERROR;
         }
     }
 
