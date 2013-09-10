@@ -500,7 +500,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
 
             tracker = new InboundSmsTracker(sms.getPdu(), sms.getTimestampMillis(), destPort,
-                    is3gpp2());
+                    is3gpp2(), false);
         } else {
             // Create a tracker for this message segment.
             SmsHeader.ConcatRef concatRef = smsHeader.concatRef;
@@ -509,7 +509,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
             tracker = new InboundSmsTracker(sms.getPdu(), sms.getTimestampMillis(), destPort,
                     is3gpp2(), sms.getOriginatingAddress(), concatRef.refNumber,
-                    concatRef.seqNumber, concatRef.msgCount);
+                    concatRef.seqNumber, concatRef.msgCount, false);
         }
 
         if (VDBG) log("created tracker: " + tracker);

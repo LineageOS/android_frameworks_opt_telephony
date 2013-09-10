@@ -305,7 +305,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         System.arraycopy(pdu, index, userData, 0, pdu.length - index);
 
         InboundSmsTracker tracker = new InboundSmsTracker(userData, timestamp, destinationPort,
-                true, address, referenceNumber, segment, totalSegments);
+                true, address, referenceNumber, segment, totalSegments, true);
 
         return addTrackerToRawTableAndSendMessage(tracker);
     }
