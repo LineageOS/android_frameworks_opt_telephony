@@ -36,6 +36,7 @@ public final class InboundSmsTracker {
     private final long mTimestamp;
     private final int mDestPort;
     private final boolean mIs3gpp2;
+    private final boolean mIs3gpp2WapPdu;
 
     // Fields for concatenating multi-part SMS messages
     private final String mAddress;
@@ -56,6 +57,9 @@ public final class InboundSmsTracker {
     /** Destination port flag bit to indicate 3GPP2 format message. */
     private static final int DEST_PORT_FLAG_3GPP2 = (1 << 18);
 
+    /** Destination port flag bit to indicate 3GPP2 format WAP message. */
+    private static final int DEST_PORT_FLAG_3GPP2_WAP_PDU = (1 << 19);
+
     /** Destination port mask (16-bit unsigned value on GSM and CDMA). */
     private static final int DEST_PORT_MASK = 0xffff;
 
@@ -65,12 +69,15 @@ public final class InboundSmsTracker {
      * @param timestamp the message timestamp
      * @param destPort the destination port
      * @param is3gpp2 true for 3GPP2 format; false for 3GPP format
+     * @param is3gpp2WapPdu true for 3GPP2 format WAP PDU; false otherwise
      */
-    InboundSmsTracker(byte[] pdu, long timestamp, int destPort, boolean is3gpp2) {
+    InboundSmsTracker(byte[] pdu, long timestamp, int destPort, boolean is3gpp2,
+            boolean is3gpp2WapPdu) {
         mPdu = pdu;
         mTimestamp = timestamp;
         mDestPort = destPort;
         mIs3gpp2 = is3gpp2;
+        mIs3gpp2WapPdu = is3gpp2WapPdu;
         // fields for multi-part SMS
         mAddress = null;
         mReferenceNumber = -1;
@@ -93,13 +100,16 @@ public final class InboundSmsTracker {
      * @param referenceNumber the concatenated reference number
      * @param sequenceNumber the sequence number of this segment (0-based)
      * @param messageCount the total number of segments
+     * @param is3gpp2WapPdu true for 3GPP2 format WAP PDU; false otherwise
      */
     public InboundSmsTracker(byte[] pdu, long timestamp, int destPort, boolean is3gpp2,
-            String address, int referenceNumber, int sequenceNumber, int messageCount) {
+            String address, int referenceNumber, int sequenceNumber, int messageCount,
+            boolean is3gpp2WapPdu) {
         mPdu = pdu;
         mTimestamp = timestamp;
         mDestPort = destPort;
         mIs3gpp2 = is3gpp2;
+        mIs3gpp2WapPdu = is3gpp2WapPdu;
         // fields for multi-part SMS
         mAddress = address;
         mReferenceNumber = referenceNumber;
@@ -118,6 +128,7 @@ public final class InboundSmsTracker {
         if (cursor.isNull(InboundSmsHandler.DESTINATION_PORT_COLUMN)) {
             mDestPort = -1;
             mIs3gpp2 = isCurrentFormat3gpp2;
+            mIs3gpp2WapPdu = false;
         } else {
             int destPort = cursor.getInt(InboundSmsHandler.DESTINATION_PORT_COLUMN);
             if ((destPort & DEST_PORT_FLAG_3GPP) != 0) {
@@ -127,6 +138,7 @@ public final class InboundSmsTracker {
             } else {
                 mIs3gpp2 = isCurrentFormat3gpp2;
             }
+            mIs3gpp2WapPdu = ((destPort & DEST_PORT_FLAG_3GPP2_WAP_PDU) != 0);
             mDestPort = getRealDestPort(destPort);
         }
 
@@ -178,6 +190,9 @@ public final class InboundSmsTracker {
             destPort |= DEST_PORT_FLAG_3GPP2;
         } else {
             destPort |= DEST_PORT_FLAG_3GPP;
+        }
+        if (mIs3gpp2WapPdu) {
+            destPort |= DEST_PORT_FLAG_3GPP2_WAP_PDU;
         }
         values.put("destination_port", destPort);
         if (mAddress != null) {
@@ -252,17 +267,13 @@ public final class InboundSmsTracker {
         return mIs3gpp2 ? SmsConstants.FORMAT_3GPP2 : SmsConstants.FORMAT_3GPP;
     }
 
-    boolean isWapPush() {
-        return (mDestPort == SmsHeader.PORT_WAP_PUSH);
-    }
-
     /**
-     * Sequence numbers for concatenated messages start at 1. The exception is CDMA WAP push
+     * Sequence numbers for concatenated messages start at 1. The exception is CDMA WAP PDU
      * messages, which use a 0-based index.
      * @return the offset to use to convert between mIndex and the sequence number
      */
     int getIndexOffset() {
-        return (mIs3gpp2 && isWapPush()) ? 0 : 1;
+        return (mIs3gpp2 && mIs3gpp2WapPdu) ? 0 : 1;
     }
 
     String getAddress() {
