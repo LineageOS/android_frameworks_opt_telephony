@@ -19,6 +19,23 @@
     },
     {
       "key": {
+        "uuid": "9a0c5dc1_6addf76f",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 1897,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-09-10T15:41:00Z",
+      "side": 1,
+      "message": "if(result \u003d\u003d null || result \u003d\u003d \"\"){\n         result \u003d SystemProperties.get(CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);\n}",
+      "revId": "4dc098d95dd31fb8a60a102ed44a35af1c000fee",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba076199_97ecce90",
         "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
         "patchSetId": 2
