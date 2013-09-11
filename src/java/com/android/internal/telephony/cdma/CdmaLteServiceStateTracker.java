@@ -46,7 +46,7 @@ import java.util.List;
 public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     private CDMALTEPhone mCdmaLtePhone;
     private final CellInfoLte mCellInfoLte;
-
+    protected int mNewRilRadioTechnology = 0;
     private CellIdentityLte mNewCellIdentityLte = new CellIdentityLte();
     private CellIdentityLte mLasteCellIdentityLte = new CellIdentityLte();
 
@@ -257,6 +257,18 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
     @Override
     protected void pollStateDone() {
+        // Some older CDMA/LTE RILs only report VoiceRadioTechnology which results in network
+        // Unknown. In these cases return RilVoiceRadioTechnology for RilDataRadioTechnology.
+        boolean oldRil = mCi.needsOldRilFeature("usevoicetechfordata");
+        if (mNewSS.getDataRegState() != ServiceState.STATE_IN_SERVICE && oldRil) {
+            // LTE out of service, get CDMA Service State
+            mNewRilRadioTechnology = mNewSS.getRilVoiceRadioTechnology();
+            mNewSS.setRilDataRadioTechnology(mNewRilRadioTechnology);
+            log("pollStateDone CDMA STATE_IN_SERVICE mNewRilRadioTechnology = " +
+                    mNewRilRadioTechnology + " mNewSS.getDataRegState() = " +
+                    mNewSS.getDataRegState());
+        }
+
         log("pollStateDone: lte 1 ss=[" + mSS + "] newSS=[" + mNewSS + "]");
 
         useDataRegStateForDataOnlyDevices();
