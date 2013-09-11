@@ -54,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "9a0c5dc1_0d55751c",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 1897,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2013-09-11T18:34:51Z",
+      "side": 1,
+      "message": "...or TextUtils.isEmpty(result)\n\nBut in any case, this else clause is for GSM. It shouldn\u0027t query any CDMA specific properties.",
+      "parentUuid": "9a0c5dc1_0ae43b39",
+      "revId": "4dc098d95dd31fb8a60a102ed44a35af1c000fee",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba076199_97ecce90",
         "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
         "patchSetId": 2
