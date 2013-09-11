@@ -25,7 +25,6 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
 import android.os.SystemProperties;
-import android.provider.Settings;
 import android.text.TextUtils;
 import android.telephony.CellInfo;
 import android.telephony.Rlog;
@@ -165,10 +164,7 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
                 // Trigger socket reset if RIL connect is called again
                 SystemProperties.set("ril.socket.reset", "1");
                 setPreferredNetworkType(mPreferredNetworkType, null);
-                int cdmaSubscription = Settings.Global.getInt(mContext.getContentResolver(), Settings.Global.CDMA_SUBSCRIPTION_MODE, -1);
-                if(cdmaSubscription != -1) {
-                    setCdmaSubscriptionSource(cdmaSubscription, null);
-                }
+                setCdmaSubscriptionSource(mCdmaSubscription, null);
                 setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
                 break;
