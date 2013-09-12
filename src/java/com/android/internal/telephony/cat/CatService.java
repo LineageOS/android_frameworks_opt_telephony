@@ -999,7 +999,8 @@ public class CatService extends Handler implements AppInterface {
         default:
             return;
         }
-        sendTerminalResponse(cmdDet, resMsg.mResCode, false, 0, resp);
+        sendTerminalResponse(cmdDet, resMsg.mResCode, resMsg.mIncludeAdditionalInfo,
+                resMsg.mAdditionalInfo, resp);
         mCurrntCmd = null;
     }
 
