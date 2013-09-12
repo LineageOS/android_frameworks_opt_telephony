@@ -80,6 +80,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             handlePollStateResult(msg.what, ar);
             break;
         case EVENT_RUIM_RECORDS_LOADED:
+            updatePhoneObject();
             RuimRecords ruim = (RuimRecords)mIccRecords;
             if ((ruim != null) && ruim.isProvisioned()) {
                 mMdn = ruim.getMdn();
@@ -344,6 +345,10 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         mNewCellLoc = tcl;
 
         mNewSS.setStateOutOfService(); // clean slate for next time
+
+        if (hasVoiceRadioTechnologyChanged) {
+            updatePhoneObject();
+        }
 
         if (hasDataRadioTechnologyChanged) {
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
