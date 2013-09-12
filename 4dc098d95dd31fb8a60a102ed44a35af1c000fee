@@ -138,6 +138,23 @@
       "revId": "4dc098d95dd31fb8a60a102ed44a35af1c000fee",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a0c5dc1_dbd4b348",
+        "filename": "src/java/com/android/internal/telephony/gsm/GsmServiceStateTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 902,
+      "author": {
+        "id": 3556
+      },
+      "writtenOn": "2013-09-12T11:26:36Z",
+      "side": 1,
+      "message": "Did you intend to revert this change https://github.com/CyanogenMod/android_frameworks_opt_telephony/commit/3fdb1fc45a137ff354d321532225cc600edf4a09 when you did this?",
+      "revId": "4dc098d95dd31fb8a60a102ed44a35af1c000fee",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
