@@ -72,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "9a0c5dc1_f03676b3",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 1897,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-09-12T03:34:33Z",
+      "side": 1,
+      "message": "chris, try result\u003d\"\";  instead of geting  a cdma property and see if that helps data",
+      "parentUuid": "9a0c5dc1_0d55751c",
+      "revId": "4dc098d95dd31fb8a60a102ed44a35af1c000fee",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba076199_97ecce90",
         "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
         "patchSetId": 2
