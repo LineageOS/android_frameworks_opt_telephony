@@ -59,6 +59,7 @@ public class PhoneProxy extends Handler implements Phone {
     private static final int EVENT_RADIO_ON = 2;
     private static final int EVENT_REQUEST_VOICE_RADIO_TECH_DONE = 3;
     private static final int EVENT_RIL_CONNECTED = 4;
+    private static final int EVENT_UPDATE_PHONE_OBJECT = 5;
 
     private static final String LOG_TAG = "PhoneProxy";
 
@@ -108,17 +109,23 @@ public class PhoneProxy extends Handler implements Phone {
 
         case EVENT_VOICE_RADIO_TECH_CHANGED:
         case EVENT_REQUEST_VOICE_RADIO_TECH_DONE:
-
+            String what = (msg.what == EVENT_VOICE_RADIO_TECH_CHANGED) ?
+                    "EVENT_VOICE_RADIO_TECH_CHANGED" : "EVENT_REQUEST_VOICE_RADIO_TECH_DONE";
             if (ar.exception == null) {
                 if ((ar.result != null) && (((int[]) ar.result).length != 0)) {
                     int newVoiceTech = ((int[]) ar.result)[0];
-                    updatePhoneObject(newVoiceTech);
+                    logd(what + ": newVoiceTech=" + newVoiceTech);
+                    phoneObjectUpdater(newVoiceTech);
                 } else {
-                    loge("Voice Radio Technology event " + msg.what + " has no tech!");
+                    loge(what + ": has no tech!");
                 }
             } else {
-                loge("Voice Radio Technology event " + msg.what + " exception!" + ar.exception);
+                loge(what + ": exception=" + ar.exception);
             }
+            break;
+
+        case EVENT_UPDATE_PHONE_OBJECT:
+            phoneObjectUpdater(msg.arg1);
             break;
 
         default:
@@ -137,23 +144,34 @@ public class PhoneProxy extends Handler implements Phone {
         Rlog.e(LOG_TAG, "[PhoneProxy] " + msg);
     }
 
-    private void updatePhoneObject(int newVoiceRadioTech) {
+    private void phoneObjectUpdater(int newVoiceRadioTech) {
+        logd("phoneObjectUpdater: newVoiceRadioTech=" + newVoiceRadioTech);
 
         if (mActivePhone != null) {
+            // Check for a voice over lte replacement
+            if ((newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_LTE)) {
+                int volteReplacementRat = mActivePhone.getContext().getResources().getInteger(
+                        com.android.internal.R.integer.config_volte_replacement_rat);
+                logd("phoneObjectUpdater: volteReplacementRat=" + volteReplacementRat);
+                if (volteReplacementRat != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
+                    newVoiceRadioTech = volteReplacementRat;
+                }
+            }
+
             if(mRilVersion == 6 && getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {
                 /*
                  * On v6 RIL, when LTE_ON_CDMA is TRUE, always create CDMALTEPhone
                  * irrespective of the voice radio tech reported.
                  */
                 if (mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
-                    logd("LTE ON CDMA property is set. Use CDMA Phone" +
-                            " newVoiceRadioTech = " + newVoiceRadioTech +
-                            " Active Phone = " + mActivePhone.getPhoneName());
+                    logd("phoneObjectUpdater: LTE ON CDMA property is set. Use CDMA Phone" +
+                            " newVoiceRadioTech=" + newVoiceRadioTech +
+                            " mActivePhone=" + mActivePhone.getPhoneName());
                     return;
                 } else {
-                    logd("LTE ON CDMA property is set. Switch to CDMALTEPhone" +
-                            " newVoiceRadioTech = " + newVoiceRadioTech +
-                            " Active Phone = " + mActivePhone.getPhoneName());
+                    logd("phoneObjectUpdater: LTE ON CDMA property is set. Switch to CDMALTEPhone" +
+                            " newVoiceRadioTech=" + newVoiceRadioTech +
+                            " mActivePhone=" + mActivePhone.getPhoneName());
                     newVoiceRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT;
                 }
             } else {
@@ -162,9 +180,9 @@ public class PhoneProxy extends Handler implements Phone {
                         (ServiceState.isGsm(newVoiceRadioTech) &&
                                 mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM)) {
                     // Nothing changed. Keep phone as it is.
-                    logd("Ignoring voice radio technology changed message." +
-                            " newVoiceRadioTech = " + newVoiceRadioTech +
-                            " Active Phone = " + mActivePhone.getPhoneName());
+                    logd("phoneObjectUpdater: No change ignore," +
+                            " newVoiceRadioTech=" + newVoiceRadioTech +
+                            " mActivePhone=" + mActivePhone.getPhoneName());
                     return;
                 }
             }
@@ -173,8 +191,8 @@ public class PhoneProxy extends Handler implements Phone {
         if (newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
             // We need some voice phone object to be active always, so never
             // delete the phone without anything to replace it with!
-            logd("Ignoring voice radio technology changed message. newVoiceRadioTech = Unknown."
-                    + " Active Phone = " + mActivePhone.getPhoneName());
+            logd("phoneObjectUpdater: Unknown rat ignore, "
+                    + " newVoiceRadioTech=Unknown. mActivePhone=" + mActivePhone.getPhoneName());
             return;
         }
 
@@ -182,7 +200,7 @@ public class PhoneProxy extends Handler implements Phone {
         if (mResetModemOnRadioTechnologyChange) {
             if (mCommandsInterface.getRadioState().isOn()) {
                 oldPowerState = true;
-                logd("Setting Radio Power to Off");
+                logd("phoneObjectUpdater: Setting Radio Power to Off");
                 mCommandsInterface.setRadioPower(false, null);
             }
         }
@@ -190,7 +208,7 @@ public class PhoneProxy extends Handler implements Phone {
         deleteAndCreatePhone(newVoiceRadioTech);
 
         if (mResetModemOnRadioTechnologyChange && oldPowerState) { // restore power state
-            logd("Resetting Radio");
+            logd("phoneObjectUpdater: Resetting Radio");
             mCommandsInterface.setRadioPower(oldPowerState, null);
         }
 
@@ -252,6 +270,12 @@ public class PhoneProxy extends Handler implements Phone {
         }
 
         oldPhone = null;
+    }
+
+    @Override
+    public void updatePhoneObject(int voiceRadioTech) {
+        logd("updatePhoneObject: radioTechnology=" + voiceRadioTech);
+        sendMessage(obtainMessage(EVENT_UPDATE_PHONE_OBJECT, voiceRadioTech, 0, null));
     }
 
     @Override

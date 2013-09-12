@@ -386,6 +386,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 break;
 
             case EVENT_SIM_RECORDS_LOADED:
+                log("EVENT_SIM_RECORDS_LOADED: what=" + msg.what);
+
+                updatePhoneObject();
                 updateSpnDisplay();
                 break;
 
@@ -904,6 +907,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         mReasonDataDenied = mNewReasonDataDenied;
         mMaxDataCalls = mNewMaxDataCalls;
+
+        if (hasRilVoiceRadioTechnologyChanged) {
+            updatePhoneObject();
+        }
 
         if (hasRilDataRadioTechnologyChanged) {
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
