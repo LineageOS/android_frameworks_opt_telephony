@@ -1197,6 +1197,12 @@ public class CDMAPhone extends PhoneBase {
         UiccCardApplication newUiccApplication =
                 mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP2);
 
+        if (newUiccApplication == null) {
+            log("can't find 3GPP2 application; trying APP_FAM_3GPP");
+            newUiccApplication = mUiccController
+                    .getUiccCardApplication(UiccController.APP_FAM_3GPP);
+        }
+
         UiccCardApplication app = mUiccApplication.get();
         if (app != newUiccApplication) {
             if (app != null) {
