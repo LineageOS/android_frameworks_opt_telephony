@@ -748,6 +748,12 @@ public abstract class PhoneBase extends Handler implements Phone {
         return this;
     }
 
+    @Override
+    public void updatePhoneObject(int voiceRadioTech) {
+        // Only the PhoneProxy can update the phone object.
+        PhoneFactory.getDefaultPhone().updatePhoneObject(voiceRadioTech);
+    }
+
     /**
     * Retrieves the ServiceStateTracker of the phone instance.
     */
