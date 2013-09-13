@@ -295,6 +295,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             break;
 
         case EVENT_NV_READY:
+            updatePhoneObject();
+
             // For Non-RUIM phones, the subscription information is stored in
             // Non Volatile. Here when Non-Volatile is ready, we can poll the CDMA
             // subscription info.
@@ -450,6 +452,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             break;
 
         case EVENT_RUIM_RECORDS_LOADED:
+            log("EVENT_RUIM_RECORDS_LOADED: what=" + msg.what);
+            updatePhoneObject();
             updateSpnDisplay();
             break;
 
@@ -987,6 +991,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         boolean hasCdmaDataConnectionChanged =
                        mSS.getDataRegState() != mNewSS.getDataRegState();
 
+        boolean hasRilVoiceRadioTechnologyChanged =
+                mSS.getRilVoiceRadioTechnology() != mNewSS.getRilVoiceRadioTechnology();
+
         boolean hasRilDataRadioTechnologyChanged =
                 mSS.getRilDataRadioTechnology() != mNewSS.getRilDataRadioTechnology();
 
@@ -1017,7 +1024,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         mCellLoc = mNewCellLoc;
         mNewCellLoc = tcl;
 
-        mNewSS.setStateOutOfService(); // clean slate for next time
+        if (hasRilVoiceRadioTechnologyChanged) {
+            updatePhoneObject();
+        }
 
         if (hasRilDataRadioTechnologyChanged) {
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,

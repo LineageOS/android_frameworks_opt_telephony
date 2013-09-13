@@ -269,6 +269,9 @@ public abstract class ServiceStateTracker extends Handler {
         }
     }
 
+    protected void updatePhoneObject() {
+        mPhoneBase.updatePhoneObject(mSS.getRilVoiceRadioTechnology());
+    }
 
     /**
      * Registration point for combined roaming on
