@@ -164,8 +164,8 @@ public class CatService extends Handler implements AppInterface {
     }
 
     public void dispose() {
+        CatLog.d(this, "Disposing CatService object");
         mIccRecords.unregisterForRecordsLoaded(this);
-
         // Clean up stk icon if dispose is called
         broadcastCardStateAndIccRefreshResp(CardState.CARDSTATE_ABSENT, null);
 
@@ -175,13 +175,19 @@ public class CatService extends Handler implements AppInterface {
         mCmdIf.unSetOnCatCallSetUp(this);
         mCmdIf.unSetOnCatCcAlphaNotify(this);
         mCmdIf.unregisterForIccRefresh(this);
+        mCmdIf.unSetOnCatCcAlphaNotify(this);
         if (mUiccController != null) {
             mUiccController.unregisterForIccChanged(this);
             mUiccController = null;
         }
+        if (mUiccApplication != null) {
+            mUiccApplication.unregisterForReady(this);
+        }
+        mMsgDecoder.dispose();
+        mMsgDecoder = null;
         disposeHandlerThread();
-        sInstance = null;
         removeCallbacksAndMessages(null);
+        sInstance = null;
     }
 
     protected void disposeHandlerThread() {
