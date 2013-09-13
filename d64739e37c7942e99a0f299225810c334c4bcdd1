@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a016987_89b83de7",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaLteServiceStateTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 250,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2013-09-13T11:10:08Z",
+      "side": 1,
+      "message": "Argh. mCi.needsOldRilFeature() should work, you don\u0027t need to dupe the method.",
+      "revId": "d64739e37c7942e99a0f299225810c334c4bcdd1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
