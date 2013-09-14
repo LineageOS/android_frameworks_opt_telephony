@@ -56,11 +56,13 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
     @Override
     protected Object
     responseIccCardStatus(Parcel p) {
-        // force CDMA + LTE network mode
+        // get type from Settings.Global default to CDMA + LTE network mode
         boolean forceCdmaLte = needsOldRilFeature("forceCdmaLteNetworkType");
-
         if (forceCdmaLte) {
-            setPreferredNetworkType(NETWORK_MODE_LTE_CDMA_EVDO, null);
+            int phoneType = android.provider.Settings.Global.getInt(mContext.getContentResolver(),
+                            android.provider.Settings.Global.PREFERRED_NETWORK_MODE,
+                            NETWORK_MODE_LTE_CDMA_EVDO);
+            setPreferredNetworkType(phoneType, null);
         }
 
         return super.responseIccCardStatus(p);
