@@ -1,5 +1,6 @@
-/*
- * Copyright (C) 2011 The Android Open Source Project
+/* 
+ * Copyrigh (C) 2011 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,14 +29,13 @@ import android.provider.Telephony;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.InboundSmsHandler;
+
 import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsBroadcastUndelivered;
-import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 import com.android.internal.telephony.gsm.GsmSMSDispatcher;
 import com.android.internal.telephony.gsm.SmsMessage;
 import com.android.internal.telephony.uicc.IsimRecords;
@@ -51,16 +51,11 @@ public class CDMALTEPhone extends CDMAPhone {
     static final String LOG_LTE_TAG = "CDMALTEPhone";
     private static final boolean DBG = true;
 
-    /** Secondary SMSDispatcher for 3GPP format messages. */
-    SMSDispatcher m3gppSMS;
-
     /** CdmaLtePhone in addition to RuimRecords available from
      * PhoneBase needs access to SIMRecords and IsimUiccRecords
      */
     private SIMRecords mSimRecords;
     private IsimUiccRecords mIsimUiccRecords;
-
-    private GsmInboundSmsHandler mGsmInboundSmsHandler;
 
     /**
      * Small container class used to hold information relevant to
@@ -87,11 +82,6 @@ public class CDMALTEPhone extends CDMAPhone {
                 handleSetSelectNetwork((AsyncResult) msg.obj);
                 break;
 
-            case EVENT_NEW_ICC_SMS:
-                // pass to InboundSmsHandler to process
-                mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, msg.obj);
-                break;
-
             default:
                 super.handleMessage(msg);
         }
@@ -102,35 +92,16 @@ public class CDMALTEPhone extends CDMAPhone {
         mSST = new CdmaLteServiceStateTracker(this);
     }
 
-    /**
-     * Create SMSDispatcher and InboundSmsHandler for 3GPP format messages.
-     * @return the new GsmInboundSmsHandler (to pass to {@link SmsBroadcastUndelivered})
-     */
-    @Override
-    protected GsmInboundSmsHandler initGsmSmsDispatcher() {
-        // Create 3GPP SMS dispatcher for outgoing messages.
-        m3gppSMS = new GsmSMSDispatcher(this, mSmsUsageMonitor);
-
-        // Create 3GPP inbound SMS handler.
-        mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(mContext,
-                mSmsStorageMonitor, this);
-
-        return mGsmInboundSmsHandler;
-    }
-
     @Override
     public void dispose() {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
             super.dispose();
-            m3gppSMS.dispose();
-            mGsmInboundSmsHandler.dispose();
         }
     }
 
     @Override
     public void removeReferences() {
         super.removeReferences();
-        m3gppSMS = null;
     }
 
     @Override
@@ -313,13 +284,11 @@ public class CDMALTEPhone extends CDMAPhone {
         if (mSimRecords != newSimRecords) {
             if (mSimRecords != null) {
                 log("Removing stale SIMRecords object.");
-                mSimRecords.unregisterForNewSms(this);
                 mSimRecords = null;
             }
             if (newSimRecords != null) {
                 log("New SIMRecords found");
                 mSimRecords = newSimRecords;
-                mSimRecords.registerForNewSms(this, EVENT_NEW_ICC_SMS, null);
             }
         }
 
@@ -343,6 +312,5 @@ public class CDMALTEPhone extends CDMAPhone {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("CDMALTEPhone extends:");
         super.dump(fd, pw, args);
-        pw.println(" m3gppSMS=" + m3gppSMS);
     }
 }
