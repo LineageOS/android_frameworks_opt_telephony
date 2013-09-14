@@ -307,10 +307,8 @@ public final class RuimRecords extends IccRecords {
                     break;
                 case UserData.ENCODING_IA5:
                 case UserData.ENCODING_GSM_7BIT_ALPHABET:
-                    mSpn = GsmAlphabet.gsm7BitPackedToString(spnData, 0, (numBytes*8)/7);
-                    break;
                 case UserData.ENCODING_7BIT_ASCII:
-                    mSpn =  new String(spnData, 0, numBytes, "US-ASCII");
+                    mSpn = GsmAlphabet.gsm7BitPackedToString(spnData, 0, (numBytes*8)/7);
                     break;
                 case UserData.ENCODING_UNICODE_16:
                     mSpn =  new String(spnData, 0, numBytes, "utf-16");
