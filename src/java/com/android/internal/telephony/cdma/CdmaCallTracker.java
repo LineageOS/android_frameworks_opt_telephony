@@ -53,7 +53,7 @@ public final class CdmaCallTracker extends CallTracker {
 
     //***** Constants
 
-    static final int MAX_CONNECTIONS = 1;   // only 1 connection allowed in CDMA
+    static final int MAX_CONNECTIONS = 8;
     static final int MAX_CONNECTIONS_PER_CALL = 1; // only 1 connection allowed per call
 
     //***** Instance Variables
