@@ -226,8 +226,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         mCi.unregisterForVoiceNetworkStateChanged(this);
         mCi.unregisterForCdmaOtaProvision(this);
         mPhone.unregisterForEriFileLoaded(this);
-        if (mUiccApplcation != null) {mUiccApplcation.unregisterForReady(this);}
-        if (mIccRecords != null) {mIccRecords.unregisterForRecordsLoaded(this);}
+        unregisterForRuimEvents();
         mCi.unSetOnNITZTime(this);
         mCr.unregisterContentObserver(mAutoTimeObserver);
         mCr.unregisterContentObserver(mAutoTimeZoneObserver);
@@ -551,8 +550,13 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         log("isFromRuim: " + mIsSubscriptionFromRuim);
         saveCdmaSubscriptionSource(newSubscriptionSource);
         if (!mIsSubscriptionFromRuim) {
+            // Unregister from any previous RUIM events if registered
+            // (switching from RUIM/SIM to NV)
+            unregisterForRuimEvents();
             // NV is ready when subscription source is NV
             sendMessage(obtainMessage(EVENT_NV_READY));
+        } else {
+            registerForRuimEvents();
         }
     }
 
@@ -2023,6 +2027,26 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         }
     }
 
+    private void registerForRuimEvents() {
+        log("registerForRuimEvents");
+        if (mUiccApplcation != null) {
+            mUiccApplcation.registerForReady(this, EVENT_RUIM_READY, null);
+        }
+        if (mIccRecords != null) {
+            mIccRecords.registerForRecordsLoaded(this, EVENT_RUIM_RECORDS_LOADED, null);
+        }
+    }
+
+    private void unregisterForRuimEvents() {
+        log("unregisterForRuimEvents");
+        if (mUiccApplcation != null) {
+            mUiccApplcation.unregisterForReady(this);
+        }
+        if (mIccRecords != null) {
+            mIccRecords.unregisterForRecordsLoaded(this);
+        }
+    }
+
     protected UiccCardApplication getUiccCardApplication() {
             return  mUiccController.getUiccCardApplication(mPhone.getPhoneId(),
                     UiccController.APP_FAM_3GPP2);
@@ -2037,24 +2061,16 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         UiccCardApplication newUiccApplication = getUiccCardApplication();
 
         if (mUiccApplcation != newUiccApplication) {
-            if (mUiccApplcation != null) {
-                log("Removing stale icc objects.");
-                mUiccApplcation.unregisterForReady(this);
-                if (mIccRecords != null) {
-                    mIccRecords.unregisterForRecordsLoaded(this);
-                }
-                mIccRecords = null;
-                mUiccApplcation = null;
-            }
+            log("Removing stale icc objects.");
+            unregisterForRuimEvents();
+            mIccRecords = null;
+            mUiccApplcation = null;
             if (newUiccApplication != null) {
                 log("New card found");
                 mUiccApplcation = newUiccApplication;
                 mIccRecords = mUiccApplcation.getIccRecords();
                 if (mIsSubscriptionFromRuim) {
-                    mUiccApplcation.registerForReady(this, EVENT_RUIM_READY, null);
-                    if (mIccRecords != null) {
-                        mIccRecords.registerForRecordsLoaded(this, EVENT_RUIM_RECORDS_LOADED, null);
-                    }
+                    registerForRuimEvents();
                 }
             }
         }
