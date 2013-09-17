@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.app.Activity;
 import android.app.AppOpsManager;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
@@ -627,11 +628,22 @@ public abstract class InboundSmsHandler extends StateMachine {
 
         Intent intent;
         if (destPort == -1) {
-            intent = new Intent(Intents.SMS_RECEIVED_ACTION);
+            intent = new Intent(Intents.SMS_DELIVER_ACTION);
+
+            // Direct the intent to only the default SMS app. If we can't find a default SMS app
+            // then sent it to all broadcast receivers.
+            ComponentName componentName = SmsApplication.getDefaultSmsApplication(mContext, true);
+            if (componentName != null) {
+                // Deliver SMS message only to this receiver
+                intent.setComponent(componentName);
+                log("Delivering SMS to: " + componentName.getPackageName() +
+                        " " + componentName.getClassName());
+            }
         } else {
             Uri uri = Uri.parse("sms://localhost:" + destPort);
             intent = new Intent(Intents.DATA_SMS_RECEIVED_ACTION, uri);
         }
+
         intent.putExtra("pdus", pdus);
         intent.putExtra("format", tracker.getFormat());
         dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
@@ -769,27 +781,43 @@ public abstract class InboundSmsHandler extends StateMachine {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            if (!Intents.SMS_RECEIVED_ACTION.equals(action)
-                    && !Intents.DATA_SMS_RECEIVED_ACTION.equals(action)) {
-                loge("unexpected BroadcastReceiver action: " + action);
-            }
+            if (action.equals(Intents.SMS_DELIVER_ACTION)) {
+                // Now dispatch the notification only intent
+                intent.setAction(Intents.SMS_RECEIVED_ACTION);
+                intent.setComponent(null);
+                dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
+                        AppOpsManager.OP_RECEIVE_SMS, this);
+            } else if (action.equals(Intents.WAP_PUSH_DELIVER_ACTION)) {
+                // Now dispatch the notification only intent
+                intent.setAction(Intents.WAP_PUSH_RECEIVED_ACTION);
+                intent.setComponent(null);
+                dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
+                        AppOpsManager.OP_RECEIVE_SMS, this);
+            } else {
+                // Now that the intents have been deleted we can clean up the PDU data.
+                if (!Intents.DATA_SMS_RECEIVED_ACTION.equals(action)
+                        && !Intents.DATA_SMS_RECEIVED_ACTION.equals(action)
+                        && !Intents.WAP_PUSH_RECEIVED_ACTION.equals(action)) {
+                    loge("unexpected BroadcastReceiver action: " + action);
+                }
 
-            int rc = getResultCode();
-            if ((rc != Activity.RESULT_OK) && (rc != Intents.RESULT_SMS_HANDLED)) {
-                loge("a broadcast receiver set the result code to " + rc
-                        + ", deleting from raw table anyway!");
-            } else if (DBG) {
-                log("successful broadcast, deleting from raw table.");
-            }
+                int rc = getResultCode();
+                if ((rc != Activity.RESULT_OK) && (rc != Intents.RESULT_SMS_HANDLED)) {
+                    loge("a broadcast receiver set the result code to " + rc
+                            + ", deleting from raw table anyway!");
+                } else if (DBG) {
+                    log("successful broadcast, deleting from raw table.");
+                }
 
-            deleteFromRawTable(mDeleteWhere, mDeleteWhereArgs);
-            sendMessage(EVENT_BROADCAST_COMPLETE);
+                deleteFromRawTable(mDeleteWhere, mDeleteWhereArgs);
+                sendMessage(EVENT_BROADCAST_COMPLETE);
 
-            int durationMillis = (int) ((System.nanoTime() - mBroadcastTimeNano) / 1000000);
-            if (durationMillis >= 5000) {
-                loge("Slow ordered broadcast completion time: " + durationMillis + " ms");
-            } else if (DBG) {
-                log("ordered broadcast completed in: " + durationMillis + " ms");
+                int durationMillis = (int) ((System.nanoTime() - mBroadcastTimeNano) / 1000000);
+                if (durationMillis >= 5000) {
+                    loge("Slow ordered broadcast completion time: " + durationMillis + " ms");
+                } else if (DBG) {
+                    log("ordered broadcast completed in: " + durationMillis + " ms");
+                }
             }
         }
     }
