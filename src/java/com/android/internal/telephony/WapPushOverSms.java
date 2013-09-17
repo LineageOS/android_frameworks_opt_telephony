@@ -216,13 +216,23 @@ public class WapPushOverSms implements ServiceConnection {
             appOp = AppOpsManager.OP_RECEIVE_WAP_PUSH;
         }
 
-        Intent intent = new Intent(Intents.WAP_PUSH_RECEIVED_ACTION);
+        Intent intent = new Intent(Intents.WAP_PUSH_DELIVER_ACTION);
         intent.setType(mimeType);
         intent.putExtra("transactionId", transactionId);
         intent.putExtra("pduType", pduType);
         intent.putExtra("header", header);
         intent.putExtra("data", intentData);
         intent.putExtra("contentTypeParameters", pduDecoder.getContentParameters());
+
+        // Direct the intent to only the default MMS app. If we can't find a default MMS app
+        // then sent it to all broadcast receivers.
+        ComponentName componentName = SmsApplication.getDefaultMmsApplication(mContext, true);
+        if (componentName != null) {
+            // Deliver MMS message only to this receiver
+            intent.setComponent(componentName);
+            if (DBG) Rlog.v(TAG, "Delivering MMS to: " + componentName.getPackageName() +
+                  " " + componentName.getClassName());
+        }
 
         handler.dispatchIntent(intent, permission, appOp, receiver);
         return Activity.RESULT_OK;
