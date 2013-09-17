@@ -195,6 +195,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
             return;
         }
 
+        for (int i = mRecordsLoadedRegistrants.size() - 1; i >= 0 ; i--) {
+            Registrant  r = (Registrant) mRecordsLoadedRegistrants.get(i);
+            Handler rH = r.getHandler();
+
+            if (rH != null && rH == h) {
+                return;
+            }
+        }
         Registrant r = new Registrant(h, what, obj);
         mRecordsLoadedRegistrants.add(r);
 
