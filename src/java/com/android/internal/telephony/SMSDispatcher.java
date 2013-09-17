@@ -1663,14 +1663,8 @@ public abstract class SMSDispatcher extends Handler {
                             AppOpsManager.OP_RECEIVE_SMS);
                 }
 
-                // Set result (messages were sent)
-                setResultCode(android.app.Activity.RESULT_OK);
-
             } catch (Exception ex) {
                 Log.e(TAG, "Failed to dispatch SMS", ex);
-
-                // Set result (messages were not sent)
-                setResultCode(android.app.Activity.RESULT_CANCELED);
             }
         }
 
