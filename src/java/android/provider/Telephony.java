@@ -18,6 +18,7 @@ package android.provider;
 
 import android.annotation.SdkConstant;
 import android.annotation.SdkConstant.SdkConstantType;
+import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -29,6 +30,8 @@ import android.telephony.SmsMessage;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 import android.util.Patterns;
+
+import com.android.internal.telephony.SmsApplication;
 
 
 import java.util.HashSet;
@@ -519,17 +522,73 @@ public final class Telephony {
             public static final int RESULT_SMS_UNSUPPORTED = 4;
 
             /**
-             * Set by BroadcastReceiver. Indicates the duplicated imcoming message.
+             * Set by BroadcastReceiver. Indicates the duplicated incoming message.
              */
             public static final int RESULT_SMS_DUPLICATED = 5;
 
             /**
+             * Activity action: Ask the user to change the default
+             * SMS application. This will show a dialog that asks the
+             * user whether they want to replace the current default
+             * SMS application with the one specified in
+             * {@link #EXTRA_PACKAGE_NAME}.
+             */
+            @SdkConstant(SdkConstantType.ACTIVITY_INTENT_ACTION)
+            public static final String ACTION_CHANGE_DEFAULT =
+                    "android.provider.Telephony.ACTION_CHANGE_DEFAULT";
+
+            /**
+             * The PackageName string passed in as an
+             * extra for {@link #ACTION_CHANGE_DEFAULT}
+             *
+             * @see #ACTION_CHANGE_DEFAULT
+             */
+            public static final String EXTRA_PACKAGE_NAME = "package";
+
+            /**
+             * Used by applications to determine if they are the current default sms package.
+             * @param context context of the requesting application
+             * @param packageName name of the package to check.
+             * @return true if the specified package is the current default SMS app.
+             */
+            public static boolean isDefaultSmsPackage(Context context, String packageName) {
+                ComponentName component = SmsApplication.getDefaultSmsApplication(context, false);
+                if (component != null && component.getPackageName().equals(packageName)) {
+                    return true;
+                }
+                return false;
+            }
+
+            /**
              * Broadcast Action: A new text based SMS message has been received
-             * by the device. The intent will have the following extra
+             * by the device. This intent will only be delivered to the default
+             * sms app. That app is responsible for writing the message and notifying
+             * the user. The intent will have the following extra values:</p>
+             *
+             * <ul>
+             *   <li><em>pdus</em> - An Object[] of byte[]s containing the PDUs
+             *   that make up the message.</li>
+             * </ul>
+             *
+             * <p>The extra values can be extracted using
+             * {@link #getMessagesFromIntent(Intent)}.</p>
+             *
+             * <p>If a BroadcastReceiver encounters an error while processing
+             * this intent it should set the result code appropriately.</p>
+             */
+            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+            public static final String SMS_DELIVER_ACTION =
+                    "android.provider.Telephony.SMS_DELIVER";
+
+            /**
+             * Broadcast Action: A new text based SMS message has been received
+             * by the device. This intent will be delivered to all registered
+             * receivers as a notification. These apps are not expected to write the
+             * message or notify the user. The intent will have the following extra
              * values:</p>
              *
              * <ul>
-             *   <li><em>pdus</em> - An Object[] od byte[]s containing the PDUs
+             *   <li><em>pdus</em> - An Object[] of byte[]s containing the PDUs
              *   that make up the message.</li>
              * </ul>
              *
@@ -545,7 +604,8 @@ public final class Telephony {
 
             /**
              * Broadcast Action: A new data based SMS message has been received
-             * by the device. The intent will have the following extra
+             * by the device. This intent will be delivered to all registered
+             * receivers as a notification. The intent will have the following extra
              * values:</p>
              *
              * <ul>
@@ -565,7 +625,39 @@ public final class Telephony {
 
             /**
              * Broadcast Action: A new WAP PUSH message has been received by the
-             * device. The intent will have the following extra
+             * device. This intent will only be delivered to the default
+             * sms app. That app is responsible for writing the message and notifying
+             * the user. The intent will have the following extra values:</p>
+             *
+             * <ul>
+             *   <li><em>transactionId (Integer)</em> - The WAP transaction ID</li>
+             *   <li><em>pduType (Integer)</em> - The WAP PDU type</li>
+             *   <li><em>header (byte[])</em> - The header of the message</li>
+             *   <li><em>data (byte[])</em> - The data payload of the message</li>
+             *   <li><em>contentTypeParameters (HashMap&lt;String,String&gt;)</em>
+             *   - Any parameters associated with the content type
+             *   (decoded from the WSP Content-Type header)</li>
+             * </ul>
+             *
+             * <p>If a BroadcastReceiver encounters an error while processing
+             * this intent it should set the result code appropriately.</p>
+             *
+             * <p>The contentTypeParameters extra value is map of content parameters keyed by
+             * their names.</p>
+             *
+             * <p>If any unassigned well-known parameters are encountered, the key of the map will
+             * be 'unassigned/0x...', where '...' is the hex value of the unassigned parameter.  If
+             * a parameter has No-Value the value in the map will be null.</p>
+             */
+            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+            public static final String WAP_PUSH_DELIVER_ACTION =
+                    "android.provider.Telephony.WAP_PUSH_DELIVER";
+
+            /**
+             * Broadcast Action: A new WAP PUSH message has been received by the
+             * device. This intent will be delivered to all registered
+             * receivers as a notification. These apps are not expected to write the
+             * message or notify the user. The intent will have the following extra
              * values:</p>
              *
              * <ul>
