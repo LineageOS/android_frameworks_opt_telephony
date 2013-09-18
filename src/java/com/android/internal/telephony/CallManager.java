@@ -900,14 +900,10 @@ public final class CallManager {
     private boolean canDial(Phone phone) {
         int serviceState = phone.getServiceState().getState();
         boolean hasRingingCall = hasActiveRingingCall();
-        boolean hasActiveCall = hasActiveFgCall();
-        boolean hasHoldingCall = hasActiveBgCall();
-        boolean allLinesTaken = hasActiveCall && hasHoldingCall;
         Call.State fgCallState = getActiveFgCallState();
 
         boolean result = (serviceState != ServiceState.STATE_POWER_OFF
                 && !hasRingingCall
-                && !allLinesTaken
                 && ((fgCallState == Call.State.ACTIVE)
                         || (fgCallState == Call.State.IDLE)
                         || (fgCallState == Call.State.DISCONNECTED)));
@@ -915,9 +911,6 @@ public final class CallManager {
         if (result == false) {
             Rlog.d(LOG_TAG, "canDial serviceState=" + serviceState
                             + " hasRingingCall=" + hasRingingCall
-                            + " hasActiveCall=" + hasActiveCall
-                            + " hasHoldingCall=" + hasHoldingCall
-                            + " allLinesTaken=" + allLinesTaken
                             + " fgCallState=" + fgCallState);
         }
         return result;
