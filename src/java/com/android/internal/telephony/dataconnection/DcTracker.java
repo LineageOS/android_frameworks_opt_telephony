@@ -63,6 +63,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
+import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -2227,6 +2228,18 @@ public class DcTracker extends DcTrackerBase {
     private void createAllApnList() {
         mAllDps.clear();
         String operator = getOperatorNumeric();
+
+        mAllApnSettings = new ArrayList<ApnSetting>();
+        IccRecords r = mIccRecords.get();
+        String operator = (r != null) ? r.getOperatorNumeric() : "";
+
+        if (mCdmaSsm.getCdmaSubscriptionSource() ==
+                CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV) {
+            operator = SystemProperties.get(
+                                CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC,
+                                mPhone.getServiceStateTracker().getOperatorNumeric());
+        }
+
         if (operator != null) {
             String selection = "numeric = '" + operator + "'";
             // query only enabled apn.
@@ -2678,6 +2691,9 @@ public class DcTracker extends DcTrackerBase {
             }
             log("onUpdateIcc: tryRestartDataConnections " + Phone.REASON_NW_TYPE_CHANGED);
             tryRestartDataConnections(Phone.REASON_NW_TYPE_CHANGED);
+        } else if (mCdmaSsm.getCdmaSubscriptionSource() ==
+                CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV) {
+            onRecordsLoaded(Phone.REASON_NV_READY);
         }
     }
 
