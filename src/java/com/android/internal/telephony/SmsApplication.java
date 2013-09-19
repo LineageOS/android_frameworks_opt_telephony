@@ -22,6 +22,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.Resources;
 import android.provider.Settings;
 import android.provider.Telephony.Sms.Intents;
 
@@ -35,8 +36,6 @@ import java.util.List;
  * {@hide}
  */
 public final class SmsApplication {
-    private static final String MESSAGING_PACKAGE_NAME = "com.android.mms";
-
     public static class SmsApplicationData {
         /**
          * Name of this SMS app for display.
@@ -166,8 +165,11 @@ public final class SmsApplication {
         // this if the caller asked us to.
         if (updateIfNeeded) {
             if (applicationData == null) {
-                // Do we have a package for Android Messaging?
-                applicationData = getApplicationForPackage(applications, MESSAGING_PACKAGE_NAME);
+                // Try to find the default SMS package for this device
+                Resources r = context.getResources();
+                String defaultPackage =
+                        r.getString(com.android.internal.R.string.default_sms_application);
+                applicationData = getApplicationForPackage(applications, defaultPackage);
             }
             if (applicationData == null) {
                 // Are there any applications?
