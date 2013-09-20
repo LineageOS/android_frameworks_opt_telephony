@@ -1457,8 +1457,11 @@ public class Operators{
         else if (response.equals("310014"))response="Testing"; /*United States*/
         else if (response.equals("310020"))response="Union Telephone Company"; /*United States*/
         else if (response.equals("310520"))response="VeriSign"; /*United States*/
+        else if (response.equals("20404"))response="Verizon"; /*United States*/
+        else if (response.equals("246081"))response="Verizon"; /*United States*/
         else if (response.equals("310004"))response="Verizon"; /*United States*/
         else if (response.equals("310012"))response="Verizon"; /*United States*/
+        else if (response.equals("311480"))response="Verizon"; /*United States*/
         else if (response.equals("310450"))response="Viaero"; /*United States*/
         else if (response.equals("310180"))response="West Central"; /*United States*/
         else if (response.equals("310530"))response="West Virginia Wireless"; /*United States*/
