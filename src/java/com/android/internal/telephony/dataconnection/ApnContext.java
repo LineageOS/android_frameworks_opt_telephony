@@ -17,8 +17,10 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.app.PendingIntent;
+import android.content.Context;
 import android.telephony.Rlog;
 
+import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 
@@ -36,6 +38,8 @@ public class ApnContext {
     public final String LOG_TAG;
 
     protected static final boolean DBG = false;
+
+    private final Context mContext;
 
     private final String mApnType;
 
@@ -64,7 +68,8 @@ public class ApnContext {
      */
     AtomicBoolean mDependencyMet;
 
-    public ApnContext(String apnType, String logTag) {
+    public ApnContext(Context context, String apnType, String logTag) {
+        mContext = context;
         mApnType = apnType;
         mState = DctConstants.State.IDLE;
         setReason(Phone.REASON_DATA_ENABLED);
@@ -212,6 +217,16 @@ public class ApnContext {
 
     public boolean getDependencyMet() {
        return mDependencyMet.get();
+    }
+
+    public boolean isProvisioningApn() {
+        String provisioningApn = mContext.getResources()
+                .getString(R.string.mobile_provisioning_apn);
+        if (mApnSetting != null) {
+            return (mApnSetting.apn.equals(provisioningApn));
+        } else {
+            return false;
+        }
     }
 
     @Override

@@ -25,12 +25,14 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.database.ContentObserver;
+import android.net.ConnectivityManager;
 import android.net.LinkCapabilities;
 import android.net.LinkProperties;
 import android.net.NetworkInfo;
 import android.net.TrafficStats;
 import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -48,6 +50,7 @@ import android.telephony.Rlog;
 
 import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
+import com.android.internal.telephony.DctConstants.State;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
@@ -204,6 +207,8 @@ public abstract class DcTrackerBase extends Handler {
     protected long mSentSinceLastRecv;
     // Controls when a simple recovery attempt it to be tried
     protected int mNoRecvPollCount = 0;
+    // Refrence counter for enabling fail fast
+    protected static int sEnableFailFastRefCounter = 0;
     // True if data stall detection is enabled
     protected volatile boolean mDataStallDetectionEnabled = true;
 
@@ -264,6 +269,14 @@ public abstract class DcTrackerBase extends Handler {
     protected boolean mIsDisposed = false;
 
     protected ContentResolver mResolver;
+
+    /* Set to true with CMD_ENABLE_MOBILE_PROVISIONING */
+    protected boolean mIsProvisioning = false;
+
+    /* Object parameter in CMD_ENABLE_MOBILE_PROVISIONING */
+    protected String mProvisioningUrl = null;
+
+    protected AsyncChannel mReplyAc = new AsyncChannel();
 
     protected BroadcastReceiver mIntentReceiver = new BroadcastReceiver ()
     {
@@ -475,6 +488,8 @@ public abstract class DcTrackerBase extends Handler {
         sendMessage(msg);
     }
 
+    ConnectivityManager mCm;
+
     /**
      * Default constructor
      */
@@ -487,6 +502,8 @@ public abstract class DcTrackerBase extends Handler {
         mUiccController.registerForIccChanged(this, DctConstants.EVENT_ICC_CHANGED, null);
         mAlarmManager =
                 (AlarmManager) mPhone.getContext().getSystemService(Context.ALARM_SERVICE);
+        mCm = (ConnectivityManager) mPhone.getContext().getSystemService(
+                Context.CONNECTIVITY_SERVICE);
 
 
         IntentFilter filter = new IntentFilter();
@@ -623,6 +640,7 @@ public abstract class DcTrackerBase extends Handler {
     protected abstract boolean isDataAllowed();
     protected abstract boolean isApnTypeAvailable(String type);
     public    abstract DctConstants.State getState(String apnType);
+    protected abstract boolean isProvisioningApn(String apnType);
     protected abstract void setState(DctConstants.State s);
     protected abstract void gotoIdleAndNotifyDataConnection(String reason);
 
@@ -641,6 +659,7 @@ public abstract class DcTrackerBase extends Handler {
     protected abstract void onCleanUpAllConnections(String cause);
     public abstract boolean isDataPossible(String apnType);
     protected abstract void onUpdateIcc();
+    protected abstract void completeConnection(ApnContext apnContext);
 
     @Override
     public void handleMessage(Message msg) {
@@ -754,8 +773,22 @@ public abstract class DcTrackerBase extends Handler {
                 break;
             }
             case DctConstants.CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: {
-                final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
-                if (DBG) log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: enabled=" + enabled);
+                sEnableFailFastRefCounter += (msg.arg1 == DctConstants.ENABLED) ? 1 : -1;
+                if (DBG) {
+                    log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: "
+                            + " sEnableFailFastRefCounter=" + sEnableFailFastRefCounter);
+                }
+                if (sEnableFailFastRefCounter < 0) {
+                    final String s = "CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: "
+                            + "sEnableFailFastRefCounter:" + sEnableFailFastRefCounter + " < 0";
+                    loge(s);
+                    sEnableFailFastRefCounter = 0;
+                }
+                final boolean enabled = sEnableFailFastRefCounter > 0;
+                if (DBG) {
+                    log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: enabled=" + enabled
+                            + " sEnableFailFastRefCounter=" + sEnableFailFastRefCounter);
+                }
                 if (mFailFast != enabled) {
                     mFailFast = enabled;
                     mDataStallDetectionEnabled = !enabled;
@@ -775,8 +808,69 @@ public abstract class DcTrackerBase extends Handler {
 
                 break;
             }
+            case DctConstants.CMD_ENABLE_MOBILE_PROVISIONING: {
+                // TODO: Right now we know when it ends "successfully" when
+                // provisioning apn gets dropped, what happens if the user never
+                // succeed, I assume there is a timeout and the network will drop
+                // it after a period of time.
+                Bundle bundle = msg.getData();
+                if (bundle != null) {
+                    try {
+                        mProvisioningUrl = (String)bundle.get(DctConstants.PROVISIONING_URL_KEY);
+                    } catch(ClassCastException e) {
+                        loge("CMD_ENABLE_MOBILE_PROVISIONING: provisioning url not a string" + e);
+                        mProvisioningUrl = null;
+                    }
+                }
+                if (TextUtils.isEmpty(mProvisioningUrl)) {
+                    loge("CMD_ENABLE_MOBILE_PROVISIONING: provisioning url is empty, ignoring");
+                    mIsProvisioning = false;
+                    mProvisioningUrl = null;
+                } else {
+                    ApnContext apnContext = mApnContexts.get(PhoneConstants.APN_TYPE_DEFAULT);
+                    if (apnContext.isProvisioningApn() && apnContext.getState() == State.CONNECTED){
+                        log("CMD_ENABLE_MOBILE_PROVISIONING: mIsProvisioning=true url="
+                                + mProvisioningUrl);
+                        mIsProvisioning = true;
+                        completeConnection(mApnContexts.get(PhoneConstants.APN_TYPE_DEFAULT));                        
+                    } else {
+                        log("CMD_ENABLE_MOBILE_PROVISIONING: No longer connected");
+                        mIsProvisioning = false;
+                        mProvisioningUrl = null;
+                    }
+                }
+                break;
+            }
+            case DctConstants.CMD_IS_PROVISIONING_APN: {
+                if (DBG) log("CMD_IS_PROVISIONING_APN");
+                boolean isProvApn;
+                try {
+                    String apnType = null;
+                    Bundle bundle = msg.getData();
+                    if (bundle != null) {
+                        apnType = (String)bundle.get(DctConstants.APN_TYPE_KEY);
+                    }
+                    if (TextUtils.isEmpty(apnType)) {
+                        loge("CMD_IS_PROVISIONING_APN: apnType is empty");
+                        isProvApn = false;
+                    } else {
+                        isProvApn = isProvisioningApn(apnType);
+                    }
+                } catch (ClassCastException e) {
+                    loge("CMD_IS_PROVISIONING_APN: NO provisioning url ignoring");
+                    isProvApn = false;
+                }
+                if (DBG) log("CMD_IS_PROVISIONING_APN: ret=" + isProvApn);
+                mReplyAc.replyToMessage(msg, DctConstants.CMD_IS_PROVISIONING_APN,
+                        isProvApn ? DctConstants.ENABLED : DctConstants.DISABLED);
+                break;
+            }
             case DctConstants.EVENT_ICC_CHANGED: {
                 onUpdateIcc();
+                break;
+            }
+            case DctConstants.EVENT_RESTART_RADIO: {
+                restartRadio();
                 break;
             }
             default:
@@ -965,11 +1059,12 @@ public abstract class DcTrackerBase extends Handler {
         }
 
         if (!isApnTypeAvailable(type)) {
-            if (DBG) log("type not available");
+            if (DBG) log("enableApnType: not available, type=" + type);
             return PhoneConstants.APN_TYPE_NOT_AVAILABLE;
         }
 
         if (isApnIdEnabled(id)) {
+            if (DBG) log("enableApnType: already active, type=" + type);
             return PhoneConstants.APN_ALREADY_ACTIVE;
         } else {
             setEnabled(id, true);
@@ -1502,6 +1597,12 @@ public abstract class DcTrackerBase extends Handler {
         msg.arg1 = tearDown ? 1 : 0;
         msg.arg2 = 0;
         msg.obj = apnContext;
+        sendMessage(msg);
+    }
+
+    void sendRestartRadio() {
+        if (DBG)log("sendRestartRadio:");
+        Message msg = obtainMessage(DctConstants.EVENT_RESTART_RADIO);
         sendMessage(msg);
     }
 
