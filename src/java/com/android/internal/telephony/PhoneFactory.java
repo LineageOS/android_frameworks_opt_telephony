@@ -16,12 +16,18 @@
 
 package com.android.internal.telephony;
 
+import android.app.AppOpsManager;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.net.LocalServerSocket;
 import android.os.Looper;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.telephony.Rlog;
+
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CDMALTEPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
@@ -37,6 +43,7 @@ public class PhoneFactory {
     static final String LOG_TAG = "PhoneFactory";
     static final int SOCKET_OPEN_RETRY_MILLIS = 2 * 1000;
     static final int SOCKET_OPEN_MAX_RETRY = 3;
+    private static final String PHONE_PACKAGE_NAME = "com.android.phone";
 
     //***** Class Variables
 
@@ -133,6 +140,29 @@ public class PhoneFactory {
                                     sCommandsInterface, sPhoneNotifier));
                             break;
                     }
+                }
+
+                // Ensure that we have a default SMS app. Requesting the app with
+                // updateIfNeeded set to true is enough to configure a default SMS app.
+                ComponentName componentName =
+                        SmsApplication.getDefaultSmsApplication(context, true /* updateIfNeeded */);
+                String packageName = "NONE";
+                if (componentName != null) {
+                    packageName = componentName.getPackageName();
+                }
+                Rlog.i(LOG_TAG, "defaultSmsApplication: " + packageName);
+
+                // Phone needs to always have this permission to write to the sms database
+                PackageManager packageManager = context.getPackageManager();
+                AppOpsManager appOps = (AppOpsManager)context.getSystemService(
+                        Context.APP_OPS_SERVICE);
+                try {
+                    PackageInfo info = packageManager.getPackageInfo(PHONE_PACKAGE_NAME, 0);
+                    appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
+                            PHONE_PACKAGE_NAME, AppOpsManager.MODE_ALLOWED);
+                } catch (NameNotFoundException e) {
+                    // No phone app on this device (unexpected, even for non-phone devices)
+                    Rlog.e(LOG_TAG, "Unable to find phone package");
                 }
 
                 sMadeDefaults = true;
