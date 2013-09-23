@@ -250,9 +250,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     //***** Constants
 
-    // TODO: To move it to RilConstants.java.
-    static final int RIL_REQUEST_SET_INITIAL_ATTACH_APN = 111;
-
     // match with constant in ril.cpp
     static final int RIL_MAX_COMMAND_BYTES = (8 * 1024);
     static final int RESPONSE_SOLICITED = 0;
