@@ -1034,6 +1034,7 @@ public abstract class SMSDispatcher extends Handler {
         public int mRetryCount;
         public int mImsRetry; // nonzero indicates initial message was sent over Ims
         public int mMessageRef;
+        public boolean mExpectMore;
         String mFormat;
 
         public final PendingIntent mSentIntent;
@@ -1054,7 +1055,7 @@ public abstract class SMSDispatcher extends Handler {
         private SmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
                 PendingIntent deliveryIntent, PackageInfo appInfo, String destAddr, String format,
                 AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
-                SmsHeader smsHeader) {
+                SmsHeader smsHeader, boolean isExpectMore) {
             mData = data;
             mSentIntent = sentIntent;
             mDeliveryIntent = deliveryIntent;
@@ -1062,6 +1063,7 @@ public abstract class SMSDispatcher extends Handler {
             mAppInfo = appInfo;
             mDestAddress = destAddr;
             mFormat = format;
+            mExpectMore = isExpectMore;
             mImsRetry = 0;
             mMessageRef = 0;
             mUnsentPartCount = unsentPartCount;
@@ -1246,7 +1248,8 @@ public abstract class SMSDispatcher extends Handler {
 
     protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
             PendingIntent deliveryIntent, String format, AtomicInteger unsentPartCount,
-            AtomicBoolean anyPartFailed, Uri messageUri, SmsHeader smsHeader) {
+            AtomicBoolean anyPartFailed, Uri messageUri, SmsHeader smsHeader,
+            boolean isExpectMore) {
         // Get calling app package name via UID from Binder call
         PackageManager pm = mContext.getPackageManager();
         String[] packageNames = pm.getPackagesForUid(Binder.getCallingUid());
@@ -1265,13 +1268,13 @@ public abstract class SMSDispatcher extends Handler {
         // and before displaying the number to the user if confirmation is required.
         String destAddr = PhoneNumberUtils.extractNetworkPortion((String) data.get("destAddr"));
         return new SmsTracker(data, sentIntent, deliveryIntent, appInfo, destAddr, format,
-                unsentPartCount, anyPartFailed, messageUri, smsHeader);
+                unsentPartCount, anyPartFailed, messageUri, smsHeader, isExpectMore);
     }
 
     protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
-            PendingIntent deliveryIntent, String format, Uri messageUri) {
+            PendingIntent deliveryIntent, String format, Uri messageUri, boolean isExpectMore) {
         return getSmsTracker(data, sentIntent, deliveryIntent, format, null/*unsentPartCount*/,
-                null/*anyPartFailed*/, messageUri, null/*smsHeader*/);
+                null/*anyPartFailed*/, messageUri, null/*smsHeader*/, isExpectMore);
     }
 
     protected HashMap<String, Object> getSmsTrackerMap(String destAddr, String scAddr,
