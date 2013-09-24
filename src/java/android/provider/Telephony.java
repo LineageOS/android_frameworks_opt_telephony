@@ -69,7 +69,6 @@ public final class Telephony {
         public static final int MESSAGE_TYPE_FAILED = 5; // for failed outgoing messages
         public static final int MESSAGE_TYPE_QUEUED = 6; // for messages to send later
 
-
         /**
          * The thread ID of the message
          * <P>Type: INTEGER</P>
@@ -182,6 +181,19 @@ public final class Telephony {
      * Contains all text based SMS messages.
      */
     public static final class Sms implements BaseColumns, TextBasedSmsColumns {
+        /**
+         * Used to determine the currently configured default SMS package.
+         * @param context context of the requesting application
+         * @return package name for the default SMS package or null
+         */
+        public static String getDefaultSmsPackage(Context context) {
+            ComponentName component = SmsApplication.getDefaultSmsApplication(context, false);
+            if (component != null) {
+                return component.getPackageName();
+            }
+            return null;
+        }
+
         public static final Cursor query(ContentResolver cr, String[] projection) {
             return cr.query(CONTENT_URI, projection, null, null, DEFAULT_SORT_ORDER);
         }
@@ -544,20 +556,6 @@ public final class Telephony {
              * @see #ACTION_CHANGE_DEFAULT
              */
             public static final String EXTRA_PACKAGE_NAME = "package";
-
-            /**
-             * Used by applications to determine if they are the current default sms package.
-             * @param context context of the requesting application
-             * @param packageName name of the package to check.
-             * @return true if the specified package is the current default SMS app.
-             */
-            public static boolean isDefaultSmsPackage(Context context, String packageName) {
-                ComponentName component = SmsApplication.getDefaultSmsApplication(context, false);
-                if (component != null && component.getPackageName().equals(packageName)) {
-                    return true;
-                }
-                return false;
-            }
 
             /**
              * Broadcast Action: A new text based SMS message has been received
