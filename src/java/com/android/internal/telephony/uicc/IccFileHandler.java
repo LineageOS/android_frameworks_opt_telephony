@@ -261,15 +261,16 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 onLoaded);
 
         logd("IccFileHandler: loadEFImgTransparent fileid = " + fileid
-                + " filePath = " + getEFPath(fileid) + " highOffset = " + highOffset
+                + " filePath = " + getEFPath(EF_IMG) + " highOffset = " + highOffset
                 + " lowOffset = " + lowOffset + " length = " + length);
-        /*
-         * Per TS 31.102, for displaying of Icon, under
+
+        /* Per TS 31.102, for displaying of Icon, under
          * DF Telecom and DF Graphics , EF instance(s) (4FXX,transparent files)
          * are present. The possible image file identifiers (EF instance) for
          * EF img ( 4F20, linear fixed file) are : 4F01 ... 4F05.
+         * It should be MF_SIM + DF_TELECOM + DF_GRAPHICS, same path as EF IMG
          */
-        mCi.iccIOForApp(COMMAND_READ_BINARY, fileid, getEFPath(fileid),
+        mCi.iccIOForApp(COMMAND_READ_BINARY, fileid, getEFPath(EF_IMG),
                 highOffset, lowOffset, length, null, null, mAid, response);
     }
 
@@ -316,6 +317,23 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
         response.sendToTarget();
     }
 
+    private boolean processException(Message response, AsyncResult ar) {
+        IccException iccException;
+        boolean flag = false;
+        IccIoResult result = (IccIoResult) ar.result;
+        if (ar.exception != null) {
+            sendResult(response, null, ar.exception);
+            flag = true;
+        } else {
+            iccException = result.getException();
+            if (iccException != null) {
+                sendResult(response, null, iccException);
+                flag = true;
+            }
+        }
+        return flag;
+    }
+
     //***** Overridden from Handler
 
     @Override
@@ -326,86 +344,20 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
         String str;
         LoadLinearFixedContext lc;
 
-        IccException iccException;
         byte data[];
         int size;
         int fileid;
-        int recordNum;
         int recordSize[];
 
         try {
             switch (msg.what) {
-            case EVENT_GET_RECORD_SIZE_IMG_DONE:
-                logd("IccFileHandler: get record size img done");
-                ar = (AsyncResult) msg.obj;
-                lc = (LoadLinearFixedContext) ar.userObj;
-                result = (IccIoResult) ar.result;
-                response = lc.mOnLoaded;
-
-                if (ar.exception != null) {
-                    sendResult(response, null, ar.exception);
-                    break;
-                }
-
-                iccException = result.getException();
-
-                if (iccException != null) {
-                    sendResult(response, null, iccException);
-                    break;
-                }
-
-                data = result.payload;
-                lc.mRecordSize = data[RESPONSE_DATA_RECORD_LENGTH] & 0xFF;
-
-                if ((TYPE_EF != data[RESPONSE_DATA_FILE_TYPE]) ||
-                    (EF_TYPE_LINEAR_FIXED != data[RESPONSE_DATA_STRUCTURE])) {
-                    loge("IccFileHandler: File type mismatch: Throw Exception");
-                    throw new IccFileTypeMismatch();
-                }
-
-                logd("IccFileHandler: read EF IMG");
-                mCi.iccIOForApp(COMMAND_READ_RECORD, lc.mEfid, getEFPath(lc.mEfid),
-                        lc.mRecordNum,
-                        READ_RECORD_MODE_ABSOLUTE,
-                        lc.mRecordSize, null, null, mAid,
-                        obtainMessage(EVENT_READ_IMG_DONE, IccConstants.EF_IMG, 0, response));
-                break;
-
-            case EVENT_READ_IMG_DONE:
-                ar = (AsyncResult) msg.obj;
-                lc = (LoadLinearFixedContext) ar.userObj;
-                result = (IccIoResult) ar.result;
-                response = lc.mOnLoaded;
-
-                iccException = result.getException();
-                if (iccException != null) {
-                    sendResult(response, result.payload, ar.exception);
-                }
-                break;
-            case EVENT_READ_ICON_DONE:
-                ar = (AsyncResult) msg.obj;
-                response = (Message) ar.userObj;
-                result = (IccIoResult) ar.result;
-
-                iccException = result.getException();
-                if (iccException != null) {
-                    sendResult(response, result.payload, ar.exception);
-                }
-                break;
             case EVENT_GET_EF_LINEAR_RECORD_SIZE_DONE:
                 ar = (AsyncResult)msg.obj;
                 lc = (LoadLinearFixedContext) ar.userObj;
                 result = (IccIoResult) ar.result;
                 response = lc.mOnLoaded;
 
-                if (ar.exception != null) {
-                    sendResult(response, null, ar.exception);
-                    break;
-                }
-
-                iccException = result.getException();
-                if (iccException != null) {
-                    sendResult(response, null, iccException);
+                if (processException(response, (AsyncResult) msg.obj)) {
                     break;
                 }
 
@@ -424,27 +376,19 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
 
                 sendResult(response, recordSize, null);
                 break;
+
+             case EVENT_GET_RECORD_SIZE_IMG_DONE:
              case EVENT_GET_RECORD_SIZE_DONE:
                 ar = (AsyncResult)msg.obj;
                 lc = (LoadLinearFixedContext) ar.userObj;
                 result = (IccIoResult) ar.result;
                 response = lc.mOnLoaded;
 
-                if (ar.exception != null) {
-                    sendResult(response, null, ar.exception);
-                    break;
-                }
-
-                iccException = result.getException();
-
-                if (iccException != null) {
-                    sendResult(response, null, iccException);
+                if (processException(response, (AsyncResult) msg.obj)) {
                     break;
                 }
 
                 data = result.payload;
-                fileid = lc.mEfid;
-                recordNum = lc.mRecordNum;
 
                 if (TYPE_EF != data[RESPONSE_DATA_FILE_TYPE]) {
                     throw new IccFileTypeMismatch();
@@ -476,15 +420,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 response = (Message) ar.userObj;
                 result = (IccIoResult) ar.result;
 
-                if (ar.exception != null) {
-                    sendResult(response, null, ar.exception);
-                    break;
-                }
-
-                iccException = result.getException();
-
-                if (iccException != null) {
-                    sendResult(response, null, iccException);
+                if (processException(response, (AsyncResult) msg.obj)) {
                     break;
                 }
 
@@ -509,6 +445,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                                               fileid, 0, response));
             break;
 
+            case EVENT_READ_IMG_DONE:
             case EVENT_READ_RECORD_DONE:
 
                 ar = (AsyncResult)msg.obj;
@@ -516,15 +453,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                 result = (IccIoResult) ar.result;
                 response = lc.mOnLoaded;
 
-                if (ar.exception != null) {
-                    sendResult(response, null, ar.exception);
-                    break;
-                }
-
-                iccException = result.getException();
-
-                if (iccException != null) {
-                    sendResult(response, null, iccException);
+                if (processException(response, (AsyncResult) msg.obj)) {
                     break;
                 }
 
@@ -549,19 +478,12 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
             break;
 
             case EVENT_READ_BINARY_DONE:
+            case EVENT_READ_ICON_DONE:
                 ar = (AsyncResult)msg.obj;
                 response = (Message) ar.userObj;
                 result = (IccIoResult) ar.result;
 
-                if (ar.exception != null) {
-                    sendResult(response, null, ar.exception);
-                    break;
-                }
-
-                iccException = result.getException();
-
-                if (iccException != null) {
-                    sendResult(response, null, iccException);
+                if (processException(response, (AsyncResult) msg.obj)) {
                     break;
                 }
 
