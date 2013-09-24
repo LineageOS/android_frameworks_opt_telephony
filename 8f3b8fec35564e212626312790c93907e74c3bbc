@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3afb71cf_64c40a92",
+        "filename": "src/java/com/android/internal/telephony/Operators.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 1460,
+      "author": {
+        "id": 314
+      },
+      "writtenOn": "2013-09-24T08:37:09Z",
+      "side": 1,
+      "message": "these are test sim mcc mnc pairs. please remove them\n\nline 1460 and 1461",
+      "revId": "8f3b8fec35564e212626312790c93907e74c3bbc",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
