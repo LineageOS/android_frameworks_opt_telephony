@@ -16,15 +16,20 @@
 
 package com.android.internal.telephony;
 
+import android.Manifest.permission;
 import android.app.AppOpsManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.pm.ServiceInfo;
 import android.content.res.Resources;
+import android.net.Uri;
 import android.provider.Settings;
 import android.provider.Telephony.Sms.Intents;
+import android.telephony.TelephonyManager;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -48,26 +53,42 @@ public final class SmsApplication {
         public String mPackageName;
 
         /**
-         * The class name of the SMS receiver in this app.
+         * The class name of the SMS_DELIVER_ACTION receiver in this app.
          */
         public String mSmsReceiverClass;
 
         /**
-         * The class name of the MMS receiver in this app.
+         * The class name of the WAP_PUSH_DELIVER_ACTION receiver in this app.
          */
         public String mMmsReceiverClass;
+
+        /**
+         * The class name of the ACTION_RESPOND_VIA_MESSAGE intent in this app.
+         */
+        public String mRespondViaMessageClass;
+
+        /**
+         * The class name of the ACTION_SENDTO intent in this app.
+         */
+        public String mSendToClass;
 
         /**
          * The user-id for this application
          */
         public int mUid;
 
-        public SmsApplicationData(String applicationName, String packageName,
-                String smsReceiverName, String mmsReceiverName, int uid) {
+        /**
+         * Returns true if this SmsApplicationData is complete (all intents handled).
+         * @return
+         */
+        public boolean isComplete() {
+            return (mSmsReceiverClass != null && mMmsReceiverClass != null
+                    && mRespondViaMessageClass != null && mSendToClass != null);
+        }
+
+        public SmsApplicationData(String applicationName, String packageName, int uid) {
             mApplicationName = applicationName;
             mPackageName = packageName;
-            mSmsReceiverClass = smsReceiverName;
-            mMmsReceiverClass = mmsReceiverName;
             mUid = uid;
         }
     }
@@ -76,48 +97,111 @@ public final class SmsApplication {
      * Returns the list of available SMS apps defined as apps that are registered for both the
      * SMS_RECEIVED_ACTION (SMS) and WAP_PUSH_RECEIVED_ACTION (MMS) broadcasts (and their broadcast
      * receivers are enabled)
+     *
+     * Requirements to be an SMS application:
+     * Implement SMS_DELIVER_ACTION broadcast receiver.
+     * Require BROADCAST_SMS permission.
+     *
+     * Implement WAP_PUSH_DELIVER_ACTION broadcast receiver.
+     * Require BROADCAST_WAP_PUSH permission.
+     *
+     * Implement RESPOND_VIA_MESSAGE intent.
+     * Support smsto Uri scheme.
+     * Require SEND_RESPOND_VIA_MESSAGE permission.
+     *
+     * Implement ACTION_SENDTO intent.
+     * Support smsto Uri scheme.
      */
     public static Collection<SmsApplicationData> getApplicationCollection(Context context) {
         PackageManager packageManager = context.getPackageManager();
 
         // Get the list of apps registered for SMS
         Intent intent = new Intent(Intents.SMS_DELIVER_ACTION);
-        int flags = 0;
-        List<ResolveInfo> smsReceivers = packageManager.queryBroadcastReceivers(intent, flags);
-
-        intent = new Intent(Intents.WAP_PUSH_DELIVER_ACTION);
-        intent.setDataAndType(null, "application/vnd.wap.mms-message");
-        List<ResolveInfo> mmsReceivers = packageManager.queryBroadcastReceivers(intent, flags);
+        List<ResolveInfo> smsReceivers = packageManager.queryBroadcastReceivers(intent, 0);
 
         HashMap<String, SmsApplicationData> receivers = new HashMap<String, SmsApplicationData>();
 
         // Add one entry to the map for every sms receiver (ignoring duplicate sms receivers)
-        for (ResolveInfo r : smsReceivers) {
-            String packageName = r.activityInfo.packageName;
+        for (ResolveInfo resolveInfo : smsReceivers) {
+            final ActivityInfo activityInfo = resolveInfo.activityInfo;
+            if (activityInfo == null) {
+                continue;
+            }
+            if (!permission.BROADCAST_SMS.equals(activityInfo.permission)) {
+                continue;
+            }
+            final String packageName = activityInfo.packageName;
             if (!receivers.containsKey(packageName)) {
-                String applicationName = r.loadLabel(packageManager).toString();
-                SmsApplicationData smsApplicationData = new SmsApplicationData(applicationName,
-                        packageName, r.activityInfo.name, null, r.activityInfo.applicationInfo.uid);
+                final String applicationName = resolveInfo.loadLabel(packageManager).toString();
+                final SmsApplicationData smsApplicationData = new SmsApplicationData(
+                        applicationName, packageName, activityInfo.applicationInfo.uid);
+                smsApplicationData.mSmsReceiverClass = activityInfo.name;
                 receivers.put(packageName, smsApplicationData);
             }
         }
 
         // Update any existing entries with mms receiver class
-        for (ResolveInfo r : mmsReceivers) {
-            String packageName = r.activityInfo.packageName;
-            SmsApplicationData smsApplicationData = receivers.get(packageName);
+        intent = new Intent(Intents.WAP_PUSH_DELIVER_ACTION);
+        intent.setDataAndType(null, "application/vnd.wap.mms-message");
+        List<ResolveInfo> mmsReceivers = packageManager.queryBroadcastReceivers(intent, 0);
+        for (ResolveInfo resolveInfo : mmsReceivers) {
+            final ActivityInfo activityInfo = resolveInfo.activityInfo;
+            if (activityInfo == null) {
+                continue;
+            }
+            if (!permission.BROADCAST_WAP_PUSH.equals(activityInfo.permission)) {
+                continue;
+            }
+            final String packageName = activityInfo.packageName;
+            final SmsApplicationData smsApplicationData = receivers.get(packageName);
             if (smsApplicationData != null) {
-                smsApplicationData.mMmsReceiverClass = r.activityInfo.name;
+                smsApplicationData.mMmsReceiverClass = activityInfo.name;
             }
         }
 
-        // Remove any entries (which we added for sms receivers) for which we did not also find
-        // valid mms receivers
+        // Update any existing entries with respond via message intent class.
+        intent = new Intent(TelephonyManager.ACTION_RESPOND_VIA_MESSAGE,
+                Uri.fromParts("smsto", "", null));
+        List<ResolveInfo> respondServices = packageManager.queryIntentServices(intent, 0);
+        for (ResolveInfo resolveInfo : respondServices) {
+            final ServiceInfo serviceInfo = resolveInfo.serviceInfo;
+            if (serviceInfo == null) {
+                continue;
+            }
+            if (!permission.SEND_RESPOND_VIA_MESSAGE.equals(serviceInfo.permission)) {
+                continue;
+            }
+            final String packageName = serviceInfo.packageName;
+            final SmsApplicationData smsApplicationData = receivers.get(packageName);
+            if (smsApplicationData != null) {
+                smsApplicationData.mRespondViaMessageClass = serviceInfo.name;
+            }
+        }
+
+        // Update any existing entries with supports send to.
+        intent = new Intent(Intent.ACTION_SENDTO,
+                Uri.fromParts("smsto", "", null));
+        List<ResolveInfo> sendToActivities = packageManager.queryIntentActivities(intent, 0);
+        for (ResolveInfo resolveInfo : sendToActivities) {
+            final ActivityInfo activityInfo = resolveInfo.activityInfo;
+            if (activityInfo == null) {
+                continue;
+            }
+            final String packageName = activityInfo.packageName;
+            final SmsApplicationData smsApplicationData = receivers.get(packageName);
+            if (smsApplicationData != null) {
+                smsApplicationData.mSendToClass = activityInfo.name;
+            }
+        }
+
+        // Remove any entries for which we did not find all required intents.
         for (ResolveInfo r : smsReceivers) {
             String packageName = r.activityInfo.packageName;
             SmsApplicationData smsApplicationData = receivers.get(packageName);
-            if (smsApplicationData != null && smsApplicationData.mMmsReceiverClass == null) {
-                receivers.remove(packageName);
+            if (smsApplicationData != null) {
+                if (!smsApplicationData.isComplete()) {
+                    receivers.remove(packageName);
+                }
             }
         }
         return receivers.values();
@@ -254,6 +338,40 @@ public final class SmsApplication {
         if (smsApplicationData != null) {
             component = new ComponentName(smsApplicationData.mPackageName,
                     smsApplicationData.mMmsReceiverClass);
+        }
+        return component;
+    }
+
+    /**
+     * Gets the default Respond Via Message application
+     * @param context context from the calling app
+     * @param updateIfNeeded update the default app if there is no valid default app configured.
+     * @return component name of the app and class to direct Respond Via Message intent to
+     */
+    public static ComponentName getDefaultRespondViaMessageApplication(Context context,
+            boolean updateIfNeeded) {
+        ComponentName component = null;
+        SmsApplicationData smsApplicationData = getApplication(context, updateIfNeeded);
+        if (smsApplicationData != null) {
+            component = new ComponentName(smsApplicationData.mPackageName,
+                    smsApplicationData.mRespondViaMessageClass);
+        }
+        return component;
+    }
+
+    /**
+     * Gets the default Send To (smsto) application
+     * @param context context from the calling app
+     * @param updateIfNeeded update the default app if there is no valid default app configured.
+     * @return component name of the app and class to direct SEND_TO (smsto) intent to
+     */
+    public static ComponentName getDefaultSendToApplication(Context context,
+            boolean updateIfNeeded) {
+        ComponentName component = null;
+        SmsApplicationData smsApplicationData = getApplication(context, updateIfNeeded);
+        if (smsApplicationData != null) {
+            component = new ComponentName(smsApplicationData.mPackageName,
+                    smsApplicationData.mSendToClass);
         }
         return component;
     }
