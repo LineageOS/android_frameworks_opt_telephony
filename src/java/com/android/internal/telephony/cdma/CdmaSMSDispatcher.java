@@ -113,7 +113,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                 scAddr, destAddr, destPort, data, (deliveryIntent != null));
         HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
         SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                null/*messageUri*/);
+                null /*messageUri*/, false);
         sendSubmitPdu(tracker);
     }
 
@@ -138,7 +138,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
             }
             HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                    messageUri);
+                    messageUri, false);
             sendSubmitPdu(tracker);
         } else {
             Rlog.e(TAG, "CdmaSMSDispatcher.sendText(): getSubmitPdu() returned null");
@@ -184,7 +184,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         HashMap map = getSmsTrackerMap(destinationAddress, scAddress,
                 message, submitPdu);
         SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent,
-                getFormat(), unsentPartCount, anyPartFailed, messageUri, smsHeader);
+                getFormat(), unsentPartCount, anyPartFailed, messageUri, smsHeader, false);
         sendSubmitPdu(tracker);
     }
 
