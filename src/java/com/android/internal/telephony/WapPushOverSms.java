@@ -96,8 +96,25 @@ public class WapPushOverSms implements ServiceConnection {
 
         if ((pduType != WspTypeDecoder.PDU_TYPE_PUSH) &&
                 (pduType != WspTypeDecoder.PDU_TYPE_CONFIRMED_PUSH)) {
-            if (DBG) Rlog.w(TAG, "Received non-PUSH WAP PDU. Type = " + pduType);
-            return Intents.RESULT_SMS_HANDLED;
+            index = mContext.getResources().getInteger(
+                    com.android.internal.R.integer.config_valid_wappush_index);
+            if(index != -1) {
+                transactionId = pdu[index++] & 0xff;
+                pduType = pdu[index++] & 0xff;
+                if (DBG)
+                    Rlog.d(TAG, "index = " + index + " PDU Type = " + pduType +
+                            " transactionID = " + transactionId);
+
+                // recheck wap push pduType
+                if ((pduType != WspTypeDecoder.PDU_TYPE_PUSH)
+                        && (pduType != WspTypeDecoder.PDU_TYPE_CONFIRMED_PUSH)) {
+                    if (DBG) Rlog.w(TAG, "Received non-PUSH WAP PDU. Type = " + pduType);
+                    return Intents.RESULT_SMS_HANDLED;
+                }
+            } else {
+                if (DBG) Rlog.w(TAG, "Received non-PUSH WAP PDU. Type = " + pduType);
+                return Intents.RESULT_SMS_HANDLED;
+            }
         }
 
         WspTypeDecoder pduDecoder = new WspTypeDecoder(pdu);
