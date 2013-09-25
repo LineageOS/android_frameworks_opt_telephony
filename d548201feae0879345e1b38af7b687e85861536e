@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3afb71cf_aa408b08",
+        "filename": "src/java/com/android/internal/telephony/Operators.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 1461,
+      "author": {
+        "id": 314
+      },
+      "writtenOn": "2013-09-25T08:09:59Z",
+      "side": 1,
+      "message": "one of these is real while the other is a dupe. mnc is either 81 or 081. google searching seems to say 081 is the proper mnc for VzW World APN. can we confirm or deny which is correct? (sorry just noticed this \u003e_\u003c)",
+      "revId": "d548201feae0879345e1b38af7b687e85861536e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
