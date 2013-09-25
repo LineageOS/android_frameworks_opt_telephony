@@ -278,6 +278,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         switch (msg.what) {
         case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
             handleCdmaSubscriptionSource(mCdmaSSM.getCdmaSubscriptionSource());
+            if (mIsSubscriptionFromRuim) {
+                registerForRuimEvents();
+            }
             break;
 
         case EVENT_RUIM_READY:
@@ -1708,6 +1711,13 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         }
     }
 
+    private void registerForRuimEvents() {
+        log("registerForRuimEvents");
+        mUiccApplcation.registerForReady(this, EVENT_RUIM_READY, null);
+        if (mIccRecords != null) {
+             mIccRecords.registerForRecordsLoaded(this, EVENT_RUIM_RECORDS_LOADED, null);
+        }
+    }
     protected UiccCardApplication getUiccCardApplication() {
         return mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP2);
     }
@@ -1735,10 +1745,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 mUiccApplcation = newUiccApplication;
                 mIccRecords = mUiccApplcation.getIccRecords();
                 if (mIsSubscriptionFromRuim) {
-                    mUiccApplcation.registerForReady(this, EVENT_RUIM_READY, null);
-                    if (mIccRecords != null) {
-                        mIccRecords.registerForRecordsLoaded(this, EVENT_RUIM_RECORDS_LOADED, null);
-                    }
+                    registerForRuimEvents();
                 }
             }
         }
