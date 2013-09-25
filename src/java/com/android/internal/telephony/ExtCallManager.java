@@ -595,45 +595,7 @@ public class ExtCallManager extends CallManager {
     @Override
     public Connection dial(Phone phone, String dialString, int callType, String[] extras)
             throws CallStateException {
-        Phone basePhone = getPhoneBase(phone);
-        Connection result;
-
-        if (VDBG) {
-            Rlog.d(LOG_TAG, " dial(" + basePhone + ", "+ dialString + ")");
-            Rlog.d(LOG_TAG, toString());
-        }
-
-        if ( hasActiveFgCall() ) {
-            Phone activePhone = getActiveFgCall().getPhone();
-            boolean hasBgCall = !(activePhone.getBackgroundCall().isIdle());
-
-            if (DBG) {
-                Rlog.d(LOG_TAG, "hasBgCall: "+ hasBgCall + " sameChannel:"
-                        + (activePhone == basePhone));
-            }
-
-            if (activePhone != basePhone) {
-                if (hasBgCall) {
-                    Rlog.d(LOG_TAG, "Hangup");
-                    getActiveFgCall().hangup();
-                } else {
-                    Rlog.d(LOG_TAG, "Switch");
-                    activePhone.switchHoldingAndActive();
-                }
-            }
-        }
-
-        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
-            result = basePhone.dial(dialString, callType, extras);
-        } else {
-            result = basePhone.dial(dialString);
-        }
-
-        if (VDBG) {
-            Rlog.d(LOG_TAG, "End dial(" + basePhone + ", "+ dialString + ")");
-            Rlog.d(LOG_TAG, toString());
-        }
-        return result;
+        return super.dial(phone, dialString, callType, extras);
     }
 
     @Override
