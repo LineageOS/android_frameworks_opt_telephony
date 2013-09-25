@@ -222,11 +222,11 @@ public final class MccTable
         if (null == language) {
             return; // no match possible
         }
-        language = language.toLowerCase();
+        language = language.toLowerCase(Locale.ROOT);
         if (null == country) {
             country = "";
         }
-        country = country.toUpperCase();
+        country = country.toUpperCase(Locale.ROOT);
 
         if((null == l || 0 == l.length()) && (null == c || 0 == c.length())) {
             try {
