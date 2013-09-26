@@ -1255,6 +1255,23 @@ public class SIMRecords extends IccRecords {
             case EF_FDN:
                 if (DBG) log("SIM Refresh called for EF_FDN");
                 mParentApp.queryFdn();
+            case EF_MSISDN:
+                mRecordsToLoad++;
+                log("SIM Refresh called for EF_MSISDN");
+                new AdnRecordLoader(mFh).loadFromEF(EF_MSISDN, getExtFromEf(EF_MSISDN), 1,
+                        obtainMessage(EVENT_GET_MSISDN_DONE));
+                break;
+            case EF_CFIS:
+                mRecordsToLoad++;
+                log("SIM Refresh called for EF_CFIS");
+                mFh.loadEFLinearFixed(EF_CFIS,
+                        1, obtainMessage(EVENT_GET_CFIS_DONE));
+                break;
+            case EF_CFF_CPHS:
+                mRecordsToLoad++;
+                log("SIM Refresh called for EF_CFF_CPHS");
+                mFh.loadEFTransparent(EF_CFF_CPHS,
+                        obtainMessage(EVENT_GET_CFF_DONE));
                 break;
             default:
                 // For now, fetch all records if this is not a
