@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3afb71cf_f88e5926",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 564,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-09-26T12:24:30Z",
+      "side": 0,
+      "message": "I recommend keeping this check here",
+      "revId": "66e3e76e4d87193aa074095d5a424e5b4ed3e0d6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3afb71cf_787ca920",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 576,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-09-26T12:24:30Z",
+      "side": 0,
+      "message": "remove this if def check. remove the  if block",
+      "revId": "66e3e76e4d87193aa074095d5a424e5b4ed3e0d6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
