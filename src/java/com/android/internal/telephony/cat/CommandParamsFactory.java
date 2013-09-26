@@ -46,6 +46,7 @@ class CommandParamsFactory extends Handler {
     private CommandParams mCmdParams = null;
     private int mIconLoadState = LOAD_NO_ICON;
     private RilMessageDecoder mCaller = null;
+    private boolean mloadIcon = false;
 
     // constants
     static final int MSG_ID_LOAD_ICON_DONE = 1;
@@ -232,7 +233,15 @@ class CommandParamsFactory extends Handler {
         int iconIndex = 0;
 
         if (data == null) {
-            return ResultCode.OK;
+            if (mloadIcon) {
+                CatLog.d(this, "Optional Icon data is NULL");
+                mCmdParams.mLoadIconFailed = true;
+                mloadIcon = false;
+                /** In case of icon load fail consider the
+                 ** received proactive command as valid (sending RESULT OK) */
+                return ResultCode.OK;
+            }
+            return ResultCode.PRFRMD_ICON_NOT_DISPLAYED;
         }
         switch(mIconLoadState) {
         case LOAD_SINGLE_ICON:
@@ -243,6 +252,10 @@ class CommandParamsFactory extends Handler {
             // set each item icon.
             for (Bitmap icon : icons) {
                 mCmdParams.setIcon(icon);
+                if (icon == null && mloadIcon) {
+                    CatLog.d(this, "Optional Icon data is NULL while loading multi icons");
+                    mCmdParams.mLoadIconFailed = true;
+                }
             }
             break;
         }
@@ -345,6 +358,7 @@ class CommandParamsFactory extends Handler {
         mCmdParams = new DisplayTextParams(cmdDet, textMsg);
 
         if (iconId != null) {
+            mloadIcon = true;
             mIconLoadState = LOAD_SINGLE_ICON;
             mIconLoader.loadIcon(iconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
@@ -376,17 +390,25 @@ class CommandParamsFactory extends Handler {
         if (ctlv != null) {
             textMsg.text = ValueParser.retrieveTextString(ctlv);
         }
-        // load icons only when text exist.
-        if (textMsg.text != null) {
-            ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
-            if (ctlv != null) {
-                iconId = ValueParser.retrieveIconId(ctlv);
-                textMsg.iconSelfExplanatory = iconId.selfExplanatory;
-            }
+
+        ctlv = searchForTag(ComprehensionTlvTag.ICON_ID, ctlvs);
+        if (ctlv != null) {
+            iconId = ValueParser.retrieveIconId(ctlv);
+            textMsg.iconSelfExplanatory = iconId.selfExplanatory;
+        }
+
+        /*
+         * If the tlv object doesn't contain text and the icon is not self
+         * explanatory then reply with command not understood.
+         */
+
+        if (textMsg.text == null && iconId != null && !textMsg.iconSelfExplanatory) {
+            throw new ResultException(ResultCode.CMD_DATA_NOT_UNDERSTOOD);
         }
         mCmdParams = new DisplayTextParams(cmdDet, textMsg);
 
         if (iconId != null) {
+            mloadIcon = true;
             mIconLoadState = LOAD_SINGLE_ICON;
             mIconLoader.loadIcon(iconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
@@ -444,6 +466,7 @@ class CommandParamsFactory extends Handler {
         mCmdParams = new GetInputParams(cmdDet, input);
 
         if (iconId != null) {
+            mloadIcon = true;
             mIconLoadState = LOAD_SINGLE_ICON;
             mIconLoader.loadIcon(iconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
@@ -523,6 +546,7 @@ class CommandParamsFactory extends Handler {
         mCmdParams = new GetInputParams(cmdDet, input);
 
         if (iconId != null) {
+            mloadIcon = true;
             mIconLoadState = LOAD_SINGLE_ICON;
             mIconLoader.loadIcon(iconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
@@ -610,6 +634,7 @@ class CommandParamsFactory extends Handler {
         case LOAD_NO_ICON:
             return false;
         case LOAD_SINGLE_ICON:
+            mloadIcon = true;
             mIconLoader.loadIcon(titleIconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
             break;
@@ -622,6 +647,7 @@ class CommandParamsFactory extends Handler {
                 System.arraycopy(itemsIconId.recordNumbers, 0, recordNumbers,
                         1, itemsIconId.recordNumbers.length);
             }
+            mloadIcon = true;
             mIconLoader.loadIcons(recordNumbers, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
             break;
@@ -660,6 +686,7 @@ class CommandParamsFactory extends Handler {
         mCmdParams = new DisplayTextParams(cmdDet, textMsg);
 
         if (iconId != null) {
+            mloadIcon = true;
             mIconLoadState = LOAD_SINGLE_ICON;
             mIconLoader.loadIcon(iconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));

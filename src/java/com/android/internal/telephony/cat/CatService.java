@@ -278,6 +278,7 @@ public class CatService extends Handler implements AppInterface {
         CatLog.d(this, cmdParams.getCommandType().name());
 
         CharSequence message;
+        ResultCode resultCode;
         CatCmdMessage cmdMsg = new CatCmdMessage(cmdParams);
         switch (cmdParams.getCommandType()) {
             case SET_UP_MENU:
@@ -286,12 +287,16 @@ public class CatService extends Handler implements AppInterface {
                 } else {
                     mMenuCmd = cmdMsg;
                 }
-                sendTerminalResponse(cmdParams.mCmdDet,ResultCode.OK, false, 0, null);
+                resultCode = cmdParams.mLoadIconFailed ? ResultCode.PRFRMD_ICON_NOT_DISPLAYED
+                                                                            : ResultCode.OK;
+                sendTerminalResponse(cmdParams.mCmdDet, resultCode, false, 0, null);
                 break;
             case DISPLAY_TEXT:
                 // when application is not required to respond, send an immediate response.
                 if (!cmdMsg.geTextMessage().responseNeeded) {
-                    sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
+                    resultCode = cmdParams.mLoadIconFailed ? ResultCode.PRFRMD_ICON_NOT_DISPLAYED
+                                                                            : ResultCode.OK;
+                    sendTerminalResponse(cmdParams.mCmdDet, resultCode, false, 0, null);
                 }
                 break;
             case REFRESH:
@@ -299,7 +304,9 @@ public class CatService extends Handler implements AppInterface {
                 CatLog.d(this, "Pass Refresh to Stk app");
                 break;
             case SET_UP_IDLE_MODE_TEXT:
-                sendTerminalResponse(cmdParams.mCmdDet,ResultCode.OK, false, 0, null);
+                resultCode = cmdParams.mLoadIconFailed ? ResultCode.PRFRMD_ICON_NOT_DISPLAYED
+                                                                            : ResultCode.OK;
+                sendTerminalResponse(cmdParams.mCmdDet,resultCode, false, 0, null);
                 break;
             case SET_UP_EVENT_LIST:
                 if (isSupportedSetupEventCommand(cmdMsg)) {
