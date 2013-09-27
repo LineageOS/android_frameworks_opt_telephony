@@ -1056,15 +1056,19 @@ public final class BearerData {
         throws CodingException
     {
         try {
-            offset *= 8;
+            int offsetBits = offset * 8;
+            int offsetSeptets = (offsetBits + 6) / 7;
+            numFields -= offsetSeptets;
+            int paddingBits = (offsetSeptets * 7) - offsetBits;
+
             StringBuffer strBuf = new StringBuffer(numFields);
             BitwiseInputStream inStream = new BitwiseInputStream(data);
-            int wantedBits = (offset * 8) + (numFields * 7);
+            int wantedBits = (offsetSeptets * 7) + (numFields * 7);
             if (inStream.available() < wantedBits) {
                 throw new CodingException("insufficient data (wanted " + wantedBits +
                                           " bits, but only have " + inStream.available() + ")");
             }
-            inStream.skip(offset);
+            inStream.skip(offsetBits + paddingBits);
             for (int i = 0; i < numFields; i++) {
                 int charCode = inStream.read(7);
                 if ((charCode >= UserData.ASCII_MAP_BASE_INDEX) &&
