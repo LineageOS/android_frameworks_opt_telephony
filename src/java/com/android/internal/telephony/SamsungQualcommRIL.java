@@ -71,6 +71,7 @@ public class SamsungQualcommRIL extends QualcommMSIM42RIL implements CommandsInt
     private boolean oldRilState = needsOldRilFeature("exynos4RadioState");
     private boolean googleEditionSS = needsOldRilFeature("googleEditionSS");
     private boolean driverCall = needsOldRilFeature("newDriverCall");
+    private String[] lastKnownOfGood = {null, null, null};
     public SamsungQualcommRIL(Context context, int networkMode,
             int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
@@ -575,6 +576,10 @@ public class SamsungQualcommRIL extends QualcommMSIM42RIL implements CommandsInt
                 } else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || (response[i].equals("") && !isGSM)){
                         response[i]=homeOperator;
                 }
+                lastKnownOfGood[i]=response[i];
+            }else{
+                if(lastKnownOfGood[i]!=null)
+                    response[i]=lastKnownOfGood[i];
             }
         }
         return response;
