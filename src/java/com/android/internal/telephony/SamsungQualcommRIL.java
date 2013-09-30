@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import com.android.internal.telephony.uicc.SpnOverride;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
 
@@ -72,10 +73,12 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     private boolean googleEditionSS = needsOldRilFeature("googleEditionSS");
     private boolean driverCall = needsOldRilFeature("newDriverCall");
     private String[] lastKnownOfGood = {null, null, null};
+    private SpnOverride mSpn;
     public SamsungQualcommRIL(Context context, int networkMode,
             int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
         mAudioManager = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
+        mSpn = new SpnOverride();
     }
 
     @Override
@@ -390,12 +393,6 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 // prevent exceptions from happenimg because the null value is null or a hexadecimel. so convert if it is not null
             case RIL_REQUEST_VOICE_REGISTRATION_STATE: ret =  responseVoiceDataRegistrationState(p); break;
             case RIL_REQUEST_DATA_REGISTRATION_STATE: ret =  responseVoiceDataRegistrationState(p); break;
-                // this fixes bogus values the modem creates
-                // sometimes the  ril may print out
-                // (always on sprint)
-                // sprint: (empty,empty,31000)
-                // this problemaic on sprint, lte won't start, response is slow
-                //speeds up response time on eherpderpd/lte networks
             case RIL_REQUEST_OPERATOR: ret =  operatorCheck(p); break;
                     //end modification
             case RIL_REQUEST_RADIO_POWER: ret =  responseVoid(p); break;
@@ -561,22 +558,14 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
         for(int i=0; i<response.length; i++){
             if (response[i]!= null){
                 if (i<2){
-                    if (response[i].equals("       Empty") || (response[i].equals("") && !isGSM)) {
-                        response[i]=operator;
-                    } else if (!response[i].equals(""))  {
-                        try {
-                            Integer.parseInt(response[i]);
-                            response[i]=Operators.operatorReplace(response[i]);
-                            //optimize
-                            if(i==0)
-                                response[i+1]=response[i];
-                        }  catch(NumberFormatException E){
-                            // do nothing
-                        }
+                    if (mSpn.containsCarrier(response[i])){
+                        response[i]=mSpn.getSpn(response[i]);
+                        //optimize
+                        if(i==0)
+                            response[i+1]=response[i];
                     }
-                } else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || (response[i].equals("") && !isGSM)){
-                        response[i]=homeOperator;
                 }
+                // do nothing
                 lastKnownOfGood[i]=response[i];
             }else{
                 if(lastKnownOfGood[i]!=null)
