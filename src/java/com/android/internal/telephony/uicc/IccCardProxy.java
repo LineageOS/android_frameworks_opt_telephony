@@ -105,6 +105,7 @@ public class IccCardProxy extends Handler implements IccCard {
     private boolean mQuietMode = false; // when set to true IccCardProxy will not broadcast
                                         // ACTION_SIM_STATE_CHANGED intents
     private boolean mInitialized = false;
+    private boolean mIsCardStatusAvailable = false;
     private State mExternalState = State.UNKNOWN;
 
     public IccCardProxy(Context context, CommandsInterface ci) {
@@ -237,7 +238,8 @@ public class IccCardProxy extends Handler implements IccCard {
                     + mCurrentAppType + " cdmaSource=" + cdmaSource + ")");
             }
             mInitialized = true;
-            sendMessage(obtainMessage(EVENT_ICC_CHANGED));
+            //Send EVENT_ICC_CHANGED only if it is already received atleast once from RIL.
+            if (mIsCardStatusAvailable) sendMessage(obtainMessage(EVENT_ICC_CHANGED));
         }
     }
 
@@ -254,6 +256,7 @@ public class IccCardProxy extends Handler implements IccCard {
                 }
                 break;
             case EVENT_ICC_CHANGED:
+                mIsCardStatusAvailable = true;
                 if (mInitialized) {
                     updateIccAvailability();
                 }
