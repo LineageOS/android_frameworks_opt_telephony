@@ -45,6 +45,7 @@ public class SIMRecords extends IccRecords {
     protected static final String LOG_TAG = "SIMRecords";
 
     private static final boolean CRASH_RIL = false;
+    private final boolean dontSetOperatorNumerics = "SamsungQualcommRIL".equals(SystemProperties.get("ro.telephony.ril_class", "RIL"));
 
     // ***** Instance Variables
 
@@ -1337,7 +1338,7 @@ public class SIMRecords extends IccRecords {
     //***** Private methods
 
     private void setSpnFromConfig(String carrier) {
-        if (mSpnOverride.containsCarrier(carrier)) {
+        if (!dontSetOperatorNumerics && mSpnOverride.containsCarrier(carrier)) {
             mSpn = mSpnOverride.getSpn(carrier);
         }
     }
