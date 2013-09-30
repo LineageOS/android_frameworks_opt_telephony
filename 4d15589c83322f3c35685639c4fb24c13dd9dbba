@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da37b569_9bce6359",
+        "filename": "src/java/com/android/internal/telephony/uicc/SIMRecords.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 596
+      },
+      "writtenOn": "2013-09-30T19:02:23Z",
+      "side": 1,
+      "message": "If we\u0027re having to do this, then there\u0027s something wrong with our SamsungQualcommRIL. I\u0027m not comfortable modifying base records code because we couldn\u0027t figure out an issue.",
+      "revId": "4d15589c83322f3c35685639c4fb24c13dd9dbba",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
