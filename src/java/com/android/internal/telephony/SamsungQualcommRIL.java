@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import com.android.internal.telephony.uicc.SpnOverride;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
 
@@ -72,10 +73,12 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     private boolean googleEditionSS = needsOldRilFeature("googleEditionSS");
     private boolean driverCall = needsOldRilFeature("newDriverCall");
     private String[] lastKnownOfGood = {null, null, null};
+    private SpnOverride mSpn;
     public SamsungQualcommRIL(Context context, int networkMode,
             int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
         mAudioManager = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
+        mSpn = new SpnOverride();
     }
 
     @Override
@@ -561,22 +564,14 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
         for(int i=0; i<response.length; i++){
             if (response[i]!= null){
                 if (i<2){
-                    if (response[i].equals("       Empty") || (response[i].equals("") && !isGSM)) {
-                        response[i]=operator;
-                    } else if (!response[i].equals(""))  {
-                        try {
-                            Integer.parseInt(response[i]);
-                            response[i]=Operators.operatorReplace(response[i]);
-                            //optimize
-                            if(i==0)
-                                response[i+1]=response[i];
-                        }  catch(NumberFormatException E){
-                            // do nothing
-                        }
+                    if (mSpn.containsCarrier(response[i])){
+                        response[i]=mSpn.getSpn(response[i]);
+                        //optimize
+                        if(i==0)
+                            response[i+1]=response[i];
                     }
-                } else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || (response[i].equals("") && !isGSM)){
-                        response[i]=homeOperator;
                 }
+                // do nothing
                 lastKnownOfGood[i]=response[i];
             }else{
                 if(lastKnownOfGood[i]!=null)
