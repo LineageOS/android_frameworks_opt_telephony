@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da37b569_2a17bea4",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 1973,
+      "author": {
+        "id": 314
+      },
+      "writtenOn": "2013-10-01T17:08:09Z",
+      "side": 1,
+      "message": "Please revert the last patchset. When r.getOperatorNumeric() actually returns null. Its because the SIM is NOT ready and the records are NOT loaded....... This logic is handled already in SIMRecords when you call r.getOperatorNumeric(). Please check it out. This also breaks the logic at line 1988 in this file. Because this method can never return null... \n\nThose with this issue need to look elsewhere for the cause. Either the SIM and SIM records are not yet loaded, or something tragic happened to nuke your IMSI.",
+      "revId": "ba61174e8548aa1a2cbf3f6d0f8a34b028276b61",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
