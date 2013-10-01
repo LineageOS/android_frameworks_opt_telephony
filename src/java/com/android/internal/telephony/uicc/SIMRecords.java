@@ -1332,7 +1332,13 @@ public class SIMRecords extends IccRecords {
         }
 
         setVoiceMailByCountry(operator);
-        setSpnFromConfig(operator);
+        if (SystemProperties.getInt("ro.telephony.spnfallback",0) != 0) {
+            if (mSpn == null || mSpn.equals(operator)) {
+                setSpnFromConfig(operator);
+            }
+        } else {
+            setSpnFromConfig(operator);
+        }
 
         mRecordsLoadedRegistrants.notifyRegistrants(
             new AsyncResult(null, null, null));
