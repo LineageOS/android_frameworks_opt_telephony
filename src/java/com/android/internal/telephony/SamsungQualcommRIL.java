@@ -392,7 +392,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
             case RIL_REQUEST_DATA_REGISTRATION_STATE: ret =  responseVoiceDataRegistrationState(p); break;
                 // this fixes bogus values the modem creates
                 // sometimes the  ril may print out
-                // (always on sprint)
+                // (always on sprint if sim card is taken out)
                 // sprint: (empty,empty,31000)
                 // this problemaic on sprint, lte won't start, response is slow
                 //speeds up response time on eherpderpd/lte networks
@@ -563,18 +563,8 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 if (i<2){
                     if (response[i].equals("       Empty") || (response[i].equals("") && !isGSM)) {
                         response[i]=operator;
-                    } else if (!response[i].equals(""))  {
-                        try {
-                            Integer.parseInt(response[i]);
-                            response[i]=Operators.operatorReplace(response[i]);
-                            //optimize
-                            if(i==0)
-                                response[i+1]=response[i];
-                        }  catch(NumberFormatException E){
-                            // do nothing
-                        }
                     }
-                } else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || (response[i].equals("") && !isGSM)){
+                } else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || (response[i].length()<5  || response[i].length()>6 && !isGSM)){
                         response[i]=homeOperator;
                 }
                 lastKnownOfGood[i]=response[i];
