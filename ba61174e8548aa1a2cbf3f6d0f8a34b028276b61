@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "da37b569_4a2002f8",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 1972,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-10-01T17:18:13Z",
+      "side": 1,
+      "message": "Good point. i stole that logic from the : \"\"\nShouldn\u0027t this be null as well?\n\nresult \u003d (r !\u003d null) ? r.getOperatorNumeric() : null;",
+      "revId": "ba61174e8548aa1a2cbf3f6d0f8a34b028276b61",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da37b569_2a17bea4",
         "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
         "patchSetId": 3
