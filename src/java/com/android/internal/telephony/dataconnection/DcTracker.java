@@ -73,6 +73,7 @@ import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.ArrayUtils;
@@ -133,6 +134,18 @@ public final class DcTracker extends DcTrackerBase {
     static final Uri PREFERAPN_NO_UPDATE_URI_USING_SUBID =
                         Uri.parse("content://telephony/carriers/preferapn_no_update/subId/");
     static final String APN_ID = "apn_id";
+
+    /**
+     * Property that can be used to set the IP version for CDMA
+     */
+    private static final String PROPERTY_CDMA_IPPROTOCOL = SystemProperties.get(
+            "persist.telephony.cdma.protocol", "IP");
+
+    /**
+     * Property that can be used to set the IP version for CDMA when roaming
+     */
+    private static final String PROPERTY_CDMA_ROAMING_IPPROTOCOL = SystemProperties.get(
+            "persist.telephony.cdma.rproto", "IP");
 
     private boolean mCanSetPreferApn = false;
 
@@ -2318,6 +2331,10 @@ public final class DcTracker extends DcTrackerBase {
 
         dedupeApnSettings();
 
+        if (mAllApnSettings.isEmpty() && isDummyProfileNeeded()) {
+            addDummyApnSettings(operator);
+        }
+
         if (mAllApnSettings.isEmpty()) {
             if (DBG) log("createAllApnList: No APN found for carrier: " + operator);
             mPreferredApn = null;
@@ -2444,6 +2461,46 @@ public final class DcTracker extends DcTrackerBase {
                 roamingProtocol, dest.carrierEnabled, 0, bearerBitmask, dest.profileId,
                 (dest.modemCognitive || src.modemCognitive), dest.maxConns, dest.waitTime,
                 dest.maxConnsTime, dest.mtu, dest.mvnoType, dest.mvnoMatchData);
+    }
+
+    private boolean isDummyProfileNeeded() {
+        int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
+        int radioTechFam = UiccController.getFamilyFromRadioTechnology(radioTech);
+        IccRecords r = mIccRecords.get();
+        if (DBG) log("isDummyProfileNeeded: radioTechFam = " + radioTechFam);
+        // If uicc app family based on data rat is unknown,
+        // check if records selected is RuimRecords.
+        return (radioTechFam == UiccController.APP_FAM_3GPP2 ||
+                ((radioTechFam == UiccController.APP_FAM_UNKNOWN) &&
+                (r != null) && (r instanceof RuimRecords)));
+    }
+
+    private void addDummyApnSettings(String operator) {
+        // Create dummy data profiles.
+        if (DBG) log("createAllApnList: Creating dummy apn for cdma operator:" + operator);
+        String[] defaultApnTypes = {
+                PhoneConstants.APN_TYPE_DEFAULT,
+                PhoneConstants.APN_TYPE_MMS,
+                PhoneConstants.APN_TYPE_SUPL,
+                PhoneConstants.APN_TYPE_HIPRI,
+                PhoneConstants.APN_TYPE_FOTA,
+                PhoneConstants.APN_TYPE_IMS,
+                PhoneConstants.APN_TYPE_CBS};
+        String[] dunApnTypes = {
+                PhoneConstants.APN_TYPE_DUN};
+
+        ApnSetting apn = new ApnSetting(DctConstants.APN_DEFAULT_ID, operator, null, null,
+                null, null, null, null, null, null, null,
+                RILConstants.SETUP_DATA_AUTH_PAP_CHAP, defaultApnTypes,
+                PROPERTY_CDMA_IPPROTOCOL, PROPERTY_CDMA_ROAMING_IPPROTOCOL, true, 0,
+                0, 0, false, 0, 0, 0, PhoneConstants.UNSET_MTU, "", "");
+        mAllApnSettings.add(apn);
+        apn = new ApnSetting(DctConstants.APN_DUN_ID, operator, null, null,
+                null, null, null, null, null, null, null,
+                RILConstants.SETUP_DATA_AUTH_PAP_CHAP, dunApnTypes,
+                PROPERTY_CDMA_IPPROTOCOL, PROPERTY_CDMA_ROAMING_IPPROTOCOL, true, 0,
+                0, 0, false, 0, 0, 0, PhoneConstants.UNSET_MTU, "", "");
+        mAllApnSettings.add(apn);
     }
 
     /** Return the DC AsyncChannel for the new data connection */
