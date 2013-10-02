@@ -577,6 +577,18 @@ public class DcTracker extends Handler {
                         Uri.parse("content://telephony/carriers/preferapn_no_update/subId/");
     static final String APN_ID = "apn_id";
 
+    /**
+     * Property that can be used to set the IP version for CDMA
+     */
+    private static final String PROPERTY_CDMA_IPPROTOCOL = SystemProperties.get(
+            "persist.telephony.cdma.protocol", "IP");
+
+    /**
+     * Property that can be used to set the IP version for CDMA when roaming
+     */
+    private static final String PROPERTY_CDMA_ROAMING_IPPROTOCOL = SystemProperties.get(
+            "persist.telephony.cdma.rproto", "IP");
+
     private boolean mCanSetPreferApn = false;
 
     private AtomicBoolean mAttached = new AtomicBoolean(false);
@@ -3385,6 +3397,10 @@ public class DcTracker extends Handler {
 
         dedupeApnSettings();
 
+        if (mAllApnSettings.isEmpty() && isNvSubscription()) {
+            addDummyApnSettings(operator);
+        }
+
         if (mAllApnSettings.isEmpty()) {
             if (DBG) log("createAllApnList: No APN found for carrier: " + operator);
             mPreferredApn = null;
@@ -3453,6 +3469,34 @@ public class DcTracker extends Handler {
                 roamingProtocol, dest.carrierEnabled, 0, bearerBitmask, dest.profileId,
                 (dest.modemCognitive || src.modemCognitive), dest.maxConns, dest.waitTime,
                 dest.maxConnsTime, dest.mtu, dest.mvnoType, dest.mvnoMatchData);
+    }
+
+    private void addDummyApnSettings(String operator) {
+        // Create dummy data profiles.
+        if (DBG) log("createAllApnList: Creating dummy apn for cdma operator:" + operator);
+        String[] defaultApnTypes = {
+                PhoneConstants.APN_TYPE_DEFAULT,
+                PhoneConstants.APN_TYPE_MMS,
+                PhoneConstants.APN_TYPE_SUPL,
+                PhoneConstants.APN_TYPE_HIPRI,
+                PhoneConstants.APN_TYPE_FOTA,
+                PhoneConstants.APN_TYPE_IMS,
+                PhoneConstants.APN_TYPE_CBS};
+        String[] dunApnTypes = {
+                PhoneConstants.APN_TYPE_DUN};
+
+        ApnSetting apn = new ApnSetting(DctConstants.APN_DEFAULT_ID, operator, null, null,
+                null, null, null, null, null, null, null,
+                RILConstants.SETUP_DATA_AUTH_PAP_CHAP, defaultApnTypes,
+                PROPERTY_CDMA_IPPROTOCOL, PROPERTY_CDMA_ROAMING_IPPROTOCOL, true, 0,
+                0, 0, false, 0, 0, 0, PhoneConstants.UNSET_MTU, "", "");
+        mAllApnSettings.add(apn);
+        apn = new ApnSetting(DctConstants.APN_DUN_ID, operator, null, null,
+                null, null, null, null, null, null, null,
+                RILConstants.SETUP_DATA_AUTH_PAP_CHAP, dunApnTypes,
+                PROPERTY_CDMA_IPPROTOCOL, PROPERTY_CDMA_ROAMING_IPPROTOCOL, true, 0,
+                0, 0, false, 0, 0, 0, PhoneConstants.UNSET_MTU, "", "");
+        mAllApnSettings.add(apn);
     }
 
     /** Return the DC AsyncChannel for the new data connection */
