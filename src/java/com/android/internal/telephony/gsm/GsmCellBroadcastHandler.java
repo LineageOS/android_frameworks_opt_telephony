@@ -42,7 +42,7 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
     private final HashMap<SmsCbConcatInfo, byte[][]> mSmsCbPageMap =
             new HashMap<SmsCbConcatInfo, byte[][]>(4);
 
-    private PhoneBase mPhone;
+    protected PhoneBase mPhone;
 
     protected GsmCellBroadcastHandler(Context context, PhoneBase phone) {
         super("GsmCellBroadcastHandler", context);

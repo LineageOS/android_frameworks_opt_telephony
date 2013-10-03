@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
  * Copyright (C) 2006 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,14 +37,13 @@ import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
 import com.android.internal.telephony.SmsBroadcastUndelivered;
 
-public final class ImsSMSDispatcher extends SMSDispatcher {
+public class ImsSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "RIL_ImsSms";
 
-    private SMSDispatcher mCdmaDispatcher;
-    private SMSDispatcher mGsmDispatcher;
-
-    private GsmInboundSmsHandler mGsmInboundSmsHandler;
-    private CdmaInboundSmsHandler mCdmaInboundSmsHandler;
+    protected SMSDispatcher mCdmaDispatcher;
+    protected SMSDispatcher mGsmDispatcher;
+    protected GsmInboundSmsHandler mGsmInboundSmsHandler;
+    protected CdmaInboundSmsHandler mCdmaInboundSmsHandler;
 
 
     /** true if IMS is registered and sms is supported, false otherwise.*/
@@ -54,8 +55,16 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
         super(phone, usageMonitor);
         Rlog.d(TAG, "ImsSMSDispatcher created");
 
-        // Create dispatchers, inbound SMS handlers and
-        // broadcast undelivered messages in raw table.
+        // Create dispatchers, inbound SMS handlers and broadcast
+        // undelivered messages in raw table.
+        initDispatchers(phone, storageMonitor, usageMonitor);
+
+        mCi.registerForOn(this, EVENT_RADIO_ON, null);
+        mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
+    }
+
+    protected void initDispatchers(PhoneBase phone, SmsStorageMonitor storageMonitor,
+            SmsUsageMonitor usageMonitor) {
         mCdmaDispatcher = new CdmaSMSDispatcher(phone, usageMonitor, this);
         mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(phone.getContext(),
                 storageMonitor, phone);
@@ -65,10 +74,8 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
         Thread broadcastThread = new Thread(new SmsBroadcastUndelivered(phone.getContext(),
                 mGsmInboundSmsHandler, mCdmaInboundSmsHandler));
         broadcastThread.start();
-
-        mCi.registerForOn(this, EVENT_RADIO_ON, null);
-        mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
     }
+
 
     /* Updates the phone object when there is a change */
     @Override
@@ -198,6 +205,18 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
         } else {
             mGsmDispatcher.sendText(destAddr, scAddr,
                     text, sentIntent, deliveryIntent);
+        }
+    }
+
+    @Override
+    protected void sendTextWithPriority(String destAddr, String scAddr, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+        Rlog.d(TAG, "sendTextWithPriority");
+        if (isCdmaMo()) {
+            mCdmaDispatcher.sendTextWithPriority(destAddr, scAddr,
+                    text, sentIntent, deliveryIntent, priority);
+        } else {
+            Rlog.e(TAG, "priority is not supported in 3gpp text message!");
         }
     }
 

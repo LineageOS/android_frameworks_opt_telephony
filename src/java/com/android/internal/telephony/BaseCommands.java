@@ -69,6 +69,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mRilConnectedRegistrants = new RegistrantList();
     protected RegistrantList mIccRefreshRegistrants = new RegistrantList();
     protected RegistrantList mRilCellInfoListRegistrants = new RegistrantList();
+    protected RegistrantList mSubscriptionStatusRegistrants = new RegistrantList();
 
     protected Registrant mGsmSmsRegistrant;
     protected Registrant mCdmaSmsRegistrant;
@@ -680,6 +681,15 @@ public abstract class BaseCommands implements CommandsInterface {
         mRilConnectedRegistrants.remove(h);
     }
 
+     public void registerForSubscriptionStatusChanged(Handler h, int what, Object obj) {
+         Registrant r = new Registrant (h, what, obj);
+         mSubscriptionStatusRegistrants.add(r);
+     }
+
+     public void unregisterForSubscriptionStatusChanged(Handler h) {
+         mSubscriptionStatusRegistrants.remove(h);
+     }
+
     /**
      * {@inheritDoc}
      */
@@ -770,5 +780,12 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public int getRilVersion() {
         return mRilVersion;
+    }
+
+    public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
+            Message response) {
+    }
+
+    public void setDataSubscription(Message response) {
     }
 }

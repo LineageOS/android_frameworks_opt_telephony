@@ -1,8 +1,7 @@
 /*
- * Copyright (C) 2006 The Android Open Source Project
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
- *
  * Not a Contribution.
+ * Copyright (C) 2006 The Android Open Source Project
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -69,6 +68,7 @@ import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.dataconnection.CdmaDataProfileTracker;
 import com.android.internal.util.AsyncChannel;
+import com.android.internal.util.Objects;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -79,7 +79,7 @@ import java.util.HashMap;
 /**
  * {@hide}
  */
-public final class DcTracker extends DcTrackerBase {
+public class DcTracker extends DcTrackerBase {
     protected final String LOG_TAG;
 
     /**
@@ -213,17 +213,7 @@ public final class DcTracker extends DcTrackerBase {
             filter.addAction(INTENT_RESTART_TRYSETUP_ALARM + '.' + apnContext.getDataProfileType());
             mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
         }
-
-        ConnectivityManager cm = (ConnectivityManager)p.getContext().getSystemService(
-                Context.CONNECTIVITY_SERVICE);
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_MMS, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_SUPL, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_DUN, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_HIPRI, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_FOTA, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_IMS, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_CBS, new Messenger(this));
+        supplyMessenger();
     }
 
     @Override
@@ -295,6 +285,19 @@ public final class DcTracker extends DcTrackerBase {
     @Override
     protected void finalize() {
         if(DBG) log("finalize");
+    }
+
+    protected void supplyMessenger() {
+        ConnectivityManager cm = (ConnectivityManager)mPhone.getContext().getSystemService(
+                Context.CONNECTIVITY_SERVICE);
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_MMS, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_SUPL, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_DUN, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_HIPRI, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_FOTA, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_IMS, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_CBS, new Messenger(this));
     }
 
     private ApnContext addApnContext(String type, NetworkConfig networkConfig) {
@@ -583,7 +586,7 @@ public final class DcTracker extends DcTrackerBase {
         }
     }
 
-    private boolean isDataAllowed(ApnContext apnContext) {
+    protected boolean isDataAllowed(ApnContext apnContext) {
         return apnContext.isReady() && isDataAllowed();
     }
 
@@ -872,7 +875,7 @@ public final class DcTracker extends DcTrackerBase {
         cleanUpAllConnections(true, cause);
     }
 
-    private void cleanUpConnection(boolean tearDown, ApnContext apnContext) {
+    protected void cleanUpConnection(boolean tearDown, ApnContext apnContext) {
 
         if (apnContext == null) {
             if (DBG) log("cleanUpConnection: apn context is null");
@@ -960,7 +963,7 @@ public final class DcTracker extends DcTrackerBase {
      *
      * @param apnContext on which the alarm should be stopped.
      */
-    private void cancelReconnectAlarm(ApnContext apnContext) {
+    protected void cancelReconnectAlarm(ApnContext apnContext) {
         if (apnContext == null) return;
 
         PendingIntent intent = apnContext.getReconnectIntent();
@@ -1981,7 +1984,7 @@ public final class DcTracker extends DcTrackerBase {
         // If APN is still enabled, try to bring it back up automatically
         if (mAttached.get() && apnContext.isReady()
                 && retryAfterDisconnected(apnContext.getReason())) {
-            if (apnContext.getReason().equals(Phone.REASON_NW_TYPE_CHANGED)) {
+            if (Objects.equal(apnContext.getReason(), Phone.REASON_NW_TYPE_CHANGED)) {
                 // Retry immediately if reason is nw_type_changed (like rat switch, for instance)
                 setupDataOnConnectableApns(Phone.REASON_NW_TYPE_CHANGED);
             } else {
@@ -2549,11 +2552,16 @@ public final class DcTracker extends DcTrackerBase {
         return cid;
     }
 
+    protected IccRecords getUiccRecords(int appFamily) {
+        return  mUiccController.getIccRecords(appFamily);
+    }
+
     /**
      * @description This function updates mIccRecords reference to track
      *              currently used IccRecords
      * @return true if IccRecords changed
      */
+
     @Override
     protected boolean onUpdateIcc() {
         boolean result = false;
@@ -2564,7 +2572,7 @@ public final class DcTracker extends DcTrackerBase {
 
         int dataRat = mPhone.getServiceState().getRilDataRadioTechnology();
         int appFamily = UiccController.getFamilyFromRadioTechnology(dataRat);
-        IccRecords newIccRecords = mUiccController.getIccRecords(appFamily);
+        IccRecords newIccRecords = getUiccRecords(appFamily);
         log("onUpdateIcc: newIccRecords " + ((newIccRecords != null) ?
                 newIccRecords.getClass().getName() : null));
         if (dataRat == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {

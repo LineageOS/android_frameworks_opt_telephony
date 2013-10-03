@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
  * Copyright (C) 2008 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +41,7 @@ import com.android.internal.telephony.cdma.sms.UserData;
 import java.util.HashMap;
 
 public class CdmaSMSDispatcher extends SMSDispatcher {
-    private static final String TAG = "CdmaSMSDispatcher";
+    protected static final String TAG = "CdmaSMSDispatcher";
     private static final boolean VDBG = false;
     private ImsSMSDispatcher mImsSMSDispatcher;
 
@@ -119,6 +121,18 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                 scAddr, destAddr, text, (deliveryIntent != null), null);
         HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
         SmsTracker tracker = getSmsTracker(map, sentIntent,
+                deliveryIntent, getFormat());
+        sendSubmitPdu(tracker);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    protected void sendTextWithPriority(String destAddr, String scAddr, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+        SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPduWithPriority(
+                scAddr, destAddr, text, (deliveryIntent != null), null, priority);
+        HashMap map = SmsTrackerMapFactory(destAddr, scAddr, text, pdu);
+        SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
                 deliveryIntent, getFormat());
         sendSubmitPdu(tracker);
     }

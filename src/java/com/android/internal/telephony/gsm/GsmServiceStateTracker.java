@@ -57,6 +57,7 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.MccTable;
+import com.android.internal.telephony.MSimConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RestrictedState;
@@ -82,11 +83,11 @@ import java.util.TimeZone;
 /**
  * {@hide}
  */
-final class GsmServiceStateTracker extends ServiceStateTracker {
-    private static final String LOG_TAG = "GsmSST";
-    private static final boolean VDBG = false;
+public class GsmServiceStateTracker extends ServiceStateTracker {
+    static final String LOG_TAG = "GsmSST";
+    static final boolean VDBG = false;
 
-    GSMPhone mPhone;
+    protected GSMPhone mPhone;
     GsmCellLocation mCellLoc;
     GsmCellLocation mNewCellLoc;
     int mPreferredNetworkType;
@@ -111,7 +112,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     /**
      * Mark when service state is in emergency call only mode
      */
-    private boolean mEmergencyOnly = false;
+    protected boolean mEmergencyOnly = false;
 
     /**
      * Sometimes we get the NITZ time before we know what country we
@@ -148,10 +149,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     private static final String WAKELOCK_TAG = "ServiceStateTracker";
 
     /** Keep track of SPN display rules, so we only broadcast intent if something changes. */
-    private String mCurSpn = null;
-    private String mCurPlmn = null;
-    private boolean mCurShowPlmn = false;
-    private boolean mCurShowSpn = false;
+    protected String mCurSpn = null;
+    protected String mCurPlmn = null;
+    protected boolean mCurShowPlmn = false;
+    protected boolean mCurShowSpn = false;
 
     /** Notification type. */
     static final int PS_ENABLED = 1001;            // Access Control blocks data service
@@ -678,9 +679,12 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                             int rejCode = Integer.parseInt(states[13]);
                             // Check if rejCode is "Persistent location update reject",
                             if (rejCode == 10) {
-                                log(" Posting Managed roaming intent");
+                                log(" Posting Managed roaming intent sub = "
+                                        + mPhone.getSubscription());
                                 Intent intent =
                                     new Intent(TelephonyIntents.ACTION_MANAGED_ROAMING_IND);
+                                intent.putExtra(MSimConstants.SUBSCRIPTION_KEY,
+                                        mPhone.getSubscription());
                                 mPhone.getContext().sendBroadcast(intent);
                             }
                         } catch (NumberFormatException ex) {
@@ -1357,6 +1361,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         return ServiceState.RIL_REG_STATE_ROAMING == code;
     }
 
+    protected String getSystemProperty(String property, String defValue) {
+        return SystemProperties.get(property, defValue);
+    }
+
     /**
      * Set roaming state if operator mcc is the same as sim mcc
      * and ons is different from spn
@@ -1365,7 +1373,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
      * @return true if same operator
      */
     private boolean isSameNamedOperators(ServiceState s) {
-        String spn = SystemProperties.get(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA, "empty");
+        String spn = getSystemProperty(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA, "empty");
 
         String onsl = s.getOperatorAlphaLong();
         String onss = s.getOperatorAlphaShort();
@@ -1383,7 +1391,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
      * @return true if both are same
      */
     private boolean currentMccEqualsSimMcc(ServiceState s) {
-        String simNumeric = SystemProperties.get(
+        String simNumeric = getSystemProperty(
                 TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
         String operatorNumeric = s.getOperatorNumeric();
         boolean equalsMcc = true;
@@ -1596,7 +1604,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 zone = TimeZone.getTimeZone( tzname );
             }
 
-            String iso = SystemProperties.get(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY);
+            String iso = getSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
 
             if (zone == null) {
 
@@ -1845,14 +1853,17 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
     }
 
+    protected UiccCardApplication getUiccCardApplication() {
+        return  mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
+    }
+
     @Override
     protected void onUpdateIccAvailability() {
         if (mUiccController == null ) {
             return;
         }
 
-        UiccCardApplication newUiccApplication =
-                mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
+        UiccCardApplication newUiccApplication = getUiccCardApplication();
 
         if (mUiccApplcation != newUiccApplication) {
             if (mUiccApplcation != null) {

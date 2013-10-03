@@ -376,9 +376,7 @@ public class GsmConnection extends Connection {
             default:
                 GSMPhone phone = mOwner.mPhone;
                 int serviceState = phone.getServiceState().getState();
-                UiccCardApplication cardApp = UiccController
-                        .getInstance()
-                        .getUiccCardApplication(UiccController.APP_FAM_3GPP);
+                UiccCardApplication cardApp = phone.getUiccCardApplication();
                 AppState uiccAppState = (cardApp != null) ? cardApp.getState() :
                                                             AppState.APPSTATE_UNKNOWN;
                 if (serviceState == ServiceState.STATE_POWER_OFF) {

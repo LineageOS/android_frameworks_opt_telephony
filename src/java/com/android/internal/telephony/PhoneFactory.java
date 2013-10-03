@@ -37,18 +37,19 @@ import com.android.internal.telephony.uicc.UiccController;
  */
 public class PhoneFactory {
     static final String LOG_TAG = "PhoneFactory";
-    static final int SOCKET_OPEN_RETRY_MILLIS = 2 * 1000;
-    static final int SOCKET_OPEN_MAX_RETRY = 3;
+    static protected final int SOCKET_OPEN_RETRY_MILLIS = 2 * 1000;
+    static protected final int SOCKET_OPEN_MAX_RETRY = 3;
+    protected static final String PHONE_PACKAGE_NAME = "com.android.phone";
 
     //***** Class Variables
 
-    static private Phone sProxyPhone = null;
-    static private CommandsInterface sCommandsInterface = null;
+    static protected Phone sProxyPhone = null;
+    static protected CommandsInterface sCommandsInterface = null;
 
-    static private boolean sMadeDefaults = false;
-    static private PhoneNotifier sPhoneNotifier;
-    static private Looper sLooper;
-    static private Context sContext;
+    static protected boolean sMadeDefaults = false;
+    static protected PhoneNotifier sPhoneNotifier;
+    static protected Looper sLooper;
+    static protected Context sContext;
 
     //***** Class Methods
 

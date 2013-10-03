@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
  * Copyright (C) 2013 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,21 +40,24 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     /** Handler for SMS-PP data download messages to UICC. */
     private final UsimDataDownloadHandler mDataDownloadHandler;
 
-    private final GsmCellBroadcastHandler mCellBroadcastDispatcher;
+    protected GsmCellBroadcastHandler mCellBroadcastDispatcher;
 
-    private PhoneBase mPhone;
 
     /**
      * Create a new GSM inbound SMS handler.
      */
-    private GsmInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
+    protected GsmInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
             PhoneBase phone) {
         super("GsmInboundSmsHandler", context, storageMonitor);
         mPhone = phone;
+        init(context, phone);
         phone.mCi.setOnNewGsmSms(getHandler(), EVENT_NEW_SMS, null);
-        mCellBroadcastDispatcher = GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context,
-                phone);
         mDataDownloadHandler = new UsimDataDownloadHandler(phone.mCi);
+    }
+
+    protected void init(Context context, PhoneBase phone) {
+            mCellBroadcastDispatcher = GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context,
+            phone);
     }
 
     /**

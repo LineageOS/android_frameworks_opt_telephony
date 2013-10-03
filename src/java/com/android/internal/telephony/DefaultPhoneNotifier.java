@@ -34,7 +34,7 @@ import java.util.List;
  */
 public class DefaultPhoneNotifier implements PhoneNotifier {
 
-    private ITelephonyRegistry mRegistry;
+    protected ITelephonyRegistry mRegistry;
 
     protected DefaultPhoneNotifier() {
         mRegistry = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(

@@ -1,8 +1,6 @@
 /*
  * Copyright (c) 2012-13, The Linux Foundation. All rights reserved.
- * Not a Contribution, Apache license notifications and license are retained
- * for attribution purposes only.
- *
+ * Not a Contribution.
  * Copyright (C) 2007 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -1952,4 +1950,8 @@ public interface Phone {
      */
     public int getProposedConnectionType(Connection conn) throws CallStateException;
 
+    /*
+     * Returns the subscription id.
+     */
+    public int getSubscription();
 }

@@ -51,6 +51,7 @@ public class CommandException extends RuntimeException {
         SS_MODIFIED_TO_DIAL,
         SS_MODIFIED_TO_USSD,
         SS_MODIFIED_TO_SS,
+        SUBSCRIPTION_NOT_SUPPORTED,
     }
 
     public CommandException(Error e) {
@@ -110,6 +111,8 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.SS_MODIFIED_TO_USSD);
             case RILConstants.SS_MODIFIED_TO_SS:
                 return new CommandException(Error.SS_MODIFIED_TO_SS);
+            case RILConstants.SUBSCRIPTION_NOT_SUPPORTED:
+                return new CommandException(Error.SUBSCRIPTION_NOT_SUPPORTED);
             default:
                 Rlog.e("GSM", "Unrecognized RIL errno " + ril_errno);
                 return new CommandException(Error.INVALID_RESPONSE);
