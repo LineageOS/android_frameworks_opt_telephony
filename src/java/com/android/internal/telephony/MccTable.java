@@ -190,6 +190,7 @@ public final class MccTable
             if (mcc != 0) {
                 setTimezoneFromMccIfNeeded(context, mcc);
                 setLocaleFromMccIfNeeded(context, mcc);
+                setWifiCountryCodeFromMcc(context, mcc);
             }
             try {
                 Configuration config = ActivityManagerNative.getDefault().getConfiguration();
@@ -292,6 +293,22 @@ public final class MccTable
 
         Rlog.d(LOG_TAG, "locale set to "+language+"_"+country);
         setSystemLocale(context, language, country);
+    }
+
+    /**
+     * If the number of allowed wifi channels has not been set, set it based on
+     * the MCC of the SIM.
+     * @param context Context to act on.
+     * @param mcc Mobile Country Code of the SIM or SIM-like entity (build prop on CDMA)
+     */
+    private static void setWifiCountryCodeFromMcc(Context context, int mcc) {
+        String country = MccTable.countryCodeForMcc(mcc);
+        if (!country.isEmpty()) {
+            Rlog.d(LOG_TAG, "WIFI_COUNTRY_CODE set to " + country);
+            WifiManager wM = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+            //persist
+            wM.setCountryCode(country, true);
+        }
     }
 
     static {
