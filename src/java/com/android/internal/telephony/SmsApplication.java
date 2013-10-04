@@ -195,9 +195,13 @@ public final class SmsApplication {
         }
 
         // Remove any entries for which we did not find all required intents.
-        for (ResolveInfo r : smsReceivers) {
-            String packageName = r.activityInfo.packageName;
-            SmsApplicationData smsApplicationData = receivers.get(packageName);
+        for (ResolveInfo resolveInfo : smsReceivers) {
+            final ActivityInfo activityInfo = resolveInfo.activityInfo;
+            if (activityInfo == null) {
+                continue;
+            }
+            final String packageName = activityInfo.packageName;
+            final SmsApplicationData smsApplicationData = receivers.get(packageName);
             if (smsApplicationData != null) {
                 if (!smsApplicationData.isComplete()) {
                     receivers.remove(packageName);
@@ -235,6 +239,12 @@ public final class SmsApplication {
      * (4) Null
      */
     private static SmsApplicationData getApplication(Context context, boolean updateIfNeeded) {
+        TelephonyManager tm = (TelephonyManager)context.getSystemService(Context.TELEPHONY_SERVICE);
+        if (tm.getPhoneType() == TelephonyManager.PHONE_TYPE_NONE) {
+            // No phone, no SMS
+            return null;
+        }
+
         Collection<SmsApplicationData> applications = getApplicationCollection(context);
 
         // Determine which application receives the broadcast
@@ -275,6 +285,12 @@ public final class SmsApplication {
      * needs to have permission to set AppOps and write to secure settings.
      */
     public static void setDefaultApplication(String packageName, Context context) {
+        TelephonyManager tm = (TelephonyManager)context.getSystemService(Context.TELEPHONY_SERVICE);
+        if (tm.getPhoneType() == TelephonyManager.PHONE_TYPE_NONE) {
+            // No phone, no SMS
+            return;
+        }
+
         Collection<SmsApplicationData> applications = getApplicationCollection(context);
         String oldPackageName = Settings.Secure.getString(context.getContentResolver(),
                 Settings.Secure.SMS_DEFAULT_APPLICATION);
