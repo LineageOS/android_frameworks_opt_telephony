@@ -1,5 +1,8 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+ *
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +21,7 @@ package com.android.internal.telephony.dataconnection;
 
 
 import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.dataconnection.ApnSetting.ApnProfileType;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
@@ -535,6 +539,15 @@ public final class DataConnection extends StateMachine {
         mLastFailTime = -1;
         mLastFailCause = DcFailCause.NONE;
 
+        // The data profile's profile ID must be set when it is created.
+        int dataProfileId;
+        if (mApnSetting.getApnProfileType() == ApnProfileType.PROFILE_TYPE_OMH) {
+            dataProfileId = mApnSetting.getProfileId() + RILConstants.DATA_PROFILE_OEM_BASE;
+            log("OMH profile, dataProfile id = " + dataProfileId);
+        } else {
+            dataProfileId = cp.mProfileId;
+        }
+
         // msg.obj will be returned in AsyncResult.userObj;
         Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
         msg.obj = cp;
@@ -554,7 +567,7 @@ public final class DataConnection extends StateMachine {
 
         mPhone.mCi.setupDataCall(
                 Integer.toString(cp.mRilRat + 2),
-                Integer.toString(cp.mProfileId),
+                Integer.toString(dataProfileId),
                 mApnSetting.apn, mApnSetting.user, mApnSetting.password,
                 Integer.toString(authType),
                 protocol, msg);

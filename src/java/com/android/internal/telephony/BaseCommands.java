@@ -763,6 +763,10 @@ public abstract class BaseCommands implements CommandsInterface {
         mWwanIwlanCoexistenceRegistrants.remove(h);
     }
 
+    @Override
+    public void getDataCallProfile(int appType, Message result) {
+    }
+
     //***** Protected Methods
     /**
      * Store new RadioState and send notification based on the changes

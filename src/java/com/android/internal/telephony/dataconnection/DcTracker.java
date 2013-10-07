@@ -1,6 +1,8 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
+ * Not a Contribution.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -64,6 +66,8 @@ import android.view.WindowManager;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CDMALTEPhone;
+import com.android.internal.telephony.cdma.CDMAPhone;
+import com.android.internal.telephony.dataconnection.CdmaApnProfileTracker;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.DctConstants;
@@ -99,7 +103,7 @@ import com.android.internal.telephony.ServiceStateTracker;
  * {@hide}
  */
 public final class DcTracker extends DcTrackerBase {
-    protected final String LOG_TAG = "DCT";
+    protected final String LOG_TAG;
 
     /**
      * List of messages that are waiting to be posted, when data call disconnect
@@ -187,10 +191,26 @@ public final class DcTracker extends DcTrackerBase {
     /* IWLAN and WWAN co-exist flag */
     private boolean mWwanIwlanCoexistFlag = false;
 
+    private CdmaApnProfileTracker mOmhApt;
+
     //***** Constructor
     public DcTracker(PhoneBase p) {
         super(p);
-        if (DBG) log("GsmDCT.constructor");
+        if (p.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
+            LOG_TAG = "GsmDCT";
+        } else if (p.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+            LOG_TAG = "CdmaDCT";
+        } else {
+            LOG_TAG = "DCT";
+            loge("unexpected phone type [" + p.getPhoneType() + "]");
+        }
+        if (DBG) log(LOG_TAG + ".constructor");
+
+        if (p.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+            mOmhApt = new CdmaApnProfileTracker((CDMAPhone)p);
+            mOmhApt.registerForModemProfileReady(this,
+                    DctConstants.EVENT_MODEM_DATA_PROFILE_READY, null);
+        }
 
         mDataConnectionTracker = this;
         update();
@@ -303,6 +323,10 @@ public final class DcTracker extends DcTrackerBase {
 
         if (mCdmaSsm != null) {
             mCdmaSsm.dispose(this);
+        }
+
+        if (mOmhApt != null) {
+            mOmhApt.unregisterForModemProfileReady(this);
         }
 
         destroyDataConnections();
@@ -1151,6 +1175,10 @@ public final class DcTracker extends DcTrackerBase {
             apnContext.setDataConnectionAc(null);
         }
 
+        if (mOmhApt != null) {
+            mOmhApt.clearActiveApnProfile();
+        }
+
         // Make sure reconnection alarm is cleaned up if there is no ApnContext
         // associated to the connection.
         if (dcac != null) {
@@ -1448,11 +1476,11 @@ public final class DcTracker extends DcTrackerBase {
      * Handles changes to the APN database.
      */
     private void onApnChanged() {
-        (DBG) log("onApnChanged: tryRestartDataConnections");
-        tryRestartDataConnections(Phone.REASON_APN_CHANGED);
+        if (DBG) log("onApnChanged: tryRestartDataConnections");
+        tryRestartDataConnections(true, Phone.REASON_APN_CHANGED);
     }
 
-    private void tryRestartDataConnections(String reason) {
+    private void tryRestartDataConnections(boolean isCleanupNeeded, String reason) {
         DctConstants.State overallState = getOverallState();
         boolean isDisconnected = (overallState == DctConstants.State.IDLE ||
                 overallState == DctConstants.State.FAILED);
@@ -1467,8 +1495,13 @@ public final class DcTracker extends DcTrackerBase {
         if (DBG) log("tryRestartDataConnections: createAllApnList and cleanUpAllConnections");
         createAllApnList();
         setInitialAttachApn();
-        cleanUpAllConnections(!isDisconnected, reason);
-        setupDataOnConnectableApns(reason);
+        if (isCleanupNeeded) {
+            cleanUpAllConnections(!isDisconnected, reason);
+        }
+        // If the state is already connected don't setup data now.
+        if (isDisconnected) {
+            setupDataOnConnectableApns(reason);
+        }
     }
 
     private void onWwanIwlanCoexistenceDone(AsyncResult ar) {
@@ -1498,6 +1531,14 @@ public final class DcTracker extends DcTrackerBase {
             }
 
         }
+    }
+
+    private void onModemApnProfileReady() {
+        if (mState == DctConstants.State.FAILED) {
+            cleanUpAllConnections(false, Phone.REASON_PS_RESTRICT_ENABLED);
+        }
+        if (DBG) log("OMH: onModemApnProfileReady(): Setting up data call");
+        tryRestartDataConnections(false, Phone.REASON_SIM_LOADED);
     }
 
     /**
@@ -1645,16 +1686,22 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private void onRecordsLoaded() {
-        if (DBG) log("onRecordsLoaded: createAllApnList");
-        mAutoAttachOnCreationConfig = mPhone.getContext().getResources()
-                .getBoolean(com.android.internal.R.bool.config_auto_attach_data_on_creation);
-        createAllApnList();
-        setInitialAttachApn();
-        if (mPhone.mCi.getRadioState().isOn()) {
-            if (DBG) log("onRecordsLoaded: notifying data availability");
-            notifyOffApnsOfAvailability(Phone.REASON_SIM_LOADED);
-        }
-        setupDataOnConnectableApns(Phone.REASON_SIM_LOADED);
+        if (mOmhApt != null) {
+            log("OMH: onRecordsLoaded(): calling loadProfiles()");
+            /* query for data profiles stored in the modem */
+            mOmhApt.loadProfiles();
+            if (mPhone.mCi.getRadioState().isOn()) {
+                if (DBG) log("onRecordsLoaded: notifying data availability");
+                notifyOffApnsOfAvailability(Phone.REASON_SIM_LOADED);
+            }
+        } else {
+            if (DBG) log("onRecordsLoaded: createAllApnList");
+            if (mPhone.mCi.getRadioState().isOn()) {
+                if (DBG) log("onRecordsLoaded: notifying data availability");
+                notifyOffApnsOfAvailability(Phone.REASON_SIM_LOADED);
+            }
+            tryRestartDataConnections(false, Phone.REASON_SIM_LOADED);
+       }
     }
 
     private void onNvReady() {
@@ -2408,37 +2455,50 @@ public final class DcTracker extends DcTrackerBase {
      * Data Connections and setup the preferredApn.
      */
     private void createAllApnList() {
-        mAllApnSettings = new ArrayList<ApnSetting>();
+        mAllApnSettings.clear();
         String operator = getOperatorNumeric();
-        if (operator != null && !operator.isEmpty()) {
-            String selection = "numeric = '" + operator + "'";
-            // query only enabled apn.
-            // carrier_enabled : 1 means enabled apn, 0 disabled apn.
-            // selection += " and carrier_enabled = 1";
-            if (DBG) log("createAllApnList: selection=" + selection);
+        int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
 
-            Cursor cursor = mPhone.getContext().getContentResolver().query(
-                    Telephony.Carriers.CONTENT_URI, null, selection, null, null);
-
-            if (cursor != null) {
-                if (cursor.getCount() > 0) {
-                    mAllApnSettings = createApnList(cursor);
-                }
-                cursor.close();
+        if (mOmhApt != null && ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD !=
+                radioTech) {
+            ArrayList<ApnSetting> mOmhApnsList = new ArrayList<ApnSetting>();
+            mOmhApnsList = mOmhApt.getOmhApnProfilesList();
+            if (!mOmhApnsList.isEmpty()) {
+                if (DBG) log("createAllApnList: Copy Omh profiles");
+                mAllApnSettings.addAll(mOmhApnsList);
             }
         }
 
-        addEmergencyApnSetting();
+        if (mAllApnSettings.isEmpty()) {
+            if (operator != null && !operator.isEmpty()) {
+                String selection = "numeric = '" + operator + "'";
+                // query only enabled apn.
+                // carrier_enabled : 1 means enabled apn, 0 disabled apn.
+                selection += " and carrier_enabled = 1";
+                if (DBG) log("createAllApnList: selection=" + selection);
+
+                Cursor cursor = mPhone.getContext().getContentResolver().query(
+                        Telephony.Carriers.CONTENT_URI, null, selection, null, null);
+
+                if (cursor != null) {
+                    if (cursor.getCount() > 0) {
+                        mAllApnSettings = createApnList(cursor);
+                    }
+                    cursor.close();
+                }
+            }
+        }
 
         dedupeApnSettings();
 
         if (mAllApnSettings.isEmpty()) {
-            int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
-            if (UiccController.getFamilyFromRadioTechnology(radioTech)
+            if(UiccController.getFamilyFromRadioTechnology(radioTech)
                     == UiccController.APP_FAM_3GPP2) {
                 addDummyApnSettings(operator);
             }
         }
+
+        addEmergencyApnSetting();
 
         if (mAllApnSettings.isEmpty()) {
             if (DBG) log("createAllApnList: No APN found for carrier: " + operator);
@@ -2896,7 +2956,7 @@ public final class DcTracker extends DcTrackerBase {
                 // set of apns (example, LTE->1x)
                 if (onUpdateIcc()) {
                     log("onUpdateIcc: tryRestartDataConnections " + Phone.REASON_NW_TYPE_CHANGED);
-                    tryRestartDataConnections(Phone.REASON_NW_TYPE_CHANGED);
+                    tryRestartDataConnections(true, Phone.REASON_NW_TYPE_CHANGED);
                 } else if (isNvSubscription()){
                     // If cdma subscription source changed to NV or data rat changed to cdma
                     // (while subscription source was NV) - we need to trigger NV ready
@@ -2914,6 +2974,9 @@ public final class DcTracker extends DcTrackerBase {
 
             case DctConstants.EVENT_GET_WWAN_IWLAN_COEXISTENCE_DONE:
                 onWwanIwlanCoexistenceDone((AsyncResult)msg.obj);
+
+            case DctConstants.EVENT_MODEM_DATA_PROFILE_READY:
+                onModemApnProfileReady();
                 break;
 
             default:
