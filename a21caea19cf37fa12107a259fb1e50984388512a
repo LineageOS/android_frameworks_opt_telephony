@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a41bdd9_08d8cb52",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/ApnContext.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 314
+      },
+      "writtenOn": "2013-10-07T04:49:47Z",
+      "side": 1,
+      "message": "if (mApnSetting !\u003d null \u0026\u0026 !TextUtils.isEmpty(provisioningApn)",
+      "revId": "a21caea19cf37fa12107a259fb1e50984388512a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
