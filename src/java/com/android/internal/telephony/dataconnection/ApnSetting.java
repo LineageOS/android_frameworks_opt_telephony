@@ -1,6 +1,8 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
+ * Not a Contribution.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -26,33 +28,15 @@ public class ApnSetting extends DataProfile {
 
     static final String V2_FORMAT_REGEX = "^\\[ApnSettingV2\\]\\s*";
 
-    public final String carrier;
-    public final String proxy;
-    public final String port;
-    public final String mmsc;
-    public final String mmsProxy;
-    public final String mmsPort;
-    /**
-      * Current status of APN
-      * true : enabled APN, false : disabled APN.
-      */
-    public final boolean carrierEnabled;
-
     public ApnSetting(int id, String numeric, String carrier, String apn,
             String proxy, String port,
             String mmsc, String mmsProxy, String mmsPort,
             String user, String password, int authType, String[] types,
             String protocol, String roamingProtocol, boolean carrierEnabled, int bearer) {
         super(id, numeric, apn, user, password, authType,
-                types, protocol, roamingProtocol, bearer);
-
-        this.carrier = carrier;
-        this.proxy = proxy;
-        this.port = port;
-        this.mmsc = mmsc;
-        this.mmsProxy = mmsProxy;
-        this.mmsPort = mmsPort;
-        this.carrierEnabled = carrierEnabled;
+                types, protocol, roamingProtocol, bearer,
+                carrier, proxy, port, mmsc, mmsProxy, mmsPort,
+                carrierEnabled);
     }
 
     /**

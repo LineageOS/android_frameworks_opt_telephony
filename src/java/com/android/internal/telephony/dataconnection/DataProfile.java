@@ -1,7 +1,6 @@
 /*
- * Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
- * Not a Contribution, Apache license notifications and license are retained
- * for attribution purposes only.
+ * Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +16,7 @@
  */
 
 package com.android.internal.telephony.dataconnection;
+import com.android.internal.telephony.RILConstants;
 
 public abstract class DataProfile {
 
@@ -30,6 +30,23 @@ public abstract class DataProfile {
     public final String protocol;
     public final String roamingProtocol;
     public final String numeric;
+
+    public String carrier;
+    public String proxy;
+    public String port;
+    public String mmsc;
+    public String mmsProxy;
+    public String mmsPort;
+
+    /* ID of the profile in the modem */
+    protected int mProfileId = 0;
+
+    /**
+     * Current status of APN
+     * true : enabled APN, false : disabled APN.
+     */
+    public boolean carrierEnabled;
+
     /**
      * Radio Access Technology info
      * To check what values can hold, refer to ServiceState.java.
@@ -38,7 +55,7 @@ public abstract class DataProfile {
      */
     public final int bearer;
 
-    public final String[] types;
+    public String[] types;
 
     public enum DataProfileType {
         PROFILE_TYPE_APN(0),
@@ -60,6 +77,14 @@ public abstract class DataProfile {
 
     public DataProfile (int id, String numeric, String apn, String user, String password,
             int authType, String[] types, String protocol, String roamingProtocol, int bearer) {
+        this(id, numeric, apn, user, password, authType, types, protocol, roamingProtocol,
+                bearer, "", "", "", "", "", "", false);
+    }
+
+    public DataProfile (int id, String numeric, String apn, String user, String password,
+            int authType, String[] types, String protocol, String roamingProtocol, int bearer,
+            String carrier, String proxy, String port, String mmsc, String mmsProxy,
+            String mmsPort, boolean carrierEnabled) {
         this.id = id;
         this.numeric = numeric;
         this.apn = apn;
@@ -70,6 +95,30 @@ public abstract class DataProfile {
         this.protocol = protocol;
         this.roamingProtocol = roamingProtocol;
         this.bearer = bearer;
+
+        this.carrier = carrier;
+        this.proxy = proxy;
+        this.port = port;
+        this.mmsc = mmsc;
+        this.mmsProxy = mmsProxy;
+        this.mmsPort = mmsPort;
+        this.carrierEnabled = carrierEnabled;
+    }
+
+    /* package */ boolean isActive() {
+        return mDc != null;
+    }
+
+    /* package */void setAsActive(DataConnection dc) {
+        mDc = dc;
+    }
+
+    /* package */void setAsInactive() {
+        mDc = null;
+    }
+
+    public String[] getServiceTypes() {
+       return types.clone();
     }
 
     public String toString() {
@@ -89,6 +138,10 @@ public abstract class DataProfile {
         sb.append(", ").append(roamingProtocol);
         sb.append(", ").append(bearer);
         return sb.toString();
+    }
+
+    public void setProfileId(int profileId) {
+        mProfileId = profileId;
     }
 
     /* some way to identify this data profile uniquely */
