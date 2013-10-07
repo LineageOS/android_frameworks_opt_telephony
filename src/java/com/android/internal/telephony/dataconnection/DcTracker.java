@@ -257,9 +257,7 @@ public final class DcTracker extends DcTrackerBase {
                 apnContext = addApnContext(PhoneConstants.APN_TYPE_DUN, networkConfig);
                 break;
             case ConnectivityManager.TYPE_MOBILE_HIPRI:
-                // Hipri is configured the same as default
                 apnContext = addApnContext(PhoneConstants.APN_TYPE_HIPRI, networkConfig);
-                apnContext.setEnabled(defaultEnabled);
                 continue;
             case ConnectivityManager.TYPE_MOBILE_FOTA:
                 apnContext = addApnContext(PhoneConstants.APN_TYPE_FOTA, networkConfig);
