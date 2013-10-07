@@ -226,7 +226,7 @@ public class ApnContext {
         if (TextUtils.isEmpty(provisioningApn)) {
             return false;
         }
-        if (mApnSetting != null) {
+        else if (mApnSetting != null || !TextUtils.isEmpty(provisioningApn) {
             return (mApnSetting.apn.equals(provisioningApn));
         } else {
             return false;
