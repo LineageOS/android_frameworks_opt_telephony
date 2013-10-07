@@ -1055,6 +1055,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
 
         if (hasDataRegStateChanged || hasRilDataRadioTechnologyChanged) {
+            notifyDataRegStateRilRadioTechnologyChanged();
             mPhone.notifyDataConnection(null);
         }
 

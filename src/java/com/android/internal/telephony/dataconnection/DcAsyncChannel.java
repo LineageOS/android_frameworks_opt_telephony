@@ -369,13 +369,14 @@ public class DcAsyncChannel extends AsyncChannel {
      *        AsyncResult.result = FailCause and AsyncResult.exception = Exception().
      */
     public void bringUp(ApnContext apnContext, int initialMaxRetry, int profileId,
-            Message onCompletedMsg) {
+            int rilRadioTechnology, Message onCompletedMsg) {
         if (DBG) {
             log("bringUp: apnContext=" + apnContext + " initialMaxRetry=" + initialMaxRetry
                 + " onCompletedMsg=" + onCompletedMsg);
         }
         sendMessage(DataConnection.EVENT_CONNECT,
-                    new ConnectionParams(apnContext, initialMaxRetry, profileId, onCompletedMsg));
+                    new ConnectionParams(apnContext, initialMaxRetry, profileId,
+                            rilRadioTechnology, onCompletedMsg));
     }
 
     /**
