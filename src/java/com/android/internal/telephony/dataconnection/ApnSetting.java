@@ -1,6 +1,8 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
+ * Not a Contribution.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -43,7 +45,7 @@ public class ApnSetting {
     public final String user;
     public final String password;
     public final int authType;
-    public final String[] types;
+    public String[] types;
     public final int id;
     public final String numeric;
     public final String protocol;
@@ -64,7 +66,7 @@ public class ApnSetting {
     public final int bearer;
 
     /* ID of the profile in the modem */
-    public final int profileId;
+    public int profileId;
     public final boolean modemCognitive;
     public final int maxConns;
     public final int waitTime;
@@ -84,6 +86,22 @@ public class ApnSetting {
       *   "gid": 4E, 33
       */
     public final String mvnoMatchData;
+
+    public enum ApnProfileType {
+        PROFILE_TYPE_APN(0),
+        PROFILE_TYPE_CDMA(1),
+        PROFILE_TYPE_OMH(2);
+
+        int id;
+
+        private ApnProfileType(int i) {
+            this.id = i;
+        }
+
+        public int getid() {
+            return id;
+        }
+    }
 
     public ApnSetting(int id, String numeric, String carrier, String apn,
             String proxy, String port,
@@ -324,5 +342,21 @@ public class ApnSetting {
     public boolean equals(Object o) {
         if (o instanceof ApnSetting == false) return false;
         return (toString().equals(o.toString()));
+    }
+
+    public ApnProfileType getApnProfileType() {
+        return ApnProfileType.PROFILE_TYPE_APN;
+    }
+
+    public int getProfileId() {
+        return profileId;
+    }
+
+    public String toShortString() {
+        return "ApnSetting";
+    }
+
+    public String toHash() {
+        return this.toString();
     }
 }
