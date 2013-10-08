@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2012-13, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
+ *
  * Copyright (C) 2007 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +37,7 @@ import com.android.internal.telephony.uicc.UsimServiceTable;
 import com.android.internal.telephony.PhoneConstants.*; // ???? 
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Internal interface used to control the phone; SDK developers cannot
@@ -102,7 +106,10 @@ public interface Phone {
     static final String REASON_DATA_DEPENDENCY_MET = "dependencyMet";
     static final String REASON_DATA_DEPENDENCY_UNMET = "dependencyUnmet";
     static final String REASON_LOST_DATA_CONNECTION = "lostDataConnection";
+    static final String REASON_LINK_PROPERTIES_CHANGED = "linkPropertiesChanged";
     static final String REASON_CONNECTED = "connected";
+    static final String REASON_TETHERED_MODE_STATE_CHANGED = "tetheredModeStateChanged";
+    static final String REASON_SINGLE_PDN_ARBITRATION = "SinglePdnArbitration";
     static final String REASON_NV_READY = "nvReady";
 
     // Used for band mode selection methods
@@ -133,6 +140,19 @@ public interface Phone {
     int NT_MODE_LTE_ONLY                 = RILConstants.NETWORK_MODE_LTE_ONLY;
     int NT_MODE_LTE_WCDMA                = RILConstants.NETWORK_MODE_LTE_WCDMA;
     int PREFERRED_NT_MODE                = RILConstants.PREFERRED_NETWORK_MODE;
+
+    int NT_MODE_TD_SCDMA_ONLY            = RILConstants.NETWORK_MODE_TD_SCDMA_ONLY;
+    int NT_MODE_TD_SCDMA_WCDMA           = RILConstants.NETWORK_MODE_TD_SCDMA_WCDMA;
+    int NT_MODE_TD_SCDMA_LTE             = RILConstants.NETWORK_MODE_TD_SCDMA_LTE;
+    int NT_MODE_TD_SCDMA_GSM             = RILConstants.NETWORK_MODE_TD_SCDMA_GSM;
+    int NT_MODE_TD_SCDMA_GSM_LTE         = RILConstants.NETWORK_MODE_TD_SCDMA_GSM_LTE;
+    int NT_MODE_TD_SCDMA_GSM_WCDMA       = RILConstants.NETWORK_MODE_TD_SCDMA_GSM_WCDMA;
+    int NT_MODE_TD_SCDMA_WCDMA_LTE       = RILConstants.NETWORK_MODE_TD_SCDMA_WCDMA_LTE;
+    int NT_MODE_TD_SCDMA_GSM_WCDMA_LTE   = RILConstants.NETWORK_MODE_TD_SCDMA_GSM_WCDMA_LTE;
+    int NT_MODE_TD_SCDMA_CDMA_EVDO_GSM_WCDMA =
+            RILConstants.NETWORK_MODE_TD_SCDMA_CDMA_EVDO_GSM_WCDMA;
+    int NT_MODE_TD_SCDMA_LTE_CDMA_EVDO_GSM_WCDMA =
+            RILConstants.NETWORK_MODE_TD_SCDMA_LTE_CDMA_EVDO_GSM_WCDMA;
 
     // Used for CDMA roaming mode
     static final int CDMA_RM_HOME        = 0;  // Home Networks only, as defined in PRL
@@ -168,6 +188,67 @@ public interface Phone {
     public static final int CDMA_OTA_PROVISION_STATUS_OTAPA_STOPPED = 10;
     public static final int CDMA_OTA_PROVISION_STATUS_OTAPA_ABORTED = 11;
 
+    /*
+     * Type of the call based on the media type and the direction of the media.
+     */
+
+    public static final int CALL_TYPE_VOICE = 0; /*
+                                                  * Voice call-audio in both
+                                                  * directions
+                                                  */
+
+    public static final int CALL_TYPE_VT_TX = 1; /*
+                                                  * PS Video telephony call: one
+                                                  * way TX video, two way audio
+                                                  */
+
+    public static final int CALL_TYPE_VT_RX = 2; /*
+                                                  * Video telephony call: one
+                                                  * way RX video, two way audio
+                                                  */
+
+    public static final int CALL_TYPE_VT = 3; /*
+                                               * Video telephony call: two way
+                                               * video, two way audio
+                                               */
+
+    public static final int CALL_TYPE_VT_NODIR = 4; /*
+                                                     * Video telephony call: no
+                                                     * direction, two way audio,
+                                                     * intermediate state in a
+                                                     * video call till video
+                                                     * link is setup
+                                                     */
+
+    public static final int CALL_TYPE_UNKNOWN = 10; /*
+                                                     * Unknown Call type, may be
+                                                     * used for answering call
+                                                     * with same call type as
+                                                     * incoming call. This is
+                                                     * only for telephony, not
+                                                     * meant to be passed to RIL
+                                                     */
+
+    public static final int CALL_DOMAIN_CS = 1; /*
+                                                 * Circuit switched domain
+                                                 */
+    public static final int CALL_DOMAIN_PS = 2; /*
+                                                 * Packet switched domain
+                                                 */
+    public static final int CALL_DOMAIN_AUTOMATIC = 3; /*
+                                                        * Automatic domain. Sent
+                                                        * by Android to indicate
+                                                        * that the domain for a
+                                                        * new call should be
+                                                        * selected by modem
+                                                        */
+    public static final int CALL_DOMAIN_NOT_SET = 4; /*
+                                                      * Init value used
+                                                      * internally by telephony
+                                                      * until domain is set
+                                                      */
+
+    public static final String EXTRAS_IS_CONFERENCE_URI = "isConferenceUri";
 
     /**
      * Get the current ServiceState. Use
@@ -592,6 +673,34 @@ public interface Phone {
     public void unregisterForSubscriptionInfoReady(Handler h);
 
     /**
+     * Registration point for Sim records loaded
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForSimRecordsLoaded(Handler h, int what, Object obj);
+
+    /**
+     * Unregister for notifications for Sim records loaded
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForSimRecordsLoaded(Handler h);
+
+     /**
+     * Registration point for Voice system id change
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForUnsolVoiceSystemId(Handler h, int what, Object obj);
+
+    /**
+     * Unregister for notifications for Voice system id change
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForUnsolVoiceSystemId(Handler h);
+
+    /**
      * Returns SIM record load state. Use
      * <code>getSimCard().registerForReady()</code> for change notification.
      *
@@ -616,6 +725,32 @@ public interface Phone {
      * @exception CallStateException when no call is ringing or waiting
      */
     void acceptCall() throws CallStateException;
+
+    /**
+     * Answers a ringing or waiting call. Active calls, if any, go on hold.
+     * Answering occurs asynchronously, and final notification occurs via
+     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
+     * java.lang.Object) registerForPreciseCallStateChanged()}.
+     *
+     * @exception CallStateException when no call is ringing or waiting
+     */
+    void acceptCall(int callType) throws CallStateException;
+
+    /**
+     * Gets call type for IMS calls.
+     *
+     * @return one of the call types in {@link Phone}
+     * @throws CallStateException
+     */
+    int getCallType(Call call) throws CallStateException;
+
+    /**
+     * Gets call domain for IMS calls.
+     *
+     * @return one of the call domains in {@link Phone}
+     * @throws CallStateException
+     */
+    int getCallDomain(Call call) throws CallStateException;
 
     /**
      * Reject (ignore) a ringing call. In GSM, this means UDUB
@@ -776,6 +911,20 @@ public interface Phone {
      *                errors are handled asynchronously.
      */
     Connection dial(String dialString, UUSInfo uusInfo) throws CallStateException;
+
+    /**
+     * Initiate a new voice connection with call type and extras for IMS calls.
+     * This happens asynchronously, so you cannot assume the audio path is
+     * connected (or a call index has been assigned) until PhoneStateChanged
+     * notification has occurred.
+     *
+     * @exception CallStateException if a new outgoing call is not currently
+     *                possible because no more call slots exist or a call exists
+     *                that is dialing, alerting, ringing, or waiting. Other
+     *                errors are handled asynchronously.
+     */
+    public Connection dial(String dialString, int callType, String[] extras)
+            throws CallStateException;
 
     /**
      * Handles PIN MMI commands (PIN/PIN2/PUK/PUK2), which are initiated
@@ -1388,11 +1537,6 @@ public interface Phone {
     public PhoneSubInfo getPhoneSubInfo();
 
     /**
-     * Retrieves the IccSmsInterfaceManager of the Phone
-     */
-    public IccSmsInterfaceManager getIccSmsInterfaceManager();
-
-    /**
      * Retrieves the IccPhoneBookInterfaceManager of the Phone
      */
     public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager();
@@ -1686,6 +1830,12 @@ public interface Phone {
      */
     boolean isCspPlmnEnabled();
 
+    /* Checks if manual network selection is allowed
+     * @return true if manual network selection is allowed
+     * @return false if manual network selection is not allowed
+     */
+    public boolean isManualNetSelAllowed();
+
     /**
      * Return an interface to retrieve the ISIM records for IMS, if available.
      * @return the interface to retrieve the ISIM records, or null if not supported
@@ -1703,15 +1853,6 @@ public interface Phone {
     void requestIsimAuthentication(String nonce, Message response);
 
     /**
-     * Sets the SIM voice message waiting indicator records.
-     * @param line GSM Subscriber Profile Number, one-based. Only '1' is supported
-     * @param countWaiting The number of messages waiting, if known. Use
-     *                     -1 to indicate that an unknown number of
-     *                      messages are waiting
-     */
-    void setVoiceMessageWaiting(int line, int countWaiting);
-
-    /**
      * Gets the USIM service table from the UICC, if present and available.
      * @return an interface to the UsimServiceTable record, or null if not available
      */
@@ -1727,4 +1868,125 @@ public interface Phone {
      * Remove references to external object stored in this object.
      */
     void removeReferences();
+
+    void getCallBarringOption(String facility, String password, Message onComplete);
+
+    void setCallBarringOption(String facility, boolean lockState, String password,
+            Message onComplete);
+
+    void requestChangeCbPsw(String facility, String oldPwd, String newPwd, Message result);
+
+    /**
+     * When the remote party in an IMS Call wants to upgrade or downgrade a
+     * call, a CallModifyRequest message is received. This function registers
+     * for that indication and sends a message to the handler when such an
+     * indication occurs. A response to the request can be sent with
+     * {@link Phone#acceptConnectionTypeChange(Map)} to accept the proposal, or
+     * {@link Phone#rejectConnectionTypeChange()}
+     *
+     * @param h The handler that will receive the message
+     * @param what The message to send
+     * @param obj User object to send with the message
+     */
+    public void registerForModifyCallRequest(Handler h, int what, Object obj)
+            throws CallStateException;
+
+    public void unregisterForModifyCallRequest(Handler h) throws CallStateException;
+
+    /**
+     * When upgrade to video call and remote party does not support AVPF, IMS
+     * Phone retries upgrade request and this function registers for the failure
+     * indication
+     * @param h The handler that will receive the message
+     * @param what The message to send
+     * @param obj User object to send with the message
+     * @throws CallStateException
+     */
+    public void registerForAvpUpgradeFailure(Handler h, int what, Object obj)
+            throws CallStateException;
+
+    public void unregisterForAvpUpgradeFailure(Handler h) throws CallStateException;
+
+    /**
+     * Request a modification to a current connection This will send an
+     * indication to the remote party with new call details, which the remote
+     * party can agree to or reject. Used to upgrade/downgrade IMS call.
+     * @param msg A message to be returned with the result of the action.
+     * @param conn The connection to modify
+     * @param newCallType The new call type
+     * @param extras A map containing extra parameters
+     */
+    public void changeConnectionType(Message msg, Connection conn,
+            int newCallType, Map<String, String> newExtras) throws CallStateException;
+
+    /**
+     * Approve a request to change the call type. Optionally, provide new extra
+     * values.
+     *
+     * @param newExtras
+     * @throws CallStateException
+     */
+    public void acceptConnectionTypeChange(Connection conn, Map<String, String> newExtras)
+            throws CallStateException;
+
+    /**
+     * Reject a previously received request to change the call type.
+     *
+     * @throws CallStateException
+     */
+    public void rejectConnectionTypeChange(Connection conn) throws CallStateException;
+
+    /**
+     * When a remote user requests to change the type of the connection (e.g. to
+     * upgrade from voice to video), it will be possible to query the proposed
+     * type with this method. After receiving an indication of a request (see
+     * {@link CallManager#registerForConnectionTypeChangeRequest(Handler, int, Object)}
+     * ). If no request has been received, this function returns the current
+     * type. The proposed type is cleared after calling
+     * {@link #acceptConnectionTypeChange(Map)} or
+     * {@link #rejectConnectionTypeChange()}.
+     *
+     * @return The proposed connection type or the current connectionType if no
+     *         request exists.
+     */
+    public int getProposedConnectionType(Connection conn) throws CallStateException;
+
+    /*
+     * Returns the subscription id.
+     */
+    public int getSubscription();
+
+    /**
+     * Request to enable or disable the tune away state.
+     * @param tuneAway true to enable, false to disable
+     * @param response is callback message
+     */
+    void setTuneAway(boolean tuneAway, Message response);
+
+    /**
+     * Sets the provided subIndex as priority subscription index.
+     * @param subIndex Subscription index
+     * @param response is callback message
+     */
+    void setPrioritySub(int subIndex, Message response);
+
+    /**
+     * Set the default voice subscription id.
+     * @param subIndex subscription index
+     * @param response is callback message
+     */
+    void setDefaultVoiceSub(int subIndex, Message response);
+
+    /**
+     * Request to update the current local call hold state.
+     * @param lchStatus, true if call is in lch state
+     * @param response is callback message
+     */
+    void setLocalCallHold(int lchStatus, Message response);
+
+    /**
+     * Checks the radioState
+     * @return, true if radio state = RADIO_ON, false otherwise
+     */
+    boolean isRadioOn();
 }

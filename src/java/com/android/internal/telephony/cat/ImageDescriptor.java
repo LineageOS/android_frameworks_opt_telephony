@@ -68,8 +68,13 @@ public class ImageDescriptor {
             d.mLowOffset = rawData[valueIndex++] & 0xff; // low byte offset
 
             d.mLength = ((rawData[valueIndex++] & 0xff) << 8 | (rawData[valueIndex++] & 0xff));
+
+            CatLog.d("ImageDescriptor", "parse; Descriptor : " + d.mWidth + ", " + d.mHeight +
+                     ", " + d.mCodingScheme + ", 0x" + Integer.toHexString(d.mImageId) + ", " +
+                     d.mHighOffset + ", " + d.mLowOffset + ", " + d.mLength);
+
         } catch (IndexOutOfBoundsException e) {
-            CatLog.d("ImageDescripter", "parse; failed parsing image descriptor");
+            CatLog.d("ImageDescriptor", "parse; failed parsing image descriptor");
             d = null;
         }
         return d;

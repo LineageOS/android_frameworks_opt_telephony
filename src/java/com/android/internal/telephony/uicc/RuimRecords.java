@@ -32,6 +32,7 @@ import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.telephony.MSimTelephonyManager;
 import android.telephony.Rlog;
 import android.text.TextUtils;
 
@@ -96,8 +97,6 @@ public final class RuimRecords extends IccRecords {
     private static final int EVENT_SMS_ON_RUIM = 21;
     private static final int EVENT_GET_SMS_DONE = 22;
 
-    private static final int EVENT_RUIM_REFRESH = 31;
-
     public RuimRecords(UiccCardApplication app, Context c, CommandsInterface ci) {
         super(app, c, ci);
 
@@ -109,7 +108,6 @@ public final class RuimRecords extends IccRecords {
         mRecordsToLoad = 0;
 
         // NOTE the EVENT_SMS_ON_RUIM is not registered
-        mCi.registerForIccRefresh(this, EVENT_RUIM_REFRESH, null);
 
         // Start off by setting empty state
         resetRecords();
@@ -122,7 +120,6 @@ public final class RuimRecords extends IccRecords {
     public void dispose() {
         if (DBG) log("Disposing RuimRecords " + this);
         //Unregister for all events
-        mCi.unregisterForIccRefresh(this);
         mParentApp.unregisterForReady(this);
         resetRecords();
         super.dispose();
@@ -134,7 +131,6 @@ public final class RuimRecords extends IccRecords {
     }
 
     protected void resetRecords() {
-        mCountVoiceMessages = 0;
         mMncLength = UNINITIALIZED;
         mIccId = null;
 
@@ -208,6 +204,11 @@ public final class RuimRecords extends IccRecords {
             denominator *= 10;
         }
         return digits;
+    }
+
+    @Override
+    public String getOperatorNumeric() {
+        return getRUIMOperatorNumeric();
     }
 
     /**
@@ -571,14 +572,6 @@ public final class RuimRecords extends IccRecords {
                 log("Event EVENT_GET_SST_DONE Received");
             break;
 
-            case EVENT_RUIM_REFRESH:
-                isRecordLoadResponse = false;
-                ar = (AsyncResult)msg.obj;
-                if (ar.exception == null) {
-                    handleRuimRefresh((IccRefreshResponse)ar.result);
-                }
-                break;
-
             default:
                 super.handleMessage(msg);   // IccRecords handles generic record load responses
 
@@ -667,14 +660,14 @@ public final class RuimRecords extends IccRecords {
         if (!TextUtils.isEmpty(operator)) {
             log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
                     operator + "'");
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
+            setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
         } else {
             log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
         }
 
         if (!TextUtils.isEmpty(mImsi)) {
             log("onAllRecordsLoaded set mcc imsi=" + mImsi);
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
+            setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
                     MccTable.countryCodeForMcc(Integer.parseInt(mImsi.substring(0,3))));
         } else {
             log("onAllRecordsLoaded empty imsi skipping setting mcc");
@@ -799,64 +792,24 @@ public final class RuimRecords extends IccRecords {
     }
 
     @Override
-    public void setVoiceMessageWaiting(int line, int countWaiting) {
-        if (line != 1) {
-            // only profile 1 is supported
-            return;
-        }
-
-        // range check
-        if (countWaiting < 0) {
-            countWaiting = -1;
-        } else if (countWaiting > 0xff) {
-            // C.S0015-B v2, 4.5.12
-            // range: 0-99
-            countWaiting = 0xff;
-        }
-        mCountVoiceMessages = countWaiting;
-
-        mRecordsEventsRegistrants.notifyResult(EVENT_MWI);
+    public void setVoiceMessageWaiting(int line, int countWaiting, Message onComplete) {
+        //Will be used in future to store voice mail count in UIM
+        //C.S0023-D_v1.0 does not have a file id in UIM for MWI
+        Rlog.d(LOG_TAG, "RuimRecords:setVoiceMessageWaiting - NOP for CDMA");
     }
 
-    private void handleRuimRefresh(IccRefreshResponse refreshResponse) {
-        if (refreshResponse == null) {
-            if (DBG) log("handleRuimRefresh received without input");
-            return;
-        }
+    @Override
+    public int getVoiceMessageCount() {
+        //Will be used in future to retrieve voice mail count for UIM
+        //C.S0023-D_v1.0 does not have a file id in UIM for MWI
+        Rlog.d(LOG_TAG, "RuimRecords:getVoiceMessageCount - NOP for CDMA");
+        return 0;
+    }
 
-        if (refreshResponse.aid != null &&
-                !refreshResponse.aid.equals(mParentApp.getAid())) {
-            // This is for different app. Ignore.
-            return;
-        }
-
-        switch (refreshResponse.refreshResult) {
-            case IccRefreshResponse.REFRESH_RESULT_FILE_UPDATE:
-                if (DBG) log("handleRuimRefresh with SIM_REFRESH_FILE_UPDATED");
-                mAdnCache.reset();
-                fetchRuimRecords();
-                break;
-            case IccRefreshResponse.REFRESH_RESULT_INIT:
-                if (DBG) log("handleRuimRefresh with SIM_REFRESH_INIT");
-                // need to reload all files (that we care about)
-                onIccRefreshInit();
-                break;
-            case IccRefreshResponse.REFRESH_RESULT_RESET:
-                if (DBG) log("handleRuimRefresh with SIM_REFRESH_RESET");
-                mCi.setRadioPower(false, null);
-                /* Note: no need to call setRadioPower(true).  Assuming the desired
-                * radio power state is still ON (as tracked by ServiceStateTracker),
-                * ServiceStateTracker will call setRadioPower when it receives the
-                * RADIO_STATE_CHANGED notification for the power off.  And if the
-                * desired power state has changed in the interim, we don't want to
-                * override it with an unconditional power on.
-                */
-                break;
-            default:
-                // unknown refresh operation
-                if (DBG) log("handleRuimRefresh with unknown operation");
-                break;
-        }
+    @Override
+    protected void handleFileUpdate(int efid) {
+        mAdnCache.reset();
+        fetchRuimRecords();
     }
 
     public String getMdn() {
@@ -905,5 +858,13 @@ public final class RuimRecords extends IccRecords {
         pw.println(" mHomeSystemId=" + mHomeSystemId);
         pw.println(" mHomeNetworkId=" + mHomeNetworkId);
         pw.flush();
+    }
+
+    private void setSystemProperty(String key, String val) {
+        // Update the system properties only in case NON-DSDS.
+        // TODO: Shall have a better approach!
+        if (!MSimTelephonyManager.getDefault().isMultiSimEnabled()) {
+            SystemProperties.set(key, val);
+        }
     }
 }

@@ -1,5 +1,8 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +24,10 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.gsm.GSMPhone;
+import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.dataconnection.DataProfile.DataProfileType;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.util.AsyncChannel;
@@ -145,7 +151,7 @@ public final class DataConnection extends StateMachine {
         }
     }
 
-    private ApnSetting mApnSetting;
+    private DataProfile mApnSetting;
     private ConnectionParams mConnectionParams;
     private DisconnectParams mDisconnectParams;
     private DcFailCause mDcFailCause;
@@ -222,8 +228,14 @@ public final class DataConnection extends StateMachine {
     static DataConnection makeDataConnection(PhoneBase phone, int id,
             DcTrackerBase dct, DcTesterFailBringUpAll failBringUpAll,
             DcController dcc) {
+        String tag = "DC-";
+        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM ) {
+            tag = "GsmDC-";
+        } else if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA ) {
+            tag = "CdmaDC-";
+        }
         DataConnection dc = new DataConnection(phone,
-                "DC-" + mInstanceNumber.incrementAndGet(), id, dct, failBringUpAll, dcc);
+                tag + mInstanceNumber.incrementAndGet(), id, dct, failBringUpAll, dcc);
         dc.start();
         if (DBG) dc.log("Made " + dc.getName());
         return dc;
@@ -252,7 +264,7 @@ public final class DataConnection extends StateMachine {
         return mCid;
     }
 
-    ApnSetting getApnSetting() {
+    DataProfile getDataProfile() {
         return mApnSetting;
     }
 
@@ -387,9 +399,7 @@ public final class DataConnection extends StateMachine {
      * @param cp is the connection parameters
      */
     private void onConnect(ConnectionParams cp) {
-        if (DBG) log("onConnect: carrier='" + mApnSetting.carrier
-                + "' APN='" + mApnSetting.apn
-                + "' proxy='" + mApnSetting.proxy + "' port='" + mApnSetting.port + "'");
+        if (DBG) log("onConnect: mApnSetting=" + mApnSetting+" cp="+cp);
 
         // Check if we should fake an error.
         if (mDcTesterFailBringUpAll.getDcFailBringUp().mCounter  > 0) {
@@ -421,6 +431,16 @@ public final class DataConnection extends StateMachine {
         mLastFailTime = -1;
         mLastFailCause = DcFailCause.NONE;
 
+        // The data profile's profile ID must be set when it is created.
+        int dataProfileId;
+        if (mApnSetting.getDataProfileType() == DataProfileType.PROFILE_TYPE_OMH)
+        {
+            dataProfileId = mApnSetting.getProfileId() + RILConstants.DATA_PROFILE_OEM_BASE;
+            log("OMH profile, dataProfile id = " + dataProfileId);
+        } else {
+            dataProfileId = cp.mProfileId;
+        }
+
         // msg.obj will be returned in AsyncResult.userObj;
         Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
         msg.obj = cp;
@@ -440,7 +460,7 @@ public final class DataConnection extends StateMachine {
 
         mPhone.mCi.setupDataCall(
                 Integer.toString(getRilRadioTechnology()),
-                Integer.toString(cp.mProfileId),
+                Integer.toString(dataProfileId),
                 mApnSetting.apn, mApnSetting.user, mApnSetting.password,
                 Integer.toString(authType),
                 protocol, msg);
@@ -692,12 +712,13 @@ public final class DataConnection extends StateMachine {
             // Do not apply the race condition workaround for MMS APN
             // if Proxy is an IP-address.
             // Otherwise, the default APN will not be restored anymore.
-            if (!mApnSetting.types[0].equals(PhoneConstants.APN_TYPE_MMS)
-                || !isIpAddress(mApnSetting.mmsProxy)) {
+            ApnSetting apnSetting = (ApnSetting)mApnSetting;
+            if (!apnSetting.types[0].equals(PhoneConstants.APN_TYPE_MMS)
+                || !isIpAddress(apnSetting.mmsProxy)) {
                 log(String.format(
                         "isDnsOk: return false apn.types[0]=%s APN_TYPE_MMS=%s isIpAddress(%s)=%s",
-                        mApnSetting.types[0], PhoneConstants.APN_TYPE_MMS, mApnSetting.mmsProxy,
-                        isIpAddress(mApnSetting.mmsProxy)));
+                        apnSetting.types[0], PhoneConstants.APN_TYPE_MMS, apnSetting.mmsProxy,
+                        isIpAddress(apnSetting.mmsProxy)));
                 return false;
             }
         }
@@ -736,8 +757,8 @@ public final class DataConnection extends StateMachine {
         if (mApnSetting == null) {
             // Only change apn setting if it isn't set, it will
             // only NOT be set only if we're in DcInactiveState.
-            mApnSetting = apnContext.getApnSetting();
-        } else if (mApnSetting.canHandleType(apnContext.getApnType())) {
+            mApnSetting = apnContext.getDataProfile();
+        } else if (mApnSetting.canHandleType(apnContext.getDataProfileType())) {
             // All is good.
         } else {
             if (DBG) {
@@ -848,7 +869,7 @@ public final class DataConnection extends StateMachine {
                     break;
                 }
                 case DcAsyncChannel.REQ_GET_APNSETTING: {
-                    ApnSetting apnSetting = getApnSetting();
+                    DataProfile apnSetting = getDataProfile();
                     if (VDBG) log("REQ_GET_APNSETTING  mApnSetting=" + apnSetting);
                     mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_APNSETTING, apnSetting);
                     break;

@@ -1,5 +1,8 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,13 +25,19 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.os.Binder;
 import android.os.RemoteException;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
+import android.os.ServiceManager;
+import android.os.UserHandle;
 import android.telephony.Rlog;
 import android.util.Log;
 
+import com.android.internal.telephony.ISms;
+import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.util.HexDump;
@@ -45,20 +54,27 @@ import static android.telephony.SmsManager.STATUS_ON_ICC_UNREAD;
  * IccSmsInterfaceManager to provide an inter-process communication to
  * access Sms in Icc.
  */
-public abstract class IccSmsInterfaceManager extends ISms.Stub {
-    static final String LOG_TAG = "IccSmsInterfaceManager";
-    static final boolean DBG = true;
+public class IccSmsInterfaceManager extends ISms.Stub {
+    protected static final String LOG_TAG = "IccSmsInterfaceManager";
+    protected static final boolean DBG = true;
 
     protected final Object mLock = new Object();
     protected boolean mSuccess;
     private List<SmsRawData> mSms;
 
+    private CellBroadcastRangeManager mCellBroadcastRangeManager =
+            new CellBroadcastRangeManager();
+    private CdmaBroadcastRangeManager mCdmaBroadcastRangeManager =
+        new CdmaBroadcastRangeManager();
+
     private static final int EVENT_LOAD_DONE = 1;
     private static final int EVENT_UPDATE_DONE = 2;
     protected static final int EVENT_SET_BROADCAST_ACTIVATION_DONE = 3;
     protected static final int EVENT_SET_BROADCAST_CONFIG_DONE = 4;
+    private static final int SMS_CB_CODE_SCHEME_MIN = 0;
+    private static final int SMS_CB_CODE_SCHEME_MAX = 255;
 
-    final protected PhoneBase mPhone;
+    protected PhoneBase mPhone;
     final protected Context mContext;
     final protected AppOpsManager mAppOps;
     protected SMSDispatcher mDispatcher;
@@ -80,11 +96,14 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
                     ar = (AsyncResult)msg.obj;
                     synchronized (mLock) {
                         if (ar.exception == null) {
-                            mSms = buildValidRawData((ArrayList<byte[]>) ar.result);
+                            mSms  = (List<SmsRawData>)
+                                    buildValidRawData((ArrayList<byte[]>) ar.result);
                             //Mark SMS as read after importing it from card.
                             markMessagesAsRead((ArrayList<byte[]>) ar.result);
                         } else {
-                            if(DBG) log("Cannot load Sms records");
+                            if (Rlog.isLoggable("SMS", Log.DEBUG)) {
+                                log("Cannot load Sms records");
+                            }
                             if (mSms != null)
                                 mSms.clear();
                         }
@@ -102,12 +121,6 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
             }
         }
     };
-
-    protected IccSmsInterfaceManager(PhoneBase phone){
-        mPhone = phone;
-        mContext = phone.getContext();
-        mAppOps = (AppOpsManager)mContext.getSystemService(Context.APP_OPS_SERVICE);
-    }
 
     protected void markMessagesAsRead(ArrayList<byte[]> messages) {
         if (messages == null) {
@@ -142,6 +155,35 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
         }
     }
 
+    protected IccSmsInterfaceManager(PhoneBase phone){
+        mPhone = phone;
+        mContext = phone.getContext();
+        mAppOps = (AppOpsManager)mContext.getSystemService(Context.APP_OPS_SERVICE);
+        initDispatchers();
+        if(ServiceManager.getService("isms") == null) {
+            ServiceManager.addService("isms", this);
+        }
+    }
+
+    protected void initDispatchers() {
+        if(DBG) Log.d(LOG_TAG, "IccSmsInterfaceManager: initDispatchers()");
+        mDispatcher = new ImsSMSDispatcher(mPhone,
+                mPhone.mSmsStorageMonitor, mPhone.mSmsUsageMonitor);
+    }
+
+    public void dispose() {
+        mDispatcher.dispose();
+    }
+
+    protected void finalize() {
+        if(DBG) Rlog.d(LOG_TAG, "IccSmsInterfaceManager finalized");
+    }
+
+    protected void updatePhoneObject(PhoneBase phone) {
+        mPhone = phone;
+        mDispatcher.updatePhoneObject(phone);
+    }
+
     protected void enforceReceiveAndSend(String message) {
         mContext.enforceCallingPermission(
                 Manifest.permission.RECEIVE_SMS, message);
@@ -160,15 +202,17 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      * @return success or not
      *
      */
-    @Override
     public boolean
     updateMessageOnIccEf(String callingPackage, int index, int status, byte[] pdu) {
         if (DBG) log("updateMessageOnIccEf: index=" + index +
                 " status=" + status + " ==> " +
                 "("+ Arrays.toString(pdu) + ")");
         enforceReceiveAndSend("Updating message on Icc");
-        if (mAppOps.noteOp(AppOpsManager.OP_WRITE_ICC_SMS, Binder.getCallingUid(),
-                callingPackage) != AppOpsManager.MODE_ALLOWED) {
+        //Removing the appsops check for Mms app now to fix SMS read/write permission
+        //issue from SMSProvider.
+        if (!isMmsUid(Binder.getCallingUid()) &&
+                (mAppOps.noteOp(AppOpsManager.OP_WRITE_ICC_SMS, Binder.getCallingUid(),
+                callingPackage) != AppOpsManager.MODE_ALLOWED)) {
             return false;
         }
         synchronized(mLock) {
@@ -180,7 +224,11 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
                 // Special case FREE: call deleteSmsOnSim/Ruim instead of
                 // manipulating the record
                 // Will eventually fail if icc card is not present.
-                deleteSms(index, response);
+                if (PhoneConstants.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+                    mPhone.mCi.deleteSmsOnSim(index, response);
+                } else {
+                    mPhone.mCi.deleteSmsOnRuim(index, response);
+                }
             } else {
                 //IccFilehandler can be null if ICC card is not present.
                 IccFileHandler fh = mPhone.getIccFileHandler();
@@ -211,7 +259,6 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      * @return success or not
      *
      */
-    @Override
     public boolean copyMessageToIccEf(String callingPackage, int status, byte[] pdu, byte[] smsc) {
         //NOTE smsc not used in RUIM
         if (DBG) log("copyMessageToIccEf: status=" + status + " ==> " +
@@ -227,7 +274,13 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
             Message response = mHandler.obtainMessage(EVENT_UPDATE_DONE);
 
             //RIL_REQUEST_WRITE_SMS_TO_SIM vs RIL_REQUEST_CDMA_WRITE_SMS_TO_RUIM
-            writeSms(status, smsc, pdu, response);
+            if (PhoneConstants.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+                mPhone.mCi.writeSmsToSim(status, IccUtils.bytesToHexString(smsc),
+                        IccUtils.bytesToHexString(pdu), response);
+            } else {
+                mPhone.mCi.writeSmsToRuim(status, IccUtils.bytesToHexString(pdu),
+                        response);
+            }
 
             try {
                 mLock.wait();
@@ -243,15 +296,17 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      *
      * @return list of SmsRawData of all sms on Icc
      */
-    @Override
     public List<SmsRawData> getAllMessagesFromIccEf(String callingPackage) {
         if (DBG) log("getAllMessagesFromEF");
 
         mContext.enforceCallingPermission(
                 Manifest.permission.RECEIVE_SMS,
                 "Reading messages from Icc");
-        if (mAppOps.noteOp(AppOpsManager.OP_READ_ICC_SMS, Binder.getCallingUid(),
-                callingPackage) != AppOpsManager.MODE_ALLOWED) {
+        //Removing the appsops check for MMS app now to fix SMS read/write permission
+        //issue from SMSProvider.
+        if (!isMmsUid(Binder.getCallingUid()) &&
+                (mAppOps.noteOp(AppOpsManager.OP_READ_ICC_SMS, Binder.getCallingUid(),
+                callingPackage) != AppOpsManager.MODE_ALLOWED)) {
             return new ArrayList<SmsRawData>();
         }
         synchronized(mLock) {
@@ -281,6 +336,40 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
     }
 
     /**
+     * Retrieves all messages currently stored on Icc.
+     *
+     * @return list of SmsRawData of all sms on Icc
+     */
+    public List<SmsRawData> getAllMessagesFromIccEf() {
+        if (DBG) log("getAllMessagesFromEF");
+
+        mContext.enforceCallingPermission(
+                "android.permission.RECEIVE_SMS",
+                "Reading messages from Icc");
+        synchronized(mLock) {
+
+            IccFileHandler fh = mPhone.getIccFileHandler();
+            if (fh == null) {
+                Log.e(LOG_TAG, "Cannot load Sms records. No icc card?");
+                if (mSms != null) {
+                    mSms.clear();
+                    return mSms;
+                }
+            }
+
+            Message response = mHandler.obtainMessage(EVENT_LOAD_DONE);
+            fh.loadEFLinearFixedAll(IccConstants.EF_SMS, response);
+
+            try {
+                mLock.wait();
+            } catch (InterruptedException e) {
+                log("interrupted while trying to load from the Icc");
+            }
+        }
+        return mSms;
+    }
+
+    /**
      * Send a data based SMS to a specific application port.
      *
      * @param destAddr the address to send the message to
@@ -305,7 +394,6 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      *  broadcast when the message is delivered to the recipient.  The
      *  raw pdu of the status report is in the extended data ("pdu").
      */
-    @Override
     public void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         mPhone.getContext().enforceCallingPermission(
@@ -347,7 +435,6 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      *  broadcast when the message is delivered to the recipient.  The
      *  raw pdu of the status report is in the extended data ("pdu").
      */
-    @Override
     public void sendText(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         int callingUid = Binder.getCallingUid();
@@ -376,6 +463,45 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
     }
 
     /**
+     * Send a text based SMS.
+     *
+     * @param destAddr the address to send the message to
+     * @param scAddr is the service center address or null to use
+     *  the current default SMSC
+     * @param text the body of the message to send
+     * @param sentIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is successfully sent, or failed.
+     *  The result code will be <code>Activity.RESULT_OK<code> for success,
+     *  or one of these errors:<br>
+     *  <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
+     *  <code>RESULT_ERROR_RADIO_OFF</code><br>
+     *  <code>RESULT_ERROR_NULL_PDU</code><br>
+     *  For <code>RESULT_ERROR_GENERIC_FAILURE</code> the sentIntent may include
+     *  the extra "errorCode" containing a radio technology specific value,
+     *  generally only useful for troubleshooting.<br>
+     *  The per-application based SMS control checks sentIntent. If sentIntent
+     *  is NULL the caller will be checked against all unknown applications,
+     *  which cause smaller number of SMS to be sent in checking period.
+     * @param deliveryIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is delivered to the recipient.  The
+     *  raw pdu of the status report is in the extended data ("pdu").
+     * @param priority Priority level of the message
+     */
+    public void sendTextWithPriority(String destAddr, String scAddr, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+        mPhone.getContext().enforceCallingPermission(
+                "android.permission.SEND_SMS",
+                "Sending SMS message");
+        if (Log.isLoggable("SMS", Log.VERBOSE)) {
+            log("sendText: destAddr=" + destAddr + " scAddr=" + scAddr +
+                    " text='" + text + "' sentIntent=" +
+                    sentIntent + " deliveryIntent=" + deliveryIntent);
+        }
+        mDispatcher.sendTextWithPriority(destAddr, scAddr, text, sentIntent, deliveryIntent,
+                priority);
+    }
+
+    /**
      * Send a multi-part text based SMS.
      *
      * @param destAddr the address to send the message to
@@ -400,7 +526,6 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      *   to the recipient.  The raw pdu of the status report is in the
      *   extended data ("pdu").
      */
-    @Override
     public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
             List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents) {
@@ -475,7 +600,12 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
      * @return byte array for the record.
      */
     protected byte[] makeSmsRecordData(int status, byte[] pdu) {
-        byte[] data = new byte[IccConstants.SMS_RECORD_LENGTH];
+        byte[] data;
+        if (PhoneConstants.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+            data = new byte[IccConstants.SMS_RECORD_LENGTH];
+        } else {
+            data = new byte[IccConstants.CDMA_SMS_RECORD_LENGTH];
+        }
 
         // Status bits for this record.  See TS 51.011 10.5.3
         data[0] = (byte)(status & 7);
@@ -483,17 +613,333 @@ public abstract class IccSmsInterfaceManager extends ISms.Stub {
         System.arraycopy(pdu, 0, data, 1, pdu.length);
 
         // Pad out with 0xFF's.
-        for (int j = pdu.length+1; j < IccConstants.SMS_RECORD_LENGTH; j++) {
+        for (int j = pdu.length+1; j < data.length; j++) {
             data[j] = -1;
         }
 
         return data;
     }
 
-    protected abstract void deleteSms(int index, Message response);
+    public boolean enableCellBroadcast(int messageIdentifier) {
+        return enableCellBroadcastRange(messageIdentifier, messageIdentifier);
+    }
 
-    protected abstract void writeSms(int status, byte[] pdu, byte[] smsc, Message response);
+    public boolean disableCellBroadcast(int messageIdentifier) {
+        return disableCellBroadcastRange(messageIdentifier, messageIdentifier);
+    }
 
-    protected abstract void log(String msg);
+    public boolean enableCellBroadcastRange(int startMessageId, int endMessageId) {
+        if (PhoneConstants.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+            return enableGsmBroadcastRange(startMessageId, endMessageId);
+        } else {
+            return enableCdmaBroadcastRange(startMessageId, endMessageId);
+        }
+    }
 
+    public boolean disableCellBroadcastRange(int startMessageId, int endMessageId) {
+        if (PhoneConstants.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+            return disableGsmBroadcastRange(startMessageId, endMessageId);
+        } else {
+            return disableCdmaBroadcastRange(startMessageId, endMessageId);
+        }
+    }
+    synchronized public boolean enableGsmBroadcastRange(int startMessageId, int endMessageId) {
+        if (DBG) log("enableGsmBroadcastRange");
+
+        Context context = mPhone.getContext();
+
+        context.enforceCallingPermission(
+                "android.permission.RECEIVE_SMS",
+                "Enabling cell broadcast SMS");
+
+        String client = context.getPackageManager().getNameForUid(
+                Binder.getCallingUid());
+
+        if (!mCellBroadcastRangeManager.enableRange(startMessageId, endMessageId, client)) {
+            log("Failed to add cell broadcast subscription for MID range " + startMessageId
+                    + " to " + endMessageId + " from client " + client);
+            return false;
+        }
+
+        if (DBG)
+            log("Added cell broadcast subscription for MID range " + startMessageId
+                    + " to " + endMessageId + " from client " + client);
+
+        setCellBroadcastActivation(!mCellBroadcastRangeManager.isEmpty());
+
+        return true;
+    }
+
+    synchronized public boolean disableGsmBroadcastRange(int startMessageId, int endMessageId) {
+        if (DBG) log("disableGsmBroadcastRange");
+
+        Context context = mPhone.getContext();
+
+        context.enforceCallingPermission(
+                "android.permission.RECEIVE_SMS",
+                "Disabling cell broadcast SMS");
+
+        String client = context.getPackageManager().getNameForUid(
+                Binder.getCallingUid());
+
+        if (!mCellBroadcastRangeManager.disableRange(startMessageId, endMessageId, client)) {
+            log("Failed to remove cell broadcast subscription for MID range " + startMessageId
+                    + " to " + endMessageId + " from client " + client);
+            return false;
+        }
+
+        if (DBG)
+            log("Removed cell broadcast subscription for MID range " + startMessageId
+                    + " to " + endMessageId + " from client " + client);
+
+        setCellBroadcastActivation(!mCellBroadcastRangeManager.isEmpty());
+
+        return true;
+    }
+
+    public boolean enableCdmaBroadcast(int messageIdentifier) {
+        return enableCdmaBroadcastRange(messageIdentifier, messageIdentifier);
+    }
+
+    public boolean disableCdmaBroadcast(int messageIdentifier) {
+        return disableCdmaBroadcastRange(messageIdentifier, messageIdentifier);
+    }
+
+
+    synchronized public boolean enableCdmaBroadcastRange(int startMessageId, int endMessageId) {
+        if (DBG) log("enableCdmaBroadcastRange");
+
+        Context context = mPhone.getContext();
+
+        context.enforceCallingPermission(
+                "android.permission.RECEIVE_SMS",
+                "Enabling cdma broadcast SMS");
+
+        String client = context.getPackageManager().getNameForUid(
+                Binder.getCallingUid());
+
+        if (!mCdmaBroadcastRangeManager.enableRange(startMessageId, endMessageId, client)) {
+            log("Failed to add cdma broadcast subscription for MID range " + startMessageId
+                    + " to " + endMessageId + " from client " + client);
+            return false;
+        }
+
+        if (DBG)
+            log("Added cdma broadcast subscription for MID range " + startMessageId
+                    + " to " + endMessageId + " from client " + client);
+
+        setCdmaBroadcastActivation(!mCdmaBroadcastRangeManager.isEmpty());
+
+        return true;
+    }
+
+    synchronized public boolean disableCdmaBroadcastRange(int startMessageId, int endMessageId) {
+        if (DBG) log("disableCdmaBroadcastRange");
+
+        Context context = mPhone.getContext();
+
+        context.enforceCallingPermission(
+                "android.permission.RECEIVE_SMS",
+                "Disabling cell broadcast SMS");
+
+        String client = context.getPackageManager().getNameForUid(
+                Binder.getCallingUid());
+
+        if (!mCdmaBroadcastRangeManager.disableRange(startMessageId, endMessageId, client)) {
+            log("Failed to remove cdma broadcast subscription for MID range " + startMessageId
+                    + " to " + endMessageId + " from client " + client);
+            return false;
+        }
+
+        if (DBG)
+            log("Removed cdma broadcast subscription for MID range " + startMessageId
+                    + " to " + endMessageId + " from client " + client);
+
+        setCdmaBroadcastActivation(!mCdmaBroadcastRangeManager.isEmpty());
+
+        return true;
+    }
+
+    class CellBroadcastRangeManager extends IntRangeManager {
+        private ArrayList<SmsBroadcastConfigInfo> mConfigList =
+                new ArrayList<SmsBroadcastConfigInfo>();
+
+        /**
+         * Called when the list of enabled ranges has changed. This will be
+         * followed by zero or more calls to {@link #addRange} followed by
+         * a call to {@link #finishUpdate}.
+         */
+        protected void startUpdate() {
+            mConfigList.clear();
+        }
+
+        /**
+         * Called after {@link #startUpdate} to indicate a range of enabled
+         * values.
+         * @param startId the first id included in the range
+         * @param endId the last id included in the range
+         */
+        protected void addRange(int startId, int endId, boolean selected) {
+            mConfigList.add(new SmsBroadcastConfigInfo(startId, endId,
+                        SMS_CB_CODE_SCHEME_MIN, SMS_CB_CODE_SCHEME_MAX, selected));
+        }
+
+        /**
+         * Called to indicate the end of a range update started by the
+         * previous call to {@link #startUpdate}.
+         * @return true if successful, false otherwise
+         */
+        protected boolean finishUpdate() {
+            if (mConfigList.isEmpty()) {
+                return true;
+            } else {
+                SmsBroadcastConfigInfo[] configs =
+                        mConfigList.toArray(new SmsBroadcastConfigInfo[mConfigList.size()]);
+                return setCellBroadcastConfig(configs);
+            }
+        }
+    }
+
+    class CdmaBroadcastRangeManager extends IntRangeManager {
+        private ArrayList<CdmaSmsBroadcastConfigInfo> mConfigList =
+                new ArrayList<CdmaSmsBroadcastConfigInfo>();
+
+        /**
+         * Called when the list of enabled ranges has changed. This will be
+         * followed by zero or more calls to {@link #addRange} followed by
+         * a call to {@link #finishUpdate}.
+         */
+        protected void startUpdate() {
+            mConfigList.clear();
+        }
+
+        /**
+         * Called after {@link #startUpdate} to indicate a range of enabled
+         * values.
+         * @param startId the first id included in the range
+         * @param endId the last id included in the range
+         */
+        protected void addRange(int startId, int endId, boolean selected) {
+            mConfigList.add(new CdmaSmsBroadcastConfigInfo(startId, endId,
+                        1, selected));
+        }
+
+        /**
+         * Called to indicate the end of a range update started by the
+         * previous call to {@link #startUpdate}.
+         * @return true if successful, false otherwise
+         */
+        protected boolean finishUpdate() {
+            if (mConfigList.isEmpty()) {
+                return true;
+            } else {
+                CdmaSmsBroadcastConfigInfo[] configs =
+                        mConfigList.toArray(new CdmaSmsBroadcastConfigInfo[mConfigList.size()]);
+                return setCdmaBroadcastConfig(configs);
+            }
+        }
+    }
+
+    private boolean setCellBroadcastConfig(SmsBroadcastConfigInfo[] configs) {
+        if (DBG)
+            log("Calling setGsmBroadcastConfig with " + configs.length + " configurations");
+
+        synchronized (mLock) {
+            Message response = mHandler.obtainMessage(EVENT_SET_BROADCAST_CONFIG_DONE);
+
+            mSuccess = false;
+            mPhone.mCi.setGsmBroadcastConfig(configs, response);
+
+            try {
+                mLock.wait();
+            } catch (InterruptedException e) {
+                log("interrupted while trying to set cell broadcast config");
+            }
+        }
+
+        return mSuccess;
+    }
+
+    private boolean setCellBroadcastActivation(boolean activate) {
+        if (DBG)
+            log("Calling setCellBroadcastActivation(" + activate + ')');
+
+        synchronized (mLock) {
+            Message response = mHandler.obtainMessage(EVENT_SET_BROADCAST_ACTIVATION_DONE);
+
+            mSuccess = false;
+            mPhone.mCi.setGsmBroadcastActivation(activate, response);
+
+            try {
+                mLock.wait();
+            } catch (InterruptedException e) {
+                log("interrupted while trying to set cell broadcast activation");
+            }
+        }
+
+        return mSuccess;
+    }
+
+    private boolean setCdmaBroadcastConfig(CdmaSmsBroadcastConfigInfo[] configs) {
+        if (DBG)
+            log("Calling setCdmaBroadcastConfig with " + configs.length + " configurations");
+
+        synchronized (mLock) {
+            Message response = mHandler.obtainMessage(EVENT_SET_BROADCAST_CONFIG_DONE);
+
+            mSuccess = false;
+            mPhone.mCi.setCdmaBroadcastConfig(configs, response);
+
+            try {
+                mLock.wait();
+            } catch (InterruptedException e) {
+                log("interrupted while trying to set cdma broadcast config");
+            }
+        }
+
+        return mSuccess;
+    }
+
+    private boolean setCdmaBroadcastActivation(boolean activate) {
+        if (DBG)
+            log("Calling setCdmaBroadcastActivation(" + activate + ")");
+
+        synchronized (mLock) {
+            Message response = mHandler.obtainMessage(EVENT_SET_BROADCAST_ACTIVATION_DONE);
+
+            mSuccess = false;
+            mPhone.mCi.setCdmaBroadcastActivation(activate, response);
+
+            try {
+                mLock.wait();
+            } catch (InterruptedException e) {
+                log("interrupted while trying to set cdma broadcast activation");
+            }
+        }
+
+        return mSuccess;
+    }
+
+    private boolean isMmsUid(int uid) {
+        final String MMS_PKG = "com.android.mms";
+        int mmsUid = -1;
+        try {
+            mmsUid = mContext.getPackageManager().getPackageUid(MMS_PKG,
+                    UserHandle.getUserId(uid));
+        } catch (NameNotFoundException ex) {
+        }
+        return (mmsUid == uid);
+    }
+
+    protected void log(String msg) {
+        Log.d(LOG_TAG, "[IccSmsInterfaceManager] " + msg);
+    }
+
+    public boolean isImsSmsSupported() {
+        return mDispatcher.isIms();
+    }
+
+    public String getImsSmsFormat() {
+        return mDispatcher.getImsSmsFormat();
+    }
 }

@@ -1,5 +1,7 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -439,7 +441,7 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void supplyNetworkDepersonalization(String netpin, Message result)  {
+    public void supplyDepersonalization(String netpin, int type, Message result)  {
         unimplemented(result);
     }
 
@@ -1253,6 +1255,20 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     /**
+     * Simulates an Stk Call Control Alpha message
+     * @param alphaString Alpha string to send.
+     */
+    public void triggerIncomingStkCcAlpha(String alphaString) {
+        if (mCatCcAlphaRegistrant != null) {
+            mCatCcAlphaRegistrant.notifyResult(alphaString);
+        }
+    }
+
+    public void sendStkCcAplha(String alphaString) {
+        triggerIncomingStkCcAlpha(alphaString);
+    }
+
+    /**
      * Simulates an incoming USSD message
      * @param statusCode  Status code string. See <code>setOnUSSD</code>
      * in CommandsInterface.java
@@ -1655,6 +1671,39 @@ public final class SimulatedCommands extends BaseCommands
 
     @Override
     public void setCellInfoListRate(int rateInMillis, Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void getImsRegistrationState(Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void sendImsCdmaSms(byte[] pdu, int retry, int messageRef,
+            Message response){
+        unimplemented(response);
+    }
+
+    @Override
+    public void sendImsGsmSms(String smscPDU, String pdu,
+            int retry, int messageRef, Message response){
+        unimplemented(response);
+    }
+
+    @Override
+    public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
+            Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void setDataSubscription (Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void getDataCallProfile(int appType, Message response){
         unimplemented(response);
     }
 }

@@ -61,10 +61,10 @@ public interface IccCard {
     public void unregisterForAbsent(Handler h);
 
     /**
-     * Notifies handler of any transition into IccCardConstants.State.NETWORK_LOCKED
+     * Notifies handler of any transition into IccCardConstants.State.PERSO_LOCKED
      */
-    public void registerForNetworkLocked(Handler h, int what, Object obj);
-    public void unregisterForNetworkLocked(Handler h);
+    public void registerForPersoLocked(Handler h, int what, Object obj);
+    public void unregisterForPersoLocked(Handler h);
 
     /**
      * Notifies handler of any transition into IccCardConstants.State.isPinLocked()
@@ -108,9 +108,16 @@ public interface IccCard {
     public void supplyPuk2 (String puk2, String newPin2, Message onComplete);
 
     /**
-     * Supply Network depersonalization code to the RIL
+     * Check whether fdn (fixed dialing number) service is available.
+     * @return true if ICC fdn service available
+     *         false if ICC fdn service not available
+    */
+    public boolean getIccFdnAvailable();
+
+    /**
+     * Supply Perso depersonalization code to the RIL
      */
-    public void supplyNetworkDepersonalization (String pin, Message onComplete);
+    public void supplyDepersonalization (String pin, int type, Message onComplete);
 
     /**
      * Check whether ICC pin lock is enabled
@@ -214,4 +221,24 @@ public interface IccCard {
      * @return true if a ICC card is present
      */
     public boolean hasIccCard();
+
+    /**
+     * @return No. of Attempts remaining to unlock PIN1/PUK1
+    */
+    public int getIccPin1RetryCount();
+
+    /**
+     * @return No. of Attempts remaining to unlock PIN2/PUK2
+     */
+    public int getIccPin2RetryCount();
+
+    /**
+     * @return true if ICC card is PIN2 blocked
+     */
+    public boolean getIccPin2Blocked();
+
+    /**
+     * @return true if ICC card is PUK2 blocked
+     */
+    public boolean getIccPuk2Blocked();
 }

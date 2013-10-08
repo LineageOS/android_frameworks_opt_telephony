@@ -91,7 +91,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public static final int EVENT_CFI = 1; // Call Forwarding indication
     public static final int EVENT_SPN = 2; // Service Provider Name
 
+
     public static final int EVENT_GET_ICC_RECORD_DONE = 100;
+    public static final int EVENT_REFRESH = 31; // ICC refresh occurred
     protected static final int EVENT_APP_READY = 1;
 
     @Override
@@ -148,6 +150,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
         mCi = ci;
         mFh = app.getIccFileHandler();
         mParentApp = app;
+
+        mCi.registerForIccRefresh(this, EVENT_REFRESH, null);
     }
 
     /**
@@ -155,6 +159,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     public void dispose() {
         mDestroyed.set(true);
+        mCi.unregisterForIccRefresh(this);
         mParentApp = null;
         mFh = null;
         mCi = null;
@@ -359,21 +364,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
      *                     -1 to indicate that an unknown number of
      *                      messages are waiting
      */
-    public abstract void setVoiceMessageWaiting(int line, int countWaiting);
-
-    /** @return  true if there are messages waiting, false otherwise. */
-    public boolean getVoiceMessageWaiting() {
-        return mCountVoiceMessages != 0;
-    }
+    public abstract void setVoiceMessageWaiting(int line, int countWaiting, Message onComplete );
 
     /**
      * Returns number of voice messages waiting, if available
      * If not available (eg, on an older CPHS SIM) -1 is returned if
      * getVoiceMessageWaiting() is true
      */
-    public int getVoiceMessageCount() {
-        return mCountVoiceMessages;
-    }
+    public abstract int getVoiceMessageCount();
 
     /**
      * Called by STK Service when REFRESH is received.
@@ -405,10 +403,11 @@ public abstract class IccRecords extends Handler implements IccConstants {
     //***** Overridden from Handler
     @Override
     public void handleMessage(Message msg) {
+        AsyncResult ar;
         switch (msg.what) {
             case EVENT_GET_ICC_RECORD_DONE:
                 try {
-                    AsyncResult ar = (AsyncResult) msg.obj;
+                    ar = (AsyncResult) msg.obj;
                     IccRecordLoaded recordLoaded = (IccRecordLoaded) ar.userObj;
                     if (DBG) log(recordLoaded.getEfName() + " LOADED");
 
@@ -425,11 +424,71 @@ public abstract class IccRecords extends Handler implements IccConstants {
                     onRecordLoaded();
                 }
                 break;
+            case EVENT_REFRESH:
+                ar = (AsyncResult)msg.obj;
+                if (DBG) log("Card REFRESH occurred: ");
+                if (ar.exception == null) {
+                    handleRefresh((IccRefreshResponse)ar.result);
+                } else {
+                    loge("Icc refresh Exception: " + ar.exception);
+                }
+                break;
 
             default:
                 super.handleMessage(msg);
         }
     }
+
+    protected abstract void handleFileUpdate(int efid);
+
+    private void handleRefresh(IccRefreshResponse refreshResponse){
+        if (refreshResponse == null) {
+            if (DBG) log("handleRefresh received without input");
+            return;
+        }
+
+        if (refreshResponse.aid != null &&
+                !refreshResponse.aid.equals(mParentApp.getAid())) {
+            // This is for different app. Ignore.
+            return;
+        }
+
+        switch (refreshResponse.refreshResult) {
+            case IccRefreshResponse.REFRESH_RESULT_FILE_UPDATE:
+                if (DBG) log("handleRefresh with SIM_FILE_UPDATED");
+                handleFileUpdate(refreshResponse.efId);
+                break;
+            case IccRefreshResponse.REFRESH_RESULT_INIT:
+                if (DBG) log("handleRefresh with SIM_REFRESH_INIT");
+                // need to reload all files (that we care about)
+                mAdnCache.reset();
+                //We will re-fetch the records when the app
+                // goes back to the ready state. Nothing to do here.
+                break;
+            case IccRefreshResponse.REFRESH_RESULT_RESET:
+                if (DBG) log("handleRefresh with SIM_REFRESH_RESET");
+                if (powerOffOnSimReset()) {
+                    mCi.setRadioPower(false, null);
+                    /* Note: no need to call setRadioPower(true).  Assuming the desired
+                    * radio power state is still ON (as tracked by ServiceStateTracker),
+                    * ServiceStateTracker will call setRadioPower when it receives the
+                    * RADIO_STATE_CHANGED notification for the power off.  And if the
+                    * desired power state has changed in the interim, we don't want to
+                    * override it with an unconditional power on.
+                    */
+                } else {
+                    mAdnCache.reset();
+                }
+                //We will re-fetch the records when the app
+                // goes back to the ready state. Nothing to do here.
+                break;
+            default:
+                // unknown refresh operation
+                if (DBG) log("handleRefresh with unknown operation");
+                break;
+        }
+    }
+
 
     protected abstract void onRecordLoaded();
 
@@ -465,6 +524,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
     }
 
     /**
+     * Check if call forward info is stored on SIM
+     * @return true if call forward info is stored on SIM.
+     */
+    public boolean isCallForwardStatusStored() {
+        return false;
+    }
+
+    /**
      * Get the current Voice call forwarding flag for GSM/UMTS and the like SIMs
      *
      * @return true if enabled
@@ -480,6 +547,16 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @param enable
      */
     public void setVoiceCallForwardingFlag(int line, boolean enable) {
+    }
+
+    /**
+     * Set the voice call forwarding flag for GSM/UMTS and the like SIMs
+     *
+     * @param line to enable/disable
+     * @param enable
+     * @param number to which CFU is enabled
+     */
+    public void setVoiceCallForwardingFlag(int line, boolean enable, String number) {
     }
 
     /**
@@ -567,5 +644,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mMailboxIndex=" + mMailboxIndex);
         pw.println(" mSpn=" + mSpn);
         pw.flush();
+    }
+
+    protected boolean powerOffOnSimReset() {
+        return !mContext.getResources().getBoolean(
+                com.android.internal.R.bool.skip_radio_power_off_on_sim_refresh_reset);
     }
 }

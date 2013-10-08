@@ -1,5 +1,8 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +44,9 @@ import android.telephony.Rlog;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.SmsConstants;
+import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SMSDispatcher;
+import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsStorageMonitor;
@@ -62,9 +67,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 
-final class CdmaSMSDispatcher extends SMSDispatcher {
-    private static final String TAG = "CdmaSMSDispatcher";
+public class CdmaSMSDispatcher extends SMSDispatcher {
+    protected static final String TAG = "CdmaSMSDispatcher";
     private static final boolean VDBG = false;
+    private ImsSMSDispatcher mImsSMSDispatcher;
 
     private byte[] mLastDispatchedSmsFingerprint;
     private byte[] mLastAcknowledgedSmsFingerprint;
@@ -72,10 +78,12 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
     private final boolean mCheckForDuplicatePortsInOmadmWapPush = Resources.getSystem().getBoolean(
             com.android.internal.R.bool.config_duplicate_port_omadm_wappush);
 
-    CdmaSMSDispatcher(CDMAPhone phone, SmsStorageMonitor storageMonitor,
-            SmsUsageMonitor usageMonitor) {
+    public CdmaSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
+            SmsUsageMonitor usageMonitor, ImsSMSDispatcher imsSMSDispatcher) {
         super(phone, storageMonitor, usageMonitor);
         mCi.setOnNewCdmaSms(this, EVENT_NEW_SMS, null);
+        mImsSMSDispatcher = imsSMSDispatcher;
+        Rlog.d(TAG, "CdmaSMSDispatcher created");
     }
 
     @Override
@@ -85,7 +93,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
 
     @Override
     protected String getFormat() {
-        return android.telephony.SmsMessage.FORMAT_3GPP2;
+        return SmsConstants.FORMAT_3GPP2;
     }
 
     private void handleCdmaStatusReport(SmsMessage sms) {
@@ -97,7 +105,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
                 PendingIntent intent = tracker.mDeliveryIntent;
                 Intent fillIn = new Intent();
                 fillIn.putExtra("pdu", sms.getPdu());
-                fillIn.putExtra("format", android.telephony.SmsMessage.FORMAT_3GPP2);
+                fillIn.putExtra("format", getFormat());
                 try {
                     intent.send(mContext, Activity.RESULT_OK, fillIn);
                 } catch (CanceledException ex) {}
@@ -127,7 +135,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     @Override
-    public int dispatchMessage(SmsMessageBase smsb) {
+    protected int dispatchMessage(SmsMessageBase smsb) {
 
         // If sms is null, means there was a parsing error.
         if (smsb == null) {
@@ -174,14 +182,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
                 (SmsEnvelope.TELESERVICE_MWI == teleService)) {
             // handling Voicemail
             int voicemailCount = sms.getNumOfVoicemails();
-            Rlog.d(TAG, "Voicemail count=" + voicemailCount);
-            // Store the voicemail count in preferences.
-            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
-                    mContext);
-            SharedPreferences.Editor editor = sp.edit();
-            editor.putInt(CDMAPhone.VM_COUNT_CDMA, voicemailCount);
-            editor.apply();
-            mPhone.setVoiceMessageWaiting(1, voicemailCount);
+            updateMessageWaitingIndicator(sms.getNumOfVoicemails());
             handled = true;
         } else if (((SmsEnvelope.TELESERVICE_WMT == teleService) ||
                 (SmsEnvelope.TELESERVICE_WEMT == teleService)) &&
@@ -211,6 +212,14 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         }
 
         if (SmsEnvelope.TELESERVICE_WAP == teleService) {
+            return processCdmaWapPdu(sms.getUserData(), sms.mMessageRef,
+                    sms.getOriginatingAddress());
+        } else if (SmsEnvelope.TELESERVICE_CT_WAP == teleService) {
+            /* China Telecom WDP header contains Message identifier
+               and User data subparametrs extract these fields */
+            if (!sms.processCdmaCTWdpHeader(sms)) {
+                return Intents.RESULT_SMS_HANDLED;
+            }
             return processCdmaWapPdu(sms.getUserData(), sms.mMessageRef,
                     sms.getOriginatingAddress());
         }
@@ -294,6 +303,25 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             return ret;
     }
 
+    /*
+     * This function is overloaded to send number of voicemails instead of
+     * sending true/false
+     */
+    /* package */void updateMessageWaitingIndicator(int mwi) {
+        // range check
+        if (mwi < 0) {
+            mwi = -1;
+        } else if (mwi > 99) {
+            // C.S0015-B v2, 4.5.12
+            // range: 0-99
+            mwi = 99;
+        }
+        // update voice mail count in phone
+        ((PhoneBase)mPhone).setVoiceMessageCount(mwi);
+        // store voice mail count in preferences
+        storeVoiceMailCount();
+    }
+
     /**
      * Processes inbound messages that are in the WAP-WDP PDU format. See
      * wap-259-wdp-20010614-a section 6.5 for details on the WAP-WDP PDU format.
@@ -357,7 +385,10 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, destPort, data, (deliveryIntent != null));
-        sendSubmitPdu(pdu, sentIntent, deliveryIntent, destAddr);
+        HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, destPort, data, pdu);
+        SmsTracker tracker = SmsTrackerFactory(map, sentIntent, deliveryIntent,
+                getFormat());
+        sendSubmitPdu(tracker);
     }
 
     /** {@inheritDoc} */
@@ -366,7 +397,22 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, text, (deliveryIntent != null), null);
-        sendSubmitPdu(pdu, sentIntent, deliveryIntent, destAddr);
+        HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, text, pdu);
+        SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
+                deliveryIntent, getFormat());
+        sendSubmitPdu(tracker);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    protected void sendTextWithPriority(String destAddr, String scAddr, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+        SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPduWithPriority(
+                scAddr, destAddr, text, (deliveryIntent != null), null, priority);
+        HashMap map = SmsTrackerMapFactory(destAddr, scAddr, text, pdu);
+        SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
+                deliveryIntent, getFormat());
+        sendSubmitPdu(tracker);
     }
 
     /** {@inheritDoc} */
@@ -398,15 +444,18 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         SmsMessage.SubmitPdu submitPdu = SmsMessage.getSubmitPdu(destinationAddress,
                 uData, (deliveryIntent != null) && lastPart);
 
-        sendSubmitPdu(submitPdu, sentIntent, deliveryIntent, destinationAddress);
+        HashMap map =  SmsTrackerMapFactory(destinationAddress, scAddress,
+                message, submitPdu);
+        SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
+                deliveryIntent, getFormat());
+        sendSubmitPdu(tracker);
     }
 
-    protected void sendSubmitPdu(SmsMessage.SubmitPdu pdu,
-            PendingIntent sentIntent, PendingIntent deliveryIntent, String destAddr) {
+    protected void sendSubmitPdu(SmsTracker tracker) {
         if (SystemProperties.getBoolean(TelephonyProperties.PROPERTY_INECM_MODE, false)) {
-            if (sentIntent != null) {
+            if (tracker.mSentIntent != null) {
                 try {
-                    sentIntent.send(SmsManager.RESULT_ERROR_NO_SERVICE);
+                    tracker.mSentIntent.send(SmsManager.RESULT_ERROR_NO_SERVICE);
                 } catch (CanceledException ex) {}
             }
             if (VDBG) {
@@ -414,7 +463,7 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             }
             return;
         }
-        sendRawPdu(pdu.encodedScAddress, pdu.encodedMessage, sentIntent, deliveryIntent, destAddr);
+        sendRawPdu(tracker);
     }
 
     /** {@inheritDoc} */
@@ -426,7 +475,32 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         byte pdu[] = (byte[]) map.get("pdu");
 
         Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
-        mCi.sendCdmaSms(pdu, reply);
+
+        Rlog.d(TAG, "sendSms: "
+                +" isIms()="+isIms()
+                +" mRetryCount="+tracker.mRetryCount
+                +" mImsRetry="+tracker.mImsRetry
+                +" mMessageRef="+tracker.mMessageRef
+                +" SS=" +mPhone.getServiceState().getState());
+
+        // sms over cdma is used:
+        //   if sms over IMS is not supported AND
+        //   this is not a retry case after sms over IMS failed
+        //     indicated by mImsRetry > 0
+        if (0 == tracker.mImsRetry && !isIms()) {
+            mCi.sendCdmaSms(pdu, reply);
+        } else {
+            mCi.sendImsCdmaSms(pdu, tracker.mImsRetry, tracker.mMessageRef, reply);
+            // increment it here, so in case of SMS_FAIL_RETRY over IMS
+            // next retry will be sent using IMS request again.
+            tracker.mImsRetry++;
+        }
+    }
+
+    @Override
+    public void sendRetrySms(SmsTracker tracker) {
+        //re-routing to ImsSMSDispatcher
+        mImsSMSDispatcher.sendRetrySms(tracker);
     }
 
     /** {@inheritDoc} */
@@ -500,10 +574,13 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
         return false;
     }
 
-    // Receiver for Service Category Program Data results.
-    // We already ACK'd the original SCPD SMS, so this sends a new response SMS.
-    // TODO: handle retries if the RIL returns an error.
-    private final BroadcastReceiver mScpResultsReceiver = new BroadcastReceiver() {
+    /**
+     * Receiver for Service Category Program Data results.
+     * We already ACK'd the original SCPD SMS, so this sends a new response SMS.
+     * TODO: handle retries if the RIL returns an error.
+     * @hide
+     */
+    protected final BroadcastReceiver mScpResultsReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             int rc = getResultCode();
@@ -567,4 +644,14 @@ final class CdmaSMSDispatcher extends SMSDispatcher {
             }
         }
     };
+
+    @Override
+    public boolean isIms() {
+        return mImsSMSDispatcher.isIms();
+    }
+
+    @Override
+    public String getImsSmsFormat() {
+        return mImsSMSDispatcher.getImsSmsFormat();
+    }
 }

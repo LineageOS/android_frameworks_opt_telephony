@@ -1,5 +1,8 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -215,7 +218,7 @@ class UsimDataDownloadCommands extends BaseCommands {
     }
 
     @Override
-    public void supplyNetworkDepersonalization(String netpin, Message result) {
+    public void supplyDepersonalization(String pin, int type, Message onComplete) {
     }
 
     @Override
@@ -352,6 +355,16 @@ class UsimDataDownloadCommands extends BaseCommands {
 
     @Override
     public void sendCdmaSms(byte[] pdu, Message response) {
+    }
+
+    @Override
+    public void sendImsGsmSms (String smscPDU, String pdu,
+            int retry, int messageRef, Message response) {
+    }
+
+    @Override
+    public void sendImsCdmaSms(byte[] pdu, int retry, int messageRef,
+            Message response) {
     }
 
     @Override
@@ -546,6 +559,10 @@ class UsimDataDownloadCommands extends BaseCommands {
     }
 
     @Override
+    public void getImsRegistrationState (Message result) {
+    }
+
+    @Override
     public void sendCDMAFeatureCode(String FeatureCode, Message response) {
     }
 
@@ -630,4 +647,18 @@ class UsimDataDownloadCommands extends BaseCommands {
     public void iccIOForApp(int command, int fileid, String path, int p1, int p2, int p3,
             String data, String pin2, String aid, Message response) {
     }
+
+    @Override
+    public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
+            Message result) {
+    }
+
+    @Override
+    public void setDataSubscription (Message result) {
+    }
+
+    @Override
+    public void getDataCallProfile(int appType, Message result) {
+    }
+
 }

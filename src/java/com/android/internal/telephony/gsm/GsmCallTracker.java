@@ -84,6 +84,8 @@ public final class GsmCallTracker extends CallTracker {
     //Used to re-request the list of current calls
     boolean mSlowModem = (SystemProperties.getInt("ro.telephony.slowModem",0) != 0);
 
+    boolean callSwitchPending = false;
+
     GSMPhone mPhone;
 
     boolean mDesiredMute = false;    // false = mute off
@@ -115,14 +117,24 @@ public final class GsmCallTracker extends CallTracker {
 
         for(GsmConnection c : mConnections) {
             try {
-                if(c != null) hangup(c);
+                if(c != null) {
+                    hangup(c);
+                    // Since by now we are unregistered, we won't notify
+                    // PhoneApp that the call is gone. Do that here
+                    Rlog.d(LOG_TAG, "Posting connection disconnect due to LOST_SIGNAL");
+                    c.onDisconnect(Connection.DisconnectCause.LOST_SIGNAL);
+                }
             } catch (CallStateException ex) {
                 Rlog.e(LOG_TAG, "unexpected error on hangup during dispose");
             }
         }
 
         try {
-            if(pendingMO != null) hangup(pendingMO);
+            if(pendingMO != null) {
+                hangup(pendingMO);
+                Rlog.d(LOG_TAG, "Posting disconnect to pendingMO due to LOST_SIGNAL");
+                pendingMO.onDisconnect(Connection.DisconnectCause.LOST_SIGNAL);
+            }
         } catch (CallStateException ex) {
             Rlog.e(LOG_TAG, "unexpected error on hangup during dispose");
         }
@@ -285,9 +297,12 @@ public final class GsmCallTracker extends CallTracker {
         // Should we bother with this check?
         if (mRingingCall.getState() == GsmCall.State.INCOMING) {
             throw new CallStateException("cannot be in the incoming state");
-        } else {
+        } else if (callSwitchPending == false) {
             mCi.switchWaitingOrHoldingAndActive(
                     obtainCompleteMessage(EVENT_SWITCH_RESULT));
+            callSwitchPending = true;
+        } else {
+            Rlog.w(LOG_TAG, "Call Switch request ignored due to pending response");
         }
     }
 
@@ -855,6 +870,11 @@ public final class GsmCallTracker extends CallTracker {
     handleMessage (Message msg) {
         AsyncResult ar;
 
+        if (!mPhone.mIsTheCurrentActivePhone) {
+            Rlog.e(LOG_TAG, "Received message " + msg +
+                    "[" + msg.what + "] while being destroyed. Ignoring.");
+            return;
+        }
         switch (msg.what) {
             case EVENT_POLL_CALLS_RESULT:
                 ar = (AsyncResult)msg.obj;
@@ -874,6 +894,7 @@ public final class GsmCallTracker extends CallTracker {
             break;
 
             case EVENT_SWITCH_RESULT:
+                callSwitchPending = false;
             case EVENT_CONFERENCE_RESULT:
             case EVENT_SEPARATE_RESULT:
             case EVENT_ECT_RESULT:

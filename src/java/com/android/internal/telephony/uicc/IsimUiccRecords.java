@@ -251,6 +251,11 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     }
 
     @Override
+    protected void handleFileUpdate(int efid) {
+        // We do not handle it in Isim
+    }
+
+    @Override
     public void onRefresh(boolean fileChanged, int[] fileList) {
         // We do not handle it in Isim
     }
@@ -262,7 +267,7 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     }
 
     @Override
-    public void setVoiceMessageWaiting(int line, int countWaiting) {
+    public void setVoiceMessageWaiting(int line, int countWaiting, Message onComplete) {
         // Not applicable to Isim
     }
 
@@ -285,5 +290,9 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
         pw.println(" mIsimDomain=" + mIsimDomain);
         pw.println(" mIsimImpu[]=" + Arrays.toString(mIsimImpu));
         pw.flush();
+    }
+
+    public int getVoiceMessageCount() {
+        return 0; // Not applicable to Isim
     }
 }

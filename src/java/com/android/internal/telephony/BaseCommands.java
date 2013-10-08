@@ -1,5 +1,8 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +21,7 @@ package com.android.internal.telephony;
 
 
 import android.content.Context;
+import android.os.Message;
 import android.os.RegistrantList;
 import android.os.Registrant;
 import android.os.Handler;
@@ -42,6 +46,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mVoiceNetworkStateRegistrants = new RegistrantList();
     protected RegistrantList mDataNetworkStateRegistrants = new RegistrantList();
     protected RegistrantList mVoiceRadioTechChangedRegistrants = new RegistrantList();
+    protected RegistrantList mImsNetworkStateChangedRegistrants = new RegistrantList();
     protected RegistrantList mIccStatusChangedRegistrants = new RegistrantList();
     protected RegistrantList mVoicePrivacyOnRegistrants = new RegistrantList();
     protected RegistrantList mVoicePrivacyOffRegistrants = new RegistrantList();
@@ -63,6 +68,13 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mRilConnectedRegistrants = new RegistrantList();
     protected RegistrantList mIccRefreshRegistrants = new RegistrantList();
     protected RegistrantList mRilCellInfoListRegistrants = new RegistrantList();
+    protected RegistrantList mTetheredModeStateRegistrants = new RegistrantList();
+    protected RegistrantList mSubscriptionStatusRegistrants = new RegistrantList();
+    protected RegistrantList mCdmaFwdBurstDtmfRegistrants = new RegistrantList();
+    protected RegistrantList mCdmaFwdContDtmfStartRegistrants = new RegistrantList();
+    protected RegistrantList mCdmaFwdContDtmfStopRegistrants = new RegistrantList();
+    protected RegistrantList mWmsReadyRegistrants = new RegistrantList();
+    protected RegistrantList mVoiceSystemIdRegistrants = new RegistrantList();
 
     protected Registrant mGsmSmsRegistrant;
     protected Registrant mCdmaSmsRegistrant;
@@ -82,6 +94,8 @@ public abstract class BaseCommands implements CommandsInterface {
     protected Registrant mRingRegistrant;
     protected Registrant mRestrictedStateRegistrant;
     protected Registrant mGsmBroadcastSmsRegistrant;
+    protected Registrant mCatCcAlphaRegistrant;
+    protected Registrant mSsRegistrant;
 
     // Preferred network type received from PhoneFactory.
     // This is used when establishing a connection to the
@@ -120,6 +134,15 @@ public abstract class BaseCommands implements CommandsInterface {
         synchronized (mStateMonitor) {
             mRadioStateChangedRegistrants.remove(h);
         }
+    }
+
+    public void registerForImsNetworkStateChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mImsNetworkStateChangedRegistrants.add(r);
+    }
+
+    public void unregisterForImsNetworkStateChanged(Handler h) {
+        mImsNetworkStateChangedRegistrants.remove(h);
     }
 
     @Override
@@ -443,6 +466,26 @@ public abstract class BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void setOnSs(Handler h, int what, Object obj) {
+        mSsRegistrant = new Registrant (h, what, obj);
+    }
+
+    @Override
+    public void unSetOnSs(Handler h) {
+        mSsRegistrant.clear();
+    }
+
+    @Override
+    public void setOnCatCcAlphaNotify(Handler h, int what, Object obj) {
+        mCatCcAlphaRegistrant = new Registrant (h, what, obj);
+    }
+
+    @Override
+    public void unSetOnCatCcAlphaNotify(Handler h) {
+        mCatCcAlphaRegistrant.clear();
+    }
+
+    @Override
     public void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);
         mVoicePrivacyOnRegistrants.add(r);
@@ -653,6 +696,55 @@ public abstract class BaseCommands implements CommandsInterface {
         mRilConnectedRegistrants.remove(h);
     }
 
+    public void registerForSubscriptionStatusChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mSubscriptionStatusRegistrants.add(r);
+    }
+
+    public void unregisterForSubscriptionStatusChanged(Handler h) {
+        mSubscriptionStatusRegistrants.remove(h);
+    }
+
+    public void registerForCdmaFwdBurstDtmf(Handler h, int what, Object obj) {
+        mCdmaFwdBurstDtmfRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForCdmaFwdBurstDtmf(Handler h) {
+        mCdmaFwdBurstDtmfRegistrants.remove(h);
+    }
+
+    public void registerForCdmaFwdContDtmfStart(Handler h, int what, Object obj) {
+        mCdmaFwdContDtmfStartRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForCdmaFwdContDtmfStart(Handler h) {
+        mCdmaFwdContDtmfStartRegistrants.remove(h);
+    }
+
+    public void registerForCdmaFwdContDtmfStop(Handler h, int what, Object obj) {
+        mCdmaFwdContDtmfStopRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForCdmaFwdContDtmfStop(Handler h) {
+        mCdmaFwdContDtmfStopRegistrants.remove(h);
+    }
+
+    public void registerForWmsReadyEvent(Handler h, int what, Object obj) {
+        mWmsReadyRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForWmsReadyEvent(Handler h) {
+        mWmsReadyRegistrants.remove(h);
+    }
+
+    public void registerForUnsolVoiceSystemId(Handler h, int what, Object obj) {
+        mVoiceSystemIdRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForUnsolVoiceSystemId(Handler h) {
+        mVoiceSystemIdRegistrants.remove(h);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -706,7 +798,22 @@ public abstract class BaseCommands implements CommandsInterface {
         }
     }
 
+    public void sendSMSExpectMore (String smscPDU, String pdu, Message result) {
+    }
+
     protected void onRadioAvailable() {
+    }
+
+    public void setTuneAway(boolean tuneAway, Message response) {
+    }
+
+    public void setPrioritySub(int subIndex, Message response) {
+    }
+
+    public void setDefaultVoiceSub(int subIndex, Message response) {
+    }
+
+    public void setLocalCallHold(int lchStatus, Message response) {
     }
 
     /**

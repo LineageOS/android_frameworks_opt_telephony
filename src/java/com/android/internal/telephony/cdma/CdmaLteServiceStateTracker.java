@@ -66,6 +66,13 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         AsyncResult ar;
         int[] ints;
         String[] strings;
+
+        if (!mPhone.mIsTheCurrentActivePhone) {
+            loge("Received message " + msg + "[" + msg.what + "]" +
+                    " while being destroyed. Ignoring.");
+            return;
+        }
+
         switch (msg.what) {
         case EVENT_POLL_STATE_GPRS:
             if (DBG) log("handleMessage EVENT_POLL_STATE_GPRS");
@@ -196,6 +203,9 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                         + " regState=" + regState
                         + " dataRadioTechnology=" + type);
             }
+            mDataRoaming = regCodeIsRoaming(regState);
+
+            if (mDataRoaming) mNewSS.setRoaming(true);
         } else {
             super.handlePollStateResultMessage(what, ar);
         }
@@ -356,6 +366,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
             // Query Signalstrength when there is a change in PS RAT.
             sendMessage(obtainMessage(EVENT_POLL_SIGNAL_STRENGTH));
+            mDataRatChangedRegistrants.notifyRegistrants();
         }
 
         if (hasRegistered) {
@@ -363,19 +374,13 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         }
 
         if (hasChanged) {
-            if (mPhone.isEriFileLoaded()) {
+            if ((mCi.getRadioState().isOn()) && (mPhone.isEriFileLoaded())) {
                 String eriText;
                 // Now the CDMAPhone sees the new ServiceState so it can get the
                 // new ERI text
-                if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+                if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE ||
+                        (mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE)) {
                     eriText = mPhone.getCdmaEriText();
-                } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF) {
-                    eriText = (mIccRecords != null) ? mIccRecords.getServiceProviderName() : null;
-                    if (TextUtils.isEmpty(eriText)) {
-                        // Sets operator alpha property by retrieving from
-                        // build-time system property
-                        eriText = SystemProperties.get("ro.cdma.home.operator.alpha");
-                    }
                 } else {
                     // Note that ServiceState.STATE_OUT_OF_SERVICE is valid used
                     // for mRegistrationState 0,2,3 and 4

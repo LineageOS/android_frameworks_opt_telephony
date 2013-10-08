@@ -173,6 +173,9 @@ public class CdmaSmsAddress extends SmsAddress {
      * including CR/LF.
      */
     private static String filterWhitespace(String address) {
+        if (address == null) {
+            return null;
+        }
         StringBuilder builder = new StringBuilder();
         int len = address.length();
         for (int i = 0; i < len; i++) {
@@ -196,28 +199,46 @@ public class CdmaSmsAddress extends SmsAddress {
     public static CdmaSmsAddress parse(String address) {
         CdmaSmsAddress addr = new CdmaSmsAddress();
         addr.address = address;
-        addr.ton = CdmaSmsAddress.TON_UNKNOWN;
+        addr.digitMode = DIGIT_MODE_4BIT_DTMF; // Default to 4 bit dtmf encoding
+        addr.ton = TON_UNKNOWN;
+        addr.numberMode = NUMBER_MODE_NOT_DATA_NETWORK;
+        addr.numberPlan = NUMBERING_PLAN_UNKNOWN;
         byte[] origBytes = null;
-        String filteredAddr = filterNumericSugar(address);
-        if (filteredAddr != null) {
-            origBytes = parseToDtmf(filteredAddr);
-        }
-        if (origBytes != null) {
-            addr.digitMode = DIGIT_MODE_4BIT_DTMF;
+
+        if (address.indexOf('+') != -1) {
+            // This is international phone number
+            addr.digitMode = DIGIT_MODE_8BIT_CHAR;
+            addr.ton = TON_INTERNATIONAL_OR_IP;
             addr.numberMode = NUMBER_MODE_NOT_DATA_NETWORK;
-            if (address.indexOf('+') != -1) {
-                addr.ton = TON_INTERNATIONAL_OR_IP;
+            addr.numberPlan = NUMBERING_PLAN_ISDN_TELEPHONY;
+        }
+        if (address.indexOf('@') != -1) {
+            // This is email address
+            addr.digitMode = DIGIT_MODE_8BIT_CHAR;
+            addr.ton = TON_NATIONAL_OR_EMAIL;
+            addr.numberMode = NUMBER_MODE_DATA_NETWORK;
+        }
+
+        // A.S0014-C 4.2.40 states: "Prefix or escape digits shall not be included"
+        String filteredAddr = filterNumericSugar(address);
+        if (addr.digitMode == DIGIT_MODE_4BIT_DTMF) {
+            if (filteredAddr != null) {
+                origBytes = parseToDtmf(filteredAddr);
             }
-        } else {
-            filteredAddr = filterWhitespace(address);
+            if (origBytes == null) {
+                // Failed to encode in 4 bit. Try in 8 bit.
+                addr.digitMode = DIGIT_MODE_8BIT_CHAR;
+            }
+        }
+
+        if (addr.digitMode == DIGIT_MODE_8BIT_CHAR) {
+            filteredAddr = filterWhitespace(filteredAddr);
+            if (filteredAddr == null) {
+                filteredAddr = filterWhitespace(address);
+            }
             origBytes = UserData.stringToAscii(filteredAddr);
             if (origBytes == null) {
                 return null;
-            }
-            addr.digitMode = DIGIT_MODE_8BIT_CHAR;
-            addr.numberMode = NUMBER_MODE_DATA_NETWORK;
-            if (address.indexOf('@') != -1) {
-                addr.ton = TON_NATIONAL_OR_EMAIL;
             }
         }
         addr.origBytes = origBytes;

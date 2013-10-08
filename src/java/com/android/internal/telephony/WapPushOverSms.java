@@ -29,6 +29,7 @@ import android.os.IBinder;
 import android.os.RemoteException;
 
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.MSimConstants;
 
 /**
  * WAP push handler class.
@@ -232,6 +233,8 @@ public class WapPushOverSms {
                     intent.putExtra("data", intentData);
                     intent.putExtra("contentTypeParameters",
                             pduDecoder.getContentParameters());
+                    intent.putExtra(MSimConstants.SUBSCRIPTION_KEY,
+                            mSmsDispatcher.mPhone.getSubscription());
 
                     int procRet = wapPushMan.processMessage(wapAppId, contentType, intent);
                     if (DBG) Rlog.v(LOG_TAG, "procRet:" + procRet);
@@ -272,6 +275,7 @@ public class WapPushOverSms {
         intent.putExtra("header", header);
         intent.putExtra("data", intentData);
         intent.putExtra("contentTypeParameters", pduDecoder.getContentParameters());
+        intent.putExtra(MSimConstants.SUBSCRIPTION_KEY, mSmsDispatcher.mPhone.getSubscription());
 
         mSmsDispatcher.dispatch(intent, permission, appOp);
 

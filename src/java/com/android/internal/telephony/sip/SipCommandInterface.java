@@ -1,5 +1,8 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Not a Contribution.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +75,7 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void supplyNetworkDepersonalization(String netpin, Message result) {
+    public void supplyDepersonalization(String netpin, int type,  Message result) {
     }
 
     @Override
@@ -218,6 +221,20 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
 
     @Override
     public void sendCdmaSms(byte[] pdu, Message result) {
+    }
+
+    @Override
+    public void sendImsGsmSms (String smscPDU, String pdu,
+            int retry, int messageRef, Message response) {
+    }
+
+    @Override
+    public void sendImsCdmaSms(byte[] pdu, int retry, int messageRef,
+            Message response) {
+    }
+
+    @Override
+    public void getImsRegistrationState (Message result) {
     }
 
     @Override
@@ -532,10 +549,23 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     public boolean needsOldRilFeature(String feature) { return false; }
 
     @Override
+    public void getDataCallProfile(int appType, Message result) {
+    }
+
+    @Override
     public void getCellInfoList(Message result) {
     }
 
     @Override
     public void setCellInfoListRate(int rateInMillis, Message response) {
+    }
+
+    @Override
+    public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
+            Message response) {
+    }
+
+    @Override
+    public void setDataSubscription(Message response) {
     }
 }

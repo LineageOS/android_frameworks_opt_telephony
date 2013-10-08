@@ -42,7 +42,7 @@ public class IccProvider extends ContentProvider {
     private static final boolean DBG = false;
 
 
-    private static final String[] ADDRESS_BOOK_COLUMN_NAMES = new String[] {
+    protected static final String[] ADDRESS_BOOK_COLUMN_NAMES = new String[] {
         "name",
         "number",
         "emails",
@@ -53,10 +53,10 @@ public class IccProvider extends ContentProvider {
     private static final int FDN = 2;
     private static final int SDN = 3;
 
-    private static final String STR_TAG = "tag";
-    private static final String STR_NUMBER = "number";
-    private static final String STR_EMAILS = "emails";
-    private static final String STR_PIN2 = "pin2";
+    protected static final String STR_TAG = "tag";
+    protected static final String STR_NUMBER = "number";
+    protected static final String STR_EMAILS = "emails";
+    protected static final String STR_PIN2 = "pin2";
 
     private static final UriMatcher URL_MATCHER =
                             new UriMatcher(UriMatcher.NO_MATCH);
@@ -130,6 +130,12 @@ public class IccProvider extends ContentProvider {
 
         String tag = initialValues.getAsString("tag");
         String number = initialValues.getAsString("number");
+        /*As part of 3GPP 51.011, number field is mandatory while storing in the
+          SIM for both ADN and FDN */
+        if (TextUtils.isEmpty(number)) {
+            return null;
+        }
+
         // TODO(): Read email instead of sending null.
         boolean success = addIccRecordToEf(efType, tag, number, null, pin2);
 
@@ -153,6 +159,7 @@ public class IccProvider extends ContentProvider {
 
         resultUri = Uri.parse(buf.toString());
 
+        getContext().getContentResolver().notifyChange(url, null);
         /*
         // notify interested parties that an insertion happened
         getContext().getContentResolver().notifyInsert(
@@ -162,8 +169,13 @@ public class IccProvider extends ContentProvider {
         return resultUri;
     }
 
-    private String normalizeValue(String inVal) {
+    protected String normalizeValue(String inVal) {
         int len = inVal.length();
+        // If name is empty in contact return null to avoid crash.
+        if (len == 0) {
+            if (DBG) log("len of input String is 0");
+            return inVal;
+        }
         String retVal = inVal;
 
         if (inVal.charAt(0) == '\'' && inVal.charAt(len-1) == '\'') {
@@ -224,10 +236,6 @@ public class IccProvider extends ContentProvider {
             }
         }
 
-        if (TextUtils.isEmpty(number)) {
-            return 0;
-        }
-
         if (efType == IccConstants.EF_FDN && TextUtils.isEmpty(pin2)) {
             return 0;
         }
@@ -237,6 +245,7 @@ public class IccProvider extends ContentProvider {
             return 0;
         }
 
+        getContext().getContentResolver().notifyChange(url, null);
         return 1;
     }
 
@@ -268,6 +277,11 @@ public class IccProvider extends ContentProvider {
         String[] emails = null;
         String newTag = values.getAsString("newTag");
         String newNumber = values.getAsString("newNumber");
+        /*As part of 3GPP 51.011, number field is mandatory while storing in the
+          SIM for both ADN and FDN */
+        if (TextUtils.isEmpty(newNumber)) {
+            return 0;
+        }
         String[] newEmails = null;
         // TODO(): Update for email.
         boolean success = updateIccRecordInEf(efType, tag, number,
@@ -277,6 +291,7 @@ public class IccProvider extends ContentProvider {
             return 0;
         }
 
+        getContext().getContentResolver().notifyChange(url, null);
         return 1;
     }
 
@@ -394,7 +409,7 @@ public class IccProvider extends ContentProvider {
      * @param record the ADN record to load from
      * @param cursor the cursor to receive the results
      */
-    private void loadRecord(AdnRecord record, MatrixCursor cursor, int id) {
+    protected void loadRecord(AdnRecord record, MatrixCursor cursor, int id) {
         if (!record.isEmpty()) {
             Object[] contact = new Object[4];
             String alphaTag = record.getAlphaTag();
@@ -419,7 +434,7 @@ public class IccProvider extends ContentProvider {
         }
     }
 
-    private void log(String msg) {
+    protected void log(String msg) {
         Rlog.d(TAG, "[IccProvider] " + msg);
     }
 

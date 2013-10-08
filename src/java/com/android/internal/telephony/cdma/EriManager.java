@@ -87,9 +87,9 @@ public final class EriManager {
     private static final boolean DBG = true;
     private static final boolean VDBG = false;
 
-    static final int ERI_FROM_XML          = 0;
-    static final int ERI_FROM_FILE_SYSTEM  = 1;
-    static final int ERI_FROM_MODEM        = 2;
+    public static final int ERI_FROM_XML          = 0;
+    public static final int ERI_FROM_FILE_SYSTEM  = 1;
+    public static final int ERI_FROM_MODEM        = 2;
 
     private Context mContext;
     private int mEriFileSource = ERI_FROM_XML;
