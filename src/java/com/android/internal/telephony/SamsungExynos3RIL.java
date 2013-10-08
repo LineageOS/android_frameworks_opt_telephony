@@ -389,7 +389,6 @@ public class SamsungExynos3RIL extends RIL implements CommandsInterface {
         //FIXME figure out what the states mean an what data is in the parcel
 
         case RIL_UNSOL_O2_HOME_ZONE_INFO: ret = responseVoid(p); break;
-        case RIL_UNSOL_DATA_CALL_LIST_CHANGED: ret =  responseVoid(p); break;
         case RIL_UNSOL_DEVICE_READY_NOTI: ret = responseVoid(p); break;
         case RIL_UNSOL_GPS_NOTI: ret = responseVoid(p); break; // Ignored in TW RIL.
         case RIL_UNSOL_SAMSUNG_UNKNOWN_MAGIC_REQUEST: ret = responseVoid(p); break;
