@@ -19,6 +19,7 @@ package com.android.internal.telephony.cdma;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
@@ -34,6 +35,7 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.provider.Settings;
 
 import android.telephony.Rlog;
 import android.util.EventLog;
@@ -445,6 +447,14 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
         if (hasCdmaDataConnectionAttached || has4gHandoff) {
             mAttachedRegistrants.notifyRegistrants();
+        }
+        if(has4gHandoff){
+            int network = Settings.Global.getInt(mPhone.getContext().getContentResolver(),
+                                                 Settings.Global.PREFERRED_NETWORK_MODE,
+                                                 Phone.NT_MODE_GLOBAL);
+
+            mPhone.setPreferredNetworkType(Phone.NT_MODE_CDMA, null);
+            mPhone.setPreferredNetworkType(network, null);
         }
 
         if (hasCdmaDataConnectionDetached) {
