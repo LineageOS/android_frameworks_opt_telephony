@@ -56,7 +56,7 @@ import com.android.internal.telephony.uicc.IccCardStatus;
  * Handles most GSM and CDMA cases.
  * {@hide}
  */
-public class SamsungQualcommRIL extends RIL implements CommandsInterface {
+public class SamsungQualcommRIL extends QualcommMSIM42RIL implements CommandsInterface {
 
     private AudioManager mAudioManager;
 
