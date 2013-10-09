@@ -735,6 +735,25 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
     }
 
+
+    /**
+     * Translate a request/response id coming in from native side.
+     *
+     * @hide
+     */
+    protected int translateIn(int id) {
+        return id;
+    }
+
+    /**
+     * Translate a request/response id before sending to native side.
+     *
+     * @hide
+     */
+    protected int translateOut(int id) {
+        return id;
+
+    }
     //***** CommandsInterface implementation
 
     @Override
@@ -2498,6 +2517,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
             return;
         }
 
+        rr.mRequest = translateOut(rr.mRequest);
+
         msg = mSender.obtainMessage(EVENT_SEND, rr);
 
         acquireWakeLock();
@@ -2508,8 +2529,15 @@ public class RIL extends BaseCommands implements CommandsInterface {
     protected void
     processResponse (Parcel p) {
         int type;
+        int pos = 0;
 
         type = p.readInt();
+        pos = p.dataPosition();
+
+        int req = translateIn(p.readInt());
+        p.setDataPosition(pos);
+        p.writeInt(req);
+        p.setDataPosition(pos);
 
         if (type == RESPONSE_UNSOLICITED) {
             processUnsolicited (p);
