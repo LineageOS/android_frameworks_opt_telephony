@@ -120,6 +120,8 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         mPhone = phone;
         mContext = phone.getContext();
         mAppOps = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
+        mDispatcher = new ImsSMSDispatcher(phone,
+                phone.mSmsStorageMonitor, phone.mSmsUsageMonitor);
         if (ServiceManager.getService("isms") == null) {
             ServiceManager.addService("isms", this);
         }
@@ -158,8 +160,13 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         }
     }
 
+    public void dispose() {
+        mDispatcher.dispose();
+    }
+
     protected void updatePhoneObject(PhoneBase phone) {
         mPhone = phone;
+        mDispatcher.updatePhoneObject(phone);
     }
 
     protected void enforceReceiveAndSend(String message) {
@@ -791,5 +798,13 @@ public class IccSmsInterfaceManager extends ISms.Stub {
 
     protected void log(String msg) {
         Log.d(LOG_TAG, "[IccSmsInterfaceManager] " + msg);
+    }
+
+    public boolean isImsSmsSupported() {
+        return mDispatcher.isIms();
+    }
+
+    public String getImsSmsFormat() {
+        return mDispatcher.getImsSmsFormat();
     }
 }
