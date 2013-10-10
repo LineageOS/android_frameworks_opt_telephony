@@ -69,6 +69,7 @@ import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.dataconnection.CdmaDataProfileTracker;
 import com.android.internal.util.AsyncChannel;
+import com.android.internal.util.Objects;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -2072,7 +2073,8 @@ public class DcTracker extends DcTrackerBase {
         }
 
         // If APN is still enabled, try to bring it back up automatically
-        if (apnContext.isReady() && apnContext.getReason().equals(Phone.REASON_NW_TYPE_CHANGED)) {
+        if (apnContext.isReady() &&
+                Objects.equal(apnContext.getReason(), Phone.REASON_NW_TYPE_CHANGED)) {
             // Retry immediately if reason is nw_type_changed (like rat switch, for instance)
             setupDataOnConnectableApns(Phone.REASON_NW_TYPE_CHANGED);
         } else if (apnContext.isReady() && retryAfterDisconnected(apnContext.getReason())) {
