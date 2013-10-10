@@ -2223,6 +2223,8 @@ public final class DcTracker extends DcTrackerBase {
             return RILConstants.DATA_PROFILE_CBS;
         } else if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_IA)) {
             return RILConstants.DATA_PROFILE_DEFAULT; // DEFAULT for now
+        } else if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_DUN)) {
+            return RILConstants.DATA_PROFILE_TETHERED;
         } else {
             return RILConstants.DATA_PROFILE_DEFAULT;
         }
