@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,6 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDI
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_BASEBAND_VERSION;
 
-import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.SmsBroadcastUndelivered;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.CallForwardInfo;
@@ -157,7 +156,6 @@ public class GSMPhone extends PhoneBase {
         mCi.setPhoneType(PhoneConstants.PHONE_TYPE_GSM);
         mCT = new GsmCallTracker(this);
         mSST = new GsmServiceStateTracker (this);
-        mSMS = new GsmSMSDispatcher(this, mSmsUsageMonitor);
 
         mDcTracker = new DcTracker(this);
         if (!unitTestMode) {
@@ -171,13 +169,6 @@ public class GSMPhone extends PhoneBase {
         mCi.setOnUSSD(this, EVENT_USSD, null);
         mCi.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
-
-        // Create inbound SMS handler and broadcast undelivered messages in raw table.
-        mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(context,
-                mSmsStorageMonitor, this);
-        Thread broadcastThread = new Thread(new SmsBroadcastUndelivered(context,
-                mGsmInboundSmsHandler, null));
-        broadcastThread.start();
 
         if (DBG_PORT) {
             try {
@@ -239,8 +230,6 @@ public class GSMPhone extends PhoneBase {
             mCT.dispose();
             mDcTracker.dispose();
             mSST.dispose();
-            mSMS.dispose();
-            mGsmInboundSmsHandler.dispose();
             mSimPhoneBookIntManager.dispose();
             mSubInfo.dispose();
         }
@@ -1377,11 +1366,6 @@ public class GSMPhone extends PhoneBase {
                 }
                 break;
 
-            case EVENT_NEW_ICC_SMS:
-                // pass to InboundSmsHandler to process
-                mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS, msg.obj);
-                break;
-
             case EVENT_SET_NETWORK_AUTOMATIC:
                 ar = (AsyncResult)msg.obj;
                 setNetworkSelectionModeAutomatic((Message)ar.result);
@@ -1611,7 +1595,6 @@ public class GSMPhone extends PhoneBase {
         }
         r.registerForNetworkSelectionModeAutomatic(
                 this, EVENT_SET_NETWORK_AUTOMATIC, null);
-        r.registerForNewSms(this, EVENT_NEW_ICC_SMS, null);
         r.registerForRecordsEvents(this, EVENT_ICC_RECORD_EVENTS, null);
         r.registerForRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
     }
@@ -1622,7 +1605,6 @@ public class GSMPhone extends PhoneBase {
             return;
         }
         r.unregisterForNetworkSelectionModeAutomatic(this);
-        r.unregisterForNewSms(this);
         r.unregisterForRecordsEvents(this);
         r.unregisterForRecordsLoaded(this);
     }

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -623,6 +624,15 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
 
+    public void getImsRegistrationState(Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_IMS_REGISTRATION_STATE, result);
+
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        }
+        send(rr);
+    }
+
     @Override public void
     setOnNITZTime(Handler h, int what, Object obj) {
         super.setOnNITZTime(h, what, obj);
@@ -1183,32 +1193,32 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         send(rr);
     }
 
-    @Override
+    private void
+    constructGsmSendSmsRilRequest (RILRequest rr, String smscPDU, String pdu) {
+        rr.mParcel.writeInt(2);
+        rr.mParcel.writeString(smscPDU);
+        rr.mParcel.writeString(pdu);
+    }
+
     public void
     sendSMS (String smscPDU, String pdu, Message result) {
         RILRequest rr
                 = RILRequest.obtain(RIL_REQUEST_SEND_SMS, result);
 
-        rr.mParcel.writeInt(2);
-        rr.mParcel.writeString(smscPDU);
-        rr.mParcel.writeString(pdu);
+        constructGsmSendSmsRilRequest(rr, smscPDU, pdu);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
         send(rr);
     }
 
-    @Override
-    public void
-    sendCdmaSms(byte[] pdu, Message result) {
+    private void
+    constructCdmaSendSmsRilRequest(RILRequest rr, byte[] pdu) {
         int address_nbr_of_digits;
         int subaddr_nbr_of_digits;
         int bearerDataLength;
         ByteArrayInputStream bais = new ByteArrayInputStream(pdu);
         DataInputStream dis = new DataInputStream(bais);
-
-        RILRequest rr
-                = RILRequest.obtain(RIL_REQUEST_CDMA_SEND_SMS, result);
 
         try {
             rr.mParcel.writeInt(dis.readInt()); //teleServiceId
@@ -1240,6 +1250,45 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             if (RILJ_LOGD) riljLog("sendSmsCdma: conversion from input stream to object failed: "
                     + ex);
         }
+    }
+
+    public void
+    sendCdmaSms(byte[] pdu, Message result) {
+        RILRequest rr
+                = RILRequest.obtain(RIL_REQUEST_CDMA_SEND_SMS, result);
+
+        constructCdmaSendSmsRilRequest(rr, pdu);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
+    }
+
+    public void
+    sendImsGsmSms (String smscPDU, String pdu, int retry, int messageRef,
+            Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_IMS_SEND_SMS, result);
+
+        rr.mParcel.writeInt(1); //RIL_IMS_SMS_Format.FORMAT_3GPP
+        rr.mParcel.writeByte((byte)retry);
+        rr.mParcel.writeInt(messageRef);
+
+        constructGsmSendSmsRilRequest(rr, smscPDU, pdu);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
+    }
+
+    public void
+    sendImsCdmaSms(byte[] pdu, int retry, int messageRef, Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_IMS_SEND_SMS, result);
+
+        rr.mParcel.writeInt(2); //RIL_IMS_SMS_Format.FORMAT_3GPP2
+        rr.mParcel.writeByte((byte)retry);
+        rr.mParcel.writeInt(messageRef);
+
+        constructCdmaSendSmsRilRequest(rr, pdu);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
@@ -2385,6 +2434,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_GET_CELL_INFO_LIST: ret = responseCellInfoList(p); break;
             case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE: ret = responseVoid(p); break;
             case RIL_REQUEST_SET_INITIAL_ATTACH_APN: ret = responseVoid(p); break;
+            case RIL_REQUEST_IMS_REGISTRATION_STATE: ret = responseInts(p); break;
+            case RIL_REQUEST_IMS_SEND_SMS: ret =  responseSMS(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -2564,6 +2615,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RIL_CONNECTED: ret = responseInts(p); break;
             case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: ret =  responseInts(p); break;
             case RIL_UNSOL_CELL_INFO_LIST: ret = responseCellInfoList(p); break;
+            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED: ret =  responseVoid(p); break;
 
             default:
                 throw new RuntimeException("Unrecognized unsol response: " + response);
@@ -2581,6 +2633,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 if (RILJ_LOGD) unsljLogMore(response, newState.toString());
 
                 switchToRadioState(newState);
+            break;
+            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
+                if (RILJ_LOGD) unsljLog(response);
+
+                mImsNetworkStateChangedRegistrants
+                    .notifyRegistrants(new AsyncResult(null, null, null));
             break;
             case RIL_UNSOL_RESPONSE_CALL_STATE_CHANGED:
                 if (RILJ_LOGD) unsljLog(response);
@@ -3681,6 +3739,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_GET_CELL_INFO_LIST: return "RIL_REQUEST_GET_CELL_INFO_LIST";
             case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE: return "RIL_REQUEST_SET_CELL_INFO_LIST_RATE";
             case RIL_REQUEST_SET_INITIAL_ATTACH_APN: return "RIL_REQUEST_SET_INITIAL_ATTACH_APN";
+            case RIL_REQUEST_IMS_REGISTRATION_STATE: return "RIL_REQUEST_IMS_REGISTRATION_STATE";
+            case RIL_REQUEST_IMS_SEND_SMS: return "RIL_REQUEST_IMS_SEND_SMS";
             default: return "<unknown request>";
         }
     }
@@ -3731,7 +3791,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RIL_CONNECTED: return "UNSOL_RIL_CONNECTED";
             case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: return "UNSOL_VOICE_RADIO_TECH_CHANGED";
             case RIL_UNSOL_CELL_INFO_LIST: return "UNSOL_CELL_INFO_LIST";
-            default: return "<unknown reponse>";
+            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
+                return "UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED";
+            default: return "<unknown response>";
         }
     }
 
