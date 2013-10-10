@@ -1387,11 +1387,6 @@ public interface Phone {
     public PhoneSubInfo getPhoneSubInfo();
 
     /**
-     * Retrieves the IccSmsInterfaceManager of the Phone
-     */
-    public IccSmsInterfaceManager getIccSmsInterfaceManager();
-
-    /**
      * Retrieves the IccPhoneBookInterfaceManager of the Phone
      */
     public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager();

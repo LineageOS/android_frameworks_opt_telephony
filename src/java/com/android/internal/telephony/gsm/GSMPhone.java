@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -108,7 +109,6 @@ public class GSMPhone extends PhoneBase {
     GsmServiceStateTracker mSST;
     ArrayList <GsmMmiCode> mPendingMMIs = new ArrayList<GsmMmiCode>();
     SimPhoneBookInterfaceManager mSimPhoneBookIntManager;
-    SimSmsInterfaceManager mSimSmsIntManager;
     PhoneSubInfo mSubInfo;
 
 
@@ -162,7 +162,6 @@ public class GSMPhone extends PhoneBase {
         mDcTracker = new DcTracker(this);
         if (!unitTestMode) {
             mSimPhoneBookIntManager = new SimPhoneBookInterfaceManager(this);
-            mSimSmsIntManager = new SimSmsInterfaceManager(this, mSMS);
             mSubInfo = new PhoneSubInfo(this);
         }
 
@@ -243,7 +242,6 @@ public class GSMPhone extends PhoneBase {
             mSMS.dispose();
             mGsmInboundSmsHandler.dispose();
             mSimPhoneBookIntManager.dispose();
-            mSimSmsIntManager.dispose();
             mSubInfo.dispose();
         }
     }
@@ -253,7 +251,6 @@ public class GSMPhone extends PhoneBase {
         Rlog.d(LOG_TAG, "removeReferences");
         mSimulatedRadioControl = null;
         mSimPhoneBookIntManager = null;
-        mSimSmsIntManager = null;
         mSubInfo = null;
         mCT = null;
         mSST = null;
@@ -1560,14 +1557,6 @@ public class GSMPhone extends PhoneBase {
     }
 
     /**
-     * Retrieves the IccSmsInterfaceManager of the GSMPhone
-     */
-    @Override
-    public IccSmsInterfaceManager getIccSmsInterfaceManager(){
-        return mSimSmsIntManager;
-    }
-
-    /**
      * Retrieves the IccPhoneBookInterfaceManager of the GSMPhone
      */
     @Override
@@ -1646,7 +1635,6 @@ public class GSMPhone extends PhoneBase {
         pw.println(" mSST=" + mSST);
         pw.println(" mPendingMMIs=" + mPendingMMIs);
         pw.println(" mSimPhoneBookIntManager=" + mSimPhoneBookIntManager);
-        pw.println(" mSimSmsIntManager=" + mSimSmsIntManager);
         pw.println(" mSubInfo=" + mSubInfo);
         if (VDBG) pw.println(" mImei=" + mImei);
         if (VDBG) pw.println(" mImeiSv=" + mImeiSv);
