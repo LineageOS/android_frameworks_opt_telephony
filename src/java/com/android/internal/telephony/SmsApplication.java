@@ -22,13 +22,16 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.provider.Settings;
 import android.provider.Telephony.Sms.Intents;
+import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 
 import java.util.Collection;
@@ -41,6 +44,9 @@ import java.util.List;
  * {@hide}
  */
 public final class SmsApplication {
+    static final String LOG_TAG = "SmsApplication";
+    private static final String PHONE_PACKAGE_NAME = "com.android.phone";
+
     public static class SmsApplicationData {
         /**
          * Name of this SMS app for display.
@@ -257,14 +263,13 @@ public final class SmsApplication {
         }
         // Picking a new SMS app requires AppOps and Settings.Secure permissions, so we only do
         // this if the caller asked us to.
-        if (updateIfNeeded) {
-            if (applicationData == null) {
-                // Try to find the default SMS package for this device
-                Resources r = context.getResources();
-                String defaultPackage =
-                        r.getString(com.android.internal.R.string.default_sms_application);
-                applicationData = getApplicationForPackage(applications, defaultPackage);
-            }
+        if (updateIfNeeded && applicationData == null) {
+            // Try to find the default SMS package for this device
+            Resources r = context.getResources();
+            String defaultPackage =
+                    r.getString(com.android.internal.R.string.default_sms_application);
+            applicationData = getApplicationForPackage(applications, defaultPackage);
+
             if (applicationData == null) {
                 // Are there any applications?
                 if (applications.size() != 0) {
@@ -275,6 +280,52 @@ public final class SmsApplication {
             // If we found a new default app, update the setting
             if (applicationData != null) {
                 setDefaultApplication(applicationData.mPackageName, context);
+            }
+        }
+
+        // If we found a package, make sure AppOps permissions are set up correctly
+        if (applicationData != null) {
+            AppOpsManager appOps = (AppOpsManager)context.getSystemService(Context.APP_OPS_SERVICE);
+
+            // We can only call checkOp if we are privileged (updateIfNeeded) or if the app we
+            // are checking is for our current uid. Doing this check from the unprivileged current
+            // SMS app allows us to tell the current SMS app that it is not in a good state and
+            // needs to ask to be the current SMS app again to work properly.
+            if (updateIfNeeded || applicationData.mUid == android.os.Process.myUid()) {
+                // Verify that the SMS app has permissions
+                int mode = appOps.checkOp(AppOpsManager.OP_WRITE_SMS, applicationData.mUid,
+                        applicationData.mPackageName);
+                if (mode != AppOpsManager.MODE_ALLOWED) {
+                    Rlog.e(LOG_TAG, applicationData.mPackageName + " lost OP_WRITE_SMS: " +
+                            (updateIfNeeded ? " (fixing)" : " (no permission to fix)"));
+                    if (updateIfNeeded) {
+                        appOps.setMode(AppOpsManager.OP_WRITE_SMS, applicationData.mUid,
+                                applicationData.mPackageName, AppOpsManager.MODE_ALLOWED);
+                    } else {
+                        // We can not return a package if permissions are not set up correctly
+                        applicationData = null;
+                    }
+                }
+            }
+
+            // We can only verify the phone app's permissions from a privileged caller
+            if (updateIfNeeded) {
+                // Verify that the phone app has permissions
+                PackageManager packageManager = context.getPackageManager();
+                try {
+                    PackageInfo info = packageManager.getPackageInfo(PHONE_PACKAGE_NAME, 0);
+                    int mode = appOps.checkOp(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
+                            PHONE_PACKAGE_NAME);
+                    if (mode != AppOpsManager.MODE_ALLOWED) {
+                        Rlog.e(LOG_TAG, PHONE_PACKAGE_NAME + " lost OP_WRITE_SMS:  (fixing)");
+                        appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
+                                PHONE_PACKAGE_NAME, AppOpsManager.MODE_ALLOWED);
+                    }
+                } catch (NameNotFoundException e) {
+                    // No phone app on this device (unexpected, even for non-phone devices)
+                    Rlog.e(LOG_TAG, "Phone package not found: " + PHONE_PACKAGE_NAME);
+                    applicationData = null;
+                }
             }
         }
         return applicationData;
@@ -291,29 +342,50 @@ public final class SmsApplication {
             return;
         }
 
-        Collection<SmsApplicationData> applications = getApplicationCollection(context);
+        // Get old package name
         String oldPackageName = Settings.Secure.getString(context.getContentResolver(),
                 Settings.Secure.SMS_DEFAULT_APPLICATION);
-        SmsApplicationData oldSmsApplicationData = getApplicationForPackage(applications,
-                oldPackageName);
-        SmsApplicationData smsApplicationData = getApplicationForPackage(applications,
-                packageName);
 
-        if (smsApplicationData != null && smsApplicationData != oldSmsApplicationData) {
+        if (packageName != null && oldPackageName != null && packageName.equals(oldPackageName)) {
+            // No change
+            return;
+        }
+
+        // We only make the change if the new package is valid
+        PackageManager packageManager = context.getPackageManager();
+        Collection<SmsApplicationData> applications = getApplicationCollection(context);
+        SmsApplicationData applicationData = getApplicationForPackage(applications, packageName);
+        if (applicationData != null) {
             // Ignore OP_WRITE_SMS for the previously configured default SMS app.
             AppOpsManager appOps = (AppOpsManager)context.getSystemService(Context.APP_OPS_SERVICE);
-            if (oldSmsApplicationData != null) {
-                appOps.setMode(AppOpsManager.OP_WRITE_SMS, oldSmsApplicationData.mUid,
-                        oldSmsApplicationData.mPackageName, AppOpsManager.MODE_IGNORED);
+            if (oldPackageName != null) {
+                try {
+                    PackageInfo info = packageManager.getPackageInfo(oldPackageName,
+                            PackageManager.GET_UNINSTALLED_PACKAGES);
+                    appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
+                            oldPackageName, AppOpsManager.MODE_IGNORED);
+                } catch (NameNotFoundException e) {
+                    Rlog.w(LOG_TAG, "Old SMS package not found: " + oldPackageName);
+                }
             }
 
             // Update the secure setting.
             Settings.Secure.putString(context.getContentResolver(),
-                    Settings.Secure.SMS_DEFAULT_APPLICATION, smsApplicationData.mPackageName);
+                    Settings.Secure.SMS_DEFAULT_APPLICATION, applicationData.mPackageName);
 
             // Allow OP_WRITE_SMS for the newly configured default SMS app.
-            appOps.setMode(AppOpsManager.OP_WRITE_SMS, smsApplicationData.mUid,
-                    smsApplicationData.mPackageName, AppOpsManager.MODE_ALLOWED);
+            appOps.setMode(AppOpsManager.OP_WRITE_SMS, applicationData.mUid,
+                    applicationData.mPackageName, AppOpsManager.MODE_ALLOWED);
+
+            // Phone needs to always have this permission to write to the sms database
+            try {
+                PackageInfo info = packageManager.getPackageInfo(PHONE_PACKAGE_NAME, 0);
+                appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
+                        PHONE_PACKAGE_NAME, AppOpsManager.MODE_ALLOWED);
+            } catch (NameNotFoundException e) {
+                // No phone app on this device (unexpected, even for non-phone devices)
+                Rlog.e(LOG_TAG, "Phone package not found: " + PHONE_PACKAGE_NAME);
+            }
         }
     }
 
