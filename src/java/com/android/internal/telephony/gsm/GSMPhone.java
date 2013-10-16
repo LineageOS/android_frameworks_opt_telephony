@@ -112,8 +112,13 @@ public class GSMPhone extends PhoneBase {
     public static final String CIPHERING_KEY = "ciphering_key";
     // Key used to read/write voice mail number
     public static final String VM_NUMBER = "vm_number_key";
-    // Key used to read/write the SIM IMSI used for storing the voice mail
-    public static final String VM_SIM_IMSI = "vm_sim_imsi_key";
+    // Key used to read/write the SIM IMSI used for storing the imsi
+    public static final String SIM_IMSI = "sim_imsi_key";
+    // Key used to read/write if Call Forwarding is enabled
+    public static final String CF_ENABLED = "cf_enabled_key";
+
+    // Event constant for checking if Call Forwarding is enabled
+    private static final int CHECK_CALLFORWARDING_STATUS = 75;
 
     // Instance Variables
     GsmCallTracker mCT;
@@ -353,6 +358,17 @@ public class GSMPhone extends PhoneBase {
         Rlog.d(LOG_TAG, "updateVoiceMail countVoiceMessages = " + countVoiceMessages
                 +" subId "+getSubId());
         setVoiceMessageCount(countVoiceMessages);
+    }
+
+    public boolean getCallForwardingIndicator() {
+        boolean cf = false;
+        IccRecords r = mIccRecords.get();
+        if (r != null && r.isCallForwardStatusStored()) {
+            cf = r.getVoiceCallForwardingFlag();
+        } else {
+            cf = getCallForwardingPreference();
+        }
+        return cf;
     }
 
     @Override
@@ -1011,7 +1027,7 @@ public class GSMPhone extends PhoneBase {
         SharedPreferences.Editor editor = sp.edit();
         editor.putString(VM_NUMBER + getSubId(), number);
         editor.apply();
-        setVmSimImsi(getSubscriberId());
+        setSimImsi(getSubscriberId());
     }
 
     @Override
@@ -1048,15 +1064,15 @@ public class GSMPhone extends PhoneBase {
         return number;
     }
 
-    private String getVmSimImsi() {
+    private String getSimImsi() {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-        return sp.getString(VM_SIM_IMSI + getSubId(), null);
+        return sp.getString(SIM_IMSI + getSubId(), null);
     }
 
-    private void setVmSimImsi(String imsi) {
+    private void setSimImsi(String imsi) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
         SharedPreferences.Editor editor = sp.edit();
-        editor.putString(VM_SIM_IMSI + getSubId(), imsi);
+        editor.putString(SIM_IMSI + getSubId(), imsi);
         editor.apply();
     }
 
@@ -1420,6 +1436,45 @@ public class GSMPhone extends PhoneBase {
         }
     }
 
+    /**
+     * This method stores the CF_ENABLED flag in preferences
+     * @param enabled
+     */
+    protected void setCallForwardingPreference(boolean enabled) {
+        if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Set callforwarding info to perferences");
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor edit = sp.edit();
+        edit.putBoolean(CF_ENABLED + getSubId(), enabled);
+        edit.commit();
+
+        // set the sim imsi to be able to track when the sim card is changed.
+        setSimImsi(getSubscriberId());
+    }
+
+    protected boolean getCallForwardingPreference() {
+        if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Get callforwarding info from perferences");
+
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        boolean cf = sp.getBoolean(CF_ENABLED + getSubId(), false);
+        return cf;
+    }
+
+    /**
+     * Used to check if Call Forwarding status is present on sim card. If not, a message is
+     * sent so we can check if the CF status is stored as a Shared Preference.
+     */
+    private void updateCallForwardStatus() {
+        if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "updateCallForwardStatus got sim records");
+        IccRecords r = mIccRecords.get();
+        if (r != null && r.isCallForwardStatusStored()) {
+            // The Sim card has the CF info
+            if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Callforwarding info is present on sim");
+            notifyCallForwardingIndicator();
+        } else {
+            Message msg = obtainMessage(CHECK_CALLFORWARDING_STATUS);
+            sendMessage(msg);
+        }
+    }
 
     private void
     onNetworkInitiatedUssd(GsmMmiCode mmi) {
@@ -1519,20 +1574,23 @@ public class GSMPhone extends PhoneBase {
                 updateCurrentCarrierInProvider();
 
                 // Check if this is a different SIM than the previous one. If so unset the
-                // voice mail number.
-                String imsi = getVmSimImsi();
+                // voice mail number and the call forwarding flag.
+                String imsi = getSimImsi();
                 String imsiFromSIM = getSubscriberId();
                 if (imsi != null && imsiFromSIM != null && !imsiFromSIM.equals(imsi)) {
                     storeVoiceMailNumber(null);
-                    setVmSimImsi(null);
+                    setCallForwardingPreference(false);
+                    setSimImsi(null);
                     SubscriptionController controller =
                             SubscriptionController.getInstance();
                     controller.removeStaleSubPreferences(VM_NUMBER);
-                    controller.removeStaleSubPreferences(VM_SIM_IMSI);
+                    controller.removeStaleSubPreferences(SIM_IMSI);
+                    controller.removeStaleSubPreferences(CF_ENABLED);
                 }
 
                 mSimRecordsLoadedRegistrants.notifyRegistrants();
                 updateVoiceMail();
+                updateCallForwardStatus();
             break;
 
             case EVENT_GET_BASEBAND_VERSION_DONE:
@@ -1605,6 +1663,7 @@ public class GSMPhone extends PhoneBase {
                 Cfu cfu = (Cfu) ar.userObj;
                 if (ar.exception == null && r != null) {
                     r.setVoiceCallForwardingFlag(1, msg.arg1 == 1, cfu.mSetCfNumber);
+                    setCallForwardingPreference(msg.arg1 == 1);
                 }
                 if (cfu.mOnComplete != null) {
                     AsyncResult.forMessage(cfu.mOnComplete, ar.result, ar.exception);
@@ -1685,6 +1744,13 @@ public class GSMPhone extends PhoneBase {
                 // in re-using the existing functionality.
                 GsmMmiCode mmi = new GsmMmiCode(this, mUiccApplication.get());
                 mmi.processSsData(ar);
+
+            case CHECK_CALLFORWARDING_STATUS:
+                boolean cfEnabled = getCallForwardingPreference();
+                if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Callforwarding is " + cfEnabled);
+                if (cfEnabled) {
+                    notifyCallForwardingIndicator();
+                }
                 break;
 
              default:
@@ -1808,6 +1874,7 @@ public class GSMPhone extends PhoneBase {
             } else {
                 for (int i = 0, s = infos.length; i < s; i++) {
                     if ((infos[i].serviceClass & SERVICE_CLASS_VOICE) != 0) {
+                        setCallForwardingPreference(infos[i].status == 1);
                         r.setVoiceCallForwardingFlag(1, (infos[i].status == 1),
                             infos[i].number);
                         // should only have the one

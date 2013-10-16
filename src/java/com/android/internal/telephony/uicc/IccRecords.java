@@ -650,6 +650,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
     }
 
     /**
+     * Check if call forward info is stored on SIM
+     * @return true if call forward info is stored on SIM.
+     */
+    public boolean isCallForwardStatusStored() {
+        return false;
+    }
+
+    /**
      * Get the current Voice call forwarding flag for GSM/UMTS and the like SIMs
      *
      * @return true if enabled
