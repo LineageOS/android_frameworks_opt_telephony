@@ -31,11 +31,13 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
+import android.telephony.CellInfoCdma;
+import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.text.TextUtils;
-import android.telephony.Rlog;
 
 import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
@@ -47,8 +49,10 @@ import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UsimServiceTable;
+
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -797,7 +801,40 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     @Override
     public List<CellInfo> getAllCellInfo() {
-        return getServiceStateTracker().getAllCellInfo();
+        List<CellInfo> cellInfoList = getServiceStateTracker().getAllCellInfo();
+        return privatizeCellInfoList(cellInfoList);
+    }
+
+    /**
+     * Clear CDMA base station lat/long values if location setting is disabled.
+     * @param cellInfoList the original cell info list from the RIL
+     * @return the original list with CDMA lat/long cleared if necessary
+     */
+    private List<CellInfo> privatizeCellInfoList(List<CellInfo> cellInfoList) {
+        int mode = Settings.Secure.getInt(getContext().getContentResolver(),
+                Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF);
+        if (mode == Settings.Secure.LOCATION_MODE_OFF) {
+            ArrayList<CellInfo> privateCellInfoList = new ArrayList<CellInfo>(cellInfoList.size());
+            // clear lat/lon values for location privacy
+            for (CellInfo c : cellInfoList) {
+                if (c instanceof CellInfoCdma) {
+                    CellInfoCdma cellInfoCdma = (CellInfoCdma) c;
+                    CellIdentityCdma cellIdentity = cellInfoCdma.getCellIdentity();
+                    CellIdentityCdma maskedCellIdentity = new CellIdentityCdma(
+                            cellIdentity.getNetworkId(),
+                            cellIdentity.getSystemId(),
+                            cellIdentity.getBasestationId(),
+                            Integer.MAX_VALUE, Integer.MAX_VALUE);
+                    CellInfoCdma privateCellInfoCdma = new CellInfoCdma(cellInfoCdma);
+                    privateCellInfoCdma.setCellIdentity(maskedCellIdentity);
+                    privateCellInfoList.add(privateCellInfoCdma);
+                } else {
+                    privateCellInfoList.add(c);
+                }
+            }
+            cellInfoList = privateCellInfoList;
+        }
+        return cellInfoList;
     }
 
     /**
@@ -961,7 +998,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     public void notifyCellInfo(List<CellInfo> cellInfo) {
-        mNotifier.notifyCellInfo(this, cellInfo);
+        mNotifier.notifyCellInfo(this, privatizeCellInfoList(cellInfo));
     }
 
     /**
