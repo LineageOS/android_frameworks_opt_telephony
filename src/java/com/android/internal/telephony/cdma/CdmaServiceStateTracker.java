@@ -801,14 +801,23 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             if (TextUtils.isEmpty(mPrlVersion)) {
                 isPrlLoaded = false;
             }
-            if (!isPrlLoaded) {
+            if (!isPrlLoaded || (mNewSS.getRilVoiceRadioTechnology()
+                                        == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN)) {
+                log("Turn off roaming indicator if !isPrlLoaded or voice RAT is unknown");
                 mNewSS.setCdmaRoamingIndicator(EriInfo.ROAMING_INDICATOR_OFF);
             } else if (!isSidsAllZeros()) {
                 if (!namMatch && !mIsInPrl) {
                     // Use default
                     mNewSS.setCdmaRoamingIndicator(mDefaultRoamingIndicator);
                 } else if (namMatch && !mIsInPrl) {
-                    mNewSS.setCdmaRoamingIndicator(EriInfo.ROAMING_INDICATOR_FLASH);
+                    // TODO this will be removed when we handle roaming on LTE on CDMA+LTE phones
+                    if (mNewSS.getRilVoiceRadioTechnology()
+                            == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+                        log("Turn off roaming indicator as voice is LTE");
+                        mNewSS.setCdmaRoamingIndicator(EriInfo.ROAMING_INDICATOR_OFF);
+                    } else {
+                        mNewSS.setCdmaRoamingIndicator(EriInfo.ROAMING_INDICATOR_FLASH);
+                    }
                 } else if (!namMatch && mIsInPrl) {
                     // Use the one from PRL/ERI
                     mNewSS.setCdmaRoamingIndicator(mRoamingIndicator);
