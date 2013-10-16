@@ -34,10 +34,12 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.provider.Telephony;
 import android.telephony.CellLocation;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
+import android.telephony.cdma.CdmaCellLocation;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 
@@ -538,7 +540,20 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public CellLocation getCellLocation() {
-        return mSST.mCellLoc;
+        CdmaCellLocation loc = mSST.mCellLoc;
+
+        int mode = Settings.Secure.getInt(getContext().getContentResolver(),
+                Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF);
+        if (mode == Settings.Secure.LOCATION_MODE_OFF) {
+            // clear lat/long values for location privacy
+            CdmaCellLocation privateLoc = new CdmaCellLocation();
+            privateLoc.setCellLocationData(loc.getBaseStationId(),
+                    CdmaCellLocation.INVALID_LAT_LONG,
+                    CdmaCellLocation.INVALID_LAT_LONG,
+                    loc.getSystemId(), loc.getNetworkId());
+            loc = privateLoc;
+        }
+        return loc;
     }
 
     @Override
