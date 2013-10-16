@@ -125,14 +125,6 @@ abstract class SipPhoneBase extends PhoneBase {
         return s;
     }
 
-    /**
-     * @return all available cell information or null if none.
-     */
-    @Override
-    public List<CellInfo> getAllCellInfo() {
-        return getServiceStateTracker().getAllCellInfo();
-    }
-
     @Override
     public CellLocation getCellLocation() {
         return null;
