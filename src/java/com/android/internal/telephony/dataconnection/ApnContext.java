@@ -149,6 +149,9 @@ public class ApnContext {
     }
 
     public synchronized ArrayList<DataProfile> getWaitingApns() {
+        if (mWaitingDataProfiles == null) {
+            return new ArrayList<DataProfile>();
+        }
         return mWaitingDataProfiles;
     }
 
