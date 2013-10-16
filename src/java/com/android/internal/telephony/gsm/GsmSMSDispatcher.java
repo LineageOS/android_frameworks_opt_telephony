@@ -129,6 +129,8 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                     // Found it.  Remove from list and broadcast.
                     if(tpStatus >= Sms.STATUS_FAILED || tpStatus < Sms.STATUS_PENDING ) {
                        deliveryPendingList.remove(i);
+                       // Update the message status (COMPLETE or FAILED)
+                       tracker.updateSentMessageStatus(mContext, tpStatus);
                     }
                     PendingIntent intent = tracker.mDeliveryIntent;
                     Intent fillIn = new Intent();
