@@ -23,6 +23,7 @@ import android.app.PendingIntent.CanceledException;
 import android.content.Intent;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.provider.Telephony.Sms;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
 
@@ -84,6 +85,9 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
             if (tracker.mMessageRef == sms.mMessageRef) {
                 // Found it.  Remove from list and broadcast.
                 deliveryPendingList.remove(i);
+                // Update the message status (COMPLETE)
+                tracker.updateSentMessageStatus(mContext, Sms.STATUS_COMPLETE);
+
                 PendingIntent intent = tracker.mDeliveryIntent;
                 Intent fillIn = new Intent();
                 fillIn.putExtra("pdu", sms.getPdu());
