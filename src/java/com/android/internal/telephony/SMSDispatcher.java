@@ -22,6 +22,7 @@ import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -30,12 +31,16 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.ContentObserver;
+import android.database.sqlite.SqliteWrapper;
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.provider.Settings;
+import android.provider.Telephony;
+import android.provider.Telephony.Sms;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -335,6 +340,14 @@ public abstract class SMSDispatcher extends Handler {
 
         if (ar.exception == null) {
             if (DBG) Rlog.d(TAG, "SMS send complete. Broadcasting intent: " + sentIntent);
+
+            String defaultSmsPackage = Sms.getDefaultSmsPackage(mContext);
+            if (defaultSmsPackage == null ||
+                    !defaultSmsPackage.equals(tracker.mAppInfo.applicationInfo.packageName)) {
+                // Someone other than the default SMS app sent this message. Persist it into the
+                // SMS database as a sent message so the user can see it in their default app.
+                tracker.writeSentMessage(mContext);
+            }
 
             if (tracker.mDeliveryIntent != null) {
                 // Expecting a status report.  Add it to the list.
@@ -988,6 +1001,9 @@ public abstract class SMSDispatcher extends Handler {
         public final PackageInfo mAppInfo;
         public final String mDestAddress;
 
+        private long mTimestamp = System.currentTimeMillis();
+        private Uri mSentMessageUri; // Uri of persisted message if we wrote one
+
         private SmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
                 PendingIntent deliveryIntent, PackageInfo appInfo, String destAddr, String format) {
             mData = data;
@@ -1006,8 +1022,41 @@ public abstract class SMSDispatcher extends Handler {
          * @return true if the tracker holds a multi-part SMS; false otherwise
          */
         boolean isMultipart() {
-            HashMap<String, Object> map = mData;
-            return map.containsKey("parts");
+            return mData.containsKey("parts");
+        }
+
+        /**
+         * Persist this as a sent message
+         */
+        void writeSentMessage(Context context) {
+            String text = (String)mData.get("text");
+            if (text != null) {
+                boolean deliveryReport = (mDeliveryIntent != null);
+                // Using invalid threadId 0 here. When the message is inserted into the db, the
+                // provider looks up the threadId based on the recipient(s).
+                mSentMessageUri = Sms.addMessageToUri(context.getContentResolver(),
+                        Telephony.Sms.Sent.CONTENT_URI,
+                        mDestAddress,
+                        text /*body*/,
+                        null /*subject*/,
+                        mTimestamp /*date*/,
+                        true /*read*/,
+                        deliveryReport /*deliveryReport*/,
+                        0 /*threadId*/);
+            }
+        }
+
+        /**
+         * Update the status of this message if we persisted it
+         */
+        public void updateSentMessageStatus(Context context, int status) {
+            if (mSentMessageUri != null) {
+                // If we wrote this message in writeSentMessage, update it now
+                ContentValues values = new ContentValues(1);
+                values.put(Sms.STATUS, status);
+                SqliteWrapper.update(context, context.getContentResolver(),
+                        mSentMessageUri, values, null, null);
+            }
         }
     }
 
