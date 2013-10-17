@@ -661,6 +661,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     void dispatchIntent(Intent intent, String permission, int appOp,
             BroadcastReceiver resultReceiver) {
+        intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
         mContext.sendOrderedBroadcast(intent, permission, appOp, resultReceiver,
                 getHandler(), Activity.RESULT_OK, null, null);
     }
