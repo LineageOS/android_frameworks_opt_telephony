@@ -1505,8 +1505,9 @@ public final class DcTracker extends DcTrackerBase {
                 log("completeConnection: MOBILE_PROVISIONING_ACTION url="
                         + mProvisioningUrl);
             }
-            Intent newIntent =
-                    new Intent(Intent.ACTION_VIEW, Uri.parse(mProvisioningUrl));
+            Intent newIntent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN,
+                    Intent.CATEGORY_APP_BROWSER);
+            newIntent.setData(Uri.parse(mProvisioningUrl));
             newIntent.setFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT |
                     Intent.FLAG_ACTIVITY_NEW_TASK);
             try {
