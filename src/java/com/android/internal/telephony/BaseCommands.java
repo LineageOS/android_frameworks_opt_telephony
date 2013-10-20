@@ -76,6 +76,14 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mWmsReadyRegistrants = new RegistrantList();
     protected RegistrantList mVoiceSystemIdRegistrants = new RegistrantList();
 
+    //HTC
+    protected RegistrantList mEnterLowPowerModeRegistrants = new RegistrantList();
+    protected RegistrantList m3GIndicatorRegistrants = new RegistrantList();
+    protected RegistrantList mERIRegistrants = new RegistrantList();
+    protected RegistrantList mNBPCDRegistrants = new RegistrantList();
+    protected Registrant mIccAppRefreshRegistrant;
+    //HTC End
+    
     protected Registrant mGsmSmsRegistrant;
     protected Registrant mCdmaSmsRegistrant;
     protected Registrant mNITZTimeRegistrant;
@@ -744,6 +752,39 @@ public abstract class BaseCommands implements CommandsInterface {
     public void unregisterForUnsolVoiceSystemId(Handler h) {
         mVoiceSystemIdRegistrants.remove(h);
     }
+
+    //HTC
+    public void registerForEnterLowPowerMode(Handler h, int what, Object obj) {
+        mEnterLowPowerModeRegistrants.add(h, what, obj);
+    }
+    public void unregisterForEnterLowPowerMode(Handler h) {
+        mEnterLowPowerModeRegistrants.remove(h);
+    }
+    public void registerFor3GIndicator(Handler h, int what, Object obj) {
+        m3GIndicatorRegistrants.add(h, what, obj);
+    }
+    public void unregisterFor3GIndicator(Handler h) {
+        m3GIndicatorRegistrants.remove(h);
+    }
+    public void registerForERIInfo(Handler h, int what, Object obj) {
+        mERIRegistrants.add(h, what, obj);
+    }
+    public void unregisterForERIInfo(Handler h) {
+        mERIRegistrants.remove(h);
+    }
+    public void registerForNBPCDInfo(Handler h, int what, Object obj) {
+        mNBPCDRegistrants.add(h, what, obj);
+    }
+    public void unregisterForNBPCDInfo(Handler h) {
+        mNBPCDRegistrants.remove(h);
+    }
+    public void setOnIccAppRefresh(Handler h, int what, Object obj) {
+        mIccAppRefreshRegistrant = new Registrant (h, what, obj);
+    }
+    public void unsetOnIccAppRefresh(Handler h) {
+        mIccAppRefreshRegistrant.clear();
+    }
+    //HTC END
 
     /**
      * {@inheritDoc}
