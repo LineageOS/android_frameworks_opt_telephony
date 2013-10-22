@@ -238,7 +238,9 @@ class DcController extends StateMachine {
                         }
                     } else {
                         // Its active so update the DataConnections link properties
-                        UpdateLinkPropertyResult result = dc.updateLinkProperty(newState);
+                        DataCallResponse updateState =
+                                mPhone.mCi.needsOldRilFeature("emptycallchanges") ? null : newState;
+                        UpdateLinkPropertyResult result = dc.updateLinkProperty(updateState);
                         if (result.oldLp.equals(result.newLp)) {
                             if (DBG) log("onDataStateChanged: no change");
                         } else {
