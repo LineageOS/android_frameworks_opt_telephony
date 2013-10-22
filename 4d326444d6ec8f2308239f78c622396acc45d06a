@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a50d1a3_4dc81e75",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1767,
+      "author": {
+        "id": 4884
+      },
+      "writtenOn": "2013-10-22T18:08:23Z",
+      "side": 1,
+      "message": "Please add brackets to this if function.",
+      "revId": "4d326444d6ec8f2308239f78c622396acc45d06a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
