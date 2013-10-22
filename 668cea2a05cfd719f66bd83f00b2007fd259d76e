@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a50d1a3_8d6dc634",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 511,
+      "author": {
+        "id": 3556
+      },
+      "writtenOn": "2013-10-22T21:15:06Z",
+      "side": 1,
+      "message": "I\u0027ll catch this before arcee :p mCi.needsOldRilFeature",
+      "revId": "668cea2a05cfd719f66bd83f00b2007fd259d76e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a50d1a3_ed87aad5",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 1774,
+      "author": {
+        "id": 3556
+      },
+      "writtenOn": "2013-10-22T21:15:06Z",
+      "side": 1,
+      "message": "Don\u0027t duplicate the method. See above.",
+      "revId": "668cea2a05cfd719f66bd83f00b2007fd259d76e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
