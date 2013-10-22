@@ -558,7 +558,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     private Object
     operatorCheck(Parcel p) {
         String response[] = (String[])responseStrings(p);
-        for(int i=0; i<response.length; i++){
+        for(int i=0; i<3; i++){
             if (response[i]!= null){
                 if (i<2){
                     if (response[i].equals("       Empty") || (response[i].equals("") && !isGSM)) {
