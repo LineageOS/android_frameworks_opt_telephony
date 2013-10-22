@@ -37,7 +37,7 @@ import com.android.internal.telephony.dataconnection.DataCallResponse;
 
 import java.util.ArrayList;
 
-public class HTCQualcommRIL extends RIL implements CommandsInterface {
+public class HTCQualcommRIL extends QualcommMSIM42RIL implements CommandsInterface {
 
     private static final int RIL_UNSOL_ENTER_LPM = 1523;
     private static final int RIL_UNSOL_CDMA_3G_INDICATOR = 3009;
