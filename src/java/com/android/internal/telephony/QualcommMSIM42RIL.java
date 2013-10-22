@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.content.Context;
+import android.os.Message;
 
 /**
  * Backwards compatible RIL implementation for Qualcomm MSIM based
@@ -42,53 +43,67 @@ public class QualcommMSIM42RIL extends RIL implements CommandsInterface {
         super(context, networkMode, cdmaSubscription);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    protected int translateOut(int id) {
-        switch(id) {
-            case RILConstants.RIL_REQUEST_IMS_REGISTRATION_STATE:
-                return RIL_REQUEST_IMS_REGISTRATION_STATE;
-            case RILConstants.RIL_REQUEST_IMS_SEND_SMS:
-                return RIL_REQUEST_IMS_SEND_SMS;
-            case RILConstants.RIL_REQUEST_GET_DATA_CALL_PROFILE:
-                return RIL_REQUEST_GET_DATA_CALL_PROFILE;
-            case RILConstants.RIL_REQUEST_SET_UICC_SUBSCRIPTION:
-                return RIL_REQUEST_SET_UICC_SUBSCRIPTION;
-            case RILConstants.RIL_REQUEST_SET_DATA_SUBSCRIPTION:
-                return RIL_REQUEST_SET_DATA_SUBSCRIPTION;
-            case RILConstants.RIL_REQUEST_GET_UICC_SUBSCRIPTION:
-                return RIL_REQUEST_GET_UICC_SUBSCRIPTION;
-            case RILConstants.RIL_REQUEST_GET_DATA_SUBSCRIPTION:
-                return RIL_REQUEST_GET_DATA_SUBSCRIPTION;
-            case RILConstants.RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
-                return RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED;
-            case RILConstants.RIL_UNSOL_TETHERED_MODE_STATE_CHANGED:
-                return RIL_UNSOL_TETHERED_MODE_STATE_CHANGED;
-        }
-        return id;
+    public void getCellInfoList(Message result) {
+        if (RILJ_LOGD) riljLog("[STUB] > getCellInfoList");
     }
-    
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    protected int translateIn(int id) {
-        switch(id) {
-            case RIL_REQUEST_IMS_REGISTRATION_STATE:
-                return RILConstants.RIL_REQUEST_IMS_REGISTRATION_STATE;
-            case RIL_REQUEST_IMS_SEND_SMS:
-                return RILConstants.RIL_REQUEST_IMS_SEND_SMS;
-            case RIL_REQUEST_GET_DATA_CALL_PROFILE:
-                return RILConstants.RIL_REQUEST_GET_DATA_CALL_PROFILE;
-            case RIL_REQUEST_SET_UICC_SUBSCRIPTION:
-                return RILConstants.RIL_REQUEST_SET_UICC_SUBSCRIPTION;
-            case RIL_REQUEST_SET_DATA_SUBSCRIPTION:
-                return RILConstants.RIL_REQUEST_SET_DATA_SUBSCRIPTION;
-            case RIL_REQUEST_GET_UICC_SUBSCRIPTION:
-                return RILConstants.RIL_REQUEST_GET_UICC_SUBSCRIPTION;
-            case RIL_REQUEST_GET_DATA_SUBSCRIPTION:
-                return RILConstants.RIL_REQUEST_GET_DATA_SUBSCRIPTION;
-            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
-                return RILConstants.RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED;
-            case RIL_UNSOL_TETHERED_MODE_STATE_CHANGED:
-                return RILConstants.RIL_UNSOL_TETHERED_MODE_STATE_CHANGED;
-        }
-        return id;
+    public void setCellInfoListRate(int rateInMillis, Message response) {
+        if (RILJ_LOGD) riljLog("[STUB] > setCellInfoListRate");
     }
+
+    public void getImsRegistrationState(Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_IMS_REGISTRATION_STATE, result);
+
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        }
+        send(rr);
+    }
+
+    public void setUiccSubscription(int slotId, int appIndex, int subId,
+            int subStatus, Message result) {
+        //Note: This RIL request is also valid for SIM and RUIM (ICC card)
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_UICC_SUBSCRIPTION, result);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                + " slot: " + slotId + " appIndex: " + appIndex
+                + " subId: " + subId + " subStatus: " + subStatus);
+
+        rr.mParcel.writeInt(slotId);
+        rr.mParcel.writeInt(appIndex);
+        rr.mParcel.writeInt(subId);
+        rr.mParcel.writeInt(subStatus);
+
+        send(rr);
+    }
+
+    public void setDataSubscription(Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_DATA_SUBSCRIPTION, result);
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        send(rr);
+    }
+
+    public void
+    getDataCallProfile(int appType, Message result) {
+        RILRequest rr = RILRequest.obtain(
+                RIL_REQUEST_GET_DATA_CALL_PROFILE, result);
+
+        // count of ints
+        rr.mParcel.writeInt(1);
+        rr.mParcel.writeInt(appType);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                + " : " + appType);
+
+        send(rr);
+    }
+
 }
