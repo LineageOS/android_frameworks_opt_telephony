@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a50d1a3_0db696dc",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 511,
+      "author": {
+        "id": 3556
+      },
+      "writtenOn": "2013-10-22T19:29:29Z",
+      "side": 1,
+      "message": "if (needsOldRilFeature(\"skipdatareg\") || !mIsSubscriptionFromRuim) {\n\nWouldn\u0027t you need to check both of those as no tall non ruim devices will use the prop?",
+      "revId": "5e9e24b06fb29dc7ff6ff29d22008f99f6c953c5",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
