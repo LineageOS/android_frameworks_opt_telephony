@@ -138,6 +138,28 @@ public class GSMPhone extends PhoneBase {
         }
     }
 
+    final class DebugPortThread extends Thread {
+        DebugPortThread() {
+            super("GSMPhone debug");
+        }
+
+        @Override
+        public void run() {
+            for(;;) {
+                try {
+                    Socket sock;
+                    sock = mDebugSocket.accept();
+                    Rlog.i(LOG_TAG, "New connection; resetting radio");
+                    mCi.resetRadio(null);
+                    sock.close();
+                } catch (IOException ex) {
+                    Rlog.w(LOG_TAG,
+                            "Exception accepting socket", ex);
+                }
+            }
+        }
+    }
+
     // Constructors
 
     public
@@ -177,29 +199,8 @@ public class GSMPhone extends PhoneBase {
                 mDebugSocket.setReuseAddress(true);
                 mDebugSocket.bind (new InetSocketAddress("127.0.0.1", 6666));
 
-                mDebugPortThread
-                    = new Thread(
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                for(;;) {
-                                    try {
-                                        Socket sock;
-                                        sock = mDebugSocket.accept();
-                                        Rlog.i(LOG_TAG, "New connection; resetting radio");
-                                        mCi.resetRadio(null);
-                                        sock.close();
-                                    } catch (IOException ex) {
-                                        Rlog.w(LOG_TAG,
-                                            "Exception accepting socket", ex);
-                                    }
-                                }
-                            }
-                        },
-                        "GSMPhone debug");
-
+                mDebugPortThread = new DebugPortThread();
                 mDebugPortThread.start();
-
             } catch (IOException ex) {
                 Rlog.w(LOG_TAG, "Failure to open com.android.internal.telephony.debug socket", ex);
             }
