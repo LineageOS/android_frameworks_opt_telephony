@@ -574,6 +574,9 @@ public interface CommandsInterface {
      *  This exception is CommandException with an error of PASSWORD_INCORRECT
      *  if the password is incorrect
      *
+     *  ar.result is an optional array of integers where the first entry
+     *  is the number of attempts remaining before the ICC will be PUK locked.
+     *
      * ar.exception and ar.result are null on success
      */
 
@@ -590,6 +593,9 @@ public interface CommandsInterface {
      *  This exception is CommandException with an error of PASSWORD_INCORRECT
      *  if the password is incorrect
      *
+     *  ar.result is an optional array of integers where the first entry
+     *  is the number of attempts remaining before the ICC will be PUK locked.
+     *
      * ar.exception and ar.result are null on success
      */
 
@@ -604,6 +610,9 @@ public interface CommandsInterface {
      *  This exception is CommandException with an error of PASSWORD_INCORRECT
      *  if the password is incorrect
      *
+     *  ar.result is an optional array of integers where the first entry
+     *  is the number of attempts remaining before the ICC is permanently disabled.
+     *
      * ar.exception and ar.result are null on success
      */
 
@@ -614,11 +623,13 @@ public interface CommandsInterface {
      *
      *  AID (Application ID), See ETSI 102.221 8.1 and 101.220 4
      *
-     *  returned message
      *  retMsg.obj = AsyncResult ar
      *  ar.exception carries exception on failure
      *  This exception is CommandException with an error of PASSWORD_INCORRECT
      *  if the password is incorrect
+     *
+     *  ar.result is an optional array of integers where the first entry
+     *  is the number of attempts remaining before the ICC is permanently disabled.
      *
      * ar.exception and ar.result are null on success
      */
@@ -635,6 +646,9 @@ public interface CommandsInterface {
      *  ar.exception carries exception on failure
      *  This exception is CommandException with an error of PASSWORD_INCORRECT
      *  if the password is incorrect
+     *
+     *  ar.result is an optional array of integers where the first entry
+     *  is the number of attempts remaining before the ICC will be PUK locked.
      *
      * ar.exception and ar.result are null on success
      */
@@ -654,6 +668,9 @@ public interface CommandsInterface {
      *  This exception is CommandException with an error of PASSWORD_INCORRECT
      *  if the password is incorrect
      *
+     *  ar.result is an optional array of integers where the first entry
+     *  is the number of attempts remaining before the ICC will be PUK locked.
+     *
      * ar.exception and ar.result are null on success
      */
 
@@ -669,6 +686,9 @@ public interface CommandsInterface {
      *  ar.exception carries exception on failure
      *  This exception is CommandException with an error of PASSWORD_INCORRECT
      *  if the password is incorrect
+     *
+     *  ar.result is an optional array of integers where the first entry
+     *  is the number of attempts remaining before the ICC is permanently disabled.
      *
      * ar.exception and ar.result are null on success
      */
@@ -688,11 +708,15 @@ public interface CommandsInterface {
      *  This exception is CommandException with an error of PASSWORD_INCORRECT
      *  if the password is incorrect
      *
+     *  ar.result is an optional array of integers where the first entry
+     *  is the number of attempts remaining before the ICC is permanently disabled.
+     *
      * ar.exception and ar.result are null on success
      */
 
     void supplyIccPuk2ForApp(String puk2, String newPin2, String aid, Message result);
 
+    // TODO: Add java doc and indicate that msg.arg1 contains the number of attempts remaining.
     void changeIccPin(String oldPin, String newPin, Message result);
     void changeIccPinForApp(String oldPin, String newPin, String aidPtr, Message result);
     void changeIccPin2(String oldPin2, String newPin2, Message result);

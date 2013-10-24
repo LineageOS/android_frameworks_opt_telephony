@@ -193,7 +193,7 @@ class RILRequest {
 
         if (RIL.RILJ_LOGD) Rlog.d(LOG_TAG, serialString() + "< "
             + RIL.requestToString(mRequest)
-            + " error: " + ex);
+            + " error: " + ex + " ret=" + RIL.retToString(mRequest, ret));
 
         if (mResult != null) {
             AsyncResult.forMessage(mResult, ret, ex);
@@ -2501,7 +2501,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return rr;
     }
 
-    private String
+    static String
     retToString(int req, Object ret) {
         if (ret == null) return "";
         switch (req) {
