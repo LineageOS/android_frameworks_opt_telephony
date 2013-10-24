@@ -406,7 +406,7 @@ public class GsmSMSDispatcher extends SMSDispatcher {
                     pdu[1] = (byte) tracker.mMessageRef; // TP-MR
                 }
             }
-            if (tracker.mRetryCount == 0 && tracker.mExpectMore) {
+            if (tracker.mRetryCount == 0 && tracker.mExpectMore && mSmsUseExpectMore) {
                 mCi.sendSMSExpectMore(IccUtils.bytesToHexString(smsc),
                         IccUtils.bytesToHexString(pdu), reply);
             } else {
