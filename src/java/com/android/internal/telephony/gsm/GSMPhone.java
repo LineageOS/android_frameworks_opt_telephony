@@ -94,10 +94,7 @@ public class GSMPhone extends PhoneBase {
     static final String LOG_TAG = "GSMPhone";
     private static final boolean LOCAL_DEBUG = true;
     private static final boolean VDBG = false; /* STOPSHIP if true */
-    private static final boolean DBG_PORT = false; /* STOPSHIP if true */
 
-    // Key used to read/write current ciphering state
-    public static final String CIPHERING_KEY = "ciphering_key";
     // Key used to read/write voice mail number
     public static final String VM_NUMBER = "vm_number_key";
     // Key used to read/write the SIM IMSI used for storing the voice mail
@@ -116,14 +113,9 @@ public class GSMPhone extends PhoneBase {
     /** List of Registrants to receive Supplementary Service Notifications. */
     RegistrantList mSsnRegistrants = new RegistrantList();
 
-    Thread mDebugPortThread;
-    ServerSocket mDebugSocket;
-
     private String mImei;
     private String mImeiSv;
     private String mVmNumber;
-
-    GsmInboundSmsHandler mGsmInboundSmsHandler;
 
     // Create Cfu (Call forward unconditional) so that dialling number &
     // mOnComplete (Message object passed by client) can be packed &
@@ -135,28 +127,6 @@ public class GSMPhone extends PhoneBase {
         Cfu(String cfNumber, Message onComplete) {
             mSetCfNumber = cfNumber;
             mOnComplete = onComplete;
-        }
-    }
-
-    final class DebugPortThread extends Thread {
-        DebugPortThread() {
-            super("GSMPhone debug");
-        }
-
-        @Override
-        public void run() {
-            for(;;) {
-                try {
-                    Socket sock;
-                    sock = mDebugSocket.accept();
-                    Rlog.i(LOG_TAG, "New connection; resetting radio");
-                    mCi.resetRadio(null);
-                    sock.close();
-                } catch (IOException ex) {
-                    Rlog.w(LOG_TAG,
-                            "Exception accepting socket", ex);
-                }
-            }
         }
     }
 
@@ -191,20 +161,6 @@ public class GSMPhone extends PhoneBase {
         mCi.setOnUSSD(this, EVENT_USSD, null);
         mCi.setOnSuppServiceNotification(this, EVENT_SSN, null);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
-
-        if (DBG_PORT) {
-            try {
-                //debugSocket = new LocalServerSocket("com.android.internal.telephony.debug");
-                mDebugSocket = new ServerSocket();
-                mDebugSocket.setReuseAddress(true);
-                mDebugSocket.bind (new InetSocketAddress("127.0.0.1", 6666));
-
-                mDebugPortThread = new DebugPortThread();
-                mDebugPortThread.start();
-            } catch (IOException ex) {
-                Rlog.w(LOG_TAG, "Failure to open com.android.internal.telephony.debug socket", ex);
-            }
-        }
 
         //Change the system property
         SystemProperties.set(TelephonyProperties.CURRENT_ACTIVE_PHONE,
