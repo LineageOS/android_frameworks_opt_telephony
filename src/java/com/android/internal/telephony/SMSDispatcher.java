@@ -164,6 +164,7 @@ public abstract class SMSDispatcher extends Handler {
     protected boolean mSmsCapable = true;
     protected boolean mSmsSendDisabled;
     private   boolean mSmsPseudoMultipart;
+    protected boolean mSmsUseExpectMore;
 
     protected int mRemainingMessages = -1;
 
@@ -195,6 +196,8 @@ public abstract class SMSDispatcher extends Handler {
         mSmsSendDisabled = !SystemProperties.getBoolean(
                                 TelephonyProperties.PROPERTY_SMS_SEND, mSmsCapable);
         mSmsPseudoMultipart = SystemProperties.getBoolean("telephony.sms.pseudo_multipart", false);
+        mSmsUseExpectMore = mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_smsUseExpectMore);
         Rlog.d(TAG, "SMSDispatcher: ctor mSmsCapable=" + mSmsCapable + " format=" + getFormat()
                 + " mSmsSendDisabled=" + mSmsSendDisabled);
     }
