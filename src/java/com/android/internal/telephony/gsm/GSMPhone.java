@@ -95,6 +95,8 @@ public class GSMPhone extends PhoneBase {
     private static final boolean LOCAL_DEBUG = true;
     private static final boolean VDBG = false; /* STOPSHIP if true */
 
+    // Key used to read/write current ciphering state
+    public static final String CIPHERING_KEY = "ciphering_key";
     // Key used to read/write voice mail number
     public static final String VM_NUMBER = "vm_number_key";
     // Key used to read/write the SIM IMSI used for storing the voice mail
