@@ -35,6 +35,7 @@ import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
 
 /**
  * A Short Message Service message.
+ * @see android.provider.Telephony.Sms.Intents#getMessagesFromIntent
  */
 public class SmsMessage {
     private static final String LOG_TAG = "SmsMessage";
