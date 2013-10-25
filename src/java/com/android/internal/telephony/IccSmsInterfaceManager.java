@@ -160,9 +160,6 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         mContext = phone.getContext();
         mAppOps = (AppOpsManager)mContext.getSystemService(Context.APP_OPS_SERVICE);
         initDispatchers();
-        if(ServiceManager.getService("isms") == null) {
-            ServiceManager.addService("isms", this);
-        }
     }
 
     protected void initDispatchers() {
@@ -487,11 +484,22 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      *  raw pdu of the status report is in the extended data ("pdu").
      * @param priority Priority level of the message
      */
-    public void sendTextWithPriority(String destAddr, String scAddr, String text,
-            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
-        mPhone.getContext().enforceCallingPermission(
-                "android.permission.SEND_SMS",
-                "Sending SMS message");
+    public void sendTextWithPriority(String callingPackage, String destAddr,
+            String scAddr, String text, PendingIntent sentIntent,
+            PendingIntent deliveryIntent, int priority) {
+        int callingUid = Binder.getCallingUid();
+
+        String[] callingParts = callingPackage.split("\\\\");
+        if (callingUid == android.os.Process.PHONE_UID &&
+                                         callingParts.length > 1) {
+            callingUid = Integer.parseInt(callingParts[1]);
+        }
+
+        if (Binder.getCallingPid() != android.os.Process.myPid()) {
+            mPhone.getContext().enforceCallingPermission(
+                    Manifest.permission.SEND_SMS,
+                    "Sending SMS message");
+        }
         if (Log.isLoggable("SMS", Log.VERBOSE)) {
             log("sendText: destAddr=" + destAddr + " scAddr=" + scAddr +
                     " text='" + text + "' sentIntent=" +
