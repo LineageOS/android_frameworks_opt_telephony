@@ -186,7 +186,8 @@ public class SamsungQualcommRIL extends QualcommMSIM42RIL implements CommandsInt
 
     @Override
     protected Object responseSignalStrength(Parcel p) {
-        int numInts = 12;
+        boolean isTdScdma = SystemProperties.get(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE).equals("TD-SCDMA");
+        int numInts = isTdScdma ? 13 : 12;
         int response[];
 
         // This is a mashup of algorithms used in
@@ -219,8 +220,8 @@ public class SamsungQualcommRIL extends QualcommMSIM42RIL implements CommandsInt
         }else{ // lte is gsm on samsung/qualcomm cdma stack
             response[7] &= 0xff;
         }
-        return new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7], response[8], response[9], response[10], response[11], (p.readInt() != 0));
-
+        return isTdScdma ? new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7], response[8], response[9], response[10], response[11], response[12], (p.readInt() != 0)) :
+            new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7], response[8], response[9], response[10], response[11], (p.readInt() != 0));
     }
 
     @Override
