@@ -53,6 +53,23 @@
     },
     {
       "key": {
+        "uuid": "1a4dcd0f_445fa40e",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 322
+      },
+      "writtenOn": "2013-10-25T22:09:57Z",
+      "side": 1,
+      "message": "Can you explain why on this? This was taken from ril.java.",
+      "revId": "df3baefcd7a935bf6b802197a2c8aae99e10f4c3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a4dcd0f_e117c252",
         "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
         "patchSetId": 5
