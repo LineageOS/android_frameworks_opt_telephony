@@ -108,6 +108,13 @@ public interface IccCard {
     public void supplyPuk2 (String puk2, String newPin2, Message onComplete);
 
     /**
+     * Check whether fdn (fixed dialing number) service is available.
+     * @return true if ICC fdn service available
+     *         false if ICC fdn service not available
+    */
+    public boolean getIccFdnAvailable();
+
+    /**
      * Supply Network depersonalization code to the RIL
      */
     public void supplyNetworkDepersonalization (String pin, Message onComplete);
@@ -214,4 +221,14 @@ public interface IccCard {
      * @return true if a ICC card is present
      */
     public boolean hasIccCard();
+
+    /**
+     * @return true if ICC card is PIN2 blocked
+     */
+    public boolean getIccPin2Blocked();
+
+    /**
+     * @return true if ICC card is PUK2 blocked
+     */
+    public boolean getIccPuk2Blocked();
 }
