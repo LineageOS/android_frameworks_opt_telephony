@@ -47,7 +47,6 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
     private static final int RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED = 21004;
     private static final int RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED = 21005;
     private static final int RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED = 21007;
-    private static final int RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED_M7 = 5757;
 
     public HTCQualcommRIL(Context context, int networkMode, int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
@@ -101,80 +100,47 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
     }
 
     @Override
-    protected void
-    processUnsolicited (Parcel p) {
+    protected void processUnsolicited (Parcel p) {
         Object ret;
         int dataPosition = p.dataPosition(); // save off position within the Parcel
         int response = p.readInt();
 
         switch(response) {
-            case RIL_UNSOL_ENTER_LPM: ret = responseVoid(p); break;
-            case RIL_UNSOL_CDMA_3G_INDICATOR:  ret = responseInts(p); break;
-            case RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR:  ret = responseInts(p); break;
-            case RIL_UNSOL_CDMA_NETWORK_BASE_PLUSCODE_DIAL:  ret = responseStrings(p); break;
-            case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE:  ret = responseInts(p); break;
-            case RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED: ret = responseVoid(p); break;
-            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED: ret = responseVoid(p); break;
-            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED: ret = responseVoid(p); break;
-            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED_M7: ret = responseVoid(p); break;
-            case RIL_UNSOL_RIL_CONNECTED: ret = responseInts(p); break;
-
-            default:
-                // Rewind the Parcel
-                p.setDataPosition(dataPosition);
-
-                // Forward responses that we are not overriding to the super class
-                super.processUnsolicited(p);
-                return;
-        }
-
-        switch(response) {
             case RIL_UNSOL_ENTER_LPM:
-            case RIL_UNSOL_CDMA_3G_INDICATOR:
-            case RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR:
-            case RIL_UNSOL_CDMA_NETWORK_BASE_PLUSCODE_DIAL:
-            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
-            case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE: {
-                /* Unhandled HTC responses */
+                ret = responseVoid(p);
                 break;
-            }
+            case RIL_UNSOL_CDMA_3G_INDICATOR:
+                ret = responseInts(p);
+                break;
+            case RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR:
+                ret = responseInts(p);
+                break;
+            case RIL_UNSOL_CDMA_NETWORK_BASE_PLUSCODE_DIAL:
+                ret = responseStrings(p);
+                break;
+            case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE:
+                ret = responseInts(p);
+                break;
             case RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED: {
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
+                ret = responseVoid(p);
                 if (mVoiceRadioTechChangedRegistrants != null) {
                     mVoiceRadioTechChangedRegistrants.notifyRegistrants(
                                         new AsyncResult(null, ret, null));
                 }
                 break;
-            }
-            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED_M7:
-            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED: {
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                if (mExitEmergencyCallbackModeRegistrants != null) {
-                    mExitEmergencyCallbackModeRegistrants.notifyRegistrants(
-                                        new AsyncResult (null, null, null));
-                }
+            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED_HTC:
+                ret = responseVoid(p);
                 break;
-            }
-            case RIL_UNSOL_RIL_CONNECTED: {
-                if (RILJ_LOGD) unsljLogRet(response, ret);
-
-                // Initial conditions
-                if (SystemProperties.get("ril.socket.reset").equals("1")) {
-                    setRadioPower(false, null);
-                }
-                // Trigger socket reset if RIL connect is called again
-                SystemProperties.set("ril.socket.reset", "1");
-                setPreferredNetworkType(mPreferredNetworkType, null);
-                int cdmaSubscription = Settings.Global.getInt(mContext.getContentResolver(), Settings.Global.CDMA_SUBSCRIPTION_MODE, -1);
-                if(cdmaSubscription != -1) {
-                    setCdmaSubscriptionSource(cdmaSubscription, null);
-                }
-                setCellInfoListRate(Integer.MAX_VALUE, null);
-                notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
+            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED:
+                ret = responseDataCallList(p);
                 break;
-            }
+            default:
+            // Rewind the Parcel
+            p.setDataPosition(dataPosition);
+
+            // Forward responses that we are not overriding to the super class
+            super.processUnsolicited(p);
+            return;
         }
     }
 }
