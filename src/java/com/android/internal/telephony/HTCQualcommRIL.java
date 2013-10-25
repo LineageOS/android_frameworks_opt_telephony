@@ -44,10 +44,9 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
     private static final int RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR = 3012;
     private static final int RIL_UNSOL_CDMA_NETWORK_BASE_PLUSCODE_DIAL = 3020;
     private static final int RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE = 6002;
-    private static final int RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED = 21004;
-    private static final int RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED = 21005;
+    private static final int RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED_HTC = 21004;
+    private static final int RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED_HTC = 21005;
     private static final int RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED = 21007;
-    private static final int RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED_M7 = 5757;
 
     public HTCQualcommRIL(Context context, int networkMode, int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
@@ -109,55 +108,25 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
 
         switch(response) {
             case RIL_UNSOL_ENTER_LPM: ret = responseVoid(p); break;
-            case RIL_UNSOL_CDMA_3G_INDICATOR:  ret = responseInts(p); break;
-            case RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR:  ret = responseInts(p); break;
-            case RIL_UNSOL_CDMA_NETWORK_BASE_PLUSCODE_DIAL:  ret = responseStrings(p); break;
-            case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE:  ret = responseInts(p); break;
-            case RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED: ret = responseVoid(p); break;
-            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED: ret = responseVoid(p); break;
-            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED: ret = responseVoid(p); break;
-            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED_M7: ret = responseVoid(p); break;
-            case RIL_UNSOL_RIL_CONNECTED: ret = responseInts(p); break;
+            case RIL_UNSOL_CDMA_3G_INDICATOR: ret = responseInts(p); break;
+            case RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR: ret = responseInts(p); break;
+            case RIL_UNSOL_CDMA_NETWORK_BASE_PLUSCODE_DIAL: ret = responseStrings(p); break;
+            case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE: ret = responseInts(p); break;
+            case RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED_HTC:
+                ret = responseVoid(p);
 
-            default:
-                // Rewind the Parcel
-                p.setDataPosition(dataPosition);
-
-                // Forward responses that we are not overriding to the super class
-                super.processUnsolicited(p);
-                return;
-        }
-
-        switch(response) {
-            case RIL_UNSOL_ENTER_LPM:
-            case RIL_UNSOL_CDMA_3G_INDICATOR:
-            case RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR:
-            case RIL_UNSOL_CDMA_NETWORK_BASE_PLUSCODE_DIAL:
-            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
-            case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE: {
-                /* Unhandled HTC responses */
-                break;
-            }
-            case RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED: {
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
                 if (mVoiceRadioTechChangedRegistrants != null) {
                     mVoiceRadioTechChangedRegistrants.notifyRegistrants(
-                                        new AsyncResult(null, ret, null));
+                            new AsyncResult(null, ret, null));
                 }
                 break;
-            }
-            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED_M7:
-            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED: {
-                if (RILJ_LOGD) unsljLogRet(response, ret);
+            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED_HTC: ret = responseVoid(p); break;
+            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED: ret = responseInts(p); break;
+            case RIL_UNSOL_RIL_CONNECTED:
+                ret = responseInts(p);
 
-                if (mExitEmergencyCallbackModeRegistrants != null) {
-                    mExitEmergencyCallbackModeRegistrants.notifyRegistrants(
-                                        new AsyncResult (null, null, null));
-                }
-                break;
-            }
-            case RIL_UNSOL_RIL_CONNECTED: {
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
                 // Initial conditions
@@ -174,7 +143,13 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
                 setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
                 break;
-            }
+            default:
+                // Rewind the Parcel
+                p.setDataPosition(dataPosition);
+
+                // Forward responses that we are not overriding to the super class
+                super.processUnsolicited(p);
+            return;
         }
     }
 }
