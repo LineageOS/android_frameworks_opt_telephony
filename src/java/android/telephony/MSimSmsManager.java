@@ -135,7 +135,7 @@ public class MSimSmsManager {
      * {@hide}
      */
     public void sendTextMessageWithPriority(
-            String destinationAddress, String scAddress, String text,
+            String callingPkg, String destinationAddress, String scAddress, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent,
             int priority, int subscription) {
         if (TextUtils.isEmpty(destinationAddress)) {
@@ -153,7 +153,7 @@ public class MSimSmsManager {
         try {
             ISmsMSim iccISms = ISmsMSim.Stub.asInterface(ServiceManager.getService("isms_msim"));
             if (iccISms != null) {
-                iccISms.sendTextWithPriority(destinationAddress, scAddress, text, sentIntent,
+                iccISms.sendTextWithPriority(callingPkg, destinationAddress, scAddress, text, sentIntent,
                         deliveryIntent, subscription, priority);
             }
         } catch (RemoteException ex) {
