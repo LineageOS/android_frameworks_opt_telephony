@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a4dcd0f_212feaa2",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 4884
+      },
+      "writtenOn": "2013-10-25T21:27:42Z",
+      "side": 1,
+      "message": "Copyright (C) 2013 The CyanogenMod Project",
+      "revId": "df3baefcd7a935bf6b802197a2c8aae99e10f4c3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a4dcd0f_c1164655",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 4884
+      },
+      "writtenOn": "2013-10-25T21:27:42Z",
+      "side": 1,
+      "message": "protected Object responseIccCardStatus(Parcel p) {",
+      "revId": "df3baefcd7a935bf6b802197a2c8aae99e10f4c3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a4dcd0f_412c76ab",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 4884
+      },
+      "writtenOn": "2013-10-25T21:27:42Z",
+      "side": 1,
+      "message": "if (!oldRil) {\n    cardStatus.mImsSubscriptionAppIndex \u003d p.readInt();\n}",
+      "revId": "df3baefcd7a935bf6b802197a2c8aae99e10f4c3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a4dcd0f_e117c252",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 4884
+      },
+      "writtenOn": "2013-10-25T21:27:42Z",
+      "side": 1,
+      "message": "if (numApplications \u003d\u003d 1) {\n    cardStatus.mApplications \u003d new IccCardApplicationStatus[numApplications + 2];\n}",
+      "revId": "df3baefcd7a935bf6b802197a2c8aae99e10f4c3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a4dcd0f_011d0e73",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 4884
+      },
+      "writtenOn": "2013-10-25T21:27:42Z",
+      "side": 1,
+      "message": "if (numApplications \u003d\u003d 1) {",
+      "revId": "df3baefcd7a935bf6b802197a2c8aae99e10f4c3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a4dcd0f_a111ba5f",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 127,
+      "author": {
+        "id": 4884
+      },
+      "writtenOn": "2013-10-25T21:27:42Z",
+      "side": 1,
+      "message": "protected void processUnsolicited (Parcel p) {",
+      "revId": "df3baefcd7a935bf6b802197a2c8aae99e10f4c3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a4dcd0f_610c1243",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 4884
+      },
+      "writtenOn": "2013-10-25T21:27:42Z",
+      "side": 1,
+      "message": "default:\n    // Rewind the Parcel\n    p.setDataPosition(dataPosition);\n\n    // Forward responses that we are not overriding to the super class\n    super.processUnsolicited(p);\n    return;\n    break;",
+      "revId": "df3baefcd7a935bf6b802197a2c8aae99e10f4c3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
