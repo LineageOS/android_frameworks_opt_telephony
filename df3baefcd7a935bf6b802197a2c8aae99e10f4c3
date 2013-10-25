@@ -135,6 +135,24 @@
       "revId": "df3baefcd7a935bf6b802197a2c8aae99e10f4c3",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a4dcd0f_04a0bcf3",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 160,
+      "author": {
+        "id": 322
+      },
+      "writtenOn": "2013-10-25T22:24:53Z",
+      "side": 1,
+      "message": "also, this is being returned back to the super. why would we break here?",
+      "parentUuid": "1a4dcd0f_610c1243",
+      "revId": "df3baefcd7a935bf6b802197a2c8aae99e10f4c3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
