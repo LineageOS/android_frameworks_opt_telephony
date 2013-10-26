@@ -281,7 +281,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         switch (msg.what) {
         case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
             handleCdmaSubscriptionSource(mCdmaSSM.getCdmaSubscriptionSource());
-            if (mIsSubscriptionFromRuim) {
+            if (mIsSubscriptionFromRuim && mUiccApplcation != null) {
                 registerForRuimEvents();
             }
             break;
