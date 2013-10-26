@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a4dcd0f_2f5591c5",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-10-26T05:37:47Z",
+      "side": 0,
+      "message": "I don\u0027t think you can get rid of this without causing ville/evita radio to fail to come up on boot.",
+      "revId": "e56ba0004d096f6b3fc59ce93b671e3973ef883d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a4dcd0f_4f525ddf",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2013-10-26T05:37:47Z",
+      "side": 1,
+      "message": "Indent this block to make it apparent that it\u0027s handled from the default case.",
+      "revId": "96d21af7b8089ee42a152c9322df219839488f6c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
