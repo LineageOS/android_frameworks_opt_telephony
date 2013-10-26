@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "1a4dcd0f_8f92a556",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
+        "patchSetId": 9
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 322
+      },
+      "writtenOn": "2013-10-26T06:26:02Z",
+      "side": 1,
+      "message": "sounds good. i can remove that. it was basically a copy over from ril.java with additions. i will fix.",
+      "parentUuid": "1a4dcd0f_2fc83174",
+      "revId": "2cf6f8816b52d5a1708987d53c8a1aeb62edc5c0",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a4dcd0f_4fc57d59",
         "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
         "patchSetId": 9
@@ -30,6 +48,24 @@
       "writtenOn": "2013-10-26T06:22:22Z",
       "side": 1,
       "message": "Same as above, no need for conditional if all the devices using this RIL require this.",
+      "revId": "2cf6f8816b52d5a1708987d53c8a1aeb62edc5c0",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a4dcd0f_afaa0184",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
+        "patchSetId": 9
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 322
+      },
+      "writtenOn": "2013-10-26T06:26:02Z",
+      "side": 1,
+      "message": "ok. i am not sure if m7vzw needs this as well.",
+      "parentUuid": "1a4dcd0f_4fc57d59",
       "revId": "2cf6f8816b52d5a1708987d53c8a1aeb62edc5c0",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
