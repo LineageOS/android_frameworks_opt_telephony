@@ -72,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "1a4dcd0f_4f9c9d69",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
+        "patchSetId": 9
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 5531
+      },
+      "writtenOn": "2013-10-26T06:27:18Z",
+      "side": 1,
+      "message": "this flag was recently ditched from m7vzw and we are attempting to live without it (successfully so far)",
+      "parentUuid": "1a4dcd0f_afaa0184",
+      "revId": "2cf6f8816b52d5a1708987d53c8a1aeb62edc5c0",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a4dcd0f_6fce3985",
         "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
         "patchSetId": 9
