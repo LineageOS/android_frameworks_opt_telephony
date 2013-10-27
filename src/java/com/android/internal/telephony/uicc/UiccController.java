@@ -217,8 +217,8 @@ public class UiccController extends Handler {
         mContext = c;
         mCi = ci;
         mCi.registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, null);
-        // This is needed so that we query for sim status in the case when we boot in APM
-        mCi.registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, null);
+        // TODO remove this once modem correctly notifies the unsols
+        mCi.registerForOn(this, EVENT_ICC_STATUS_CHANGED, null);
         mCi.registerForIccRefresh(this, EVENT_REFRESH, null);
     }
 
