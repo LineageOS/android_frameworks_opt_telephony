@@ -445,17 +445,6 @@ public final class CdmaDataProfileTracker extends Handler {
         return false;
     }
 
-    protected String[] getActiveApnTypes() {
-        String[] result;
-        if (mActiveDp != null) {
-            result = mActiveDp.getServiceTypes();
-        } else {
-            result = new String[1];
-            result[0] = PhoneConstants.APN_TYPE_DEFAULT;
-        }
-        return result;
-    }
-
     protected void log(String s) {
         Log.d(LOG_TAG, "[CdmaDataProfileTracker] " + s);
     }
