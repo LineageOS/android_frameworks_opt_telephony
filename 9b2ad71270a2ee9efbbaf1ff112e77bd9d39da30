@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a4dcd0f_a73785e2",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 910,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2013-10-29T09:26:03Z",
+      "side": 1,
+      "message": "This check is assuming \"skipdatareg\" is always mutually exclusive with subscriptionFromRuim. Is it?",
+      "revId": "9b2ad71270a2ee9efbbaf1ff112e77bd9d39da30",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
