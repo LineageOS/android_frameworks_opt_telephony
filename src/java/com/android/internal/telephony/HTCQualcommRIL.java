@@ -44,9 +44,11 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
     private static final int RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR = 3012;
     private static final int RIL_UNSOL_CDMA_NETWORK_BASE_PLUSCODE_DIAL = 3020;
     private static final int RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE = 6002;
+    private static final int RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE_M7 = 4802;
     private static final int RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED_HTC = 21004;
     private static final int RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED_HTC = 21005;
     private static final int RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED = 21007;
+    private static final int RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED_M7 = 5757;
 
     public HTCQualcommRIL(Context context, int networkMode, int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
@@ -111,6 +113,7 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
             case RIL_UNSOL_CDMA_3G_INDICATOR: ret = responseInts(p); break;
             case RIL_UNSOL_CDMA_ENHANCE_ROAMING_INDICATOR: ret = responseInts(p); break;
             case RIL_UNSOL_CDMA_NETWORK_BASE_PLUSCODE_DIAL: ret = responseStrings(p); break;
+            case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE_M7:
             case RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE: ret = responseInts(p); break;
             case RIL_UNSOL_RESPONSE_VOICE_RADIO_TECH_CHANGED_HTC:
                 ret = responseVoid(p);
@@ -123,6 +126,7 @@ public class HTCQualcommRIL extends RIL implements CommandsInterface {
                 }
                 break;
             case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED_HTC: ret = responseVoid(p); break;
+            case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED_M7:
             case RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED: ret = responseInts(p); break;
             case RIL_UNSOL_RIL_CONNECTED:
                 ret = responseInts(p);
