@@ -186,6 +186,7 @@ public final class Telephony {
         /**
          * The sub_id to which the message belongs to
          * <p>Type: INTEGER</p>
+         * @hide
          */
         public static final String SUB_ID = "sub_id";
 
@@ -284,6 +285,7 @@ public final class Telephony {
          * @param deliveryReport true if a delivery report was requested, false if not
          * @param subId the sub_id which the message belongs to
          * @return the URI for the new message
+         * @hide
          */
         public static Uri addMessageToUri(ContentResolver resolver,
                 Uri uri, String address, String body, String subject,
@@ -329,6 +331,7 @@ public final class Telephony {
          * @param threadId the thread_id of the message
          * @param subId the sub_id which the message belongs to
          * @return the URI for the new message
+         * @hide
          */
         public static Uri addMessageToUri(ContentResolver resolver,
                 Uri uri, String address, String body, String subject,
@@ -465,6 +468,7 @@ public final class Telephony {
              * @param read true if the message has been read, false if not
              * @param subId the sub_id which the message belongs to
              * @return the URI for the new message
+             * @hide
              */
             public static Uri addMessage(ContentResolver resolver,
                     String address, String body, String subject, Long date,
@@ -524,6 +528,7 @@ public final class Telephony {
              * @param date the timestamp for the message
              * @param subId the sub_id which the message belongs to
              * @return the URI for the new message
+             * @hide
              */
             public static Uri addMessage(ContentResolver resolver,
                     String address, String body, String subject, Long date, int subId) {
@@ -549,6 +554,9 @@ public final class Telephony {
              */
             public static final Uri CONTENT_URI = Uri.parse("content://sms/draft");
 
+           /**
+            * @hide
+            */
             public static Uri addMessage(ContentResolver resolver,
                     String address, String body, String subject, Long date) {
                 return addMessageToUri(resolver, CONTENT_URI, address, body,
@@ -566,6 +574,7 @@ public final class Telephony {
              * @param date the timestamp for the message
              * @param subId the sub_id which the message belongs to
              * @return the URI for the new message
+             * @hide
              */
             public static Uri addMessage(ContentResolver resolver,
                     String address, String body, String subject, Long date, int subId) {
@@ -632,6 +641,7 @@ public final class Telephony {
              * @param deliveryReport whether a delivery report was requested for the message
              * @param subId the sub_id which the message belongs to
              * @return the URI for the new message
+             * @hide
              */
             public static Uri addMessage(ContentResolver resolver,
                     String address, String body, String subject, Long date,
@@ -1529,6 +1539,7 @@ public final class Telephony {
         /**
          * The sub id to which message belongs to
          * <p>Type: INTEGER</p>
+         * @hide
          */
         public static final String SUB_ID = "sub_id";
 
