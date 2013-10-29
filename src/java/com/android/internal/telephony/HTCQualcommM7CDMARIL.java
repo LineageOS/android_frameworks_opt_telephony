@@ -35,9 +35,15 @@ public class HTCQualcommM7CDMARIL extends RIL implements CommandsInterface {
     static final int RIL_UNSOL_RESPONSE_PHONE_MODE_CHANGE_M7 = 4802;
     static final int RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED_HTC_M7 = 5755;
     static final int RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED_M7 = 5757;
+    private boolean isGSM = false;
 
     public HTCQualcommM7CDMARIL(Context context, int networkMode, int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
+    }
+    @Override
+    public void setPhoneType(int phoneType){
+        super.setPhoneType(phoneType);
+        isGSM = (phoneType != RILConstants.CDMA_PHONE);
     }
 
     @Override
@@ -59,12 +65,11 @@ public class HTCQualcommM7CDMARIL extends RIL implements CommandsInterface {
             numApplications = IccCardStatus.CARD_MAX_APPS;
         }
         cardStatus.mApplications = new IccCardApplicationStatus[numApplications];
-        if (numApplications == 1) {
-            cardStatus.mApplications = new IccCardApplicationStatus[numApplications + 2];
-        }
         appStatus = new IccCardApplicationStatus();
         for (int i = 0 ; i < numApplications ; i++) {
-            appStatus = new IccCardApplicationStatus();
+            if (i != 0) {
+                appStatus = new IccCardApplicationStatus();
+            }
             appStatus.app_type       = appStatus.AppTypeFromRILInt(p.readInt());
             appStatus.app_state      = appStatus.AppStateFromRILInt(p.readInt());
             appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(p.readInt());
@@ -75,7 +80,10 @@ public class HTCQualcommM7CDMARIL extends RIL implements CommandsInterface {
             appStatus.pin2           = appStatus.PinStateFromRILInt(p.readInt());
             cardStatus.mApplications[i] = appStatus;
         }
-        if (numApplications == 1) {
+        if (numApplications == 1 && !isGSM && appStatus.app_type == appStatus.AppTypeFromRILInt(2)) { // usim
+            cardStatus.mApplications = new IccCardApplicationStatus[numApplications+2];
+            cardStatus.mGsmUmtsSubscriptionAppIndex = 0;
+            cardStatus.mApplications[cardStatus.mGsmUmtsSubscriptionAppIndex]=appStatus;
             cardStatus.mCdmaSubscriptionAppIndex = 1;
             cardStatus.mImsSubscriptionAppIndex = 2;
             IccCardApplicationStatus appStatus2 = new IccCardApplicationStatus();
