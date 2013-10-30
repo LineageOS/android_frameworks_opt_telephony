@@ -40,7 +40,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
 
     private final GsmCellBroadcastHandler mCellBroadcastDispatcher;
 
-    private final PhoneBase mPhone;
+    private PhoneBase mPhone;
 
     /**
      * Create a new GSM inbound SMS handler.
@@ -84,6 +84,13 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     @Override
     protected boolean is3gpp2() {
         return false;
+    }
+
+    /* Updates the phone object when there is a change */
+    public void updatePhoneObject(PhoneBase phone) {
+        mPhone = phone;
+        mStorageMonitor = phone.mSmsStorageMonitor;
+        mCellBroadcastDispatcher.updatePhoneObject(phone);
     }
 
     /**

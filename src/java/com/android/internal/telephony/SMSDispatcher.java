@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -128,7 +127,6 @@ public abstract class SMSDispatcher extends Handler {
     protected final Context mContext;
     protected final ContentResolver mResolver;
     protected final CommandsInterface mCi;
-    protected SmsStorageMonitor mStorageMonitor;
     protected final TelephonyManager mTelephonyManager;
 
     /** Maximum number of times to retry sending a failed SMS. */
@@ -211,7 +209,6 @@ public abstract class SMSDispatcher extends Handler {
 
     protected void updatePhoneObject(PhoneBase phone) {
         mPhone = phone;
-        mStorageMonitor = phone.mSmsStorageMonitor;
         mUsageMonitor = phone.mSmsUsageMonitor;
         Rlog.d(TAG, "Active phone changed to " + mPhone.getPhoneName() );
     }
@@ -1068,7 +1065,7 @@ public abstract class SMSDispatcher extends Handler {
         }
     }
 
-    protected SmsTracker SmsTrackerFactory(HashMap<String, Object> data, PendingIntent sentIntent,
+    protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
             PendingIntent deliveryIntent, String format) {
         return SmsTrackerFactory(data, sentIntent, deliveryIntent, format, false);
     }
@@ -1096,7 +1093,7 @@ public abstract class SMSDispatcher extends Handler {
                 isExpectMore);
     }
 
-    protected HashMap SmsTrackerMapFactory(String destAddr, String scAddr,
+    protected HashMap<String, Object> getSmsTrackerMap(String destAddr, String scAddr,
             String text, SmsMessageBase.SubmitPduBase pdu) {
         HashMap<String, Object> map = new HashMap<String, Object>();
         map.put("destAddr", destAddr);
@@ -1107,12 +1104,12 @@ public abstract class SMSDispatcher extends Handler {
         return map;
     }
 
-    protected HashMap SmsTrackerMapFactory(String destAddr, String scAddr,
+    protected HashMap<String, Object> getSmsTrackerMap(String destAddr, String scAddr,
             int destPort, byte[] data, SmsMessageBase.SubmitPduBase pdu) {
         HashMap<String, Object> map = new HashMap<String, Object>();
         map.put("destAddr", destAddr);
         map.put("scAddr", scAddr);
-        map.put("destPort", Integer.valueOf(destPort));
+        map.put("destPort", destPort);
         map.put("data", data);
         map.put("smsc", pdu.encodedScAddress);
         map.put("pdu", pdu.encodedMessage);

@@ -145,7 +145,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     final WaitingState mWaitingState = new WaitingState();
 
     /** Helper class to check whether storage is available for incoming messages. */
-    protected final SmsStorageMonitor mStorageMonitor;
+    protected SmsStorageMonitor mStorageMonitor;
 
     private final boolean mSmsReceiveDisabled;
 

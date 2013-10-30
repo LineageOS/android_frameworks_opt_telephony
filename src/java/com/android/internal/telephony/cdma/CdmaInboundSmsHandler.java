@@ -45,7 +45,7 @@ import java.util.Arrays;
  */
 public class CdmaInboundSmsHandler extends InboundSmsHandler {
 
-    private final PhoneBase mPhone;
+    private PhoneBase mPhone;
     private final CdmaSMSDispatcher mSmsDispatcher;
     private final CellBroadcastHandler mCellBroadcastHandler;
     private final CdmaServiceCategoryProgramHandler mServiceCategoryProgramHandler;
@@ -109,6 +109,12 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     @Override
     protected boolean is3gpp2() {
         return true;
+    }
+
+    /* Updates the phone object when there is a change */
+    public void updatePhoneObject(PhoneBase phone) {
+        mPhone = phone;
+        mStorageMonitor = phone.mSmsStorageMonitor;
     }
 
     /**
