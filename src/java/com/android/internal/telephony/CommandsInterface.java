@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -111,13 +110,15 @@ public interface CommandsInterface {
     RadioState getRadioState();
 
     /**
-     * response.obj.result is an int[2]
+     * response.obj.result is an int[3]
      *
-     * response.obj.result[0] is registration state
+     * response.obj.result[0] is IMS registration state
      *                        0 - Not registered
      *                        1 - Registered
-     * response.obj.result[1] is of type const RIL_IMS_SMS_Format,
-     *                        corresponds to sms format used for SMS over IMS.
+     * response.obj.result[1] is bitmap of supported services
+     *                        & 0x1 - SMS supported
+     * response.obj.result[2 ] is of type RILConstants.GSM_PHONE or
+     *                                    RILConstants.CDMA_PHONE
      */
     void getImsRegistrationState(Message result);
 
