@@ -1034,11 +1034,14 @@ public final class DcTracker extends DcTrackerBase {
         if (apnSetting == null) {
             if(PhoneConstants.PHONE_TYPE_CDMA==mPhone.getPhoneType()) {
                 String[] mDunApnTypes = { PhoneConstants.APN_TYPE_DUN };
-                final int mDefaultApnId = DctConstants.APN_DEFAULT_ID;
                 final String[] mDefaultApnTypes = {
                     PhoneConstants.APN_TYPE_DEFAULT,
                     PhoneConstants.APN_TYPE_MMS,
-                    PhoneConstants.APN_TYPE_HIPRI };
+                    PhoneConstants.APN_TYPE_SUPL,
+                    PhoneConstants.APN_TYPE_HIPRI,
+                    PhoneConstants.APN_TYPE_FOTA,
+                    PhoneConstants.APN_TYPE_IMS,
+                    PhoneConstants.APN_TYPE_CBS };
                 String[] types;
                 int apnId;
                 if (mRequestedApnType.equals(PhoneConstants.APN_TYPE_DUN)) {
@@ -1046,10 +1049,18 @@ public final class DcTracker extends DcTrackerBase {
                     apnId = DctConstants.APN_DUN_ID;
                 } else {
                     types = mDefaultApnTypes;
-                    apnId = mDefaultApnId;
+                    apnId = DctConstants.APN_DEFAULT_ID;
                 }
-                apnSetting = new ApnSetting(apnId, "", "", "", "", "", "", "", "", "",
-                                            "", 0, types, "IP", "IP", true, 0);
+                IccRecords r = mIccRecords.get();
+                // if null -> go to the predefined operator numerics
+                // not null -> go to the sim defined operator numerics
+
+                String operator = (r != null) ? r.getOperatorNumeric() : SystemProperties.get("ro.cdma.home.operator.numeric");
+                
+                apnSetting = new ApnSetting(apnId, operator, null, null,
+                                            null, null, null, null, null, null, null,
+                                            RILConstants.SETUP_DATA_AUTH_PAP_CHAP, types,
+                                            "IP", "IP", true, 0);
                 if (DBG) log("setupData: CDMA detected and apnSetting == null, use stubbed CDMA APN setting= " + apnSetting);
             } else {
                 if (DBG) log("setupData: return for no apn found!");
