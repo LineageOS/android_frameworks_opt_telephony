@@ -131,8 +131,8 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
             PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPduWithPriority(
                 scAddr, destAddr, text, (deliveryIntent != null), null, priority);
-        HashMap map = SmsTrackerMapFactory(destAddr, scAddr, text, pdu);
-        SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
+        HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
+        SmsTracker tracker = getSmsTracker(map, sentIntent,
                 deliveryIntent, getFormat());
         sendSubmitPdu(tracker);
     }
