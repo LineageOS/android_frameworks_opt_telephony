@@ -45,14 +45,13 @@ import java.util.ArrayList;
  */
 public final class CdmaServiceCategoryProgramHandler extends WakeLockStateMachine {
 
-    private final Context mContext;
     final CommandsInterface mCi;
 
     /**
      * Create a new CDMA inbound SMS handler.
      */
     CdmaServiceCategoryProgramHandler(Context context, CommandsInterface commandsInterface) {
-        super("CdmaServiceCategoryProgramHandler", context);
+        super("CdmaServiceCategoryProgramHandler", context, null);
         mContext = context;
         mCi = commandsInterface;
     }
