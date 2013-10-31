@@ -488,4 +488,25 @@ public final class SmsApplication {
         }
         return component;
     }
+
+    /**
+     * Returns whether need to write the SMS message to SMS database for this package.
+     */
+    public static boolean shouldWriteMessageForPackage(String packageName, Context context) {
+        if (packageName == null) return true;
+
+        String defaultSmsPackage = null;
+        ComponentName component = getDefaultSmsApplication(context, false);
+        if (component != null) {
+            defaultSmsPackage = component.getPackageName();
+        }
+
+        if ((defaultSmsPackage == null || !defaultSmsPackage.equals(packageName)) &&
+                !packageName.equals(BLUETOOTH_PACKAGE_NAME)) {
+            // To write the message for someone other than the default SMS and BT app
+            return true;
+        }
+
+        return false;
+    }
 }

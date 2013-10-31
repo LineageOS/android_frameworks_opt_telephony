@@ -341,11 +341,10 @@ public abstract class SMSDispatcher extends Handler {
         if (ar.exception == null) {
             if (DBG) Rlog.d(TAG, "SMS send complete. Broadcasting intent: " + sentIntent);
 
-            String defaultSmsPackage = Sms.getDefaultSmsPackage(mContext);
-            if (defaultSmsPackage == null ||
-                    !defaultSmsPackage.equals(tracker.mAppInfo.applicationInfo.packageName)) {
-                // Someone other than the default SMS app sent this message. Persist it into the
-                // SMS database as a sent message so the user can see it in their default app.
+            if (SmsApplication.shouldWriteMessageForPackage(
+                    tracker.mAppInfo.applicationInfo.packageName, mContext)) {
+                // Persist it into the SMS database as a sent message
+                // so the user can see it in their default app.
                 tracker.writeSentMessage(mContext);
             }
 
