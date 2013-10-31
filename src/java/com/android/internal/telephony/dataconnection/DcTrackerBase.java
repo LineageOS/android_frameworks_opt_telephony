@@ -63,12 +63,14 @@ import com.android.internal.util.ArrayUtils;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.PriorityQueue;
 
 /**
  * {@hide}
@@ -251,8 +253,18 @@ public abstract class DcTrackerBase extends Handler {
                                     new HashMap<String, Integer>();
 
     /** Phone.APN_TYPE_* ===> ApnContext */
-    protected ConcurrentHashMap<String, ApnContext> mApnContexts =
+    protected final ConcurrentHashMap<String, ApnContext> mApnContexts =
                                     new ConcurrentHashMap<String, ApnContext>();
+
+    /** kept in sync with mApnContexts
+     * Higher numbers are higher priority and sorted so highest priority is first */
+    protected final PriorityQueue<ApnContext>mPrioritySortedApnContexts =
+            new PriorityQueue<ApnContext>(5,
+            new Comparator<ApnContext>() {
+                public int compare(ApnContext c1, ApnContext c2) {
+                    return c2.priority - c1.priority;
+                }
+            } );
 
     /* Currently active APN */
     protected ApnSetting mActiveApn;
