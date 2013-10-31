@@ -114,6 +114,9 @@ public abstract class InboundSmsHandler extends StateMachine {
     /** Sent by {@link SmsBroadcastUndelivered} after cleaning the raw table. */
     static final int EVENT_START_ACCEPTING_SMS = 6;
 
+    /** Update phone object */
+    static final int EVENT_UPDATE_PHONE_OBJECT = 7;
+
     /** Wakelock release delay when returning to idle state. */
     private static final int WAKELOCK_TIMEOUT = 3000;
 
@@ -145,9 +148,14 @@ public abstract class InboundSmsHandler extends StateMachine {
     final WaitingState mWaitingState = new WaitingState();
 
     /** Helper class to check whether storage is available for incoming messages. */
-    protected final SmsStorageMonitor mStorageMonitor;
+    protected SmsStorageMonitor mStorageMonitor;
 
     private final boolean mSmsReceiveDisabled;
+
+    protected PhoneBase mPhone;
+
+    protected CellBroadcastHandler mCellBroadcastHandler;
+
 
     /**
      * Create a new SMS broadcast helper.
@@ -155,11 +163,14 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param context the context of the phone app
      * @param storageMonitor the SmsStorageMonitor to check for storage availability
      */
-    protected InboundSmsHandler(String name, Context context, SmsStorageMonitor storageMonitor) {
+    protected InboundSmsHandler(String name, Context context, SmsStorageMonitor storageMonitor,
+            PhoneBase phone, CellBroadcastHandler cellBroadcastHandler) {
         super(name);
 
         mContext = context;
         mStorageMonitor = storageMonitor;
+        mPhone = phone;
+        mCellBroadcastHandler = cellBroadcastHandler;
         mResolver = context.getContentResolver();
         mWapPush = new WapPushOverSms(context);
 
@@ -190,6 +201,13 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     /**
+     * Update the phone object when it changes.
+     */
+    public void updatePhoneObject(PhoneBase phone) {
+        sendMessage(EVENT_UPDATE_PHONE_OBJECT, phone);
+    }
+
+    /**
      * Dispose of the WAP push object and release the wakelock.
      */
     @Override
@@ -208,13 +226,22 @@ public abstract class InboundSmsHandler extends StateMachine {
     class DefaultState extends State {
         @Override
         public boolean processMessage(Message msg) {
-            String errorText = "processMessage: unhandled message type " + msg.what;
-            if (Build.IS_DEBUGGABLE) {
-                throw new RuntimeException(errorText);
-              } else {
-                loge(errorText);
-                return HANDLED;
-              }
+            switch (msg.what) {
+                case EVENT_UPDATE_PHONE_OBJECT: {
+                    onUpdatePhoneObject((PhoneBase) msg.obj);
+                    break;
+                }
+                default: {
+                    String errorText = "processMessage: unhandled message type " + msg.what;
+                    if (Build.IS_DEBUGGABLE) {
+                        throw new RuntimeException(errorText);
+                    } else {
+                        loge(errorText);
+                    }
+                    break;
+                }
+            }
+            return HANDLED;
         }
     }
 
@@ -453,6 +480,19 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     protected abstract void acknowledgeLastIncomingSms(boolean success,
             int result, Message response);
+
+    /**
+     * Called when the phone changes the default method updates mPhone
+     * mStorageMonitor and mCellBroadcastHandler.updatePhoneObject.
+     * Override if different or other behavior is desired.
+     *
+     * @param phone
+     */
+    protected void onUpdatePhoneObject(PhoneBase phone) {
+        mPhone = phone;
+        mStorageMonitor = mPhone.mSmsStorageMonitor;
+        log("onUpdatePhoneObject: phone=" + mPhone.getClass().getSimpleName());
+    }
 
     /**
      * Notify interested apps if the framework has rejected an incoming SMS,

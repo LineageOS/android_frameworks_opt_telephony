@@ -42,11 +42,8 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
     private final HashMap<SmsCbConcatInfo, byte[][]> mSmsCbPageMap =
             new HashMap<SmsCbConcatInfo, byte[][]>(4);
 
-    private final PhoneBase mPhone;
-
     protected GsmCellBroadcastHandler(Context context, PhoneBase phone) {
-        super("GsmCellBroadcastHandler", context);
-        mPhone = phone;
+        super("GsmCellBroadcastHandler", context, phone);
         phone.mCi.setOnNewGsmBroadcastSms(getHandler(), EVENT_NEW_SMS_MESSAGE, null);
     }
 
