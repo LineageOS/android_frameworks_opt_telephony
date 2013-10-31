@@ -38,20 +38,14 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     /** Handler for SMS-PP data download messages to UICC. */
     private final UsimDataDownloadHandler mDataDownloadHandler;
 
-    private final GsmCellBroadcastHandler mCellBroadcastDispatcher;
-
-    private final PhoneBase mPhone;
-
     /**
      * Create a new GSM inbound SMS handler.
      */
     private GsmInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
             PhoneBase phone) {
-        super("GsmInboundSmsHandler", context, storageMonitor);
-        mPhone = phone;
+        super("GsmInboundSmsHandler", context, storageMonitor, phone,
+                GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context, phone));
         phone.mCi.setOnNewGsmSms(getHandler(), EVENT_NEW_SMS, null);
-        mCellBroadcastDispatcher = GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context,
-                phone);
         mDataDownloadHandler = new UsimDataDownloadHandler(phone.mCi);
     }
 
@@ -61,7 +55,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     @Override
     protected void onQuitting() {
         mPhone.mCi.unSetOnNewGsmSms(getHandler());
-        mCellBroadcastDispatcher.dispose();
+        mCellBroadcastHandler.dispose();
 
         if (DBG) log("unregistered for 3GPP SMS");
         super.onQuitting();     // release wakelock
@@ -144,6 +138,22 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     @Override
     protected void acknowledgeLastIncomingSms(boolean success, int result, Message response) {
         mPhone.mCi.acknowledgeLastIncomingGsmSms(success, resultToCause(result), response);
+    }
+
+    /**
+     * Called when the phone changes the default method updates mPhone
+     * mStorageMonitor and mCellBroadcastHandler.updatePhoneObject.
+     * Override if different or other behavior is desired.
+     *
+     * @param phone
+     */
+    @Override
+    protected void onUpdatePhoneObject(PhoneBase phone) {
+        super.onUpdatePhoneObject(phone);
+        log("onUpdatePhoneObject: dispose of old CellBroadcastHandler and make a new one");
+        mCellBroadcastHandler.dispose();
+        mCellBroadcastHandler = GsmCellBroadcastHandler
+                .makeGsmCellBroadcastHandler(mContext, phone);
     }
 
     /**

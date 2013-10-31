@@ -79,6 +79,8 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
         super.updatePhoneObject(phone);
         mCdmaDispatcher.updatePhoneObject(phone);
         mGsmDispatcher.updatePhoneObject(phone);
+        mGsmInboundSmsHandler.updatePhoneObject(phone);
+        mCdmaInboundSmsHandler.updatePhoneObject(phone);
     }
 
     public void dispose() {
