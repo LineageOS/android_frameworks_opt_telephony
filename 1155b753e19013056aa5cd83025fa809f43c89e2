@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a4dcd0f_f35b0b2d",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommM7CDMARIL.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 5531
+      },
+      "writtenOn": "2013-11-01T08:42:12Z",
+      "side": 1,
+      "message": "Fix indentation here before merging",
+      "revId": "1155b753e19013056aa5cd83025fa809f43c89e2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
