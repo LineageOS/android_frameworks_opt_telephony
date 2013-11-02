@@ -268,6 +268,7 @@ public abstract class DcTrackerBase extends Handler {
     static LinkedHashMap<String, Integer> mApnPriorities =
         new LinkedHashMap<String, Integer>() {
             {
+                put(PhoneConstants.APN_TYPE_IA,      8);
                 put(PhoneConstants.APN_TYPE_CBS,     7);
                 put(PhoneConstants.APN_TYPE_IMS,     6);
                 put(PhoneConstants.APN_TYPE_FOTA,    5);
