@@ -158,7 +158,7 @@ public final class CdmaServiceCategoryProgramHandler extends WakeLockStateMachin
                 dos.writeInt(0); //servicePresent
                 dos.writeInt(0); //serviceCategory
                 CdmaSmsAddress destAddr = CdmaSmsAddress.parse(
-                        PhoneNumberUtils.cdmaCheckAndProcessPlusCode(sender));
+                        PhoneNumberUtils.cdmaCheckAndProcessPlusCodeForSms(sender));
                 dos.write(destAddr.digitMode);
                 dos.write(destAddr.numberMode);
                 dos.write(destAddr.ton); // number_type
