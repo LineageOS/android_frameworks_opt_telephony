@@ -128,11 +128,10 @@ public class HTCCDMAQualcommRIL extends HTCQualcommRIL implements CommandsInterf
     }
 
     @Override
-    protected void
+    protected RILRequest
     processSolicited(Parcel p) {
         if (isGSM) {
-            super.processSolicited(p);
-            return;
+            return super.processSolicited(p);
         }
         int serial, error;
         boolean found = false;
@@ -147,7 +146,7 @@ public class HTCCDMAQualcommRIL extends HTCQualcommRIL implements CommandsInterf
         if (rr == null) {
             Rlog.w(RILJ_LOG_TAG, "Unexpected solicited response! sn: "
                     + serial + " error: " + error);
-            return;
+            return null;
         }
 
         Object ret = null;
@@ -522,8 +521,7 @@ public class HTCCDMAQualcommRIL extends HTCQualcommRIL implements CommandsInterf
                     AsyncResult.forMessage(rr.mResult, null, tr);
                     rr.mResult.sendToTarget();
                 }
-                rr.release();
-                return;
+                return rr;
             }
         }
 
@@ -561,8 +559,7 @@ public class HTCCDMAQualcommRIL extends HTCQualcommRIL implements CommandsInterf
             }
 
             rr.onError(error, ret);
-            rr.release();
-            return;
+            return rr;
         }
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "< " + requestToString(rr.mRequest)
@@ -573,7 +570,7 @@ public class HTCCDMAQualcommRIL extends HTCQualcommRIL implements CommandsInterf
             rr.mResult.sendToTarget();
         }
 
-        rr.release();
+        return rr;
     }
 
     // CDMA FIXES, this fixes  bogus values in nv/sim on htc cdma family
