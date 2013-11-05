@@ -315,7 +315,11 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
                         }
                         // Get the No. of retries remaining to unlock PUK/PUK2
                         int attemptsRemaining = msg.arg1;
-                        if (attemptsRemaining >= 0) {
+                        if (attemptsRemaining <= 0) {
+                            Rlog.d(LOG_TAG, "onSetComplete: PUK locked,"
+                                    + " cancel as lock screen will handle this");
+                            mState = State.CANCELLED;
+                        } else if (attemptsRemaining > 0) {
                             Rlog.d(LOG_TAG, "onSetComplete: attemptsRemaining="+attemptsRemaining);
                             sb.append(mContext.getResources().getQuantityString(
                                     com.android.internal.R.plurals.pinpuk_attempts,
