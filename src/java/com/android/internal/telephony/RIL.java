@@ -253,7 +253,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     final int OEMHOOK_UNSOL_CDMA_CONT_DTMF_START = OEMHOOK_BASE + 1002;
     final int OEMHOOK_UNSOL_CDMA_CONT_DTMF_STOP = OEMHOOK_BASE + 1003;
     final int OEMHOOK_UNSOL_WMS_READY = OEMHOOK_BASE + 1009;
-    final int OEMHOOK_UNSOL_VOICE_SYSTEM_ID = OEMHOOK_BASE + 1010;
 
     //***** Instance Variables
 
@@ -3244,11 +3243,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         byte[] responseData = new byte[responseSize];
         if (oemHookResponse.remaining() == responseSize) {
-            if (responseId == OEMHOOK_UNSOL_VOICE_SYSTEM_ID) {
-                responseVoiceId = oemHookResponse.getInt();
-            } else {
-                oemHookResponse.get(responseData, 0, responseSize);
-            }
+            oemHookResponse.get(responseData, 0, responseSize);
         } else {
             Rlog.e(RILJ_LOG_TAG, "Response Size(" + responseSize
                     + ") doesnot match remaining bytes(" +
@@ -3271,12 +3266,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
             case OEMHOOK_UNSOL_WMS_READY:
                 notifyWmsReady(responseData);
-                break;
-
-            case OEMHOOK_UNSOL_VOICE_SYSTEM_ID:
-                Rlog.d(RILJ_LOG_TAG, "Response voice id in RIL_UNSOL_OEM_HOOK_RAW is "
-                        + responseVoiceId);
-                notifyVoiceSystemId(responseVoiceId);
                 break;
 
             default:
@@ -3309,13 +3298,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         AsyncResult ar = new AsyncResult(null, data, null);
         mWmsReadyRegistrants.notifyRegistrants(ar);
         Rlog.d(RILJ_LOG_TAG, "WMS_READY notified to registrants");
-    }
-
-    /** Notify registrants of Voice System Id. */
-    protected void notifyVoiceSystemId(int data) {
-        AsyncResult ar = new AsyncResult(null, new Integer(data), null);
-        mVoiceSystemIdRegistrants.notifyRegistrants(ar);
-        Rlog.d(RILJ_LOG_TAG, "VOICE_SYSTEM_ID notified to registrants");
     }
 
     private Object

@@ -505,7 +505,7 @@ public class CallManager {
         return ((defaultPhone == null) ? null : defaultPhone.getContext());
     }
 
-    protected void registerForPhoneStates(Phone phone) {
+    private void registerForPhoneStates(Phone phone) {
         // for common events supported by all phones
         phone.registerForPreciseCallStateChanged(mHandler, EVENT_PRECISE_CALL_STATE_CHANGED, null);
         phone.registerForDisconnect(mHandler, EVENT_DISCONNECT, null);
@@ -546,7 +546,7 @@ public class CallManager {
         }
     }
 
-    protected void unregisterForPhoneStates(Phone phone) {
+    private void unregisterForPhoneStates(Phone phone) {
         //  for common events supported by all phones
         phone.unregisterForPreciseCallStateChanged(mHandler);
         phone.unregisterForDisconnect(mHandler);
@@ -2147,10 +2147,6 @@ public class CallManager {
 
     public void setActiveSubscription(int subscription) {
         Rlog.e(LOG_TAG, " setActiveSubscription for subscription not supported");
-    }
-
-    public void setCallAudioDrivers(int phoneType, Call.State state) {
-        Rlog.e(LOG_TAG, " setCallAudioDrivers not supported");
     }
 
     public int getActiveSubscription() {
