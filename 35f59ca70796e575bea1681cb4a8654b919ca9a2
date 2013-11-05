@@ -16,6 +16,24 @@
       "revId": "35f59ca70796e575bea1681cb4a8654b919ca9a2",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa1b9901_0e521b14",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 7108
+      },
+      "writtenOn": "2013-11-05T20:35:00Z",
+      "side": 1,
+      "message": "Sorry, I\u0027m new here - I put it on multiple lines for readability, I couldn\u0027t find anything specific in the Android style guide about whitespace except that I should have 8 spaces in front of run-on lines. What is better?",
+      "parentUuid": "fa1b9901_432c6cab",
+      "revId": "35f59ca70796e575bea1681cb4a8654b919ca9a2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
