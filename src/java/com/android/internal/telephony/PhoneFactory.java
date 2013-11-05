@@ -113,11 +113,7 @@ public class PhoneFactory {
                         Settings.Global.PREFERRED_NETWORK_MODE, preferredNetworkMode);
                 Rlog.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkMode));
 
-                // Get cdmaSubscription mode from Settings.Global
-                int cdmaSubscription;
-                cdmaSubscription = Settings.Global.getInt(context.getContentResolver(),
-                                Settings.Global.CDMA_SUBSCRIPTION_MODE,
-                                sPreferredCdmaSubscription);
+                int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
 
                 //reads the system properties and makes commandsinterface
