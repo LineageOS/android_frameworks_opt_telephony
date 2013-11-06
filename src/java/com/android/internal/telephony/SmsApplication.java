@@ -46,6 +46,7 @@ import java.util.List;
 public final class SmsApplication {
     static final String LOG_TAG = "SmsApplication";
     private static final String PHONE_PACKAGE_NAME = "com.android.phone";
+    private static final String BLUETOOTH_PACKAGE_NAME = "com.android.bluetooth";
 
     public static class SmsApplicationData {
         /**
@@ -308,9 +309,9 @@ public final class SmsApplication {
                 }
             }
 
-            // We can only verify the phone app's permissions from a privileged caller
+            // We can only verify the phone and BT app's permissions from a privileged caller
             if (updateIfNeeded) {
-                // Verify that the phone app has permissions
+                // Verify that the phone and BT app has permissions
                 PackageManager packageManager = context.getPackageManager();
                 try {
                     PackageInfo info = packageManager.getPackageInfo(PHONE_PACKAGE_NAME, 0);
@@ -325,6 +326,20 @@ public final class SmsApplication {
                     // No phone app on this device (unexpected, even for non-phone devices)
                     Rlog.e(LOG_TAG, "Phone package not found: " + PHONE_PACKAGE_NAME);
                     applicationData = null;
+                }
+
+                try {
+                    PackageInfo info = packageManager.getPackageInfo(BLUETOOTH_PACKAGE_NAME, 0);
+                    int mode = appOps.checkOp(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
+                            BLUETOOTH_PACKAGE_NAME);
+                    if (mode != AppOpsManager.MODE_ALLOWED) {
+                        Rlog.e(LOG_TAG, BLUETOOTH_PACKAGE_NAME + " lost OP_WRITE_SMS:  (fixing)");
+                        appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
+                                BLUETOOTH_PACKAGE_NAME, AppOpsManager.MODE_ALLOWED);
+                    }
+                } catch (NameNotFoundException e) {
+                    // No BT app on this device
+                    Rlog.e(LOG_TAG, "Bluetooth package not found: " + BLUETOOTH_PACKAGE_NAME);
                 }
             }
         }
@@ -385,6 +400,16 @@ public final class SmsApplication {
             } catch (NameNotFoundException e) {
                 // No phone app on this device (unexpected, even for non-phone devices)
                 Rlog.e(LOG_TAG, "Phone package not found: " + PHONE_PACKAGE_NAME);
+            }
+
+            // BT needs to always have this permission to write to the sms database
+            try {
+                PackageInfo info = packageManager.getPackageInfo(BLUETOOTH_PACKAGE_NAME, 0);
+                appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
+                        BLUETOOTH_PACKAGE_NAME, AppOpsManager.MODE_ALLOWED);
+            } catch (NameNotFoundException e) {
+                // No BT app on this device
+                Rlog.e(LOG_TAG, "Bluetooth package not found: " + BLUETOOTH_PACKAGE_NAME);
             }
         }
     }
