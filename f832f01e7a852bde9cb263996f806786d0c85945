@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa1b9901_8ec14b83",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 1579
+      },
+      "writtenOn": "2013-11-06T05:51:38Z",
+      "side": 1,
+      "message": "a missing bracket",
+      "revId": "f832f01e7a852bde9cb263996f806786d0c85945",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
