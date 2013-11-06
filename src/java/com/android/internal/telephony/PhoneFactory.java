@@ -30,6 +30,7 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.sip.SipPhone;
 import com.android.internal.telephony.sip.SipPhoneFactory;
+import com.android.internal.telephony.thirdpartyphone.ThirdPartyPhone;
 import com.android.internal.telephony.uicc.UiccController;
 
 /**
@@ -197,5 +198,14 @@ public class PhoneFactory {
      */
     public static SipPhone makeSipPhone(String sipUri) {
         return SipPhoneFactory.makePhone(sipUri, sContext, sPhoneNotifier);
+    }
+
+    /**
+     * Makes a {@link ThirdPartyPhone} object.
+     * @param component the component that should handle the intent.
+     * @return the {@code ThirdPartyPhone} object.
+     */
+    public static ThirdPartyPhone makeThirdPartyPhone(ComponentName component) {
+        return new ThirdPartyPhone(sPhoneNotifier, sContext, component);
     }
 }
