@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa1b9901_a91f695a",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManagerProxy.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 1579
+      },
+      "writtenOn": "2013-11-06T15:29:05Z",
+      "side": 1,
+      "message": "insert a space after ) like above lines would be better\n\ndeliveryIntents !\u003d null ? new ArrayList\u003cPendingIntent\u003e(deliveryIntents) : null, -1);",
+      "revId": "fecb50d7b93316f649d8c56419b9d22014ca0d5c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
