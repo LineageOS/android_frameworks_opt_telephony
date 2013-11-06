@@ -79,6 +79,8 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     public IsimUiccRecords(UiccCardApplication app, Context c, CommandsInterface ci) {
         super(app, c, ci);
 
+        mAdnCache = new AdnRecordCache(mFh);
+
         mRecordsRequested = false;  // No load request is made till SIM ready
 
         // recordsToLoad is set to 0 because no requests are made yet
