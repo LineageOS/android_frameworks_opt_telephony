@@ -601,17 +601,6 @@ public interface CommandsInterface {
      void unregisterForRilConnected(Handler h);
 
     /**
-     * Registers the handler for voice system id changed events
-     *
-     * @param h Handler for notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     *
-     */
-    void registerForUnsolVoiceSystemId(Handler h, int what, Object obj);
-    void unregisterForUnsolVoiceSystemId(Handler h);
-
-    /**
      * Supply the ICC PIN to the ICC card
      *
      *  returned message

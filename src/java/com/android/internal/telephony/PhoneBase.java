@@ -680,16 +680,6 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
-    public void registerForUnsolVoiceSystemId(Handler h, int what, Object obj) {
-        mCi.registerForUnsolVoiceSystemId(h,what,obj);
-    }
-
-    @Override
-    public void unregisterForUnsolVoiceSystemId(Handler h) {
-        mCi.unregisterForUnsolVoiceSystemId(h);
-    }
-
-    @Override
     public void setEchoSuppressionEnabled(boolean enabled) {
         // no need for regular phone
     }

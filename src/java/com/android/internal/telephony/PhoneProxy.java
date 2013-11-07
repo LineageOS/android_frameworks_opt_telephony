@@ -579,16 +579,6 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
-    public void registerForUnsolVoiceSystemId(Handler h, int what, Object obj) {
-        mActivePhone.registerForUnsolVoiceSystemId(h,what,obj);
-    }
-
-    @Override
-    public void unregisterForUnsolVoiceSystemId(Handler h) {
-        mActivePhone.unregisterForUnsolVoiceSystemId(h);
-    }
-
-    @Override
     public boolean getIccRecordsLoaded() {
         return mIccCardProxy.getIccRecordsLoaded();
     }

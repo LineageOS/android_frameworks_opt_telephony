@@ -683,20 +683,6 @@ public interface Phone {
      */
     public void unregisterForSimRecordsLoaded(Handler h);
 
-     /**
-     * Registration point for Voice system id change
-     * @param h handler to notify
-     * @param what what code of message when delivered
-     * @param obj placed in Message.obj
-     */
-    public void registerForUnsolVoiceSystemId(Handler h, int what, Object obj);
-
-    /**
-     * Unregister for notifications for Voice system id change
-     * @param h Handler to be removed from the registrant list.
-     */
-    public void unregisterForUnsolVoiceSystemId(Handler h);
-
     /**
      * Returns SIM record load state. Use
      * <code>getSimCard().registerForReady()</code> for change notification.
