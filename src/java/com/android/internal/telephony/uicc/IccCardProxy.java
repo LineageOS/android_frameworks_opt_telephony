@@ -225,6 +225,9 @@ public class IccCardProxy extends Handler implements IccCard {
         switch (msg.what) {
             case EVENT_RADIO_OFF_OR_UNAVAILABLE:
                 mRadioOn = false;
+                if (CommandsInterface.RadioState.RADIO_UNAVAILABLE == mCi.getRadioState()) {
+                    setExternalState(State.NOT_READY);
+                }
                 break;
             case EVENT_RADIO_ON:
                 mRadioOn = true;
@@ -272,15 +275,15 @@ public class IccCardProxy extends Handler implements IccCard {
     protected void updateIccAvailability() {
         synchronized (mLock) {
             UiccCard newCard = mUiccController.getUiccCard();
-            CardState state = CardState.CARDSTATE_ABSENT;
             UiccCardApplication newApp = null;
             IccRecords newRecords = null;
             if (newCard != null) {
-                state = newCard.getCardState();
                 newApp = newCard.getApplication(mCurrentAppType);
                 if (newApp != null) {
                     newRecords = newApp.getIccRecords();
                 }
+            } else {
+                log("No card available");
             }
 
             if (mIccRecords != newRecords || mUiccApplication != newApp || mUiccCard != newCard) {
