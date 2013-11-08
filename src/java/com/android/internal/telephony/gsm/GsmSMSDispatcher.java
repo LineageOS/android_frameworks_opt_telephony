@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,11 +27,11 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.GsmAlphabet;
+import com.android.internal.telephony.ImsSMSDispatcher;
+import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsConstants;
-import com.android.internal.telephony.ImsSMSDispatcher;
-import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.SmsUsageMonitor;
@@ -51,7 +50,6 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class GsmSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "GsmSMSDispatcher";
     private static final boolean VDBG = false;
-    private ImsSMSDispatcher mImsSMSDispatcher;
     protected UiccController mUiccController = null;
     private AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
     private AtomicReference<UiccCardApplication> mUiccApplication =
@@ -61,13 +59,14 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     /** Status report received */
     private static final int EVENT_NEW_SMS_STATUS_REPORT = 100;
 
-    public GsmSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
-            SmsUsageMonitor usageMonitor, ImsSMSDispatcher imsSMSDispatcher,
+    public GsmSMSDispatcher(PhoneBase phone, SmsUsageMonitor usageMonitor,
+            ImsSMSDispatcher imsSMSDispatcher,
             GsmInboundSmsHandler gsmInboundSmsHandler) {
-        super(phone, usageMonitor);
+        super(phone, usageMonitor, imsSMSDispatcher);
         mCi.setOnSmsStatus(this, EVENT_NEW_SMS_STATUS_REPORT, null);
-        mImsSMSDispatcher = imsSMSDispatcher;
         mGsmInboundSmsHandler = gsmInboundSmsHandler;
+        mUiccController = UiccController.getInstance();
+        mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         Rlog.d(TAG, "GsmSMSDispatcher created");
     }
 
@@ -75,6 +74,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     public void dispose() {
         super.dispose();
         mCi.unSetOnSmsStatus(this);
+        mUiccController.unregisterForIccChanged(this);
     }
 
     @Override
@@ -155,8 +155,8 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, destPort, data, (deliveryIntent != null));
         if (pdu != null) {
-            HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, destPort, data, pdu);
-            SmsTracker tracker = SmsTrackerFactory(map, sentIntent, deliveryIntent,
+            HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
+            SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent,
                     getFormat());
             sendRawPdu(tracker);
         } else {
@@ -171,8 +171,8 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, text, (deliveryIntent != null));
         if (pdu != null) {
-            HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, text, pdu);
-            SmsTracker tracker = SmsTrackerFactory(map, sentIntent, deliveryIntent,
+            HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
+            SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent,
                     getFormat());
             sendRawPdu(tracker);
         } else {
@@ -196,9 +196,9 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                 message, deliveryIntent != null, SmsHeader.toByteArray(smsHeader),
                 encoding, smsHeader.languageTable, smsHeader.languageShiftTable);
         if (pdu != null) {
-            HashMap map =  SmsTrackerMapFactory(destinationAddress, scAddress,
+            HashMap map =  getSmsTrackerMap(destinationAddress, scAddress,
                     message, pdu);
-            SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
+            SmsTracker tracker = getSmsTracker(map, sentIntent,
                     deliveryIntent, getFormat());
             sendRawPdu(tracker);
         } else {
@@ -263,12 +263,6 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         }
     }
 
-    @Override
-    public void sendRetrySms(SmsTracker tracker) {
-        //re-routing to ImsSMSDispatcher
-        mImsSMSDispatcher.sendRetrySms(tracker);
-    }
-
     protected UiccCardApplication getUiccCardApplication() {
         return mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
     }
@@ -299,15 +293,5 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                 }
             }
         }
-    }
-
-    @Override
-    public boolean isIms() {
-        return mImsSMSDispatcher.isIms();
-    }
-
-    @Override
-    public String getImsSmsFormat() {
-        return mImsSMSDispatcher.getImsSmsFormat();
     }
 }

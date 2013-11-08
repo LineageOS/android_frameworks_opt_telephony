@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1269,7 +1268,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             Message result) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_IMS_SEND_SMS, result);
 
-        rr.mParcel.writeInt(1); //RIL_IMS_SMS_Format.FORMAT_3GPP
+        rr.mParcel.writeInt(RILConstants.GSM_PHONE);
         rr.mParcel.writeByte((byte)retry);
         rr.mParcel.writeInt(messageRef);
 
@@ -1284,7 +1283,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     sendImsCdmaSms(byte[] pdu, int retry, int messageRef, Message result) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_IMS_SEND_SMS, result);
 
-        rr.mParcel.writeInt(2); //RIL_IMS_SMS_Format.FORMAT_3GPP2
+        rr.mParcel.writeInt(RILConstants.CDMA_PHONE);
         rr.mParcel.writeByte((byte)retry);
         rr.mParcel.writeInt(messageRef);
 
