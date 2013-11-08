@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,12 +27,11 @@ import android.telephony.Rlog;
 import android.telephony.SmsManager;
 
 import com.android.internal.telephony.GsmAlphabet;
-import com.android.internal.telephony.SmsConstants;
+import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SMSDispatcher;
-import com.android.internal.telephony.ImsSMSDispatcher;
+import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
-import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.SmsUsageMonitor;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.cdma.sms.UserData;
@@ -43,13 +41,16 @@ import java.util.HashMap;
 public class CdmaSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "CdmaSMSDispatcher";
     private static final boolean VDBG = false;
-    private ImsSMSDispatcher mImsSMSDispatcher;
 
-    public CdmaSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
-            SmsUsageMonitor usageMonitor, ImsSMSDispatcher imsSMSDispatcher) {
-        super(phone, usageMonitor);
-        mImsSMSDispatcher = imsSMSDispatcher;
+    public CdmaSMSDispatcher(PhoneBase phone, SmsUsageMonitor usageMonitor,
+            ImsSMSDispatcher imsSMSDispatcher) {
+        super(phone, usageMonitor, imsSMSDispatcher);
         Rlog.d(TAG, "CdmaSMSDispatcher created");
+    }
+
+    @Override
+    protected String getFormat() {
+        return SmsConstants.FORMAT_3GPP2;
     }
 
     /**
@@ -69,10 +70,6 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         } else {
             Rlog.e(TAG, "handleStatusReport() called for object type " + o.getClass().getName());
         }
-    }
-
-    protected String getFormat() {
-        return SmsConstants.FORMAT_3GPP2;
     }
 
     /**
@@ -106,8 +103,8 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, destPort, data, (deliveryIntent != null));
-        HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, destPort, data, pdu);
-        SmsTracker tracker = SmsTrackerFactory(map, sentIntent, deliveryIntent,
+        HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
+        SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent,
                 getFormat());
         sendSubmitPdu(tracker);
     }
@@ -118,8 +115,8 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, text, (deliveryIntent != null), null);
-        HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, text, pdu);
-        SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
+        HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
+        SmsTracker tracker = getSmsTracker(map, sentIntent,
                 deliveryIntent, getFormat());
         sendSubmitPdu(tracker);
     }
@@ -153,9 +150,9 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         SmsMessage.SubmitPdu submitPdu = SmsMessage.getSubmitPdu(destinationAddress,
                 uData, (deliveryIntent != null) && lastPart);
 
-        HashMap map =  SmsTrackerMapFactory(destinationAddress, scAddress,
+        HashMap map = getSmsTrackerMap(destinationAddress, scAddress,
                 message, submitPdu);
-        SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
+        SmsTracker tracker = getSmsTracker(map, sentIntent,
                 deliveryIntent, getFormat());
         sendSubmitPdu(tracker);
     }
@@ -204,21 +201,5 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
             // next retry will be sent using IMS request again.
             tracker.mImsRetry++;
         }
-    }
-
-    @Override
-    public void sendRetrySms(SmsTracker tracker) {
-        //re-routing to ImsSMSDispatcher
-        mImsSMSDispatcher.sendRetrySms(tracker);
-    }
-
-    @Override
-    public boolean isIms() {
-        return mImsSMSDispatcher.isIms();
-    }
-
-    @Override
-    public String getImsSmsFormat() {
-        return mImsSMSDispatcher.getImsSmsFormat();
     }
 }
