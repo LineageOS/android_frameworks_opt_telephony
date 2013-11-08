@@ -173,9 +173,9 @@ public class IccSmsInterfaceManager {
     }
 
     protected void enforceReceiveAndSend(String message) {
-        mContext.enforceCallingPermission(
+        mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.RECEIVE_SMS, message);
-        mContext.enforceCallingPermission(
+        mContext.enforceCallingOrSelfPermission(
                 Manifest.permission.SEND_SMS, message);
     }
 
