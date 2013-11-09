@@ -110,14 +110,12 @@ public interface CommandsInterface {
     RadioState getRadioState();
 
     /**
-     * response.obj.result is an int[3]
+     * response.obj.result is an int[2]
      *
      * response.obj.result[0] is IMS registration state
      *                        0 - Not registered
      *                        1 - Registered
-     * response.obj.result[1] is bitmap of supported services
-     *                        & 0x1 - SMS supported
-     * response.obj.result[2 ] is of type RILConstants.GSM_PHONE or
+     * response.obj.result[1] is of type RILConstants.GSM_PHONE or
      *                                    RILConstants.CDMA_PHONE
      */
     void getImsRegistrationState(Message result);
