@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -558,8 +557,9 @@ public class SmsMessage extends SmsMessageBase {
             try {
                 ret = new GsmSmsAddress(mPdu, mCur, lengthBytes);
             } catch (ParseException e) {
-                Rlog.e(LOG_TAG, e.getMessage());
                 ret = null;
+                //This is caught by createFromPdu(byte[] pdu)
+                throw new RuntimeException(e.getMessage());
             }
 
             mCur += lengthBytes;
