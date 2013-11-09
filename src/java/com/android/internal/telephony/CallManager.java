@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import com.android.internal.telephony.sip.SipPhone;
+import com.android.internal.telephony.thirdpartyphone.ThirdPartyPhone;
 
 import android.content.Context;
 import android.media.AudioManager;
@@ -405,8 +406,8 @@ public final class CallManager {
                 }
 
                 int newAudioMode = AudioManager.MODE_IN_CALL;
-                if (offhookPhone instanceof SipPhone) {
-                    // enable IN_COMMUNICATION audio mode instead for sipPhone
+                if (offhookPhone instanceof SipPhone || offhookPhone instanceof ThirdPartyPhone) {
+                    // enable IN_COMMUNICATION audio mode instead.
                     newAudioMode = AudioManager.MODE_IN_COMMUNICATION;
                 }
                 if (audioManager.getMode() != newAudioMode || mSpeedUpAudioForMtCall) {
@@ -549,7 +550,8 @@ public final class CallManager {
             AudioManager audioManager = (AudioManager)
                     context.getSystemService(Context.AUDIO_SERVICE);
             int currMode = audioManager.getMode();
-            if ((currMode != AudioManager.MODE_IN_CALL) && !(ringingPhone instanceof SipPhone)) {
+            if ((currMode != AudioManager.MODE_IN_CALL) && !(ringingPhone instanceof SipPhone ||
+                    ringingPhone instanceof ThirdPartyPhone)) {
                 Rlog.d(LOG_TAG, "setAudioMode Setting audio mode from " +
                                 currMode + " to " + AudioManager.MODE_IN_CALL);
                 audioManager.setMode(AudioManager.MODE_IN_CALL);
