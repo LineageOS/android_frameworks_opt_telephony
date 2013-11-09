@@ -214,7 +214,12 @@ public class GSMPhone extends PhoneBase {
     @Override
     public ServiceState
     getServiceState() {
-        return mSST.mSS;
+        if (mSST != null) {
+            return mSST.mSS;
+        } else {
+            // avoid potential NPE in EmergencyCallHelper during Phone switch
+            return new ServiceState();
+        }
     }
 
     @Override
