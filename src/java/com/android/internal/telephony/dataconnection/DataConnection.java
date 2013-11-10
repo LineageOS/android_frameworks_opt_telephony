@@ -611,6 +611,21 @@ public final class DataConnection extends StateMachine {
         if (DBG) log("NotifyDisconnectCompleted DisconnectParams=" + dp);
     }
 
+    private int getRilRadioTechnology(int rilRadioTechnology) {
+        if (mPhone.mCi.getRilVersion() < 6) {
+            int phoneType = mPhone.getPhoneType();
+            if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
+                return RILConstants.SETUP_DATA_TECH_GSM;
+            } else if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
+                return RILConstants.SETUP_DATA_TECH_CDMA;
+            } else {
+                throw new RuntimeException("Unknown phoneType " + phoneType + ", should not happen");
+            }
+        } else {
+            return rilRadioTechnology + 2;
+        }
+    }
+
     /*
      * **************************************************************************
      * Begin Members and methods owned by DataConnectionTracker but stored
