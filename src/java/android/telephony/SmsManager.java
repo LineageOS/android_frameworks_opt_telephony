@@ -141,8 +141,8 @@ public final class SmsManager {
         try {
             ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
-                iccISms.sendTextWithPriority(destinationAddress, scAddress, text, sentIntent,
-                        deliveryIntent, priority);
+                iccISms.sendTextWithPriority(ActivityThread.currentPackageName(),
+                        destinationAddress, scAddress, text, sentIntent, deliveryIntent, priority);
             }
         } catch (RemoteException ex) {
             // ignore it
