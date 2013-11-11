@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2006 The Android Open Source Project
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
+ * Copyright (C) 2006 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,14 +37,14 @@ import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
 import com.android.internal.telephony.SmsBroadcastUndelivered;
 
-public final class ImsSMSDispatcher extends SMSDispatcher {
+public class ImsSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "RIL_ImsSms";
 
-    private SMSDispatcher mCdmaDispatcher;
-    private SMSDispatcher mGsmDispatcher;
+    protected SMSDispatcher mCdmaDispatcher;
+    protected SMSDispatcher mGsmDispatcher;
+    protected GsmInboundSmsHandler mGsmInboundSmsHandler;
+    protected CdmaInboundSmsHandler mCdmaInboundSmsHandler;
 
-    GsmInboundSmsHandler mGsmInboundSmsHandler;
-    CdmaInboundSmsHandler mCdmaInboundSmsHandler;
 
     /** true if IMS is registered and sms is supported, false otherwise.*/
     private boolean mIms = false;
@@ -56,21 +57,25 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
 
         // Create dispatchers, inbound SMS handlers and broadcast
         // undelivered messages in raw table.
-        mCdmaDispatcher = new CdmaSMSDispatcher(phone,
-                storageMonitor, usageMonitor, this);
-        mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(phone.getContext(),
-                storageMonitor, phone);
-        mCdmaInboundSmsHandler = CdmaInboundSmsHandler.makeInboundSmsHandler(phone.getContext(),
-                storageMonitor, phone, (CdmaSMSDispatcher) mCdmaDispatcher);
-        mGsmDispatcher = new GsmSMSDispatcher(phone,
-                storageMonitor, usageMonitor, this, mGsmInboundSmsHandler);
-        Thread broadcastThread = new Thread(new SmsBroadcastUndelivered(phone.getContext(),
-                mGsmInboundSmsHandler, mCdmaInboundSmsHandler));
-        broadcastThread.start();
+        initDispatchers(phone, storageMonitor, usageMonitor);
 
         mCi.registerForOn(this, EVENT_RADIO_ON, null);
         mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
     }
+
+    protected void initDispatchers(PhoneBase phone, SmsStorageMonitor storageMonitor,
+            SmsUsageMonitor usageMonitor) {
+        mCdmaDispatcher = new CdmaSMSDispatcher(phone, usageMonitor, this);
+        mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(phone.getContext(),
+                storageMonitor, phone);
+        mCdmaInboundSmsHandler = CdmaInboundSmsHandler.makeInboundSmsHandler(phone.getContext(),
+                storageMonitor, phone, (CdmaSMSDispatcher) mCdmaDispatcher);
+        mGsmDispatcher = new GsmSMSDispatcher(phone, usageMonitor, this, mGsmInboundSmsHandler);
+        Thread broadcastThread = new Thread(new SmsBroadcastUndelivered(phone.getContext(),
+                mGsmInboundSmsHandler, mCdmaInboundSmsHandler));
+        broadcastThread.start();
+    }
+
 
     /* Updates the phone object when there is a change */
     @Override
@@ -79,6 +84,8 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
         super.updatePhoneObject(phone);
         mCdmaDispatcher.updatePhoneObject(phone);
         mGsmDispatcher.updatePhoneObject(phone);
+        mGsmInboundSmsHandler.updatePhoneObject(phone);
+        mCdmaInboundSmsHandler.updatePhoneObject(phone);
     }
 
     public void dispose() {
@@ -198,6 +205,18 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
         } else {
             mGsmDispatcher.sendText(destAddr, scAddr,
                     text, sentIntent, deliveryIntent);
+        }
+    }
+
+    @Override
+    protected void sendTextWithPriority(String destAddr, String scAddr, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+        Rlog.d(TAG, "sendTextWithPriority");
+        if (isCdmaMo()) {
+            mCdmaDispatcher.sendTextWithPriority(destAddr, scAddr,
+                    text, sentIntent, deliveryIntent, priority);
+        } else {
+            Rlog.e(TAG, "priority is not supported in 3gpp text message!");
         }
     }
 

@@ -91,7 +91,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public static final int EVENT_CFI = 1; // Call Forwarding indication
     public static final int EVENT_SPN = 2; // Service Provider Name
 
+
     public static final int EVENT_GET_ICC_RECORD_DONE = 100;
+    public static final int EVENT_REFRESH = 31; // ICC refresh occurred
     protected static final int EVENT_APP_READY = 1;
 
     @Override
@@ -148,6 +150,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
         mCi = ci;
         mFh = app.getIccFileHandler();
         mParentApp = app;
+
+        mCi.registerForIccRefresh(this, EVENT_REFRESH, null);
     }
 
     /**
@@ -155,6 +159,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     public void dispose() {
         mDestroyed.set(true);
+        mCi.unregisterForIccRefresh(this);
         mParentApp = null;
         mFh = null;
         mCi = null;
@@ -164,6 +169,20 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public abstract void onReady();
 
     //***** Public Methods
+
+    /*
+     * Called to indicate that anyone could request records
+     * in the future after this call, once records are loaded and registrants
+     * have been notified. This indication could be used
+     * to optimize when to actually fetch records from the card. We
+     * don't need to fetch records from the card if it is of no use
+     * to anyone
+     *
+     */
+    void recordsRequired() {
+        return;
+    }
+
     public AdnRecordCache getAdnCache() {
         return mAdnCache;
     }
@@ -391,10 +410,11 @@ public abstract class IccRecords extends Handler implements IccConstants {
     //***** Overridden from Handler
     @Override
     public void handleMessage(Message msg) {
+        AsyncResult ar;
         switch (msg.what) {
             case EVENT_GET_ICC_RECORD_DONE:
                 try {
-                    AsyncResult ar = (AsyncResult) msg.obj;
+                    ar = (AsyncResult) msg.obj;
                     IccRecordLoaded recordLoaded = (IccRecordLoaded) ar.userObj;
                     if (DBG) log(recordLoaded.getEfName() + " LOADED");
 
@@ -411,11 +431,70 @@ public abstract class IccRecords extends Handler implements IccConstants {
                     onRecordLoaded();
                 }
                 break;
+            case EVENT_REFRESH:
+                ar = (AsyncResult)msg.obj;
+                if (DBG) log("Card REFRESH occurred: ");
+                if (ar.exception == null) {
+                    handleRefresh((IccRefreshResponse)ar.result);
+                } else {
+                    loge("Icc refresh Exception: " + ar.exception);
+                }
+                break;
 
             default:
                 super.handleMessage(msg);
         }
     }
+
+    protected abstract void handleFileUpdate(int efid);
+
+    private void handleRefresh(IccRefreshResponse refreshResponse){
+        if (refreshResponse == null) {
+            if (DBG) log("handleRefresh received without input");
+            return;
+        }
+
+        if (refreshResponse.aid != null &&
+                !refreshResponse.aid.equals(mParentApp.getAid())) {
+            // This is for different app. Ignore.
+            return;
+        }
+
+        switch (refreshResponse.refreshResult) {
+            case IccRefreshResponse.REFRESH_RESULT_FILE_UPDATE:
+                if (DBG) log("handleRefresh with SIM_FILE_UPDATED");
+                handleFileUpdate(refreshResponse.efId);
+                break;
+            case IccRefreshResponse.REFRESH_RESULT_INIT:
+                if (DBG) log("handleRefresh with SIM_REFRESH_INIT");
+                // need to reload all files (that we care about)
+                mAdnCache.reset();
+                //We will re-fetch the records when the app
+                // goes back to the ready state. Nothing to do here.
+                break;
+            case IccRefreshResponse.REFRESH_RESULT_RESET:
+                if (DBG) log("handleRefresh with SIM_REFRESH_RESET");
+                if (powerOffOnSimReset()) {
+                    mCi.setRadioPower(false, null);
+                    /* Note: no need to call setRadioPower(true).  Assuming the desired
+                    * radio power state is still ON (as tracked by ServiceStateTracker),
+                    * ServiceStateTracker will call setRadioPower when it receives the
+                    * RADIO_STATE_CHANGED notification for the power off.  And if the
+                    * desired power state has changed in the interim, we don't want to
+                    * override it with an unconditional power on.
+                    */
+                }
+                mAdnCache.reset();
+                //We will re-fetch the records when the app
+                // goes back to the ready state. Nothing to do here.
+                break;
+            default:
+                // unknown refresh operation
+                if (DBG) log("handleRefresh with unknown operation");
+                break;
+        }
+    }
+
 
     protected abstract void onRecordLoaded();
 
@@ -448,6 +527,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     public String getOperatorNumeric() {
         return null;
+    }
+
+    /**
+     * Check if call forward info is stored on SIM
+     * @return true if call forward info is stored on SIM.
+     */
+    public boolean isCallForwardStatusStored() {
+        return false;
     }
 
     /**
@@ -554,5 +641,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mMailboxIndex=" + mMailboxIndex);
         pw.println(" mSpn=" + mSpn);
         pw.flush();
+    }
+
+    protected boolean powerOffOnSimReset() {
+        return !mContext.getResources().getBoolean(
+                com.android.internal.R.bool.skip_radio_power_off_on_sim_refresh_reset);
     }
 }

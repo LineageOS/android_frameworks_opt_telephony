@@ -45,6 +45,11 @@ public interface MmiCode
     public CharSequence getMessage();
 
     /**
+     * @return Phone associated with the MMI/USSD message
+     */
+    public Phone getPhone();
+
+    /**
      * Cancels pending MMI request.
      * State becomes CANCELLED unless already COMPLETE or FAILED
      */

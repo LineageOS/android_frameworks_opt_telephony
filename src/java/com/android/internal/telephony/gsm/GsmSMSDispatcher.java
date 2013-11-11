@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2006 The Android Open Source Project
  * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
+ * Copyright (C) 2006 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +29,8 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.GsmAlphabet;
+import com.android.internal.telephony.ImsSMSDispatcher;
+import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsConstants;
@@ -37,8 +40,10 @@ import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.SmsUsageMonitor;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
+import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UsimServiceTable;
@@ -48,7 +53,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicReference;
 
-public final class GsmSMSDispatcher extends SMSDispatcher {
+public class GsmSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "GsmSMSDispatcher";
     private static final boolean VDBG = false;
     private ImsSMSDispatcher mImsSMSDispatcher;
@@ -61,13 +66,16 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     /** Status report received */
     private static final int EVENT_NEW_SMS_STATUS_REPORT = 100;
 
-    public GsmSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
-            SmsUsageMonitor usageMonitor, ImsSMSDispatcher imsSMSDispatcher,
+    public GsmSMSDispatcher(PhoneBase phone, SmsUsageMonitor usageMonitor,
+            ImsSMSDispatcher imsSMSDispatcher,
             GsmInboundSmsHandler gsmInboundSmsHandler) {
         super(phone, usageMonitor);
         mCi.setOnSmsStatus(this, EVENT_NEW_SMS_STATUS_REPORT, null);
+        mCi.setOnSmsOnSim(this, EVENT_SMS_ON_ICC, null);
         mImsSMSDispatcher = imsSMSDispatcher;
         mGsmInboundSmsHandler = gsmInboundSmsHandler;
+        mUiccController = UiccController.getInstance();
+        mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         Rlog.d(TAG, "GsmSMSDispatcher created");
     }
 
@@ -75,6 +83,11 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     public void dispose() {
         super.dispose();
         mCi.unSetOnSmsStatus(this);
+        mUiccController.unregisterForIccChanged(this);
+        mCi.unSetOnSmsOnSim(this);
+        if (mIccRecords.get() != null) {
+            mIccRecords.get().unregisterForNewSms(this);
+        }
     }
 
     @Override
@@ -102,6 +115,12 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
 
         case EVENT_ICC_CHANGED:
             onUpdateIccAvailability();
+            break;
+
+        case EVENT_SMS_ON_ICC:
+            if (mIccRecords.get() != null) {
+                ((SIMRecords)(mIccRecords.get())).handleSmsOnIcc((AsyncResult) msg.obj);
+            }
             break;
 
         default:
@@ -155,8 +174,8 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, destPort, data, (deliveryIntent != null));
         if (pdu != null) {
-            HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, destPort, data, pdu);
-            SmsTracker tracker = SmsTrackerFactory(map, sentIntent, deliveryIntent,
+            HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
+            SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent,
                     getFormat());
             sendRawPdu(tracker);
         } else {
@@ -171,13 +190,20 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, text, (deliveryIntent != null));
         if (pdu != null) {
-            HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, text, pdu);
-            SmsTracker tracker = SmsTrackerFactory(map, sentIntent, deliveryIntent,
+            HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
+            SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent,
                     getFormat());
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendText(): getSubmitPdu() returned null");
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    protected void sendTextWithPriority(String destAddr, String scAddr, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+        Rlog.e(TAG, "priority is not supported in 3gpp text message!");
     }
 
     /** {@inheritDoc} */
@@ -196,10 +222,10 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                 message, deliveryIntent != null, SmsHeader.toByteArray(smsHeader),
                 encoding, smsHeader.languageTable, smsHeader.languageShiftTable);
         if (pdu != null) {
-            HashMap map =  SmsTrackerMapFactory(destinationAddress, scAddress,
+            HashMap map =  getSmsTrackerMap(destinationAddress, scAddress,
                     message, pdu);
-            SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
-                    deliveryIntent, getFormat());
+            SmsTracker tracker = getSmsTracker(map, sentIntent,
+                    deliveryIntent, getFormat(), !lastPart);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendNewSubmitPdu(): getSubmitPdu() returned null");
@@ -251,8 +277,13 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                     pdu[1] = (byte) tracker.mMessageRef; // TP-MR
                 }
             }
-            mCi.sendSMS(IccUtils.bytesToHexString(smsc),
-                    IccUtils.bytesToHexString(pdu), reply);
+            if (tracker.mRetryCount == 0 && tracker.mExpectMore) {
+                mCi.sendSMSExpectMore(IccUtils.bytesToHexString(smsc),
+                        IccUtils.bytesToHexString(pdu), reply);
+            } else {
+                mCi.sendSMS(IccUtils.bytesToHexString(smsc),
+                        IccUtils.bytesToHexString(pdu), reply);
+            }
         } else {
             mCi.sendImsGsmSms(IccUtils.bytesToHexString(smsc),
                     IccUtils.bytesToHexString(pdu), tracker.mImsRetry,

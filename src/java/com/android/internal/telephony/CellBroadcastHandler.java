@@ -30,9 +30,9 @@ import android.telephony.SmsCbMessage;
  * completes and our result receiver is called.
  */
 public class CellBroadcastHandler extends WakeLockStateMachine {
-    private final Context mContext;
+    protected final Context mContext;
 
-    private CellBroadcastHandler(Context context) {
+    protected CellBroadcastHandler(Context context) {
         this("CellBroadcastHandler", context);
     }
 

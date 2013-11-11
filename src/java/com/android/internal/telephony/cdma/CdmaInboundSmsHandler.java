@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
  * Copyright (C) 2013 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,10 +47,9 @@ import java.util.Arrays;
  */
 public class CdmaInboundSmsHandler extends InboundSmsHandler {
 
-    private final PhoneBase mPhone;
     private final CdmaSMSDispatcher mSmsDispatcher;
-    private final CellBroadcastHandler mCellBroadcastHandler;
-    private final CdmaServiceCategoryProgramHandler mServiceCategoryProgramHandler;
+    protected CellBroadcastHandler mCellBroadcastHandler;
+    protected CdmaServiceCategoryProgramHandler mServiceCategoryProgramHandler;
 
     private byte[] mLastDispatchedSmsFingerprint;
     private byte[] mLastAcknowledgedSmsFingerprint;
@@ -59,15 +60,19 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     /**
      * Create a new inbound SMS handler for CDMA.
      */
-    private CdmaInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
+    protected CdmaInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
             PhoneBase phone, CdmaSMSDispatcher smsDispatcher) {
         super("CdmaInboundSmsHandler", context, storageMonitor);
         mSmsDispatcher = smsDispatcher;
+        init(context, phone);
+        mPhone = phone;
+        phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
+    }
+
+    protected void init(Context context, PhoneBase phone) {
         mCellBroadcastHandler = CellBroadcastHandler.makeCellBroadcastHandler(context);
         mServiceCategoryProgramHandler = CdmaServiceCategoryProgramHandler.makeScpHandler(context,
                 phone.mCi);
-        mPhone = phone;
-        phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
     }
 
     /**
@@ -109,6 +114,12 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     @Override
     protected boolean is3gpp2() {
         return true;
+    }
+
+    /* Updates the phone object when there is a change */
+    public void updatePhoneObject(PhoneBase phone) {
+        mPhone = phone;
+        mStorageMonitor = phone.mSmsStorageMonitor;
     }
 
     /**

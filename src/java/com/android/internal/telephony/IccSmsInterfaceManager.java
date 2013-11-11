@@ -1,6 +1,7 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,8 +50,8 @@ import static android.telephony.SmsManager.STATUS_ON_ICC_UNREAD;
  * access Sms in Icc.
  */
 public class IccSmsInterfaceManager extends ISms.Stub {
-    static final String LOG_TAG = "IccSmsInterfaceManager";
-    static final boolean DBG = true;
+    protected static final String LOG_TAG = "IccSmsInterfaceManager";
+    protected static final boolean DBG = true;
 
     protected final Object mLock = new Object();
     protected boolean mSuccess;
@@ -90,8 +91,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
                     ar = (AsyncResult)msg.obj;
                     synchronized (mLock) {
                         if (ar.exception == null) {
-                            mSms  = (List<SmsRawData>)
-                                    buildValidRawData((ArrayList<byte[]>) ar.result);
+                            mSms = buildValidRawData((ArrayList<byte[]>) ar.result);
                             //Mark SMS as read after importing it from card.
                             markMessagesAsRead((ArrayList<byte[]>) ar.result);
                         } else {
@@ -120,11 +120,16 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         mPhone = phone;
         mContext = phone.getContext();
         mAppOps = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
-        mDispatcher = new ImsSMSDispatcher(phone,
-                phone.mSmsStorageMonitor, phone.mSmsUsageMonitor);
+        initDispatchers();
         if (ServiceManager.getService("isms") == null) {
             ServiceManager.addService("isms", this);
         }
+    }
+
+    protected void initDispatchers() {
+        if(DBG) Log.d(LOG_TAG, "IccSmsInterfaceManager: initDispatchers()");
+        mDispatcher = new ImsSMSDispatcher(mPhone,
+                mPhone.mSmsStorageMonitor, mPhone.mSmsUsageMonitor);
     }
 
     protected void markMessagesAsRead(ArrayList<byte[]> messages) {
@@ -158,10 +163,6 @@ public class IccSmsInterfaceManager extends ISms.Stub {
                  }
              }
         }
-    }
-
-    public void dispose() {
-        mDispatcher.dispose();
     }
 
     protected void updatePhoneObject(PhoneBase phone) {
@@ -400,6 +401,45 @@ public class IccSmsInterfaceManager extends ISms.Stub {
     }
 
     /**
+     * Send a text based SMS.
+     *
+     * @param destAddr the address to send the message to
+     * @param scAddr is the service center address or null to use
+     *  the current default SMSC
+     * @param text the body of the message to send
+     * @param sentIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is successfully sent, or failed.
+     *  The result code will be <code>Activity.RESULT_OK<code> for success,
+     *  or one of these errors:<br>
+     *  <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
+     *  <code>RESULT_ERROR_RADIO_OFF</code><br>
+     *  <code>RESULT_ERROR_NULL_PDU</code><br>
+     *  For <code>RESULT_ERROR_GENERIC_FAILURE</code> the sentIntent may include
+     *  the extra "errorCode" containing a radio technology specific value,
+     *  generally only useful for troubleshooting.<br>
+     *  The per-application based SMS control checks sentIntent. If sentIntent
+     *  is NULL the caller will be checked against all unknown applications,
+     *  which cause smaller number of SMS to be sent in checking period.
+     * @param deliveryIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is delivered to the recipient.  The
+     *  raw pdu of the status report is in the extended data ("pdu").
+     * @param priority Priority level of the message
+     */
+    public void sendTextWithPriority(String destAddr, String scAddr, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+        mPhone.getContext().enforceCallingPermission(
+                "android.permission.SEND_SMS",
+                "Sending SMS message");
+        if (Log.isLoggable("SMS", Log.VERBOSE)) {
+            log("sendText: destAddr=" + destAddr + " scAddr=" + scAddr +
+                    " text='" + text + "' sentIntent=" +
+                    sentIntent + " deliveryIntent=" + deliveryIntent);
+        }
+        mDispatcher.sendTextWithPriority(destAddr, scAddr, text, sentIntent, deliveryIntent,
+                priority);
+    }
+
+    /**
      * Send a multi-part text based SMS.
      *
      * @param destAddr the address to send the message to
@@ -489,7 +529,12 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      * @return byte array for the record.
      */
     protected byte[] makeSmsRecordData(int status, byte[] pdu) {
-        byte[] data = new byte[IccConstants.SMS_RECORD_LENGTH];
+        byte[] data;
+        if (PhoneConstants.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+            data = new byte[IccConstants.SMS_RECORD_LENGTH];
+        } else {
+            data = new byte[IccConstants.CDMA_SMS_RECORD_LENGTH];
+        }
 
         // Status bits for this record.  See TS 51.011 10.5.3
         data[0] = (byte)(status & 7);
@@ -497,7 +542,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         System.arraycopy(pdu, 0, data, 1, pdu.length);
 
         // Pad out with 0xFF's.
-        for (int j = pdu.length+1; j < IccConstants.SMS_RECORD_LENGTH; j++) {
+        for (int j = pdu.length+1; j < data.length; j++) {
             data[j] = -1;
         }
 

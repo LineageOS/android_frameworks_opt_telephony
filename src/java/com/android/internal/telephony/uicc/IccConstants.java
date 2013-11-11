@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2013, Linux Foundation. All rights reserved.
+ * Not a Contribution, Apache license notifications and license are retained
+ * for attribution purposes only.
+ *
  * Copyright (C) 2006 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +32,7 @@ public interface IccConstants {
     static final int EF_EXT1 = 0x6F4A;
     static final int EF_EXT2 = 0x6F4B;
     static final int EF_EXT3 = 0x6F4C;
+    static final int EF_EXT5 = 0x6F4E;
     static final int EF_EXT6 = 0x6fc8;   // Ext record for EF[MBDN]
     static final int EF_MWIS = 0x6FCA;
     static final int EF_MBDN = 0x6fc7;
@@ -79,6 +84,8 @@ public interface IccConstants {
 
     // SMS record length from TS 51.011 10.5.3
     static public final int SMS_RECORD_LENGTH = 176;
+    // SMS record length from C.S0023 3.4.27
+    static public final int CDMA_SMS_RECORD_LENGTH = 255;
 
     static final String MF_SIM = "3F00";
     static final String DF_TELECOM = "7F10";
