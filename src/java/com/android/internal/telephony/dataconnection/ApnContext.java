@@ -19,6 +19,7 @@ package com.android.internal.telephony.dataconnection;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.telephony.Rlog;
+import android.text.TextUtils;
 
 import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
@@ -229,6 +230,9 @@ public class ApnContext {
     public boolean isProvisioningApn() {
         String provisioningApn = mContext.getResources()
                 .getString(R.string.mobile_provisioning_apn);
+        if (TextUtils.isEmpty(provisioningApn)) {
+            return false;
+        }
         if ((mApnSetting != null) && (mApnSetting.apn != null)) {
             return (mApnSetting.apn.equals(provisioningApn));
         } else {
