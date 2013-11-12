@@ -1197,7 +1197,6 @@ public final class DataConnection extends StateMachine {
                                 + "RefCount=" + mApnContexts.size());
                     }
                     mInactiveState.setEnterNotificationParams(DcFailCause.LOST_CONNECTION);
-                    deferMessage(msg);
                     transitionTo(mInactiveState);
                     retVal = HANDLED;
                     break;
@@ -1474,7 +1473,6 @@ public final class DataConnection extends StateMachine {
                         log("DcActiveState EVENT_DISCONNECT clearing apn contexts,"
                                 + " dc=" + DataConnection.this);
                     }
-                    mApnContexts.clear();
                     DisconnectParams dp = (DisconnectParams) msg.obj;
                     mDisconnectParams = dp;
                     mConnectionParams = null;
