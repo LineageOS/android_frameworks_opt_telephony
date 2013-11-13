@@ -594,11 +594,6 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
-    public void acceptCall(int callType) throws CallStateException {
-        mActivePhone.acceptCall(callType);
-    }
-
-    @Override
     public int getCallType(Call call) throws CallStateException {
         return mActivePhone.getCallType(call);
     }
@@ -1289,6 +1284,16 @@ public class PhoneProxy extends Handler implements Phone {
 
     public void unregisterForAvpUpgradeFailure(Handler h) throws CallStateException {
         mActivePhone.unregisterForAvpUpgradeFailure(h);
+    }
+
+    public void addParticipant(String dialString, int clir, int callType, String[] extras)
+            throws CallStateException {
+        mActivePhone.addParticipant(dialString, clir, callType, extras);
+    }
+
+    public void hangupWithReason(int callId, String userUri,
+            boolean mpty, int failCause, String errorInfo) throws CallStateException {
+        mActivePhone.hangupWithReason(callId, userUri, mpty, failCause, errorInfo);
     }
 
     public int getSubscription() {
