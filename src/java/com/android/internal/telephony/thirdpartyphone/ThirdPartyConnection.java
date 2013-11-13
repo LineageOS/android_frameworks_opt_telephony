@@ -239,12 +239,13 @@ class ThirdPartyConnection extends Connection {
         return null;
     }
 
-    void initIncomingCall(String callId, Call.State newState) {
-        log("initIncomingCall - calling setState");
+    void initIncomingCall(String callId, String callerDisplayName, Call.State newState) {
+        if (DBG) log("initIncomingCall - calling setState");
         // TODO: move mCallProvider setter here
         setState(newState);
         mIncoming = true;
         mCallId = callId;
+        mOriginalNumber = callerDisplayName;
         connectToCallProviderService();
     }
 
@@ -286,6 +287,16 @@ class ThirdPartyConnection extends Connection {
 
     boolean getMute() {
         return mIsMuted;
+    }
+
+    void sendDtmf(char c) {
+        if (mCallProvider != null) {
+            try {
+                mCallProvider.sendDtmf(c);
+            } catch (RemoteException e) {
+                log("sendDtmf(): " + e);
+            }
+        }
     }
 
     private void setState(Call.State state) {

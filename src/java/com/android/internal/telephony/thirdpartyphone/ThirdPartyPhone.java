@@ -77,7 +77,7 @@ public class ThirdPartyPhone extends PhoneBase {
         return mCallProviderComponent;
     }
 
-    public boolean takeIncomingCall(final ComponentName component, final String callId) {
+    public boolean takeIncomingCall(final String callId, String callerDisplayName) {
         if (mRingingCall.getState().isAlive()) {
             if (DBG) log("takeIncomingCall: returning false, ringingCall not alive");
             return false;
@@ -87,7 +87,7 @@ public class ThirdPartyPhone extends PhoneBase {
             return false;
         }
         boolean makeCallWait = mForegroundCall.getState().isAlive();
-        mRingingCall.initIncomingCall(callId, makeCallWait);
+        mRingingCall.initIncomingCall(callId, callerDisplayName, makeCallWait);
         return true;
     }
 
@@ -229,17 +229,19 @@ public class ThirdPartyPhone extends PhoneBase {
 
     @Override
     public void sendDtmf(char c) {
-        // TODO(sail): This is not supported yet.
+        if (mForegroundCall.getState().isAlive()) {
+            mForegroundCall.sendDtmf(c);
+        }
     }
 
     @Override
     public void startDtmf(char c) {
-        // TODO(sail): This is not supported yet.
+        sendDtmf(c);
     }
 
     @Override
     public void stopDtmf() {
-        // TODO(sail): This is not supported yet.
+        // no op
     }
 
     @Override
