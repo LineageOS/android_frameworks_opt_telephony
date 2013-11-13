@@ -401,7 +401,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
     }
 
     /**
-     * Send a text based SMS.
+     * Send a text based SMS with priority.
      *
      * @param destAddr the address to send the message to
      * @param scAddr is the service center address or null to use
@@ -425,15 +425,19 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      *  raw pdu of the status report is in the extended data ("pdu").
      * @param priority Priority level of the message
      */
-    public void sendTextWithPriority(String destAddr, String scAddr, String text,
-            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+    public void sendTextWithPriority(String callingPackage, String destAddr, String scAddr,
+            String text, PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
         mPhone.getContext().enforceCallingPermission(
-                "android.permission.SEND_SMS",
+                Manifest.permission.SEND_SMS,
                 "Sending SMS message");
-        if (Log.isLoggable("SMS", Log.VERBOSE)) {
-            log("sendText: destAddr=" + destAddr + " scAddr=" + scAddr +
-                    " text='" + text + "' sentIntent=" +
-                    sentIntent + " deliveryIntent=" + deliveryIntent);
+        if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
+            log("sendTextWithPriority: destAddr=" + destAddr + " scAddr=" + scAddr +
+                " text='"+ text + "' sentIntent=" +
+                sentIntent + " deliveryIntent=" + deliveryIntent + " priority="+priority);
+        }
+        if (mAppOps.noteOp(AppOpsManager.OP_SEND_SMS, Binder.getCallingUid(),
+                callingPackage) != AppOpsManager.MODE_ALLOWED) {
+            return;
         }
         mDispatcher.sendTextWithPriority(destAddr, scAddr, text, sentIntent, deliveryIntent,
                 priority);
