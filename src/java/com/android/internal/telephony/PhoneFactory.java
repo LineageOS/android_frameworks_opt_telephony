@@ -147,6 +147,9 @@ public class PhoneFactory {
                 }
                 Rlog.i(LOG_TAG, "defaultSmsApplication: " + packageName);
 
+                // Set up monitor to watch for changes to SMS packages
+                SmsApplication.initSmsPackageMonitor(context);
+
                 sMadeDefaults = true;
             }
         }
