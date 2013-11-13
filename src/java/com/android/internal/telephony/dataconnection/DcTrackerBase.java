@@ -616,8 +616,12 @@ public abstract class DcTrackerBase extends Handler {
                 Settings.Global.TETHER_DUN_APN);
         ApnSetting dunSetting = ApnSetting.fromString(apnData);
         if (dunSetting != null) {
-            if (VDBG) log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
-            return dunSetting;
+            IccRecords r = mIccRecords.get();
+            String operator = (r != null) ? r.getOperatorNumeric() : "";
+            if (dunSetting.numeric.equals(operator)) {
+                if (VDBG) log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
+                return dunSetting;
+            }
         }
 
         apnData = c.getResources().getString(R.string.config_tether_apndata);
