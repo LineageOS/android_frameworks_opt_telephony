@@ -465,7 +465,9 @@ public final class SmsApplication {
             PackageManager packageManager = mContext.getPackageManager();
             // Ensure this component is still configured as the preferred activity
             ComponentName componentName = getDefaultSendToApplication(mContext, true);
-            configurePreferredActivity(packageManager, componentName);
+            if (componentName != null) {
+                configurePreferredActivity(packageManager, componentName);
+            }
         }
     }
 
@@ -480,7 +482,8 @@ public final class SmsApplication {
         replacePreferredActivity(packageManager, componentName, SCHEME_SMS);
         replacePreferredActivity(packageManager, componentName, SCHEME_SMSTO);
         replacePreferredActivity(packageManager, componentName, SCHEME_MMS);
-        replacePreferredActivity(packageManager, componentName, SCHEME_MMSTO);}
+        replacePreferredActivity(packageManager, componentName, SCHEME_MMSTO);
+    }
 
     /**
      * Updates the ACTION_SENDTO activity to the specified component for the specified scheme.
