@@ -70,12 +70,12 @@ class ThirdPartyCall extends Call {
         }
     }
 
-    void initIncomingCall(String callId, boolean makeCallWait) {
+    void initIncomingCall(String callId, String callerDisplayName, boolean makeCallWait) {
         try {
             ThirdPartyConnection c = new ThirdPartyConnection(this);
             mConnections.add(c);
             Call.State newState = makeCallWait ? State.WAITING : State.INCOMING;
-            c.initIncomingCall(callId, newState);
+            c.initIncomingCall(callId, callerDisplayName, newState);
             setState(newState);
             mPhone.notifyNewRingingConnection(c);
         } catch (Throwable e) {
@@ -143,6 +143,12 @@ class ThirdPartyCall extends Call {
         mConnections.add(c);
         setState(Call.State.DIALING);
         return c;
+    }
+
+    void sendDtmf(char c) {
+        if (!mConnections.isEmpty()) {
+            ((ThirdPartyConnection) mConnections.get(0)).sendDtmf(c);
+        }
     }
 
     void onConnectionStateChanged(ThirdPartyConnection conn) {
