@@ -23,6 +23,7 @@ import android.net.LinkProperties;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.telephony.CellLocation;
@@ -60,6 +61,7 @@ public class ThirdPartyPhone extends PhoneBase {
             "android.intent.action.THIRD_PARTY_CALL_SERVICE";
 
     private RegistrantList mRingbackRegistrants = new RegistrantList();
+    private Registrant mPostDialHandler;
     private PhoneConstants.State mState = PhoneConstants.State.IDLE;
     private ThirdPartyCall mRingingCall = new ThirdPartyCall(this);
     private ThirdPartyCall mForegroundCall = new ThirdPartyCall(this);
@@ -528,6 +530,11 @@ public class ThirdPartyPhone extends PhoneBase {
 
     @Override
     public void setOnPostDialCharacter(Handler h, int what, Object obj) {
+        mPostDialHandler = new Registrant(h, what, obj);
+    }
+
+    public Registrant getPostDialHandler() {
+        return mPostDialHandler;
     }
 
     @Override

@@ -36,6 +36,7 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.IThirdPartyCallService;
 import com.android.internal.telephony.IThirdPartyCallProvider;
 import com.android.internal.telephony.IThirdPartyCallListener;
+import com.android.internal.telephony.IThirdPartyCallSendDtmfCallback;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.UUSInfo;
@@ -46,8 +47,6 @@ class ThirdPartyConnection extends Connection {
     private static final int TIMEOUT_MAKE_CALL = 15; // in seconds
     private static final int TIMEOUT_ANSWER_CALL = 80; // in seconds
 
-    private String mPostDialString;      // outgoing calls only
-    private int mNextPostDialChar;       // index into postDialString
     /*
      * These time/timespan values are based on System.currentTimeMillis(),
      * i.e., "wall clock" time.
@@ -67,7 +66,6 @@ class ThirdPartyConnection extends Connection {
     private long mHoldingStartTimeReal;
 
     private DisconnectCause mCause = DisconnectCause.NOT_DISCONNECTED;
-    private PostDialState mPostDialState = PostDialState.NOT_STARTED;
 
     private ThirdPartyCall mOwner;
     private Call.State mState = Call.State.IDLE;
@@ -75,6 +73,7 @@ class ThirdPartyConnection extends Connection {
     private boolean mIncoming = false;
     private String mOriginalNumber;
     private String mCallId;
+    private final ThirdPartyPostDialHelper mPostDialHelper;
 
     private final Handler mTimeoutHandler = new Handler();
     private final Runnable mTimeoutRunnable = new Runnable() {
@@ -91,7 +90,8 @@ class ThirdPartyConnection extends Connection {
 
     ThirdPartyConnection(ThirdPartyCall owner, String dialString) {
         if (DBG) log("new ThirdPartyConnection, dialString: " + dialString);
-        mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
+        mPostDialHelper = new ThirdPartyPostDialHelper(this,
+                PhoneNumberUtils.extractPostDialPortion(dialString));
         mCreateTime = System.currentTimeMillis();
         mOriginalNumber = dialString;
         mOwner = owner;
@@ -102,6 +102,7 @@ class ThirdPartyConnection extends Connection {
         mCreateTime = System.currentTimeMillis();
         mOriginalNumber = "";
         mOwner = owner;
+        mPostDialHelper = new ThirdPartyPostDialHelper(this, null);
     }
 
     @Override
@@ -195,33 +196,27 @@ class ThirdPartyConnection extends Connection {
 
     @Override
     public PostDialState getPostDialState() {
-        return mPostDialState;
+        return mPostDialHelper.getPostDialState();
     }
 
     @Override
     public String getRemainingPostDialString() {
-        if (mPostDialState == PostDialState.CANCELLED
-            || mPostDialState == PostDialState.COMPLETE
-            || mPostDialString == null
-            || mPostDialString.length() <= mNextPostDialChar) {
-            return "";
-        }
-        return mPostDialString.substring(mNextPostDialChar);
+        return mPostDialHelper.getRemainingPostDialString();
     }
 
     @Override
     public void proceedAfterWaitChar() {
-        // TODO(sail): This is not supported yet.
+        mPostDialHelper.proceedAfterWaitChar();
     }
 
     @Override
     public void proceedAfterWildChar(String str) {
-        // TODO(sail): This is not supported yet.
+        mPostDialHelper.proceedAfterWildChar(str);
     }
 
     @Override
     public void cancelPostDial() {
-        // TODO(sail): This is not supported yet.
+        mPostDialHelper.cancelPostDial();
     }
 
     @Override
@@ -289,10 +284,10 @@ class ThirdPartyConnection extends Connection {
         return mIsMuted;
     }
 
-    void sendDtmf(char c) {
+    void sendDtmf(char c, Message message) {
         if (mCallProvider != null) {
             try {
-                mCallProvider.sendDtmf(c);
+                mCallProvider.sendDtmf(c, new SendDtmfCallback(message));
             } catch (RemoteException e) {
                 log("sendDtmf(): " + e);
             }
@@ -362,8 +357,10 @@ class ThirdPartyConnection extends Connection {
                         log("incomingCallAttach exception: " + e);
                     }
                 } else if (mState == Call.State.DIALING) {
+                    String dialNumber = PhoneNumberUtils.extractNetworkPortionAlt(
+                            mOriginalNumber);
                     try {
-                        mCallService.outgoingCallInitiate(mCallListener, mOriginalNumber);
+                        mCallService.outgoingCallInitiate(mCallListener, dialNumber);
                     } catch (RemoteException e) {
                         log("outgoingCallInitiate exception: " + e);
                     }
@@ -416,6 +413,7 @@ class ThirdPartyConnection extends Connection {
                         }
                         setState(Call.State.ACTIVE);
                         mOwner.onConnectionStateChanged(ThirdPartyConnection.this);
+                        mPostDialHelper.onCallEstablished();
                         break;
                     case MSG_CALL_ENDED:
                         handleCallEnded(getDisconnectCauseFromReason(msg.arg1));
@@ -458,6 +456,22 @@ class ThirdPartyConnection extends Connection {
         public void onCallEnded(int reason) {
             if (DBG) log("listener.onCallEnded");
             Message.obtain(mHandler, MSG_CALL_ENDED, reason, 0).sendToTarget();
+        }
+    }
+
+    private class SendDtmfCallback extends IThirdPartyCallSendDtmfCallback.Stub {
+        private final Message mMessage;
+
+        SendDtmfCallback(Message message) {
+            mMessage = message;
+        }
+
+        @Override
+        public void onSendDtmfCompleted() {
+            if (DBG) log("SendDtmfCallback.onSendDtmfCompleted");
+            if (mMessage != null) {
+                mMessage.sendToTarget();
+            }
         }
     }
 }

@@ -147,7 +147,7 @@ class ThirdPartyCall extends Call {
 
     void sendDtmf(char c) {
         if (!mConnections.isEmpty()) {
-            ((ThirdPartyConnection) mConnections.get(0)).sendDtmf(c);
+            ((ThirdPartyConnection) mConnections.get(0)).sendDtmf(c, null);
         }
     }
 
