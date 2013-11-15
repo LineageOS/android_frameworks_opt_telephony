@@ -1756,6 +1756,7 @@ public final class DcTracker extends DcTrackerBase {
         // pending.
         if (isDisconnected()) {
             if (mPhone.getServiceStateTracker().processPendingRadioPowerOffAfterDataOff()) {
+                if(DBG) log("onDisconnectDone: radio will be turned off, no retries");
                 // Radio will be turned off. No need to retry data setup
                 apnContext.setApnSetting(null);
                 apnContext.setDataConnectionAc(null);
@@ -1770,10 +1771,24 @@ public final class DcTracker extends DcTrackerBase {
             // Wait a bit before trying the next APN, so that
             // we're not tying up the RIL command channel.
             // This also helps in any external dependency to turn off the context.
+            if(DBG) log("onDisconnectDone: attached, ready and retry after disconnect");
             startAlarmForReconnect(getApnDelay(), apnContext);
         } else {
+            boolean restartRadioAfterProvisioning = mPhone.getContext().getResources().getBoolean(
+                    com.android.internal.R.bool.config_restartRadioAfterProvisioning);
+
+            if (apnContext.isProvisioningApn() && restartRadioAfterProvisioning) {
+                log("onDisconnectDone: restartRadio after provisioning");
+                restartRadio();
+            }
             apnContext.setApnSetting(null);
             apnContext.setDataConnectionAc(null);
+            if (isOnlySingleDcAllowed(mPhone.getServiceState().getRilDataRadioTechnology())) {
+                if(DBG) log("onDisconnectDone: isOnlySigneDcAllowed true so setup single apn");
+                setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION);
+            } else {
+                if(DBG) log("onDisconnectDone: not retrying");
+            }
         }
     }
 
