@@ -231,6 +231,9 @@ public class SmsUsageMonitor {
 
         @Override
         public void onChange(boolean selfChange, Uri uri) {
+            if (uri == null) {
+                return;
+            }
             if (uri.equals(Settings.Global.getUriFor(Settings.Global.SMS_SHORT_CODE_CONFIRMATION))) {
                 mCheckEnabled.set(Settings.Global.getInt(mContext.getContentResolver(),
                         Settings.Global.SMS_SHORT_CODE_CONFIRMATION, 1) != 0);
