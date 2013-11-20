@@ -610,9 +610,28 @@ public class CallManager {
      * @exception CallStateException when call is not ringing or waiting
      */
     public void acceptCall(Call ringingCall) throws CallStateException {
+        acceptCall(ringingCall, Phone.CALL_TYPE_VOICE);
+    }
+
+    /**
+     * Answers a ringing or waiting call, with an option to downgrade a Video
+     * call Active call, if any, go on hold. If active call can't be held, i.e.,
+     * a background call of the same channel exists, the active call will be
+     * hang up. Answering occurs asynchronously, and final notification occurs
+     * via
+     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int, java.lang.Object)
+     * registerForPreciseCallStateChanged()}.
+     *
+     * @param ringingCall The call to answer
+     * @param callType The call type to use to answer the call. Values from
+     *            Phone.RIL_CALL_TYPE
+     * @exception CallStateException when call is not ringing or waiting
+     */
+    public void acceptCall(Call ringingCall, int callType) throws CallStateException {
         Phone ringingPhone = ringingCall.getPhone();
         if (VDBG) {
-            Rlog.d(LOG_TAG, "acceptCall(" +ringingCall + " from " + ringingCall.getPhone() + ")");
+            Rlog.d(LOG_TAG, "acceptCall api with calltype " + callType);
+            Rlog.d(LOG_TAG, "acceptCall(" + ringingCall + " from " + ringingCall.getPhone() + ")");
             Rlog.d(LOG_TAG, toString());
         }
 
@@ -651,7 +670,11 @@ public class CallManager {
             }
         }
 
+        if (ringingPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
+            ringingPhone.acceptCall(callType);
+        } else {
             ringingPhone.acceptCall();
+        }
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End acceptCall(" +ringingCall + ")");
