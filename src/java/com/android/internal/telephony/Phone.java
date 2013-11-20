@@ -710,16 +710,6 @@ public interface Phone {
     void acceptCall() throws CallStateException;
 
     /**
-     * Answers a ringing or waiting call. Active calls, if any, go on hold.
-     * Answering occurs asynchronously, and final notification occurs via
-     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
-     * java.lang.Object) registerForPreciseCallStateChanged()}.
-     *
-     * @exception CallStateException when no call is ringing or waiting
-     */
-    void acceptCall(int callType) throws CallStateException;
-
-    /**
      * Gets call type for IMS calls.
      *
      * @return one of the call types in {@link Phone}
@@ -812,8 +802,34 @@ public interface Phone {
     void explicitCallTransfer() throws CallStateException;
 
     /**
-     * Clears all DISCONNECTED connections from Call connection lists.
-     * Calls that were in the DISCONNECTED state become idle. This occurs
+     * Add participant during Conference Call
+     *
+     * @param dialString
+     * @param clir
+     * @param callType
+     * @param extras
+     * @throws CallStateException
+     */
+    void addParticipant(String dialString, int clir, int callType, String[] extras)
+            throws CallStateException;
+
+    /**
+     * Hangup along with reason/error message if any
+     *
+     * @param callId
+     * @param userUri
+     * @param confUri
+     * @param mpty
+     * @param failCause
+     * @param errorInfo
+     * @throws CallStateException
+     */
+    void hangupWithReason(int callId, String userUri,
+            boolean mpty, int failCause, String errorInfo) throws CallStateException;
+
+    /**
+     * Clears all DISCONNECTED connections from Call connection lists. Calls
+     * that were in the DISCONNECTED state become idle. This occurs
      * synchronously.
      */
     void clearDisconnected();
