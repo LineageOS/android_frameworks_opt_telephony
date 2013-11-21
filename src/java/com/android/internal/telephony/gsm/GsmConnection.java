@@ -388,8 +388,13 @@ public class GsmConnection extends Connection {
                 if (serviceState == ServiceState.STATE_POWER_OFF) {
                     return DisconnectCause.POWER_OFF;
                 } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE
-                        || serviceState == ServiceState.STATE_EMERGENCY_ONLY ) {
-                    return DisconnectCause.OUT_OF_SERVICE;
+                        || phone.getServiceState().isEmergencyOnly()) {
+                    if (phone.getServiceState().isEmergencyOnly() &&
+                            causeCode == CallFailCause.NORMAL_CLEARING) {
+                        return DisconnectCause.NORMAL;
+                    } else {
+                        return DisconnectCause.OUT_OF_SERVICE;
+                    }
                 } else if (uiccAppState != AppState.APPSTATE_READY) {
                     return DisconnectCause.ICC_ERROR;
                 } else if (causeCode == CallFailCause.ERROR_UNSPECIFIED) {
