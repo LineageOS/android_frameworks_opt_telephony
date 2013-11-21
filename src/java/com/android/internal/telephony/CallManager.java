@@ -84,6 +84,7 @@ public class CallManager {
     private static final int EVENT_SERVICE_STATE_CHANGED = 118;
     private static final int EVENT_POST_DIAL_CHARACTER = 119;
     private static final int EVENT_SUPP_SERVICE_NOTIFY = 120;
+    private static final int EVENT_CALL_MODIFY = 121;
 
     private static final String PROPERTY_QCHAT_ENABLED = "persist.atel.qchat_enabled";
 
@@ -177,6 +178,9 @@ public class CallManager {
     = new RegistrantList();
 
     protected final RegistrantList mPostDialCharacterRegistrants
+    = new RegistrantList();
+
+    protected final RegistrantList mCallModifyRegistrants
     = new RegistrantList();
 
     protected CallManager() {
@@ -552,6 +556,11 @@ public class CallManager {
 
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             phone.registerForEcmTimerReset(mHandler, EVENT_ECM_TIMER_RESET, null);
+            try {
+                phone.registerForModifyCallRequest(mHandler, EVENT_CALL_MODIFY, null);
+            } catch (CallStateException e) {
+                Rlog.e(LOG_TAG, "registerForModifyCallRequest: CallStateException:" + e);
+            }
         }
     }
 
@@ -1632,6 +1641,17 @@ public class CallManager {
         mPostDialCharacterRegistrants.remove(h);
     }
 
+    /*
+     * Registrants for CallModify
+     */
+    public void registerForCallModify(Handler h, int what, Object obj) {
+        mCallModifyRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForCallModify(Handler h) {
+        mCallModifyRegistrants.remove(h);
+    }
+
     /* APIs to access foregroudCalls, backgroudCalls, and ringingCalls
      * 1. APIs to access list of calls
      * 2. APIs to check if any active call, which has connection other than
@@ -1978,6 +1998,16 @@ public class CallManager {
                 case EVENT_SERVICE_STATE_CHANGED:
                     if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_SERVICE_STATE_CHANGED)");
                     mServiceStateChangedRegistrants.notifyRegistrants((AsyncResult) msg.obj);
+                    break;
+                case EVENT_CALL_MODIFY:
+                    if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_CALL_MODIFY)");
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    if (ar != null && ar.result != null && ar.exception == null) {
+                        mCallModifyRegistrants.notifyRegistrants(new AsyncResult(null,
+                                (Connection) ar.result, null));
+                    } else {
+                        Rlog.e(LOG_TAG, "Error EVENT_MODIFY_CALL AsyncResult ar= " + ar);
+                    }
                     break;
                 case EVENT_POST_DIAL_CHARACTER:
                     // we need send the character that is being processed in msg.arg1
