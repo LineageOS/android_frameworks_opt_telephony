@@ -710,6 +710,11 @@ public class SmsMessage extends SmsMessageBase {
 
         if (mOriginatingAddress != null) {
             mOriginatingAddress.address = new String(mOriginatingAddress.origBytes);
+            if (mOriginatingAddress.ton == CdmaSmsAddress.TON_INTERNATIONAL_OR_IP) {
+                if (mOriginatingAddress.address.charAt(0) != '+') {
+                    mOriginatingAddress.address = "+" + mOriginatingAddress.address;
+                }
+            }
             if (VDBG) Rlog.v(LOG_TAG, "SMS originating address: "
                     + mOriginatingAddress.address);
         }
