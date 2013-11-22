@@ -25,12 +25,14 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.database.ContentObserver;
+import android.net.ConnectivityManager;
 import android.net.LinkCapabilities;
 import android.net.LinkProperties;
 import android.net.NetworkInfo;
 import android.net.TrafficStats;
 import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -48,6 +50,7 @@ import android.telephony.Rlog;
 
 import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
+import com.android.internal.telephony.DctConstants.State;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
@@ -55,6 +58,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.AsyncChannel;
+import com.android.internal.util.ArrayUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -204,6 +208,8 @@ public abstract class DcTrackerBase extends Handler {
     protected long mSentSinceLastRecv;
     // Controls when a simple recovery attempt it to be tried
     protected int mNoRecvPollCount = 0;
+    // Refrence counter for enabling fail fast
+    protected static int sEnableFailFastRefCounter = 0;
     // True if data stall detection is enabled
     protected volatile boolean mDataStallDetectionEnabled = true;
 
@@ -265,6 +271,34 @@ public abstract class DcTrackerBase extends Handler {
 
     protected ContentResolver mResolver;
 
+    /* Set to true with CMD_ENABLE_MOBILE_PROVISIONING */
+    protected boolean mIsProvisioning = false;
+
+    /* The Url passed as object parameter in CMD_ENABLE_MOBILE_PROVISIONING */
+    protected String mProvisioningUrl = null;
+
+    /* Intent for the provisioning apn alarm */
+    protected static final String INTENT_PROVISIONING_APN_ALARM =
+            "com.android.internal.telephony.provisioning_apn_alarm";
+
+    /* Tag for tracking stale alarms */
+    protected static final String PROVISIONING_APN_ALARM_TAG_EXTRA = "provisioning.apn.alarm.tag";
+
+    /* Debug property for overriding the PROVISIONING_APN_ALARM_DELAY_IN_MS */
+    protected static final String DEBUG_PROV_APN_ALARM =
+            "persist.debug.prov_apn_alarm";
+
+    /* Default for the provisioning apn alarm timeout */
+    protected static final int PROVISIONING_APN_ALARM_DELAY_IN_MS_DEFAULT = 1000 * 60 * 15;
+
+    /* The provision apn alarm intent used to disable the provisioning apn */
+    protected PendingIntent mProvisioningApnAlarmIntent = null;
+
+    /* Used to track stale provisioning apn alarms */
+    protected int mProvisioningApnAlarmTag = (int) SystemClock.elapsedRealtime();
+
+    protected AsyncChannel mReplyAc = new AsyncChannel();
+
     protected BroadcastReceiver mIntentReceiver = new BroadcastReceiver ()
     {
         @Override
@@ -290,6 +324,8 @@ public abstract class DcTrackerBase extends Handler {
                 onActionIntentRestartTrySetupAlarm(intent);
             } else if (action.equals(INTENT_DATA_STALL_ALARM)) {
                 onActionIntentDataStallAlarm(intent);
+            } else if (action.equals(INTENT_PROVISIONING_APN_ALARM)) {
+                onActionIntentProvisioningApnAlarm(intent);
             } else if (action.equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
                 final android.net.NetworkInfo networkInfo = (NetworkInfo)
                         intent.getParcelableExtra(WifiManager.EXTRA_NETWORK_INFO);
@@ -475,6 +511,8 @@ public abstract class DcTrackerBase extends Handler {
         sendMessage(msg);
     }
 
+    ConnectivityManager mCm;
+
     /**
      * Default constructor
      */
@@ -487,6 +525,8 @@ public abstract class DcTrackerBase extends Handler {
         mUiccController.registerForIccChanged(this, DctConstants.EVENT_ICC_CHANGED, null);
         mAlarmManager =
                 (AlarmManager) mPhone.getContext().getSystemService(Context.ALARM_SERVICE);
+        mCm = (ConnectivityManager) mPhone.getContext().getSystemService(
+                Context.CONNECTIVITY_SERVICE);
 
 
         IntentFilter filter = new IntentFilter();
@@ -495,6 +535,7 @@ public abstract class DcTrackerBase extends Handler {
         filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         filter.addAction(INTENT_DATA_STALL_ALARM);
+        filter.addAction(INTENT_PROVISIONING_APN_ALARM);
 
         mUserDataEnabled = Settings.Global.getInt(
                 mPhone.getContext().getContentResolver(), Settings.Global.MOBILE_DATA, 1) == 1;
@@ -623,6 +664,7 @@ public abstract class DcTrackerBase extends Handler {
     protected abstract boolean isDataAllowed();
     protected abstract boolean isApnTypeAvailable(String type);
     public    abstract DctConstants.State getState(String apnType);
+    protected abstract boolean isProvisioningApn(String apnType);
     protected abstract void setState(DctConstants.State s);
     protected abstract void gotoIdleAndNotifyDataConnection(String reason);
 
@@ -641,6 +683,7 @@ public abstract class DcTrackerBase extends Handler {
     protected abstract void onCleanUpAllConnections(String cause);
     public abstract boolean isDataPossible(String apnType);
     protected abstract void onUpdateIcc();
+    protected abstract void completeConnection(ApnContext apnContext);
 
     @Override
     public void handleMessage(Message msg) {
@@ -754,8 +797,22 @@ public abstract class DcTrackerBase extends Handler {
                 break;
             }
             case DctConstants.CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: {
-                final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
-                if (DBG) log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: enabled=" + enabled);
+                sEnableFailFastRefCounter += (msg.arg1 == DctConstants.ENABLED) ? 1 : -1;
+                if (DBG) {
+                    log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: "
+                            + " sEnableFailFastRefCounter=" + sEnableFailFastRefCounter);
+                }
+                if (sEnableFailFastRefCounter < 0) {
+                    final String s = "CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: "
+                            + "sEnableFailFastRefCounter:" + sEnableFailFastRefCounter + " < 0";
+                    loge(s);
+                    sEnableFailFastRefCounter = 0;
+                }
+                final boolean enabled = sEnableFailFastRefCounter > 0;
+                if (DBG) {
+                    log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: enabled=" + enabled
+                            + " sEnableFailFastRefCounter=" + sEnableFailFastRefCounter);
+                }
                 if (mFailFast != enabled) {
                     mFailFast = enabled;
                     mDataStallDetectionEnabled = !enabled;
@@ -775,8 +832,92 @@ public abstract class DcTrackerBase extends Handler {
 
                 break;
             }
+            case DctConstants.CMD_ENABLE_MOBILE_PROVISIONING: {
+                // TODO: Right now we know when it ends "successfully" when
+                // provisioning apn gets dropped, what happens if the user never
+                // succeed, I assume there is a timeout and the network will drop
+                // it after a period of time.
+                Bundle bundle = msg.getData();
+                if (bundle != null) {
+                    try {
+                        mProvisioningUrl = (String)bundle.get(DctConstants.PROVISIONING_URL_KEY);
+                    } catch(ClassCastException e) {
+                        loge("CMD_ENABLE_MOBILE_PROVISIONING: provisioning url not a string" + e);
+                        mProvisioningUrl = null;
+                    }
+                }
+                if (TextUtils.isEmpty(mProvisioningUrl)) {
+                    loge("CMD_ENABLE_MOBILE_PROVISIONING: provisioning url is empty, ignoring");
+                    mIsProvisioning = false;
+                    mProvisioningUrl = null;
+                } else {
+                    ApnContext apnContext = mApnContexts.get(PhoneConstants.APN_TYPE_DEFAULT);
+                    if (apnContext.isProvisioningApn() && apnContext.getState() == State.CONNECTED){
+                        log("CMD_ENABLE_MOBILE_PROVISIONING: mIsProvisioning=true url="
+                                + mProvisioningUrl);
+                        mIsProvisioning = true;
+                        startProvisioningApnAlarm();
+                        completeConnection(mApnContexts.get(PhoneConstants.APN_TYPE_DEFAULT));
+                    } else {
+                        log("CMD_ENABLE_MOBILE_PROVISIONING: No longer connected");
+                        mIsProvisioning = false;
+                        mProvisioningUrl = null;
+                    }
+                }
+                break;
+            }
+            case DctConstants.EVENT_PROVISIONING_APN_ALARM: {
+                if (DBG) log("EVENT_PROVISIONING_APN_ALARM");
+                ApnContext apnCtx = mApnContexts.get("default");
+                if (apnCtx.isProvisioningApn() && apnCtx.isConnectedOrConnecting()) {
+                    if (mProvisioningApnAlarmTag == msg.arg1) {
+                        if (DBG) log("EVENT_PROVISIONING_APN_ALARM: Disconnecting");
+                        mIsProvisioning = false;
+                        mProvisioningUrl = null;
+                        stopProvisioningApnAlarm();
+                        sendCleanUpConnection(true, apnCtx);
+                    } else {
+                        if (DBG) {
+                            log("EVENT_PROVISIONING_APN_ALARM: ignore stale tag,"
+                                    + " mProvisioningApnAlarmTag:" + mProvisioningApnAlarmTag
+                                    + " != arg1:" + msg.arg1);
+                        }
+                    }
+                } else {
+                    if (DBG) log("EVENT_PROVISIONING_APN_ALARM: Not connected ignore");
+                }
+                break;
+            }
+            case DctConstants.CMD_IS_PROVISIONING_APN: {
+                if (DBG) log("CMD_IS_PROVISIONING_APN");
+                boolean isProvApn;
+                try {
+                    String apnType = null;
+                    Bundle bundle = msg.getData();
+                    if (bundle != null) {
+                        apnType = (String)bundle.get(DctConstants.APN_TYPE_KEY);
+                    }
+                    if (TextUtils.isEmpty(apnType)) {
+                        loge("CMD_IS_PROVISIONING_APN: apnType is empty");
+                        isProvApn = false;
+                    } else {
+                        isProvApn = isProvisioningApn(apnType);
+                    }
+                } catch (ClassCastException e) {
+                    loge("CMD_IS_PROVISIONING_APN: NO provisioning url ignoring");
+                    isProvApn = false;
+                }
+                if (DBG) log("CMD_IS_PROVISIONING_APN: ret=" + isProvApn);
+                mReplyAc.replyToMessage(msg, DctConstants.CMD_IS_PROVISIONING_APN,
+                        isProvApn ? DctConstants.ENABLED : DctConstants.DISABLED);
+                break;
+            }
             case DctConstants.EVENT_ICC_CHANGED: {
                 onUpdateIcc();
+                break;
+            }
+            case DctConstants.EVENT_RESTART_RADIO: {
+                restartRadio();
                 break;
             }
             default:
@@ -827,6 +968,8 @@ public abstract class DcTrackerBase extends Handler {
             return DctConstants.APN_FOTA_ID;
         } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_CBS)) {
             return DctConstants.APN_CBS_ID;
+        } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_IA)) {
+            return DctConstants.APN_IA_ID;
         } else {
             return DctConstants.APN_INVALID_ID;
         }
@@ -850,6 +993,8 @@ public abstract class DcTrackerBase extends Handler {
             return PhoneConstants.APN_TYPE_FOTA;
         case DctConstants.APN_CBS_ID:
             return PhoneConstants.APN_TYPE_CBS;
+        case DctConstants.APN_IA_ID:
+            return PhoneConstants.APN_TYPE_IA;
         default:
             log("Unknown id (" + id + ") in apnIdToType");
             return PhoneConstants.APN_TYPE_DEFAULT;
@@ -965,11 +1110,12 @@ public abstract class DcTrackerBase extends Handler {
         }
 
         if (!isApnTypeAvailable(type)) {
-            if (DBG) log("type not available");
+            if (DBG) log("enableApnType: not available, type=" + type);
             return PhoneConstants.APN_TYPE_NOT_AVAILABLE;
         }
 
         if (isApnIdEnabled(id)) {
+            if (DBG) log("enableApnType: already active, type=" + type);
             return PhoneConstants.APN_ALREADY_ACTIVE;
         } else {
             setEnabled(id, true);
@@ -1496,12 +1642,125 @@ public abstract class DcTrackerBase extends Handler {
         startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
     }
 
+    protected void setInitialAttachApn() {
+        ApnSetting iaApnSetting = null;
+        ApnSetting defaultApnSetting = null;
+        ApnSetting firstApnSetting = null;
+
+        log("setInitialApn: E mPreferredApn=" + mPreferredApn);
+
+        if (mAllApnSettings != null && !mAllApnSettings.isEmpty()) {
+            firstApnSetting = mAllApnSettings.get(0);
+            log("setInitialApn: firstApnSetting=" + firstApnSetting);
+
+            // Search for Initial APN setting and the first apn that can handle default
+            for (ApnSetting apn : mAllApnSettings) {
+                // Can't use apn.canHandleType(), as that returns true for APNs that have no type.
+                if (ArrayUtils.contains(apn.types, PhoneConstants.APN_TYPE_IA)) {
+                    // The Initial Attach APN is highest priority so use it if there is one
+                    log("setInitialApn: iaApnSetting=" + apn);
+                    iaApnSetting = apn;
+                    break;
+                } else if ((defaultApnSetting == null)
+                        && (apn.canHandleType(PhoneConstants.APN_TYPE_DEFAULT))) {
+                    // Use the first default apn if no better choice
+                    log("setInitialApn: defaultApnSetting=" + apn);
+                    defaultApnSetting = apn;
+                }
+            }
+        }
+
+        // The priority of apn candidates from highest to lowest is:
+        //   1) APN_TYPE_IA (Inital Attach)
+        //   2) mPreferredApn, i.e. the current preferred apn
+        //   3) The first apn that than handle APN_TYPE_DEFAULT
+        //   4) The first APN we can find.
+
+        ApnSetting initialAttachApnSetting = null;
+        if (iaApnSetting != null) {
+            if (DBG) log("setInitialAttachApn: using iaApnSetting");
+            initialAttachApnSetting = iaApnSetting;
+        } else if (mPreferredApn != null) {
+            if (DBG) log("setInitialAttachApn: using mPreferredApn");
+            initialAttachApnSetting = mPreferredApn;
+        } else if (defaultApnSetting != null) {
+            if (DBG) log("setInitialAttachApn: using defaultApnSetting");
+            initialAttachApnSetting = defaultApnSetting;
+        } else if (firstApnSetting != null) {
+            if (DBG) log("setInitialAttachApn: using firstApnSetting");
+            initialAttachApnSetting = firstApnSetting;
+        }
+
+        if (initialAttachApnSetting == null) {
+            if (DBG) log("setInitialAttachApn: X There in no available apn");
+        } else {
+            if (DBG) log("setInitialAttachApn: X selected Apn=" + initialAttachApnSetting);
+
+            mPhone.mCi.setInitialAttachApn(initialAttachApnSetting.apn,
+                    initialAttachApnSetting.protocol, initialAttachApnSetting.authType,
+                    initialAttachApnSetting.user, initialAttachApnSetting.password, null);
+        }
+    }
+
+    protected void onActionIntentProvisioningApnAlarm(Intent intent) {
+        if (DBG) log("onActionIntentProvisioningApnAlarm: action=" + intent.getAction());
+        Message msg = obtainMessage(DctConstants.EVENT_PROVISIONING_APN_ALARM,
+                intent.getAction());
+        msg.arg1 = intent.getIntExtra(PROVISIONING_APN_ALARM_TAG_EXTRA, 0);
+        sendMessage(msg);
+    }
+
+    protected void startProvisioningApnAlarm() {
+        int delayInMs = Settings.Global.getInt(mResolver,
+                                Settings.Global.PROVISIONING_APN_ALARM_DELAY_IN_MS,
+                                PROVISIONING_APN_ALARM_DELAY_IN_MS_DEFAULT);
+        if (Build.IS_DEBUGGABLE) {
+            // Allow debug code to use a system property to provide another value
+            String delayInMsStrg = Integer.toString(delayInMs);
+            delayInMsStrg = System.getProperty(DEBUG_PROV_APN_ALARM, delayInMsStrg);
+            try {
+                delayInMs = Integer.parseInt(delayInMsStrg);
+            } catch (NumberFormatException e) {
+                loge("startProvisioningApnAlarm: e=" + e);
+            }
+        }
+        mProvisioningApnAlarmTag += 1;
+        if (DBG) {
+            log("startProvisioningApnAlarm: tag=" + mProvisioningApnAlarmTag +
+                    " delay=" + (delayInMs / 1000) + "s");
+        }
+        Intent intent = new Intent(INTENT_PROVISIONING_APN_ALARM);
+        intent.putExtra(PROVISIONING_APN_ALARM_TAG_EXTRA, mProvisioningApnAlarmTag);
+        mProvisioningApnAlarmIntent = PendingIntent.getBroadcast(mPhone.getContext(), 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT);
+        mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                SystemClock.elapsedRealtime() + delayInMs, mProvisioningApnAlarmIntent);
+    }
+
+    protected void stopProvisioningApnAlarm() {
+        if (DBG) {
+            log("stopProvisioningApnAlarm: current tag=" + mProvisioningApnAlarmTag +
+                    " mProvsioningApnAlarmIntent=" + mProvisioningApnAlarmIntent);
+        }
+        mProvisioningApnAlarmTag += 1;
+        if (mProvisioningApnAlarmIntent != null) {
+            mAlarmManager.cancel(mProvisioningApnAlarmIntent);
+            mProvisioningApnAlarmIntent = null;
+        }
+    }
+
     void sendCleanUpConnection(boolean tearDown, ApnContext apnContext) {
         if (DBG)log("sendCleanUpConnection: tearDown=" + tearDown + " apnContext=" + apnContext);
         Message msg = obtainMessage(DctConstants.EVENT_CLEAN_UP_CONNECTION);
         msg.arg1 = tearDown ? 1 : 0;
         msg.arg2 = 0;
         msg.obj = apnContext;
+        sendMessage(msg);
+    }
+
+    void sendRestartRadio() {
+        if (DBG)log("sendRestartRadio:");
+        Message msg = obtainMessage(DctConstants.EVENT_RESTART_RADIO);
         sendMessage(msg);
     }
 

@@ -23,20 +23,20 @@ import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.telephony.PhoneNumberUtils;
+import android.telephony.SmsMessage;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MccTable;
-import com.android.internal.telephony.SmsMessageBase;
+import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.gsm.SimTlv;
-import com.android.internal.telephony.gsm.SmsMessage;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-
 
 /**
  * {@hide}
@@ -123,6 +123,13 @@ public class SIMRecords extends IccRecords {
     private static final int CPHS_SST_MBN_MASK = 0x30;
     private static final int CPHS_SST_MBN_ENABLED = 0x30;
 
+    // EF_CFIS related constants
+    // Spec reference TS 51.011 section 10.3.46.
+    private static final int CFIS_BCD_NUMBER_LENGTH_OFFSET = 2;
+    private static final int CFIS_TON_NPI_OFFSET = 3;
+    private static final int CFIS_ADN_CAPABILITY_ID_OFFSET = 14;
+    private static final int CFIS_ADN_EXTENSION_ID_OFFSET = 15;
+
     // ***** Event Constants
     private static final int EVENT_GET_IMSI_DONE = 3;
     private static final int EVENT_GET_ICCID_DONE = 4;
@@ -155,6 +162,7 @@ public class SIMRecords extends IccRecords {
     // Lookup table for carriers known to produce SIMs which incorrectly indicate MNC length.
 
     private static final String[] MCCMNC_CODES_HAVING_3DIGITS_MNC = {
+        "302370", "302720", "310260",
         "405025", "405026", "405027", "405028", "405029", "405030", "405031", "405032",
         "405033", "405034", "405035", "405036", "405037", "405038", "405039", "405040",
         "405041", "405042", "405043", "405044", "405045", "405046", "405047", "405750",
@@ -170,7 +178,7 @@ public class SIMRecords extends IccRecords {
         "405886", "405908", "405909", "405910", "405911", "405912", "405913", "405914",
         "405915", "405916", "405917", "405918", "405919", "405920", "405921", "405922",
         "405923", "405924", "405925", "405926", "405927", "405928", "405929", "405930",
-        "405931", "405932"
+        "405931", "405932", "502142", "502143", "502145", "502146", "502147", "502148"
     };
 
     // ***** Constructor
@@ -454,7 +462,7 @@ public class SIMRecords extends IccRecords {
      * {@inheritDoc}
      */
     @Override
-    public void setVoiceCallForwardingFlag(int line, boolean enable) {
+    public void setVoiceCallForwardingFlag(int line, boolean enable, String dialNumber) {
 
         if (line != 1) return; // only line 1 is supported
 
@@ -474,8 +482,18 @@ public class SIMRecords extends IccRecords {
                 log("setVoiceCallForwardingFlag: enable=" + enable
                         + " mEfCfis=" + IccUtils.bytesToHexString(mEfCfis));
 
-                // TODO: Should really update other fields in EF_CFIS, eg,
-                // dialing number.  We don't read or use it right now.
+                // Update dialNumber if not empty and CFU is enabled.
+                // Spec reference for EF_CFIS contents, TS 51.011 section 10.3.46.
+                if (enable && !TextUtils.isEmpty(dialNumber)) {
+                    log("EF_CFIS: updating cf number, " + dialNumber);
+                    byte[] bcdNumber = PhoneNumberUtils.numberToCalledPartyBCD(dialNumber);
+
+                    System.arraycopy(bcdNumber, 0, mEfCfis, CFIS_TON_NPI_OFFSET, bcdNumber.length);
+
+                    mEfCfis[CFIS_BCD_NUMBER_LENGTH_OFFSET] = (byte) (bcdNumber.length);
+                    mEfCfis[CFIS_ADN_CAPABILITY_ID_OFFSET] = (byte) 0xFF;
+                    mEfCfis[CFIS_ADN_EXTENSION_ID_OFFSET] = (byte) 0xFF;
+                }
 
                 mFh.updateEFLinearFixed(
                         EF_CFIS, 1, mEfCfis, null,
@@ -1228,7 +1246,7 @@ public class SIMRecords extends IccRecords {
      * Dispatch 3GPP format message to registrant ({@code GSMPhone} or {@code CDMALTEPhone})
      * to pass to the 3GPP SMS dispatcher for delivery.
      */
-    protected int dispatchGsmMessage(SmsMessageBase message) {
+    private int dispatchGsmMessage(SmsMessage message) {
         mNewSmsRegistrants.notifyResult(message);
         return 0;
     }
@@ -1246,7 +1264,7 @@ public class SIMRecords extends IccRecords {
             // should still parse correctly.
             byte[] pdu = new byte[n - 1];
             System.arraycopy(ba, 1, pdu, 0, n - 1);
-            SmsMessage message = SmsMessage.createFromPdu(pdu);
+            SmsMessage message = SmsMessage.createFromPdu(pdu, SmsConstants.FORMAT_3GPP);
 
             dispatchGsmMessage(message);
         }
@@ -1272,7 +1290,7 @@ public class SIMRecords extends IccRecords {
                 // should still parse correctly.
                 byte[] pdu = new byte[n - 1];
                 System.arraycopy(ba, 1, pdu, 0, n - 1);
-                SmsMessage message = SmsMessage.createFromPdu(pdu);
+                SmsMessage message = SmsMessage.createFromPdu(pdu, SmsConstants.FORMAT_3GPP);
 
                 dispatchGsmMessage(message);
 

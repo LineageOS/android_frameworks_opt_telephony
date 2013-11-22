@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1653,6 +1654,28 @@ public final class SimulatedCommands extends BaseCommands
 
     @Override
     public void setCellInfoListRate(int rateInMillis, Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void setInitialAttachApn(String apn, String protocol, int authType, String username,
+            String password, Message result) {
+    }
+
+    @Override
+    public void getImsRegistrationState(Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void sendImsCdmaSms(byte[] pdu, int retry, int messageRef,
+            Message response){
+        unimplemented(response);
+    }
+
+    @Override
+    public void sendImsGsmSms(String smscPDU, String pdu,
+            int retry, int messageRef, Message response){
         unimplemented(response);
     }
 }

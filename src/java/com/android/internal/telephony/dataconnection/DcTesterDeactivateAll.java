@@ -83,7 +83,9 @@ public class DcTesterDeactivateAll {
     }
 
     void dispose() {
-        mPhone.getContext().unregisterReceiver(sIntentReceiver);
+        if (Build.IS_DEBUGGABLE) {
+            mPhone.getContext().unregisterReceiver(sIntentReceiver);
+        }
     }
 
     private static void log(String s) {

@@ -168,6 +168,12 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            if (!mPhone.mIsTheCurrentActivePhone) {
+                Rlog.e(LOG_TAG, "Received Intent " + intent +
+                        " while being destroyed. Ignoring.");
+                return;
+            }
+
             if (intent.getAction().equals(Intent.ACTION_LOCALE_CHANGED)) {
                 // update emergency string whenever locale changed
                 updateSpnDisplay();
@@ -237,6 +243,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     @Override
     public void dispose() {
         checkCorrectThread();
+        log("ServiceStateTracker dispose");
+
         // Unregister for all events.
         mCi.unregisterForAvailable(this);
         mCi.unregisterForRadioStateChanged(this);
@@ -386,6 +394,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 break;
 
             case EVENT_SIM_RECORDS_LOADED:
+                log("EVENT_SIM_RECORDS_LOADED: what=" + msg.what);
+
+                updatePhoneObject();
                 updateSpnDisplay();
                 break;
 
@@ -722,16 +733,22 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         if (mPollingContext[0] == 0) {
             /**
-             *  Since the roaming states of gsm service (from +CREG) and
-             *  data service (from +CGREG) could be different, the new SS
-             *  is set roaming while either one is roaming.
+             * Since the roaming state of gsm service (from +CREG) and
+             * data service (from +CGREG) could be different, the new SS
+             * is set to roaming when either is true.
              *
-             *  There is an exception for the above rule. The new SS is not set
-             *  as roaming while gsm service reports roaming but indeed it is
-             *  not roaming between operators.
+             * There are exceptions for the above rule.
+             * The new SS is not set as roaming while gsm service reports
+             * roaming but indeed it is same operator.
+             * And the operator is considered non roaming.
+             *
+             * The test for the operators is to handle special roaming
+             * agreements and MVNO's.
              */
             boolean roaming = (mGsmRoaming || mDataRoaming);
-            if (mGsmRoaming && !isRoamingBetweenOperators(mGsmRoaming, mNewSS)) {
+            if ((mGsmRoaming && isSameNamedOperators(mNewSS)
+                        && !isSameNamedOperatorConsideredRoaming(mNewSS))
+                    || isOperatorConsideredNonRoaming(mNewSS)) {
                 roaming = false;
             }
             mNewSS.setRoaming(roaming);
@@ -862,39 +879,47 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 mNewSS.getVoiceRegState(), mNewSS.getDataRegState());
         }
 
-        ServiceState tss;
-        tss = mSS;
-        mSS = mNewSS;
-        mNewSS = tss;
-        // clean slate for next time
-        mNewSS.setStateOutOfService();
-
-        GsmCellLocation tcl = mCellLoc;
-        mCellLoc = mNewCellLoc;
-        mNewCellLoc = tcl;
-
         // Add an event log when network type switched
         // TODO: we may add filtering to reduce the event logged,
         // i.e. check preferred network setting, only switch to 2G, etc
         if (hasRilVoiceRadioTechnologyChanged) {
             int cid = -1;
-            GsmCellLocation loc = ((GsmCellLocation)mPhone.getCellLocation());
+            GsmCellLocation loc = mNewCellLoc;
             if (loc != null) cid = loc.getCid();
-            EventLog.writeEvent(EventLogTags.GSM_RAT_SWITCHED, cid, mSS.getRilVoiceRadioTechnology(),
+            // NOTE: this code was previously located after mSS and mNewSS are swapped, so
+            // existing logs were incorrectly using the new state for "network_from"
+            // and STATE_OUT_OF_SERVICE for "network_to". To avoid confusion, use a new log tag
+            // to record the correct states.
+            EventLog.writeEvent(EventLogTags.GSM_RAT_SWITCHED_NEW, cid,
+                    mSS.getRilVoiceRadioTechnology(),
                     mNewSS.getRilVoiceRadioTechnology());
             if (DBG) {
                 log("RAT switched "
                         + ServiceState.rilRadioTechnologyToString(mSS.getRilVoiceRadioTechnology())
                         + " -> "
-                        + ServiceState.rilRadioTechnologyToString(mNewSS.getRilVoiceRadioTechnology()) +
-                        " at cell " + cid);
+                        + ServiceState.rilRadioTechnologyToString(
+                                mNewSS.getRilVoiceRadioTechnology()) + " at cell " + cid);
             }
         }
+
+        // swap mSS and mNewSS to put new state in mSS
+        ServiceState tss = mSS;
+        mSS = mNewSS;
+        mNewSS = tss;
+        // clean slate for next time
+        mNewSS.setStateOutOfService();
+
+        // swap mCellLoc and mNewCellLoc to put new state in mCellLoc
+        GsmCellLocation tcl = mCellLoc;
+        mCellLoc = mNewCellLoc;
+        mNewCellLoc = tcl;
 
         mReasonDataDenied = mNewReasonDataDenied;
         mMaxDataCalls = mNewMaxDataCalls;
 
-        mNewSS.setStateOutOfService(); // clean slate for next time
+        if (hasRilVoiceRadioTechnologyChanged) {
+            updatePhoneObject();
+        }
 
         if (hasRilDataRadioTechnologyChanged) {
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
@@ -1055,6 +1080,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
 
         if (hasDataRegStateChanged || hasRilDataRadioTechnologyChanged) {
+            notifyDataRegStateRilRadioTechnologyChanged();
             mPhone.notifyDataConnection(null);
         }
 
@@ -1282,13 +1308,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     }
 
     /**
-     * Set roaming state when gsmRoaming is true and, if operator mcc is the
-     * same as sim mcc, ons is different from spn
-     * @param gsmRoaming TS 27.007 7.2 CREG registered roaming
+     * Set roaming state if operator mcc is the same as sim mcc
+     * and ons is different from spn
+     *
      * @param s ServiceState hold current ons
-     * @return true for roaming state set
+     * @return true if same operator
      */
-    private boolean isRoamingBetweenOperators(boolean gsmRoaming, ServiceState s) {
+    private boolean isSameNamedOperators(ServiceState s) {
         String spn = SystemProperties.get(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA, "empty");
 
         String onsl = s.getOperatorAlphaLong();
@@ -1297,18 +1323,71 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         boolean equalsOnsl = onsl != null && spn.equals(onsl);
         boolean equalsOnss = onss != null && spn.equals(onss);
 
+        return currentMccEqualsSimMcc(s) && (equalsOnsl || equalsOnss);
+    }
+
+    /**
+     * Compare SIM MCC with Operator MCC
+     *
+     * @param s ServiceState hold current ons
+     * @return true if both are same
+     */
+    private boolean currentMccEqualsSimMcc(ServiceState s) {
         String simNumeric = SystemProperties.get(
                 TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
-        String  operatorNumeric = s.getOperatorNumeric();
-
+        String operatorNumeric = s.getOperatorNumeric();
         boolean equalsMcc = true;
+
         try {
             equalsMcc = simNumeric.substring(0, 3).
                     equals(operatorNumeric.substring(0, 3));
         } catch (Exception e){
         }
+        return equalsMcc;
+    }
 
-        return gsmRoaming && !(equalsMcc && (equalsOnsl || equalsOnss));
+    /**
+     * Do not set roaming state in case of oprators considered non-roaming.
+     *
+     + Can use mcc or mcc+mnc as item of config_operatorConsideredNonRoaming.
+     * For example, 302 or 21407. If mcc or mcc+mnc match with operator,
+     * don't set roaming state.
+     *
+     * @param s ServiceState hold current ons
+     * @return false for roaming state set
+     */
+    private boolean isOperatorConsideredNonRoaming(ServiceState s) {
+        String operatorNumeric = s.getOperatorNumeric();
+        String[] numericArray = mPhone.getContext().getResources().getStringArray(
+                    com.android.internal.R.array.config_operatorConsideredNonRoaming);
+
+        if (numericArray.length == 0 || operatorNumeric == null)
+            return false;
+
+        for (String numeric : numericArray) {
+            if (operatorNumeric.startsWith(numeric))
+                return true;
+            else
+                return false;
+        }
+        return false;
+    }
+
+    private boolean isSameNamedOperatorConsideredRoaming(ServiceState s) {
+        String operatorNumeric = s.getOperatorNumeric();
+        String[] numericArray = mPhone.getContext().getResources().getStringArray(
+                    com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming);
+
+        if (numericArray.length == 0 || operatorNumeric == null)
+            return false;
+
+        for (String numeric : numericArray) {
+            if (operatorNumeric.startsWith(numeric))
+                return true;
+            else
+                return false;
+        }
+        return false;
     }
 
     /**

@@ -125,14 +125,6 @@ abstract class SipPhoneBase extends PhoneBase {
         return s;
     }
 
-    /**
-     * @return all available cell information or null if none.
-     */
-    @Override
-    public List<CellInfo> getAllCellInfo() {
-        return getServiceStateTracker().getAllCellInfo();
-    }
-
     @Override
     public CellLocation getCellLocation() {
         return null;
@@ -476,11 +468,6 @@ abstract class SipPhoneBase extends PhoneBase {
 
     @Override
     public PhoneSubInfo getPhoneSubInfo(){
-        return null;
-    }
-
-    @Override
-    public IccSmsInterfaceManager getIccSmsInterfaceManager(){
         return null;
     }
 

@@ -16,14 +16,16 @@
 
 package com.android.internal.telephony;
 
+import android.content.ComponentName;
 import android.content.Context;
 import android.net.LocalServerSocket;
 import android.os.Looper;
 import android.provider.Settings;
-import android.telephony.TelephonyManager;
 import android.telephony.Rlog;
-import com.android.internal.telephony.cdma.CDMAPhone;
+import android.telephony.TelephonyManager;
+
 import com.android.internal.telephony.cdma.CDMALTEPhone;
+import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.sip.SipPhone;
@@ -134,6 +136,16 @@ public class PhoneFactory {
                             break;
                     }
                 }
+
+                // Ensure that we have a default SMS app. Requesting the app with
+                // updateIfNeeded set to true is enough to configure a default SMS app.
+                ComponentName componentName =
+                        SmsApplication.getDefaultSmsApplication(context, true /* updateIfNeeded */);
+                String packageName = "NONE";
+                if (componentName != null) {
+                    packageName = componentName.getPackageName();
+                }
+                Rlog.i(LOG_TAG, "defaultSmsApplication: " + packageName);
 
                 sMadeDefaults = true;
             }

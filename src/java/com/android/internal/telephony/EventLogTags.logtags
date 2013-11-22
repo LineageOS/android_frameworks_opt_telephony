@@ -39,7 +39,10 @@ option java_package com.android.internal.telephony;
 # CDMA data network drop
 50111 cdma_data_drop (cid|1|5), (network_type|1|5)
 
-# GSM radio access technology switched
+# GSM radio access technology switched (obsolete)
+# The original implementation had a bug that logged the new state in "network_from"
+# and STATE_OUT_OF_SERVICE in "network_to". To avoid confusion, the fixed version
+# uses a new tag, "gsm_rat_switched_new", to log the correct service states.
 50112 gsm_rat_switched (cid|1|5), (network_from|1|5), (network_to|1|5)
 
 # GSM data connection state transition
@@ -72,6 +75,11 @@ option java_package com.android.internal.telephony;
 # Data Stall Recovery mode DATA_STALL_RECOVERY_RADIO_RESTART_WITH_PROP
 50122 data_stall_recovery_radio_restart_with_prop (out_packet_count|1|1)
 
+# GSM radio access technology switched (new)
+# We were logging the wrong values for the original tag, so use this tag
+# to log the correct "network_from" and "network_to" service states.
+50123 gsm_rat_switched_new (cid|1|5), (network_from|1|5), (network_to|1|5)
+
 # SMS denied by user
-50125 sms_denied_by_user (app_signature|3)
-50128 sms_sent_by_user (app_signature|3)
+50125 exp_det_sms_denied_by_user (app_signature|3)
+50128 exp_det_sms_sent_by_user (app_signature|3)

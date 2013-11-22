@@ -17,6 +17,7 @@
 package com.android.internal.telephony.gsm;
 
 import android.content.Context;
+import android.content.res.Resources;
 import com.android.internal.telephony.*;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
@@ -361,15 +362,17 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
     static boolean
     isServiceCodeCallBarring(String sc) {
-        return sc != null &&
-                (sc.equals(SC_BAOC)
-                || sc.equals(SC_BAOIC)
-                || sc.equals(SC_BAOICxH)
-                || sc.equals(SC_BAIC)
-                || sc.equals(SC_BAICr)
-                || sc.equals(SC_BA_ALL)
-                || sc.equals(SC_BA_MO)
-                || sc.equals(SC_BA_MT));
+        Resources resource = Resources.getSystem();
+        if (sc != null) {
+            String[] barringMMI = resource.getStringArray(
+                com.android.internal.R.array.config_callBarringMMI);
+            if (barringMMI != null) {
+                for (String match : barringMMI) {
+                    if (sc.equals(match)) return true;
+                }
+            }
+        }
+        return false;
     }
 
     static String
@@ -914,7 +917,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 if ((ar.exception == null) && (msg.arg1 == 1)) {
                     boolean cffEnabled = (msg.arg2 == 1);
                     if (mIccRecords != null) {
-                        mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled);
+                        mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled, mDialingNumber);
                     }
                 }
 
@@ -1239,7 +1242,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                         == CommandsInterface.SERVICE_CLASS_VOICE) {
             boolean cffEnabled = (info.status == 1);
             if (mIccRecords != null) {
-                mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled);
+                mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled, info.number);
             }
         }
 
@@ -1266,7 +1269,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
                 // Set unconditional CFF in SIM to false
                 if (mIccRecords != null) {
-                    mIccRecords.setVoiceCallForwardingFlag(1, false);
+                    mIccRecords.setVoiceCallForwardingFlag(1, false, null);
                 }
             } else {
 

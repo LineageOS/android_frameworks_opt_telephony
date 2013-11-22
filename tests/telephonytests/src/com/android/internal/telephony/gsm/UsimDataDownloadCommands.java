@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -355,6 +356,16 @@ class UsimDataDownloadCommands extends BaseCommands {
     }
 
     @Override
+    public void sendImsGsmSms (String smscPDU, String pdu,
+            int retry, int messageRef, Message response) {
+    }
+
+    @Override
+    public void sendImsCdmaSms(byte[] pdu, int retry, int messageRef,
+            Message response) {
+    }
+
+    @Override
     public void deleteSmsOnSim(int index, Message response) {
     }
 
@@ -543,6 +554,10 @@ class UsimDataDownloadCommands extends BaseCommands {
 
     @Override
     public void getCDMASubscription(Message response) {
+    }
+
+    @Override
+    public void getImsRegistrationState (Message result) {
     }
 
     @Override

@@ -464,8 +464,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
      *
      * @param line to enable/disable
      * @param enable
+     * @param number to which CFU is enabled
      */
-    public void setVoiceCallForwardingFlag(int line, boolean enable) {
+    public void setVoiceCallForwardingFlag(int line, boolean enable, String number) {
     }
 
     /**

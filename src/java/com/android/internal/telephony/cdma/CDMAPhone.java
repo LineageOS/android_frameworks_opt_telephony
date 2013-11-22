@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,10 +34,12 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.provider.Telephony;
 import android.telephony.CellLocation;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
+import android.telephony.cdma.CdmaCellLocation;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 
@@ -56,6 +59,7 @@ import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.SmsBroadcastUndelivered;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
@@ -100,7 +104,6 @@ public class CDMAPhone extends PhoneBase {
     CdmaSubscriptionSourceManager mCdmaSSM;
     ArrayList <CdmaMmiCode> mPendingMmis = new ArrayList<CdmaMmiCode>();
     RuimPhoneBookInterfaceManager mRuimPhoneBookInterfaceManager;
-    RuimSmsInterfaceManager mRuimSmsInterfaceManager;
     int mCdmaSubscriptionSource = CdmaSubscriptionSourceManager.SUBSCRIPTION_SOURCE_UNKNOWN;
     PhoneSubInfo mSubInfo;
     EriManager mEriManager;
@@ -159,10 +162,8 @@ public class CDMAPhone extends PhoneBase {
         mCT = new CdmaCallTracker(this);
         mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context, mCi, this,
                 EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
-        mSMS = new CdmaSMSDispatcher(this, mSmsStorageMonitor, mSmsUsageMonitor);
         mDcTracker = new DcTracker(this);
         mRuimPhoneBookInterfaceManager = new RuimPhoneBookInterfaceManager(this);
-        mRuimSmsInterfaceManager = new RuimSmsInterfaceManager(this, mSMS);
         mSubInfo = new PhoneSubInfo(this);
         mEriManager = new EriManager(this, context, EriManager.ERI_FROM_XML);
 
@@ -201,9 +202,12 @@ public class CDMAPhone extends PhoneBase {
 
         // Sets operator numeric property by retrieving from build-time system property
         String operatorNumeric = SystemProperties.get(PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
-        log("CDMAPhone: init set 'gsm.sim.operator.numeric' to operator='" +
-                operatorNumeric + "'");
-        setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
+        if (!TextUtils.isEmpty(operatorNumeric) &&
+            (mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP) == null)) {
+            log("CDMAPhone: init set 'gsm.sim.operator.numeric' to operator='" +
+                    operatorNumeric + "'");
+            setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
+        }
 
         // Sets iso country property by retrieving from build-time system property
         setIsoCountryProperty(operatorNumeric);
@@ -238,9 +242,7 @@ public class CDMAPhone extends PhoneBase {
             mDcTracker.dispose();
             mSST.dispose();
             mCdmaSSM.dispose(this);
-            mSMS.dispose();
             mRuimPhoneBookInterfaceManager.dispose();
-            mRuimSmsInterfaceManager.dispose();
             mSubInfo.dispose();
             mEriManager.dispose();
         }
@@ -250,7 +252,6 @@ public class CDMAPhone extends PhoneBase {
     public void removeReferences() {
         log("removeReferences");
         mRuimPhoneBookInterfaceManager = null;
-        mRuimSmsInterfaceManager = null;
         mSubInfo = null;
         mCT = null;
         mSST = null;
@@ -447,6 +448,16 @@ public class CDMAPhone extends PhoneBase {
     }
 
     @Override
+    public String getIccSerialNumber() {
+        IccRecords r = mIccRecords.get();
+        if (r == null) {
+            // to get ICCID form SIMRecords because it is on MF.
+            r = mUiccController.getIccRecords(UiccController.APP_FAM_3GPP);
+        }
+        return (r != null) ? r.getIccId() : null;
+    }
+
+    @Override
     public String getLine1Number() {
         return mSST.getMdnNumber();
     }
@@ -529,7 +540,20 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public CellLocation getCellLocation() {
-        return mSST.mCellLoc;
+        CdmaCellLocation loc = mSST.mCellLoc;
+
+        int mode = Settings.Secure.getInt(getContext().getContentResolver(),
+                Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF);
+        if (mode == Settings.Secure.LOCATION_MODE_OFF) {
+            // clear lat/long values for location privacy
+            CdmaCellLocation privateLoc = new CdmaCellLocation();
+            privateLoc.setCellLocationData(loc.getBaseStationId(),
+                    CdmaCellLocation.INVALID_LAT_LONG,
+                    CdmaCellLocation.INVALID_LAT_LONG,
+                    loc.getSystemId(), loc.getNetworkId());
+            loc = privateLoc;
+        }
+        return loc;
     }
 
     @Override
@@ -1039,6 +1063,11 @@ public class CDMAPhone extends PhoneBase {
         AsyncResult ar;
         Message     onComplete;
 
+        if (!mIsTheCurrentActivePhone) {
+            Rlog.e(LOG_TAG, "Received message " + msg +
+                    "[" + msg.what + "] while being destroyed. Ignoring.");
+            return;
+        }
         switch(msg.what) {
             case EVENT_RADIO_AVAILABLE: {
                 mCi.getBasebandVersion(obtainMessage(EVENT_GET_BASEBAND_VERSION_DONE));
@@ -1156,6 +1185,12 @@ public class CDMAPhone extends PhoneBase {
         UiccCardApplication newUiccApplication =
                 mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP2);
 
+        if (newUiccApplication == null) {
+            log("can't find 3GPP2 application; trying APP_FAM_3GPP");
+            newUiccApplication = mUiccController
+                    .getUiccCardApplication(UiccController.APP_FAM_3GPP);
+        }
+
         UiccCardApplication app = mUiccApplication.get();
         if (app != newUiccApplication) {
             if (app != null) {
@@ -1210,14 +1245,6 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public PhoneSubInfo getPhoneSubInfo() {
         return mSubInfo;
-    }
-
-    /**
-     * Retrieves the IccSmsInterfaceManager of the CDMAPhone
-     */
-    @Override
-    public IccSmsInterfaceManager getIccSmsInterfaceManager() {
-        return mRuimSmsInterfaceManager;
     }
 
     /**
@@ -1615,7 +1642,6 @@ public class CDMAPhone extends PhoneBase {
         pw.println(" mCdmaSSM=" + mCdmaSSM);
         pw.println(" mPendingMmis=" + mPendingMmis);
         pw.println(" mRuimPhoneBookInterfaceManager=" + mRuimPhoneBookInterfaceManager);
-        pw.println(" mRuimSmsInterfaceManager=" + mRuimSmsInterfaceManager);
         pw.println(" mCdmaSubscriptionSource=" + mCdmaSubscriptionSource);
         pw.println(" mSubInfo=" + mSubInfo);
         pw.println(" mEriManager=" + mEriManager);

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -516,6 +517,54 @@ public final class SmsManager {
             }
         }
         return messages;
+    }
+
+    /**
+     * SMS over IMS is supported if IMS is registered and SMS is supported
+     * on IMS.
+     *
+     * @return true if SMS over IMS is supported, false otherwise
+     *
+     * @see #getImsSmsFormat()
+     *
+     * @hide
+     */
+    boolean isImsSmsSupported() {
+        boolean boSupported = false;
+        try {
+            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            if (iccISms != null) {
+                boSupported = iccISms.isImsSmsSupported();
+            }
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+        return boSupported;
+    }
+
+    /**
+     * Gets SMS format supported on IMS.  SMS over IMS format is
+     * either 3GPP or 3GPP2.
+     *
+     * @return SmsMessage.FORMAT_3GPP,
+     *         SmsMessage.FORMAT_3GPP2
+     *      or SmsMessage.FORMAT_UNKNOWN
+     *
+     * @see #isImsSmsSupported()
+     *
+     * @hide
+     */
+    String getImsSmsFormat() {
+        String format = com.android.internal.telephony.SmsConstants.FORMAT_UNKNOWN;
+        try {
+            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            if (iccISms != null) {
+                format = iccISms.getImsSmsFormat();
+            }
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+        return format;
     }
 
     // see SmsMessage.getStatusOnIcc
