@@ -1278,6 +1278,13 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone.registerForModifyCallRequest(h, what, obj);
     }
 
+    /*
+     * To check VT call capability
+     */
+    public boolean isVTModifyAllowed() throws CallStateException {
+        throw new CallStateException("isVTModifyAllowed is not supported in this phone " + this);
+    }
+
     public void unregisterForModifyCallRequest(Handler h) throws CallStateException {
         mActivePhone.unregisterForModifyCallRequest(h);
     }

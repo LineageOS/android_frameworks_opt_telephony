@@ -1961,6 +1961,11 @@ public interface Phone {
      */
     public void rejectConnectionTypeChange(Connection conn) throws CallStateException;
 
+    /*
+     * To check VT call capability
+     */
+    public boolean isVTModifyAllowed() throws CallStateException;
+
     /**
      * When a remote user requests to change the type of the connection (e.g. to
      * upgrade from voice to video), it will be possible to query the proposed

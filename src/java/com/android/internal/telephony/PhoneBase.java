@@ -1536,6 +1536,13 @@ public abstract class PhoneBase extends Handler implements Phone {
                 + this);
     }
 
+    /*
+     * To check VT call capability
+     */
+    public boolean isVTModifyAllowed() throws CallStateException {
+        throw new CallStateException("isVTModifyAllowed is not supported in this phone " + this);
+    }
+
     public void unregisterForModifyCallRequest(Handler h) throws CallStateException {
         throw new CallStateException(
                 "unregisterForModifyCallRequest is not supported in this phone " + this);
