@@ -594,6 +594,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public void acceptCall(int callType) throws CallStateException {
+        mActivePhone.acceptCall(callType);
+    }
+
+    @Override
     public int getCallType(Call call) throws CallStateException {
         return mActivePhone.getCallType(call);
     }
