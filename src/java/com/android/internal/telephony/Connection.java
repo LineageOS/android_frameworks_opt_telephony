@@ -30,7 +30,7 @@ public abstract class Connection {
     protected int mCnapNamePresentation  = PhoneConstants.PRESENTATION_ALLOWED;
 
     public CallDetails callDetails = new CallDetails();
-    public CallModify callModifyRequest = new CallModify();
+    public CallModify callModifyRequest = null;
     public String errorInfo;
 
 
