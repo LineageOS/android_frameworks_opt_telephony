@@ -30,8 +30,9 @@ import android.os.Registrant;
 import android.os.SystemProperties;
 import android.telephony.MSimTelephonyManager;
 import android.telephony.PhoneStateListener;
-import android.telephony.ServiceState;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -83,6 +84,7 @@ public class CallManager {
     private static final int EVENT_SERVICE_STATE_CHANGED = 118;
     private static final int EVENT_POST_DIAL_CHARACTER = 119;
     private static final int EVENT_SUPP_SERVICE_NOTIFY = 120;
+    private static final int EVENT_CALL_MODIFY = 121;
 
     private static final String PROPERTY_QCHAT_ENABLED = "persist.atel.qchat_enabled";
 
@@ -176,6 +178,9 @@ public class CallManager {
     = new RegistrantList();
 
     protected final RegistrantList mPostDialCharacterRegistrants
+    = new RegistrantList();
+
+    protected final RegistrantList mCallModifyRegistrants
     = new RegistrantList();
 
     protected CallManager() {
@@ -434,6 +439,12 @@ public class CallManager {
         return phone;
     }
 
+    private boolean isImsOnWifi(Phone offHookPhone) {
+        return (offHookPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS &&
+                offHookPhone.getServiceState().getDataNetworkType() !=
+                        TelephonyManager.NETWORK_TYPE_LTE);
+    }
+
     public void setAudioMode() {
         Context context = getContext();
         if (context == null) return;
@@ -470,9 +481,11 @@ public class CallManager {
                 }
 
                 int newAudioMode = AudioManager.MODE_IN_CALL;
-                if (offhookPhone instanceof SipPhone) {
+                if (offhookPhone instanceof SipPhone || isImsOnWifi(offhookPhone)) {
                     Rlog.d(LOG_TAG, "setAudioMode Set audio mode for SIP call!");
                     // enable IN_COMMUNICATION audio mode instead for sipPhone
+                    // or for IMS calls over wifi
+                    Rlog.d(LOG_TAG, "setAudioMode Set audio mode for SIP or wifi call!");
                     newAudioMode = AudioManager.MODE_IN_COMMUNICATION;
                 }
                 int currMode = audioManager.getMode();
@@ -543,6 +556,11 @@ public class CallManager {
 
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             phone.registerForEcmTimerReset(mHandler, EVENT_ECM_TIMER_RESET, null);
+            try {
+                phone.registerForModifyCallRequest(mHandler, EVENT_CALL_MODIFY, null);
+            } catch (CallStateException e) {
+                Rlog.e(LOG_TAG, "registerForModifyCallRequest: CallStateException:" + e);
+            }
         }
     }
 
@@ -620,10 +638,9 @@ public class CallManager {
      */
     public void acceptCall(Call ringingCall, int callType) throws CallStateException {
         Phone ringingPhone = ringingCall.getPhone();
-
         if (VDBG) {
             Rlog.d(LOG_TAG, "acceptCall api with calltype " + callType);
-            Rlog.d(LOG_TAG, "acceptCall(" +ringingCall + " from " + ringingCall.getPhone() + ")");
+            Rlog.d(LOG_TAG, "acceptCall(" + ringingCall + " from " + ringingCall.getPhone() + ")");
             Rlog.d(LOG_TAG, toString());
         }
 
@@ -669,7 +686,6 @@ public class CallManager {
         }
 
         if (VDBG) {
-            Rlog.d(LOG_TAG, "Call type in acceptCall " + callType);
             Rlog.d(LOG_TAG, "End acceptCall(" +ringingCall + ")");
             Rlog.d(LOG_TAG, toString());
         }
@@ -1648,6 +1664,17 @@ public class CallManager {
         mPostDialCharacterRegistrants.remove(h);
     }
 
+    /*
+     * Registrants for CallModify
+     */
+    public void registerForCallModify(Handler h, int what, Object obj) {
+        mCallModifyRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForCallModify(Handler h) {
+        mCallModifyRegistrants.remove(h);
+    }
+
     /* APIs to access foregroudCalls, backgroudCalls, and ringingCalls
      * 1. APIs to access list of calls
      * 2. APIs to check if any active call, which has connection other than
@@ -1994,6 +2021,16 @@ public class CallManager {
                 case EVENT_SERVICE_STATE_CHANGED:
                     if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_SERVICE_STATE_CHANGED)");
                     mServiceStateChangedRegistrants.notifyRegistrants((AsyncResult) msg.obj);
+                    break;
+                case EVENT_CALL_MODIFY:
+                    if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_CALL_MODIFY)");
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    if (ar != null && ar.result != null && ar.exception == null) {
+                        mCallModifyRegistrants.notifyRegistrants(new AsyncResult(null,
+                                (Connection) ar.result, null));
+                    } else {
+                        Rlog.e(LOG_TAG, "Error EVENT_MODIFY_CALL AsyncResult ar= " + ar);
+                    }
                     break;
                 case EVENT_POST_DIAL_CHARACTER:
                     // we need send the character that is being processed in msg.arg1

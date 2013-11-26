@@ -812,8 +812,34 @@ public interface Phone {
     void explicitCallTransfer() throws CallStateException;
 
     /**
-     * Clears all DISCONNECTED connections from Call connection lists.
-     * Calls that were in the DISCONNECTED state become idle. This occurs
+     * Add participant during Conference Call
+     *
+     * @param dialString
+     * @param clir
+     * @param callType
+     * @param extras
+     * @throws CallStateException
+     */
+    void addParticipant(String dialString, int clir, int callType, String[] extras)
+            throws CallStateException;
+
+    /**
+     * Hangup along with reason/error message if any
+     *
+     * @param callId
+     * @param userUri
+     * @param confUri
+     * @param mpty
+     * @param failCause
+     * @param errorInfo
+     * @throws CallStateException
+     */
+    void hangupWithReason(int callId, String userUri,
+            boolean mpty, int failCause, String errorInfo) throws CallStateException;
+
+    /**
+     * Clears all DISCONNECTED connections from Call connection lists. Calls
+     * that were in the DISCONNECTED state become idle. This occurs
      * synchronously.
      */
     void clearDisconnected();
@@ -1934,6 +1960,11 @@ public interface Phone {
      * @throws CallStateException
      */
     public void rejectConnectionTypeChange(Connection conn) throws CallStateException;
+
+    /*
+     * To check VT call capability
+     */
+    public boolean isVTModifyAllowed() throws CallStateException;
 
     /**
      * When a remote user requests to change the type of the connection (e.g. to

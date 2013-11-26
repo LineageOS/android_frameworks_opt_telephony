@@ -29,6 +29,11 @@ public abstract class Connection {
     protected String mCnapName;
     protected int mCnapNamePresentation  = PhoneConstants.PRESENTATION_ALLOWED;
 
+    public CallDetails callDetails = new CallDetails();
+    public CallModify callModifyRequest = null;
+    public String errorInfo;
+
+
     private static String LOG_TAG = "Connection";
 
     public enum DisconnectCause {
@@ -71,7 +76,9 @@ public abstract class Connection {
         CDMA_PREEMPTED,
         CDMA_NOT_EMERGENCY,              /* not an emergency call */
         CDMA_ACCESS_BLOCKED,            /* Access Blocked by CDMA network */
-        ERROR_UNSPECIFIED
+        ERROR_UNSPECIFIED,
+        /* Ims Disconnect cause grouped from here */
+        CALL_FAIL_MISC
     }
 
     Object mUserData;
@@ -116,7 +123,31 @@ public abstract class Connection {
      */
 
     public int getCnapNamePresentation() {
-       return mCnapNamePresentation;
+        return mCnapNamePresentation;
+    }
+
+    public CallDetails getCallDetails() {
+        return callDetails;
+    }
+
+    public CallModify getCallModify() {
+        return callModifyRequest;
+    }
+
+    public String getErrorInfo() {
+        return errorInfo;
+    }
+
+    public void setConnectionDetails(CallDetails ConnDetails) {
+        callDetails = ConnDetails;
+    }
+
+    public void setModifyConnectionDetails(CallModify modifyConn) {
+        callModifyRequest = modifyConn;
+    }
+
+    public void setErrorInfo(String errorInfo) {
+        errorInfo = errorInfo;
     }
 
     /**

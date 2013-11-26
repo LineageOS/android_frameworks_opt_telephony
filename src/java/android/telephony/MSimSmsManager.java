@@ -152,8 +152,9 @@ public class MSimSmsManager {
         try {
             ISmsMSim iccISms = ISmsMSim.Stub.asInterface(ServiceManager.getService("isms_msim"));
             if (iccISms != null) {
-                iccISms.sendTextWithPriority(destinationAddress, scAddress, text, sentIntent,
-                        deliveryIntent, subscription, priority);
+                iccISms.sendTextWithPriority(ActivityThread.currentPackageName(),
+                    destinationAddress, scAddress, text, sentIntent, deliveryIntent, subscription,
+                    priority);
             }
         } catch (RemoteException ex) {
             // ignore it

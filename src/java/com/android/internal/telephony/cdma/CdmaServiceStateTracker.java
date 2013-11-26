@@ -142,6 +142,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     private ContentResolver mCr;
     private String mCurrentCarrier = null;
 
+    private boolean isRegisteredForRecordsLoaded = false;
+    private boolean isRegisteredForReady = false;
+
     private ContentObserver mAutoTimeObserver = new ContentObserver(new Handler()) {
         @Override
         public void onChange(boolean selfChange) {
@@ -211,8 +214,14 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         mCi.unregisterForVoiceNetworkStateChanged(this);
         mCi.unregisterForCdmaOtaProvision(this);
         mPhone.unregisterForEriFileLoaded(this);
-        if (mUiccApplcation != null) {mUiccApplcation.unregisterForReady(this);}
-        if (mIccRecords != null) {mIccRecords.unregisterForRecordsLoaded(this);}
+        if (mUiccApplcation != null) {
+            mUiccApplcation.unregisterForReady(this);
+            isRegisteredForReady = false;
+        }
+        if (mIccRecords != null) {
+            mIccRecords.unregisterForRecordsLoaded(this);
+            isRegisteredForRecordsLoaded = false;
+        }
         mCi.unSetOnNITZTime(this);
         mCr.unregisterContentObserver(mAutoTimeObserver);
         mCr.unregisterContentObserver(mAutoTimeZoneObserver);
@@ -509,6 +518,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         if (!mIsSubscriptionFromRuim) {
             // NV is ready when subscription source is NV
             sendMessage(obtainMessage(EVENT_NV_READY));
+        } else {
+            registerForRuimEvents();
         }
     }
 
@@ -1731,6 +1742,17 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         }
     }
 
+    private void registerForRuimEvents() {
+        log("registerForRuimEvents");
+        if (mUiccApplcation != null && !isRegisteredForReady) {
+            mUiccApplcation.registerForReady(this, EVENT_RUIM_READY, null);
+            isRegisteredForReady = true;
+        }
+        if (mIccRecords != null && !isRegisteredForRecordsLoaded) {
+             mIccRecords.registerForRecordsLoaded(this, EVENT_RUIM_RECORDS_LOADED, null);
+             isRegisteredForRecordsLoaded = true;
+        }
+    }
     protected UiccCardApplication getUiccCardApplication() {
         return mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP2);
     }
@@ -1747,8 +1769,10 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             if (mUiccApplcation != null) {
                 log("Removing stale icc objects.");
                 mUiccApplcation.unregisterForReady(this);
+                isRegisteredForReady = false;
                 if (mIccRecords != null) {
                     mIccRecords.unregisterForRecordsLoaded(this);
+                    isRegisteredForRecordsLoaded = false;
                 }
                 mIccRecords = null;
                 mUiccApplcation = null;
@@ -1758,10 +1782,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 mUiccApplcation = newUiccApplication;
                 mIccRecords = mUiccApplcation.getIccRecords();
                 if (mIsSubscriptionFromRuim) {
-                    mUiccApplcation.registerForReady(this, EVENT_RUIM_READY, null);
-                    if (mIccRecords != null) {
-                        mIccRecords.registerForRecordsLoaded(this, EVENT_RUIM_RECORDS_LOADED, null);
-                    }
+                    registerForRuimEvents();
                 }
             }
         }
