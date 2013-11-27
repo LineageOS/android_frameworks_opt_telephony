@@ -2200,4 +2200,8 @@ public class CallManager {
         return false;
     }
 
+    public boolean canConference(Call heldCall, int subscription) {
+        Rlog.e(LOG_TAG, " canConference for subscription not supported");
+        return false;
+    }
 }
