@@ -130,7 +130,7 @@ interface ISmsMSim {
             in int subscription);
 
     /**
-     * Send an SMS.
+     * Send an SMS with priority.
      *
      * @param destAddr the address to send the message to
      * @param text the body of the message to send
@@ -156,8 +156,8 @@ interface ISmsMSim {
      * @param priority Priority level of the message
      * @param subscription the subscription on which the SMS has to be sent.
      */
-    void sendTextWithPriority(in String destAddr, in String scAddr, in String text,
-            in PendingIntent sentIntent, in PendingIntent deliveryIntent,
+    void sendTextWithPriority(String callingPkg, in String destAddr, in String scAddr,
+            in String text, in PendingIntent sentIntent, in PendingIntent deliveryIntent,
             in int priority, in int subscription);
 
     /**

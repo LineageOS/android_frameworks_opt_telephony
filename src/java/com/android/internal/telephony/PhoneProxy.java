@@ -1278,6 +1278,13 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone.registerForModifyCallRequest(h, what, obj);
     }
 
+    /*
+     * To check VT call capability
+     */
+    public boolean isVTModifyAllowed() throws CallStateException {
+        throw new CallStateException("isVTModifyAllowed is not supported in this phone " + this);
+    }
+
     public void unregisterForModifyCallRequest(Handler h) throws CallStateException {
         mActivePhone.unregisterForModifyCallRequest(h);
     }
@@ -1289,6 +1296,16 @@ public class PhoneProxy extends Handler implements Phone {
 
     public void unregisterForAvpUpgradeFailure(Handler h) throws CallStateException {
         mActivePhone.unregisterForAvpUpgradeFailure(h);
+    }
+
+    public void addParticipant(String dialString, int clir, int callType, String[] extras)
+            throws CallStateException {
+        mActivePhone.addParticipant(dialString, clir, callType, extras);
+    }
+
+    public void hangupWithReason(int callId, String userUri,
+            boolean mpty, int failCause, String errorInfo) throws CallStateException {
+        mActivePhone.hangupWithReason(callId, userUri, mpty, failCause, errorInfo);
     }
 
     public int getSubscription() {
