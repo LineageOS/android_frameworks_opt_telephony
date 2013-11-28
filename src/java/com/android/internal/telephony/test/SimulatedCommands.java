@@ -1678,4 +1678,26 @@ public final class SimulatedCommands extends BaseCommands
             int retry, int messageRef, Message response){
         unimplemented(response);
     }
+
+    @Override
+    public void iccOpenLogicalChannel(String AID, Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void iccCloseLogicalChannel(int channel, Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void iccTransmitApduLogicalChannel(int channel, int cla, int instruction,
+            int p1, int p2, int p3, String data, Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void iccTransmitApduBasicChannel(int cla, int instruction, int p1, int p2,
+            int p3, String data, Message response) {
+        unimplemented(response);
+    }
 }
