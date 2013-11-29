@@ -412,6 +412,10 @@ public class CdmaConnection extends Connection {
                 return DisconnectCause.CDMA_NOT_EMERGENCY;
             case CallFailCause.CDMA_ACCESS_BLOCKED:
                 return DisconnectCause.CDMA_ACCESS_BLOCKED;
+            case CallFailCause.EMERGENCY_TEMP_FAILURE:
+                return DisconnectCause.EMERGENCY_TEMP_FAILURE;
+            case CallFailCause.EMERGENCY_PERM_FAILURE:
+                return DisconnectCause.EMERGENCY_PERM_FAILURE;
             case CallFailCause.ERROR_UNSPECIFIED:
             case CallFailCause.NORMAL_CLEARING:
             default:
@@ -422,8 +426,13 @@ public class CdmaConnection extends Connection {
                 if (serviceState == ServiceState.STATE_POWER_OFF) {
                     return DisconnectCause.POWER_OFF;
                 } else if (serviceState == ServiceState.STATE_OUT_OF_SERVICE
-                        || serviceState == ServiceState.STATE_EMERGENCY_ONLY) {
-                    return DisconnectCause.OUT_OF_SERVICE;
+                        || phone.getServiceState().isEmergencyOnly()) {
+                    if (phone.getServiceState().isEmergencyOnly() &&
+                            causeCode == CallFailCause.NORMAL_CLEARING) {
+                        return DisconnectCause.NORMAL;
+                    } else {
+                        return DisconnectCause.OUT_OF_SERVICE;
+                    }
                 } else if (phone.mCdmaSubscriptionSource ==
                         CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM
                         && uiccAppState != AppState.APPSTATE_READY) {
