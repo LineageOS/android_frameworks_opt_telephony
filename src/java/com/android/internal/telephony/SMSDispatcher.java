@@ -481,7 +481,7 @@ public abstract class SMSDispatcher extends Handler {
      *  broadcast when the message is delivered to the recipient.  The
      *  raw pdu of the status report is in the extended data ("pdu").
      */
-    protected abstract void sendData(String destAddr, String scAddr, int destPort,
+    protected abstract void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent);
 
     /**
@@ -509,7 +509,7 @@ public abstract class SMSDispatcher extends Handler {
      *  broadcast when the message is delivered to the recipient.  The
      *  raw pdu of the status report is in the extended data ("pdu").
      */
-    protected abstract void sendText(String destAddr, String scAddr,
+    protected abstract void sendText(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent);
 
     /**
@@ -548,13 +548,13 @@ public abstract class SMSDispatcher extends Handler {
      *   to the recipient.  The raw pdu of the status report is in the
      *   extended data ("pdu").
      */
-    protected void sendMultipartText(String destAddr, String scAddr,
+    protected void sendMultipartText(String callingPackage, String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents) {
         if (mSmsPseudoMultipart) {
             // Send as individual messages as the combination of device and
             // carrier behavior may not process concatenated messages correctly.
-            sendPseudoMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents);
+            sendPseudoMultipartText(callingPackage, destAddr, scAddr, parts, sentIntents, deliveryIntents);
             return;
         }
 
@@ -606,7 +606,7 @@ public abstract class SMSDispatcher extends Handler {
                 deliveryIntent = deliveryIntents.get(i);
             }
 
-            sendNewSubmitPdu(destAddr, scAddr, parts.get(i), smsHeader, encoding,
+            sendNewSubmitPdu(callingPackage, destAddr, scAddr, parts.get(i), smsHeader, encoding,
                     sentIntent, deliveryIntent, (i == (msgCount - 1)));
         }
 
@@ -639,7 +639,7 @@ public abstract class SMSDispatcher extends Handler {
      *   to the recipient.  The raw pdu of the status report is in the
      *   extended data ("pdu").
      */
-    private void sendPseudoMultipartText(String destAddr, String scAddr,
+    private void sendPseudoMultipartText(String callingPackage, String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents) {
         int msgCount = parts.size();
@@ -657,14 +657,14 @@ public abstract class SMSDispatcher extends Handler {
                 deliveryIntent = deliveryIntents.get(i);
             }
 
-            sendText(destAddr, scAddr, parts.get(i), sentIntent, deliveryIntent);
+            sendText(callingPackage, destAddr, scAddr, parts.get(i), sentIntent, deliveryIntent);
         }
     }
 
     /**
      * Create a new SubmitPdu and send it.
      */
-    protected abstract void sendNewSubmitPdu(String destinationAddress, String scAddress,
+    protected abstract void sendNewSubmitPdu(String callingPackage, String destinationAddress, String scAddress,
             String message, SmsHeader smsHeader, int encoding,
             PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart);
 
@@ -1037,7 +1037,7 @@ public abstract class SMSDispatcher extends Handler {
             return;
         }
 
-        sendMultipartText(destinationAddress, scAddress, parts, sentIntents, deliveryIntents);
+        sendMultipartText(tracker.mAppInfo.packageName, destinationAddress, scAddress, parts, sentIntents, deliveryIntents);
     }
 
     /**
@@ -1117,7 +1117,7 @@ public abstract class SMSDispatcher extends Handler {
         }
     }
 
-    protected SmsTracker SmsTrackerFactory(HashMap<String, Object> data, PendingIntent sentIntent,
+    protected SmsTracker SmsTrackerFactory(String callingPackage, HashMap<String, Object> data, PendingIntent sentIntent,
             PendingIntent deliveryIntent, String format) {
         // Get calling app package name via UID from Binder call
         PackageManager pm = mContext.getPackageManager();
