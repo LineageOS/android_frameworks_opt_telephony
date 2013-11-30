@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa80f949_8cc7fb44",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManager.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 3075
+      },
+      "writtenOn": "2013-11-30T21:12:44Z",
+      "side": 0,
+      "message": "Does this lose us privacyguard functionality for icc sms ?  (I see no other OP_READ_ICC_SMS check anywhere under frameworks/*)",
+      "revId": "bf5229450fe3b19e667790f9b6f34e19e96d3890",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
