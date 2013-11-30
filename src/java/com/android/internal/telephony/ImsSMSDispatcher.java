@@ -157,26 +157,26 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected void sendData(String destAddr, String scAddr, int destPort,
+    protected void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         if (isCdmaMo()) {
-            mCdmaDispatcher.sendData(destAddr, scAddr, destPort,
+            mCdmaDispatcher.sendData(callingPackage, destAddr, scAddr, destPort,
                     data, sentIntent, deliveryIntent);
         } else {
-            mGsmDispatcher.sendData(destAddr, scAddr, destPort,
+            mGsmDispatcher.sendData(callingPackage, destAddr, scAddr, destPort,
                     data, sentIntent, deliveryIntent);
         }
     }
 
     @Override
-    protected void sendMultipartText(String destAddr, String scAddr,
+    protected void sendMultipartText(String callingPackage, String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents) {
         if (isCdmaMo()) {
-            mCdmaDispatcher.sendMultipartText(destAddr, scAddr,
+            mCdmaDispatcher.sendMultipartText(callingPackage, destAddr, scAddr,
                     parts, sentIntents, deliveryIntents);
         } else {
-            mGsmDispatcher.sendMultipartText(destAddr, scAddr,
+            mGsmDispatcher.sendMultipartText(callingPackage, destAddr, scAddr,
                     parts, sentIntents, deliveryIntents);
         }
     }
@@ -189,14 +189,14 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected void sendText(String destAddr, String scAddr, String text,
+    protected void sendText(String callingPackage, String destAddr, String scAddr, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
         Rlog.d(TAG, "sendText");
         if (isCdmaMo()) {
-            mCdmaDispatcher.sendText(destAddr, scAddr,
+            mCdmaDispatcher.sendText(callingPackage, destAddr, scAddr,
                     text, sentIntent, deliveryIntent);
         } else {
-            mGsmDispatcher.sendText(destAddr, scAddr,
+            mGsmDispatcher.sendText(callingPackage, destAddr, scAddr,
                     text, sentIntent, deliveryIntent);
         }
     }
@@ -306,7 +306,7 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected void sendNewSubmitPdu(String destinationAddress, String scAddress, String message,
+    protected void sendNewSubmitPdu(String callingPackage, String destinationAddress, String scAddress, String message,
             SmsHeader smsHeader, int format, PendingIntent sentIntent,
             PendingIntent deliveryIntent, boolean lastPart) {
         Rlog.e(TAG, "Error! Not implemented for IMS.");

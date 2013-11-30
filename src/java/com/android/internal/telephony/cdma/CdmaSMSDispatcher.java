@@ -102,24 +102,24 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     @Override
-    protected void sendData(String destAddr, String scAddr, int destPort,
+    protected void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, destPort, data, (deliveryIntent != null));
         HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, destPort, data, pdu);
-        SmsTracker tracker = SmsTrackerFactory(map, sentIntent, deliveryIntent,
+        SmsTracker tracker = SmsTrackerFactory(callingPackage, map, sentIntent, deliveryIntent,
                 getFormat());
         sendSubmitPdu(tracker);
     }
 
     /** {@inheritDoc} */
     @Override
-    protected void sendText(String destAddr, String scAddr, String text,
+    protected void sendText(String callingPackage, String destAddr, String scAddr, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, text, (deliveryIntent != null), null);
         HashMap map =  SmsTrackerMapFactory(destAddr, scAddr, text, pdu);
-        SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
+        SmsTracker tracker = SmsTrackerFactory(callingPackage, map, sentIntent,
                 deliveryIntent, getFormat());
         sendSubmitPdu(tracker);
     }
@@ -133,7 +133,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     @Override
-    protected void sendNewSubmitPdu(String destinationAddress, String scAddress,
+    protected void sendNewSubmitPdu(String callingPackage, String destinationAddress, String scAddress,
             String message, SmsHeader smsHeader, int encoding,
             PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart) {
         UserData uData = new UserData();
@@ -155,7 +155,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
         HashMap map =  SmsTrackerMapFactory(destinationAddress, scAddress,
                 message, submitPdu);
-        SmsTracker tracker = SmsTrackerFactory(map, sentIntent,
+        SmsTracker tracker = SmsTrackerFactory(callingPackage, map, sentIntent,
                 deliveryIntent, getFormat());
         sendSubmitPdu(tracker);
     }
