@@ -748,6 +748,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
 
     public void getImsRegistrationState(Message result) {
+        if(mRilVersion < 8)
+            return;
+
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_IMS_REGISTRATION_STATE, result);
 
         if (RILJ_LOGD) {
