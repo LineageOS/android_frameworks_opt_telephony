@@ -1401,6 +1401,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     @Override
     public void setVoiceMessageWaiting(int line, int countWaiting) {
         IccRecords r = mIccRecords.get();
+        if (r == null) { // If mIccRecords is null try RuimRecords
+             mUiccController = UiccController.getInstance();
+             r = mUiccController.getIccRecords(UiccController.APP_FAM_3GPP2);
+        }
         if (r != null) {
             r.setVoiceMessageWaiting(line, countWaiting);
         }
