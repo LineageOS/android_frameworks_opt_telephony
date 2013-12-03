@@ -403,11 +403,9 @@ public class CatService extends Handler implements AppInterface {
                     CatLog.d(this, "cmd " + cmdParams.getCommandType() + " with null alpha id");
                     // If alpha length is zero, we just respond with OK.
                     if (isProactiveCmd) {
-                        if (cmdParams.getCommandType() == CommandType.OPEN_CHANNEL) {
-                            mCmdIf.handleCallSetupRequestFromSim(true, null);
-                        } else {
-                            sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
-                        }
+                        sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
+                    } else if (cmdParams.getCommandType() == CommandType.OPEN_CHANNEL) {
+                        mCmdIf.handleCallSetupRequestFromSim(true, null);
                     }
                     return;
                 }
