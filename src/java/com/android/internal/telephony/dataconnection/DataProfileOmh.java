@@ -108,30 +108,22 @@ public class DataProfileOmh extends DataProfile {
     /* Priority of this profile in the modem */
     private int mPriority = 0;
 
+    /* ID of the profile in the modem */
+    private int mProfileId = 0;
+
     private static String PROFILE_TYPE = "DataProfileOmh";
 
-    public DataProfileOmh(int id, String numeric, String name, String user, String password,
-            int authType, String[] types, String protocol, String roamingProtocol, int bearer) {
-        super(id, numeric, name, user, password,
-                authType, types, protocol, roamingProtocol, bearer);
-    }
-
-    public DataProfileOmh() {
+    public DataProfileOmh(int profileId, int priority) {
         /**
          * Default values if the profile is being used for only selective
          * fields e.g: just profileId and Priority. use case is when rest of the
          * fields can be read and processed only by the modem
          */
-        this(0, "", PROFILE_TYPE, null, null,
+        super(0, "", PROFILE_TYPE, null, null,
                 RILConstants.SETUP_DATA_AUTH_PAP_CHAP, null,
                 "IP", "IP", 0);
-    }
-
-    public DataProfileOmh(int profileId, int priority) {
-        this();
         this.mProfileId = profileId;
         this.mPriority = priority;
-        this.types = new String[0];
     }
 
     @Override
@@ -204,11 +196,6 @@ public class DataProfileOmh extends DataProfile {
 
     public int getPriority() {
         return mPriority;
-    }
-
-    public String[] getServiceTypes() {
-        String[] dummy = null;
-        return dummy;
     }
 
     public void addServiceType(DataProfileTypeModem modemProfile) {
