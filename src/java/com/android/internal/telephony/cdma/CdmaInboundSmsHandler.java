@@ -45,9 +45,7 @@ import java.util.Arrays;
  */
 public class CdmaInboundSmsHandler extends InboundSmsHandler {
 
-    private final PhoneBase mPhone;
     private final CdmaSMSDispatcher mSmsDispatcher;
-    private final CellBroadcastHandler mCellBroadcastHandler;
     private final CdmaServiceCategoryProgramHandler mServiceCategoryProgramHandler;
 
     private byte[] mLastDispatchedSmsFingerprint;
@@ -61,12 +59,11 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      */
     private CdmaInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
             PhoneBase phone, CdmaSMSDispatcher smsDispatcher) {
-        super("CdmaInboundSmsHandler", context, storageMonitor);
+        super("CdmaInboundSmsHandler", context, storageMonitor, phone,
+                CellBroadcastHandler.makeCellBroadcastHandler(context));
         mSmsDispatcher = smsDispatcher;
-        mCellBroadcastHandler = CellBroadcastHandler.makeCellBroadcastHandler(context);
         mServiceCategoryProgramHandler = CdmaServiceCategoryProgramHandler.makeScpHandler(context,
                 phone.mCi);
-        mPhone = phone;
         phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
     }
 
@@ -211,6 +208,19 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
             mLastAcknowledgedSmsFingerprint = mLastDispatchedSmsFingerprint;
         }
         mLastDispatchedSmsFingerprint = null;
+    }
+
+    /**
+     * Called when the phone changes the default method updates mPhone
+     * mStorageMonitor and mCellBroadcastHandler.updatePhoneObject.
+     * Override if different or other behavior is desired.
+     *
+     * @param phone
+     */
+    @Override
+    protected void onUpdatePhoneObject(PhoneBase phone) {
+        super.onUpdatePhoneObject(phone);
+        mCellBroadcastHandler.updatePhoneObject(phone);
     }
 
     /**

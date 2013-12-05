@@ -48,6 +48,12 @@ public abstract class WakeLockStateMachine extends StateMachine {
     /** Release wakelock after a short timeout when returning to idle state. */
     static final int EVENT_RELEASE_WAKE_LOCK = 3;
 
+    static final int EVENT_UPDATE_PHONE_OBJECT = 4;
+
+    protected PhoneBase mPhone;
+
+    protected Context mContext;
+
     /** Wakelock release delay when returning to idle state. */
     private static final int WAKE_LOCK_TIMEOUT = 3000;
 
@@ -55,8 +61,11 @@ public abstract class WakeLockStateMachine extends StateMachine {
     private final IdleState mIdleState = new IdleState();
     private final WaitingState mWaitingState = new WaitingState();
 
-    protected WakeLockStateMachine(String debugTag, Context context) {
+    protected WakeLockStateMachine(String debugTag, Context context, PhoneBase phone) {
         super(debugTag);
+
+        mContext = context;
+        mPhone = phone;
 
         PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, debugTag);
@@ -66,6 +75,10 @@ public abstract class WakeLockStateMachine extends StateMachine {
         addState(mIdleState, mDefaultState);
         addState(mWaitingState, mDefaultState);
         setInitialState(mIdleState);
+    }
+
+    public void updatePhoneObject(PhoneBase phone) {
+        sendMessage(EVENT_UPDATE_PHONE_OBJECT, phone);
     }
 
     /**
@@ -98,13 +111,23 @@ public abstract class WakeLockStateMachine extends StateMachine {
     class DefaultState extends State {
         @Override
         public boolean processMessage(Message msg) {
-            String errorText = "processMessage: unhandled message type " + msg.what;
-            if (Build.IS_DEBUGGABLE) {
-                throw new RuntimeException(errorText);
-              } else {
-                loge(errorText);
-                return HANDLED;
-              }
+            switch (msg.what) {
+                case EVENT_UPDATE_PHONE_OBJECT: {
+                    mPhone = (PhoneBase) msg.obj;
+                    log("updatePhoneObject: phone=" + mPhone.getClass().getSimpleName());
+                    break;
+                }
+                default: {
+                    String errorText = "processMessage: unhandled message type " + msg.what;
+                    if (Build.IS_DEBUGGABLE) {
+                        throw new RuntimeException(errorText);
+                    } else {
+                        loge(errorText);
+                    }
+                    break;
+                }
+            }
+            return HANDLED;
         }
     }
 

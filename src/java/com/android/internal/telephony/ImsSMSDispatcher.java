@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,8 +41,9 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     private SMSDispatcher mCdmaDispatcher;
     private SMSDispatcher mGsmDispatcher;
 
-    GsmInboundSmsHandler mGsmInboundSmsHandler;
-    CdmaInboundSmsHandler mCdmaInboundSmsHandler;
+    private GsmInboundSmsHandler mGsmInboundSmsHandler;
+    private CdmaInboundSmsHandler mCdmaInboundSmsHandler;
+
 
     /** true if IMS is registered and sms is supported, false otherwise.*/
     private boolean mIms = false;
@@ -51,19 +51,17 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
 
     public ImsSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
             SmsUsageMonitor usageMonitor) {
-        super(phone, usageMonitor);
+        super(phone, usageMonitor, null);
         Rlog.d(TAG, "ImsSMSDispatcher created");
 
-        // Create dispatchers, inbound SMS handlers and broadcast
-        // undelivered messages in raw table.
-        mCdmaDispatcher = new CdmaSMSDispatcher(phone,
-                storageMonitor, usageMonitor, this);
+        // Create dispatchers, inbound SMS handlers and
+        // broadcast undelivered messages in raw table.
+        mCdmaDispatcher = new CdmaSMSDispatcher(phone, usageMonitor, this);
         mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(phone.getContext(),
                 storageMonitor, phone);
         mCdmaInboundSmsHandler = CdmaInboundSmsHandler.makeInboundSmsHandler(phone.getContext(),
                 storageMonitor, phone, (CdmaSMSDispatcher) mCdmaDispatcher);
-        mGsmDispatcher = new GsmSMSDispatcher(phone,
-                storageMonitor, usageMonitor, this, mGsmInboundSmsHandler);
+        mGsmDispatcher = new GsmSMSDispatcher(phone, usageMonitor, this, mGsmInboundSmsHandler);
         Thread broadcastThread = new Thread(new SmsBroadcastUndelivered(phone.getContext(),
                 mGsmInboundSmsHandler, mCdmaInboundSmsHandler));
         broadcastThread.start();
@@ -79,6 +77,8 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
         super.updatePhoneObject(phone);
         mCdmaDispatcher.updatePhoneObject(phone);
         mGsmDispatcher.updatePhoneObject(phone);
+        mGsmInboundSmsHandler.updatePhoneObject(phone);
+        mCdmaInboundSmsHandler.updatePhoneObject(phone);
     }
 
     public void dispose() {

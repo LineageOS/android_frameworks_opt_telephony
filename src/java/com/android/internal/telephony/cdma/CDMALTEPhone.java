@@ -1,6 +1,5 @@
 /* 
- * Copyrigh (C) 2011 The Android Open Source Project
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2011 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -194,6 +193,27 @@ public class CDMALTEPhone extends CDMAPhone {
             loge("failed to commit network selection preference");
         }
 
+    }
+
+
+    /**
+     * Sets the "current" field in the telephony provider according to the
+     * build-time operator numeric property
+     *
+     * @return true for success; false otherwise.
+     */
+    @Override
+    boolean updateCurrentCarrierInProvider(String operatorNumeric) {
+        boolean retVal;
+        if (mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP) == null) {
+            if (DBG) log("updateCurrentCarrierInProvider APP_FAM_3GPP == null");
+            retVal = super.updateCurrentCarrierInProvider(operatorNumeric);
+        } else {
+            if (DBG) log("updateCurrentCarrierInProvider not updated");
+            retVal = true;
+        }
+        if (DBG) log("updateCurrentCarrierInProvider X retVal=" + retVal);
+        return retVal;
     }
 
     @Override

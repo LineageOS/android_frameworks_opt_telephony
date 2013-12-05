@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,7 +39,10 @@ import java.util.List;
 
 /**
  * Manages SMS operations such as sending data, text, and pdu SMS messages.
- * Get this object by calling the static method SmsManager.getDefault().
+ * Get this object by calling the static method {@link #getDefault()}.
+ *
+ * <p>For information about how to behave as the default SMS app on Android 4.4 (API level 19)
+ * and higher, see {@link android.provider.Telephony}.
  */
 public final class SmsManager {
     /** Singleton object constructed during class initialization. */
@@ -48,6 +50,16 @@ public final class SmsManager {
 
     /**
      * Send a text based SMS.
+     *
+     * <p class="note"><strong>Note:</strong> Using this method requires that your app has the
+     * {@link android.Manifest.permission#SEND_SMS} permission.</p>
+     *
+     * <p class="note"><strong>Note:</strong> Beginning with Android 4.4 (API level 19), if
+     * <em>and only if</em> an app is not selected as the default SMS app, the system automatically
+     * writes messages sent using this method to the SMS Provider (the default SMS app is always
+     * responsible for writing its sent messages to the SMS Provider). For information about
+     * how to behave as the default SMS app, see {@link android.provider.Telephony}.</p>
+     *
      *
      * @param destinationAddress the address to send the message to
      * @param scAddress is the service center address or null to use
@@ -116,6 +128,15 @@ public final class SmsManager {
      * divided the message into correctly sized parts by calling
      * <code>divideMessage</code>.
      *
+     * <p class="note"><strong>Note:</strong> Using this method requires that your app has the
+     * {@link android.Manifest.permission#SEND_SMS} permission.</p>
+     *
+     * <p class="note"><strong>Note:</strong> Beginning with Android 4.4 (API level 19), if
+     * <em>and only if</em> an app is not selected as the default SMS app, the system automatically
+     * writes messages sent using this method to the SMS Provider (the default SMS app is always
+     * responsible for writing its sent messages to the SMS Provider). For information about
+     * how to behave as the default SMS app, see {@link android.provider.Telephony}.</p>
+     *
      * @param destinationAddress the address to send the message to
      * @param scAddress is the service center address or null to use
      *   the current default SMSC
@@ -180,6 +201,9 @@ public final class SmsManager {
 
     /**
      * Send a data based SMS to a specific application port.
+     *
+     * <p class="note"><strong>Note:</strong> Using this method requires that your app has the
+     * {@link android.Manifest.permission#SEND_SMS} permission.</p>
      *
      * @param destinationAddress the address to send the message to
      * @param scAddress is the service center address or null to use

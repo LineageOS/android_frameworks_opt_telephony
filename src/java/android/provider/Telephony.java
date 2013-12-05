@@ -42,6 +42,64 @@ import java.util.regex.Pattern;
 /**
  * The Telephony provider contains data related to phone operation, specifically SMS and MMS
  * messages and access to the APN list, including the MMSC to use.
+ *
+ * <p class="note"><strong>Note:</strong> These APIs are not available on all Android-powered
+ * devices. If your app depends on telephony features such as for managing SMS messages, include
+ * a <a href="{@docRoot}guide/topics/manifest/uses-feature-element.html">{@code &lt;uses-feature>}
+ * </a> element in your manifest that declares the {@code "android.hardware.telephony"} hardware
+ * feature. Alternatively, you can check for telephony availability at runtime using either
+ * {@link android.content.pm.PackageManager#hasSystemFeature
+ * hasSystemFeature(PackageManager.FEATURE_TELEPHONY)} or {@link
+ * android.telephony.TelephonyManager#getPhoneType}.</p>
+ *
+ * <h3>Creating an SMS app</h3>
+ *
+ * <p>Only the default SMS app (selected by the user in system settings) is able to write to the
+ * SMS Provider (the tables defined within the {@code Telephony} class) and only the default SMS
+ * app receives the {@link android.provider.Telephony.Sms.Intents#SMS_DELIVER_ACTION} broadcast
+ * when the user receives an SMS or the {@link
+ * android.provider.Telephony.Sms.Intents#WAP_PUSH_DELIVER_ACTION} broadcast when the user
+ * receives an MMS.</p>
+ *
+ * <p>Any app that wants to behave as the user's default SMS app must handle the following intents:
+ * <ul>
+ * <li>In a broadcast receiver, include an intent filter for {@link Sms.Intents#SMS_DELIVER_ACTION}
+ * (<code>"android.provider.Telephony.SMS_DELIVER"</code>). The broadcast receiver must also
+ * require the {@link android.Manifest.permission#BROADCAST_SMS} permission.
+ * <p>This allows your app to directly receive incoming SMS messages.</p></li>
+ * <li>In a broadcast receiver, include an intent filter for {@link
+ * Sms.Intents#WAP_PUSH_DELIVER_ACTION}} ({@code "android.provider.Telephony.WAP_PUSH_DELIVER"})
+ * with the MIME type <code>"application/vnd.wap.mms-message"</code>.
+ * The broadcast receiver must also require the {@link
+ * android.Manifest.permission#BROADCAST_WAP_PUSH} permission.
+ * <p>This allows your app to directly receive incoming MMS messages.</p></li>
+ * <li>In your activity that delivers new messages, include an intent filter for
+ * {@link android.content.Intent#ACTION_SENDTO} (<code>"android.intent.action.SENDTO"
+ * </code>) with schemas, <code>sms:</code>, <code>smsto:</code>, <code>mms:</code>, and
+ * <code>mmsto:</code>.
+ * <p>This allows your app to receive intents from other apps that want to deliver a
+ * message.</p></li>
+ * <li>In a service, include an intent filter for {@link
+ * android.telephony.TelephonyManager#ACTION_RESPOND_VIA_MESSAGE}
+ * (<code>"android.intent.action.RESPOND_VIA_MESSAGE"</code>) with schemas,
+ * <code>sms:</code>, <code>smsto:</code>, <code>mms:</code>, and <code>mmsto:</code>.
+ * This service must also require the {@link
+ * android.Manifest.permission#SEND_RESPOND_VIA_MESSAGE} permission.
+ * <p>This allows users to respond to incoming phone calls with an immediate text message
+ * using your app.</p></li>
+ * </ul>
+ *
+ * <p>Other apps that are not selected as the default SMS app can only <em>read</em> the SMS
+ * Provider, but may also be notified when a new SMS arrives by listening for the {@link
+ * Sms.Intents#SMS_RECEIVED_ACTION}
+ * broadcast, which is a non-abortable broadcast that may be delivered to multiple apps. This
+ * broadcast is intended for apps that&mdash;while not selected as the default SMS app&mdash;need to
+ * read special incoming messages such as to perform phone number verification.</p>
+ *
+ * <p>For more information about building SMS apps, read the blog post, <a
+ * href="http://android-developers.blogspot.com/2013/10/getting-your-sms-apps-ready-for-kitkat.html"
+ * >Getting Your SMS Apps Ready for KitKat</a>.</p>
+ *
  */
 public final class Telephony {
     private static final String TAG = "Telephony";
@@ -606,7 +664,7 @@ public final class Telephony {
              * the user. The intent will have the following extra values:</p>
              *
              * <ul>
-             *   <li><em>pdus</em> - An Object[] of byte[]s containing the PDUs
+             *   <li><em>"pdus"</em> - An Object[] of byte[]s containing the PDUs
              *   that make up the message.</li>
              * </ul>
              *
@@ -615,6 +673,12 @@ public final class Telephony {
              *
              * <p>If a BroadcastReceiver encounters an error while processing
              * this intent it should set the result code appropriately.</p>
+             *
+             * <p class="note"><strong>Note:</strong>
+             * The broadcast receiver that filters for this intent must declare
+             * {@link android.Manifest.permission#BROADCAST_SMS} as a required permission in
+             * the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">{@code
+             * &lt;receiver>}</a> tag.
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SMS_DELIVER_ACTION =
@@ -628,7 +692,7 @@ public final class Telephony {
              * values:</p>
              *
              * <ul>
-             *   <li><em>pdus</em> - An Object[] of byte[]s containing the PDUs
+             *   <li><em>"pdus"</em> - An Object[] of byte[]s containing the PDUs
              *   that make up the message.</li>
              * </ul>
              *
@@ -649,7 +713,7 @@ public final class Telephony {
              * values:</p>
              *
              * <ul>
-             *   <li><em>pdus</em> - An Object[] of byte[]s containing the PDUs
+             *   <li><em>"pdus"</em> - An Object[] of byte[]s containing the PDUs
              *   that make up the message.</li>
              * </ul>
              *
@@ -670,12 +734,12 @@ public final class Telephony {
              * the user. The intent will have the following extra values:</p>
              *
              * <ul>
-             *   <li><em>transactionId (Integer)</em> - The WAP transaction ID</li>
-             *   <li><em>pduType (Integer)</em> - The WAP PDU type</li>
-             *   <li><em>header (byte[])</em> - The header of the message</li>
-             *   <li><em>data (byte[])</em> - The data payload of the message</li>
-             *   <li><em>contentTypeParameters (HashMap&lt;String,String&gt;)</em>
-             *   - Any parameters associated with the content type
+             *   <li><em>"transactionId"</em> - (Integer) The WAP transaction ID</li>
+             *   <li><em>"pduType"</em> - (Integer) The WAP PDU type</li>
+             *   <li><em>"header"</em> - (byte[]) The header of the message</li>
+             *   <li><em>"data"</em> - (byte[]) The data payload of the message</li>
+             *   <li><em>"contentTypeParameters" </em>
+             *   -(HashMap&lt;String,String&gt;) Any parameters associated with the content type
              *   (decoded from the WSP Content-Type header)</li>
              * </ul>
              *
@@ -688,6 +752,12 @@ public final class Telephony {
              * <p>If any unassigned well-known parameters are encountered, the key of the map will
              * be 'unassigned/0x...', where '...' is the hex value of the unassigned parameter.  If
              * a parameter has No-Value the value in the map will be null.</p>
+             *
+             * <p class="note"><strong>Note:</strong>
+             * The broadcast receiver that filters for this intent must declare
+             * {@link android.Manifest.permission#BROADCAST_WAP_PUSH} as a required permission in
+             * the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">{@code
+             * &lt;receiver>}</a> tag.
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String WAP_PUSH_DELIVER_ACTION =
@@ -701,12 +771,12 @@ public final class Telephony {
              * values:</p>
              *
              * <ul>
-             *   <li><em>transactionId (Integer)</em> - The WAP transaction ID</li>
-             *   <li><em>pduType (Integer)</em> - The WAP PDU type</li>
-             *   <li><em>header (byte[])</em> - The header of the message</li>
-             *   <li><em>data (byte[])</em> - The data payload of the message</li>
-             *   <li><em>contentTypeParameters (HashMap&lt;String,String&gt;)</em>
-             *   - Any parameters associated with the content type
+             *   <li><em>"transactionId"</em> - (Integer) The WAP transaction ID</li>
+             *   <li><em>"pduType"</em> - (Integer) The WAP PDU type</li>
+             *   <li><em>"header"</em> - (byte[]) The header of the message</li>
+             *   <li><em>"data"</em> - (byte[]) The data payload of the message</li>
+             *   <li><em>"contentTypeParameters"</em>
+             *   - (HashMap&lt;String,String&gt;) Any parameters associated with the content type
              *   (decoded from the WSP Content-Type header)</li>
              * </ul>
              *
@@ -730,7 +800,7 @@ public final class Telephony {
              * values:</p>
              *
              * <ul>
-             *   <li><em>message</em> - An SmsCbMessage object containing the broadcast message
+             *   <li><em>"message"</em> - An SmsCbMessage object containing the broadcast message
              *   data. This is not an emergency alert, so ETWS and CMAS data will be null.</li>
              * </ul>
              *
@@ -750,7 +820,7 @@ public final class Telephony {
              * values:</p>
              *
              * <ul>
-             *   <li><em>message</em> - An SmsCbMessage object containing the broadcast message
+             *   <li><em>"message"</em> - An SmsCbMessage object containing the broadcast message
              *   data, including ETWS or CMAS warning notification info if present.</li>
              * </ul>
              *
@@ -770,7 +840,7 @@ public final class Telephony {
              * have the following extra values:</p>
              *
              * <ul>
-             *   <li><em>operations</em> - An array of CdmaSmsCbProgramData objects containing
+             *   <li><em>"operations"</em> - An array of CdmaSmsCbProgramData objects containing
              *   the service category operations (add/delete/clear) to perform.</li>
              * </ul>
              *
@@ -800,7 +870,7 @@ public final class Telephony {
              * following extra value:</p>
              *
              * <ul>
-             *   <li><em>result</em> - An int result code, e.g. {@link #RESULT_SMS_OUT_OF_MEMORY}
+             *   <li><em>"result"</em> - An int result code, e.g. {@link #RESULT_SMS_OUT_OF_MEMORY}
              *   indicating the error returned to the network.</li>
              * </ul>
              */
