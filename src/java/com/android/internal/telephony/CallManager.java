@@ -109,6 +109,9 @@ public class CallManager {
     // default phone as the first phone registered, which is PhoneBase obj
     private Phone mDefaultPhone;
 
+    // save a cached copy of Ims Phone
+    private Phone mImsPhone;
+
     private boolean mSpeedUpAudioForMtCall = false;
 
     protected CmHandler mHandler;
@@ -189,6 +192,7 @@ public class CallManager {
         mBackgroundCalls = new ArrayList<Call>();
         mForegroundCalls = new ArrayList<Call>();
         mDefaultPhone = null;
+        mImsPhone = null;
         initHandler();
     }
 
@@ -346,6 +350,10 @@ public class CallManager {
     public boolean registerPhone(Phone phone) {
         Phone basePhone = getPhoneBase(phone);
 
+        if (phone != null && phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
+            mImsPhone = phone;
+        }
+
         if (basePhone != null && !mPhones.contains(basePhone)) {
 
             if (DBG) {
@@ -400,6 +408,14 @@ public class CallManager {
      */
     public Phone getDefaultPhone() {
         return mDefaultPhone;
+    }
+
+
+    /**
+     * return the IMS phone or null if not available
+     */
+    public Phone getImsPhone() {
+        return mImsPhone;
     }
 
     /**
