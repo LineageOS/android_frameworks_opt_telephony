@@ -245,6 +245,7 @@ public class PhoneProxy extends Handler implements Phone {
 
         String outgoingPhoneName = "Unknown";
         Phone oldPhone = mActivePhone;
+        CallManager cm = CallManager.getInstance();
 
         if (oldPhone != null) {
             outgoingPhoneName = ((PhoneBase) oldPhone).getPhoneName();
@@ -254,7 +255,8 @@ public class PhoneProxy extends Handler implements Phone {
                 + (ServiceState.isGsm(newVoiceRadioTech) ? "GSM" : "CDMA"));
 
         if (oldPhone != null) {
-            CallManager.getInstance().unregisterPhone(oldPhone);
+            cm.unregisterPhone(oldPhone);
+            cm.unregisterPhone(cm.getImsPhone());
             logd("Disposing old phone..");
             oldPhone.dispose();
         }
@@ -273,7 +275,8 @@ public class PhoneProxy extends Handler implements Phone {
         }
 
         if(mActivePhone != null) {
-            CallManager.getInstance().registerPhone(mActivePhone);
+            cm.registerPhone(mActivePhone);
+            cm.registerPhone(cm.getImsPhone());
         }
 
         oldPhone = null;
