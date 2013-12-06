@@ -40,10 +40,14 @@ public class UiccCardApplication {
     private static final String LOG_TAG = "UiccCardApplication";
     private static final boolean DBG = true;
 
-    private static final int EVENT_QUERY_FACILITY_FDN_DONE = 1;
-    private static final int EVENT_CHANGE_FACILITY_FDN_DONE = 2;
-    private static final int EVENT_QUERY_FACILITY_LOCK_DONE = 3;
-    private static final int EVENT_CHANGE_FACILITY_LOCK_DONE = 4;
+    private static final int EVENT_PIN1_PUK1_DONE = 1;
+    private static final int EVENT_CHANGE_PIN1_DONE = 2;
+    private static final int EVENT_CHANGE_PIN2_DONE = 3;
+    private static final int EVENT_QUERY_FACILITY_FDN_DONE = 4;
+    private static final int EVENT_CHANGE_FACILITY_FDN_DONE = 5;
+    private static final int EVENT_QUERY_FACILITY_LOCK_DONE = 6;
+    private static final int EVENT_CHANGE_FACILITY_LOCK_DONE = 7;
+    private static final int EVENT_PIN2_PUK2_DONE = 8;
 
     private final Object  mLock = new Object();
     private UiccCard      mUiccCard; //parent
@@ -59,6 +63,7 @@ public class UiccCardApplication {
     private boolean       mDesiredFdnEnabled;
     private boolean       mIccLockEnabled;
     private boolean       mDesiredPinLocked;
+    private boolean       mIccFdnAvailable = true; // Default is enabled.
 
     private CommandsInterface mCi;
     private Context mContext;
@@ -209,10 +214,18 @@ public class UiccCardApplication {
                 return;
             }
 
-            int[] ints = (int[])ar.result;
-            if(ints.length != 0) {
-                mIccFdnEnabled = (0!=ints[0]);
-                if (DBG) log("Query facility lock : "  + mIccFdnEnabled);
+            int[] result = (int[])ar.result;
+            if(result.length != 0) {
+                //0 - Available & Disabled, 1-Available & Enabled, 2-Unavailable.
+                if (result[0] == 2) {
+                    mIccFdnEnabled = false;
+                    mIccFdnAvailable = false;
+                } else {
+                    mIccFdnEnabled = (result[0] == 1) ? true : false;
+                    mIccFdnAvailable = true;
+                }
+                log("Query facility FDN : FDN service available: "+ mIccFdnAvailable
+                        +" enabled: "  + mIccFdnEnabled);
             } else {
                 loge("Bogus facility lock response");
             }
@@ -221,14 +234,18 @@ public class UiccCardApplication {
 
     private void onChangeFdnDone(AsyncResult ar) {
         synchronized (mLock) {
+            int attemptsRemaining = -1;
+
             if (ar.exception == null) {
                 mIccFdnEnabled = mDesiredFdnEnabled;
                 if (DBG) log("EVENT_CHANGE_FACILITY_FDN_DONE: " +
                         "mIccFdnEnabled=" + mIccFdnEnabled);
             } else {
+                attemptsRemaining = parsePinPukErrorResult(ar);
                 loge("Error change facility fdn with exception " + ar.exception);
             }
             Message response = (Message)ar.userObj;
+            response.arg1 = attemptsRemaining;
             AsyncResult.forMessage(response).exception = ar.exception;
             response.sendToTarget();
         }
@@ -297,15 +314,38 @@ public class UiccCardApplication {
     /** REMOVE when mIccLockEnabled is not needed */
     private void onChangeFacilityLock(AsyncResult ar) {
         synchronized (mLock) {
+            int attemptsRemaining = -1;
+
             if (ar.exception == null) {
                 mIccLockEnabled = mDesiredPinLocked;
                 if (DBG) log( "EVENT_CHANGE_FACILITY_LOCK_DONE: mIccLockEnabled= "
                         + mIccLockEnabled);
             } else {
+                attemptsRemaining = parsePinPukErrorResult(ar);
                 loge("Error change facility lock with exception " + ar.exception);
             }
-            AsyncResult.forMessage(((Message)ar.userObj)).exception = ar.exception;
-            ((Message)ar.userObj).sendToTarget();
+            Message response = (Message)ar.userObj;
+            AsyncResult.forMessage(response).exception = ar.exception;
+            response.arg1 = attemptsRemaining;
+            response.sendToTarget();
+        }
+    }
+
+    /**
+     * Parse the error response to obtain number of attempts remaining
+     */
+    private int parsePinPukErrorResult(AsyncResult ar) {
+        int[] result = (int[]) ar.result;
+        if (result == null) {
+            return -1;
+        } else {
+            int length = result.length;
+            int attemptsRemaining = -1;
+            if (length > 0) {
+                attemptsRemaining = result[0];
+            }
+            log("parsePinPukErrorResult: attemptsRemaining=" + attemptsRemaining);
+            return attemptsRemaining;
         }
     }
 
@@ -321,6 +361,22 @@ public class UiccCardApplication {
             }
 
             switch (msg.what) {
+                case EVENT_PIN1_PUK1_DONE:
+                case EVENT_PIN2_PUK2_DONE:
+                case EVENT_CHANGE_PIN1_DONE:
+                case EVENT_CHANGE_PIN2_DONE:
+                    // a PIN/PUK/PIN2/PUK2 complete
+                    // request has completed. ar.userObj is the response Message
+                    int attemptsRemaining = -1;
+                    ar = (AsyncResult)msg.obj;
+                    if ((ar.exception != null) && (ar.result != null)) {
+                        attemptsRemaining = parsePinPukErrorResult(ar);
+                    }
+                    Message response = (Message)ar.userObj;
+                    AsyncResult.forMessage(response).exception = ar.exception;
+                    response.arg1 = attemptsRemaining;
+                    response.sendToTarget();
+                    break;
                 case EVENT_QUERY_FACILITY_FDN_DONE:
                     ar = (AsyncResult)msg.obj;
                     onQueryFdnEnabled(ar);
@@ -520,6 +576,34 @@ public class UiccCardApplication {
      * Handler.
      *
      * onComplete.obj will be an AsyncResult
+     * onComplete.arg1 = remaining attempts before puk locked or -1 if unknown
+     *
+     * ((AsyncResult)onComplete.obj).exception == null on success
+     * ((AsyncResult)onComplete.obj).exception != null on fail
+     *
+     * If the supplied PIN is incorrect:
+     * ((AsyncResult)onComplete.obj).exception != null
+     * && ((AsyncResult)onComplete.obj).exception
+     *       instanceof com.android.internal.telephony.gsm.CommandException)
+     * && ((CommandException)(((AsyncResult)onComplete.obj).exception))
+     *          .getCommandError() == CommandException.Error.PASSWORD_INCORRECT
+     */
+    public void supplyPin (String pin, Message onComplete) {
+        synchronized (mLock) {
+            mCi.supplyIccPinForApp(pin, mAid, mHandler.obtainMessage(EVENT_PIN1_PUK1_DONE,
+                    onComplete));
+        }
+    }
+
+    /**
+     * Supply the ICC PUK to the ICC
+     *
+     * When the operation is complete, onComplete will be sent to its
+     * Handler.
+     *
+     * onComplete.obj will be an AsyncResult
+     * onComplete.arg1 = remaining attempts before Icc will be permanently unusable
+     * or -1 if unknown
      *
      * ((AsyncResult)onComplete.obj).exception == null on success
      * ((AsyncResult)onComplete.obj).exception != null on fail
@@ -533,27 +617,24 @@ public class UiccCardApplication {
      *
      *
      */
-    public void supplyPin (String pin, Message onComplete) {
-        synchronized (mLock) {
-            mCi.supplyIccPin(pin, onComplete);
-        }
-    }
-
     public void supplyPuk (String puk, String newPin, Message onComplete) {
         synchronized (mLock) {
-            mCi.supplyIccPuk(puk, newPin, onComplete);
+        mCi.supplyIccPukForApp(puk, newPin, mAid,
+                mHandler.obtainMessage(EVENT_PIN1_PUK1_DONE, onComplete));
         }
     }
 
     public void supplyPin2 (String pin2, Message onComplete) {
         synchronized (mLock) {
-            mCi.supplyIccPin2(pin2, onComplete);
+            mCi.supplyIccPin2ForApp(pin2, mAid,
+                    mHandler.obtainMessage(EVENT_PIN2_PUK2_DONE, onComplete));
         }
     }
 
     public void supplyPuk2 (String puk2, String newPin2, Message onComplete) {
         synchronized (mLock) {
-            mCi.supplyIccPuk2(puk2, newPin2, onComplete);
+            mCi.supplyIccPuk2ForApp(puk2, newPin2, mAid,
+                    mHandler.obtainMessage(EVENT_PIN2_PUK2_DONE, onComplete));
         }
     }
 
@@ -594,6 +675,15 @@ public class UiccCardApplication {
         synchronized (mLock) {
             return mIccFdnEnabled;
         }
+    }
+
+    /**
+     * Check whether fdn (fixed dialing number) service is available.
+     * @return true if ICC fdn service available
+     *         false if ICC fdn service not available
+     */
+    public boolean getIccFdnAvailable() {
+        return mIccFdnAvailable;
     }
 
     /**
@@ -659,6 +749,7 @@ public class UiccCardApplication {
      * @param newPassword is the new password
      * @param onComplete
      *        onComplete.obj will be an AsyncResult
+     *        onComplete.arg1 = attempts remaining or -1 if unknown
      *        ((AsyncResult)onComplete.obj).exception == null on success
      *        ((AsyncResult)onComplete.obj).exception != null on fail
      */
@@ -667,7 +758,7 @@ public class UiccCardApplication {
         synchronized (mLock) {
             if (DBG) log("changeIccLockPassword");
             mCi.changeIccPinForApp(oldPassword, newPassword, mAid,
-                    onComplete);
+                    mHandler.obtainMessage(EVENT_CHANGE_PIN1_DONE, onComplete));
         }
     }
 
@@ -687,7 +778,25 @@ public class UiccCardApplication {
         synchronized (mLock) {
             if (DBG) log("changeIccFdnPassword");
             mCi.changeIccPin2ForApp(oldPassword, newPassword, mAid,
-                    onComplete);
+                    mHandler.obtainMessage(EVENT_CHANGE_PIN2_DONE, onComplete));
+        }
+    }
+
+    /**
+     * @return true if ICC card is PIN2 blocked
+     */
+    public boolean getIccPin2Blocked() {
+        synchronized (mLock) {
+            return mPin2State == PinState.PINSTATE_ENABLED_BLOCKED;
+        }
+    }
+
+    /**
+     * @return true if ICC card is PUK2 blocked
+     */
+    public boolean getIccPuk2Blocked() {
+        synchronized (mLock) {
+            return mPin2State == PinState.PINSTATE_ENABLED_PERM_BLOCKED;
         }
     }
 

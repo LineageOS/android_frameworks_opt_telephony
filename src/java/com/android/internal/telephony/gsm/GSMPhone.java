@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2006 The Android Open Source Project
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -122,8 +121,6 @@ public class GSMPhone extends PhoneBase {
     private String mImei;
     private String mImeiSv;
     private String mVmNumber;
-
-    GsmInboundSmsHandler mGsmInboundSmsHandler;
 
     // Create Cfu (Call forward unconditional) so that dialling number &
     // mOnComplete (Message object passed by client) can be packed &
@@ -257,7 +254,12 @@ public class GSMPhone extends PhoneBase {
     @Override
     public ServiceState
     getServiceState() {
-        return mSST.mSS;
+        if (mSST != null) {
+            return mSST.mSS;
+        } else {
+            // avoid potential NPE in EmergencyCallHelper during Phone switch
+            return new ServiceState();
+        }
     }
 
     @Override
@@ -755,7 +757,7 @@ public class GSMPhone extends PhoneBase {
     public boolean handlePinMmi(String dialString) {
         GsmMmiCode mmi = GsmMmiCode.newFromDialString(dialString, this, mUiccApplication.get());
 
-        if (mmi != null && mmi.isPinCommand()) {
+        if (mmi != null && mmi.isPinPukCommand()) {
             mPendingMMIs.add(mmi);
             mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
             mmi.processCode();

@@ -45,14 +45,13 @@ import java.util.ArrayList;
  */
 public final class CdmaServiceCategoryProgramHandler extends WakeLockStateMachine {
 
-    private final Context mContext;
     final CommandsInterface mCi;
 
     /**
      * Create a new CDMA inbound SMS handler.
      */
     CdmaServiceCategoryProgramHandler(Context context, CommandsInterface commandsInterface) {
-        super("CdmaServiceCategoryProgramHandler", context);
+        super("CdmaServiceCategoryProgramHandler", context, null);
         mContext = context;
         mCi = commandsInterface;
     }
@@ -159,7 +158,7 @@ public final class CdmaServiceCategoryProgramHandler extends WakeLockStateMachin
                 dos.writeInt(0); //servicePresent
                 dos.writeInt(0); //serviceCategory
                 CdmaSmsAddress destAddr = CdmaSmsAddress.parse(
-                        PhoneNumberUtils.cdmaCheckAndProcessPlusCode(sender));
+                        PhoneNumberUtils.cdmaCheckAndProcessPlusCodeForSms(sender));
                 dos.write(destAddr.digitMode);
                 dos.write(destAddr.numberMode);
                 dos.write(destAddr.ton); // number_type
