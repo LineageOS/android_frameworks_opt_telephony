@@ -53,7 +53,7 @@ public class CdmaServiceCategoryProgramHandler extends WakeLockStateMachine {
      */
     protected CdmaServiceCategoryProgramHandler(Context context,
             CommandsInterface commandsInterface) {
-        super("CdmaServiceCategoryProgramHandler", context);
+        super("CdmaServiceCategoryProgramHandler", context, null);
         mContext = context;
         mCi = commandsInterface;
     }
@@ -160,7 +160,7 @@ public class CdmaServiceCategoryProgramHandler extends WakeLockStateMachine {
                 dos.writeInt(0); //servicePresent
                 dos.writeInt(0); //serviceCategory
                 CdmaSmsAddress destAddr = CdmaSmsAddress.parse(
-                        PhoneNumberUtils.cdmaCheckAndProcessPlusCode(sender));
+                        PhoneNumberUtils.cdmaCheckAndProcessPlusCodeForSms(sender));
                 dos.write(destAddr.digitMode);
                 dos.write(destAddr.numberMode);
                 dos.write(destAddr.ton); // number_type

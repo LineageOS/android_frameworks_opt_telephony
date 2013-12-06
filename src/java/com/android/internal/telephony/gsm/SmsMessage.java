@@ -559,8 +559,9 @@ public class SmsMessage extends SmsMessageBase {
             try {
                 ret = new GsmSmsAddress(mPdu, mCur, lengthBytes);
             } catch (ParseException e) {
-                Rlog.e(LOG_TAG, e.getMessage());
                 ret = null;
+                //This is caught by createFromPdu(byte[] pdu)
+                throw new RuntimeException(e.getMessage());
             }
 
             mCur += lengthBytes;

@@ -71,6 +71,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Enumeration;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Iterator;
@@ -79,6 +80,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.PriorityQueue;
 
 /**
  * {@hide}
@@ -261,7 +263,7 @@ public abstract class DcTrackerBase extends Handler {
                                     new HashMap<String, Integer>();
 
     /** Phone.APN_TYPE_* ===> ApnContext */
-    protected ConcurrentHashMap<String, ApnContext> mApnContexts =
+    protected final ConcurrentHashMap<String, ApnContext> mApnContexts =
                                     new ConcurrentHashMap<String, ApnContext>();
 
     /** Priorities for APN_TYPEs. package level access, used by ApnContext */
@@ -282,6 +284,15 @@ public abstract class DcTrackerBase extends Handler {
 
     /** Currently active data profile */
     protected DataProfile mActiveDp;
+    /** kept in sync with mApnContexts
+     * Higher numbers are higher priority and sorted so highest priority is first */
+    protected final PriorityQueue<ApnContext>mPrioritySortedApnContexts =
+            new PriorityQueue<ApnContext>(5,
+            new Comparator<ApnContext>() {
+                public int compare(ApnContext c1, ApnContext c2) {
+                    return c2.priority - c1.priority;
+                }
+            } );
 
     /** Holds all data profiles */
     protected ArrayList<DataProfile> mAllDps = new ArrayList<DataProfile>();
@@ -630,8 +641,12 @@ public abstract class DcTrackerBase extends Handler {
                 Settings.Global.TETHER_DUN_APN);
         ApnSetting dunSetting = ApnSetting.fromString(apnData);
         if (dunSetting != null) {
-            if (VDBG) log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
-            return dunSetting;
+            IccRecords r = mIccRecords.get();
+            String operator = (r != null) ? r.getOperatorNumeric() : "";
+            if (dunSetting.numeric.equals(operator)) {
+                if (VDBG) log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
+                return dunSetting;
+            }
         }
 
         apnData = c.getResources().getString(R.string.config_tether_apndata);

@@ -52,11 +52,9 @@ public class ImsSMSDispatcher extends SMSDispatcher {
 
     public ImsSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
             SmsUsageMonitor usageMonitor) {
-        super(phone, usageMonitor);
+        super(phone, usageMonitor, null);
         Rlog.d(TAG, "ImsSMSDispatcher created");
 
-        // Create dispatchers, inbound SMS handlers and broadcast
-        // undelivered messages in raw table.
         initDispatchers(phone, storageMonitor, usageMonitor);
 
         mCi.registerForOn(this, EVENT_RADIO_ON, null);
@@ -65,6 +63,8 @@ public class ImsSMSDispatcher extends SMSDispatcher {
 
     protected void initDispatchers(PhoneBase phone, SmsStorageMonitor storageMonitor,
             SmsUsageMonitor usageMonitor) {
+        // Create dispatchers, inbound SMS handlers and
+        // broadcast undelivered messages in raw table.
         mCdmaDispatcher = new CdmaSMSDispatcher(phone, usageMonitor, this);
         mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(phone.getContext(),
                 storageMonitor, phone);
