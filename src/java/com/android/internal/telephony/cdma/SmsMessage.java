@@ -893,7 +893,7 @@ public class SmsMessage extends SmsMessageBase {
          * Convert + code to 011 and dial out for international SMS
          */
         CdmaSmsAddress destAddr = CdmaSmsAddress.parse(
-                PhoneNumberUtils.cdmaCheckAndProcessPlusCode(destAddrStr));
+                PhoneNumberUtils.cdmaCheckAndProcessPlusCodeForSms(destAddrStr));
         if (destAddr == null) return null;
 
         BearerData bearerData = new BearerData();

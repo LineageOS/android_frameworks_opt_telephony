@@ -1425,8 +1425,6 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
         for (String numeric : numericArray) {
             if (operatorNumeric.startsWith(numeric))
                 return true;
-            else
-                return false;
         }
         return false;
     }

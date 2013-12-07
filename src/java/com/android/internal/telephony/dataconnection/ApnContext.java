@@ -18,6 +18,7 @@ package com.android.internal.telephony.dataconnection;
 
 import android.app.PendingIntent;
 import android.content.Context;
+import android.net.NetworkConfig;
 import android.telephony.Rlog;
 
 import com.android.internal.R;
@@ -47,6 +48,8 @@ public class ApnContext {
     private ArrayList<DataProfile> mWaitingDataProfiles = null;
     private final int mPriority;
 
+    public final int priority;
+
     /** A zero indicates that all waiting APNs had a permanent error */
     private AtomicInteger mWaitingApnsPermanentFailureCountDown;
 
@@ -67,16 +70,17 @@ public class ApnContext {
      * carrier requirements met
      */
     AtomicBoolean mDependencyMet;
-
-    public ApnContext(Context context, String DataProfileType, String logTag) {
+    public ApnContext(Context context, String dataProfileType, String logTag,
+            NetworkConfig config) {
         mContext = context;
-        mDataProfileType = DataProfileType;
+        mDataProfileType = dataProfileType;
         mState = DctConstants.State.IDLE;
         mPriority = DcTrackerBase.mApnPriorities.get(mDataProfileType);
         setReason(Phone.REASON_DATA_ENABLED);
         mDataEnabled = new AtomicBoolean(false);
-        mDependencyMet = new AtomicBoolean(true);
+        mDependencyMet = new AtomicBoolean(config.dependencyMet);
         mWaitingApnsPermanentFailureCountDown = new AtomicInteger(0);
+        priority = config.priority;
         LOG_TAG = logTag;
     }
 
