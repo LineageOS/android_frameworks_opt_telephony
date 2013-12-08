@@ -43,12 +43,10 @@ import java.util.HashMap;
 public class CdmaSMSDispatcher extends SMSDispatcher {
     protected static final String TAG = "CdmaSMSDispatcher";
     private static final boolean VDBG = false;
-    private ImsSMSDispatcher mImsSMSDispatcher;
 
     public CdmaSMSDispatcher(PhoneBase phone, SmsUsageMonitor usageMonitor,
             ImsSMSDispatcher imsSMSDispatcher) {
-        super(phone, usageMonitor);
-        mImsSMSDispatcher = imsSMSDispatcher;
+        super(phone, usageMonitor, imsSMSDispatcher);
         Rlog.d(TAG, "CdmaSMSDispatcher created");
     }
 
@@ -217,21 +215,5 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
             // next retry will be sent using IMS request again.
             tracker.mImsRetry++;
         }
-    }
-
-    @Override
-    public void sendRetrySms(SmsTracker tracker) {
-        //re-routing to ImsSMSDispatcher
-        mImsSMSDispatcher.sendRetrySms(tracker);
-    }
-
-    @Override
-    public boolean isIms() {
-        return mImsSMSDispatcher.isIms();
-    }
-
-    @Override
-    public String getImsSmsFormat() {
-        return mImsSMSDispatcher.getImsSmsFormat();
     }
 }

@@ -109,6 +109,9 @@ public class CallManager {
     // default phone as the first phone registered, which is PhoneBase obj
     private Phone mDefaultPhone;
 
+    // save a cached copy of Ims Phone
+    private Phone mImsPhone;
+
     private boolean mSpeedUpAudioForMtCall = false;
 
     protected CmHandler mHandler;
@@ -189,6 +192,7 @@ public class CallManager {
         mBackgroundCalls = new ArrayList<Call>();
         mForegroundCalls = new ArrayList<Call>();
         mDefaultPhone = null;
+        mImsPhone = null;
         initHandler();
     }
 
@@ -346,6 +350,10 @@ public class CallManager {
     public boolean registerPhone(Phone phone) {
         Phone basePhone = getPhoneBase(phone);
 
+        if (phone != null && phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
+            mImsPhone = phone;
+        }
+
         if (basePhone != null && !mPhones.contains(basePhone)) {
 
             if (DBG) {
@@ -400,6 +408,14 @@ public class CallManager {
      */
     public Phone getDefaultPhone() {
         return mDefaultPhone;
+    }
+
+
+    /**
+     * return the IMS phone or null if not available
+     */
+    public Phone getImsPhone() {
+        return mImsPhone;
     }
 
     /**
@@ -1923,6 +1939,11 @@ public class CallManager {
         return false;
     }
 
+    private boolean isRingingDuplicateCall() {
+        return ((mRingingCalls.size() > 1) && (mRingingCalls.get(0).getLatestConnection().
+                getAddress().equals(mRingingCalls.get(1).getLatestConnection().getAddress())));
+    }
+
     protected class CmHandler extends Handler {
 
         @Override
@@ -1939,7 +1960,8 @@ public class CallManager {
                     break;
                 case EVENT_NEW_RINGING_CONNECTION:
                     if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_NEW_RINGING_CONNECTION)");
-                    if (getActiveFgCallState().isDialing() || hasMoreThanOneRingingCall()) {
+                    if (getActiveFgCallState().isDialing()
+                            || (hasMoreThanOneRingingCall() && !isRingingDuplicateCall())) {
                         Connection c = (Connection) ((AsyncResult) msg.obj).result;
                         try {
                             Rlog.d(LOG_TAG, "silently drop incoming call: " + c.getCall());

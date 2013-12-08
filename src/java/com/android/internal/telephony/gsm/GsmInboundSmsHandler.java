@@ -40,23 +40,19 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     /** Handler for SMS-PP data download messages to UICC. */
     private final UsimDataDownloadHandler mDataDownloadHandler;
 
-    protected GsmCellBroadcastHandler mCellBroadcastDispatcher;
-
-
     /**
      * Create a new GSM inbound SMS handler.
      */
     protected GsmInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
             PhoneBase phone) {
-        super("GsmInboundSmsHandler", context, storageMonitor);
-        mPhone = phone;
+        super("GsmInboundSmsHandler", context, storageMonitor, phone, null);
         init(context, phone);
         phone.mCi.setOnNewGsmSms(getHandler(), EVENT_NEW_SMS, null);
         mDataDownloadHandler = new UsimDataDownloadHandler(phone.mCi);
     }
 
     protected void init(Context context, PhoneBase phone) {
-            mCellBroadcastDispatcher = GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context,
+            mCellBroadcastHandler = GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context,
             phone);
     }
 
@@ -66,7 +62,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     @Override
     protected void onQuitting() {
         mPhone.mCi.unSetOnNewGsmSms(getHandler());
-        mCellBroadcastDispatcher.dispose();
+        mCellBroadcastHandler.dispose();
 
         if (DBG) log("unregistered for 3GPP SMS");
         super.onQuitting();     // release wakelock
@@ -89,13 +85,6 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     @Override
     protected boolean is3gpp2() {
         return false;
-    }
-
-    /* Updates the phone object when there is a change */
-    public void updatePhoneObject(PhoneBase phone) {
-        mPhone = phone;
-        mStorageMonitor = phone.mSmsStorageMonitor;
-        mCellBroadcastDispatcher.updatePhoneObject(phone);
     }
 
     /**
@@ -156,6 +145,21 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     @Override
     protected void acknowledgeLastIncomingSms(boolean success, int result, Message response) {
         mPhone.mCi.acknowledgeLastIncomingGsmSms(success, resultToCause(result), response);
+    }
+
+    /**
+     * Called when the phone changes the default method updates mPhone
+     * mStorageMonitor and mCellBroadcastHandler.updatePhoneObject.
+     * Override if different or other behavior is desired.
+     *
+     * @param phone
+     */
+    @Override
+    protected void onUpdatePhoneObject(PhoneBase phone) {
+        super.onUpdatePhoneObject(phone);
+        log("onUpdatePhoneObject: dispose of old CellBroadcastHandler and make a new one");
+        mCellBroadcastHandler.dispose();
+        init(mContext, phone);
     }
 
     /**
