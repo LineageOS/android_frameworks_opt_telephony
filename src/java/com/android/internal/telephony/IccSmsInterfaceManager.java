@@ -827,10 +827,9 @@ public class IccSmsInterfaceManager extends ISms.Stub {
 
     /** @hide **/
     public boolean isShortSMSCode(String destAddr) {
-        TelephonyManager telephonyManager;
+        TelephonyManager telephonyManager =
+                (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         int smsCategory = SmsUsageMonitor.CATEGORY_NOT_SHORT_CODE;
-
-        telephonyManager =(TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
 
         String countryIso = telephonyManager.getSimCountryIso();
         if (countryIso == null || countryIso.length() != 2) {
