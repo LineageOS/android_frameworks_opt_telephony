@@ -48,8 +48,10 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
             String scAddr = intent.getStringExtra("scAddr");
             String callingPackage = intent.getStringExtra("callingPackage");
             ArrayList<String> parts = intent.getStringArrayListExtra("parts");
-            ArrayList<PendingIntent> sentIntents = intent.getParcelableArrayListExtra("sentIntents");
-            ArrayList<PendingIntent> deliveryIntents = intent.getParcelableArrayListExtra("deliveryIntents");
+            ArrayList<PendingIntent> sentIntents =
+                    intent.getParcelableArrayListExtra("sentIntents");
+            ArrayList<PendingIntent> deliveryIntents =
+                    intent.getParcelableArrayListExtra("deliveryIntents");
 
             if (intent.getIntExtra("callingUid", 0) != 0) {
                 callingPackage = callingPackage + "\\" + intent.getIntExtra("callingUid", 0);
@@ -126,12 +128,14 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
                 mHandler, Activity.RESULT_OK, null, null);
     }
 
-    public void synthesizeMessages(String originatingAddress, String scAddress, List<String> messages, long timestampMillis) throws RemoteException {
+    public void synthesizeMessages(String originatingAddress, String scAddress,
+            List<String> messages, long timestampMillis) throws RemoteException {
         mContext.enforceCallingPermission(
                 android.Manifest.permission.BROADCAST_SMS, "");
         byte[][] pdus = new byte[messages.size()][];
         for (int i = 0; i < messages.size(); i++) {
-            SyntheticSmsMessage message = new SyntheticSmsMessage(originatingAddress, scAddress, messages.get(i), timestampMillis);
+            SyntheticSmsMessage message = new SyntheticSmsMessage(originatingAddress,
+                    scAddress, messages.get(i), timestampMillis);
             pdus[i] = message.getPdu();
         }
         dispatchPdus(pdus);
@@ -213,8 +217,10 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
                     parts, sentIntents, deliveryIntents);
             return;
         }
-        broadcastOutgoingSms(callingPackage, destAddr, scAddr, true, new ArrayList<String>(parts),
-                new ArrayList<PendingIntent>(sentIntents), new ArrayList<PendingIntent>(deliveryIntents),
+        broadcastOutgoingSms(callingPackage, destAddr, scAddr, true,
+                parts != null ? new ArrayList<String>(parts) : null,
+                sentIntents != null ? new ArrayList<PendingIntent>(sentIntents) : null,
+                deliveryIntents != null ?  new ArrayList<PendingIntent>(deliveryIntents) : null,
                 -1);
     }
 
