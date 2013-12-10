@@ -23,6 +23,7 @@ import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.LargeTest;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.test.suitebuilder.annotation.Suppress;
 
 import com.android.internal.telephony.SmsConstants;
 
@@ -487,6 +488,7 @@ public class SmsMessageBodyTest extends AndroidTestCase {
         }
     }
 
+    @Suppress
     @LargeTest
     public void testCalcLengthMixed7bit() throws Exception {
         StringBuilder sb = new StringBuilder(320);

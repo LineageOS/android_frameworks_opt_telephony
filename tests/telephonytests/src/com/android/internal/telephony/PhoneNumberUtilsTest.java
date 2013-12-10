@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.test.suitebuilder.annotation.Suppress;
 import android.text.SpannableStringBuilder;
 import android.telephony.PhoneNumberUtils;
 
@@ -410,6 +411,7 @@ public class PhoneNumberUtilsTest extends AndroidTestCase {
                      PhoneNumberUtils.convertKeypadLettersToDigits("(800) ABC-DEFG"));
     }
 
+    @Suppress
     // To run this test, the device has to be registered with network
     public void testCheckAndProcessPlusCode() {
         assertEquals("0118475797000",
