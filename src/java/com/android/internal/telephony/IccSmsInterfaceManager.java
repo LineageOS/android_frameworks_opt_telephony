@@ -33,6 +33,7 @@ import android.os.Message;
 import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.telephony.Rlog;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.android.internal.telephony.ISms;
@@ -822,5 +823,29 @@ public class IccSmsInterfaceManager extends ISms.Stub {
 
     public String getImsSmsFormat() {
         return mDispatcher.getImsSmsFormat();
+    }
+
+    /** @hide **/
+    public boolean isShortSMSCode(String destAddr) {
+        TelephonyManager telephonyManager;
+        int smsCategory = SmsUsageMonitor.CATEGORY_NOT_SHORT_CODE;
+
+        telephonyManager =(TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
+
+        String countryIso = telephonyManager.getSimCountryIso();
+        if (countryIso == null || countryIso.length() != 2) {
+            countryIso = telephonyManager.getNetworkCountryIso();
+        }
+
+        smsCategory = SmsUsageMonitor.mergeShortCodeCategories(smsCategory,
+                mPhone.mSmsUsageMonitor.checkDestination(destAddr, countryIso));
+
+        if (smsCategory == SmsUsageMonitor.CATEGORY_NOT_SHORT_CODE
+                || smsCategory == SmsUsageMonitor.CATEGORY_FREE_SHORT_CODE
+                || smsCategory == SmsUsageMonitor.CATEGORY_STANDARD_SHORT_CODE) {
+            return false;    // not a premium short code
+        }
+
+        return true;
     }
 }
