@@ -186,6 +186,11 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
         mContext.enforceCallingPermission(
                 android.Manifest.permission.SEND_SMS,
                 "Sending SMS message");
+        if (mIccSmsInterfaceManager.isShortSMSCode(destAddr)) {
+            mIccSmsInterfaceManager.sendText(callingPackage, destAddr, scAddr, text,
+                    sentIntent, deliveryIntent);
+            return;
+        }
         ArrayList<String> parts = new ArrayList<String>();
         parts.add(text);
         ArrayList<PendingIntent> sentIntents = new ArrayList<PendingIntent>();
@@ -203,6 +208,11 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
         mContext.enforceCallingPermission(
                 android.Manifest.permission.SEND_SMS,
                 "Sending SMS message");
+        if (mIccSmsInterfaceManager.isShortSMSCode(destAddr)) {
+            mIccSmsInterfaceManager.sendMultipartText(callingPackage, destAddr, scAddr,
+                    parts, sentIntents, deliveryIntents);
+            return;
+        }
         broadcastOutgoingSms(callingPackage, destAddr, scAddr, true, new ArrayList<String>(parts),
                 new ArrayList<PendingIntent>(sentIntents), new ArrayList<PendingIntent>(deliveryIntents),
                 -1);
