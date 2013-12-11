@@ -110,11 +110,11 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     @Override
-    protected void sendData(String destAddr, String scAddr, int destPort,
+    protected void sendData(String destAddr, String scAddr, int destPort, int origPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
-                scAddr, destAddr, destPort, data, (deliveryIntent != null));
-        HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
+                scAddr, destAddr, destPort, origPort, data, (deliveryIntent != null));
+        HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, origPort, data, pdu);
         SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
                 null /*messageUri*/, false);
         sendSubmitPdu(tracker);

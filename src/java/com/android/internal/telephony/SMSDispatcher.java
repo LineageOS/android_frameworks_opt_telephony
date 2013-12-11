@@ -451,6 +451,7 @@ public abstract class SMSDispatcher extends Handler {
      * @param scAddr is the service center address or null to use
      *  the current default SMSC
      * @param destPort the port to deliver the message to
+     * @param origPort the port set by the sender
      * @param data the body of the message to send
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully sent, or failed.
@@ -470,7 +471,7 @@ public abstract class SMSDispatcher extends Handler {
      *  broadcast when the message is delivered to the recipient.  The
      *  raw pdu of the status report is in the extended data ("pdu").
      */
-    protected abstract void sendData(String destAddr, String scAddr, int destPort,
+    protected abstract void sendData(String destAddr, String scAddr, int destPort, int origPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent);
 
     /**
@@ -1298,11 +1299,12 @@ public abstract class SMSDispatcher extends Handler {
     }
 
     protected HashMap<String, Object> getSmsTrackerMap(String destAddr, String scAddr,
-            int destPort, byte[] data, SmsMessageBase.SubmitPduBase pdu) {
+            int destPort, int origPort, byte[] data, SmsMessageBase.SubmitPduBase pdu) {
         HashMap<String, Object> map = new HashMap<String, Object>();
         map.put("destAddr", destAddr);
         map.put("scAddr", scAddr);
         map.put("destPort", destPort);
+        map.put("origPort", origPort);
         map.put("data", data);
         map.put("smsc", pdu.encodedScAddress);
         map.put("pdu", pdu.encodedMessage);

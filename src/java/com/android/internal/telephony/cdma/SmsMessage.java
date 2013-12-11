@@ -330,8 +330,27 @@ public class SmsMessage extends SmsMessageBase {
      *         address, if applicable, and the encoded message.
      *         Returns null on encode error.
      */
+    public static SubmitPdu getSubmitPdu(String scAddr, String destAddr,
+            int destPort, byte[] data, boolean statusReportRequested) {
+        return getSubmitPdu(scAddr, destAddr, destPort, 0, data,statusReportRequested);
+    }
+
+
+    /**
+     * Get an SMS-SUBMIT PDU for a data message to a destination address and port.
+     *
+     * @param scAddr Service Centre address. null == use default
+     * @param destAddr the address of the destination for the message
+     * @param destPort the port to deliver the message to at the
+     *        destination
+     * @param origPort  the originator port set by the sender
+     * @param data the data for the message
+     * @return a <code>SubmitPdu</code> containing the encoded SC
+     *         address, if applicable, and the encoded message.
+     *         Returns null on encode error.
+     */
     public static SubmitPdu getSubmitPdu(String scAddr, String destAddr, int destPort,
-            byte[] data, boolean statusReportRequested) {
+             int origPort, byte[] data, boolean statusReportRequested) {
 
         /**
          * TODO(cleanup): this is not a general-purpose SMS creation
@@ -342,7 +361,7 @@ public class SmsMessage extends SmsMessageBase {
 
         SmsHeader.PortAddrs portAddrs = new SmsHeader.PortAddrs();
         portAddrs.destPort = destPort;
-        portAddrs.origPort = 0;
+        portAddrs.origPort = origPort;
         portAddrs.areEightBits = false;
 
         SmsHeader smsHeader = new SmsHeader();

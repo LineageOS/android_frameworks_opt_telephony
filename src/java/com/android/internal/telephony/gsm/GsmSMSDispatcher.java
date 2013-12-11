@@ -165,12 +165,12 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     @Override
-    protected void sendData(String destAddr, String scAddr, int destPort,
+    protected void sendData(String destAddr, String scAddr, int destPort, int origPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
-                scAddr, destAddr, destPort, data, (deliveryIntent != null));
+                scAddr, destAddr, destPort, origPort, data, (deliveryIntent != null));
         if (pdu != null) {
-            HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
+            HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, origPort, data, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
                     null /*messageUri*/, false);
             sendRawPdu(tracker);

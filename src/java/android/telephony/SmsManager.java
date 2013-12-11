@@ -454,6 +454,97 @@ public final class SmsManager {
     }
 
     /**
+     * Send a data based SMS to a specific application port.
+     *
+     * <p class="note"><strong>Note:</strong> Using this method requires that your app has the
+     * {@link android.Manifest.permission#SEND_SMS} permission.</p>
+     *
+     * @param destinationAddress the address to send the message to
+     * @param scAddress is the service center address or null to use
+     *  the current default SMSC
+     * @param destinationPort the port to deliver the message to
+     * @param originatorPort the port set by the sender
+     * @param data the body of the message to send
+     * @param sentIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is successfully sent, or failed.
+     *  The result code will be <code>Activity.RESULT_OK</code> for success,
+     *  or one of these errors:<br>
+     *  <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
+     *  <code>RESULT_ERROR_RADIO_OFF</code><br>
+     *  <code>RESULT_ERROR_NULL_PDU</code><br>
+     *  For <code>RESULT_ERROR_GENERIC_FAILURE</code> the sentIntent may include
+     *  the extra "errorCode" containing a radio technology specific value,
+     *  generally only useful for troubleshooting.<br>
+     *  The per-application based SMS control checks sentIntent. If sentIntent
+     *  is NULL the caller will be checked against all unknown applications,
+     *  which cause smaller number of SMS to be sent in checking period.
+     * @param deliveryIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is delivered to the recipient.  The
+     *  raw pdu of the status report is in the extended data ("pdu").
+     *
+     * @throws IllegalArgumentException if destinationAddress or data are empty
+     * {@hide}
+     */
+    public void sendDataMessage(
+            String destinationAddress, String scAddress, short destinationPort,
+            short originatorPort, byte[] data, PendingIntent sentIntent,
+            PendingIntent deliveryIntent) {
+        sendDataMessage(getDefaultSmsSubId(),
+            destinationAddress, scAddress, destinationPort, originatorPort,
+            data, sentIntent, deliveryIntent);
+    }
+
+   /**
+     * Send a data based SMS to a specific application port.
+     *
+     * @param destinationAddress the address to send the message to
+     * @param scAddress is the service center address or null to use
+     *  the current default SMSC
+     * @param destinationPort the port to deliver the message to
+     * @param originatorPort the port set by the sender
+     * @param data the body of the message to send
+     * @param sentIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is successfully sent, or failed.
+     *  The result code will be <code>Activity.RESULT_OK</code> for success,
+     *  or one of these errors:<br>
+     *  <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
+     *  <code>RESULT_ERROR_RADIO_OFF</code><br>
+     *  <code>RESULT_ERROR_NULL_PDU</code><br>
+     *  For <code>RESULT_ERROR_GENERIC_FAILURE</code> the sentIntent may include
+     *  the extra "errorCode" containing a radio technology specific value,
+     *  generally only useful for troubleshooting.<br>
+     *  The per-application based SMS control checks sentIntent. If sentIntent
+     *  is NULL the caller will be checked against all unknown applications,
+     *  which cause smaller number of SMS to be sent in checking period.
+     * @param deliveryIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is delivered to the recipient.  The
+     *  raw pdu of the status report is in the extended data ("pdu").
+     * {@hide}
+     */
+    public void sendDataMessage(long subId,
+            String destinationAddress, String scAddress, short destinationPort,
+            short originatorPort, byte[] data, PendingIntent sentIntent,
+            PendingIntent deliveryIntent) {
+        if (TextUtils.isEmpty(destinationAddress)) {
+            throw new IllegalArgumentException("Invalid destinationAddress");
+        }
+
+        if (data == null || data.length == 0) {
+            throw new IllegalArgumentException("Invalid message data");
+        }
+        try {
+            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            if (iccISms != null) {
+                iccISms.sendDataWithOrigPortUsingSubId(subId, ActivityThread.currentPackageName(),
+                        destinationAddress, scAddress, destinationPort & 0xFFFF,
+                        originatorPort & 0xFFFF, data, sentIntent, deliveryIntent);
+            }
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+    }
+
+    /**
     * Get the default instance of the SmsManager
     *
     * @return the default instance of the SmsManager
