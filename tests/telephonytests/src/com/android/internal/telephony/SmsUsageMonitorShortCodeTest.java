@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
+
 import static com.android.internal.telephony.SmsUsageMonitor.CATEGORY_FREE_SHORT_CODE;
 import static com.android.internal.telephony.SmsUsageMonitor.CATEGORY_NOT_SHORT_CODE;
 import static com.android.internal.telephony.SmsUsageMonitor.CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE;
@@ -54,7 +55,7 @@ public class SmsUsageMonitorShortCodeTest extends AndroidTestCase {
             new ShortCodeTest("al", "55600", CATEGORY_PREMIUM_SHORT_CODE),
             new ShortCodeTest("al", "654321", CATEGORY_NOT_SHORT_CODE),
 
-            new ShortCodeTest("am", "112", CATEGORY_NOT_SHORT_CODE),
+            new ShortCodeTest("am", "112", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest("am", "101", CATEGORY_FREE_SHORT_CODE),
             new ShortCodeTest("am", "102", CATEGORY_FREE_SHORT_CODE),
             new ShortCodeTest("am", "103", CATEGORY_FREE_SHORT_CODE),
@@ -179,7 +180,7 @@ public class SmsUsageMonitorShortCodeTest extends AndroidTestCase {
             new ShortCodeTest("dk", "16123", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest("dk", "987654321", CATEGORY_NOT_SHORT_CODE),
 
-            new ShortCodeTest("ee", "112", CATEGORY_NOT_SHORT_CODE),
+            new ShortCodeTest("ee", "112", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest("ee", "116117", CATEGORY_FREE_SHORT_CODE),
             new ShortCodeTest("ee", "123", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest("ee", "1259", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
@@ -291,7 +292,7 @@ public class SmsUsageMonitorShortCodeTest extends AndroidTestCase {
             new ShortCodeTest("kz", "7790", CATEGORY_PREMIUM_SHORT_CODE),
             new ShortCodeTest("kz", "98765", CATEGORY_NOT_SHORT_CODE),
 
-            new ShortCodeTest("lt", "112", CATEGORY_NOT_SHORT_CODE),
+            new ShortCodeTest("lt", "112", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest("lt", "116117", CATEGORY_FREE_SHORT_CODE),
             new ShortCodeTest("lt", "123", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest("lt", "1234", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
@@ -344,7 +345,7 @@ public class SmsUsageMonitorShortCodeTest extends AndroidTestCase {
             new ShortCodeTest("no", "23456", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest("no", "234567", CATEGORY_NOT_SHORT_CODE),
 
-            new ShortCodeTest("nz", "112", CATEGORY_NOT_SHORT_CODE),
+            new ShortCodeTest("nz", "112", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest("nz", "123", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest("nz", "2345", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest("nz", "3903", CATEGORY_PREMIUM_SHORT_CODE),
@@ -447,7 +448,7 @@ public class SmsUsageMonitorShortCodeTest extends AndroidTestCase {
             new ShortCodeTest("zz", "54321", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest("zz", "4321", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest("zz", "321", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
-            new ShortCodeTest("zz", "112", CATEGORY_NOT_SHORT_CODE),
+            new ShortCodeTest("zz", "112", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest(null, "2000000", CATEGORY_NOT_SHORT_CODE),
             new ShortCodeTest(null, "54321", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),
             new ShortCodeTest(null, "4321", CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE),

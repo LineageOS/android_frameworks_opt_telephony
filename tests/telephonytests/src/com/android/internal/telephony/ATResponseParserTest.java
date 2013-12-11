@@ -20,32 +20,39 @@ import junit.framework.TestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
 public class ATResponseParserTest extends TestCase {
+
     @SmallTest
-    public void testBasic() throws Exception {
+    public void testOneElement() {
         ATResponseParser p = new ATResponseParser("+CREG: 0");
-
         assertEquals(0, p.nextInt());
-
         assertFalse(p.hasMore());
-
         try {
             p.nextInt();
             fail("exception expected");
         } catch (ATParseEx ex) {
             //test pass
         }
+    }
 
-        p = new ATResponseParser("+CREG: 0,1");
+    @SmallTest
+    public void testTwoElements() {
+        ATResponseParser p = new ATResponseParser("+CREG: 0,1");
         assertEquals(0, p.nextInt());
         assertEquals(1, p.nextInt());
         assertFalse(p.hasMore());
+    }
 
-        p = new ATResponseParser("+CREG: 0, 1");
+    @SmallTest
+    public void testTwoElementsWithLeadingSpaces() {
+        ATResponseParser p = new ATResponseParser("+CREG: 0, 1");
         assertEquals(0, p.nextInt());
         assertEquals(1, p.nextInt());
         assertFalse(p.hasMore());
+    }
 
-        p = new ATResponseParser("+CREG: 0, 1,");
+    @SmallTest
+    public void testTwoElementsWithExtraComma() {
+        ATResponseParser p = new ATResponseParser("+CREG: 0, 1,");
         assertEquals(0, p.nextInt());
         assertEquals(1, p.nextInt());
         // this seems odd but is probably OK
@@ -56,13 +63,19 @@ public class ATResponseParserTest extends TestCase {
         } catch (ATParseEx ex) {
             //test pass
         }
+    }
 
-        p = new ATResponseParser("+CREG: 0, 1 ");
+    @SmallTest
+    public void testLeadingTrailingSpaces() {
+        ATResponseParser p = new ATResponseParser("+CREG: 0, 1 ");
         assertEquals(0, p.nextInt());
         assertEquals(1, p.nextInt());
         assertFalse(p.hasMore());
+    }
 
-        p = new ATResponseParser("0, 1 ");
+    @SmallTest
+    public void testNoPrefix() {
+        ATResponseParser p = new ATResponseParser("0, 1 ");
         // no prefix -> exception
         try {
             p.nextInt();
@@ -70,8 +83,11 @@ public class ATResponseParserTest extends TestCase {
         } catch (ATParseEx ex) {
             //test pass
         }
+    }
 
-        p = new ATResponseParser("+CREG: 0, 1, 5");
+    @SmallTest
+    public void testBoolean() {
+        ATResponseParser p = new ATResponseParser("+CREG: 0, 1, 5");
         assertFalse(p.nextBoolean());
         assertTrue(p.nextBoolean());
         try {
@@ -81,8 +97,11 @@ public class ATResponseParserTest extends TestCase {
         } catch (ATParseEx ex) {
             //test pass
         }
+    }
 
-        p = new ATResponseParser("+CLCC: 1,0,2,0,0,\"+18005551212\",145");
+    @SmallTest
+    public void testCLCC() {
+        ATResponseParser p = new ATResponseParser("+CLCC: 1,0,2,0,0,\"+18005551212\",145");
 
         assertEquals(1, p.nextInt());
         assertFalse(p.nextBoolean());
@@ -93,7 +112,11 @@ public class ATResponseParserTest extends TestCase {
         assertEquals(145, p.nextInt());
         assertFalse(p.hasMore());
 
-        p = new ATResponseParser("+CLCC: 1,0,2,0,0,\"+18005551212,145");
+    }
+
+    @SmallTest
+    public void testCLCCInvalidPhoneNumber() {
+        ATResponseParser p = new ATResponseParser("+CLCC: 1,0,2,0,0,\"+18005551212,145");
 
         assertEquals(1, p.nextInt());
         assertFalse(p.nextBoolean());
@@ -106,8 +129,12 @@ public class ATResponseParserTest extends TestCase {
         } catch (ATParseEx ex) {
             //test pass
         }
+    }
 
-        p = new ATResponseParser("+FOO: \"\"");
+    @SmallTest
+    public void testInvalidPrefix() {
+        ATResponseParser p = new ATResponseParser("+FOO: \"\"");
         assertEquals("", p.nextString());
     }
+
 }
