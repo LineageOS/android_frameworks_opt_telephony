@@ -173,13 +173,13 @@ public class ImsSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected void sendData(String destAddr, String scAddr, int destPort,
+    protected void sendData(String destAddr, String scAddr, int destPort, int origPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         if (isCdmaMo()) {
-            mCdmaDispatcher.sendData(destAddr, scAddr, destPort,
+            mCdmaDispatcher.sendData(destAddr, scAddr, destPort, origPort,
                     data, sentIntent, deliveryIntent);
         } else {
-            mGsmDispatcher.sendData(destAddr, scAddr, destPort,
+            mGsmDispatcher.sendData(destAddr, scAddr, destPort, origPort,
                     data, sentIntent, deliveryIntent);
         }
     }
