@@ -231,10 +231,10 @@ public class SmsUsageMonitor {
 
         @Override
         public void onChange(boolean selfChange, Uri uri) {
-            if (uri.equals(Settings.Global.getUriFor(Settings.Global.SMS_SHORT_CODE_CONFIRMATION))) {
+            if (Settings.Global.getUriFor(Settings.Global.SMS_SHORT_CODE_CONFIRMATION).equals(uri)) {
                 mCheckEnabled.set(Settings.Global.getInt(mContext.getContentResolver(),
                         Settings.Global.SMS_SHORT_CODE_CONFIRMATION, 1) != 0);
-            } else if (uri.equals(Settings.Global.getUriFor(Settings.Global.SMS_OUTGOING_CHECK_MAX_COUNT))) {
+            } else if (Settings.Global.getUriFor(Settings.Global.SMS_OUTGOING_CHECK_MAX_COUNT).equals(uri)) {
                 mMaxAllowed = Settings.Global.getInt(mContext.getContentResolver(),
                         Settings.Global.SMS_OUTGOING_CHECK_MAX_COUNT, DEFAULT_SMS_MAX_COUNT);
             }
