@@ -28,102 +28,101 @@ import com.android.internal.telephony.uicc.IccUtils;
 public class AdnRecordTest extends TestCase {
     
     @SmallTest
-    public void testBasic() throws Exception {
-        AdnRecord adn;
-
-        //
-        // Typical record
-        // 
-        adn = new AdnRecord(
-                IccUtils.hexStringToBytes("566F696365204D61696C07918150367742F3FFFFFFFFFFFF"));
-
-        assertEquals("Voice Mail", adn.getAlphaTag());
-        assertEquals("+18056377243", adn.getNumber());
-        assertFalse(adn.isEmpty());
-
-        //
-        // Empty records, empty strings
-        // 
-        adn = new AdnRecord(
+    public void testEmptyRecord() {
+        AdnRecord adn = new AdnRecord(
                 IccUtils.hexStringToBytes("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"));
 
         assertEquals("", adn.getAlphaTag());
         assertEquals("", adn.getNumber());
         assertTrue(adn.isEmpty());
 
-        //
-        // Record too short
-        // 
-        adn = new AdnRecord(IccUtils.hexStringToBytes( "FF"));
+    }
+
+    @SmallTest
+    public void testRecordTooShort() {
+        AdnRecord adn = new AdnRecord(IccUtils.hexStringToBytes( "FF"));
 
         assertEquals("", adn.getAlphaTag());
         assertEquals("", adn.getNumber());
         assertTrue(adn.isEmpty());
 
-        //
-        // TOA = 0xff ("control string")
-        // 
-        adn = new AdnRecord(
+    }
+
+    @SmallTest
+    public void testTypicalRecord() {
+        AdnRecord adn = new AdnRecord(
+                IccUtils.hexStringToBytes("566F696365204D61696C07918150367742F3FFFFFFFFFFFF"));
+
+        assertEquals("Voice Mail", adn.getAlphaTag());
+        assertEquals("+18056377243", adn.getNumber());
+        assertFalse(adn.isEmpty());
+    }
+
+    @SmallTest
+    public void testTOAControlString() {
+        AdnRecord adn = new AdnRecord(
                 IccUtils.hexStringToBytes("566F696365204D61696C07FF8150367742F3FFFFFFFFFFFF"));
 
         assertEquals("Voice Mail", adn.getAlphaTag());
         assertEquals("18056377243", adn.getNumber());
         assertFalse(adn.isEmpty());
+    }
 
-        //
-        // TOA = 0x81 (unknown)
-        // 
-        adn = new AdnRecord(
+    @SmallTest
+    public void testTOA0X81Unknown() {
+        AdnRecord adn = new AdnRecord(
                 IccUtils.hexStringToBytes("566F696365204D61696C07818150367742F3FFFFFFFFFFFF"));
 
         assertEquals("Voice Mail", adn.getAlphaTag());
         assertEquals("18056377243", adn.getNumber());
         assertFalse(adn.isEmpty());
+    }
 
-        //
-        // Number Length is too long
-        // 
-        adn = new AdnRecord(
+    @SmallTest
+    public void testNumberLengthTooLong() {
+        AdnRecord adn = new AdnRecord(
                 IccUtils.hexStringToBytes("566F696365204D61696C0F918150367742F3FFFFFFFFFFFF"));
 
         assertEquals("Voice Mail", adn.getAlphaTag());
         assertEquals("", adn.getNumber());
         assertFalse(adn.isEmpty());
+    }
 
-        //
-        // Number Length is zero (invalid)
-        // 
-        adn = new AdnRecord(
+    @SmallTest
+    public void testNumberLengthIsZero() {
+
+        AdnRecord adn = new AdnRecord(
                 IccUtils.hexStringToBytes("566F696365204D61696C00918150367742F3FFFFFFFFFFFF"));
 
         assertEquals("Voice Mail", adn.getAlphaTag());
         assertEquals("", adn.getNumber());
         assertFalse(adn.isEmpty());
+    }
 
-        //
-        // Number Length is 2, first number byte is FF, TOA is international
-        // 
-        adn = new AdnRecord(
+    @SmallTest
+    public void testNumberLengthTwoFirstByteFFTOAInternational() {
+        AdnRecord adn = new AdnRecord(
                 IccUtils.hexStringToBytes("566F696365204D61696C0291FF50367742F3FFFFFFFFFFFF"));
 
         assertEquals("Voice Mail", adn.getAlphaTag());
         assertEquals("", adn.getNumber());
         assertFalse(adn.isEmpty());
+    }
 
-        //
-        // Number Length is 2, first number digit is valid, TOA is international
-        // 
-        adn = new AdnRecord(
+    @SmallTest
+    public void testNumberLengthTwoFirstDigitValidTOAInternational() {
+        AdnRecord adn = new AdnRecord(
                 IccUtils.hexStringToBytes("566F696365204D61696C0291F150367742F3FFFFFFFFFFFF"));
 
         assertEquals("Voice Mail", adn.getAlphaTag());
         assertEquals("+1", adn.getNumber());
         assertFalse(adn.isEmpty());
+    }
 
-        //
-        // An extended record
-        // 
-        adn = new AdnRecord(
+    @SmallTest
+    public void testExtendedRecord()
+    {
+        AdnRecord adn = new AdnRecord(
                 IccUtils.hexStringToBytes(
                         "4164676A6DFFFFFFFFFFFFFFFFFFFFFF0B918188551512C221436587FF01"));
 
@@ -137,11 +136,12 @@ public class AdnRecordTest extends TestCase {
         assertEquals("Adgjm", adn.getAlphaTag());
         assertEquals("+18885551212,12345678901234567890", adn.getNumber());
         assertFalse(adn.isEmpty());
+    }
 
-        //
-        // An extended record with an invalid extension
-        // 
-        adn = new AdnRecord(
+    @SmallTest
+    public void testExtendedRecordWithInvalidExtension()
+    {
+        AdnRecord adn = new AdnRecord(
                 IccUtils.hexStringToBytes(
                         "4164676A6DFFFFFFFFFFFFFFFFFFFFFF0B918188551512C221436587FF01"));
 
@@ -155,11 +155,11 @@ public class AdnRecordTest extends TestCase {
         assertEquals("Adgjm", adn.getAlphaTag());
         assertEquals("+18885551212,12345678", adn.getNumber());
         assertFalse(adn.isEmpty());
+    }
 
-        //
-        // An extended record with an invalid extension
-        // 
-        adn = new AdnRecord(
+    @SmallTest
+    public void testExtendedRecordAgainWithInvalidExtension() throws Exception {
+        AdnRecord adn = new AdnRecord(
                 IccUtils.hexStringToBytes(
                         "4164676A6DFFFFFFFFFFFFFFFFFFFFFF0B918188551512C221436587FF01"));
 

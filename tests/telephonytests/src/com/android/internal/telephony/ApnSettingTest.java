@@ -51,42 +51,48 @@ public class ApnSettingTest extends TestCase {
     }
 
     @SmallTest
-    public void testFromString() throws Exception {
+    public void testFromStringV1String() {
         String[] dunTypes = {"DUN"};
-        String[] mmsTypes = {"mms", "*"};
-
-        ApnSetting expected_apn;
-        String testString;
-
-        // A real-world v1 example string.
-        testString = "Vodafone IT,web.omnitel.it,,,,,,,,,222,10,,DUN";
-        expected_apn =  new ApnSetting(
+        String testString = "Vodafone IT,web.omnitel.it,,,,,,,,,222,10,,DUN";
+        ApnSetting expected_apn = new ApnSetting(
                 -1, "22210", "Vodafone IT", "web.omnitel.it", "", "",
                 "", "", "", "", "", 0, dunTypes, "IP", "IP",true,0);
         assertApnSettingEqual(expected_apn, ApnSetting.fromString(testString));
+    }
 
-        // A v2 string.
-        testString = "[ApnSettingV2] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,14";
-        expected_apn =  new ApnSetting(
+    @SmallTest
+    public void testFromStringV2String() {
+        String[] mmsTypes = {"mms", "*"};
+
+        String testString = "[ApnSettingV2] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,14";
+        ApnSetting expected_apn = new ApnSetting(
                 -1, "12345", "Name", "apn", "", "",
                 "", "", "", "", "", 0, mmsTypes, "IPV6", "IP",true,14);
         assertApnSettingEqual(expected_apn, ApnSetting.fromString(testString));
+    }
 
-        // A v2 string with spaces.
-        testString = "[ApnSettingV2] Name,apn, ,,,,,,,,123,45,,mms|*,IPV4V6, IP,true,14";
-        expected_apn =  new ApnSetting(
+    @SmallTest
+    public void testFromStringV2StringWithSpaces() {
+        String[] mmsTypes = {"mms", "*"};
+        String testString = "[ApnSettingV2] Name,apn, ,,,,,,,,123,45,,mms|*,IPV4V6, IP,true,14";
+        ApnSetting expected_apn = new ApnSetting(
                 -1, "12345", "Name", "apn", "", "",
                 "", "", "", "", "", 0, mmsTypes, "IPV4V6", "IP",true,14);
         assertApnSettingEqual(expected_apn, ApnSetting.fromString(testString));
 
-        // Return null if insufficient fields given.
-        testString = "[ApnSettingV2] Name,apn,,,,,,,,,123, 45,,mms|*";
-        assertEquals(null, ApnSetting.fromString(testString));
+    }
 
-        testString = "Name,apn,,,,,,,,,123, 45,";
+    @SmallTest
+    public void testFromStringInsufficientFields() {
+        String testString = "[ApnSettingV2] Name,apn,,,,,,,,,123, 45,,mms|*";
         assertEquals(null, ApnSetting.fromString(testString));
     }
 
+    @SmallTest
+    public void testFromStringInsufficientFieldsReturnsNull() {
+        String testString = "Name,apn,,,,,,,,,123, 45,";
+        assertEquals(null, ApnSetting.fromString(testString));
+    }
 
     @SmallTest
     public void testToString() throws Exception {
