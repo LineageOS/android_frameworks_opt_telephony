@@ -202,7 +202,7 @@ class RILRequest {
 
         if (RIL.RILJ_LOGD) Rlog.d(LOG_TAG, serialString() + "< "
             + RIL.requestToString(mRequest)
-            + " error: " + ex);
+            + " error: " + ex + " ret=" + RIL.retToString(mRequest, ret));
 
         if (mResult != null) {
             AsyncResult.forMessage(mResult, ret, ex);
@@ -1366,7 +1366,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             Message result) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_IMS_SEND_SMS, result);
 
-        rr.mParcel.writeInt(1); //RIL_IMS_SMS_Format.FORMAT_3GPP
+        rr.mParcel.writeInt(RILConstants.GSM_PHONE);
         rr.mParcel.writeByte((byte)retry);
         rr.mParcel.writeInt(messageRef);
 
@@ -1381,7 +1381,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     sendImsCdmaSms(byte[] pdu, int retry, int messageRef, Message result) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_IMS_SEND_SMS, result);
 
-        rr.mParcel.writeInt(2); //RIL_IMS_SMS_Format.FORMAT_3GPP2
+        rr.mParcel.writeInt(RILConstants.CDMA_PHONE);
         rr.mParcel.writeByte((byte)retry);
         rr.mParcel.writeInt(messageRef);
 
@@ -2666,7 +2666,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return rr;
     }
 
-    private String
+    static String
     retToString(int req, Object ret) {
         if (ret == null) return "";
         switch (req) {

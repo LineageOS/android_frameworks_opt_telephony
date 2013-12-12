@@ -60,6 +60,7 @@ import android.widget.TextView;
 
 import com.android.internal.R;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
+import com.android.internal.telephony.ImsSMSDispatcher;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -154,6 +155,8 @@ public abstract class SMSDispatcher extends Handler {
     /** Outgoing message counter. Shared by all dispatchers. */
     private SmsUsageMonitor mUsageMonitor;
 
+    protected ImsSMSDispatcher mImsSMSDispatcher;
+
     /** Number of outgoing SmsTrackers waiting for user confirmation. */
     private int mPendingTrackerCount;
 
@@ -173,8 +176,10 @@ public abstract class SMSDispatcher extends Handler {
      * @param phone the Phone to use
      * @param usageMonitor the SmsUsageMonitor to use
      */
-    protected SMSDispatcher(PhoneBase phone, SmsUsageMonitor usageMonitor) {
+    protected SMSDispatcher(PhoneBase phone, SmsUsageMonitor usageMonitor,
+            ImsSMSDispatcher imsSMSDispatcher) {
         mPhone = phone;
+        mImsSMSDispatcher = imsSMSDispatcher;
         mContext = phone.getContext();
         mResolver = mContext.getContentResolver();
         mCi = phone.mCi;
@@ -343,11 +348,10 @@ public abstract class SMSDispatcher extends Handler {
         if (ar.exception == null) {
             if (DBG) Rlog.d(TAG, "SMS send complete. Broadcasting intent: " + sentIntent);
 
-            String defaultSmsPackage = Sms.getDefaultSmsPackage(mContext);
-            if (defaultSmsPackage == null ||
-                    !defaultSmsPackage.equals(tracker.mAppInfo.applicationInfo.packageName)) {
-                // Someone other than the default SMS app sent this message. Persist it into the
-                // SMS database as a sent message so the user can see it in their default app.
+            if (SmsApplication.shouldWriteMessageForPackage(
+                    tracker.mAppInfo.applicationInfo.packageName, mContext)) {
+                // Persist it into the SMS database as a sent message
+                // so the user can see it in their default app.
                 tracker.writeSentMessage(mContext);
             }
 
@@ -976,7 +980,14 @@ public abstract class SMSDispatcher extends Handler {
      *
      * @param tracker holds the SMS message to send
      */
-    public abstract void sendRetrySms(SmsTracker tracker);
+    public void sendRetrySms(SmsTracker tracker) {
+        // re-routing to ImsSMSDispatcher
+        if (mImsSMSDispatcher != null) {
+            mImsSMSDispatcher.sendRetrySms(tracker);
+        } else {
+            Rlog.e(TAG, mImsSMSDispatcher + " is null. Retry failed");
+        }
+    }
 
     /**
      * Send the multi-part SMS based on multipart Sms tracker
@@ -1235,7 +1246,21 @@ public abstract class SMSDispatcher extends Handler {
         }
     }
 
-    public abstract boolean isIms();
+    public boolean isIms() {
+        if (mImsSMSDispatcher != null) {
+            return mImsSMSDispatcher.isIms();
+        } else {
+            Rlog.e(TAG, mImsSMSDispatcher + " is null");
+            return false;
+        }
+    }
 
-    public abstract String getImsSmsFormat();
+    public String getImsSmsFormat() {
+        if (mImsSMSDispatcher != null) {
+            return mImsSMSDispatcher.getImsSmsFormat();
+        } else {
+            Rlog.e(TAG, mImsSMSDispatcher + " is null");
+            return null;
+        }
+    }
 }

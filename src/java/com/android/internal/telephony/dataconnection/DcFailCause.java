@@ -15,6 +15,12 @@
  */
 package com.android.internal.telephony.dataconnection;
 
+import android.content.Context;
+import android.telephony.Rlog;
+
+import com.android.internal.R;
+import com.android.internal.telephony.PhoneFactory;
+
 import java.util.HashMap;
 
 /**
@@ -81,7 +87,13 @@ public enum DcFailCause {
 
     /** Radio has failed such that the radio should be restarted */
     public boolean isRestartRadioFail() {
-        return (this == REGULAR_DEACTIVATION);
+        Context context = PhoneFactory.getContext();
+        boolean radioResetOnRegularDeact = context.getResources().
+            getBoolean(com.android.internal.R.bool.config_radio_reset_on_regular_deactivation);
+
+        Rlog.d("isRestartRadioFail", "radioResetOnRegularDeact="+radioResetOnRegularDeact);
+
+        return (radioResetOnRegularDeact && (this == REGULAR_DEACTIVATION));
     }
 
     public boolean isPermanentFail() {

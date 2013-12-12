@@ -21,6 +21,7 @@ import android.app.AppOpsManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -33,6 +34,7 @@ import android.provider.Settings;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
+import com.android.internal.content.PackageMonitor;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -46,6 +48,14 @@ import java.util.List;
 public final class SmsApplication {
     static final String LOG_TAG = "SmsApplication";
     private static final String PHONE_PACKAGE_NAME = "com.android.phone";
+    private static final String BLUETOOTH_PACKAGE_NAME = "com.android.bluetooth";
+
+    private static final String SCHEME_SMS = "sms";
+    private static final String SCHEME_SMSTO = "smsto";
+    private static final String SCHEME_MMS = "mms";
+    private static final String SCHEME_MMSTO = "mmsto";
+
+    private static SmsPackageMonitor sSmsPackageMonitor = null;
 
     public static class SmsApplicationData {
         /**
@@ -167,7 +177,7 @@ public final class SmsApplication {
 
         // Update any existing entries with respond via message intent class.
         intent = new Intent(TelephonyManager.ACTION_RESPOND_VIA_MESSAGE,
-                Uri.fromParts("smsto", "", null));
+                Uri.fromParts(SCHEME_SMSTO, "", null));
         List<ResolveInfo> respondServices = packageManager.queryIntentServices(intent, 0);
         for (ResolveInfo resolveInfo : respondServices) {
             final ServiceInfo serviceInfo = resolveInfo.serviceInfo;
@@ -186,7 +196,7 @@ public final class SmsApplication {
 
         // Update any existing entries with supports send to.
         intent = new Intent(Intent.ACTION_SENDTO,
-                Uri.fromParts("smsto", "", null));
+                Uri.fromParts(SCHEME_SMSTO, "", null));
         List<ResolveInfo> sendToActivities = packageManager.queryIntentActivities(intent, 0);
         for (ResolveInfo resolveInfo : sendToActivities) {
             final ActivityInfo activityInfo = resolveInfo.activityInfo;
@@ -308,10 +318,17 @@ public final class SmsApplication {
                 }
             }
 
-            // We can only verify the phone app's permissions from a privileged caller
+            // We can only verify the phone and BT app's permissions from a privileged caller
             if (updateIfNeeded) {
-                // Verify that the phone app has permissions
+                // Ensure this component is still configured as the preferred activity. Usually the
+                // current SMS app will already be the preferred activity - but checking whether or
+                // not this is true is just as expensive as reconfiguring the preferred activity so
+                // we just reconfigure every time.
                 PackageManager packageManager = context.getPackageManager();
+                configurePreferredActivity(packageManager, new ComponentName(
+                        applicationData.mPackageName, applicationData.mSendToClass));
+
+                // Verify that the phone and BT app has permissions
                 try {
                     PackageInfo info = packageManager.getPackageInfo(PHONE_PACKAGE_NAME, 0);
                     int mode = appOps.checkOp(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
@@ -325,6 +342,20 @@ public final class SmsApplication {
                     // No phone app on this device (unexpected, even for non-phone devices)
                     Rlog.e(LOG_TAG, "Phone package not found: " + PHONE_PACKAGE_NAME);
                     applicationData = null;
+                }
+
+                try {
+                    PackageInfo info = packageManager.getPackageInfo(BLUETOOTH_PACKAGE_NAME, 0);
+                    int mode = appOps.checkOp(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
+                            BLUETOOTH_PACKAGE_NAME);
+                    if (mode != AppOpsManager.MODE_ALLOWED) {
+                        Rlog.e(LOG_TAG, BLUETOOTH_PACKAGE_NAME + " lost OP_WRITE_SMS:  (fixing)");
+                        appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
+                                BLUETOOTH_PACKAGE_NAME, AppOpsManager.MODE_ALLOWED);
+                    }
+                } catch (NameNotFoundException e) {
+                    // No BT app on this device
+                    Rlog.e(LOG_TAG, "Bluetooth package not found: " + BLUETOOTH_PACKAGE_NAME);
                 }
             }
         }
@@ -373,6 +404,10 @@ public final class SmsApplication {
             Settings.Secure.putString(context.getContentResolver(),
                     Settings.Secure.SMS_DEFAULT_APPLICATION, applicationData.mPackageName);
 
+            // Configure this as the preferred activity for SENDTO sms/mms intents
+            configurePreferredActivity(packageManager, new ComponentName(
+                    applicationData.mPackageName, applicationData.mSendToClass));
+
             // Allow OP_WRITE_SMS for the newly configured default SMS app.
             appOps.setMode(AppOpsManager.OP_WRITE_SMS, applicationData.mUid,
                     applicationData.mPackageName, AppOpsManager.MODE_ALLOWED);
@@ -386,7 +421,96 @@ public final class SmsApplication {
                 // No phone app on this device (unexpected, even for non-phone devices)
                 Rlog.e(LOG_TAG, "Phone package not found: " + PHONE_PACKAGE_NAME);
             }
+
+            // BT needs to always have this permission to write to the sms database
+            try {
+                PackageInfo info = packageManager.getPackageInfo(BLUETOOTH_PACKAGE_NAME, 0);
+                appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
+                        BLUETOOTH_PACKAGE_NAME, AppOpsManager.MODE_ALLOWED);
+            } catch (NameNotFoundException e) {
+                // No BT app on this device
+                Rlog.e(LOG_TAG, "Bluetooth package not found: " + BLUETOOTH_PACKAGE_NAME);
+            }
         }
+    }
+
+    /**
+     * Tracks package changes and ensures that the default SMS app is always configured to be the
+     * preferred activity for SENDTO sms/mms intents.
+     */
+    private static final class SmsPackageMonitor extends PackageMonitor {
+        final Context mContext;
+
+        public SmsPackageMonitor(Context context) {
+            super();
+            mContext = context;
+        }
+
+        @Override
+        public void onPackageDisappeared(String packageName, int reason) {
+            onPackageChanged(packageName);
+        }
+
+        @Override
+        public void onPackageAppeared(String packageName, int reason) {
+            onPackageChanged(packageName);
+        }
+
+        @Override
+        public void onPackageModified(String packageName) {
+            onPackageChanged(packageName);
+        }
+
+        private void onPackageChanged(String packageName) {
+            PackageManager packageManager = mContext.getPackageManager();
+            // Ensure this component is still configured as the preferred activity
+            ComponentName componentName = getDefaultSendToApplication(mContext, true);
+            if (componentName != null) {
+                configurePreferredActivity(packageManager, componentName);
+            }
+        }
+    }
+
+    public static void initSmsPackageMonitor(Context context) {
+        sSmsPackageMonitor = new SmsPackageMonitor(context);
+        sSmsPackageMonitor.register(context, context.getMainLooper(), false);
+    }
+
+    private static void configurePreferredActivity(PackageManager packageManager,
+            ComponentName componentName) {
+        // Add the four activity preferences we want to direct to this app.
+        replacePreferredActivity(packageManager, componentName, SCHEME_SMS);
+        replacePreferredActivity(packageManager, componentName, SCHEME_SMSTO);
+        replacePreferredActivity(packageManager, componentName, SCHEME_MMS);
+        replacePreferredActivity(packageManager, componentName, SCHEME_MMSTO);
+    }
+
+    /**
+     * Updates the ACTION_SENDTO activity to the specified component for the specified scheme.
+     */
+    private static void replacePreferredActivity(PackageManager packageManager,
+            ComponentName componentName, String scheme) {
+        // Build the set of existing activities that handle this scheme
+        Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.fromParts(scheme, "", null));
+        List<ResolveInfo> resolveInfoList = packageManager.queryIntentActivities(
+                intent, PackageManager.MATCH_DEFAULT_ONLY | PackageManager.GET_RESOLVED_FILTER);
+
+        // Build the set of ComponentNames for these activities
+        final int n = resolveInfoList.size();
+        ComponentName[] set = new ComponentName[n];
+        for (int i = 0; i < n; i++) {
+            ResolveInfo info = resolveInfoList.get(i);
+            set[i] = new ComponentName(info.activityInfo.packageName, info.activityInfo.name);
+        }
+
+        // Update the preferred SENDTO activity for the specified scheme
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(Intent.ACTION_SENDTO);
+        intentFilter.addCategory(Intent.CATEGORY_DEFAULT);
+        intentFilter.addDataScheme(scheme);
+        packageManager.replacePreferredActivity(intentFilter,
+                IntentFilter.MATCH_CATEGORY_SCHEME + IntentFilter.MATCH_ADJUSTMENT_NORMAL,
+                set, componentName);
     }
 
     /**
@@ -462,5 +586,26 @@ public final class SmsApplication {
                     smsApplicationData.mSendToClass);
         }
         return component;
+    }
+
+    /**
+     * Returns whether need to write the SMS message to SMS database for this package.
+     */
+    public static boolean shouldWriteMessageForPackage(String packageName, Context context) {
+        if (packageName == null) return true;
+
+        String defaultSmsPackage = null;
+        ComponentName component = getDefaultSmsApplication(context, false);
+        if (component != null) {
+            defaultSmsPackage = component.getPackageName();
+        }
+
+        if ((defaultSmsPackage == null || !defaultSmsPackage.equals(packageName)) &&
+                !packageName.equals(BLUETOOTH_PACKAGE_NAME)) {
+            // To write the message for someone other than the default SMS and BT app
+            return true;
+        }
+
+        return false;
     }
 }

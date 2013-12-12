@@ -48,7 +48,6 @@ import java.util.Arrays;
 public class CdmaInboundSmsHandler extends InboundSmsHandler {
 
     private final CdmaSMSDispatcher mSmsDispatcher;
-    protected CellBroadcastHandler mCellBroadcastHandler;
     protected CdmaServiceCategoryProgramHandler mServiceCategoryProgramHandler;
 
     private byte[] mLastDispatchedSmsFingerprint;
@@ -62,7 +61,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      */
     protected CdmaInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
             PhoneBase phone, CdmaSMSDispatcher smsDispatcher) {
-        super("CdmaInboundSmsHandler", context, storageMonitor);
+        super("CdmaInboundSmsHandler", context, storageMonitor, phone, null);
         mSmsDispatcher = smsDispatcher;
         init(context, phone);
         mPhone = phone;
@@ -114,12 +113,6 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     @Override
     protected boolean is3gpp2() {
         return true;
-    }
-
-    /* Updates the phone object when there is a change */
-    public void updatePhoneObject(PhoneBase phone) {
-        mPhone = phone;
-        mStorageMonitor = phone.mSmsStorageMonitor;
     }
 
     /**
@@ -222,6 +215,20 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
             mLastAcknowledgedSmsFingerprint = mLastDispatchedSmsFingerprint;
         }
         mLastDispatchedSmsFingerprint = null;
+    }
+
+    /**
+     * Called when the phone changes the default method updates mPhone
+     * mStorageMonitor and mCellBroadcastHandler.updatePhoneObject.
+     * Override if different or other behavior is desired.
+     *
+     * @param phone
+     */
+    @Override
+    protected void onUpdatePhoneObject(PhoneBase phone) {
+        super.onUpdatePhoneObject(phone);
+        mCellBroadcastHandler.updatePhoneObject(phone);
+        mServiceCategoryProgramHandler.updatePhoneObject(phone);
     }
 
     /**

@@ -236,6 +236,8 @@ public class UiccCardApplication {
 
     private void onChangeFdnDone(AsyncResult ar) {
         synchronized (mLock) {
+            int attemptsRemaining = -1;
+
             if (ar.exception == null) {
                 mIccFdnEnabled = mDesiredFdnEnabled;
                 if (DBG) log("EVENT_CHANGE_FACILITY_FDN_DONE: " +
@@ -244,9 +246,11 @@ public class UiccCardApplication {
                 if (ar.result != null) {
                     parsePinPukErrorResult(ar, false);
                 }
+                attemptsRemaining = parsePinPukErrorResult(ar);
                 loge("Error change facility fdn with exception " + ar.exception);
             }
             Message response = (Message)ar.userObj;
+            response.arg1 = attemptsRemaining;
             AsyncResult.forMessage(response).exception = ar.exception;
             response.sendToTarget();
         }
@@ -315,6 +319,8 @@ public class UiccCardApplication {
     /** REMOVE when mIccLockEnabled is not needed */
     private void onChangeFacilityLock(AsyncResult ar) {
         synchronized (mLock) {
+            int attemptsRemaining = -1;
+
             if (ar.exception == null) {
                 mIccLockEnabled = mDesiredPinLocked;
                 if (DBG) log( "EVENT_CHANGE_FACILITY_LOCK_DONE: mIccLockEnabled= "
@@ -323,10 +329,31 @@ public class UiccCardApplication {
                 if (ar.result != null) {
                     parsePinPukErrorResult(ar, true);
                 }
+                attemptsRemaining = parsePinPukErrorResult(ar);
                 loge("Error change facility lock with exception " + ar.exception);
             }
-            AsyncResult.forMessage(((Message)ar.userObj)).exception = ar.exception;
-            ((Message)ar.userObj).sendToTarget();
+            Message response = (Message)ar.userObj;
+            AsyncResult.forMessage(response).exception = ar.exception;
+            response.arg1 = attemptsRemaining;
+            response.sendToTarget();
+        }
+    }
+
+    /**
+     * Parse the error response to obtain number of attempts remaining
+     */
+    private int parsePinPukErrorResult(AsyncResult ar) {
+        int[] result = (int[]) ar.result;
+        if (result == null) {
+            return -1;
+        } else {
+            int length = result.length;
+            int attemptsRemaining = -1;
+            if (length > 0) {
+                attemptsRemaining = result[0];
+            }
+            log("parsePinPukErrorResult: attemptsRemaining=" + attemptsRemaining);
+            return attemptsRemaining;
         }
     }
 
@@ -377,10 +404,9 @@ public class UiccCardApplication {
                 case EVENT_PIN2_PUK2_DONE:
                 case EVENT_CHANGE_PIN1_DONE:
                 case EVENT_CHANGE_PIN2_DONE:
-                    // a PIN/PUK/PIN2/PUK2/Network Personalization
                     // request has completed. ar.userObj is the response Message
                     ar = (AsyncResult)msg.obj;
-                    // TODO should abstract these exceptions
+                    int attemptsRemaining = -1;
                     if ((ar.exception != null) && (ar.result != null)) {
                         if (msg.what == EVENT_PIN1_PUK1_DONE ||
                                 msg.what == EVENT_CHANGE_PIN1_DONE) {
@@ -388,10 +414,12 @@ public class UiccCardApplication {
                         } else {
                             parsePinPukErrorResult(ar, false);
                         }
+                        attemptsRemaining = parsePinPukErrorResult(ar);
                     }
-                    AsyncResult.forMessage(((Message)ar.userObj)).exception
-                            = ar.exception;
-                    ((Message)ar.userObj).sendToTarget();
+                    Message response = (Message)ar.userObj;
+                    AsyncResult.forMessage(response).exception = ar.exception;
+                    response.arg1 = attemptsRemaining;
+                    response.sendToTarget();
                     break;
                 case EVENT_QUERY_FACILITY_FDN_DONE:
                     ar = (AsyncResult)msg.obj;
@@ -633,6 +661,34 @@ public class UiccCardApplication {
      * Handler.
      *
      * onComplete.obj will be an AsyncResult
+     * onComplete.arg1 = remaining attempts before puk locked or -1 if unknown
+     *
+     * ((AsyncResult)onComplete.obj).exception == null on success
+     * ((AsyncResult)onComplete.obj).exception != null on fail
+     *
+     * If the supplied PIN is incorrect:
+     * ((AsyncResult)onComplete.obj).exception != null
+     * && ((AsyncResult)onComplete.obj).exception
+     *       instanceof com.android.internal.telephony.gsm.CommandException)
+     * && ((CommandException)(((AsyncResult)onComplete.obj).exception))
+     *          .getCommandError() == CommandException.Error.PASSWORD_INCORRECT
+     */
+    public void supplyPin (String pin, Message onComplete) {
+        synchronized (mLock) {
+            mCi.supplyIccPinForApp(pin, mAid, mHandler.obtainMessage(EVENT_PIN1_PUK1_DONE,
+                    onComplete));
+        }
+    }
+
+    /**
+     * Supply the ICC PUK to the ICC
+     *
+     * When the operation is complete, onComplete will be sent to its
+     * Handler.
+     *
+     * onComplete.obj will be an AsyncResult
+     * onComplete.arg1 = remaining attempts before Icc will be permanently unusable
+     * or -1 if unknown
      *
      * ((AsyncResult)onComplete.obj).exception == null on success
      * ((AsyncResult)onComplete.obj).exception != null on fail
@@ -646,13 +702,6 @@ public class UiccCardApplication {
      *
      *
      */
-    public void supplyPin (String pin, Message onComplete) {
-        synchronized (mLock) {
-            mCi.supplyIccPinForApp(pin, mAid, mHandler.obtainMessage(EVENT_PIN1_PUK1_DONE,
-                    onComplete));
-        }
-    }
-
     public void supplyPuk (String puk, String newPin, Message onComplete) {
         synchronized (mLock) {
         mCi.supplyIccPukForApp(puk, newPin, mAid,
@@ -785,6 +834,7 @@ public class UiccCardApplication {
      * @param newPassword is the new password
      * @param onComplete
      *        onComplete.obj will be an AsyncResult
+     *        onComplete.arg1 = attempts remaining or -1 if unknown
      *        ((AsyncResult)onComplete.obj).exception == null on success
      *        ((AsyncResult)onComplete.obj).exception != null on fail
      */
@@ -821,14 +871,18 @@ public class UiccCardApplication {
      * @return true if ICC card is PIN2 blocked
      */
     public boolean getIccPin2Blocked() {
-        return mPin2State == PinState.PINSTATE_ENABLED_BLOCKED;
+        synchronized (mLock) {
+            return mPin2State == PinState.PINSTATE_ENABLED_BLOCKED;
+        }
     }
 
     /**
      * @return true if ICC card is PUK2 blocked
      */
     public boolean getIccPuk2Blocked() {
-        return mPin2State == PinState.PINSTATE_ENABLED_PERM_BLOCKED;
+        synchronized (mLock) {
+            return mPin2State == PinState.PINSTATE_ENABLED_PERM_BLOCKED;
+        }
     }
 
     private void log(String msg) {

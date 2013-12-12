@@ -38,9 +38,6 @@ public abstract class DataProfile {
     public String mmsProxy;
     public String mmsPort;
 
-    /* ID of the profile in the modem */
-    protected int mProfileId = 0;
-
     /**
      * Current status of APN
      * true : enabled APN, false : disabled APN.
@@ -117,10 +114,6 @@ public abstract class DataProfile {
         mDc = null;
     }
 
-    public String[] getServiceTypes() {
-       return types.clone();
-    }
-
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("[DataProfile] ")
@@ -138,10 +131,6 @@ public abstract class DataProfile {
         sb.append(", ").append(roamingProtocol);
         sb.append(", ").append(bearer);
         return sb.toString();
-    }
-
-    public void setProfileId(int profileId) {
-        mProfileId = profileId;
     }
 
     /* some way to identify this data profile uniquely */

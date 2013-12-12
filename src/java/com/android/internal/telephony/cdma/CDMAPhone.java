@@ -201,21 +201,23 @@ public class CDMAPhone extends PhoneBase {
         mCarrierOtaSpNumSchema = SystemProperties.get(
                 TelephonyProperties.PROPERTY_OTASP_NUM_SCHEMA,"");
 
-        // Sets operator alpha property by retrieving from build-time system property
+        // Sets operator properties by retrieving from build-time system property
         String operatorAlpha = SystemProperties.get("ro.cdma.home.operator.alpha");
-        setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, operatorAlpha);
-
-        // Sets operator numeric property by retrieving from build-time system property
         String operatorNumeric = SystemProperties.get(PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
-        if (!TextUtils.isEmpty(operatorNumeric) &&
-            (mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP) == null)) {
-            log("CDMAPhone: init set 'gsm.sim.operator.numeric' to operator='" +
-                    operatorNumeric + "'");
-            setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
+        log("init: operatorAlpha='" + operatorAlpha
+                + "' operatorNumeric='" + operatorNumeric + "'");
+        if (mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP) == null) {
+            log("init: APP_FAM_3GPP == NULL");
+            if (!TextUtils.isEmpty(operatorAlpha)) {
+                log("init: set 'gsm.sim.operator.alpha' to operator='" + operatorAlpha + "'");
+                setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, operatorAlpha);
+            }
+            if (!TextUtils.isEmpty(operatorNumeric)) {
+                log("init: set 'gsm.sim.operator.numeric' to operator='" + operatorNumeric + "'");
+                setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
+            }
+            setIsoCountryProperty(operatorNumeric);
         }
-
-        // Sets iso country property by retrieving from build-time system property
-        setIsoCountryProperty(operatorNumeric);
 
         // Sets current entry in the telephony carrier table
         updateCurrentCarrierInProvider(operatorNumeric);
@@ -1584,6 +1586,7 @@ public class CDMAPhone extends PhoneBase {
      */
     protected void setIsoCountryProperty(String operatorNumeric) {
         if (TextUtils.isEmpty(operatorNumeric)) {
+            log("setIsoCountryProperty: clear 'gsm.sim.operator.iso-country'");
             setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, "");
         } else {
             String iso = "";
@@ -1591,11 +1594,12 @@ public class CDMAPhone extends PhoneBase {
                 iso = MccTable.countryCodeForMcc(Integer.parseInt(
                         operatorNumeric.substring(0,3)));
             } catch (NumberFormatException ex) {
-                Rlog.w(LOG_TAG, "countryCodeForMcc error" + ex);
+                loge("setIsoCountryProperty: countryCodeForMcc error", ex);
             } catch (StringIndexOutOfBoundsException ex) {
-                Rlog.w(LOG_TAG, "countryCodeForMcc error" + ex);
+                loge("setIsoCountryProperty: countryCodeForMcc error", ex);
             }
 
+            log("setIsoCountryProperty: set 'gsm.sim.operator.iso-country' to iso=" + iso);
             setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, iso);
         }
     }
@@ -1607,6 +1611,7 @@ public class CDMAPhone extends PhoneBase {
      * @return true for success; false otherwise.
      */
     boolean updateCurrentCarrierInProvider(String operatorNumeric) {
+        log("CDMAPhone: updateCurrentCarrierInProvider called");
         if (!TextUtils.isEmpty(operatorNumeric)) {
             try {
                 Uri uri = Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "current");
@@ -1674,6 +1679,11 @@ public class CDMAPhone extends PhoneBase {
     protected void log(String s) {
         if (DBG)
             Rlog.d(LOG_TAG, s);
+    }
+
+    protected void loge(String s, Exception e) {
+        if (DBG)
+            Rlog.e(LOG_TAG, s, e);
     }
 
     @Override
