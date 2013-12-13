@@ -1707,7 +1707,7 @@ public interface CommandsInterface {
      *
      * @param AID Application id. See ETSI 102.221 and 101.220.
      * @param response Callback message. response.obj will be an int [1] with
-     *            element [0] set to the id of the logical channel. If set to 0,
+     *            element [0] set to the id of the logical channel. If set to -1,
      *            the channel is invalid.
      */
     public void iccOpenLogicalChannel(String AID, Message response);
