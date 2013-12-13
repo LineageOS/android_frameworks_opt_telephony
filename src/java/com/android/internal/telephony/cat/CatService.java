@@ -35,6 +35,7 @@ import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccRefreshResponse;
 import com.android.internal.telephony.uicc.UiccController;
@@ -403,11 +404,9 @@ public class CatService extends Handler implements AppInterface {
                     CatLog.d(this, "cmd " + cmdParams.getCommandType() + " with null alpha id");
                     // If alpha length is zero, we just respond with OK.
                     if (isProactiveCmd) {
-                        if (cmdParams.getCommandType() == CommandType.OPEN_CHANNEL) {
-                            mCmdIf.handleCallSetupRequestFromSim(true, null);
-                        } else {
-                            sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
-                        }
+                        sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
+                    } else if (cmdParams.getCommandType() == CommandType.OPEN_CHANNEL) {
+                        mCmdIf.handleCallSetupRequestFromSim(true, null);
                     }
                     return;
                 }
@@ -714,10 +713,13 @@ public class CatService extends Handler implements AppInterface {
             /* Since Cat is not tied to any application, but rather is Uicc application
              * in itself - just get first FileHandler and IccRecords object
              */
-            ca = ic.getApplicationIndex(0);
-            if (ca != null) {
-                fh = ca.getIccFileHandler();
-                ir = ca.getIccRecords();
+            for (int i = 0; i < ic.getNumApplications(); i++) {
+                ca = ic.getApplicationIndex(i);
+                if (ca != null && (ca.getType() != AppType.APPTYPE_UNKNOWN)) {
+                    fh = ca.getIccFileHandler();
+                    ir = ca.getIccRecords();
+                    break;
+                }
             }
         }
         synchronized (sInstanceLock) {

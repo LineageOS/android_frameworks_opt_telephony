@@ -60,4 +60,10 @@ oneway interface ICsvtServiceListener{
      * @param fi, Call Forwarding options.
      */
     void onCallForwardingOptions(in List<CallForwardInfoP> fi);
+
+    /**
+     * Called to notify about ringback tone state.
+     * @param playTone, if true ringback tone will be played, false otherwise.
+     */
+    void onRingbackTone(boolean playTone);
 }

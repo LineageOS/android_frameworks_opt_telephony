@@ -646,4 +646,9 @@ class UsimDataDownloadCommands extends BaseCommands {
     public void iccIOForApp(int command, int fileid, String path, int p1, int p2, int p3,
             String data, String pin2, String aid, Message response) {
     }
+
+    @Override
+    public void setInitialAttachApn(String apn, String protocol, int authType, String username,
+            String password, Message result) {
+    }
 }

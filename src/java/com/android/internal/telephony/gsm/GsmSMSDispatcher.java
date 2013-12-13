@@ -34,8 +34,6 @@ import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsConstants;
-import com.android.internal.telephony.ImsSMSDispatcher;
-import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.SmsUsageMonitor;
@@ -56,7 +54,6 @@ import java.util.concurrent.atomic.AtomicReference;
 public class GsmSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "GsmSMSDispatcher";
     private static final boolean VDBG = false;
-    private ImsSMSDispatcher mImsSMSDispatcher;
     protected UiccController mUiccController = null;
     private AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
     private AtomicReference<UiccCardApplication> mUiccApplication =
@@ -69,7 +66,7 @@ public class GsmSMSDispatcher extends SMSDispatcher {
     public GsmSMSDispatcher(PhoneBase phone, SmsUsageMonitor usageMonitor,
             ImsSMSDispatcher imsSMSDispatcher,
             GsmInboundSmsHandler gsmInboundSmsHandler) {
-        super(phone, usageMonitor);
+        super(phone, usageMonitor, imsSMSDispatcher);
         mCi.setOnSmsStatus(this, EVENT_NEW_SMS_STATUS_REPORT, null);
         mCi.setOnSmsOnSim(this, EVENT_SMS_ON_ICC, null);
         mImsSMSDispatcher = imsSMSDispatcher;
@@ -294,12 +291,6 @@ public class GsmSMSDispatcher extends SMSDispatcher {
         }
     }
 
-    @Override
-    public void sendRetrySms(SmsTracker tracker) {
-        //re-routing to ImsSMSDispatcher
-        mImsSMSDispatcher.sendRetrySms(tracker);
-    }
-
     protected UiccCardApplication getUiccCardApplication() {
         return mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
     }
@@ -330,15 +321,5 @@ public class GsmSMSDispatcher extends SMSDispatcher {
                 }
             }
         }
-    }
-
-    @Override
-    public boolean isIms() {
-        return mImsSMSDispatcher.isIms();
-    }
-
-    @Override
-    public String getImsSmsFormat() {
-        return mImsSMSDispatcher.getImsSmsFormat();
     }
 }

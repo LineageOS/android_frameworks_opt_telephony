@@ -806,7 +806,7 @@ public class SmsMessage extends SmsMessageBase {
     /**
      * Parses a broadcast SMS, possibly containing a CMAS alert.
      */
-    SmsCbMessage parseBroadcastSms() {
+    public SmsCbMessage parseBroadcastSms() {
         BearerData bData = BearerData.decode(mEnvelope.bearerData, mEnvelope.serviceCategory);
         if (bData == null) {
             Rlog.w(LOG_TAG, "BearerData.decode() returned null");
@@ -893,7 +893,7 @@ public class SmsMessage extends SmsMessageBase {
          * Convert + code to 011 and dial out for international SMS
          */
         CdmaSmsAddress destAddr = CdmaSmsAddress.parse(
-                PhoneNumberUtils.cdmaCheckAndProcessPlusCode(destAddrStr));
+                PhoneNumberUtils.cdmaCheckAndProcessPlusCodeForSms(destAddrStr));
         if (destAddr == null) return null;
 
         BearerData bearerData = new BearerData();
