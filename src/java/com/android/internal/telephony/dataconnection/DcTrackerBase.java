@@ -698,7 +698,7 @@ public abstract class DcTrackerBase extends Handler {
     protected abstract void onCleanUpConnection(boolean tearDown, int apnId, String reason);
     protected abstract void onCleanUpAllConnections(String cause);
     public abstract boolean isDataPossible(String apnType);
-    protected abstract boolean onUpdateIcc();
+    protected abstract void onUpdateIcc();
     protected abstract void completeConnection(ApnContext apnContext);
 
     @Override

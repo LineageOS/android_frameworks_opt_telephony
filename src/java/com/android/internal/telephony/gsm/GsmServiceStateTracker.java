@@ -1071,11 +1071,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             mPhone.notifyServiceStateChanged(mSS);
         }
 
-        // First notify detached, then rat changed, then attached - that's the way it
-        // happens in the modem.
-        // Behavior of recipients (DcTracker, for instance) depends on this sequence
-        // since DcTracker reloads profiles on "rat_changed" notification and sets up
-        // data call on "attached" notification.
+        if (hasGprsAttached) {
+            mAttachedRegistrants.notifyRegistrants();
+        }
+
         if (hasGprsDetached) {
             mDetachedRegistrants.notifyRegistrants();
         }
@@ -1083,10 +1082,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         if (hasDataRegStateChanged || hasRilDataRadioTechnologyChanged) {
             notifyDataRegStateRilRadioTechnologyChanged();
             mPhone.notifyDataConnection(null);
-        }
-
-        if (hasGprsAttached) {
-            mAttachedRegistrants.notifyRegistrants();
         }
 
         if (hasRoamingOn) {
