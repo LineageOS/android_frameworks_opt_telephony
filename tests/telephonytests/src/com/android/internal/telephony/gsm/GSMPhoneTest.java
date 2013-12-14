@@ -16,11 +16,13 @@
 
 package com.android.internal.telephony.gsm;
 
+import android.app.Application;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.ServiceState;
 import android.test.AndroidTestCase;
+import android.test.ApplicationTestCase;
 import android.test.PerformanceTestCase;
 
 import com.android.internal.telephony.Call;
@@ -40,8 +42,11 @@ import java.util.List;
 
 import android.test.suitebuilder.annotation.Suppress;
 
-@Suppress
-public class GSMPhoneTest extends AndroidTestCase implements PerformanceTestCase {
+public class GSMPhoneTest extends ApplicationTestCase<Application> implements PerformanceTestCase {
+    public GSMPhoneTest() {
+        super(Application.class);
+    }
+
     private SimulatedRadioControl mRadioControl;
     private GSMPhone mGSMPhone;
     private GSMTestHandler mGSMTestHandler;
@@ -1365,6 +1370,7 @@ public class GSMPhoneTest extends AndroidTestCase implements PerformanceTestCase
         Connection cn;
 
         mGSMPhone.dial("+13125551212,1234;5N8xx");
+        mRadioControl.progressConnectingToActive();
 
         msg = mGSMTestHandler.waitForMessage(EVENT_POST_DIAL);
         assertNotNull("Message Time Out", msg);
