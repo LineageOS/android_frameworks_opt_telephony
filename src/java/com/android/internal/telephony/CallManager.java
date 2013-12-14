@@ -29,6 +29,7 @@ import android.os.RegistrantList;
 import android.os.Registrant;
 import android.os.SystemProperties;
 import android.telephony.MSimTelephonyManager;
+import android.telephony.PhoneNumberUtils;
 import android.telephony.PhoneStateListener;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -111,6 +112,8 @@ public class CallManager {
 
     // save a cached copy of Ims Phone
     private Phone mImsPhone;
+
+    protected String mDialString;
 
     private boolean mSpeedUpAudioForMtCall = false;
 
@@ -904,6 +907,7 @@ public class CallManager {
 
         Phone basePhone = getPhoneBase(phone);
         Connection result;
+        mDialString = dialString;
 
         if (VDBG) {
             Rlog.d(LOG_TAG, " dial(" + basePhone + ", "+ dialString + ")");
@@ -944,6 +948,18 @@ public class CallManager {
             Rlog.d(LOG_TAG, toString());
         }
 
+        return result;
+    }
+
+    protected boolean isExplicitCallTransferMMI (String dialString) {
+        boolean result = false;
+        String newDialString = PhoneNumberUtils.stripSeparators(dialString);
+        if ((newDialString != null) && (newDialString.length() == 1)) {
+            char ch = newDialString.charAt(0);
+            if (ch == '4') {
+                result = true;
+            }
+        }
         return result;
     }
 
@@ -988,6 +1004,11 @@ public class CallManager {
                 && !hasRingingCall
                 && ((fgCallState == Call.State.ACTIVE)
                     || (fgCallState == Call.State.IDLE)
+                    /*As per 3GPP TS 51.010-1 section 31.13.1.4
+                    call should be alowed when the foreground
+                    call is in ALERTING state*/
+                    || ((fgCallState == Call.State.ALERTING) &&
+                            isExplicitCallTransferMMI(mDialString))
                     || (fgCallState == Call.State.DISCONNECTED)));
 
         if (result == false) {
