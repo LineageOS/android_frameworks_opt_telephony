@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a740942_e8b9cfed",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 594,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-12-15T12:53:28Z",
+      "side": 0,
+      "message": "keep",
+      "revId": "7cd6a99e125fe292eb6a78f8d8a307762eea320d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a740942_28f117ce",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 598,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-12-15T12:53:28Z",
+      "side": 0,
+      "message": "this should fix the cdma data issue not connecting on some devices",
+      "revId": "7cd6a99e125fe292eb6a78f8d8a307762eea320d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a740942_48eee3ed",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 611,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-12-15T12:53:28Z",
+      "side": 0,
+      "message": "keep",
+      "revId": "7cd6a99e125fe292eb6a78f8d8a307762eea320d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a740942_08bf7bd1",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 2024,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2013-12-15T12:53:28Z",
+      "side": 0,
+      "message": "keep this change",
+      "revId": "7cd6a99e125fe292eb6a78f8d8a307762eea320d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
