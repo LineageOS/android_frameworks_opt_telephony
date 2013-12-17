@@ -77,6 +77,9 @@ public class UiccCard {
 
     private static final int EVENT_CARD_REMOVED = 13;
     private static final int EVENT_CARD_ADDED = 14;
+    private static final int EVENT_OPEN_LOGICAL_CHANNEL_DONE = 15;
+    private static final int EVENT_CLOSE_LOGICAL_CHANNEL_DONE = 16;
+    private static final int EVENT_TRANSMIT_APDU_DONE = 17;
 
     public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics) {
         if (DBG) log("Creating");
@@ -288,6 +291,17 @@ public class UiccCard {
                 case EVENT_CARD_ADDED:
                     onIccSwap(true);
                     break;
+                case EVENT_OPEN_LOGICAL_CHANNEL_DONE:
+                case EVENT_CLOSE_LOGICAL_CHANNEL_DONE:
+                case EVENT_TRANSMIT_APDU_DONE:
+                    AsyncResult ar = (AsyncResult)msg.obj;
+                    if (ar.exception != null) {
+                       if (DBG)
+                         log("Error in SIM access with exception" + ar.exception);
+                    }
+                    AsyncResult.forMessage((Message)ar.userObj, ar.result, ar.exception);
+                    ((Message)ar.userObj).sendToTarget();
+                    break;
                 default:
                     loge("Unknown Event " + msg.what);
             }
@@ -345,6 +359,31 @@ public class UiccCard {
             }
             return null;
         }
+    }
+
+    /**
+     * Exposes {@link CommandsInterface.iccOpenLogicalChannel}
+     */
+    public void iccOpenLogicalChannel(String AID, Message response) {
+        mCi.iccOpenLogicalChannel(AID,
+                mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE, response));
+    }
+
+    /**
+     * Exposes {@link CommandsInterface.iccCloseLogicalChannel}
+     */
+    public void iccCloseLogicalChannel(int channel, Message response) {
+        mCi.iccCloseLogicalChannel(channel,
+                mHandler.obtainMessage(EVENT_CLOSE_LOGICAL_CHANNEL_DONE, response));
+    }
+
+    /**
+     * Exposes {@link CommandsInterface.iccTransmitApduLogicalChannel}
+     */
+    public void iccTransmitApduLogicalChannel(int channel, int cla, int command,
+            int p1, int p2, int p3, String data, Message response) {
+        mCi.iccTransmitApduLogicalChannel(channel, cla, command, p1, p2, p3,
+                data, mHandler.obtainMessage(EVENT_TRANSMIT_APDU_DONE, response));
     }
 
     private void log(String msg) {
