@@ -58,6 +58,9 @@ public interface IccConstants {
     static final int EF_CSP_CPHS = 0x6f15;
 
     // CDMA RUIM file ids from 3GPP2 C.S0023-0
+    // RUIM EF stores the (up to) 56-bit electronic identification
+    // number (ID) unique to the R-UIM. (Removable UIM_ID)
+    static final int EF_RUIM_ID = 0x6f31;
     static final int EF_CST = 0x6f32;
     static final int EF_RUIM_SPN =0x6F41;
 
