@@ -81,7 +81,7 @@ public class IccCardProxy extends Handler implements IccCard {
     private static final int EVENT_ICC_LOCKED = 5;
     private static final int EVENT_APP_READY = 6;
     protected static final int EVENT_RECORDS_LOADED = 7;
-    private static final int EVENT_IMSI_READY = 8;
+    protected static final int EVENT_IMSI_READY = 8;
     private static final int EVENT_PERSO_LOCKED = 9;
     private static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 11;
 
