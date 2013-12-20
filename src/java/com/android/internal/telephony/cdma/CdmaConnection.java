@@ -93,6 +93,8 @@ public class CdmaConnection extends Connection {
     static final int WAKE_LOCK_TIMEOUT_MILLIS = 60*1000;
     static final int PAUSE_DELAY_MILLIS = 2 * 1000;
 
+    private boolean mConnTimerReset = false;
+
     //***** Inner Classes
 
     class MyHandler extends Handler {
@@ -956,5 +958,17 @@ public class CdmaConnection extends Connection {
     public UUSInfo getUUSInfo() {
         // UUS information not supported in CDMA
         return null;
+    }
+
+    void resetConnectionTimer() {
+        mConnectTime = System.currentTimeMillis();
+        mConnectTimeReal = SystemClock.elapsedRealtime();
+        mDuration = 0;
+        mConnTimerReset = true;
+        log("CdmaConnection time reseted");
+    }
+
+    public boolean isConnectionTimerReset() {
+        return mConnTimerReset;
     }
 }
