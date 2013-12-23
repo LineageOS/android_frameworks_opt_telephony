@@ -250,6 +250,11 @@ public class CdmaConnection extends Connection {
     }
 
     @Override
+    public void setConnectTime(long timeInMillis) {
+        mConnectTime = timeInMillis;
+    }
+
+    @Override
     public long getDisconnectTime() {
         return mDisconnectTime;
     }
