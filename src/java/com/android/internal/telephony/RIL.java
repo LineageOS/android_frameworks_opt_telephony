@@ -4159,7 +4159,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 "Invalid channel in iccTransmitApduLogicalChannel: " + channel);
         }
 
-        iccTransmitApduHelper(channel, cla, instruction, p1, p2, p3, data, response);
+        iccTransmitApduHelper(RIL_REQUEST_SIM_TRANSMIT_APDU_CHANNEL, channel, cla,
+                instruction, p1, p2, p3, data, response);
     }
 
     /**
@@ -4168,20 +4169,16 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void iccTransmitApduBasicChannel(int cla, int instruction, int p1, int p2,
             int p3, String data, Message response) {
-        iccTransmitApduHelper(0, cla, instruction, p1, p2, p3, data, response);
+        iccTransmitApduHelper(RIL_REQUEST_SIM_TRANSMIT_APDU_BASIC, 0, cla, instruction,
+                p1, p2, p3, data, response);
     }
 
     /*
      * Helper function for the iccTransmitApdu* commands above.
      */
-    private void iccTransmitApduHelper(int channel, int cla, int instruction,
-            int p1, int p2, int p3, String data, Message response) {
-        RILRequest rr;
-        if (channel == 0)
-            rr = RILRequest.obtain(RIL_REQUEST_SIM_TRANSMIT_APDU_BASIC, response);
-        else
-            rr = RILRequest.obtain(RIL_REQUEST_SIM_TRANSMIT_APDU_CHANNEL, response);
-
+    private void iccTransmitApduHelper(int rilCommand, int channel, int cla,
+            int instruction, int p1, int p2, int p3, String data, Message response) {
+        RILRequest rr = RILRequest.obtain(rilCommand, response);
         rr.mParcel.writeInt(channel);
         rr.mParcel.writeInt(cla);
         rr.mParcel.writeInt(instruction);
