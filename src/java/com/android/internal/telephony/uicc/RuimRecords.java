@@ -653,9 +653,6 @@ public final class RuimRecords extends IccRecords {
     protected void onAllRecordsLoaded() {
         if (DBG) log("record load complete");
 
-        //Clear mRecordsRequested since the load request is served
-        mRecordsRequested = false;
-
         // Further records that can be inserted are Operator/OEM dependent
 
         String operator = getOperatorNumeric();
