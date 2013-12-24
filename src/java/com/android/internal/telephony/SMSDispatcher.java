@@ -1092,7 +1092,7 @@ public abstract class SMSDispatcher extends Handler {
                         mTimestamp /*date*/,
                         true /*read*/,
                         deliveryReport /*deliveryReport*/,
-                        0 /*threadId*/);
+                        (long) 0 /*threadId*/);
             }
         }
 
