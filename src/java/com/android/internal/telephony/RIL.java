@@ -4249,7 +4249,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
             case RIL_UNSOL_STK_SEND_SMS_RESULT: return "RIL_UNSOL_STK_SEND_SMS_RESULT";
 
-            default: return "<unknown reponse>";
+            default: return "<unknown response>";
         }
     }
 
