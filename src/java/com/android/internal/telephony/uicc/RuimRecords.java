@@ -653,9 +653,6 @@ public final class RuimRecords extends IccRecords {
     protected void onAllRecordsLoaded() {
         if (DBG) log("record load complete");
 
-        //Clear mRecordsRequested since the load request is served
-        mRecordsRequested = false;
-
         // Further records that can be inserted are Operator/OEM dependent
 
         String operator = getOperatorNumeric();
@@ -692,24 +689,22 @@ public final class RuimRecords extends IccRecords {
      * We use this as a trigger to read records from the card.
      */
     void recordsRequired() {
-        if (DBG) log("recordsRequired");
-        mRecordsRequired = true;
-
-        // trigger to retrieve all records
-        fetchRuimRecords();
+        if (DBG) log("recordsRequired mRecordsRequired = " + mRecordsRequired);
+        if (!mRecordsRequired) {
+            mRecordsRequired = true;
+            // trigger to retrieve all records
+            fetchRuimRecords();
+        }
     }
 
     private void fetchRuimRecords() {
         /* Don't read records if we don't expect
          * anyone to ask for them
          *
-         * If we have already requested records OR
-         * records are not required by anyone OR
-         * the app is not ready
-         * then bail
+         * If records are not required by anyone OR
+         * the app is not ready then bail
          */
-        if (mRecordsRequested || !mRecordsRequired
-            || AppState.APPSTATE_READY != mParentApp.getState()) {
+        if (!mRecordsRequired || AppState.APPSTATE_READY != mParentApp.getState()) {
             if (DBG) log("fetchRuimRecords: Abort fetching records rRecordsRequested = "
                             + mRecordsRequested
                             + " state = " + mParentApp.getState()
