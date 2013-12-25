@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentValues;
+import android.os.RemoteException;
 import android.os.ServiceManager;
 import com.android.internal.telephony.uicc.AdnRecord;
 
@@ -54,6 +56,12 @@ public class IccPhoneBookInterfaceManagerProxy extends IIccPhoneBook.Stub {
     }
 
     @Override
+    public boolean updateAdnRecordsWithContentValuesInEfBySearch(int efid, ContentValues values,
+            String pin2) throws android.os.RemoteException {
+        return mIccPhoneBookInterfaceManager.updateAdnRecordsWithContentValuesInEfBySearch(efid,
+                values, pin2);
+    }
+    @Override
     public boolean
     updateAdnRecordsInEfByIndex(int efid, String newTag,
             String newPhoneNumber, int index, String pin2) {
@@ -69,5 +77,38 @@ public class IccPhoneBookInterfaceManagerProxy extends IIccPhoneBook.Stub {
     @Override
     public List<AdnRecord> getAdnRecordsInEf(int efid) {
         return mIccPhoneBookInterfaceManager.getAdnRecordsInEf(efid);
+    }
+
+    @Override
+    public boolean updateUsimAdnRecordsInEfByIndex(int efid, String newTag, String newPhoneNumber,
+            String[] anrNumbers, String[] emails, int index, String pin2)
+            throws android.os.RemoteException {
+        return mIccPhoneBookInterfaceManager.updateUsimAdnRecordsInEfByIndex(efid, newTag,
+                newPhoneNumber, anrNumbers, emails, index, pin2);
+    }
+
+    @Override
+    public int getAdnCount() {
+        return mIccPhoneBookInterfaceManager.getAdnCount();
+    }
+
+    @Override
+    public int getAnrCount() {
+        return mIccPhoneBookInterfaceManager.getAnrCount();
+    }
+
+    @Override
+    public int getEmailCount() {
+        return mIccPhoneBookInterfaceManager.getEmailCount();
+    }
+
+    @Override
+    public int getSpareAnrCount() {
+        return mIccPhoneBookInterfaceManager.getSpareAnrCount();
+    }
+
+    @Override
+    public int getSpareEmailCount() {
+        return mIccPhoneBookInterfaceManager.getSpareEmailCount();
     }
 }
