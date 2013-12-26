@@ -211,6 +211,11 @@ public class GsmConnection extends Connection {
     }
 
     @Override
+    public void setConnectTime(long timeInMillis) {
+        mConnectTime = timeInMillis;
+    }
+
+    @Override
     public long getDisconnectTime() {
         return mDisconnectTime;
     }

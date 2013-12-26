@@ -174,6 +174,16 @@ public abstract class Connection {
     public abstract long getConnectTime();
 
     /**
+     * Set connection connect time in currentTimeMillis() format.
+     * This API may be used to change connect time of the
+     * Connection for scenarios like IMS Volte SRVCC where
+     * connect time is transferred from PS Connection to CS.
+     */
+    public void setConnectTime(long timeInMillis) {
+        Rlog.e(LOG_TAG, "setConnectTime() not implemented");
+    }
+
+    /**
      * Disconnect time in currentTimeMillis() format.
      * The time when this Connection makes a transition into ENDED or FAIL.
      * Returns 0 before then.
