@@ -461,6 +461,7 @@ public class ExtCallManager extends CallManager {
         Phone basePhone = getPhoneBase(phone);
         int subscription = phone.getSubscription();
         Connection result;
+        mDialString = dialString;
 
         if (VDBG) {
             Rlog.d(LOG_TAG, " dial(" + basePhone + ", "+ dialString + ")" +
@@ -516,6 +517,11 @@ public class ExtCallManager extends CallManager {
                 && !hasRingingCall
                 && ((fgCallState == Call.State.ACTIVE)
                     || (fgCallState == Call.State.IDLE)
+                    /*As per 3GPP TS 51.010-1 section 31.13.1.4
+                    call should be alowed when the foreground
+                    call is in ALERTING state*/
+                    || ((fgCallState == Call.State.ALERTING) &&
+                            isExplicitCallTransferMMI(mDialString))
                     || (fgCallState == Call.State.DISCONNECTED)));
 
         if (result == false) {
