@@ -115,7 +115,7 @@ public class CallManager {
 
     protected String mDialString;
 
-    private boolean mSpeedUpAudioForMtCall = false;
+    protected boolean mSpeedUpAudioForMtCall = false;
 
     protected CmHandler mHandler;
 

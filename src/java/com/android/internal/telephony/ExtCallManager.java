@@ -67,6 +67,8 @@ public class ExtCallManager extends CallManager {
 
     private static final int EVENT_LOCAL_CALL_HOLD = 202;
 
+    private static final int LOCAL_CALL_HOLD = 1;
+
     // Holds the current active SUB, all actions would be
     // taken on this sub.
     private static int mActiveSub = 0;
@@ -274,8 +276,9 @@ public class ExtCallManager extends CallManager {
         }
         Call.State state = call.getState();
 
-        if (((state == Call.State.ACTIVE) || (state == Call.State.DIALING)
-                || (state == Call.State.ALERTING)) && (sub != getActiveSubscription())) {
+        if (((state == Call.State.ACTIVE) || (state == Call.State.DIALING) ||
+                (state == Call.State.HOLDING) || (state == Call.State.ALERTING))
+                && (sub != getActiveSubscription())) {
             // if sub is not an active sub and if it has an active
             // voice call then update lchStatus as 1
             lchStatus = 1;
@@ -300,15 +303,22 @@ public class ExtCallManager extends CallManager {
         switch (getState()) {
             case RINGING:
                 if (VDBG) Rlog.d(LOG_TAG, "setAudioMode RINGING");
-                if (mAudioManager.getMode() != AudioManager.MODE_RINGTONE) {
+                int curAudioMode = mAudioManager.getMode();
+                if (curAudioMode != AudioManager.MODE_RINGTONE) {
                     // only request audio focus if the ringtone is going to be heard
                     if (mAudioManager.getStreamVolume(AudioManager.STREAM_RING) > 0) {
                         Rlog.d(LOG_TAG, "requestAudioFocus on STREAM_RING");
                         mAudioManager.requestAudioFocusForCall(AudioManager.STREAM_RING,
                                 AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
                     }
-                    mAudioManager.setMode(AudioManager.MODE_RINGTONE);
-                    if (DBG) Rlog.d(LOG_TAG, "setAudioMode RINGING");
+                    if (!mSpeedUpAudioForMtCall) {
+                        if (DBG) Rlog.d(LOG_TAG, "setAudioMode RINGING");
+                        mAudioManager.setMode(AudioManager.MODE_RINGTONE);
+                    }
+                }
+                if (mSpeedUpAudioForMtCall && (curAudioMode != AudioManager.MODE_IN_CALL)) {
+                    if (DBG) Rlog.d(LOG_TAG, "setAudioMode IN_CALL");
+                    mAudioManager.setMode(AudioManager.MODE_IN_CALL);
                 }
                 break;
             case OFFHOOK:
@@ -330,7 +340,7 @@ public class ExtCallManager extends CallManager {
                 if (VDBG) Rlog.d(LOG_TAG, "setAudioMode OFFHOOK mode=" + newAudioMode);
                 //Need to discuss with Linux audio on getMode per sub capability?
                 int currMode = mAudioManager.getMode();
-                if (currMode != newAudioMode) {
+                if (currMode != newAudioMode || mSpeedUpAudioForMtCall) {
                     // request audio focus before setting the new mode
                     mAudioManager.requestAudioFocusForCall(AudioManager.STREAM_VOICE_CALL,
                            AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
@@ -338,6 +348,7 @@ public class ExtCallManager extends CallManager {
                             + currMode + " to " + newAudioMode);
                     mAudioManager.setMode(newAudioMode);
                 }
+                mSpeedUpAudioForMtCall = false;
                 break;
             case IDLE:
                 if (VDBG) Rlog.d(LOG_TAG, "in setAudioMode before setmode IDLE");
@@ -352,6 +363,7 @@ public class ExtCallManager extends CallManager {
                     // abandon audio focus after the mode has been set back to normal
                     mAudioManager.abandonAudioFocusForCall();
                 }
+                mSpeedUpAudioForMtCall = false;
                 break;
         }
         Rlog.d(LOG_TAG, "setAudioMode State = " + getState());
@@ -363,7 +375,7 @@ public class ExtCallManager extends CallManager {
      * @return subscription which is active.
      */
     public int getOtherActiveSub(int subscription) {
-        int otherSub = -1;
+        int otherSub = MSimConstants.INVALID_SUBSCRIPTION;;
         int count = MSimTelephonyManager.getDefault().getPhoneCount();
 
         Rlog.d(LOG_TAG, "is other sub active = " + subscription + count);
@@ -378,16 +390,32 @@ public class ExtCallManager extends CallManager {
         return otherSub;
     }
 
-    @Override
-    public void switchToLocalHold(int subscription, boolean switchTo) {
-        Phone activePhone = null;
-        Phone heldPhone = null;
+    public void updateLchOnOtherSub(int subscription) {
+        Phone bgPhone = null;
+        int otherActiveSub = getOtherActiveSub(subscription);
 
-        Rlog.d(LOG_TAG, " switchToLocalHold update audio state");
-        setAudioMode();
+        Rlog.d(LOG_TAG, " updateLchOnOtherSub subscription: " + subscription);
+        if (otherActiveSub != MSimConstants.INVALID_SUBSCRIPTION) {
+            if (getActiveFgCallState(otherActiveSub) == Call.State.IDLE) {
+                // if there is active bg call, set the phone to bgPhone.
+                if (hasActiveBgCall(otherActiveSub)) {
+                    bgPhone = getBgPhone(otherActiveSub);
+                }
+            } else {
+                bgPhone = getFgPhone(otherActiveSub);
+            }
 
-        //TODO Inform LCH sub to modem
+            // Update state only if the new state is different
+            if ((LOCAL_CALL_HOLD != mLchStatus[otherActiveSub]) &&
+                    (bgPhone != null)) {
+                Rlog.d(LOG_TAG, " setLocal Call Hold on sub: " + otherActiveSub);
+                bgPhone.setLocalCallHold(LOCAL_CALL_HOLD,
+                        mHandler.obtainMessage(EVENT_LOCAL_CALL_HOLD));
+                mLchStatus[otherActiveSub] = LOCAL_CALL_HOLD;
+            }
+        }
     }
+
 
     /**
      * Whether or not the phone can conference in the current phone
@@ -445,6 +473,14 @@ public class ExtCallManager extends CallManager {
         }
     }
 
+
+    @Override
+    public void acceptCall(Call ringingCall, int callType) throws CallStateException {
+        updateLchOnOtherSub(ringingCall.getPhone().getSubscription());
+        super.acceptCall(ringingCall, callType);
+    }
+
+
     /**
      * Initiate a new voice connection. This happens asynchronously, so you
      * cannot assume the audio path is connected (or a call index has been
@@ -492,6 +528,8 @@ public class ExtCallManager extends CallManager {
                 }
             }
         }
+
+        updateLchOnOtherSub(subscription);
 
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             result = basePhone.dial(dialString, callType, extras);
