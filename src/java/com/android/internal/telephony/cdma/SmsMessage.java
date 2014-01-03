@@ -18,6 +18,7 @@
 
 package com.android.internal.telephony.cdma;
 
+import android.content.Context;
 import android.os.Parcel;
 import android.os.SystemProperties;
 import android.telephony.PhoneNumberUtils;
@@ -28,6 +29,7 @@ import android.telephony.Rlog;
 import android.util.Log;
 
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsMessageBase;
@@ -922,6 +924,13 @@ public class SmsMessage extends SmsMessageBase {
         int teleservice = bearerData.hasUserDataHeader ?
                 SmsEnvelope.TELESERVICE_WEMT : SmsEnvelope.TELESERVICE_WMT;
 
+        Context context = PhoneFactory.getContext();
+        boolean ascii7bitForLongMsg = context.getResources().
+            getBoolean(com.android.internal.R.bool.config_ascii_7bit_support_for_long_message);
+        if (ascii7bitForLongMsg) {
+            Rlog.d(LOG_TAG, "ascii7bitForLongMsg = " + ascii7bitForLongMsg);
+            teleservice = SmsEnvelope.TELESERVICE_WMT;
+        }
         SmsEnvelope envelope = new SmsEnvelope();
         envelope.messageType = SmsEnvelope.MESSAGE_TYPE_POINT_TO_POINT;
         envelope.teleService = teleservice;
@@ -1078,5 +1087,60 @@ public class SmsMessage extends SmsMessageBase {
      */
     public ArrayList<CdmaSmsCbProgramData> getSmsCbProgramData() {
         return mBearerData.serviceCategoryProgramData;
+    }
+
+    /**
+    * CT WDP header contains WDP Msg Identifier and WDP Userdata
+    */
+    protected boolean processCdmaCTWdpHeader(SmsMessage sms) {
+        int subparamId = 0;
+        int subParamLen = 0;
+        int msgID = 0;
+        boolean decodeSuccess = false;
+        try {
+            BitwiseInputStream inStream = new BitwiseInputStream(sms.getUserData());
+
+            /* Decode WDP Messsage Identifier */
+            subparamId = inStream.read(8);
+            if (subparamId != 0) {
+                Rlog.e(LOG_TAG, "Invalid WDP SubparameterId");
+                return false;
+            }
+            subParamLen = inStream.read(8);
+            if (subParamLen != 3) {
+                Rlog.e(LOG_TAG, "Invalid WDP subparameter length");
+                return false;
+            }
+            sms.mBearerData.messageType = inStream.read(4);
+            msgID = inStream.read(8) << 8;
+            msgID |= inStream.read(8);
+            sms.mBearerData.hasUserDataHeader = (inStream.read(1) == 1);
+            if (sms.mBearerData.hasUserDataHeader) {
+                Rlog.e(LOG_TAG, "Invalid WDP UserData header value");
+                return false;
+            }
+            inStream.skip(3);
+            sms.mBearerData.messageId = msgID;
+            sms.mMessageRef = msgID;
+
+            /* Decode WDP User Data */
+            subparamId = inStream.read(8);
+            subParamLen = inStream.read(8) * 8;
+            sms.mBearerData.userData.msgEncoding = inStream.read(5);
+            int consumedBits = 5;
+            if (sms.mBearerData.userData.msgEncoding != 0) {
+                Rlog.e(LOG_TAG, "Invalid WDP encoding");
+                return false;
+            }
+            sms.mBearerData.userData.numFields = inStream.read(8);
+            consumedBits += 8;
+            int dataBits = subParamLen - consumedBits;
+            sms.mBearerData.userData.payload = inStream.readByteArray(dataBits);
+            sms.mUserData = sms.mBearerData.userData.payload;
+            decodeSuccess = true;
+        } catch (BitwiseInputStream.AccessException ex) {
+            Rlog.e(LOG_TAG, "CT WDP Header decode failed: " + ex);
+        }
+        return decodeSuccess;
     }
 }
