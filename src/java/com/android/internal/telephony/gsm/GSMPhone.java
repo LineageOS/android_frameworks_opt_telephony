@@ -37,6 +37,7 @@ import android.telecom.VideoProfile;
 import android.telephony.CellLocation;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
 import com.android.ims.ImsManager;
@@ -72,8 +73,8 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.PhoneSubInfo;
+import com.android.internal.telephony.SubscriptionController;
 
-import android.telephony.SubscriptionManager;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -336,6 +337,22 @@ public class GSMPhone extends PhoneBase {
     @Override
     public CallTracker getCallTracker() {
         return mCT;
+    }
+
+    // pending voice mail count updated after phone creation
+    private void updateVoiceMail() {
+        int countVoiceMessages = 0;
+        IccRecords r = mIccRecords.get();
+        if (r != null) {
+            // get voice mail count from SIM
+            countVoiceMessages = r.getVoiceMessageCount();
+        }
+        if (countVoiceMessages == -1) {
+            countVoiceMessages = getStoredVoiceMessageCount();
+        }
+        Rlog.d(LOG_TAG, "updateVoiceMail countVoiceMessages = " + countVoiceMessages
+                +" subId "+getSubId());
+        setVoiceMessageCount(countVoiceMessages);
     }
 
     @Override
@@ -992,7 +1009,7 @@ public class GSMPhone extends PhoneBase {
     private void storeVoiceMailNumber(String number) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
         SharedPreferences.Editor editor = sp.edit();
-        editor.putString(VM_NUMBER + getPhoneId(), number);
+        editor.putString(VM_NUMBER + getSubId(), number);
         editor.apply();
         setVmSimImsi(getSubscriberId());
     }
@@ -1004,7 +1021,7 @@ public class GSMPhone extends PhoneBase {
         String number = (r != null) ? r.getVoiceMailNumber() : "";
         if (TextUtils.isEmpty(number)) {
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-            number = sp.getString(VM_NUMBER + getPhoneId(), null);
+            number = sp.getString(VM_NUMBER + getSubId(), null);
         }
 
         if (TextUtils.isEmpty(number)) {
@@ -1033,13 +1050,13 @@ public class GSMPhone extends PhoneBase {
 
     private String getVmSimImsi() {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-        return sp.getString(VM_SIM_IMSI + getPhoneId(), null);
+        return sp.getString(VM_SIM_IMSI + getSubId(), null);
     }
 
     private void setVmSimImsi(String imsi) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
         SharedPreferences.Editor editor = sp.edit();
-        editor.putString(VM_SIM_IMSI + getPhoneId(), imsi);
+        editor.putString(VM_SIM_IMSI + getSubId(), imsi);
         editor.apply();
     }
 
@@ -1508,9 +1525,14 @@ public class GSMPhone extends PhoneBase {
                 if (imsi != null && imsiFromSIM != null && !imsiFromSIM.equals(imsi)) {
                     storeVoiceMailNumber(null);
                     setVmSimImsi(null);
+                    SubscriptionController controller =
+                            SubscriptionController.getInstance();
+                    controller.removeStaleSubPreferences(VM_NUMBER);
+                    controller.removeStaleSubPreferences(VM_SIM_IMSI);
                 }
 
                 mSimRecordsLoadedRegistrants.notifyRegistrants();
+                updateVoiceMail();
             break;
 
             case EVENT_GET_BASEBAND_VERSION_DONE:
@@ -1730,9 +1752,6 @@ public class GSMPhone extends PhoneBase {
         switch (eventCode) {
             case IccRecords.EVENT_CFI:
                 notifyCallForwardingIndicator();
-                break;
-            case IccRecords.EVENT_MWI:
-                notifyMessageWaitingIndicator();
                 break;
         }
     }
@@ -1976,6 +1995,42 @@ public class GSMPhone extends PhoneBase {
     }
 
     public void resetSubSpecifics() {
+    }
+
+    /** gets the voice mail count from preferences */
+    private int getStoredVoiceMessageCount() {
+        int countVoiceMessages = 0;
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        String imsi = sp.getString(VM_ID + getSubId(), null);
+        String currentImsi = getSubscriberId();
+
+        Rlog.d(LOG_TAG, "Voicemail count retrieval for Imsi = " + imsi +
+                " current Imsi = " + currentImsi );
+
+        if ((imsi != null) && (currentImsi != null)
+                && (currentImsi.equals(imsi))) {
+            // get voice mail count from preferences
+            countVoiceMessages = sp.getInt(VM_COUNT + getSubId(), 0);
+            Rlog.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages );
+        }
+        return countVoiceMessages;
+    }
+
+     /**
+     * Sets the SIM voice message waiting indicator records.
+     * @param line GSM Subscriber Profile Number, one-based. Only '1' is supported
+     * @param countWaiting The number of messages waiting, if known. Use
+     *                     -1 to indicate that an unknown number of
+     *                      messages are waiting
+     */
+    @Override
+    public void setVoiceMessageWaiting(int line, int countWaiting) {
+        IccRecords r = mIccRecords.get();
+        if (r != null) {
+            r.setVoiceMessageWaiting(line, countWaiting);
+        } else {
+            log("SIM Records not found, MWI not updated");
+        }
     }
 
     protected void log(String s) {

@@ -233,7 +233,6 @@ public class SIMRecords extends IccRecords {
         mImsi = null;
         mMsisdn = null;
         mVoiceMailNum = null;
-        mCountVoiceMessages = 0;
         mMncLength = UNINITIALIZED;
         log("setting0 mMncLength" + mMncLength);
         mIccId = null;
@@ -421,26 +420,13 @@ public class SIMRecords extends IccRecords {
             return;
         }
 
-        // range check
-        if (countWaiting < 0) {
-            countWaiting = -1;
-        } else if (countWaiting > 0xff) {
-            // TS 23.040 9.2.3.24.2
-            // "The value 255 shall be taken to mean 255 or greater"
-            countWaiting = 0xff;
-        }
-
-        mCountVoiceMessages = countWaiting;
-
-        mRecordsEventsRegistrants.notifyResult(EVENT_MWI);
-
         try {
             if (mEfMWIS != null) {
                 // TS 51.011 10.3.45
 
                 // lsb of byte 0 is 'voicemail' status
                 mEfMWIS[0] = (byte)((mEfMWIS[0] & 0xfe)
-                                    | (mCountVoiceMessages == 0 ? 0 : 1));
+                                    | (countWaiting == 0 ? 0 : 1));
 
                 // byte 1 is the number of voice messages waiting
                 if (countWaiting < 0) {
@@ -453,14 +439,13 @@ public class SIMRecords extends IccRecords {
 
                 mFh.updateEFLinearFixed(
                     EF_MWIS, 1, mEfMWIS, null,
-                    obtainMessage (EVENT_UPDATE_DONE, EF_MWIS));
+                    obtainMessage (EVENT_UPDATE_DONE, EF_MWIS, 0));
             }
 
             if (mEfCPHS_MWI != null) {
                     // Refer CPHS4_2.WW6 B4.2.3
                 mEfCPHS_MWI[0] = (byte)((mEfCPHS_MWI[0] & 0xf0)
-                            | (mCountVoiceMessages == 0 ? 0x5 : 0xa));
-
+                            | (countWaiting == 0 ? 0x5 : 0xa));
                 mFh.updateEFTransparent(
                     EF_VOICE_MAIL_INDICATOR_CPHS, mEfCPHS_MWI,
                     obtainMessage (EVENT_UPDATE_DONE, EF_VOICE_MAIL_INDICATOR_CPHS));
@@ -474,6 +459,37 @@ public class SIMRecords extends IccRecords {
     // byte is between 1 and 4. See ETSI TS 131 102 v11.3.0 section 4.2.64.
     private boolean validEfCfis(byte[] data) {
         return ((data != null) && (data[0] >= 1) && (data[0] <= 4));
+    }
+
+    public int getVoiceMessageCount() {
+        boolean voiceMailWaiting = false;
+        int countVoiceMessages = -1;
+        if (mEfMWIS != null) {
+            // Use this data if the EF[MWIS] exists and
+            // has been loaded
+            // Refer TS 51.011 Section 10.3.45 for the content description
+            voiceMailWaiting = ((mEfMWIS[0] & 0x01) != 0);
+            countVoiceMessages = mEfMWIS[1] & 0xff;
+
+            if (voiceMailWaiting && countVoiceMessages == 0) {
+                // Unknown count = -1
+                countVoiceMessages = -1;
+            }
+            if(DBG) log(" VoiceMessageCount from SIM MWIS = " + countVoiceMessages);
+        } else if (mEfCPHS_MWI != null) {
+            // use voice mail count from CPHS
+            int indicator = (int) (mEfCPHS_MWI[0] & 0xf);
+
+            // Refer CPHS4_2.WW6 B4.2.3
+            if (indicator == 0xA) {
+                // Unknown count = -1
+                countVoiceMessages = -1;
+            } else if (indicator == 0x5) {
+                countVoiceMessages = 0;
+            }
+            if(DBG) log(" VoiceMessageCount from SIM CPHS = " + countVoiceMessages);
+        }
+        return countVoiceMessages;
     }
 
     /**
@@ -792,30 +808,21 @@ public class SIMRecords extends IccRecords {
                 ar = (AsyncResult)msg.obj;
                 data = (byte[])ar.result;
 
+                if(DBG) log("EF_MWIS : " + IccUtils.bytesToHexString(data));
+
                 if (ar.exception != null) {
+                    if(DBG) log("EVENT_GET_MWIS_DONE exception = "
+                            + ar.exception);
                     break;
                 }
-
-                log("EF_MWIS: " + IccUtils.bytesToHexString(data));
-
-                mEfMWIS = data;
 
                 if ((data[0] & 0xff) == 0xff) {
-                    log("Uninitialized record MWIS");
+                    if(DBG) log("SIMRecords: Uninitialized record MWIS");
                     break;
                 }
 
-                // Refer TS 51.011 Section 10.3.45 for the content description
-                boolean voiceMailWaiting = ((data[0] & 0x01) != 0);
-                mCountVoiceMessages = data[1] & 0xff;
-
-                if (voiceMailWaiting && mCountVoiceMessages == 0) {
-                    // Unknown count = -1
-                    mCountVoiceMessages = -1;
-                }
-
-                mRecordsEventsRegistrants.notifyResult(EVENT_MWI);
-            break;
+                mEfMWIS = data;
+                break;
 
             case EVENT_GET_VOICE_MAIL_INDICATOR_CPHS_DONE:
                 isRecordLoadResponse = true;
@@ -823,29 +830,16 @@ public class SIMRecords extends IccRecords {
                 ar = (AsyncResult)msg.obj;
                 data = (byte[])ar.result;
 
+                if(DBG) log("EF_CPHS_MWI: " + IccUtils.bytesToHexString(data));
+
                 if (ar.exception != null) {
+                    if(DBG) log("EVENT_GET_VOICE_MAIL_INDICATOR_CPHS_DONE exception = "
+                            + ar.exception);
                     break;
                 }
 
                 mEfCPHS_MWI = data;
-
-                // Use this data if the EF[MWIS] exists and
-                // has been loaded
-
-                if (mEfMWIS == null) {
-                    int indicator = data[0] & 0xf;
-
-                    // Refer CPHS4_2.WW6 B4.2.3
-                    if (indicator == 0xA) {
-                        // Unknown count = -1
-                        mCountVoiceMessages = -1;
-                    } else if (indicator == 0x5) {
-                        mCountVoiceMessages = 0;
-                    }
-
-                    mRecordsEventsRegistrants.notifyResult(EVENT_MWI);
-                }
-            break;
+                break;
 
             case EVENT_GET_ICCID_DONE:
                 isRecordLoadResponse = true;
