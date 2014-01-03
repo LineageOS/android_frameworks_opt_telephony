@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -30,6 +31,7 @@ import android.net.NetworkRequest;
 import android.net.NetworkCapabilities;
 import android.database.Cursor;
 import android.content.Intent;
+import android.preference.PreferenceManager;
 import android.provider.BaseColumns;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
@@ -1672,5 +1674,14 @@ public class SubscriptionController extends ISub.Stub {
 
     public interface OnDemandDdsLockNotifier {
         public void notifyOnDemandDdsLockGranted(NetworkRequest n);
+    }
+    public void removeStaleSubPreferences(String prefKey) {
+        List<SubInfoRecord> subInfoList = getAllSubInfoList();
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        for (SubInfoRecord subInfo : subInfoList) {
+            if (subInfo.mSlotId == -1) {
+                sp.edit().remove(prefKey+subInfo.mSubId).commit();
+            }
+        }
     }
 }

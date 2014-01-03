@@ -465,4 +465,10 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
         pw.println(" mIsimPcscf"+mIsimPcscf);
         pw.flush();
     }
+
+    @Override
+    public int getVoiceMessageCount() {
+        return 0; // Not applicable to Isim
+    }
+
 }
