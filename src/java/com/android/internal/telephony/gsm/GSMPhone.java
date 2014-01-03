@@ -33,6 +33,7 @@ import android.telecom.VideoProfile;
 import android.telephony.CellLocation;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
 import com.android.ims.ImsManager;
@@ -68,7 +69,6 @@ import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.PhoneSubInfo;
 
-import android.telephony.SubscriptionManager;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -328,6 +328,23 @@ public class GSMPhone extends PhoneBase {
     @Override
     public CallTracker getCallTracker() {
         return mCT;
+    }
+
+    // pending voice mail count updated after phone creation
+    private void updateVoiceMail() {
+        int countVoiceMessages = 0;
+        IccRecords r = mIccRecords.get();
+        if (r != null) {
+            // get voice mail count from SIM
+            countVoiceMessages = r.getVoiceMessageCount();
+        }
+        int countVoiceMessagesStored = getStoredVoiceMessageCount();
+        if (countVoiceMessages == -1 && countVoiceMessagesStored != 0) {
+            countVoiceMessages = countVoiceMessagesStored;
+        }
+        Rlog.d(LOG_TAG, "updateVoiceMail countVoiceMessages = " + countVoiceMessages
+                +" subId "+getSubId());
+        setVoiceMessageCount(countVoiceMessages);
     }
 
     @Override
@@ -1415,6 +1432,7 @@ public class GSMPhone extends PhoneBase {
                 }
 
                 mSimRecordsLoadedRegistrants.notifyRegistrants();
+                updateVoiceMail();
             break;
 
             case EVENT_GET_BASEBAND_VERSION_DONE:
@@ -1618,13 +1636,10 @@ public class GSMPhone extends PhoneBase {
             case IccRecords.EVENT_CFI:
                 notifyCallForwardingIndicator();
                 break;
-            case IccRecords.EVENT_MWI:
-                notifyMessageWaitingIndicator();
-                break;
         }
     }
 
-   /**
+    /**
      * Sets the "current" field in the telephony provider according to the SIM's operator
      *
      * @return true for success; false otherwise.
@@ -1863,6 +1878,23 @@ public class GSMPhone extends PhoneBase {
     }
 
     public void resetSubSpecifics() {
+    }
+
+    /**
+     * Sets the SIM voice message waiting indicator records.
+     * @param line GSM Subscriber Profile Number, one-based. Only '1' is supported
+     * @param countWaiting The number of messages waiting, if known. Use
+     *                     -1 to indicate that an unknown number of
+     *                      messages are waiting
+     */
+    @Override
+    public void setVoiceMessageWaiting(int line, int countWaiting) {
+        IccRecords r = mIccRecords.get();
+        if (r != null) {
+            r.setVoiceMessageWaiting(line, countWaiting);
+        } else {
+            log("SIM Records not found, MWI not updated");
+        }
     }
 
     protected void log(String s) {

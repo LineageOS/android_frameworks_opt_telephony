@@ -18,11 +18,9 @@ package com.android.internal.telephony.cdma;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.os.Message;
 import android.os.SystemProperties;
-import android.preference.PreferenceManager;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.SmsCbMessage;
 
@@ -252,12 +250,18 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         int voicemailCount = sms.getNumOfVoicemails();
         if (DBG) log("Voicemail count=" + voicemailCount);
 
-        // Store the voicemail count in preferences.
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        SharedPreferences.Editor editor = sp.edit();
-        editor.putInt(CDMAPhone.VM_COUNT_CDMA + mPhone.getPhoneId(), voicemailCount);
-        editor.apply();
-        mPhone.setVoiceMessageWaiting(1, voicemailCount);
+        // range check
+        if (voicemailCount < 0) {
+            voicemailCount = -1;
+        } else if (voicemailCount > 99) {
+            // C.S0015-B v2, 4.5.12
+            // range: 0-99
+            voicemailCount = 99;
+        }
+        // update voice mail count in phone
+        mPhone.setVoiceMessageCount(voicemailCount);
+        // store voice mail count in preferences
+        storeVoiceMailCount();
     }
 
     /**
