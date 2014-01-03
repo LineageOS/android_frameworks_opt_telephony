@@ -293,4 +293,9 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
         pw.println(" mIsimImpu[]=" + Arrays.toString(mIsimImpu));
         pw.flush();
     }
+
+    public int getVoiceMessageCount() {
+        return 0; // Not applicable to Isim
+    }
+
 }
