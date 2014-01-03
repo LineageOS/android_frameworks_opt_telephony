@@ -746,6 +746,10 @@ public final class GsmCallTracker extends CallTracker {
                     log("(foregnd) hangup dialing or alerting...");
                 }
                 hangup((GsmConnection)(call.getConnections().get(0)));
+            } else if (mRingingCall.isRinging()) {
+                // Do not auto-answer ringing on CHUP, instead just end active calls
+                log("hangup all conns in active/background call, without affecting ringing call");
+                hangupAllConnections(call);
             } else {
                 hangupForegroundResumeBackground();
             }
