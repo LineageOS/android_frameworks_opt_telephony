@@ -717,26 +717,27 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     dial(String address, int clirMode, UUSInfo uusInfo, Message result) {
         if(!dialCode)
             super.dial(address, clirMode, uusInfo, result);
+        else {
+            RILRequest rr = RILRequest.obtain(RIL_REQUEST_DIAL, result);
 
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_DIAL, result);
+            rr.mParcel.writeString(address);
+            rr.mParcel.writeInt(clirMode);
+            rr.mParcel.writeInt(0);
+            rr.mParcel.writeInt(1);
+            rr.mParcel.writeString("");
 
-        rr.mParcel.writeString(address);
-        rr.mParcel.writeInt(clirMode);
-        rr.mParcel.writeInt(0);
-        rr.mParcel.writeInt(1);
-        rr.mParcel.writeString("");
+            if (uusInfo == null) {
+                rr.mParcel.writeInt(0); // UUS information is absent
+            } else {
+                rr.mParcel.writeInt(1); // UUS information is present
+                rr.mParcel.writeInt(uusInfo.getType());
+                rr.mParcel.writeInt(uusInfo.getDcs());
+                rr.mParcel.writeByteArray(uusInfo.getUserData());
+            }
 
-        if (uusInfo == null) {
-            rr.mParcel.writeInt(0); // UUS information is absent
-        } else {
-            rr.mParcel.writeInt(1); // UUS information is present
-            rr.mParcel.writeInt(uusInfo.getType());
-            rr.mParcel.writeInt(uusInfo.getDcs());
-            rr.mParcel.writeByteArray(uusInfo.getUserData());
+            if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+            send(rr);
         }
-
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-
-        send(rr);
     }
 }
