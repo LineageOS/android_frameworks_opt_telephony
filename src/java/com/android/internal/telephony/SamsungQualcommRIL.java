@@ -716,7 +716,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     public void
     dial(String address, int clirMode, UUSInfo uusInfo, Message result) {
         if(!dialCode)
-            super.dial(address, clirMode, uusInfo, result);
+            return super.dial(address, clirMode, uusInfo, result);
 
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_DIAL, result);
 
