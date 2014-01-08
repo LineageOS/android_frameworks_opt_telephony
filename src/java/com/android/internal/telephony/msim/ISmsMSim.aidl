@@ -126,13 +126,13 @@ interface ISmsMSim {
      * @param subscription the subscription on which the SMS has to be sent.
      */
     void sendText(String callingPkg, in String destAddr, in String scAddr, in String text,
-            in PendingIntent sentIntent, in PendingIntent deliveryIntent,
-            in int subscription);
+            in PendingIntent sentIntent, in PendingIntent deliveryIntent, in int subscription);
 
     /**
-     * Send an SMS with priority.
+     * Send an SMS with options.
      *
-     * @param destAddr the address to send the message to
+     * @param smsc the SMSC to send the message through, or NULL for the
+     *  default SMSC
      * @param text the body of the message to send
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is sucessfully sent, or failed.
@@ -150,13 +150,10 @@ interface ISmsMSim {
      * @param deliveryIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is delivered to the recipient.  The
      *  raw pdu of the status report is in the extended data ("pdu").
-     * @param deliveryIntent if not NULL this <code>PendingIntent</code> is
-     *  broadcast when the message is delivered to the recipient.  The
-     *  raw pdu of the status report is in the extended data ("pdu").
      * @param priority Priority level of the message
      * @param subscription the subscription on which the SMS has to be sent.
      */
-    void sendTextWithPriority(String callingPkg, in String destAddr, in String scAddr,
+    void sendTextWithOptions(String callingPkg, in String destAddr, in String scAddr,
             in String text, in PendingIntent sentIntent, in PendingIntent deliveryIntent,
             in int priority, in int subscription);
 
@@ -185,7 +182,35 @@ interface ISmsMSim {
      */
     void sendMultipartText(String callingPkg, in String destinationAddress, in String scAddress,
             in List<String> parts, in List<PendingIntent> sentIntents,
-            in List<PendingIntent> deliveryIntents, in int subscription);
+            in List<PendingIntent> deliveryIntents,in int subscription);
+
+    /**
+     * Send a multi-part text based SMS with options.
+     *
+     * @param destinationAddress the address to send the message to
+     * @param scAddress is the service center address or null to use
+     *   the current default SMSC
+     * @param parts an <code>ArrayList</code> of strings that, in order,
+     *   comprise the original message
+     * @param sentIntents if not null, an <code>ArrayList</code> of
+     *   <code>PendingIntent</code>s (one for each message part) that is
+     *   broadcast when the corresponding message part has been sent.
+     *   The result code will be <code>Activity.RESULT_OK<code> for success,
+     *   or one of these errors:
+     *   <code>RESULT_ERROR_GENERIC_FAILURE</code>
+     *   <code>RESULT_ERROR_RADIO_OFF</code>
+     *   <code>RESULT_ERROR_NULL_PDU</code>.
+     * @param deliveryIntents if not null, an <code>ArrayList</code> of
+     *   <code>PendingIntent</code>s (one for each message part) that is
+     *   broadcast when the corresponding message part has been delivered
+     *   to the recipient.  The raw pdu of the status report is in the
+     *   extended data ("pdu").
+     * @param priority Priority level of the message
+     * @param subscription the subscription on which the SMS has to be sent.
+     */
+    void sendMultipartTextWithOptions(String callingPkg, in String destinationAddress,
+            in String scAddress, in List<String> parts, in List<PendingIntent> sentIntents,
+            in List<PendingIntent> deliveryIntents, in int priority, in int subscription);
 
     /**
      * Enable reception of cell broadcast (SMS-CB) messages with the given
