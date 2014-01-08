@@ -1261,6 +1261,10 @@ public class SIMRecords extends IccRecords {
                 mFh.loadEFTransparent(EF_CFF_CPHS,
                         obtainMessage(EVENT_GET_CFF_DONE));
                 break;
+            case EF_ADN:
+                log("SIM Refresh for EF_ADN");
+                mAdnCache.reset();
+                break;
             default:
                 // For now, fetch all records if this is not a
                 // voicemail number.

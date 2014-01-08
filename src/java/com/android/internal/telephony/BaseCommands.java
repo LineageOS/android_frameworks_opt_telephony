@@ -73,6 +73,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mSrvccStateRegistrants = new RegistrantList();
     protected RegistrantList mHardwareConfigChangeRegistrants = new RegistrantList();
     protected RegistrantList mWwanIwlanCoexistenceRegistrants = new RegistrantList();
+    protected RegistrantList mSimRefreshRegistrants = new RegistrantList();
 
     protected Registrant mGsmSmsRegistrant;
     protected Registrant mCdmaSmsRegistrant;
@@ -761,6 +762,14 @@ public abstract class BaseCommands implements CommandsInterface {
 
     public void unregisterForWwanIwlanCoexistence(Handler h) {
         mWwanIwlanCoexistenceRegistrants.remove(h);
+    }
+
+    public void registerForSimRefreshEvent(Handler h, int what, Object obj) {
+        mSimRefreshRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForSimRefreshEvent(Handler h) {
+        mSimRefreshRegistrants.remove(h);
     }
 
     @Override

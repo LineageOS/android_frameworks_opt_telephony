@@ -241,6 +241,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     /** Starting number for OEMHOOK request and response IDs */
     private static final int OEMHOOK_BASE = 0x80000;
+    final int OEMHOOK_UNSOL_SIM_REFRESH = OEMHOOK_BASE + 1016;
     final int OEMHOOK_UNSOL_WWAN_IWLAN_COEXIST = OEMHOOK_BASE + 1018;
 
     /** Set Local Call Hold subscription */
@@ -3401,6 +3402,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case OEMHOOK_UNSOL_WWAN_IWLAN_COEXIST:
                 notifyWwanIwlanCoexist(responseData);
                 break;
+
+            case OEMHOOK_UNSOL_SIM_REFRESH:
+                notifySimRefresh(responseData);
+                break;
+
             default:
                 Rlog.d(RILJ_LOG_TAG, "Response ID " + responseId
                         + " is not served in this process.");
@@ -3413,6 +3419,19 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         AsyncResult ar = new AsyncResult(null, data, null);
         mWwanIwlanCoexistenceRegistrants.notifyRegistrants(ar);
         Rlog.d(RILJ_LOG_TAG, "WWAN, IWLAN coexistence notified to registrants");
+    }
+
+    /** Notify registrants of SIM_REFRESH event. */
+    protected void notifySimRefresh(byte[] data) {
+        int len = data.length;
+        byte[] userdata = new byte[1 + len];
+        System.arraycopy(data, 0, userdata, 0, len);
+        //Add slot id in SIM_REFRESH event to notify framework: IccRecords.
+        userdata[len] = (mInstanceId == null) ? 0 : (byte)(mInstanceId & 0xFF);
+
+        AsyncResult ar = new AsyncResult(null, userdata, null);
+        mSimRefreshRegistrants.notifyRegistrants(ar);
+        Rlog.d(RILJ_LOG_TAG, "SIM_REFRESH notified to registrants");
     }
 
     private Object

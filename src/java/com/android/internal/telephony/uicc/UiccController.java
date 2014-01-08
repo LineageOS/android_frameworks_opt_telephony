@@ -17,6 +17,8 @@
 package com.android.internal.telephony.uicc;
 
 import android.content.Context;
+import android.content.Intent;
+
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -34,6 +36,8 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /**
  * This class is responsible for keeping all knowledge about
@@ -88,6 +92,7 @@ public class UiccController extends Handler {
     private static final int EVENT_GET_ICC_STATUS_DONE = 2;
     private static final int EVENT_RADIO_UNAVAILABLE = 3;
     private static final int EVENT_REFRESH = 4;
+    private static final int EVENT_REFRESH_OEM = 5;
 
     private CommandsInterface[] mCis;
     private UiccCard[] mUiccCards = new UiccCard[TelephonyManager.getDefault().getPhoneCount()];
@@ -102,6 +107,8 @@ public class UiccController extends Handler {
 */
 
     protected RegistrantList mIccChangedRegistrants = new RegistrantList();
+
+    private boolean mOEMHookSimRefresh = false;
 
 /*
     public static UiccController make(Context c, CommandsInterface ci) {
@@ -129,13 +136,20 @@ public class UiccController extends Handler {
         if (DBG) log("Creating UiccController");
         mContext = c;
         mCis = ci;
+        mOEMHookSimRefresh = mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_sim_refresh_for_dual_mode_card);
         for (int i = 0; i < mCis.length; i++) {
             Integer index = new Integer(i);
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, index);
             // TODO remove this once modem correctly notifies the unsols
             mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
             mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, index);
-            mCis[i].registerForIccRefresh(this, EVENT_REFRESH, null);
+
+            if (mOEMHookSimRefresh) {
+                mCis[i].registerForSimRefreshEvent(this, EVENT_REFRESH_OEM, index);
+            } else {
+                mCis[i].registerForIccRefresh(this, EVENT_REFRESH, index);
+            }
         }
     }
 
@@ -172,7 +186,8 @@ public class UiccController extends Handler {
 
     // Easy to use API
     public UiccCardApplication getUiccCardApplication(int family) {
-        return getUiccCardApplication(SubscriptionController.getInstance().getPhoneId(SubscriptionController.getInstance().getDefaultSubId()), family);  
+        return getUiccCardApplication(SubscriptionController.getInstance().getPhoneId(
+                SubscriptionController.getInstance().getDefaultSubId()), family);
     }
 
 /*
@@ -294,6 +309,16 @@ public class UiccController extends Handler {
                         log ("Exception on refresh " + ar.exception);
                     }
                     break;
+                case EVENT_REFRESH_OEM:
+                    ar = (AsyncResult)msg.obj;
+                    if (DBG) log("Sim REFRESH OEM received");
+                    if (ar.exception == null) {
+                        ByteBuffer payload = ByteBuffer.wrap((byte[])ar.result);
+                        handleRefresh(parseOemSimRefresh(payload), index);
+                    } else {
+                        log ("Exception on refresh " + ar.exception);
+                    }
+                    break;
                 default:
                     Rlog.e(LOG_TAG, " Unknown Event " + msg.what);
             }
@@ -336,6 +361,31 @@ public class UiccController extends Handler {
         mCis[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE));
     }
 
+    public static IccRefreshResponse
+    parseOemSimRefresh(ByteBuffer payload) {
+        IccRefreshResponse response = new IccRefreshResponse();
+        /* AID maximum size */
+        final int QHOOK_MAX_AID_SIZE = 20*2+1+3;
+
+        /* parse from payload */
+        payload.order(ByteOrder.nativeOrder());
+
+        response.refreshResult = payload.getInt();
+        response.efId  = payload.getInt();
+        int aidLen = payload.getInt();
+        byte[] aid = new byte[QHOOK_MAX_AID_SIZE];
+        payload.get(aid, 0, QHOOK_MAX_AID_SIZE);
+        //Read the aid string with QHOOK_MAX_AID_SIZE from payload at first because need
+        //corresponding to the aid array length sent from qcril and need parse the payload
+        //to get app type and sub id in IccRecords.java after called this method.
+        response.aid = (aidLen == 0) ? null : (new String(aid)).substring(0, aidLen);
+
+        if (DBG){
+            Rlog.d(LOG_TAG, "refresh SIM card " + ", refresh result:" + response.refreshResult
+                    + ", ef Id:" + response.efId + ", aid:" + response.aid);
+        }
+        return response;
+    }
 /*
     private UiccController(Context c, CommandsInterface ci) {
         if (DBG) log("Creating UiccController");
