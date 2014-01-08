@@ -846,8 +846,16 @@ public final class RuimRecords extends IccRecords {
 
     @Override
     protected void handleFileUpdate(int efid) {
-        mAdnCache.reset();
-        fetchRuimRecords();
+        switch (efid) {
+            case EF_ADN:
+                log("SIM Refresh for EF_ADN");
+                mAdnCache.reset();
+                break;
+            default:
+                mAdnCache.reset();
+                fetchRuimRecords();
+                break;
+        }
     }
 
     public String getMdn() {
