@@ -237,11 +237,14 @@ public class CDMALTEPhone extends CDMAPhone {
         return false;
     }
 
-    // return IMSI from USIM as subscriber ID.
-    @Override
-    public String getSubscriberId() {
-        return (mSimRecords != null) ? mSimRecords.getIMSI() : "";
-    }
+   @Override
+   public String getSubscriberId() {
+       if ((super.getSubscriberId()) != null) {
+           return super.getSubscriberId();
+       } else {
+           return (mSimRecords != null) ? mSimRecords.getIMSI() : "";
+       }
+   }
 
     // return GID1 from USIM
     @Override
