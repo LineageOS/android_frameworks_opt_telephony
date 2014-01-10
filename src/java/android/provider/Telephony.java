@@ -275,6 +275,13 @@ public final class Telephony {
          * <p>Type: TEXT</p>
          */
         public static final String CREATOR = "creator";
+
+       /**
+         * The priority of the message.
+         * <P>Type: INTEGER</P>
+         * @hide
+         */
+        public static final String PRIORITY = "priority";
     }
 
     /**
@@ -417,6 +424,31 @@ public final class Telephony {
         public static Uri addMessageToUri(int subId, ContentResolver resolver,
                 Uri uri, String address, String body, String subject,
                 Long date, boolean read, boolean deliveryReport, long threadId) {
+            return addMessageToUri(subId, resolver, uri, address, body, subject,
+                    date, read, deliveryReport, threadId, -1);
+        }
+
+        /**
+         * Add an SMS to the given URI with priority specified.
+         *
+         * @param resolver the content resolver to use
+         * @param uri the URI to add the message to
+         * @param address the address of the sender
+         * @param body the body of the message
+         * @param subject the psuedo-subject of the message
+         * @param date the timestamp for the message
+         * @param read true if the message has been read, false if not
+         * @param deliveryReport true if a delivery report was requested, false if not
+         * @param threadId the thread_id of the message
+         * @param subId the sub_id which the message belongs to
+         * @param priority the priority of the message
+         * @return the URI for the new message
+         * @hide
+         */
+        public static Uri addMessageToUri(int subId, ContentResolver resolver,
+                Uri uri, String address, String body, String subject,
+                Long date, boolean read, boolean deliveryReport, long threadId,
+                int priority) {
             ContentValues values = new ContentValues(8);
             Rlog.v(TAG,"Telephony addMessageToUri sub id: " + subId);
 
@@ -430,6 +462,7 @@ public final class Telephony {
             values.put(READ, read ? Integer.valueOf(1) : Integer.valueOf(0));
             values.put(SUBJECT, subject);
             values.put(BODY, body);
+            values.put(PRIORITY, priority);
             if (deliveryReport) {
                 values.put(STATUS, STATUS_PENDING);
             }
