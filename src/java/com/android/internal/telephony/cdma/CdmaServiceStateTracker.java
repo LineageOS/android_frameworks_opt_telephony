@@ -414,17 +414,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     mIsMinInfoReady = true;
 
                     updateOtaspState();
-                    if (!mIsSubscriptionFromRuim && mIccRecords != null) {
-                        if (DBG) {
-                            log("GET_CDMA_SUBSCRIPTION set imsi in mIccRecords");
-                        }
-                        mIccRecords.setImsi(getImsi());
-                    } else {
-                        if (DBG) {
-                            log("GET_CDMA_SUBSCRIPTION either mIccRecords is null  or NV type device" +
-                                    " - not setting Imsi in mIccRecords");
-                        }
-                    }
                 } else {
                     if (DBG) {
                         log("GET_CDMA_SUBSCRIPTION: error parsing cdmaSubscription params num="
@@ -1642,12 +1631,11 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     }
 
     /**
-     * Returns IMSI as MCC + MNC + MIN
+     * Returns IMSI from NV in the format MCC + MNC + MIN
      */
-    public String getImsi() {
-        // TODO: When RUIM is enabled, IMSI will come from RUIM not build-time props.
+    public String getNvImsi() {
         String operatorNumeric = getSystemProperty(
-                TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
+                CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC, "");
 
         if (!TextUtils.isEmpty(operatorNumeric) && getCdmaMin() != null) {
             return (operatorNumeric + getCdmaMin());
