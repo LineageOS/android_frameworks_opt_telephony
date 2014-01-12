@@ -63,7 +63,6 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     private Object mSMSLock = new Object();
     private boolean mIsSendingSMS = false;
     private boolean isGSM = false;
-    private boolean passedCheck=true;
     public static final long SEND_SMS_TIMEOUT_IN_MS = 30000;
     private String homeOperator= SystemProperties.get("ro.cdma.home.operator.numeric");
     private String operator= SystemProperties.get("ro.cdma.home.operator.alpha");
@@ -241,8 +240,6 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     protected Object
     responseCallList(Parcel p) {
         samsungDriverCall = (driverCall && !isGSM) || mRilVersion < 7 ? false : true;
-        if(driverCall && passedCheck)
-            mAudioManager.setParameters("wide_voice_enable=false");
         return super.responseCallList(p);
     }
 
@@ -531,18 +528,8 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 if (i<2){
                     if (response[i].equals("       Empty") || (response[i].equals("") && !isGSM)) {
                         response[i]=operator;
-                    } else if (!response[i].equals(""))  {
-                        try {
-                            Integer.parseInt(response[i]);
-                            response[i]=Operators.operatorReplace(response[i]);
-                            //optimize
-                            if(i==0)
-                                response[i+1]=response[i];
-                        }  catch(NumberFormatException E){
-                            // do nothing
-                        }
                     }
-                } else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || (response[i].equals("") && !isGSM)){
+                } else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || || ((response[i].length()<5  || response[i].length()>6) && !isGSM)){
                         response[i]=homeOperator;
                 }
             }
@@ -601,9 +588,6 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
             Rlog.d(RILJ_LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=on");
             mAudioManager.setParameters("wide_voice_enable=false");
         }
-        //prevent race conditions when the two meeets
-        if (passedCheck)
-            passedCheck=false;
     }
 
     // Workaround for Samsung CDMA "ring of death" bug:
