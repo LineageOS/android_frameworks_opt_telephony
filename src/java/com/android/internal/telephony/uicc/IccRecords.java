@@ -256,16 +256,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return null if SIM is not yet ready or unavailable
      */
     public String getIMSI() {
-        return null;
-    }
-
-    /**
-     * Imsi could be set by ServiceStateTrackers in case of cdma
-     * @param imsi
-     */
-    public void setImsi(String imsi) {
-        mImsi = imsi;
-        mImsiReadyRegistrants.notifyRegistrants();
+        return mImsi;
     }
 
     public String getMsisdnNumber() {
