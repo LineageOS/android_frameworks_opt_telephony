@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2013 The CyanogenMod Project
+ * Copyright (C) 2012-2014 The CyanogenMod Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -560,15 +560,9 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     private Object
     operatorCheck(Parcel p) {
         String response[] = (String[])responseStrings(p);
-        for(int i=0; i<3; i++){
+        for(int i=0; i<2; i++){
             if (response[i]!= null){
-                if (i<2){
-                    if (response[i].equals("       Empty") || (response[i].equals("") && !isGSM)) {
-                        response[i]=operator;
-                    }
-                } else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || ((response[i].length()<5  || response[i].length()>6) && !isGSM)){
-                        response[i]=homeOperator;
-                }
+                response[i] = Operators.operatorReplace(response[i]);
             }
         }
         return response;
