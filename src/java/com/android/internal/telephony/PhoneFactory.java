@@ -127,8 +127,12 @@ public class PhoneFactory {
                 } catch (Exception e) {
                     // 6 different types of exceptions are thrown here that it's
                     // easier to just catch Exception as our "error handling" is the same.
-                    Rlog.e(LOG_TAG, "Unable to construct custom RIL class", e);
-                    sCommandsInterface = new RIL(context, networkMode, cdmaSubscription);
+                    // Yes, we're blocking the whole thing and making the radio unusable. That's by design.
+                    // The log message should make it clear why the radio is broken
+                    while (true) {
+                        Rlog.e(LOG_TAG, "Unable to construct custom RIL class", e);
+                        try {Thread.sleep(10000);} catch (InterruptedException ie) {}
+                    }
                 }
 
                 // Instantiate UiccController so that all other classes can just call getInstance()
