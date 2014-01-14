@@ -72,6 +72,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mSubscriptionStatusRegistrants = new RegistrantList();
     protected RegistrantList mSrvccStateRegistrants = new RegistrantList();
     protected RegistrantList mHardwareConfigChangeRegistrants = new RegistrantList();
+    protected RegistrantList mWwanIwlanCoexistenceRegistrants = new RegistrantList();
 
     protected Registrant mGsmSmsRegistrant;
     protected Registrant mCdmaSmsRegistrant;
@@ -745,14 +746,22 @@ public abstract class BaseCommands implements CommandsInterface {
         mRilConnectedRegistrants.remove(h);
     }
 
-     public void registerForSubscriptionStatusChanged(Handler h, int what, Object obj) {
-         Registrant r = new Registrant (h, what, obj);
-         mSubscriptionStatusRegistrants.add(r);
-     }
+    public void registerForSubscriptionStatusChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mSubscriptionStatusRegistrants.add(r);
+    }
 
-     public void unregisterForSubscriptionStatusChanged(Handler h) {
-         mSubscriptionStatusRegistrants.remove(h);
-     }
+    public void unregisterForSubscriptionStatusChanged(Handler h) {
+        mSubscriptionStatusRegistrants.remove(h);
+    }
+
+    public void registerForWwanIwlanCoexistence(Handler h, int what, Object obj) {
+        mWwanIwlanCoexistenceRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForWwanIwlanCoexistence(Handler h) {
+        mWwanIwlanCoexistenceRegistrants.remove(h);
+    }
 
     //***** Protected Methods
     /**

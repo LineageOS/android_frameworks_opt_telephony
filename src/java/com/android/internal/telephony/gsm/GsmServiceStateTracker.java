@@ -74,6 +74,7 @@ import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.PhoneConstants;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -678,12 +679,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 return;
             }
 
-            if (!mCi.getRadioState().isOn()) {
-                // Radio has crashed or turned off
-                cancelPollState();
-                return;
-            }
-
             if (err != CommandException.Error.OP_NOT_ALLOWED_BEFORE_REG_NW) {
                 loge("RIL implementation has returned an error where it must succeed" +
                         ar.exception);
@@ -896,7 +891,19 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 mGotCountryCode = false;
                 mNitzUpdatedTime = false;
                 pollStateDone();
-            break;
+
+                /**
+                 * If iwlan feature is enabled then we do get
+                 * voice_network_change indication from RIL. At this moment we
+                 * dont know the current RAT since we are in Airplane mode.
+                 * We have to request for current registration state and hence
+                 * fallthrough to default case only if iwlan feature is
+                 * applicable.
+                 */
+                if (!isIwlanFeatureAvailable()) {
+                    /* fall-through */
+                    break;
+                }
 
             default:
                 // Issue all poll-related commands at once
@@ -1037,6 +1044,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         if (hasRilDataRadioTechnologyChanged) {
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
                     ServiceState.rilRadioTechnologyToString(mSS.getRilVoiceRadioTechnology()));
+
+            if (isIwlanFeatureAvailable()
+                    && (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                        == mSS.getRilDataRadioTechnology())) {
+                log("pollStateDone: IWLAN enabled");
+            }
+
         }
 
         if (hasRegistered) {
@@ -1197,7 +1211,18 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         if (hasDataRegStateChanged || hasRilDataRadioTechnologyChanged) {
             notifyDataRegStateRilRadioTechnologyChanged();
-            needNotifyData = true;
+
+            if (isIwlanFeatureAvailable()
+                    && (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                        == mSS.getRilDataRadioTechnology())) {
+                mPhone.notifyDataConnection(Phone.REASON_IWLAN_AVAILABLE);
+                needNotifyData =  false;
+                mIwlanRatAvailable = true;
+            } else {
+                processIwlanToWwanTransition(mSS);
+                needNotifyData = true;
+                mIwlanRatAvailable = false;
+            }
         }
 
         if (needNotifyData) {

@@ -1937,4 +1937,15 @@ public interface CommandsInterface {
      * @param result Callback message contains the information of SUCCESS/FAILURE
      */
     public void requestShutdown(Message result);
+
+    /**
+     * Register/unregister for WWAN and IWLAN coexistence
+     * notification.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    void registerForWwanIwlanCoexistence(Handler h, int what, Object obj);
+    void unregisterForWwanIwlanCoexistence(Handler h);
 }

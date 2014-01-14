@@ -77,11 +77,14 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.ArrayUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -181,6 +184,9 @@ public final class DcTracker extends DcTrackerBase {
     private boolean mDeregistrationAlarmState = false;
     private PendingIntent mImsDeregistrationDelayIntent = null;
 
+    /* IWLAN and WWAN co-exist flag */
+    private boolean mWwanIwlanCoexistFlag = false;
+
     //***** Constructor
     public DcTracker(PhoneBase p) {
         super(p);
@@ -237,6 +243,8 @@ public final class DcTracker extends DcTrackerBase {
         mPhone.mCi.registerForAvailable(this, DctConstants.EVENT_RADIO_AVAILABLE, null);
         mPhone.mCi.registerForOffOrNotAvailable(this,
                DctConstants.EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
+        mPhone.mCi.registerForWwanIwlanCoexistence(this,
+                DctConstants.EVENT_GET_WWAN_IWLAN_COEXISTENCE_DONE, null);
         mPhone.mCi.registerForDataNetworkStateChanged(this,
                DctConstants.EVENT_DATA_STATE_CHANGED, null);
         mPhone.getCallTracker().registerForVoiceCallEnded (this,
@@ -508,6 +516,15 @@ public final class DcTracker extends DcTrackerBase {
         // isDataAllowed() like IN_SERVICE, MOBILE DATA status etc.
         boolean dataAllowed = isEmergencyApn || isDataAllowed();
         boolean possible = dataAllowed && apnTypePossible;
+
+        if ((apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DEFAULT)
+                    || apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IA))
+                && (mPhone.getServiceState().getRilDataRadioTechnology()
+                == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN)
+                && (!mWwanIwlanCoexistFlag)) {
+            log("Default data call activation not possible in iwlan.");
+            possible = false;
+        }
 
         if (VDBG) {
             log(String.format("isDataPossible(%s): possible=%b isDataAllowed=%b " +
@@ -795,7 +812,18 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private boolean isDataAllowed(ApnContext apnContext) {
-        return apnContext.isReady() && isDataAllowed();
+        //If RAT is iwlan then dont allow default/IA PDP at all.
+        //Rest of APN types can be evaluated for remaining conditions.
+        if ((apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DEFAULT)
+                    || apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IA))
+                && (mPhone.getServiceState().getRilDataRadioTechnology()
+                == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN)
+                && (!mWwanIwlanCoexistFlag)) {
+            log("Default data call activation not allowed in iwlan.");
+            return false;
+        } else {
+            return apnContext.isReady() && isDataAllowed();
+        }
     }
 
     //****** Called from ServiceStateTracker
@@ -842,6 +870,12 @@ public final class DcTracker extends DcTrackerBase {
 
         boolean attachedState = mAttached.get();
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
+        int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
+        if (radioTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                && desiredPowerState == false) {
+            desiredPowerState = true;
+        }
+
         IccRecords r = mIccRecords.get();
         boolean recordsLoaded = (r != null) ? r.getRecordsLoaded() : false;
         boolean subscriptionFromNv = isNvSubscription();
@@ -1435,6 +1469,35 @@ public final class DcTracker extends DcTrackerBase {
         setInitialAttachApn();
         cleanUpAllConnections(!isDisconnected, reason);
         setupDataOnConnectableApns(reason);
+    }
+
+    private void onWwanIwlanCoexistenceDone(AsyncResult ar) {
+        if (ar.exception != null) {
+            log("onWwanIwlanCoexistenceDone: error = " + ar.exception);
+        } else {
+            byte[] array = (byte[])ar.result;
+            log("onWwanIwlanCoexistenceDone, payload hexdump = "
+                    + IccUtils.bytesToHexString (array));
+            ByteBuffer oemHookResponse = ByteBuffer.wrap(array);
+            oemHookResponse.order(ByteOrder.nativeOrder());
+            int resp = oemHookResponse.get();
+            log("onWwanIwlanCoexistenceDone: resp = " + resp);
+
+            boolean tempStatus = (resp > 0)? true : false;
+
+            if (mWwanIwlanCoexistFlag == tempStatus) {
+                log("onWwanIwlanCoexistenceDone: no change in status, ignore.");
+                return;
+            }
+            mWwanIwlanCoexistFlag = tempStatus;
+
+            if (mPhone.getServiceState().getRilDataRadioTechnology()
+                    == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) {
+                log("notifyDataConnection IWLAN_AVAILABLE");
+                notifyDataConnection(Phone.REASON_IWLAN_AVAILABLE);
+            }
+
+        }
     }
 
     /**
@@ -2847,6 +2910,10 @@ public final class DcTracker extends DcTrackerBase {
                     mProvisioningSpinner.dismiss();
                     mProvisioningSpinner = null;
                 }
+                break;
+
+            case DctConstants.EVENT_GET_WWAN_IWLAN_COEXISTENCE_DONE:
+                onWwanIwlanCoexistenceDone((AsyncResult)msg.obj);
                 break;
 
             default:
