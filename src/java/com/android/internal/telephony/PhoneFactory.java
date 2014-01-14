@@ -117,18 +117,19 @@ public class PhoneFactory {
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
 
                 //reads the system properties and makes commandsinterface
-                String sRILClassname = SystemProperties.get("ro.telephony.ril_class", "RIL").trim();
+                String sRILClassname = SystemProperties.get("ro.telephony.ril_class", "RIL");
                 Rlog.i(LOG_TAG, "RILClassname is " + sRILClassname);
 
                 // Use reflection to construct the RIL class (defaults to RIL)
                 try {
-                    sCommandsInterface = instantiateCustomRIL(
-                                            sRILClassname, context, networkMode, cdmaSubscription);
+                    Class<?> classDefinition = Class.forName("com.android.internal.telephony." + sRILClassname);
+                    Constructor<?> constructor = classDefinition.getConstructor(new Class[] {Context.class, int.class, int.class});
+                    sCommandsInterface = (RIL) constructor.newInstance(new Object[] {context, networkMode, cdmaSubscription});
                 } catch (Exception e) {
                     // 6 different types of exceptions are thrown here that it's
                     // easier to just catch Exception as our "error handling" is the same.
-                    Rlog.e(LOG_TAG, "Unable to construct custom RIL class", e);
-                    sCommandsInterface = new RIL(context, networkMode, cdmaSubscription);
+                    Rlog.i(LOG_TAG, "Unable to construct command interface", e);
+                    throw new RuntimeException(e);
                 }
 
                 // Instantiate UiccController so that all other classes can just call getInstance()
@@ -171,14 +172,6 @@ public class PhoneFactory {
                 sMadeDefaults = true;
             }
         }
-    }
-
-    private static <T> T instantiateCustomRIL(
-                      String sRILClassname, Context context, int networkMode, int cdmaSubscription)
-                      throws Exception {
-        Class<?> clazz = Class.forName("com.android.internal.telephony." + sRILClassname);
-        Constructor<?> constructor = clazz.getConstructor(Context.class, int.class, int.class);
-        return (T) clazz.cast(constructor.newInstance(context, networkMode, cdmaSubscription));
     }
 
     public static Phone getDefaultPhone() {
