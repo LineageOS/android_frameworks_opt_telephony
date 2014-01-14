@@ -32,6 +32,9 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Pair;
 import android.util.TimeUtils;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.content.Context;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -111,6 +114,9 @@ public abstract class ServiceStateTracker extends Handler {
     /* Radio power off pending flag and tag counter */
     protected boolean mPendingRadioPowerOffAfterDataOff = false;
     protected int mPendingRadioPowerOffAfterDataOffTag = 0;
+
+    /* Current rat is iwlan */
+    protected boolean mIwlanRatAvailable = false;
 
     /** Signal strength poll rate. */
     protected static final int POLL_PERIOD_MILLIS = 20 * 1000;
@@ -851,4 +857,59 @@ public abstract class ServiceStateTracker extends Handler {
             MccTable.updateMccMncConfiguration(context, newOp, true);
         }
     }
+
+    protected boolean isIwlanFeatureAvailable() {
+        boolean iwlanAvailable = mPhoneBase.getContext().getResources()
+                .getBoolean(com.android.internal.R.bool.config_feature_iwlan_enabled);
+        log("Iwlan feature available = " + iwlanAvailable);
+        return iwlanAvailable;
+    }
+
+    /* Consider the below usecase.
+     * 1. WQE and IWLAN features are enabled and hence device can have wifi and mobile
+     * connectivity simultaneously.
+     * 2. Current available RATs are WWAN and IWLAN, both co-exists.
+     * 3. RIL informs preferred RAT as WWAN. Telephony could have default and
+     * non-default PDP activated. Since IWLAN is also available, non-default pdp
+     * would be over IWLAN.
+     * 4. WWAN goes to OOS.
+     * 5. RIL informs that default PDP is lost(unsol_data_call_list).
+     * 6. Telephony attempts to retry the default APN context.
+     * 7. RIL informs current preferred RAT is IWLAN.
+     * 8. Telephony marks default/ia APN as "not available".
+     * 9. Upon retry timer expiration, telephony does not bringup default APN
+     * since is marked as unavailable. DC object moved to IDLE state.
+     * 10 Later WWAN gets back in service.
+     * 11. RIL informs preferred RAT as WWAN. So the RAT transition was as
+     * follow.
+     * IWLAN(Attached) -> WWAN(Attached)
+     * 12. There is no trigger for telephony to initiate data call on
+     * connnectable ApnContext after WWAN gets in service.
+     * 13 Below method detects the transition from IWLAN to WWAN in attached
+     * state and informs telephony that we are in WWAN attached state.
+     * 14. Telephony would look into all the connectable APNs are would trigger
+     * data call based on prevailing conditions.
+     *
+     */
+    protected void processIwlanToWwanTransition(ServiceState ss) {
+        // Wifi connected(iwlan feature on) AND a valid(non-wlan) RAT present
+        // AND attached AND previous RAT was iwlan.
+        //
+        // Notify that we are attached so that we can setup connectable
+        // APNs.
+        if (isIwlanFeatureAvailable() &&
+                (ss.getRilDataRadioTechnology()
+                 != ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN) &&
+                (ss.getRilDataRadioTechnology()
+                 != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) &&
+                (ss.getDataRegState() == ServiceState.STATE_IN_SERVICE) &&
+                (mIwlanRatAvailable == true)) {
+
+            log("pollStateDone: Wifi connected and moved out of iwlan " +
+                    "and wwan is attached.");
+            mAttachedRegistrants.notifyRegistrants();
+        }
+
+    }
+
 }
