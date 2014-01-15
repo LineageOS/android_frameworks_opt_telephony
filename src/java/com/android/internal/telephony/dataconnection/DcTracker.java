@@ -2006,12 +2006,7 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private boolean isNvSubscription() {
-        int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
-        if (mCdmaSsm == null) {
-            return false;
-        }
-        if (UiccController.getFamilyFromRadioTechnology(radioTech) == UiccController.APP_FAM_3GPP2
-                && mCdmaSsm.getCdmaSubscriptionSource() ==
+        if (mCdmaSsm != null && mCdmaSsm.getCdmaSubscriptionSource() ==
                         CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_NV) {
             return true;
         }
@@ -2025,7 +2020,8 @@ public final class DcTracker extends DcTrackerBase {
     private void createAllApnList() {
         mAllApnSettings = new ArrayList<ApnSetting>();
         IccRecords r = mIccRecords.get();
-        String operator = (r != null) ? r.getOperatorNumeric() : "";
+        String homeOperator= SystemProperties.get("ro.cdma.home.operator.numeric");
+        String operator = (r != null) ? r.getOperatorNumeric() : homeOperator;
         if (operator != null) {
             String selection = "numeric = '" + operator + "'";
             // query only enabled apn.
@@ -2349,6 +2345,13 @@ public final class DcTracker extends DcTrackerBase {
                 } else {
                     loge("EVENT_CLEAN_UP_CONNECTION request w/o apn context, call super");
                     super.handleMessage(msg);
+                }
+                break;
+            //this gets handled when the DCT Tracker is created (see constructor)
+            case DctConstants.EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
+                if (isNvSubscription()){
+                    if (DBG) log("CreateAllAPN list is called due NV Subscription");
+                    createAllApnList();
                 }
                 break;
 
