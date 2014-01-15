@@ -187,11 +187,6 @@ public final class MccTable
             Slog.d(LOG_TAG, "updateMccMncConfiguration: mcc=" + mcc + ", mnc=" + mnc);
 
             Locale locale = null;
-            if (mcc != 0) {
-                setTimezoneFromMccIfNeeded(context, mcc);
-                locale = getLocaleFromMcc(context, mcc);
-                setWifiCountryCodeFromMcc(context, mcc);
-            }
             try {
                 Configuration config = new Configuration();
                 boolean updateConfig = false;
