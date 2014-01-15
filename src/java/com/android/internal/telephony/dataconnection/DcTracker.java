@@ -2025,7 +2025,8 @@ public final class DcTracker extends DcTrackerBase {
     private void createAllApnList() {
         mAllApnSettings = new ArrayList<ApnSetting>();
         IccRecords r = mIccRecords.get();
-        String operator = (r != null) ? r.getOperatorNumeric() : "";
+        String homeOperator= SystemProperties.get("ro.cdma.home.operator.numeric");
+        String operator = (r != null) ? r.getOperatorNumeric() : homeOperator;
         if (operator != null) {
             String selection = "numeric = '" + operator + "'";
             // query only enabled apn.
