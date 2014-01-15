@@ -2351,6 +2351,13 @@ public final class DcTracker extends DcTrackerBase {
                     super.handleMessage(msg);
                 }
                 break;
+            //this gets handled when the DCT Tracker is created (see constructor)
+            case DctConstants.EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
+                if (isNvSubscription()){
+                    if (DBG) log("CreateAllAPN list is called due NV Subscription");
+                    createAllApnList();
+                }
+                break;
 
             default:
                 // handle the message in the super class DataConnectionTracker
