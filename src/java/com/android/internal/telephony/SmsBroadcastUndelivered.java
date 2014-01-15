@@ -41,9 +41,6 @@ public class SmsBroadcastUndelivered implements Runnable {
     private static final String TAG = "SmsBroadcastUndelivered";
     private static final boolean DBG = InboundSmsHandler.DBG;
 
-    /** Delete any partial message segments older than 30 days. */
-    static final long PARTIAL_SEGMENT_EXPIRE_AGE = (long) (60 * 60 * 1000) * 24 * 30;
-
     /**
      * Query projection for dispatching pending messages at boot time.
      * Column order must match the {@code *_COLUMN} constants in {@link InboundSmsHandler}.
@@ -71,8 +68,12 @@ public class SmsBroadcastUndelivered implements Runnable {
     /** Handler for 3GPP2-format messages (may be null). */
     private final CdmaInboundSmsHandler mCdmaInboundSmsHandler;
 
+    /** Use context get bool config resource from framework. */
+    private final Context mContext;
+
     public SmsBroadcastUndelivered(Context context, GsmInboundSmsHandler gsmInboundSmsHandler,
             CdmaInboundSmsHandler cdmaInboundSmsHandler) {
+        mContext = context;
         mResolver = context.getContentResolver();
         mGsmInboundSmsHandler = gsmInboundSmsHandler;
         mCdmaInboundSmsHandler = cdmaInboundSmsHandler;
@@ -123,10 +124,16 @@ public class SmsBroadcastUndelivered implements Runnable {
                 } else {
                     SmsReferenceKey reference = new SmsReferenceKey(tracker);
                     Integer receivedCount = multiPartReceivedCount.get(reference);
+
+                    // get partial segment expire age from resource which in config.xml
+                    // Add this function for international roaming requirement.
+                    String expireAgeString = mContext.getResources().getString(
+                            com.android.internal.R.string.config_partial_segment_expire_age);
+                    long expireAge = Long.valueOf(expireAgeString);
                     if (receivedCount == null) {
                         multiPartReceivedCount.put(reference, 1);    // first segment seen
                         if (tracker.getTimestamp() <
-                                (System.currentTimeMillis() - PARTIAL_SEGMENT_EXPIRE_AGE)) {
+                                (System.currentTimeMillis() - expireAge)) {
                             // older than 30 days; delete if we don't find all the segments
                             oldMultiPartMessages.add(reference);
                         }
