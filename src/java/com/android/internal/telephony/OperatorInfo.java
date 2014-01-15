@@ -71,11 +71,11 @@ public class OperatorInfo implements Parcelable {
         mOperatorAlphaLong = operatorAlphaLong;
         mOperatorAlphaShort = operatorAlphaShort;
 
-        mOperatorNumeric = null;
+        mOperatorNumeric = operatorNumeric;
         mRadioTech = "";
         /* operatorNumeric format: PLMN+RAT or PLMN */
         if (null != operatorNumeric) {
-            String values[] = operatorNumeric.split("+");
+            String values[] = operatorNumeric.split("\\+");
             mOperatorNumeric = values[0];
             if (values.length > 1)
                 mRadioTech = values[1];
