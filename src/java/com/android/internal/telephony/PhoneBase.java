@@ -959,6 +959,31 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
+    public void nvReadItem(int itemID, Message response) {
+        mCi.nvReadItem(itemID, response);
+    }
+
+    @Override
+    public void nvWriteItem(int itemID, String itemValue, Message response) {
+        mCi.nvWriteItem(itemID, itemValue, response);
+    }
+
+    @Override
+    public void nvWriteCdmaPrl(byte[] preferredRoamingList, Message response) {
+        mCi.nvWriteCdmaPrl(preferredRoamingList, response);
+    }
+
+    @Override
+    public void nvResetConfig(int resetType, Message response) {
+        mCi.nvResetConfig(resetType, response);
+    }
+
+    @Override
+    public void setRadioMode(int radioMode, Message response) {
+        mCi.setRadioMode(radioMode, response);
+    }
+
+    @Override
     public void notifyDataActivity() {
         mNotifier.notifyDataActivity(this);
     }

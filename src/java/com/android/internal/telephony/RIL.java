@@ -2439,6 +2439,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_SIM_OPEN_CHANNEL: ret  = responseInts(p); break;
             case RIL_REQUEST_SIM_CLOSE_CHANNEL: ret  = responseVoid(p); break;
             case RIL_REQUEST_SIM_TRANSMIT_APDU_CHANNEL: ret = responseICC_IO(p); break;
+            case RIL_REQUEST_NV_READ_ITEM: ret = responseString(p); break;
+            case RIL_REQUEST_NV_WRITE_ITEM: ret = responseVoid(p); break;
+            case RIL_REQUEST_NV_WRITE_CDMA_PRL: ret = responseVoid(p); break;
+            case RIL_REQUEST_NV_RESET_CONFIG: ret = responseVoid(p); break;
+            case RIL_REQUEST_SET_RADIO_MODE: ret = responseVoid(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -3748,6 +3753,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_SIM_OPEN_CHANNEL: return "RIL_REQUEST_SIM_OPEN_CHANNEL";
             case RIL_REQUEST_SIM_CLOSE_CHANNEL: return "RIL_REQUEST_SIM_CLOSE_CHANNEL";
             case RIL_REQUEST_SIM_TRANSMIT_APDU_CHANNEL: return "RIL_REQUEST_SIM_TRANSMIT_APDU_CHANNEL";
+            case RIL_REQUEST_NV_READ_ITEM: return "RIL_REQUEST_NV_READ_ITEM";
+            case RIL_REQUEST_NV_WRITE_ITEM: return "RIL_REQUEST_NV_WRITE_ITEM";
+            case RIL_REQUEST_NV_WRITE_CDMA_PRL: return "RIL_REQUEST_NV_WRITE_CDMA_PRL";
+            case RIL_REQUEST_NV_RESET_CONFIG: return "RIL_REQUEST_NV_RESET_CONFIG";
+            case RIL_REQUEST_SET_RADIO_MODE: return "RIL_REQUEST_SET_RADIO_MODE";
             default: return "<unknown request>";
         }
     }
@@ -4189,6 +4199,67 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (RILJ_LOGD)
             riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
+    }
+
+    @Override
+    public void nvReadItem(int itemID, Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_NV_READ_ITEM, response);
+
+        rr.mParcel.writeInt(itemID);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                + ' ' + itemID);
+
+        send(rr);
+    }
+
+    @Override
+    public void nvWriteItem(int itemID, String itemValue, Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_NV_WRITE_ITEM, response);
+
+        rr.mParcel.writeInt(itemID);
+        rr.mParcel.writeString(itemValue);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                + ' ' + itemID + ": " + itemValue);
+
+        send(rr);
+    }
+
+    @Override
+    public void nvWriteCdmaPrl(byte[] preferredRoamingList, Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_NV_WRITE_CDMA_PRL, response);
+
+        rr.mParcel.writeByteArray(preferredRoamingList);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                + " (" + preferredRoamingList.length + " bytes)");
+
+        send(rr);
+    }
+
+    @Override
+    public void nvResetConfig(int resetType, Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_NV_RESET_CONFIG, response);
+
+        rr.mParcel.writeInt(resetType);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                + ' ' + resetType);
+
+        send(rr);
+    }
+
+    @Override
+    public void setRadioMode(int radioMode, Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_RADIO_MODE, response);
+
+        rr.mParcel.writeInt(radioMode);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                + ' ' + radioMode);
 
         send(rr);
     }

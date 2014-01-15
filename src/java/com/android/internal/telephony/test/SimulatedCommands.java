@@ -1699,4 +1699,29 @@ public final class SimulatedCommands extends BaseCommands
             int p3, String data, Message response) {
         unimplemented(response);
     }
+
+    @Override
+    public void nvReadItem(int itemID, Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void nvWriteItem(int itemID, String itemValue, Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void nvWriteCdmaPrl(byte[] preferredRoamingList, Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void nvResetConfig(int resetType, Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void setRadioMode(int radioMode, Message response) {
+        unimplemented(response);
+    }
 }

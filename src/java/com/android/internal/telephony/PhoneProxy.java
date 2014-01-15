@@ -1157,9 +1157,6 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone.requestIsimAuthentication(nonce, response);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public int getLteOnCdmaMode() {
         return mActivePhone.getLteOnCdmaMode();
@@ -1173,6 +1170,31 @@ public class PhoneProxy extends Handler implements Phone {
     @Override
     public UsimServiceTable getUsimServiceTable() {
         return mActivePhone.getUsimServiceTable();
+    }
+
+    @Override
+    public void nvReadItem(int itemID, Message response) {
+        mActivePhone.nvReadItem(itemID, response);
+    }
+
+    @Override
+    public void nvWriteItem(int itemID, String itemValue, Message response) {
+        mActivePhone.nvWriteItem(itemID, itemValue, response);
+    }
+
+    @Override
+    public void nvWriteCdmaPrl(byte[] preferredRoamingList, Message response) {
+        mActivePhone.nvWriteCdmaPrl(preferredRoamingList, response);
+    }
+
+    @Override
+    public void nvResetConfig(int resetType, Message response) {
+        mActivePhone.nvResetConfig(resetType, response);
+    }
+
+    @Override
+    public void setRadioMode(int radioMode, Message response) {
+        mActivePhone.setRadioMode(radioMode, response);
     }
 
     @Override

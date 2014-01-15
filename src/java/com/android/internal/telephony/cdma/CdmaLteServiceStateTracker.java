@@ -476,7 +476,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 boolean registered = mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE;
                 mLasteCellIdentityLte = mNewCellIdentityLte;
 
-                cil.setRegisterd(registered);
+                cil.setRegistered(registered);
                 cil.setCellIdentity(mLasteCellIdentityLte);
                 if (DBG) {
                     log("pollStateDone: hasRegistered=" + hasRegistered +
