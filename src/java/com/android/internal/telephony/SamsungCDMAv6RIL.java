@@ -26,6 +26,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.AudioManager;
 import android.net.ConnectivityManager;
 import android.os.Handler;
 import android.os.Message;
@@ -59,8 +60,11 @@ import android.telephony.Rlog;
 
 public class SamsungCDMAv6RIL extends RIL implements CommandsInterface {
 
+    private AudioManager audioManager;
+
     public SamsungCDMAv6RIL(Context context, int networkMode, int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
+        audioManager = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
     }
 
     // SAMSUNG SGS STATES
@@ -72,6 +76,8 @@ public class SamsungCDMAv6RIL extends RIL implements CommandsInterface {
     static final int RIL_UNSOL_DUN_PIN_CONTROL_SIGNAL = 11011;
     static final int RIL_UNSOL_HSDPA_STATE_CHANGED = 11016;
     static final int RIL_REQUEST_DIAL_EMERGENCY = 10016;
+    static final int RIL_UNSOL_WB_AMR_STATE = 11017;
+    static final int RIL_UNSOL_TWO_MIC_STATE = 11018;
 
     static String
     requestToString(int request) {
@@ -254,6 +260,13 @@ public class SamsungCDMAv6RIL extends RIL implements CommandsInterface {
             case RIL_REQUEST_EXIT_EMERGENCY_CALLBACK_MODE: ret = responseVoid(p); break;
             case RIL_REQUEST_REPORT_SMS_MEMORY_STATUS: ret = responseVoid(p); break;
             case RIL_REQUEST_REPORT_STK_SERVICE_IS_RUNNING: ret = responseVoid(p); break;
+            case RIL_REQUEST_CDMA_GET_SUBSCRIPTION_SOURCE: ret =  responseInts(p); break;
+            case RIL_REQUEST_ISIM_AUTHENTICATION: ret =  responseString(p); break;
+            case RIL_REQUEST_ACKNOWLEDGE_INCOMING_GSM_SMS_WITH_PDU: ret = responseVoid(p); break;
+            case RIL_REQUEST_STK_SEND_ENVELOPE_WITH_STATUS: ret = responseICC_IO(p); break;
+            case RIL_REQUEST_VOICE_RADIO_TECH: ret = responseInts(p); break;
+            case RIL_REQUEST_GET_CELL_INFO_LIST: ret = responseCellInfoList(p); break;
+            case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE: ret = responseVoid(p); break;
             case RIL_REQUEST_DIAL_EMERGENCY: ret = responseVoid(p); break;
             case RIL_UNSOL_RIL_CONNECTED: ret = responseInts(p); break;
             default:
@@ -369,6 +382,7 @@ public class SamsungCDMAv6RIL extends RIL implements CommandsInterface {
         case RIL_UNSOL_CDMA_INFO_REC: ret = responseCdmaInformationRecord(p); break;
         case RIL_UNSOL_HSDPA_STATE_CHANGED: ret = responseInts(p); break;
         case RIL_UNSOL_O2_HOME_ZONE_INFO: ret = responseVoid(p); break;
+        case RIL_UNSOL_DATA_CALL_LIST_CHANGED: ret =  responseVoid(p); break;
         case RIL_UNSOL_DEVICE_READY_NOTI: ret = responseVoid(p); break;
         case RIL_UNSOL_GPS_NOTI: ret = responseVoid(p); break; // Ignored in TW RIL.
         // SAMSUNG STATES
@@ -376,6 +390,8 @@ public class SamsungCDMAv6RIL extends RIL implements CommandsInterface {
         case RIL_UNSOL_DUN_PIN_CONTROL_SIGNAL: ret = responseVoid(p); break;
         case RIL_UNSOL_DATA_SUSPEND_RESUME: ret = responseInts(p); break;
         case RIL_UNSOL_RIL_CONNECTED: ret = responseString(p); break;
+        case RIL_UNSOL_TWO_MIC_STATE: ret = responseInts(p); break;
+        case RIL_UNSOL_WB_AMR_STATE: ret = responseInts(p); break;
 
         default:
             // Rewind the Parcel
@@ -488,8 +504,30 @@ public class SamsungCDMAv6RIL extends RIL implements CommandsInterface {
             case RIL_UNSOL_DATA_SUSPEND_RESUME:
                 if (RILJ_LOGD) samsungUnsljLogRet(response, ret);
                 break;
+            case RIL_UNSOL_TWO_MIC_STATE:
+                if (RILJ_LOGD) samsungUnsljLogRet(response, ret);
+                break;
+            case RIL_UNSOL_WB_AMR_STATE:
+                if (RILJ_LOGD) samsungUnsljLogRet(response, ret);
+                setWbAmr(((int[])ret)[0]);
+                break;
         }
     }
+
+    /**
+     * Set audio parameter "wb_amr" for HD-Voice (Wideband AMR).
+     *
+     * @param state: 0 = unsupported, 1 = supported.
+     */
+    private void setWbAmr(int state) {
+        if (state == 1) {
+            Rlog.d(RILJ_LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=on");
+            audioManager.setParameters("wb_amr=on");
+        } else {
+            Rlog.d(RILJ_LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=off");
+            audioManager.setParameters("wb_amr=off");
+         }
+     }
 
     @Override
     protected Object

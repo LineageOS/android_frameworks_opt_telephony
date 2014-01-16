@@ -265,6 +265,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         if (mNewSS.getDataRegState() != ServiceState.STATE_IN_SERVICE && oldRil) {
             // LTE out of service, get CDMA Service State
             mNewRilRadioTechnology = mNewSS.getRilVoiceRadioTechnology();
+            mNewSS.setDataRegState(radioTechnologyToDataServiceState(mNewRilRadioTechnology));
             mNewSS.setRilDataRadioTechnology(mNewRilRadioTechnology);
             log("pollStateDone CDMA STATE_IN_SERVICE mNewRilRadioTechnology = " +
                     mNewRilRadioTechnology + " mNewSS.getDataRegState() = " +
