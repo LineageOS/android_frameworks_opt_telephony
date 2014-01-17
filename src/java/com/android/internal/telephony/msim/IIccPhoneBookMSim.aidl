@@ -18,6 +18,8 @@
 
 package com.android.internal.telephony.msim;
 
+import android.content.ContentValues;
+
 import com.android.internal.telephony.uicc.AdnRecord;
 
 
@@ -94,6 +96,22 @@ interface IIccPhoneBookMSim {
             String pin2, int subscription);
 
     /**
+     * Update an ADN-like EF record by record index of a subscription
+     *
+     * This is useful for iteration the whole ADN file, such as write the whole
+     * phone book or erase/format the whole phonebook
+     *
+     * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
+     * @param values to be updated
+     * @param pin2 required to update EF_FDN, otherwise must be null
+     * @param subscription user preferred subscription
+     * @return true for success
+     */
+    boolean updateAdnRecordsInEfBySearchOnSubscription(int efid,
+            in ContentValues values,
+            String pin2, int subscription);
+
+    /**
      * Get the max munber of records in efid
      *
      * @param efid the EF id of a ADN-like SIM
@@ -105,4 +123,62 @@ interface IIccPhoneBookMSim {
      */
     int[] getAdnRecordsSize(int efid, int subscription);
 
+    /**
+     * Update an ADN-like EF record by record index
+     *
+     * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
+     * @param newTag adn tag to be stored
+     * @param newPhoneNumber adn number to be stored
+     *        Set both newTag and newPhoneNubmer to "" means to replace the old
+     *        record with empty one, aka, delete old record
+     * @param anrNumbers adn additional number to be stored
+     * @param emails adn email to be stored
+     * @param index is 1-based adn record index to be updated
+     * @param pin2 required to update EF_FDN, otherwise must be null
+     * @param subscription user preferred subscription
+     * @return true for success
+     */
+    boolean updateUsimAdnRecordsInEfByIndex(int efid, String newTag,
+            String newPhoneNumber, in String[] anrNumbers, in String[] emails, int index,
+            String pin2, int subscription);
+
+    /**
+     * Get the adn count of sim card
+     *
+     * @param sub user preferred subscription
+     * @return the adn count of sim card
+     */
+    int getAdnCount(int sub);
+
+    /**
+     * Get the anr count of sim card
+     *
+     * @param sub user preferred subscription
+     * @return the anr count of sim card
+     */
+    int getAnrCount(int sub);
+
+    /**
+     * Get the email count of sim card
+     *
+     * @param sub user preferred subscription
+     * @return the email count of sim card
+     */
+    int getEmailCount(int sub);
+
+    /**
+     * Get the spare anr count of sim card
+     *
+     * @param sub user preferred subscription
+     * @return the spare anr count of sim card
+     */
+    int getSpareAnrCount(int sub);
+
+    /**
+     * Get the spare email count of sim card
+     *
+     * @param sub user preferred subscription
+     * @return the spare email count of sim card
+     */
+    int getSpareEmailCount(int sub);
 }
