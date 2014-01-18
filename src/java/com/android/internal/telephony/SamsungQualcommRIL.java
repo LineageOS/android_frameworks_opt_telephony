@@ -68,6 +68,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     private boolean oldRilState = needsOldRilFeature("exynos4RadioState");
     private boolean googleEditionSS = needsOldRilFeature("googleEditionSS");
     private boolean driverCall = needsOldRilFeature("newDriverCall");
+    private boolean driverCallU = needsOldRilFeature("newDriverCallU");
     private boolean dialCode = needsOldRilFeature("newDialCode");
     public SamsungQualcommRIL(Context context, int networkMode,
             int cdmaSubscription) {
@@ -268,7 +269,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     @Override
     protected Object
     responseCallList(Parcel p) {
-        samsungDriverCall = (driverCall && !isGSM) || mRilVersion < 7 ? false : true;
+        samsungDriverCall = driverCallU || (driverCall && !isGSM) || mRilVersion < 7 ? false : true;
         return super.responseCallList(p);
     }
 
