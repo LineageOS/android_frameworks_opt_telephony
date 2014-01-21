@@ -34,6 +34,7 @@ import android.telephony.TelephonyManager;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccCardConstants;
+import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.TelephonyIntents;
@@ -46,7 +47,9 @@ import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.RuimRecords;
-
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_APN_SIM_OPERATOR_NUMERIC;
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
@@ -252,6 +255,7 @@ public class IccCardProxy extends Handler implements IccCard {
                 setExternalState(State.READY);
                 break;
             case EVENT_RECORDS_LOADED:
+                updateproperty();
                 broadcastIccStateChangedIntent(IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
                 break;
             case EVENT_IMSI_READY:
@@ -292,6 +296,7 @@ public class IccCardProxy extends Handler implements IccCard {
                 mUiccCard = newCard;
                 mUiccApplication = newApp;
                 mIccRecords = newRecords;
+                updateproperty();
                 registerUiccCardEvents();
                 updateActiveRecord();
             }
@@ -300,6 +305,29 @@ public class IccCardProxy extends Handler implements IccCard {
         }
     }
 
+    /**
+     * Multimode card will load multi sim records,  the later one will overwrite the property set
+     * before, so better to set property after get EVENT_RECORDS_LOADED event, and new
+     * IccRecords is available. Or else in some cards the operator numeric is updated wrongly.
+     */
+    protected void updateproperty(){
+        if (mIccRecords == null) {
+            log("updateproperty null mIccRecords");
+        } else {
+            String operator = mIccRecords.getOperatorNumeric();
+            if (operator != null && mIccRecords.getRecordsLoaded()) {
+                log("updateproperty operator =" + operator);
+                String countryCode = operator.substring(0,3);
+                SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
+                        MccTable.countryCodeForMcc(Integer.parseInt(countryCode)));
+                SystemProperties.set(PROPERTY_APN_SIM_OPERATOR_NUMERIC, operator);
+                SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
+            } else {
+                loge("updateproperty Operator name = " + operator + ", loaded = "
+                        + mIccRecords.getRecordsLoaded());
+            }
+        }
+    }
     protected void HandleDetectedState() {
         setExternalState(State.UNKNOWN);
     }
