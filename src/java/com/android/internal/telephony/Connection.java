@@ -80,6 +80,9 @@ public abstract class Connection {
         ERROR_UNSPECIFIED,
         /* Ims Disconnect cause grouped from here */
         SRVCC_CALL_DROP,                /* Call dropped because of SRVCC*/
+        ANSWERED_ELSEWHERE,             /* MT call has ended due to a release from the network
+                                         * because the call was answered elsewhere */
+
         CALL_FAIL_MISC
     }
 
