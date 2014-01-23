@@ -516,7 +516,7 @@ public abstract class SMSDispatcher extends Handler {
      */
     protected abstract void sendText(String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
-            int priority);
+            int priority, boolean isExpectMore);
 
     /**
      * Calculate the number of septets needed to encode the message.
@@ -557,7 +557,7 @@ public abstract class SMSDispatcher extends Handler {
      */
     protected void sendMultipartText(String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
-            ArrayList<PendingIntent> deliveryIntents, int priority) {
+            ArrayList<PendingIntent> deliveryIntents, int priority, boolean isExpectMore) {
 
         int refNumber = getNextConcatenatedRef() & 0x00FF;
         int msgCount = parts.size();
@@ -608,7 +608,7 @@ public abstract class SMSDispatcher extends Handler {
             }
 
             sendNewSubmitPdu(destAddr, scAddr, parts.get(i), smsHeader, encoding,
-                    sentIntent, deliveryIntent, (i == (msgCount - 1)), priority);
+                    sentIntent, deliveryIntent, (i == (msgCount - 1)), priority, isExpectMore);
         }
 
     }
@@ -619,7 +619,7 @@ public abstract class SMSDispatcher extends Handler {
     protected abstract void sendNewSubmitPdu(String destinationAddress, String scAddress,
             String message, SmsHeader smsHeader, int encoding,
             PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart,
-            int priority);
+            int priority, boolean isExpectMore);
 
     /**
      * Send a SMS
@@ -997,7 +997,8 @@ public abstract class SMSDispatcher extends Handler {
             return;
         }
 
-        sendMultipartText(destinationAddress, scAddress, parts, sentIntents, deliveryIntents, -1);
+        sendMultipartText(destinationAddress, scAddress, parts, sentIntents, deliveryIntents, -1,
+                tracker.mExpectMore);
     }
 
     /**
