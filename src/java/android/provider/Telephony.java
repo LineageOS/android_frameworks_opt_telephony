@@ -639,6 +639,27 @@ public final class Telephony {
             public static final int RESULT_SMS_DUPLICATED = 5;
 
             /**
+             * Used internally: The sender of the SMS was blacklisted
+             * for not being listed in the contact list
+             * @hide
+             */
+            public static final int RESULT_SMS_BLACKLISTED_UNKNOWN = 6;
+
+            /**
+             * Used internally: The sender of the SMS was blacklisted
+             * for being listed in the blacklist
+             * @hide
+             */
+            public static final int RESULT_SMS_BLACKLISTED_LIST = 7;
+
+            /**
+             * Used internally: The sender of the SMS was blacklisted
+             * for matching a blacklist regex entry
+             * @hide
+             */
+            public static final int RESULT_SMS_BLACKLISTED_REGEX = 8;
+
+            /**
              * Activity action: Ask the user to change the default
              * SMS application. This will show a dialog that asks the
              * user whether they want to replace the current default
