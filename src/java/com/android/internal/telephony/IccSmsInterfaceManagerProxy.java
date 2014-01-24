@@ -117,6 +117,10 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
         intent.putExtra("pdus", pdus);
         intent.putExtra("format", SmsMessage.FORMAT_SYNTHETIC);
         dispatch(intent, Manifest.permission.RECEIVE_SMS);
+
+        intent.setAction(Intents.SMS_RECEIVED_ACTION);
+        intent.setComponent(null);
+        dispatch(intent, Manifest.permission.RECEIVE_SMS);
     }
 
     private void dispatch(Intent intent, String permission) {
