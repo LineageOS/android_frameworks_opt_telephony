@@ -27,6 +27,7 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
@@ -35,6 +36,7 @@ import android.os.Build;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.SystemProperties;
+import android.preference.PreferenceManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
@@ -809,6 +811,24 @@ public abstract class InboundSmsHandler extends StateMachine {
     static boolean isCurrentFormat3gpp2() {
         int activePhone = TelephonyManager.getDefault().getCurrentPhoneType();
         return (PHONE_TYPE_CDMA == activePhone);
+    }
+
+    protected void storeVoiceMailCount() {
+        // Store the voice mail count in persistent memory.
+        String imsi = mPhone.getSubscriberId();
+        int mwi = mPhone.getVoiceMessageCount();
+
+        log("Storing Voice Mail Count = " + mwi
+                    + " for imsi = " + imsi
+                    + " for mVmCountKey = " + ((PhoneBase)mPhone).VM_COUNT
+                    + " vmId = " + ((PhoneBase)mPhone).VM_ID
+                    + " in preferences.");
+
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putInt(mPhone.VM_COUNT, mwi);
+        editor.putString(mPhone.VM_ID, imsi);
+        editor.commit();
     }
 
     /**
