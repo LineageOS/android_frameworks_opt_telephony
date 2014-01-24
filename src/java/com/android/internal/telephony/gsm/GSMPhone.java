@@ -307,6 +307,20 @@ public class GSMPhone extends PhoneBase {
         return mCT;
     }
 
+    // pending voice mail count updated after phone creation
+    private void updateVoiceMail() {
+        int countVoiceMessages = 0;
+        IccRecords r = mIccRecords.get();
+        if (r != null) {
+            // get voice mail count from SIM
+            countVoiceMessages = r.getVoiceMessageCount();
+        }
+        if (countVoiceMessages == 0) {
+            countVoiceMessages = getStoredVoiceMessageCount();
+        }
+        Rlog.d(LOG_TAG, "updateVoiceMail countVoiceMessages = " + countVoiceMessages);
+        setVoiceMessageCount(countVoiceMessages);
+    }
 
     public boolean getCallForwardingIndicator() {
         boolean cf = false;
@@ -1356,6 +1370,7 @@ public class GSMPhone extends PhoneBase {
 
                 updateCallForwardStatus();
                 mSimRecordsLoadedRegistrants.notifyRegistrants();
+                updateVoiceMail();
             break;
 
             case EVENT_GET_BASEBAND_VERSION_DONE:
@@ -1573,9 +1588,6 @@ public class GSMPhone extends PhoneBase {
         switch (eventCode) {
             case IccRecords.EVENT_CFI:
                 notifyCallForwardingIndicator();
-                break;
-            case IccRecords.EVENT_MWI:
-                notifyMessageWaitingIndicator();
                 break;
         }
     }
@@ -1849,4 +1861,41 @@ public class GSMPhone extends PhoneBase {
     public void requestChangeCbPsw(String facility, String oldPwd, String newPwd, Message result) {
         mCi.changeBarringPassword(facility, oldPwd, newPwd, result);
     }
+
+    /** gets the voice mail count from preferences */
+    private int getStoredVoiceMessageCount() {
+        int countVoiceMessages = 0;
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        String imsi = sp.getString(VM_ID, null);
+        String currentImsi = getSubscriberId();
+
+        Rlog.d(LOG_TAG, "Voicemail count retrieval for Imsi = " + imsi +
+                " current Imsi = " + currentImsi );
+
+        if ((imsi != null) && (currentImsi != null)
+                && (currentImsi.equals(imsi))) {
+            // get voice mail count from preferences
+            countVoiceMessages = sp.getInt(VM_COUNT, 0);
+            Rlog.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages );
+        }
+        return countVoiceMessages;
+    }
+
+     /**
+     * Sets the SIM voice message waiting indicator records.
+     * @param line GSM Subscriber Profile Number, one-based. Only '1' is supported
+     * @param countWaiting The number of messages waiting, if known. Use
+     *                     -1 to indicate that an unknown number of
+     *                      messages are waiting
+     */
+    @Override
+    public void setVoiceMessageWaiting(int line, int countWaiting) {
+        IccRecords r = mIccRecords.get();
+        if (r != null) {
+            r.setVoiceMessageWaiting(line, countWaiting);
+        } else {
+            log("SIM Records not found, MWI not updated");
+        }
+    }
+
 }
