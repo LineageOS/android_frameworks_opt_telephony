@@ -798,6 +798,10 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public void updatePhoneObject(int voiceRadioTech) {
+        if (mUnitTestMode) {
+            // PhoneFactory isn't initialized in unit test mode
+            return;
+        }
         // Only the PhoneProxy can update the phone object.
         PhoneFactory.getDefaultPhone().updatePhoneObject(voiceRadioTech);
     }
