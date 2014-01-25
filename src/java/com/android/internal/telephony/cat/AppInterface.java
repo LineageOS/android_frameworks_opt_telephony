@@ -66,6 +66,12 @@ public interface AppInterface {
     void onCmdResponse(CatResponseMessage resMsg);
 
     /*
+     * Callback function from app to telephony when the app is ready, that is, the app is up
+     * and running and is ready to process commands received from telephony.
+     */
+    void onStkAppReady();
+
+    /*
      * Enumeration for representing "Type of Command" of proactive commands.
      * Those are the only commands which are supported by the Telephony. Any app
      * implementation should support those.
