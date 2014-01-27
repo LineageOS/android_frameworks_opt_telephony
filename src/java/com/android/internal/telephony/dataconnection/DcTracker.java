@@ -1876,6 +1876,11 @@ public class DcTracker extends DcTrackerBase {
                 log(String.format("onDataSetupComplete: error apn=%s cause=%s",
                         (apn == null ? "unknown" : apn.apn), cause));
             }
+
+            if (cause == null) {
+                cause = DcFailCause.UNKNOWN;
+            }
+
             if (cause.isEventLoggable()) {
                 // Log this failure to the Event Logs.
                 int cid = getCellLocationId();
