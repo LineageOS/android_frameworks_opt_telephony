@@ -1782,6 +1782,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         mNotification.tickerText = title;
         mNotification.setLatestEventInfo(context, title, details,
                 mNotification.contentIntent);
+        mNotification.visibility = Notification.VISIBILITY_PUBLIC;
 
         NotificationManager notificationManager = (NotificationManager)
             context.getSystemService(Context.NOTIFICATION_SERVICE);
