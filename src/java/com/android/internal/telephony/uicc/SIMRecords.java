@@ -1234,6 +1234,7 @@ public class SIMRecords extends IccRecords {
                 * desired power state has changed in the interim, we don't want to
                 * override it with an unconditional power on.
                 */
+                mAdnCache.reset();
                 break;
             default:
                 // unknown refresh operation
