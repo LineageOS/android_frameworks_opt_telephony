@@ -21,6 +21,9 @@ import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.dataconnection.DcTrackerBase;
+import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.Phone;
 
 import android.telephony.CellInfo;
 import android.telephony.CellInfoLte;
@@ -234,7 +237,19 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 mGotCountryCode = false;
 
                 pollStateDone();
-                break;
+
+                /**
+                 * If iwlan feature is enabled then we do get
+                 * voice_network_change indication from RIL. At this moment we
+                 * dont know the current RAT since we are in Airplane mode.
+                 * We have to request for current registration state and hence
+                 * fallthrough to default case only if iwlan feature is
+                 * applicable.
+                 */
+                if (!isIwlanFeatureAvailable()) {
+                    /* fall-through */
+                    break;
+                }
 
             default:
                 // Issue all poll-related commands at once, then count
@@ -356,6 +371,12 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         if (hasDataRadioTechnologyChanged) {
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
                     ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
+
+            if (isIwlanFeatureAvailable()
+                    && (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                        == mSS.getRilDataRadioTechnology())) {
+                handleIwlan();
+            }
         }
 
         if (hasRegistered) {
@@ -455,7 +476,16 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
         if ((hasCdmaDataConnectionChanged || hasDataRadioTechnologyChanged)) {
             notifyDataRegStateRilRadioTechnologyChanged();
-            mPhone.notifyDataConnection(null);
+            if (isIwlanFeatureAvailable()
+                    && (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                        == mSS.getRilDataRadioTechnology())) {
+                mPhone.notifyDataConnection(Phone.REASON_IWLAN_AVAILABLE);
+                //DCT shall inform the availability of APN for all non-default
+                //contexts.
+                mIwlanRegistrants.notifyRegistrants();
+            } else {
+                mPhone.notifyDataConnection(null);
+            }
         }
 
         if (hasCdmaDataConnectionAttached || has4gHandoff) {
