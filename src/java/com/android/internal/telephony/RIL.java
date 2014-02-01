@@ -3058,7 +3058,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 setRadioPower(false, null);
                 setPreferredNetworkType(mPreferredNetworkType, null);
                 setCdmaSubscriptionSource(mCdmaSubscription, null);
-                setCellInfoListRate(Integer.MAX_VALUE, null);
+                if(mRilVersion >= 8)
+                    setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
                 break;
             }
@@ -3918,7 +3919,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
                 return "UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED";
             case RIL_UNSOL_STK_SEND_SMS_RESULT: return "RIL_UNSOL_STK_SEND_SMS_RESULT";
-            default: return "<unknown reponse>";
+            default: return "<unknown response>";
         }
     }
 
