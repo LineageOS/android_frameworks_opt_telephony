@@ -386,6 +386,13 @@ public class UiccCard {
                 data, mHandler.obtainMessage(EVENT_TRANSMIT_APDU_DONE, response));
     }
 
+    /**
+     * Exposes {@link CommandsInterface.sendEnvelope}
+     */
+    public void sendEnvelope(String contents, Message response) {
+        mCi.sendEnvelope(contents, response);
+    }
+
     private void log(String msg) {
         Rlog.d(LOG_TAG, msg);
     }
