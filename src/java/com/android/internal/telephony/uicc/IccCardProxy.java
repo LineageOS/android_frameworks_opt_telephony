@@ -48,7 +48,6 @@ import com.android.internal.telephony.uicc.IccCardStatus.PinState;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.RuimRecords;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_APN_SIM_OPERATOR_NUMERIC;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -320,7 +319,6 @@ public class IccCardProxy extends Handler implements IccCard {
                 String countryCode = operator.substring(0,3);
                 SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
                         MccTable.countryCodeForMcc(Integer.parseInt(countryCode)));
-                SystemProperties.set(PROPERTY_APN_SIM_OPERATOR_NUMERIC, operator);
                 SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
             } else {
                 loge("updateproperty Operator name = " + operator + ", loaded = "
