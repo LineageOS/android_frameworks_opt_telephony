@@ -837,6 +837,8 @@ public interface Phone {
     void hangupWithReason(int callId, String userUri,
             boolean mpty, int failCause, String errorInfo) throws CallStateException;
 
+    void deflectCall(int callId, String number) throws CallStateException;
+
     /**
      * Clears all DISCONNECTED connections from Call connection lists. Calls
      * that were in the DISCONNECTED state become idle. This occurs
