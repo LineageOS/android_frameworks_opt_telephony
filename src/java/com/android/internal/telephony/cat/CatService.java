@@ -376,10 +376,6 @@ public class CatService extends Handler implements AppInterface {
                 sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
                 break;
             case DISPLAY_TEXT:
-                // when application is not required to respond, send an immediate response.
-                if (!cmdMsg.geTextMessage().responseNeeded) {
-                    sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
-                }
                 break;
             case REFRESH:
                 // ME side only handles refresh commands which meant to remove IDLE
@@ -987,9 +983,14 @@ public class CatService extends Handler implements AppInterface {
                 }
                 break;
             case DISPLAY_TEXT:
-                //For screenbusy case there will be addtional information in the terminal
-                //response. And the value of the additional information byte is 0x01.
-                resMsg.setAdditionalInfo(0x01);
+                if (resMsg.mResCode == ResultCode.TERMINAL_CRNTLY_UNABLE_TO_PROCESS) {
+                    // For screenbusy case there will be addtional information in the terminal
+                    // response. And the value of the additional information byte is 0x01.
+                    resMsg.setAdditionalInfo(0x01);
+                } else {
+                    resMsg.mIncludeAdditionalInfo = false;
+                    resMsg.mAdditionalInfo = 0;
+                }
                 break;
             case LAUNCH_BROWSER:
                 break;
