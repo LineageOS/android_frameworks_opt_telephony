@@ -330,12 +330,6 @@ public class CatService extends Handler implements AppInterface {
                 sendTerminalResponse(cmdParams.mCmdDet, resultCode, false, 0, null);
                 break;
             case DISPLAY_TEXT:
-                // when application is not required to respond, send an immediate response.
-                if (!cmdMsg.geTextMessage().responseNeeded) {
-                    resultCode = cmdParams.mLoadIconFailed ? ResultCode.PRFRMD_ICON_NOT_DISPLAYED
-                                                                            : ResultCode.OK;
-                    sendTerminalResponse(cmdParams.mCmdDet, resultCode, false, 0, null);
-                }
                 break;
             case REFRESH:
                 //Stk app service displays alpha id to user if it is present, nothing to do here
@@ -1035,7 +1029,6 @@ public class CatService extends Handler implements AppInterface {
         boolean helpRequired = false;
         CommandDetails cmdDet = resMsg.getCmdDetails();
         AppInterface.CommandType type = AppInterface.CommandType.fromInt(cmdDet.typeOfCommand);
-
         switch (resMsg.mResCode) {
         case HELP_INFO_REQUIRED:
             helpRequired = true;
@@ -1076,9 +1069,14 @@ public class CatService extends Handler implements AppInterface {
                 }
                 break;
             case DISPLAY_TEXT:
-            //For screenbusy case there will be addtional information in the terminal
-            //response. And the value of the additional information byte is 0x01.
-                resMsg.setAdditionalInfo(0x01);
+                if (resMsg.mResCode == ResultCode.TERMINAL_CRNTLY_UNABLE_TO_PROCESS) {
+                    // For screenbusy case there will be addtional information in the terminal
+                    // response. And the value of the additional information byte is 0x01.
+                    resMsg.setAdditionalInfo(0x01);
+                } else {
+                    resMsg.mIncludeAdditionalInfo = false;
+                    resMsg.mAdditionalInfo = 0;
+                }
                 break;
             case LAUNCH_BROWSER:
                 break;
