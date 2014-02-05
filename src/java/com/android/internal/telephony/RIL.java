@@ -4244,6 +4244,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     public void nvResetConfig(int resetType, Message response) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_NV_RESET_CONFIG, response);
 
+        rr.mParcel.writeInt(1);
         rr.mParcel.writeInt(resetType);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
@@ -4256,6 +4257,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     public void setRadioMode(int radioMode, Message response) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_RADIO_MODE, response);
 
+        rr.mParcel.writeInt(1);
         rr.mParcel.writeInt(radioMode);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
