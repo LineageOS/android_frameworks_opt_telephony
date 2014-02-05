@@ -67,14 +67,19 @@ public class ExtCallManager extends CallManager {
 
     private static final int EVENT_LOCAL_CALL_HOLD = 202;
 
-    private static final int LOCAL_CALL_HOLD = 1;
+    private static final int LOCAL_CALL_HOLD_INACTIVE = 0;
+    private static final int LOCAL_CALL_HOLD_ACTIVE = 1;
 
     // Holds the current active SUB, all actions would be
     // taken on this sub.
     private static int mActiveSub = 0;
 
     // Holds the LCH status of subscription
-    private int [] mLchStatus = {0, 0, 0};
+    private enum LchState {
+        INACTIVE,
+        ACTIVE
+    }
+    private LchState [] mLchStatus = {LchState.INACTIVE, LchState.INACTIVE, LchState.INACTIVE};
 
     private AudioManager mAudioManager = null;
 
@@ -254,17 +259,22 @@ public class ExtCallManager extends CallManager {
         boolean status = false;
 
         if ((subscription != MSimConstants.INVALID_SUBSCRIPTION) &&
-                (mLchStatus[subscription] != 0)) {
+                (mLchStatus[subscription] != LchState.INACTIVE)) {
             status = true;
         }
         return status;
     }
 
-    // Update the local call hold state and sets audio parameters for
-    // LCH subscription
-    // 1 -- if call on local hold, 0 -- if call is not on local hold
-    private void updateLchStatus(int sub) {
-        int lchStatus = 0;
+    /**
+     * Update the local call hold state and sets audio parameters for
+     * LCH subscription
+     * 1 -- if call on local hold, 0 -- if call is not on local hold
+     *
+     * @param sub to be updated
+     * @param reserveLchState true to retain the previous lch state; otherwise false
+     */
+    private void updateLchStatus(int sub, boolean reserveLchState) {
+        LchState lchStatus = LchState.INACTIVE;
         Phone offHookPhone = getFgPhone(sub);
         Call call = offHookPhone.getForegroundCall();
 
@@ -276,19 +286,36 @@ public class ExtCallManager extends CallManager {
         }
         Call.State state = call.getState();
 
-        if (((state == Call.State.ACTIVE) || (state == Call.State.DIALING) ||
-                (state == Call.State.HOLDING) || (state == Call.State.ALERTING))
-                && (sub != getActiveSubscription())) {
-            // if sub is not an active sub and if it has an active
-            // voice call then update lchStatus as 1
-            lchStatus = 1;
+        if ((state == Call.State.ACTIVE) || (state == Call.State.DIALING) ||
+                (state == Call.State.HOLDING) || (state == Call.State.ALERTING)) {
+            if (sub != getActiveSubscription()) {
+                // if sub is not an active sub and if it has an active
+                // voice call then update lchStatus as Active
+                lchStatus = LchState.ACTIVE;
+            } else if (reserveLchState == true){
+                // otherwise don't change the lch status unless we really want to
+                lchStatus = mLchStatus[sub];
+            }
         }
         // Update state only if the new state is different
         if (lchStatus != mLchStatus[sub]) {
             Rlog.d(LOG_TAG, " setLocal Call Hold to  = " + lchStatus);
-            offHookPhone.setLocalCallHold(lchStatus, mHandler.obtainMessage(EVENT_LOCAL_CALL_HOLD));
+            offHookPhone.setLocalCallHold(
+                    (lchStatus == LchState.ACTIVE)?LOCAL_CALL_HOLD_ACTIVE: LOCAL_CALL_HOLD_INACTIVE,
+                    mHandler.obtainMessage(EVENT_LOCAL_CALL_HOLD));
             mLchStatus[sub] = lchStatus;
         }
+    }
+
+    private void updateLchStatus(int sub) {
+        // set reserveLchState to true to reserve the lch state
+        updateLchStatus(sub, true);
+    }
+
+    @Override
+    public void deactivateLchState(int sub) {
+        Rlog.d(LOG_TAG, "Deactivating Sub" + sub + "'s Lch state.");
+        updateLchStatus(sub, false);
     }
 
     @Override
@@ -406,12 +433,12 @@ public class ExtCallManager extends CallManager {
             }
 
             // Update state only if the new state is different
-            if ((LOCAL_CALL_HOLD != mLchStatus[otherActiveSub]) &&
+            if ((LchState.ACTIVE != mLchStatus[otherActiveSub]) &&
                     (bgPhone != null)) {
                 Rlog.d(LOG_TAG, " setLocal Call Hold on sub: " + otherActiveSub);
-                bgPhone.setLocalCallHold(LOCAL_CALL_HOLD,
+                bgPhone.setLocalCallHold(LOCAL_CALL_HOLD_ACTIVE,
                         mHandler.obtainMessage(EVENT_LOCAL_CALL_HOLD));
-                mLchStatus[otherActiveSub] = LOCAL_CALL_HOLD;
+                mLchStatus[otherActiveSub] = LchState.ACTIVE;
             }
         }
     }
