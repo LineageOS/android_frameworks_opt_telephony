@@ -1760,6 +1760,53 @@ public interface CommandsInterface {
             int p3, String data, Message response);
 
     /**
+     * Read one of the NV items defined in {@link RadioNVItems} / {@code ril_nv_items.h}.
+     * Used for device configuration by some CDMA operators.
+     *
+     * @param itemID the ID of the item to read
+     * @param response callback message with the String response in the obj field
+     */
+    void nvReadItem(int itemID, Message response);
+
+    /**
+     * Write one of the NV items defined in {@link RadioNVItems} / {@code ril_nv_items.h}.
+     * Used for device configuration by some CDMA operators.
+     *
+     * @param itemID the ID of the item to read
+     * @param itemValue the value to write, as a String
+     * @param response Callback message.
+     */
+    void nvWriteItem(int itemID, String itemValue, Message response);
+
+    /**
+     * Update the CDMA Preferred Roaming List (PRL) in the radio NV storage.
+     * Used for device configuration by some CDMA operators.
+     *
+     * @param preferredRoamingList byte array containing the new PRL
+     * @param response Callback message.
+     */
+    void nvWriteCdmaPrl(byte[] preferredRoamingList, Message response);
+
+    /**
+     * Perform the specified type of NV config reset.
+     * Used for device configuration by some CDMA operators.
+     *
+     * @param resetType type of reset to perform (1 == factory reset; 2 == NV-only reset)
+     * @param response Callback message.
+     */
+    void nvResetConfig(int resetType, Message response);
+
+    /**
+     * Change the radio to the specified mode.
+     * Used for device configuration by some CDMA operators.
+     *
+     * @param radioMode is 0 for offline mode, 1 for online mode, 2 for low-power mode,
+     *                  or 3 to reset the radio.
+     * @param response Callback message.
+     */
+    void setRadioMode(int radioMode, Message response);
+
+    /**
      * @return version of the ril.
      */
     int getRilVersion();
