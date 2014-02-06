@@ -1788,23 +1788,14 @@ public interface CommandsInterface {
     void nvWriteCdmaPrl(byte[] preferredRoamingList, Message response);
 
     /**
-     * Perform the specified type of NV config reset.
-     * Used for device configuration by some CDMA operators.
+     * Perform the specified type of NV config reset. The radio will be taken offline
+     * and the device must be rebooted after erasing the NV. Used for device
+     * configuration by some CDMA operators.
      *
-     * @param resetType type of reset to perform (1 == factory reset; 2 == NV-only reset)
+     * @param resetType reset type: 1: reload NV reset, 2: erase NV reset, 3: factory NV reset
      * @param response Callback message.
      */
     void nvResetConfig(int resetType, Message response);
-
-    /**
-     * Change the radio to the specified mode.
-     * Used for device configuration by some CDMA operators.
-     *
-     * @param radioMode is 0 for offline mode, 1 for online mode, 2 for low-power mode,
-     *                  or 3 to reset the radio.
-     * @param response Callback message.
-     */
-    void setRadioMode(int radioMode, Message response);
 
     /**
      * @return version of the ril.
