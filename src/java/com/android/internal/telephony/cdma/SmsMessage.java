@@ -303,20 +303,7 @@ public class SmsMessage extends SmsMessageBase {
      */
     public static SubmitPdu getSubmitPdu(String scAddr, String destAddr, String message,
             boolean statusReportRequested, SmsHeader smsHeader) {
-
-        /**
-         * TODO(cleanup): Do we really want silent failure like this?
-         * Would it not be much more reasonable to make sure we don't
-         * call this function if we really want nothing done?
-         */
-        if (message == null || destAddr == null) {
-            return null;
-        }
-
-        UserData uData = new UserData();
-        uData.payloadStr = message;
-        uData.userDataHeader = smsHeader;
-        return privateGetSubmitPdu(destAddr, statusReportRequested, uData);
+        return getSubmitPdu(scAddr, destAddr, message, statusReportRequested, smsHeader, -1);
     }
 
     /**
@@ -334,9 +321,14 @@ public class SmsMessage extends SmsMessageBase {
      *         Returns null on encode error.
      * @hide
      */
-    public static SubmitPdu getSubmitPduWithPriority(String scAddr, String destAddr, String message,
+    public static SubmitPdu getSubmitPdu(String scAddr, String destAddr, String message,
             boolean statusReportRequested, SmsHeader smsHeader, int priority) {
 
+        /**
+         * TODO(cleanup): Do we really want silent failure like this?
+         * Would it not be much more reasonable to make sure we don't
+         * call this function if we really want nothing done?
+         */
         if (message == null || destAddr == null) {
             return null;
         }
@@ -399,6 +391,22 @@ public class SmsMessage extends SmsMessageBase {
     public static SubmitPdu getSubmitPdu(String destAddr, UserData userData,
             boolean statusReportRequested) {
         return privateGetSubmitPdu(destAddr, statusReportRequested, userData);
+    }
+
+    /**
+     * Get an SMS-SUBMIT PDU for a data message to a destination address &amp; port
+     *
+     * @param destAddr the address of the destination for the message
+     * @param userData the data for the message
+     * @param statusReportRequested Indicates whether a report is requested for this message.
+     * @param priority Priority level of the message
+     * @return a <code>SubmitPdu</code> containing the encoded SC
+     *         address, if applicable, and the encoded message.
+     *         Returns null on encode error.
+     */
+    public static SubmitPdu getSubmitPdu(String destAddr, UserData userData,
+            boolean statusReportRequested, int priority) {
+        return privateGetSubmitPdu(destAddr, statusReportRequested, userData, priority);
     }
 
     /**
