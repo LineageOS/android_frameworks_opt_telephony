@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fade3982_b3bb240e",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-02-10T11:33:48Z",
+      "side": 1,
+      "message": "This is being mapped to UNSOL_RESPONSE_VOICE_NETWORK_STATE_CHANGED in libril, you should never see it here.",
+      "revId": "347d996ab0588db452340a0f1a03b5ced5271d37",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
