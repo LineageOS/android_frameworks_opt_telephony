@@ -187,13 +187,13 @@ public class ImsSMSDispatcher extends SMSDispatcher {
     @Override
     protected void sendMultipartText(String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
-            ArrayList<PendingIntent> deliveryIntents, int priority) {
+            ArrayList<PendingIntent> deliveryIntents, int priority, boolean isExpectMore) {
         if (isCdmaMo()) {
             mCdmaDispatcher.sendMultipartText(destAddr, scAddr,
-                    parts, sentIntents, deliveryIntents, priority);
+                    parts, sentIntents, deliveryIntents, priority, isExpectMore);
         } else {
             mGsmDispatcher.sendMultipartText(destAddr, scAddr,
-                    parts, sentIntents, deliveryIntents, priority);
+                    parts, sentIntents, deliveryIntents, priority, isExpectMore);
         }
     }
 
@@ -206,14 +206,15 @@ public class ImsSMSDispatcher extends SMSDispatcher {
 
     @Override
     protected void sendText(String destAddr, String scAddr, String text,
-            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority,
+            boolean isExpectMore) {
         Rlog.d(TAG, "sendText");
         if (isCdmaMo()) {
             mCdmaDispatcher.sendText(destAddr, scAddr,
-                    text, sentIntent, deliveryIntent, priority);
+                    text, sentIntent, deliveryIntent, priority, isExpectMore);
         } else {
             mGsmDispatcher.sendText(destAddr, scAddr,
-                    text, sentIntent, deliveryIntent, priority);
+                    text, sentIntent, deliveryIntent, priority, isExpectMore);
         }
     }
 
@@ -324,7 +325,7 @@ public class ImsSMSDispatcher extends SMSDispatcher {
     @Override
     protected void sendNewSubmitPdu(String destinationAddress, String scAddress, String message,
             SmsHeader smsHeader, int format, PendingIntent sentIntent,
-            PendingIntent deliveryIntent, boolean lastPart, int priority) {
+            PendingIntent deliveryIntent, boolean lastPart, int priority, boolean isExpectMore) {
         Rlog.e(TAG, "Error! Not implemented for IMS.");
     }
 

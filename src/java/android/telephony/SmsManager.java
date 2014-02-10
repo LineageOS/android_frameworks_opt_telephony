@@ -148,7 +148,8 @@ public final class SmsManager {
      */
     public void sendTextMessage(
             String destinationAddress, String scAddress, String text,
-            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority,
+            boolean isExpectMore) {
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
@@ -162,7 +163,7 @@ public final class SmsManager {
             if (iccISms != null) {
                 iccISms.sendTextWithOptions(ActivityThread.currentPackageName(),
                         destinationAddress, scAddress, text, sentIntent, deliveryIntent,
-                        priority);
+                        priority, isExpectMore);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -308,7 +309,7 @@ public final class SmsManager {
     public void sendMultipartTextMessage(
             String destinationAddress, String scAddress, ArrayList<String> parts,
             ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents,
-            int priority) {
+            int priority, boolean isExpectMore) {
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
@@ -322,7 +323,7 @@ public final class SmsManager {
                 if (iccISms != null) {
                     iccISms.sendMultipartTextWithOptions(ActivityThread.currentPackageName(),
                             destinationAddress, scAddress, parts,
-                            sentIntents, deliveryIntents, priority);
+                            sentIntents, deliveryIntents, priority, isExpectMore);
                 }
             } catch (RemoteException ex) {
                 // ignore it
@@ -337,7 +338,7 @@ public final class SmsManager {
                 deliveryIntent = deliveryIntents.get(0);
             }
             sendTextMessage(destinationAddress, scAddress, parts.get(0),
-                    sentIntent, deliveryIntent, priority);
+                    sentIntent, deliveryIntent, priority, isExpectMore);
         }
     }
 
