@@ -16,6 +16,23 @@
       "revId": "347d996ab0588db452340a0f1a03b5ced5271d37",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fade3982_f33bec9a",
+        "filename": "src/java/com/android/internal/telephony/HTCQualcommRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-02-10T11:36:38Z",
+      "side": 1,
+      "message": "Actually, this is being mapped to RIL_UNSOL_RESPONSE_DATA_NETWORK_STATE_CHANGED as well, it shouldn\u0027t be showing up here.",
+      "revId": "347d996ab0588db452340a0f1a03b5ced5271d37",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
