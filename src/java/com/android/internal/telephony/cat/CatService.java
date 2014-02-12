@@ -91,6 +91,7 @@ public class CatService extends Handler implements AppInterface {
 
     protected RilMessageDecoder mMsgDecoder = null;
     protected boolean mStkAppInstalled = false;
+    protected boolean mIsStkAppReady = false;
 
     protected UiccController mUiccController;
     protected CardState mCardState = CardState.CARDSTATE_ABSENT;
@@ -865,6 +866,14 @@ public class CatService extends Handler implements AppInterface {
         mContext.sendBroadcast(intent);
     }
 
+    protected void reportStkIsRunning() {
+        CatLog.d(this, "mCardState = " + mCardState +
+                " mIsStkAppReady = " + mIsStkAppReady);
+        if ((mCardState == CardState.CARDSTATE_PRESENT) && (mIsStkAppReady == true)) {
+            mCmdIf.reportStkServiceIsRunning(null);
+        }
+    }
+
     @Override
     public synchronized void onCmdResponse(CatResponseMessage resMsg) {
         if (resMsg == null) {
@@ -873,6 +882,13 @@ public class CatService extends Handler implements AppInterface {
         // queue a response message.
         Message msg = obtainMessage(MSG_ID_RESPONSE, resMsg);
         msg.sendToTarget();
+    }
+
+    @Override
+    public void onStkAppReady(){
+        CatLog.d(this, "StkAppReady notification received");
+        mIsStkAppReady = true;
+        reportStkIsRunning();
     }
 
     private boolean validateResponse(CatResponseMessage resMsg) {
@@ -1047,9 +1063,8 @@ public class CatService extends Handler implements AppInterface {
             broadcastCardStateAndIccRefreshResp(newState, null);
         } else if (oldState != CardState.CARDSTATE_PRESENT &&
                 newState == CardState.CARDSTATE_PRESENT) {
-            // Card moved to PRESENT STATE.
-            mCmdIf.reportStkServiceIsRunning(null);
+            // Card moved to PRESENT STATE
+            reportStkIsRunning();
         }
-
     }
 }
