@@ -432,6 +432,8 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected void notifyPreciseCallStateChangedP() {
         AsyncResult ar = new AsyncResult(null, this, null);
         mPreciseCallStateRegistrants.notifyRegistrants(ar);
+
+        mNotifier.notifyPreciseCallState(this);
     }
 
     // Inherited documentation suffices.
@@ -1372,6 +1374,11 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     public void notifyDataConnectionFailed(String reason, String apnType) {
         mNotifier.notifyDataConnectionFailed(this, reason, apnType);
+    }
+
+    public void notifyPreciseDataConnectionFailed(String reason, String apnType, String apn,
+            String failCause) {
+        mNotifier.notifyPreciseDataConnectionFailed(this, reason, apnType, apn, failCause);
     }
 
     /**

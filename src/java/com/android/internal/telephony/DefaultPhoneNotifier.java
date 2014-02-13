@@ -24,6 +24,8 @@ import android.os.ServiceManager;
 import android.telephony.CellInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.telephony.PreciseCallState;
+import android.telephony.DisconnectCause;
 
 import com.android.internal.telephony.ITelephonyRegistry;
 
@@ -183,6 +185,39 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    public void notifyPreciseCallState(Phone sender) {
+        Call ringingCall = sender.getRingingCall();
+        Call foregroundCall = sender.getForegroundCall();
+        Call backgroundCall = sender.getBackgroundCall();
+        if (ringingCall != null && foregroundCall != null && backgroundCall != null) {
+            try {
+                mRegistry.notifyPreciseCallState(
+                        convertPreciseCallState(ringingCall.getState()),
+                        convertPreciseCallState(foregroundCall.getState()),
+                        convertPreciseCallState(backgroundCall.getState()));
+            } catch (RemoteException ex) {
+                // system process is dead
+            }
+        }
+    }
+
+    public void notifyDisconnectCause(Connection.DisconnectCause cause, int preciseCause) {
+        try {
+            mRegistry.notifyDisconnectCause(convertDisconnectCause(cause), preciseCause);
+        } catch (RemoteException ex) {
+            // system process is dead
+        }
+    }
+
+    public void notifyPreciseDataConnectionFailed(Phone sender, String reason, String apnType,
+            String apn, String failCause) {
+        try {
+            mRegistry.notifyPreciseDataConnectionFailed(reason, apnType, apn, failCause);
+        } catch (RemoteException ex) {
+            // system process is dead
+        }
+    }
+
     /**
      * Convert the {@link PhoneConstants.State} enum into the TelephonyManager.CALL_STATE_*
      * constants for the public API.
@@ -282,6 +317,226 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
                 return Phone.DataActivityState.DORMANT;
             default:
                 return Phone.DataActivityState.NONE;
+        }
+    }
+
+    /**
+     * Convert the {@link State} enum into the PreciseCallState.PRECISE_CALL_STATE_* constants
+     * for the public API.
+     */
+    public static int convertPreciseCallState(Call.State state) {
+        switch (state) {
+            case ACTIVE:
+                return PreciseCallState.PRECISE_CALL_STATE_ACTIVE;
+            case HOLDING:
+                return PreciseCallState.PRECISE_CALL_STATE_HOLDING;
+            case DIALING:
+                return PreciseCallState.PRECISE_CALL_STATE_DIALING;
+            case ALERTING:
+                return PreciseCallState.PRECISE_CALL_STATE_ALERTING;
+            case INCOMING:
+                return PreciseCallState.PRECISE_CALL_STATE_INCOMING;
+            case WAITING:
+                return PreciseCallState.PRECISE_CALL_STATE_WAITING;
+            case DISCONNECTED:
+                return PreciseCallState.PRECISE_CALL_STATE_DISCONNECTED;
+            case DISCONNECTING:
+                return PreciseCallState.PRECISE_CALL_STATE_DISCONNECTING;
+            default:
+                return PreciseCallState.PRECISE_CALL_STATE_IDLE;
+        }
+    }
+
+    /**
+     * Convert the Call.State.* constants into the {@link State} enum
+     * for the public API.
+     */
+    public static Call.State convertPreciseCallState(int state) {
+        switch (state) {
+            case PreciseCallState.PRECISE_CALL_STATE_ACTIVE:
+                return Call.State.ACTIVE;
+            case PreciseCallState.PRECISE_CALL_STATE_HOLDING:
+                return Call.State.HOLDING;
+            case PreciseCallState.PRECISE_CALL_STATE_DIALING:
+                return Call.State.DIALING;
+            case PreciseCallState.PRECISE_CALL_STATE_ALERTING:
+                return Call.State.ALERTING;
+            case PreciseCallState.PRECISE_CALL_STATE_INCOMING:
+                return Call.State.INCOMING;
+            case PreciseCallState.PRECISE_CALL_STATE_WAITING:
+                return Call.State.WAITING;
+            case PreciseCallState.PRECISE_CALL_STATE_DISCONNECTED:
+                return Call.State.DISCONNECTED;
+            case PreciseCallState.PRECISE_CALL_STATE_DISCONNECTING:
+                return Call.State.DISCONNECTING;
+            default:
+                return Call.State.IDLE;
+        }
+    }
+
+    /**
+     * Convert the {@link DisconnectCause} enum into the DisconnectCause.*
+     * constants for the public API.
+     */
+    public static int convertDisconnectCause(Connection.DisconnectCause cause) {
+        switch (cause) {
+            case NOT_DISCONNECTED:
+                return DisconnectCause.NOT_DISCONNECTED;
+            case INCOMING_MISSED:
+                return DisconnectCause.INCOMING_MISSED;
+            case NORMAL:
+                return DisconnectCause.NORMAL;
+            case LOCAL:
+                return DisconnectCause.LOCAL;
+            case BUSY:
+                return DisconnectCause.BUSY;
+            case CONGESTION:
+                return DisconnectCause.CONGESTION;
+            case MMI:
+                return DisconnectCause.MMI;
+            case INVALID_NUMBER:
+                return DisconnectCause.INVALID_NUMBER;
+            case NUMBER_UNREACHABLE:
+                return DisconnectCause.NUMBER_UNREACHABLE;
+            case SERVER_UNREACHABLE:
+                return DisconnectCause.SERVER_UNREACHABLE;
+            case INVALID_CREDENTIALS:
+                return DisconnectCause.INVALID_CREDENTIALS;
+            case OUT_OF_NETWORK:
+                return DisconnectCause.OUT_OF_NETWORK;
+            case SERVER_ERROR:
+                return DisconnectCause.SERVER_ERROR;
+            case TIMED_OUT:
+                return DisconnectCause.TIMED_OUT;
+            case LOST_SIGNAL:
+                return DisconnectCause.LOST_SIGNAL;
+            case LIMIT_EXCEEDED:
+                return DisconnectCause.LIMIT_EXCEEDED;
+            case INCOMING_REJECTED:
+                return DisconnectCause.INCOMING_REJECTED;
+            case POWER_OFF:
+                return DisconnectCause.POWER_OFF;
+            case OUT_OF_SERVICE:
+                return DisconnectCause.OUT_OF_SERVICE;
+            case ICC_ERROR:
+                return DisconnectCause.ICC_ERROR;
+            case CALL_BARRED:
+                return DisconnectCause.CALL_BARRED;
+            case FDN_BLOCKED:
+                return DisconnectCause.FDN_BLOCKED;
+            case CS_RESTRICTED:
+                return DisconnectCause.CS_RESTRICTED;
+            case CS_RESTRICTED_NORMAL:
+                return DisconnectCause.CS_RESTRICTED_NORMAL;
+            case CS_RESTRICTED_EMERGENCY:
+                return DisconnectCause.CS_RESTRICTED_EMERGENCY;
+            case UNOBTAINABLE_NUMBER:
+                return DisconnectCause.UNOBTAINABLE_NUMBER;
+            case CDMA_LOCKED_UNTIL_POWER_CYCLE:
+                return DisconnectCause.CDMA_LOCKED_UNTIL_POWER_CYCLE;
+            case CDMA_DROP:
+                return DisconnectCause.CDMA_DROP;
+            case CDMA_INTERCEPT:
+                return DisconnectCause.CDMA_INTERCEPT;
+            case CDMA_REORDER:
+                return DisconnectCause.CDMA_REORDER;
+            case CDMA_SO_REJECT:
+                return DisconnectCause.CDMA_SO_REJECT;
+            case CDMA_RETRY_ORDER:
+                return DisconnectCause.CDMA_RETRY_ORDER;
+            case CDMA_ACCESS_FAILURE:
+                return DisconnectCause.CDMA_ACCESS_FAILURE;
+            case CDMA_PREEMPTED:
+                return DisconnectCause.CDMA_PREEMPTED;
+            case CDMA_NOT_EMERGENCY:
+                return DisconnectCause.CDMA_NOT_EMERGENCY;
+            case CDMA_ACCESS_BLOCKED:
+                return DisconnectCause.CDMA_ACCESS_BLOCKED;
+            default:
+                return DisconnectCause.ERROR_UNSPECIFIED;
+        }
+    }
+
+    /**
+     * Convert the DisconnectCause.* constants into the {@link DisconnectCause}
+     * enum for the public API.
+     */
+    public static Connection.DisconnectCause convertDisconnectCause(int disconnectCause) {
+        switch (disconnectCause) {
+            case DisconnectCause.NOT_DISCONNECTED:
+                return Connection.DisconnectCause.NOT_DISCONNECTED;
+            case DisconnectCause.INCOMING_MISSED:
+                return Connection.DisconnectCause.INCOMING_MISSED;
+            case DisconnectCause.NORMAL:
+                return Connection.DisconnectCause.NORMAL;
+            case DisconnectCause.LOCAL:
+                return Connection.DisconnectCause.LOCAL;
+            case DisconnectCause.BUSY:
+                return Connection.DisconnectCause.BUSY;
+            case DisconnectCause.CONGESTION:
+                return Connection.DisconnectCause.CONGESTION;
+            case DisconnectCause.MMI:
+                return Connection.DisconnectCause.MMI;
+            case DisconnectCause.INVALID_NUMBER:
+                return Connection.DisconnectCause.INVALID_NUMBER;
+            case DisconnectCause.NUMBER_UNREACHABLE:
+                return Connection.DisconnectCause.NUMBER_UNREACHABLE;
+            case DisconnectCause.SERVER_UNREACHABLE:
+                return Connection.DisconnectCause.SERVER_UNREACHABLE;
+            case DisconnectCause.INVALID_CREDENTIALS:
+                return Connection.DisconnectCause.INVALID_CREDENTIALS;
+            case DisconnectCause.OUT_OF_NETWORK:
+                return Connection.DisconnectCause.OUT_OF_NETWORK;
+            case DisconnectCause.SERVER_ERROR:
+                return Connection.DisconnectCause.SERVER_ERROR;
+            case DisconnectCause.TIMED_OUT:
+                return Connection.DisconnectCause.TIMED_OUT;
+            case DisconnectCause.LOST_SIGNAL:
+                return Connection.DisconnectCause.LOST_SIGNAL;
+            case DisconnectCause.LIMIT_EXCEEDED:
+                return Connection.DisconnectCause.LIMIT_EXCEEDED;
+            case DisconnectCause.INCOMING_REJECTED:
+                return Connection.DisconnectCause.INCOMING_REJECTED;
+            case DisconnectCause.POWER_OFF:
+                return Connection.DisconnectCause.POWER_OFF;
+            case DisconnectCause.OUT_OF_SERVICE:
+                return Connection.DisconnectCause.OUT_OF_SERVICE;
+            case DisconnectCause.ICC_ERROR:
+                return Connection.DisconnectCause.ICC_ERROR;
+            case DisconnectCause.CALL_BARRED:
+                return Connection.DisconnectCause.CALL_BARRED;
+            case DisconnectCause.FDN_BLOCKED:
+                return Connection.DisconnectCause.FDN_BLOCKED;
+            case DisconnectCause.CS_RESTRICTED:
+                return Connection.DisconnectCause.CS_RESTRICTED;
+            case DisconnectCause.CS_RESTRICTED_NORMAL:
+                return Connection.DisconnectCause.CS_RESTRICTED_NORMAL;
+            case DisconnectCause.CS_RESTRICTED_EMERGENCY:
+                return Connection.DisconnectCause.CS_RESTRICTED_EMERGENCY;
+            case DisconnectCause.UNOBTAINABLE_NUMBER:
+                return Connection.DisconnectCause.UNOBTAINABLE_NUMBER;
+            case DisconnectCause.CDMA_LOCKED_UNTIL_POWER_CYCLE:
+                return Connection.DisconnectCause.CDMA_LOCKED_UNTIL_POWER_CYCLE;
+            case DisconnectCause.CDMA_DROP:
+                return Connection.DisconnectCause.CDMA_DROP;
+            case DisconnectCause.CDMA_INTERCEPT:
+                return Connection.DisconnectCause.CDMA_INTERCEPT;
+            case DisconnectCause.CDMA_REORDER:
+                return Connection.DisconnectCause.CDMA_REORDER;
+            case DisconnectCause.CDMA_SO_REJECT:
+                return Connection.DisconnectCause.CDMA_SO_REJECT;
+            case DisconnectCause.CDMA_RETRY_ORDER:
+                return Connection.DisconnectCause.CDMA_RETRY_ORDER;
+            case DisconnectCause.CDMA_ACCESS_FAILURE:
+                return Connection.DisconnectCause.CDMA_ACCESS_FAILURE;
+            case DisconnectCause.CDMA_PREEMPTED:
+                return Connection.DisconnectCause.CDMA_PREEMPTED;
+            case DisconnectCause.CDMA_NOT_EMERGENCY:
+                return Connection.DisconnectCause.CDMA_NOT_EMERGENCY;
+            case DisconnectCause.CDMA_ACCESS_BLOCKED:
+                return Connection.DisconnectCause.CDMA_ACCESS_BLOCKED;
+            default:
+                return Connection.DisconnectCause.ERROR_UNSPECIFIED;
         }
     }
 }
