@@ -341,6 +341,10 @@ class ThirdPartyConnection extends Connection {
         mCause = cause;
     }
 
+    public int getPreciseDisconnectCause() {
+        return 0;
+    }
+
     private void connectToCallProviderService() {
         Intent intent = new Intent(ThirdPartyPhone.ACTION_THIRD_PARTY_CALL_SERVICE);
         intent.setComponent(((ThirdPartyPhone) mOwner.getPhone()).getCallProviderComponent());
