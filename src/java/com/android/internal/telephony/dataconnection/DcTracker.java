@@ -121,8 +121,7 @@ public final class DcTracker extends DcTrackerBase {
         p.mCi.registerForAvailable (this, DctConstants.EVENT_RADIO_AVAILABLE, null);
         p.mCi.registerForOffOrNotAvailable(this, DctConstants.EVENT_RADIO_OFF_OR_NOT_AVAILABLE,
                 null);
-        p.mCi.registerForDataNetworkStateChanged (this, DctConstants.EVENT_DATA_STATE_CHANGED,
-                null);
+
         p.getCallTracker().registerForVoiceCallEnded (this, DctConstants.EVENT_VOICE_CALL_ENDED,
                 null);
         p.getCallTracker().registerForVoiceCallStarted (this, DctConstants.EVENT_VOICE_CALL_STARTED,
@@ -1109,67 +1108,6 @@ public final class DcTracker extends DcTrackerBase {
         return null;
     }
 
-    /**
-     * @param ar is the result of RIL_REQUEST_DATA_CALL_LIST
-     * or RIL_UNSOL_DATA_CALL_LIST_CHANGED
-     */
-    private void onDataStateChanged (AsyncResult ar) {
-        ArrayList<DataCallResponse> dataCallStates;
-
-        if (DBG) log("onDataStateChanged(ar): E");
-        dataCallStates = (ArrayList<DataCallResponse>)(ar.result);
-
-        if (ar.exception != null) {
-            // This is probably "radio not available" or something
-            // of that sort. If so, the whole connection is going
-            // to come down soon anyway
-            if (DBG) log("onDataStateChanged(ar): exception; likely radio not available, ignore");
-            return;
-        }
-        if (DBG) log("onDataStateChanged(ar): DataCallResponse size=" + dataCallStates.size());
-
-        // Create a hash map to store the dataCallState of each DataConnectionAc
-        HashMap<DataCallResponse, DcAsyncChannel> dataCallStateToDcac;
-        dataCallStateToDcac = new HashMap<DataCallResponse, DcAsyncChannel>();
-        for (DataCallResponse dataCallState : dataCallStates) {
-            DcAsyncChannel dcac = findDataConnectionAcByCid(dataCallState.cid);
-
-            if (dcac != null) dataCallStateToDcac.put(dataCallState, dcac);
-        }
-
-        // Check if we should start or stop polling, by looking
-        // for dormant and active connections.
-        boolean isAnyDataCallDormant = false;
-        boolean isAnyDataCallActive = false;
-        for (DataCallResponse newState : dataCallStates) {
-            if (newState.active == DATA_CONNECTION_ACTIVE_PH_LINK_UP) isAnyDataCallActive = true;
-            if (newState.active == DATA_CONNECTION_ACTIVE_PH_LINK_DOWN) isAnyDataCallDormant = true;
-        }
-
-        if (isAnyDataCallDormant && !isAnyDataCallActive) {
-            // There is no way to indicate link activity per APN right now. So
-            // Link Activity will be considered dormant only when all data calls
-            // are dormant.
-            // If a single data call is in dormant state and none of the data
-            // calls are active broadcast overall link state as dormant.
-            mActivity = DctConstants.Activity.DORMANT;
-            if (DBG) {
-                log("onDataStateChanged: Data Activity updated to DORMANT. stopNetStatePoll");
-            }
-            stopNetStatPoll();
-        } else {
-            mActivity = DctConstants.Activity.NONE;
-            if (DBG) {
-                log("onDataStateChanged: Data Activity updated to NONE. " +
-                         "isAnyDataCallActive = " + isAnyDataCallActive +
-                         " isAnyDataCallDormant = " + isAnyDataCallDormant);
-            }
-            if (isAnyDataCallActive) startNetStatPoll();
-        }
-
-        if (DBG) log("onDataStateChanged(ar): X");
-    }
-
     // TODO: For multiple Active APNs not exactly sure how to do this.
     @Override
     protected void gotoIdleAndNotifyDataConnection(String reason) {
@@ -1869,13 +1807,6 @@ public final class DcTracker extends DcTrackerBase {
         mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
     }
 
-    protected void onPollPdp() {
-        if (getOverallState() == DctConstants.State.CONNECTED) {
-            // only poll when connected
-            mPhone.mCi.getDataCallList(obtainMessage(DctConstants.EVENT_DATA_STATE_CHANGED));
-            sendMessageDelayed(obtainMessage(DctConstants.EVENT_POLL_PDP), POLL_PDP_MILLIS);
-        }
-    }
 
     @Override
     protected void onVoiceCallStarted() {
@@ -2207,14 +2138,6 @@ public final class DcTracker extends DcTrackerBase {
 
             case DctConstants.EVENT_DATA_CONNECTION_ATTACHED:
                 onDataConnectionAttached();
-                break;
-
-            case DctConstants.EVENT_DATA_STATE_CHANGED:
-                onDataStateChanged((AsyncResult) msg.obj);
-                break;
-
-            case DctConstants.EVENT_POLL_PDP:
-                onPollPdp();
                 break;
 
             case DctConstants.EVENT_DO_RECOVERY:
