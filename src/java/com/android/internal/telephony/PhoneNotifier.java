@@ -48,4 +48,11 @@ public interface PhoneNotifier {
     public void notifyOtaspChanged(Phone sender, int otaspMode);
 
     public void notifyCellInfo(Phone sender, List<CellInfo> cellInfo);
+
+    public void notifyPreciseCallState(Phone sender);
+
+    public void notifyDisconnectCause(Connection.DisconnectCause cause, int preciseCause);
+
+    public void notifyPreciseDataConnectionFailed(Phone sender, String reason, String apnType,
+            String apn, String failCause);
 }

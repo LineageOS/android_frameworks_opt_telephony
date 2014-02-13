@@ -192,4 +192,9 @@ abstract class SipConnectionBase extends Connection {
         if (VDBG) log("getUUSInfo: ? ret=null");
         return null;
     }
+
+    @Override
+    public int getPreciseDisconnectCause() {
+        return 0;
+    }
 }
