@@ -24,6 +24,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.Rlog;
+import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
@@ -208,7 +209,11 @@ class DcController extends StateMachine {
             // and any that are in active need to be retried.
             ArrayList<ApnContext> apnsToCleanup = new ArrayList<ApnContext>();
 
+            boolean isAnyDataCallDormant = false;
+            boolean isAnyDataCallActive = false;
+
             for (DataCallResponse newState : dcsList) {
+
                 DataConnection dc = mDcListActiveByCid.get(newState.cid);
                 if (dc == null) {
                     // UNSOL_DATA_CALL_LIST_CHANGED arrived before SETUP_DATA_CALL completed.
@@ -297,8 +302,35 @@ class DcController extends StateMachine {
                         }
                     }
                 }
+
+                if (newState.active == DATA_CONNECTION_ACTIVE_PH_LINK_UP) {
+                    isAnyDataCallActive = true;
+                }
+                if (newState.active == DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT) {
+                    isAnyDataCallDormant = true;
+                }
             }
-            mPhone.notifyDataActivity();
+
+            if (isAnyDataCallDormant && !isAnyDataCallActive) {
+                // There is no way to indicate link activity per APN right now. So
+                // Link Activity will be considered dormant only when all data calls
+                // are dormant.
+                // If a single data call is in dormant state and none of the data
+                // calls are active broadcast overall link state as dormant.
+                if (DBG) {
+                    log("onDataStateChanged: Data Activity updated to DORMANT. stopNetStatePoll");
+                }
+                mDct.sendStopNetStatPoll(DctConstants.Activity.DORMANT);
+            } else {
+                if (DBG) {
+                    log("onDataStateChanged: Data Activity updated to NONE. " +
+                            "isAnyDataCallActive = " + isAnyDataCallActive +
+                            " isAnyDataCallDormant = " + isAnyDataCallDormant);
+                }
+                if (isAnyDataCallActive) {
+                    mDct.sendStartNetStatPoll(DctConstants.Activity.NONE);
+                }
+            }
 
             if (DBG) {
                 lr("onDataStateChanged: dcsToRetry=" + dcsToRetry
