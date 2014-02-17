@@ -65,6 +65,11 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
         return handler;
     }
 
+    /* Updates the phone object when there is a change */
+    public void updatePhoneObject(PhoneBase phone) {
+        mPhone = phone;
+    }
+
     /**
      * Handle 3GPP-format Cell Broadcast messages sent from radio.
      *

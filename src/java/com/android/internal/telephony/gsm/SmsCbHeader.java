@@ -31,7 +31,7 @@ import java.util.Arrays;
  * {@link android.provider.Telephony.Sms.Intents#SMS_EMERGENCY_CB_RECEIVED_ACTION} intent.
  * The raw PDU is no longer sent to SMS CB applications.
  */
-class SmsCbHeader {
+public class SmsCbHeader {
 
     /**
      * Length of SMS-CB header

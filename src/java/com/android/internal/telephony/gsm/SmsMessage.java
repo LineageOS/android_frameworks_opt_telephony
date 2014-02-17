@@ -84,6 +84,8 @@ public class SmsMessage extends SmsMessageBase {
      */
     private boolean mIsStatusReportMessage = false;
 
+    private int mVoiceMailCount = 0;
+
     public static class SubmitPdu extends SubmitPduBase {
     }
 
@@ -1125,17 +1127,28 @@ public class SmsMessage extends SmsMessageBase {
 
             userDataCompressed = false;
             boolean active = ((mDataCodingScheme & 0x08) == 0x08);
-
             // bit 0x04 reserved
 
+            // VM - If TP-UDH is present, these values will be overwritten
             if ((mDataCodingScheme & 0x03) == 0x00) {
-                mIsMwi = true;
-                mMwiSense = active;
+                mIsMwi = true; /* Indicates vmail */
+                mMwiSense = active;/* Indicates vmail notification set/clear */
                 mMwiDontStore = ((mDataCodingScheme & 0xF0) == 0xC0);
+
+                /* Set voice mail count based on notification bit */
+                if (active == true) {
+                    mVoiceMailCount = -1; // unknown number of messages waiting
+                } else {
+                    mVoiceMailCount = 0; // no unread messages
+                }
+
+                Rlog.w(LOG_TAG, "MWI in DCS for Vmail. DCS = "
+                        + (mDataCodingScheme & 0xff) + " Dont store = "
+                        + mMwiDontStore + " vmail count = " + mVoiceMailCount);
+
             } else {
                 mIsMwi = false;
-
-                Rlog.w(LOG_TAG, "MWI for fax, email, or other "
+                Rlog.w(LOG_TAG, "MWI in DCS for fax/email/other: "
                         + (mDataCodingScheme & 0xff));
             }
         } else if ((mDataCodingScheme & 0xC0) == 0x80) {
@@ -1158,6 +1171,75 @@ public class SmsMessage extends SmsMessageBase {
                 encodingType == ENCODING_7BIT);
         this.mUserData = p.getUserData();
         this.mUserDataHeader = p.getUserDataHeader();
+
+        /*
+         * Look for voice mail indication in TP_UDH TS23.040 9.2.3.24
+         * ieid = 1 (0x1) (SPECIAL_SMS_MSG_IND)
+         * ieidl =2 octets
+         * ieda msg_ind_type = 0x00 (voice mail; discard sms )or
+         *                   = 0x80 (voice mail; store sms)
+         * msg_count = 0x00 ..0xFF
+         */
+        if (hasUserDataHeader && (mUserDataHeader.specialSmsMsgList.size() != 0)) {
+            for (SmsHeader.SpecialSmsMsg msg : mUserDataHeader.specialSmsMsgList) {
+                int msgInd = msg.msgIndType & 0xff;
+                /*
+                 * TS 23.040 V6.8.1 Sec 9.2.3.24.2
+                 * bits 1 0 : basic message indication type
+                 * bits 4 3 2 : extended message indication type
+                 * bits 6 5 : Profile id bit 7 storage type
+                 */
+                if ((msgInd == 0) || (msgInd == 0x80)) {
+                    mIsMwi = true;
+                    if (msgInd == 0x80) {
+                        /* Store message because TP_UDH indicates so*/
+                        mMwiDontStore = false;
+                    } else if (mMwiDontStore == false) {
+                        /* Storage bit is not set by TP_UDH
+                         * Check for conflict
+                         * between message storage bit in TP_UDH
+                         * & DCS. The message shall be stored if either of
+                         * the one indicates so.
+                         * TS 23.040 V6.8.1 Sec 9.2.3.24.2
+                         */
+                        if (!((((mDataCodingScheme & 0xF0) == 0xD0)
+                               || ((mDataCodingScheme & 0xF0) == 0xE0))
+                               && ((mDataCodingScheme & 0x03) == 0x00))) {
+                            /* Even DCS did not have voice mail with Storage bit
+                             * 3GPP TS 23.038 V7.0.0 section 4
+                             * So clear this flag*/
+                            mMwiDontStore = true;
+                        }
+                    }
+
+                    mVoiceMailCount = msg.msgCount & 0xff;
+
+                    /*
+                     * In the event of a conflict between message count setting
+                     * and DCS then the Message Count in the TP-UDH shall
+                     * override the indication in the TP-DCS. Set voice mail
+                     * notification based on count in TP-UDH
+                     */
+                    if (mVoiceMailCount > 0)
+                        mMwiSense = true;
+                    else
+                        mMwiSense = false;
+
+                    Rlog.w(LOG_TAG, "MWI in TP-UDH for Vmail. Msg Ind = " + msgInd
+                            + " Dont store = " + mMwiDontStore + " Vmail count = "
+                            + mVoiceMailCount);
+
+                    /*
+                     * There can be only one IE for each type of message
+                     * indication in TP_UDH. In the event they are duplicated
+                     * last occurence will be used. Hence the for loop
+                     */
+                } else {
+                    Rlog.w(LOG_TAG, "TP_UDH fax/email/"
+                            + "extended msg/multisubscriber profile. Msg Ind = " + msgInd);
+                }
+            } // end of for
+        } // end of if UDH
 
         switch (encodingType) {
         case ENCODING_UNKNOWN:
@@ -1223,5 +1305,28 @@ public class SmsMessage extends SmsMessageBase {
     boolean isUsimDataDownload() {
         return messageClass == MessageClass.CLASS_2 &&
                 (mProtocolIdentifier == 0x7f || mProtocolIdentifier == 0x7c);
+    }
+
+    public int getNumOfVoicemails() {
+        /*
+         * Order of priority if multiple indications are present is 1.UDH,
+         *      2.DCS, 3.CPHS.
+         * Voice mail count if voice mail present indication is
+         * received
+         *  1. UDH (or both UDH & DCS): mVoiceMailCount = 0 to 0xff. Ref[TS 23. 040]
+         *  2. DCS only: count is unknown mVoiceMailCount= -1
+         *  3. CPHS only: count is unknown mVoiceMailCount = 0xff. Ref[GSM-BTR-1-4700]
+         * Voice mail clear, mVoiceMailCount = 0.
+         */
+        if ((!mIsMwi) && isCphsMwiMessage()) {
+            if (mOriginatingAddress != null
+                    && ((GsmSmsAddress) mOriginatingAddress).isCphsVoiceMessageSet()) {
+                mVoiceMailCount = 0xff;
+            } else {
+                mVoiceMailCount = 0;
+            }
+            Rlog.v(LOG_TAG, "CPHS voice mail message");
+        }
+        return mVoiceMailCount;
     }
 }

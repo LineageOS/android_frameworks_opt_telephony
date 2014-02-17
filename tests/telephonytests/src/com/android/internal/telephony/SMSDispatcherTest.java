@@ -24,7 +24,6 @@ import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccUtils;
 
 import android.test.AndroidTestCase;
-import android.test.suitebuilder.annotation.Suppress;
 
 import java.util.Iterator;
 

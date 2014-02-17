@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
  * Copyright (C) 2013 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,12 +43,17 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
     /**
      * Create a new GSM inbound SMS handler.
      */
-    private GsmInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
+    protected GsmInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
             PhoneBase phone) {
-        super("GsmInboundSmsHandler", context, storageMonitor, phone,
-                GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context, phone));
+        super("GsmInboundSmsHandler", context, storageMonitor, phone, null);
+        init(context, phone);
         phone.mCi.setOnNewGsmSms(getHandler(), EVENT_NEW_SMS, null);
         mDataDownloadHandler = new UsimDataDownloadHandler(phone.mCi);
+    }
+
+    protected void init(Context context, PhoneBase phone) {
+            mCellBroadcastHandler = GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context,
+            phone);
     }
 
     /**
@@ -152,8 +159,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
         super.onUpdatePhoneObject(phone);
         log("onUpdatePhoneObject: dispose of old CellBroadcastHandler and make a new one");
         mCellBroadcastHandler.dispose();
-        mCellBroadcastHandler = GsmCellBroadcastHandler
-                .makeGsmCellBroadcastHandler(mContext, phone);
+        init(mContext, phone);
     }
 
     /**

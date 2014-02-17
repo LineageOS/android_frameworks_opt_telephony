@@ -43,14 +43,16 @@ import java.util.ArrayList;
 /**
  * Handle CDMA Service Category Program Data requests and responses.
  */
-public final class CdmaServiceCategoryProgramHandler extends WakeLockStateMachine {
+public class CdmaServiceCategoryProgramHandler extends WakeLockStateMachine {
 
-    final CommandsInterface mCi;
+    protected final Context mContext;
+    protected final CommandsInterface mCi;
 
     /**
      * Create a new CDMA inbound SMS handler.
      */
-    CdmaServiceCategoryProgramHandler(Context context, CommandsInterface commandsInterface) {
+    protected CdmaServiceCategoryProgramHandler(Context context,
+            CommandsInterface commandsInterface) {
         super("CdmaServiceCategoryProgramHandler", context, null);
         mContext = context;
         mCi = commandsInterface;
@@ -93,7 +95,7 @@ public final class CdmaServiceCategoryProgramHandler extends WakeLockStateMachin
      * @param sms the CDMA SmsMessage containing the SCPD request
      * @return true if an ordered broadcast was sent; false on failure
      */
-    private boolean handleServiceCategoryProgramData(SmsMessage sms) {
+    protected boolean handleServiceCategoryProgramData(SmsMessage sms) {
         ArrayList<CdmaSmsCbProgramData> programDataList = sms.getSmsCbProgramData();
         if (programDataList == null) {
             loge("handleServiceCategoryProgramData: program data list is null!");
@@ -114,7 +116,7 @@ public final class CdmaServiceCategoryProgramHandler extends WakeLockStateMachin
      * Broadcast receiver to handle results of ordered broadcast. Sends the SCPD results
      * as a reply SMS, then sends a message to state machine to transition to idle.
      */
-    private final BroadcastReceiver mScpResultsReceiver = new BroadcastReceiver() {
+    protected final BroadcastReceiver mScpResultsReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             sendScpResults();

@@ -84,9 +84,14 @@ public class SmsHeader {
         public boolean isEightBits;
     }
 
+    public static class SpecialSmsMsg {
+        public int msgIndType;
+        public int msgCount;
+    }
+
     /**
      * A header element that is not explicitly parsed, meaning not
-     * PortAddrs or ConcatRef.
+     * PortAddrs or ConcatRef or SpecialSmsMsg.
      */
     public static class MiscElt {
         public int id;
@@ -95,6 +100,7 @@ public class SmsHeader {
 
     public PortAddrs portAddrs;
     public ConcatRef concatRef;
+    public ArrayList<SpecialSmsMsg> specialSmsMsgList = new ArrayList<SpecialSmsMsg>();
     public ArrayList<MiscElt> miscEltList = new ArrayList<MiscElt>();
 
     /** 7 bit national language locking shift table, or 0 for GSM default 7 bit alphabet. */
@@ -170,6 +176,12 @@ public class SmsHeader {
             case ELT_ID_NATIONAL_LANGUAGE_LOCKING_SHIFT:
                 smsHeader.languageTable = inStream.read();
                 break;
+            case ELT_ID_SPECIAL_SMS_MESSAGE_INDICATION:
+                SpecialSmsMsg specialSmsMsg = new SpecialSmsMsg();
+                specialSmsMsg.msgIndType = inStream.read();
+                specialSmsMsg.msgCount = inStream.read();
+                smsHeader.specialSmsMsgList.add(specialSmsMsg);
+                break;
             default:
                 MiscElt miscElt = new MiscElt();
                 miscElt.id = id;
@@ -189,6 +201,7 @@ public class SmsHeader {
     public static byte[] toByteArray(SmsHeader smsHeader) {
         if ((smsHeader.portAddrs == null) &&
             (smsHeader.concatRef == null) &&
+            (smsHeader.specialSmsMsgList.isEmpty()) &&
             (smsHeader.miscEltList.isEmpty()) &&
             (smsHeader.languageShiftTable == 0) &&
             (smsHeader.languageTable == 0)) {
@@ -238,6 +251,12 @@ public class SmsHeader {
             outStream.write(1);
             outStream.write(smsHeader.languageTable);
         }
+        for (SpecialSmsMsg specialSmsMsg : smsHeader.specialSmsMsgList) {
+            outStream.write(ELT_ID_SPECIAL_SMS_MESSAGE_INDICATION);
+            outStream.write(2);
+            outStream.write(specialSmsMsg.msgIndType & 0xFF);
+            outStream.write(specialSmsMsg.msgCount & 0xFF);
+        }
         for (MiscElt miscElt : smsHeader.miscEltList) {
             outStream.write(miscElt.id);
             outStream.write(miscElt.data.length);
@@ -274,6 +293,12 @@ public class SmsHeader {
         }
         if (languageTable != 0) {
             builder.append(", languageTable=" + languageTable);
+        }
+        for (SpecialSmsMsg specialSmsMsg : specialSmsMsgList) {
+            builder.append(", SpecialSmsMsg ");
+            builder.append("{ msgIndType=" + specialSmsMsg.msgIndType);
+            builder.append(", msgCount=" + specialSmsMsg.msgCount);
+            builder.append(" }");
         }
         for (MiscElt miscElt : miscEltList) {
             builder.append(", MiscElt ");

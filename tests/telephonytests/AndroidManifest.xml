@@ -18,6 +18,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.frameworks.telephonytests">
 
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <application>
         <uses-library android:name="android.test.runner" />
         <activity android:label="TelephonyTest"
@@ -29,11 +34,8 @@
         </activity>
     </application>
     <instrumentation android:name="android.test.InstrumentationTestRunner"
-        android:targetPackage="com.android.frameworks.telephonytests"
+        android:targetPackage="com.android.phone"
         android:label="Frameworks Telephony Tests">
     </instrumentation>
-
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.INTERNET" />
 
 </manifest>

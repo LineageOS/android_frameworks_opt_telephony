@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
  * Copyright (C) 2013 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +42,7 @@ import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.util.BlacklistUtils;
+import com.android.internal.telephony.PhoneBase;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -218,6 +221,10 @@ public abstract class InboundSmsHandler extends StateMachine {
         while (mWakeLock.isHeld()) {
             mWakeLock.release();
         }
+    }
+
+    public PhoneBase getPhone() {
+        return mPhone;
     }
 
     /**
@@ -753,7 +760,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param permission receivers are required to have this permission
      * @param appOp app op that is being performed when dispatching to a receiver
      */
-    void dispatchIntent(Intent intent, String permission, int appOp,
+    protected void dispatchIntent(Intent intent, String permission, int appOp,
             BroadcastReceiver resultReceiver) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
         mContext.sendOrderedBroadcast(intent, permission, appOp, resultReceiver,

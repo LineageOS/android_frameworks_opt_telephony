@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import com.android.internal.telephony.MccTable;
 
+
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -28,13 +29,13 @@ public class MccTableTest extends AndroidTestCase {
 
     @SmallTest
     public void testTimeZone() throws Exception {
-        assertEquals(MccTable.defaultTimeZoneForMcc(208), "ECT");
+        assertEquals(MccTable.defaultTimeZoneForMcc(208), "Europe/Paris");
         assertEquals(MccTable.defaultTimeZoneForMcc(232), "Europe/Vienna");
         assertEquals(MccTable.defaultTimeZoneForMcc(655), "Africa/Johannesburg");
         assertEquals(MccTable.defaultTimeZoneForMcc(440), "Asia/Tokyo");
         assertEquals(MccTable.defaultTimeZoneForMcc(441), "Asia/Tokyo");
         assertEquals(MccTable.defaultTimeZoneForMcc(525), "Asia/Singapore");
-        assertEquals(MccTable.defaultTimeZoneForMcc(240), null);  // tz not defined, hence default
+        assertEquals(MccTable.defaultTimeZoneForMcc(240), "Europe/Stockholm");
         assertEquals(MccTable.defaultTimeZoneForMcc(0), null);    // mcc not defined, hence default
         assertEquals(MccTable.defaultTimeZoneForMcc(2000), null); // mcc not defined, hence default
     }

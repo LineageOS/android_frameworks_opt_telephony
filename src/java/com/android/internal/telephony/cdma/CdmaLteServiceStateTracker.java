@@ -204,6 +204,9 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                         + " regState=" + regState
                         + " dataRadioTechnology=" + type);
             }
+            mDataRoaming = regCodeIsRoaming(regState);
+
+            if (mDataRoaming) mNewSS.setRoaming(true);
         } else {
             super.handlePollStateResultMessage(what, ar);
         }
@@ -380,7 +383,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 String eriText;
                 // Now the CDMAPhone sees the new ServiceState so it can get the
                 // new ERI text
-                if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+                if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE ||
+                        (mSS.getDataRegState() == ServiceState.STATE_IN_SERVICE)) {
                     eriText = mPhone.getCdmaEriText();
                 } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF) {
                     eriText = (mIccRecords != null) ? mIccRecords.getServiceProviderName() : null;
@@ -456,10 +460,11 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             mPhone.notifyServiceStateChanged(mSS);
         }
 
-        if (hasCdmaDataConnectionAttached || has4gHandoff) {
-            mAttachedRegistrants.notifyRegistrants();
-        }
-
+        // First notify detached, then rat changed, then attached - that's the way it
+        // happens in the modem.
+        // Behavior of recipients (DcTracker, for instance) depends on this sequence
+        // since DcTracker reloads profiles on "rat_changed" notification and sets up
+        // data call on "attached" notification.
         if (hasCdmaDataConnectionDetached) {
             mDetachedRegistrants.notifyRegistrants();
         }
@@ -467,6 +472,10 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         if ((hasCdmaDataConnectionChanged || hasDataRadioTechnologyChanged)) {
             notifyDataRegStateRilRadioTechnologyChanged();
             mPhone.notifyDataConnection(null);
+        }
+
+        if (hasCdmaDataConnectionAttached || has4gHandoff) {
+            mAttachedRegistrants.notifyRegistrants();
         }
 
         if (hasRoamingOn) {
@@ -588,6 +597,18 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             if (DBG) log ("getAllCellInfo: arrayList=" + arrayList);
             return arrayList;
         }
+    }
+
+    @Override
+    protected void updatePhoneObject() {
+        int voiceRat = mSS.getRilVoiceRadioTechnology();
+        // For CDMA-LTE phone don't update phone to LTE.
+        // If there is a  real need to switch to LTE, then it will be done via
+        // RIL_UNSOL_VOICE_RADIO_TECH_CHANGED from RIL.
+        if (voiceRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+            voiceRat = ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT;
+        }
+        mPhoneBase.updatePhoneObject(voiceRat);
     }
 
     @Override

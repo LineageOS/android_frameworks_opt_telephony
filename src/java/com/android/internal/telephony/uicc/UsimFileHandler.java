@@ -37,6 +37,7 @@ public final class UsimFileHandler extends IccFileHandler implements IccConstant
         switch(efid) {
         case EF_SMS:
         case EF_EXT6:
+        case EF_EXT5:
         case EF_MWIS:
         case EF_MBI:
         case EF_SPN:
@@ -58,6 +59,7 @@ public final class UsimFileHandler extends IccFileHandler implements IccConstant
         case EF_INFO_CPHS:
         case EF_CSP_CPHS:
         case EF_GID1:
+        case EF_PLMNWACT:
             return MF_SIM + DF_ADF;
 
         case EF_PBR:

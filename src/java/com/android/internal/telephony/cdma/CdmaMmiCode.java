@@ -22,6 +22,7 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.MmiCode;
+import com.android.internal.telephony.Phone;
 
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -162,6 +163,11 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
         return mMessage;
     }
 
+    public Phone
+    getPhone() {
+        return ((Phone) mPhone);
+    }
+
     // inherited javadoc suffices
     @Override
     public void
@@ -227,31 +233,28 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
                             && mUiccApplication.getState() == AppState.APPSTATE_PUK) {
                         // Sim is puk-locked
                         handlePasswordError(com.android.internal.R.string.needPuk);
-                    } else if (mUiccApplication != null) {
-                        Rlog.d(LOG_TAG, "process mmi service code using UiccApp sc=" + mSc);
-
-                        // We have an app and the pre-checks are OK
-                        if (mSc.equals(SC_PIN)) {
-                            mUiccApplication.changeIccLockPassword(oldPinOrPuk, newPinOrPuk,
-                                    obtainMessage(EVENT_SET_COMPLETE, this));
-                        } else if (mSc.equals(SC_PIN2)) {
-                            mUiccApplication.changeIccFdnPassword(oldPinOrPuk, newPinOrPuk,
-                                    obtainMessage(EVENT_SET_COMPLETE, this));
-                        } else if (mSc.equals(SC_PUK)) {
-                            mUiccApplication.supplyPuk(oldPinOrPuk, newPinOrPuk,
-                                    obtainMessage(EVENT_SET_COMPLETE, this));
-                        } else if (mSc.equals(SC_PUK2)) {
-                            mUiccApplication.supplyPuk2(oldPinOrPuk, newPinOrPuk,
-                                    obtainMessage(EVENT_SET_COMPLETE, this));
-                        } else {
-                            throw new RuntimeException("Unsupported service code=" + mSc);
-                        }
                     } else {
-                        throw new RuntimeException("No application mUiccApplicaiton is null");
+                        if (mUiccApplication != null) {
+                            if (mSc.equals(SC_PIN)) {
+                                mUiccApplication.changeIccLockPassword(oldPinOrPuk, newPinOrPuk,
+                                        obtainMessage(EVENT_SET_COMPLETE, this));
+                            } else if (mSc.equals(SC_PIN2)) {
+                                mUiccApplication.changeIccFdnPassword(oldPinOrPuk, newPinOrPuk,
+                                        obtainMessage(EVENT_SET_COMPLETE, this));
+                            } else if (mSc.equals(SC_PUK)) {
+                                mUiccApplication.supplyPuk(oldPinOrPuk, newPinOrPuk,
+                                        obtainMessage(EVENT_SET_COMPLETE, this));
+                            } else if (mSc.equals(SC_PUK2)) {
+                                mUiccApplication.supplyPuk2(oldPinOrPuk, newPinOrPuk,
+                                        obtainMessage(EVENT_SET_COMPLETE, this));
+                            }
+                        } 
                     }
                 } else {
-                    throw new RuntimeException ("Ivalid register/action=" + mAction);
+                    throw new RuntimeException("Unsupported service code=" + mSc);
                 }
+            } else {
+                throw new RuntimeException("No application mUiccApplicaiton is null");
             }
         } catch (RuntimeException exc) {
             mState = State.FAILED;
@@ -304,6 +307,8 @@ public final class CdmaMmiCode  extends Handler implements MmiCode {
                 CommandException.Error err = ((CommandException)(ar.exception)).getCommandError();
                 if (err == CommandException.Error.PASSWORD_INCORRECT) {
                     if (isPinPukCommand()) {
+                        sb.append(mContext.getText(
+                              com.android.internal.R.string.badPuk));
                         // look specifically for the PUK commands and adjust
                         // the message accordingly.
                         if (mSc.equals(SC_PUK) || mSc.equals(SC_PUK2)) {
