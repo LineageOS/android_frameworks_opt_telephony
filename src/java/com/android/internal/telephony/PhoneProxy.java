@@ -53,7 +53,6 @@ public class PhoneProxy extends Handler implements Phone {
     protected IccPhoneBookInterfaceManagerProxy mIccPhoneBookInterfaceManagerProxy;
     protected PhoneSubInfoProxy mPhoneSubInfoProxy;
     protected IccCardProxy mIccCardProxy;
-    protected IccSmsInterfaceManagerProxy mIccSmsInterfaceManagerProxy;
 
     private boolean mResetModemOnRadioTechnologyChange = false;
 
@@ -78,9 +77,6 @@ public class PhoneProxy extends Handler implements Phone {
                 phone.getIccPhoneBookInterfaceManager());
         mPhoneSubInfoProxy = new PhoneSubInfoProxy(phone.getPhoneSubInfo());
         mCommandsInterface = ((PhoneBase)mActivePhone).mCi;
-
-        mIccSmsInterfaceManagerProxy =
-            new IccSmsInterfaceManagerProxy(mActivePhone.getContext(), mIccSmsInterfaceManager);
 
         mCommandsInterface.registerForRilConnected(this, EVENT_RIL_CONNECTED, null);
         mCommandsInterface.registerForOn(this, EVENT_RADIO_ON, null);

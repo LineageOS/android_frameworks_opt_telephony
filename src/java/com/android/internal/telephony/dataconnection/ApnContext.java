@@ -154,7 +154,7 @@ public class ApnContext {
         if (mWaitingDataProfiles == null) {
             return new ArrayList<DataProfile>();
         }
-        return mWaitingApns;
+        return mWaitingDataProfiles;
     }
 
     public synchronized int getPriority() {
