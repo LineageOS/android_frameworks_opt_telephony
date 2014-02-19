@@ -50,6 +50,7 @@ import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
@@ -280,8 +281,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             break;
 
         case EVENT_RUIM_READY:
-            // TODO: Consider calling setCurrentPreferredNetworkType as we do in GsmSST.
-            // cm.setCurrentPreferredNetworkType();
+            int networkType = PhoneFactory.calculatePreferredNetworkType(mPhone.getContext());
+            mCi.setPreferredNetworkType(networkType, null);
 
             if (mPhone.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {
                 // Subscription will be read from SIM I/O

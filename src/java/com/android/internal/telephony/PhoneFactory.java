@@ -98,25 +98,20 @@ public class PhoneFactory {
 
                 sPhoneNotifier = new DefaultPhoneNotifier();
 
-                // Get preferred network mode
-                int preferredNetworkMode = RILConstants.PREFERRED_NETWORK_MODE;
-                if (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE) {
-                    preferredNetworkMode = Phone.NT_MODE_GLOBAL;
-                }
-                int networkMode = Settings.Global.getInt(context.getContentResolver(),
-                        Settings.Global.PREFERRED_NETWORK_MODE, preferredNetworkMode);
-                Rlog.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkMode));
+                // Get preferred network type.
+                int networkType = calculatePreferredNetworkType(context);
+                Rlog.i(LOG_TAG, "Network Type set to " + Integer.toString(networkType));
 
                 int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
 
                 //reads the system properties and makes commandsinterface
-                sCommandsInterface = new RIL(context, networkMode, cdmaSubscription);
+                sCommandsInterface = new RIL(context, networkType, cdmaSubscription);
 
                 // Instantiate UiccController so that all other classes can just call getInstance()
                 UiccController.make(context, sCommandsInterface);
 
-                int phoneType = TelephonyManager.getPhoneType(networkMode);
+                int phoneType = TelephonyManager.getPhoneType(networkType);
                 if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
                     Rlog.i(LOG_TAG, "Creating GSMPhone");
                     sProxyPhone = new PhoneProxy(new GSMPhone(context,
@@ -200,5 +195,21 @@ public class PhoneFactory {
      */
     public static SipPhone makeSipPhone(String sipUri) {
         return SipPhoneFactory.makePhone(sipUri, sContext, sPhoneNotifier);
+    }
+
+    /**
+     * Returns the preferred network type that should be set in the modem.
+     *
+     * @param context The current {@link Context}.
+     * @return the preferred network mode that should be set.
+     */
+    public static int calculatePreferredNetworkType(Context context) {
+        int preferredNetworkType = RILConstants.PREFERRED_NETWORK_MODE;
+        if (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE) {
+            preferredNetworkType = Phone.NT_MODE_GLOBAL;
+        }
+        int networkType = Settings.Global.getInt(context.getContentResolver(),
+                Settings.Global.PREFERRED_NETWORK_MODE, preferredNetworkType);
+        return networkType;
     }
 }

@@ -1943,16 +1943,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
      * {@inheritDoc}
      */
     @Override
-    public void setCurrentPreferredNetworkType() {
-        if (RILJ_LOGD) riljLog("setCurrentPreferredNetworkType: " + mSetPreferredNetworkType);
-        setPreferredNetworkType(mSetPreferredNetworkType, null);
-    }
-    private int mSetPreferredNetworkType;
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public void setPreferredNetworkType(int networkType , Message response) {
         RILRequest rr = RILRequest.obtain(
                 RILConstants.RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE, response);
@@ -1960,7 +1950,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         rr.mParcel.writeInt(1);
         rr.mParcel.writeInt(networkType);
 
-        mSetPreferredNetworkType = networkType;
         mPreferredNetworkType = networkType;
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
