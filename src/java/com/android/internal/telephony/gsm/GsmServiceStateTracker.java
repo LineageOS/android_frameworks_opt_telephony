@@ -58,6 +58,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RestrictedState;
 import com.android.internal.telephony.ServiceStateTracker;
@@ -289,7 +290,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
             case EVENT_SIM_READY:
                 // Set the network type, in case the radio does not restore it.
-                mCi.setCurrentPreferredNetworkType();
+                int networkType = PhoneFactory.calculatePreferredNetworkType(mPhone.getContext());
+                mCi.setPreferredNetworkType(networkType, null);
 
                 boolean skipRestoringSelection = mPhone.getContext().getResources().getBoolean(
                         com.android.internal.R.bool.skip_restoring_network_selection);
