@@ -1719,9 +1719,4 @@ public final class SimulatedCommands extends BaseCommands
     public void nvResetConfig(int resetType, Message response) {
         unimplemented(response);
     }
-
-    @Override
-    public void setRadioMode(int radioMode, Message response) {
-        unimplemented(response);
-    }
 }

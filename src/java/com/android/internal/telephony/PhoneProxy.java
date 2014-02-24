@@ -1193,11 +1193,6 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
-    public void setRadioMode(int radioMode, Message response) {
-        mActivePhone.setRadioMode(radioMode, response);
-    }
-
-    @Override
     public void dispose() {
         mCommandsInterface.unregisterForOn(this);
         mCommandsInterface.unregisterForVoiceRadioTechChanged(this);

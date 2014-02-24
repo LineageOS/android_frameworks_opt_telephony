@@ -981,11 +981,6 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
-    public void setRadioMode(int radioMode, Message response) {
-        mCi.setRadioMode(radioMode, response);
-    }
-
-    @Override
     public void notifyDataActivity() {
         mNotifier.notifyDataActivity(this);
     }
