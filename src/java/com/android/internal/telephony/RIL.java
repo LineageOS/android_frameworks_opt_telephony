@@ -2432,7 +2432,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_NV_WRITE_ITEM: ret = responseVoid(p); break;
             case RIL_REQUEST_NV_WRITE_CDMA_PRL: ret = responseVoid(p); break;
             case RIL_REQUEST_NV_RESET_CONFIG: ret = responseVoid(p); break;
-            case RIL_REQUEST_SET_RADIO_MODE: ret = responseVoid(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -3746,7 +3745,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_NV_WRITE_ITEM: return "RIL_REQUEST_NV_WRITE_ITEM";
             case RIL_REQUEST_NV_WRITE_CDMA_PRL: return "RIL_REQUEST_NV_WRITE_CDMA_PRL";
             case RIL_REQUEST_NV_RESET_CONFIG: return "RIL_REQUEST_NV_RESET_CONFIG";
-            case RIL_REQUEST_SET_RADIO_MODE: return "RIL_REQUEST_SET_RADIO_MODE";
             default: return "<unknown request>";
         }
     }
@@ -4238,19 +4236,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
                 + ' ' + resetType);
-
-        send(rr);
-    }
-
-    @Override
-    public void setRadioMode(int radioMode, Message response) {
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_RADIO_MODE, response);
-
-        rr.mParcel.writeInt(1);
-        rr.mParcel.writeInt(radioMode);
-
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                + ' ' + radioMode);
 
         send(rr);
     }
