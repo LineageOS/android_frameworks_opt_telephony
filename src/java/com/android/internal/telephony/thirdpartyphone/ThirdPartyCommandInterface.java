@@ -588,9 +588,5 @@ class ThirdPartyCommandInterface extends BaseCommands implements CommandsInterfa
     @Override
     public void nvResetConfig(int resetType, Message response) {
     }
-
-    @Override
-    public void setRadioMode(int radioMode, Message response) {
-    }
 }
 
