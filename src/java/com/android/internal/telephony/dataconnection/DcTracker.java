@@ -1427,6 +1427,10 @@ public final class DcTracker extends DcTrackerBase {
                 if (apnContext.getState() == DctConstants.State.FAILED) {
                     apnContext.setState(DctConstants.State.IDLE);
                 }
+                if (apnContext.getState() == DctConstants.State.DISCONNECTING) {
+                    apnContext.setState(DctConstants.State.IDLE);
+                    cleanup = true;
+                 }
                 trySetup = true;
             }
         }
