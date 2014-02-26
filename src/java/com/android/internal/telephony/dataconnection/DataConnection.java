@@ -1409,18 +1409,21 @@ public final class DataConnection extends StateMachine {
                             retVal = NOT_HANDLED;
                             break;
                         }
-                        // We've lost the connection and we're retrying but DRS or RAT changed
-                        // so we may never succeed, might as well give up.
-                        mInactiveState.setEnterNotificationParams(DcFailCause.LOST_CONNECTION);
-                        deferMessage(msg);
-                        transitionTo(mInactiveState);
+                        if (drs != ServiceState.STATE_IN_SERVICE) {
+                            // We've lost the connection and we're retrying but DRS or RAT changed
+                            // so we may never succeed, might as well give up.
+                            mInactiveState.setEnterNotificationParams(DcFailCause.LOST_CONNECTION);
+                            deferMessage(msg);
+                            transitionTo(mInactiveState);
 
-                        if (DBG) {
-                            String s = "DcRetryingState: EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED"
-                                    + " giving up changed from " + mRilRat
-                                    + " to rat=" + rat
-                                    + " or drs changed from " + mDataRegState + " to drs=" + drs;
-                            logAndAddLogRec(s);
+                            if (DBG) {
+                                String s = "DcRetryingState: "
+                                        + "EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED"
+                                        + " giving up changed from " + mRilRat
+                                        + " to rat=" + rat
+                                        + " or drs changed from " + mDataRegState + " to drs=" + drs;
+                                logAndAddLogRec(s);
+                            }
                         }
                         mDataRegState = drs;
                         mRilRat = rat;
