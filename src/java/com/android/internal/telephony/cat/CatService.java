@@ -510,6 +510,7 @@ public class CatService extends Handler implements AppInterface {
 
     private void broadcastCatCmdIntent(CatCmdMessage cmdMsg) {
         Intent intent = new Intent(AppInterface.CAT_CMD_ACTION);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         intent.putExtra("STK CMD", cmdMsg);
         intent.putExtra("SLOT_ID", mSlotId);
         CatLog.d(this, "Sending CmdMsg: " + cmdMsg+ " on slotid:" + mSlotId);
@@ -526,6 +527,7 @@ public class CatService extends Handler implements AppInterface {
         mCurrntCmd = mMenuCmd;
         Intent intent = new Intent(AppInterface.CAT_SESSION_END_ACTION);
         intent.putExtra("SLOT_ID", mSlotId);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
 
@@ -866,6 +868,7 @@ public class CatService extends Handler implements AppInterface {
     private void  broadcastCardStateAndIccRefreshResp(CardState cardState,
             IccRefreshResponse iccRefreshState) {
         Intent intent = new Intent(AppInterface.CAT_ICC_STATUS_CHANGE);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         boolean cardPresent = (cardState == CardState.CARDSTATE_PRESENT);
 
         if (iccRefreshState != null) {
