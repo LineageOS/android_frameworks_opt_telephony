@@ -49,6 +49,8 @@ import static com.android.internal.telephony.cat.CatCmdMessage.
                    SetupEventListConstants.IDLE_SCREEN_AVAILABLE_EVENT;
 import static com.android.internal.telephony.cat.CatCmdMessage.
                    SetupEventListConstants.LANGUAGE_SELECTION_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.
+                   SetupEventListConstants.HCI_CONNECTIVITY_EVENT;
 
 class RilMessage {
     int mId;
@@ -341,9 +343,13 @@ public class CatService extends Handler implements AppInterface {
             CatLog.d(this,"Event: " + eventVal);
             switch (eventVal) {
                 /* Currently android is supporting only the below events in SetupEventList
-                 * Language Selection.  */
+                 * Idle Screen Available,
+                 * Language Selection and
+                 * HCI Connectivity.
+                 */
                 case IDLE_SCREEN_AVAILABLE_EVENT:
                 case LANGUAGE_SELECTION_EVENT:
+                case HCI_CONNECTIVITY_EVENT:
                     break;
                 default:
                     flag = false;
@@ -499,6 +505,13 @@ public class CatService extends Handler implements AppInterface {
                     sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
                 }
                 break;
+            case ACTIVATE:
+                // TO DO: Retrieve the target of the ACTIVATE cmd from the cmd.
+                // Target : '01' = UICC-CFL interface according to TS 102 613 [39];
+                //          '00' and '02' to 'FF' = RFU (Reserved for Future Use).
+                resultCode = ResultCode.OK;
+                sendTerminalResponse(cmdParams.mCmdDet, resultCode, false, 0 ,null);
+                break;
             default:
                 CatLog.d(this, "Unsupported command");
                 return;
@@ -527,6 +540,7 @@ public class CatService extends Handler implements AppInterface {
         mCurrntCmd = mMenuCmd;
         Intent intent = new Intent(AppInterface.CAT_SESSION_END_ACTION);
         intent.putExtra("SLOT_ID", mSlotId);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
 
@@ -726,7 +740,9 @@ public class CatService extends Handler implements AppInterface {
 
         /*
          * Currently the below events are supported:
-         * Language Selection Event.
+         * Idle Screen Available,
+         * Language Selection Event and
+         * HCI Connectivity.
          * Other event download commands should be encoded similar way
          */
         /* TODO: eventDownload should be extended for other Envelope Commands */
@@ -740,6 +756,9 @@ public class CatService extends Handler implements AppInterface {
                 buf.write(tag);
                 // Language length should be 2 byte
                 buf.write(0x02);
+                break;
+            case HCI_CONNECTIVITY_EVENT:
+                CatLog.d(this, " Sending HCI Connectivity event download to ICC");
                 break;
             default:
                 break;
@@ -867,6 +886,7 @@ public class CatService extends Handler implements AppInterface {
     private void  broadcastCardStateAndIccRefreshResp(CardState cardState,
             IccRefreshResponse iccRefreshState) {
         Intent intent = new Intent(AppInterface.CAT_ICC_STATUS_CHANGE);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         boolean cardPresent = (cardState == CardState.CARDSTATE_PRESENT);
 
         if (iccRefreshState != null) {

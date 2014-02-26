@@ -46,7 +46,8 @@ public enum ComprehensionTlvTag {
     LANGUAGE(0x2d),
     URL(0x31),
     BROWSER_TERMINATION_CAUSE(0x34),
-    TEXT_ATTRIBUTE(0x50);
+    TEXT_ATTRIBUTE(0x50),
+    ACTIVATE_DESCRIPTOR(0x7b);
 
     private int mValue;
 

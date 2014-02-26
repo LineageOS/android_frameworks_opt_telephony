@@ -35,6 +35,8 @@ import static com.android.internal.telephony.cat.CatCmdMessage.
                    SetupEventListConstants.BROWSER_TERMINATION_EVENT;
 import static com.android.internal.telephony.cat.CatCmdMessage.
                    SetupEventListConstants.BROWSING_STATUS_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.
+                   SetupEventListConstants.HCI_CONNECTIVITY_EVENT;
 /**
  * Factory class, used for decoding raw byte arrays, received from baseband,
  * into a CommandParams object.
@@ -202,6 +204,9 @@ class CommandParamsFactory extends Handler {
              case SEND_DATA:
                  cmdPending = processBIPClient(cmdDet, ctlvs);
                  break;
+            case ACTIVATE:
+                cmdPending = processActivate(cmdDet, ctlvs);
+                break;
             default:
                 // unsupported proactive commands
                 mCmdParams = new CommandParams(cmdDet);
@@ -730,6 +735,7 @@ class CommandParamsFactory extends Handler {
                         case LANGUAGE_SELECTION_EVENT:
                         case BROWSER_TERMINATION_EVENT:
                         case BROWSING_STATUS_EVENT:
+                        case HCI_CONNECTIVITY_EVENT:
                             eventList[i] = eventValue;
                             i++;
                             break;
@@ -1006,6 +1012,27 @@ class CommandParamsFactory extends Handler {
             mIconLoadState = LOAD_SINGLE_ICON;
             mIconLoader.loadIcon(iconId.recordNumber, obtainMessage(MSG_ID_LOAD_ICON_DONE));
             return true;
+        }
+        return false;
+    }
+
+    private boolean processActivate(CommandDetails cmdDet,
+                                     List<ComprehensionTlv> ctlvs) throws ResultException {
+        AppInterface.CommandType commandType =
+                AppInterface.CommandType.fromInt(cmdDet.typeOfCommand);
+        CatLog.d(this, "process " + commandType.name());
+
+        ComprehensionTlv ctlv = null;
+        int target;
+
+        //parse activate descriptor
+        ctlv = searchForTag(ComprehensionTlvTag.ACTIVATE_DESCRIPTOR, ctlvs);
+        if (ctlv != null) {
+            target = ValueParser.retrieveTarget(ctlv);
+            mCmdParams = new CommandParams(cmdDet);
+            CatLog.d(this, "Activate cmd target = " + target);
+        } else {
+            CatLog.d(this, "ctlv is null");
         }
         return false;
     }
