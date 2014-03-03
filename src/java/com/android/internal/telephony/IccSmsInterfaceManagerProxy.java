@@ -229,6 +229,55 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
     }
 
     @Override
+    public void sendTextWithOptions(String callingPackage, String destAddr, String scAddr,
+            String text, PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+        mContext.enforceCallingPermission(
+                android.Manifest.permission.SEND_SMS,
+                "Sending SMS message");
+        if (mIccSmsInterfaceManager.isShortSMSCode(destAddr)) {
+            mIccSmsInterfaceManager.sendTextWithOptions(callingPackage, destAddr, scAddr, text,
+                    sentIntent, deliveryIntent, priority);
+            return;
+        }
+        ArrayList<String> parts = new ArrayList<String>();
+        parts.add(text);
+        ArrayList<PendingIntent> sentIntents = new ArrayList<PendingIntent>();
+        sentIntents.add(sentIntent);
+        ArrayList<PendingIntent> deliveryIntents = new ArrayList<PendingIntent>();
+        deliveryIntents.add(deliveryIntent);
+        broadcastOutgoingSms(callingPackage, destAddr, scAddr, false, parts, sentIntents,
+                deliveryIntents, priority);
+    }
+
+    @Override
+    public void sendMultipartTextWithOptions(String callingPackage, String destAddr, String scAddr,
+            List<String> parts, List<PendingIntent> sentIntents,
+            List<PendingIntent> deliveryIntents, int priority) {
+        mContext.enforceCallingPermission(
+                android.Manifest.permission.SEND_SMS,
+                "Sending SMS message");
+        if (mIccSmsInterfaceManager.isShortSMSCode(destAddr)) {
+            mIccSmsInterfaceManager.sendMultipartTextWithOptions(callingPackage, destAddr, scAddr,
+                    parts, sentIntents, deliveryIntents, priority);
+            return;
+        }
+        broadcastOutgoingSms(callingPackage, destAddr, scAddr, true,
+                parts != null ? new ArrayList<String>(parts) : null,
+                sentIntents != null ? new ArrayList<PendingIntent>(sentIntents) : null,
+                deliveryIntents != null ?  new ArrayList<PendingIntent>(deliveryIntents) : null,
+                priority);
+    }
+
+
+    @Override
+    public void sendDataWithOrigPort(String callingPackage, String destAddr, String scAddr,
+            int destPort, int origPort, byte[] data, PendingIntent sentIntent,
+            PendingIntent deliveryIntent) {
+        mIccSmsInterfaceManager.sendDataWithOrigPort(callingPackage, destAddr, scAddr,
+                destPort, origPort, data, sentIntent, deliveryIntent);
+    }
+
+    @Override
     public boolean enableCellBroadcast(int messageIdentifier) throws android.os.RemoteException {
         return mIccSmsInterfaceManager.enableCellBroadcast(messageIdentifier);
     }
