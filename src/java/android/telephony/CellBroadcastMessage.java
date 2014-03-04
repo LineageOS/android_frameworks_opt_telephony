@@ -22,6 +22,7 @@ import android.database.Cursor;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.provider.Telephony;
+import android.telephony.SubscriptionManager;
 import android.text.format.DateUtils;
 
 /**
@@ -54,7 +55,7 @@ public class CellBroadcastMessage implements Parcelable {
      *
      * @hide
      */
-    private long mSubId = 0;
+    private long mSubId;
 
     /**
      * set Subscription information
@@ -78,18 +79,21 @@ public class CellBroadcastMessage implements Parcelable {
         mSmsCbMessage = message;
         mDeliveryTime = System.currentTimeMillis();
         mIsRead = false;
+        mSubId = SubscriptionManager.getDefaultSmsSubId();
     }
 
     private CellBroadcastMessage(SmsCbMessage message, long deliveryTime, boolean isRead) {
         mSmsCbMessage = message;
         mDeliveryTime = deliveryTime;
         mIsRead = isRead;
+        mSubId = SubscriptionManager.getDefaultSmsSubId();
     }
 
     private CellBroadcastMessage(Parcel in) {
         mSmsCbMessage = new SmsCbMessage(in);
         mDeliveryTime = in.readLong();
         mIsRead = (in.readInt() != 0);
+        mSubId = in.readLong();
     }
 
     /** Parcelable: no special flags. */
@@ -103,6 +107,7 @@ public class CellBroadcastMessage implements Parcelable {
         mSmsCbMessage.writeToParcel(out, flags);
         out.writeLong(mDeliveryTime);
         out.writeInt(mIsRead ? 1 : 0);
+        out.writeLong(mSubId);
     }
 
     public static final Parcelable.Creator<CellBroadcastMessage> CREATOR
