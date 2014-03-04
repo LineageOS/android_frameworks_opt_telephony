@@ -1311,8 +1311,8 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone.hangupWithReason(callId, userUri, mpty, failCause, errorInfo);
     }
 
-    public void deflectCall(int callId, String number) throws CallStateException {
-        mActivePhone.deflectCall(callId, number);
+    public void deflectCall(int connId, String number, Message response) throws CallStateException {
+        mActivePhone.deflectCall(connId, number, response);
     }
 
     public int getSubscription() {

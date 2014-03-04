@@ -1544,7 +1544,7 @@ public abstract class PhoneBase extends Handler implements Phone {
                 + this);
     }
 
-    public void deflectCall(int callId, String number) throws CallStateException {
+    public void deflectCall(int connId, String number, Message response) throws CallStateException {
         throw new CallStateException("deflectCall is not supported in this phone "
                 + this);
     }
