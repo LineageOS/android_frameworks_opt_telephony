@@ -263,7 +263,7 @@ public class UiccController extends Handler {
         mContext = c;
         mCi = ci;
         mCi.registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, null);
-        mCi.registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, null);
+        mCi.registerForOn(this, EVENT_ICC_STATUS_CHANGED, null);
         mCi.registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, null);
         mCi.registerForIccRefresh(this, EVENT_REFRESH, null);
     }
