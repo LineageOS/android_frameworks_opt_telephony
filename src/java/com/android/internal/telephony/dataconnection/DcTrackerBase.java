@@ -48,6 +48,7 @@ import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
+import android.telephony.MSimTelephonyManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.EventLog;
@@ -689,6 +690,11 @@ public abstract class DcTrackerBase extends Handler {
             final ContentResolver resolver = mPhone.getContext().getContentResolver();
             Settings.Global.putInt(resolver, Settings.Global.DATA_ROAMING, enabled ? 1 : 0);
             // will trigger handleDataOnRoamingChange() through observer
+
+            if (MSimTelephonyManager.getDefault().isMultiSimEnabled()) {
+                int sub = MSimTelephonyManager.getDefault().getPreferredDataSubscription();
+                Settings.Global.putInt(resolver, Settings.Global.DATA_ROAMING + sub, enabled ? 1 : 0);
+            }
         }
     }
 
@@ -1360,6 +1366,13 @@ public abstract class DcTrackerBase extends Handler {
                 mUserDataEnabled = enabled;
                 Settings.Global.putInt(mPhone.getContext().getContentResolver(),
                         Settings.Global.MOBILE_DATA, enabled ? 1 : 0);
+
+                if (MSimTelephonyManager.getDefault().isMultiSimEnabled()) {
+                    int sub = MSimTelephonyManager.getDefault().getPreferredDataSubscription();
+                    Settings.Global.putInt(mPhone.getContext().getContentResolver(),
+                            Settings.Global.MOBILE_DATA + sub, enabled ? 1 : 0);
+                }
+
                 if (getDataOnRoamingEnabled() == false &&
                         mPhone.getServiceState().getRoaming() == true) {
                     if (enabled) {
