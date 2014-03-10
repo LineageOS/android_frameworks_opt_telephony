@@ -755,4 +755,13 @@ public class SmsMessage {
         int activePhone = TelephonyManager.getDefault().getCurrentPhoneType();
         return (PHONE_TYPE_CDMA == activePhone);
     }
+
+    /**
+     * {@hide}
+     * Returns the recipient address(receiver) of this SMS message in String form or null if
+     * unavailable.
+     */
+    public String getRecipientAddress() {
+        return mWrappedSmsMessage.getRecipientAddress();
+    }
 }
