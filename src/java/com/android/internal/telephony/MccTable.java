@@ -171,8 +171,10 @@ public final class MccTable
      * correct version of resources.  If MCC is 0, MCC and MNC will be ignored (not set).
      * @param context Context to act on.
      * @param mccmnc truncated imsi with just the MCC and MNC - MNC assumed to be from 4th to end
+     * @param fromServiceState true if coming from the radio service state, false if from SIM
      */
-    public static void updateMccMncConfiguration(Context context, String mccmnc) {
+    public static void updateMccMncConfiguration(Context context, String mccmnc,
+            boolean fromServiceState) {
         if (!TextUtils.isEmpty(mccmnc)) {
             int mcc, mnc;
 
@@ -190,28 +192,37 @@ public final class MccTable
             if (mcc != 0) {
                 setTimezoneFromMccIfNeeded(context, mcc);
                 locale = getLocaleFromMcc(context, mcc);
-                setWifiCountryCodeFromMcc(context, mcc);
             }
-            try {
-                Configuration config = new Configuration();
-                boolean updateConfig = false;
-                if (mcc != 0) {
-                    config.mcc = mcc;
-                    config.mnc = mnc == 0 ? Configuration.MNC_ZERO : mnc;
-                    updateConfig = true;
+            if (fromServiceState) {
+                setWifiCountryCodeFromMcc(context, mcc);
+            } else {
+                // from SIM
+                try {
+                    Configuration config = new Configuration();
+                    boolean updateConfig = false;
+                    if (mcc != 0) {
+                        config.mcc = mcc;
+                        config.mnc = mnc == 0 ? Configuration.MNC_ZERO : mnc;
+                        updateConfig = true;
+                    }
+                    if (locale != null) {
+                        config.setLocale(locale);
+                        updateConfig = true;
+                    }
+                    if (updateConfig) {
+                        Slog.d(LOG_TAG, "updateMccMncConfiguration updateConfig config=" + config);
+                        ActivityManagerNative.getDefault().updateConfiguration(config);
+                    } else {
+                        Slog.d(LOG_TAG, "updateMccMncConfiguration nothing to update");
+                    }
+                } catch (RemoteException e) {
+                    Slog.e(LOG_TAG, "Can't update configuration", e);
                 }
-                if (locale != null) {
-                    config.setLocale(locale);
-                    updateConfig = true;
-                }
-                if (updateConfig) {
-                    Slog.d(LOG_TAG, "updateMccMncConfiguration updateConfig config=" + config);
-                    ActivityManagerNative.getDefault().updateConfiguration(config);
-                } else {
-                    Slog.d(LOG_TAG, "updateMccMncConfiguration nothing to update");
-                }
-            } catch (RemoteException e) {
-                Slog.e(LOG_TAG, "Can't update configuration", e);
+            }
+        } else {
+            if (fromServiceState) {
+                // an empty mccmnc means no signal - tell wifi we don't know
+                setWifiCountryCodeFromMcc(context, 0);
             }
         }
     }
@@ -342,19 +353,18 @@ public final class MccTable
     }
 
     /**
-     * If the number of allowed wifi channels has not been set, set it based on
-     * the MCC of the SIM.
+     * Set the country code for wifi.  This sets allowed wifi channels based on the
+     * country of the carrier we see.  If we can't see any, reset to 0 so we don't
+     * broadcast on forbidden channels.
      * @param context Context to act on.
-     * @param mcc Mobile Country Code of the SIM or SIM-like entity (build prop on CDMA)
+     * @param mcc Mobile Country Code of the operator.  0 if not known
      */
     private static void setWifiCountryCodeFromMcc(Context context, int mcc) {
         String country = MccTable.countryCodeForMcc(mcc);
-        if (!country.isEmpty()) {
-            Slog.d(LOG_TAG, "WIFI_COUNTRY_CODE set to " + country);
-            WifiManager wM = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-            //persist
-            wM.setCountryCode(country, true);
-        }
+        Slog.d(LOG_TAG, "WIFI_COUNTRY_CODE set to " + country);
+        WifiManager wM = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+        //persist
+        wM.setCountryCode(country, true);
     }
 
     static {
