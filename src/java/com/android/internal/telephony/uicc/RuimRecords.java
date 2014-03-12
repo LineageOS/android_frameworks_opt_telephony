@@ -19,6 +19,7 @@ package com.android.internal.telephony.uicc;
 
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_APN_RUIM_OPERATOR_NUMERIC;
 
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_TEST_CSIM;
@@ -145,6 +146,8 @@ public final class RuimRecords extends IccRecords {
         mIccId = null;
 
         mAdnCache.reset();
+
+        setSystemProperty(PROPERTY_APN_RUIM_OPERATOR_NUMERIC, "");
 
         // Don't clean up PROPERTY_ICC_OPERATOR_ISO_COUNTRY and
         // PROPERTY_ICC_OPERATOR_NUMERIC here. Since not all CDMA
@@ -439,7 +442,7 @@ public final class RuimRecords extends IccRecords {
             }
 
             //Update MccTable with the retrieved IMSI
-            String operatorNumeric = getOperatorNumeric();
+            String operatorNumeric = getRUIMOperatorNumeric();
             if (operatorNumeric != null) {
                 if(operatorNumeric.length() <= 6){
                     MccTable.updateMccMncConfiguration(mContext, operatorNumeric, false);
@@ -697,25 +700,22 @@ public final class RuimRecords extends IccRecords {
 
         // Further records that can be inserted are Operator/OEM dependent
 
-        // FIXME: CSIM IMSI may not contain the MNC.
-        if (false) {
-            String operator = getRUIMOperatorNumeric();
-            if (!TextUtils.isEmpty(operator)) {
-                log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
-                        operator + "'");
-                log("update icc_operator_numeric=" + operator);
-                SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
-            } else {
-                log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
-            }
+        String operator = getRUIMOperatorNumeric();
+        if (!TextUtils.isEmpty(operator)) {
+            log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
+                    operator + "'");
+            setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
+            setSystemProperty(PROPERTY_APN_RUIM_OPERATOR_NUMERIC, operator);
+        } else {
+            log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
+        }
 
-            if (!TextUtils.isEmpty(mImsi)) {
-                log("onAllRecordsLoaded set mcc imsi=" + mImsi);
-                SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
-                        MccTable.countryCodeForMcc(Integer.parseInt(mImsi.substring(0,3))));
-            } else {
-                log("onAllRecordsLoaded empty imsi skipping setting mcc");
-            }
+        if (!TextUtils.isEmpty(mImsi)) {
+            log("onAllRecordsLoaded set mcc imsi=" + mImsi);
+            setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
+                    MccTable.countryCodeForMcc(Integer.parseInt(mImsi.substring(0,3))));
+        } else {
+            log("onAllRecordsLoaded empty imsi skipping setting mcc");
         }
 
         setLocaleFromCsim();
