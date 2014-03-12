@@ -223,11 +223,11 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     public boolean updateCurrentCarrierInProvider() {
-        if (mIccRecords.get() != null) {
+        if (mSimRecords != null) {
             try {
                 Uri uri = Uri.withAppendedPath(Telephony.Carriers.CONTENT_URI, "current");
                 ContentValues map = new ContentValues();
-                String operatorNumeric = mIccRecords.get().getOperatorNumeric();
+                String operatorNumeric = mSimRecords.getOperatorNumeric();
                 map.put(Telephony.Carriers.NUMERIC, operatorNumeric);
                 if (DBG) log("updateCurrentCarrierInProvider from UICC: numeric=" +
                         operatorNumeric);

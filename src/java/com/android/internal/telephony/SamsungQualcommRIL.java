@@ -65,6 +65,9 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     private boolean mIsSendingSMS = false;
     private boolean isGSM = false;
     public static final long SEND_SMS_TIMEOUT_IN_MS = 30000;
+    private String homeOperator= SystemProperties.get("ro.cdma.home.operator.numeric");
+    private String operator= SystemProperties.get("ro.cdma.home.operator.alpha");
+    private String[] lastKnownOfGood = {null, null, null};
     private boolean oldRilState = needsOldRilFeature("exynos4RadioState");
     private boolean googleEditionSS = needsOldRilFeature("googleEditionSS");
     private boolean driverCall = needsOldRilFeature("newDriverCall");
@@ -559,9 +562,29 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     private Object
     operatorCheck(Parcel p) {
         String response[] = (String[])responseStrings(p);
-        for(int i=0; i<2; i++){
+        for(int i=0; i<3; i++){
             if (response[i]!= null){
-                response[i] = Operators.operatorReplace(response[i]);
+                if (i<2){
+                    if (response[i].equals("       Empty") || (response[i].equals("") && !isGSM)) {
+                        response[i]=operator;
+                    } else if (!response[i].equals(""))  {
+                        try {
+                            Integer.parseInt(response[i]);
+                            response[i]=Operators.operatorReplace(response[i]);
+                            //optimize
+                            if(i==0)
+                                response[i+1]=response[i];
+                        }  catch(NumberFormatException E){
+                            // do nothing
+                        }
+                    }
+                } else if (response[i].equals("31000")|| response[i].equals("11111") || response[i].equals("123456") || response[i].equals("31099") || (response[i].equals("") && !isGSM)){
+                    response[i]=homeOperator;
+                }
+                lastKnownOfGood[i]=response[i];
+            }else{
+                if(lastKnownOfGood[i]!=null)
+                    response[i]=lastKnownOfGood[i];
             }
         }
         return response;

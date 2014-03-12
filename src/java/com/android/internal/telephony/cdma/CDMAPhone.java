@@ -525,15 +525,7 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public String getSubscriberId() {
-        if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
-            return mSST.getNvImsi();
-        } else {
-            IccRecords r = mIccRecords.get();
-            if (r != null) {
-                return r.getIMSI();
-            }
-        }
-        return null;
+        return mSST.getNvImsi();
     }
 
     @Override
