@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bae84128_fc9f345d",
+        "filename": "src/java/com/android/internal/telephony/cdma/CDMAPhone.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 5531
+      },
+      "writtenOn": "2014-03-13T06:42:39Z",
+      "side": 1,
+      "message": "Should this just be return mSST.getImsi(); as we have it in stable/cm-11.0?",
+      "revId": "f9fb50784532fe9c3d421fe6a0bcd3506543e5e2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
