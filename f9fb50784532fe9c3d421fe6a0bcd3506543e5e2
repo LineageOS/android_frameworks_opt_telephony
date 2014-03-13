@@ -16,6 +16,24 @@
       "revId": "f9fb50784532fe9c3d421fe6a0bcd3506543e5e2",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bae84128_bc7c8c21",
+        "filename": "src/java/com/android/internal/telephony/cdma/CDMAPhone.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 4330
+      },
+      "writtenOn": "2014-03-13T06:49:07Z",
+      "side": 1,
+      "message": "I originally thought that as well but getImsi is undefined now which is why i left it as getNvImsi.",
+      "parentUuid": "bae84128_fc9f345d",
+      "revId": "f9fb50784532fe9c3d421fe6a0bcd3506543e5e2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
