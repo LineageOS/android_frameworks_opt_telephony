@@ -387,10 +387,10 @@ public class UiccCard {
     }
 
     /**
-     * Exposes {@link CommandsInterface.sendEnvelope}
+     * Exposes {@link CommandsInterface.sendEnvelopeWithStatus}
      */
-    public void sendEnvelope(String contents, Message response) {
-        mCi.sendEnvelope(contents, response);
+    public void sendEnvelopeWithStatus(String contents, Message response) {
+        mCi.sendEnvelopeWithStatus(contents, response);
     }
 
     private void log(String msg) {
