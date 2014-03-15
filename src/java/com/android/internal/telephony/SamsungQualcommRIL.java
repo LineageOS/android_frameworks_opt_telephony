@@ -290,7 +290,8 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 if(cdmaSubscription != -1) {
                     setCdmaSubscriptionSource(mCdmaSubscription, null);
                 }
-                setCellInfoListRate(Integer.MAX_VALUE, null);
+                if(mRilVersion >= 8)
+                    setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
                 break;
             case RIL_UNSOL_NITZ_TIME_RECEIVED:
@@ -785,5 +786,19 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
         }
 
         return ret;
+    }
+
+    @Override
+    public void getImsRegistrationState(Message result) {
+        if(mRilVersion >= 8)
+            super.getImsRegistrationState(result);
+        else {
+            if (result != null) {
+                CommandException ex = new CommandException(
+                    CommandException.Error.REQUEST_NOT_SUPPORTED);
+                AsyncResult.forMessage(result, null, ex);
+                result.sendToTarget();
+            }
+        }
     }
 }
