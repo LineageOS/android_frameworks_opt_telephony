@@ -849,10 +849,6 @@ public abstract class DcTrackerBase extends Handler {
                 break;
             }
             case DctConstants.CMD_ENABLE_MOBILE_PROVISIONING: {
-                // TODO: Right now we know when it ends "successfully" when
-                // provisioning apn gets dropped, what happens if the user never
-                // succeed, I assume there is a timeout and the network will drop
-                // it after a period of time.
                 Bundle bundle = msg.getData();
                 if (bundle != null) {
                     try {
@@ -867,18 +863,11 @@ public abstract class DcTrackerBase extends Handler {
                     mIsProvisioning = false;
                     mProvisioningUrl = null;
                 } else {
-                    ApnContext apnContext = mApnContexts.get(PhoneConstants.APN_TYPE_DEFAULT);
-                    if (apnContext.isProvisioningApn() && apnContext.getState() == State.CONNECTED){
-                        log("CMD_ENABLE_MOBILE_PROVISIONING: mIsProvisioning=true url="
-                                + mProvisioningUrl);
-                        mIsProvisioning = true;
-                        startProvisioningApnAlarm();
-                        completeConnection(mApnContexts.get(PhoneConstants.APN_TYPE_DEFAULT));
-                    } else {
-                        log("CMD_ENABLE_MOBILE_PROVISIONING: No longer connected");
-                        mIsProvisioning = false;
-                        mProvisioningUrl = null;
-                    }
+                    loge("CMD_ENABLE_MOBILE_PROVISIONING: provisioningUrl=" + mProvisioningUrl);
+                    mIsProvisioning = true;
+                    startProvisioningApnAlarm();
+                    onSetInternalDataEnabled(true);
+                    enableApnType("default");
                 }
                 break;
             }
