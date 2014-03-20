@@ -111,7 +111,7 @@ public class CatService extends Handler implements AppInterface {
 
     static final int MSG_ID_TIMEOUT                  = 9;  // Samsung STK
     static final int MSG_ID_RIL_MSG_DECODED          = 10;
-    static final int MSG_ID_SEND_SMS_RESULT          = 12; // Samsung STK
+    protected static final int MSG_ID_SEND_SMS_RESULT          = 12; // Samsung STK
 
     // Events to signal SIM presence or absent in the device.
     protected static final int MSG_ID_ICC_RECORDS_LOADED       = 20;
