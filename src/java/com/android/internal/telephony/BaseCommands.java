@@ -417,7 +417,11 @@ public abstract class BaseCommands implements CommandsInterface {
     }
 
     public void unSetOnCatSendSmsResult(Handler h) {
-        mCatSendSmsResultRegistrant.clear();
+        if ( mCatSendSmsResultRegistrant == null ) {
+            return;
+        } else {
+            mCatSendSmsResultRegistrant.clear();
+        }
     }
 
     @Override
