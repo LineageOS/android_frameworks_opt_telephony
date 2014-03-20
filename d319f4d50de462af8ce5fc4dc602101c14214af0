@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bae84128_9f441375",
+        "filename": "src/java/com/android/internal/telephony/cat/CatService.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 1381
+      },
+      "writtenOn": "2014-03-20T23:14:32Z",
+      "side": 1,
+      "message": "use \"protected\"",
+      "revId": "d319f4d50de462af8ce5fc4dc602101c14214af0",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
