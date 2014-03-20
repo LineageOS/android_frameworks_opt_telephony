@@ -195,7 +195,7 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     // Flag that indicates that Out Of Service is considered as data call disconnect
     protected boolean mOosIsDisconnect = SystemProperties.getBoolean(
-            PROPERTY_OOS_IS_DISCONNECT, false);
+            PROPERTY_OOS_IS_DISCONNECT, true);
 
     /**
      * Set a system property, unless we're in unit test mode
