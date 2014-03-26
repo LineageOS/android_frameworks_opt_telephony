@@ -86,6 +86,7 @@ public final class RuimRecords extends IccRecords {
     }
 
     // ***** Event Constants
+    private static final int EVENT_GET_IMSI_DONE = 3;
     private static final int EVENT_GET_DEVICE_IDENTITY_DONE = 4;
     private static final int EVENT_GET_ICCID_DONE = 5;
     private static final int EVENT_GET_CDMA_SUBSCRIPTION_DONE = 10;
@@ -515,6 +516,38 @@ public final class RuimRecords extends IccRecords {
                 log("Event EVENT_GET_DEVICE_IDENTITY_DONE Received");
             break;
 
+            /* IO events */
+            case EVENT_GET_IMSI_DONE:
+                isRecordLoadResponse = true;
+
+                ar = (AsyncResult)msg.obj;
+                if (ar.exception != null) {
+                    loge("Exception querying IMSI, Exception:" + ar.exception);
+                    break;
+                }
+                
+                mImsi = (String) ar.result;
+
+                // IMSI (MCC+MNC+MSIN) is at least 6 digits, but not more
+                // than 15 (and usually 15).
+                if (mImsi != null && (mImsi.length() < 6 || mImsi.length() > 15)) {
+                    loge("invalid IMSI " + mImsi);
+                    mImsi = null;
+                }
+
+                log("IMSI: " + mImsi.substring(0, 6) + "xxxxxxxxx");
+
+                String operatorNumeric = getOperatorNumeric();
+                 log("SHAREEFdebug: " + operatorNumeric);
+                if (operatorNumeric != null) {
+                    
+                    if(operatorNumeric.length() <= 6){
+                        log("SHAREEFdebugpass " );
+                        MccTable.updateMccMncConfiguration(mContext, operatorNumeric);
+                    }
+                }
+                break;
+
             case EVENT_GET_CDMA_SUBSCRIPTION_DONE:
                 ar = (AsyncResult)msg.obj;
                 String localTemp[] = (String[])ar.result;
@@ -690,6 +723,9 @@ public final class RuimRecords extends IccRecords {
         mRecordsRequested = true;
 
         if (DBG) log("fetchRuimRecords " + mRecordsToLoad);
+        
+        mCi.getIMSIForApp(mParentApp.getAid(), obtainMessage(EVENT_GET_IMSI_DONE));
+        mRecordsToLoad++;
 
         mFh.loadEFTransparent(EF_ICCID,
                 obtainMessage(EVENT_GET_ICCID_DONE));
