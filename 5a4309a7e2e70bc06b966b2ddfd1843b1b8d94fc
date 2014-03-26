@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bae84128_d903500e",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 726,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2014-03-26T19:47:28Z",
+      "side": 1,
+      "message": "may need to conditionally revert this patch \nTODO: put an if statement to that part",
+      "revId": "5a4309a7e2e70bc06b966b2ddfd1843b1b8d94fc",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
