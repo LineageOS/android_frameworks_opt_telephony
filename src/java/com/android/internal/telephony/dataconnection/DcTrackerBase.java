@@ -949,8 +949,10 @@ public abstract class DcTrackerBase extends Handler {
                 if (DBG) log("CMD_IS_PROVISIONING_APN");
 
                 ApnContext apnContext = mApnContexts.get(PhoneConstants.APN_TYPE_DEFAULT);
-                if (apnContext.getState() == State.DISCONNECTING){
+                if (apnContext.getState() == State.DISCONNECTING) {
                       log("CMD_IS_PROVISIONING_APN: APN default is DISCONNECTING");
+                      mReplyAc.replyToMessage(msg, DctConstants.CMD_IS_PROVISIONING_APN,
+                              DctConstants.DISABLED);
                       break;
                 }
 
