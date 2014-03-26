@@ -192,7 +192,7 @@ public class UiccCardApplication {
     }
 
     /** Assumes mLock is held. */
-    private void queryFdn() {
+    void queryFdn() {
         //This shouldn't change run-time. So needs to be called only once.
         int serviceClassX;
 

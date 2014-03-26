@@ -1193,6 +1193,10 @@ public class SIMRecords extends IccRecords {
                 mFh.loadEFTransparent(EF_CSP_CPHS,
                         obtainMessage(EVENT_GET_CSP_CPHS_DONE));
                 break;
+            case EF_FDN:
+                if (DBG) log("SIM Refresh called for EF_FDN");
+                mParentApp.queryFdn();
+                break;
             default:
                 // For now, fetch all records if this is not a
                 // voicemail number.
