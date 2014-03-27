@@ -1349,21 +1349,25 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
 
     public int getEmptyEmailNum_Pbrindex(int pbrindex) {
         int count = 0;
-        for (int i = 0; i < mEmailFlags.get(pbrindex).size(); i++) {
-            if (0 == mEmailFlags.get(pbrindex).get(i))
-                count++;
+        if (mEmailFlags.get(pbrindex) != null) {
+          for (int i = 0; i < mEmailFlags.get(pbrindex).size(); i++) {
+              if (0 == mEmailFlags.get(pbrindex).get(i))
+                  count++;
+          }
         }
         return count;
     }
 
     public int getEmptyAnrNum_Pbrindex(int pbrindex) {
         int count = 0;
-        for (int i = 0; i < mAnrFlags.get(pbrindex).size(); i++) {
-            if (0 == mAnrFlags.get(pbrindex).get(i))
-                count++;
+        if (mAnrFlags.get(pbrindex) != null) {
+          for (int i = 0; i < mAnrFlags.get(pbrindex).size(); i++) {
+              if (0 == mAnrFlags.get(pbrindex).get(i))
+                  count++;
+          }
+          log("getEmptyAnrNum_Pbrindex pbrIndex is: " + pbrindex + " size is: "
+                  + mAnrFlags.get(pbrindex).size() + ", count is " + count);
         }
-        log("getEmptyAnrNum_Pbrindex pbrIndex is: " + pbrindex + " size is: "
-                + mEmailFlags.get(pbrindex).size() + ", count is " + count);
         return count;
     }
 }
