@@ -2220,13 +2220,10 @@ public class DcTracker extends DcTrackerBase {
             }
         }
 
-        if (mAllDps.isEmpty()) {
-            int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
-            if (!CdmaDataProfileTracker.OMH_ENABLED &&
-                    UiccController.getFamilyFromRadioTechnology(radioTech)
-                    == UiccController.APP_FAM_3GPP2) {
-                addDummyDataProfiles(operator);
-            }
+        int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
+        if (UiccController.getFamilyFromRadioTechnology(radioTech)
+                == UiccController.APP_FAM_3GPP2) {
+            addDummyDataProfiles(operator);
         }
 
         if (mAllDps.isEmpty()) {
