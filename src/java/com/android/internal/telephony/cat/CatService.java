@@ -194,7 +194,6 @@ public class CatService extends Handler implements AppInterface {
             mCmdIf.unSetOnCatProactiveCmd(this);
             mCmdIf.unSetOnCatEvent(this);
             mCmdIf.unSetOnCatCallSetUp(this);
-            mCmdIf.unSetOnCatSendSmsResult(this);
             mCmdIf.unregisterForIccRefresh(this);
             if (mUiccController != null) {
                 mUiccController.unregisterForIccChanged(this);
@@ -209,7 +208,10 @@ public class CatService extends Handler implements AppInterface {
             disposeHandlerThread();
             sInstance = null;
             removeCallbacksAndMessages(null);
+            if (this instanceof CatService)
+                mCmdIf.unSetOnCatSendSmsResult(this);
         }
+        
     }
 
     protected void disposeHandlerThread() {
