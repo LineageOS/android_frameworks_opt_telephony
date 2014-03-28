@@ -51,7 +51,7 @@ public interface PhoneNotifier {
 
     public void notifyPreciseCallState(Phone sender);
 
-    public void notifyDisconnectCause(Connection.DisconnectCause cause, int preciseCause);
+    public void notifyDisconnectCause(int cause, int preciseCause);
 
     public void notifyPreciseDataConnectionFailed(Phone sender, String reason, String apnType,
             String apn, String failCause);

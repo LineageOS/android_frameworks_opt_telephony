@@ -30,46 +30,6 @@ public abstract class Connection {
 
     private static String LOG_TAG = "Connection";
 
-    public enum DisconnectCause {
-        NOT_DISCONNECTED,               /* has not yet disconnected */
-        INCOMING_MISSED,                /* an incoming call that was missed and never answered */
-        NORMAL,                         /* normal; remote */
-        LOCAL,                          /* normal; local hangup */
-        BUSY,                           /* outgoing call to busy line */
-        CONGESTION,                     /* outgoing call to congested network */
-        MMI,                            /* not presently used; dial() returns null */
-        INVALID_NUMBER,                 /* invalid dial string */
-        NUMBER_UNREACHABLE,             /* cannot reach the peer */
-        SERVER_UNREACHABLE,             /* cannot reach the server */
-        INVALID_CREDENTIALS,            /* invalid credentials */
-        OUT_OF_NETWORK,                 /* calling from out of network is not allowed */
-        SERVER_ERROR,                   /* server error */
-        TIMED_OUT,                      /* client timed out */
-        LOST_SIGNAL,
-        LIMIT_EXCEEDED,                 /* eg GSM ACM limit exceeded */
-        INCOMING_REJECTED,              /* an incoming call that was rejected */
-        POWER_OFF,                      /* radio is turned off explicitly */
-        OUT_OF_SERVICE,                 /* out of service */
-        ICC_ERROR,                      /* No ICC, ICC locked, or other ICC error */
-        CALL_BARRED,                    /* call was blocked by call barring */
-        FDN_BLOCKED,                    /* call was blocked by fixed dial number */
-        CS_RESTRICTED,                  /* call was blocked by restricted all voice access */
-        CS_RESTRICTED_NORMAL,           /* call was blocked by restricted normal voice access */
-        CS_RESTRICTED_EMERGENCY,        /* call was blocked by restricted emergency voice access */
-        UNOBTAINABLE_NUMBER,            /* Unassigned number (3GPP TS 24.008 table 10.5.123) */
-        CDMA_LOCKED_UNTIL_POWER_CYCLE,  /* MS is locked until next power cycle */
-        CDMA_DROP,
-        CDMA_INTERCEPT,                 /* INTERCEPT order received, MS state idle entered */
-        CDMA_REORDER,                   /* MS has been redirected, call is cancelled */
-        CDMA_SO_REJECT,                 /* service option rejection */
-        CDMA_RETRY_ORDER,               /* requested service is rejected, retry delay is set */
-        CDMA_ACCESS_FAILURE,
-        CDMA_PREEMPTED,
-        CDMA_NOT_EMERGENCY,              /* not an emergency call */
-        CDMA_ACCESS_BLOCKED,            /* Access Blocked by CDMA network */
-        ERROR_UNSPECIFIED
-    }
-
     Object mUserData;
 
     /* Instance Methods */
@@ -153,9 +113,11 @@ public abstract class Connection {
     public abstract long getHoldDurationMillis();
 
     /**
-     * Returns "NOT_DISCONNECTED" if not yet disconnected.
+     * Returns call disconnect cause. Values are defined in
+     * {@link android.telephony.DisconnectCause}. If the call is not yet
+     * disconnected, NOT_DISCONNECTED is returned.
      */
-    public abstract DisconnectCause getDisconnectCause();
+    public abstract int getDisconnectCause();
 
     /**
      * Returns true of this connection originated elsewhere
