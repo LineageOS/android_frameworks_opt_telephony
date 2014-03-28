@@ -2629,6 +2629,10 @@ public class DcTracker extends DcTrackerBase {
         int dataRat = mPhone.getServiceState().getRilDataRadioTechnology();
         int appFamily = UiccController.getFamilyFromRadioTechnology(dataRat);
         IccRecords newIccRecords = getUiccRecords(appFamily);
+        if (newIccRecords == null) {
+            appFamily = UiccController.getFamilyFromRadioTechnology(1);
+            newIccRecords = getUiccRecords(appFamily);
+        }
         log("onUpdateIcc: newIccRecords " + ((newIccRecords != null) ?
                 newIccRecords.getClass().getName() : null));
         if (dataRat == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
