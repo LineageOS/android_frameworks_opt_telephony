@@ -27,6 +27,7 @@ import android.net.sip.SipProfile;
 import android.net.sip.SipSession;
 import android.os.AsyncResult;
 import android.os.Message;
+import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.text.TextUtils;
@@ -729,7 +730,7 @@ public class SipPhone extends SipPhoneBase {
 
         private SipAudioCallAdapter mAdapter = new SipAudioCallAdapter() {
             @Override
-            protected void onCallEnded(DisconnectCause cause) {
+            protected void onCallEnded(int cause) {
                 if (getDisconnectCause() != DisconnectCause.LOCAL) {
                     setDisconnectCause(cause);
                 }
@@ -797,7 +798,7 @@ public class SipPhone extends SipPhoneBase {
             }
 
             @Override
-            protected void onError(DisconnectCause cause) {
+            protected void onError(int cause) {
                 if (SCN_DBG) log("onError: " + cause);
                 onCallEnded(cause);
             }
@@ -988,21 +989,23 @@ public class SipPhone extends SipPhoneBase {
     private abstract class SipAudioCallAdapter extends SipAudioCall.Listener {
         private static final String SACA_TAG = "SipAudioCallAdapter";
         private static final boolean SACA_DBG = true;
-        protected abstract void onCallEnded(Connection.DisconnectCause cause);
-        protected abstract void onError(Connection.DisconnectCause cause);
+        /** Call ended with cause defined in {@link DisconnectCause}. */
+        protected abstract void onCallEnded(int cause);
+        /** Call failed with cause defined in {@link DisconnectCause}. */
+        protected abstract void onError(int cause);
 
         @Override
         public void onCallEnded(SipAudioCall call) {
             if (SACA_DBG) log("onCallEnded: call=" + call);
             onCallEnded(call.isInCall()
-                    ? Connection.DisconnectCause.NORMAL
-                    : Connection.DisconnectCause.INCOMING_MISSED);
+                    ? DisconnectCause.NORMAL
+                    : DisconnectCause.INCOMING_MISSED);
         }
 
         @Override
         public void onCallBusy(SipAudioCall call) {
             if (SACA_DBG) log("onCallBusy: call=" + call);
-            onCallEnded(Connection.DisconnectCause.BUSY);
+            onCallEnded(DisconnectCause.BUSY);
         }
 
         @Override
@@ -1014,34 +1017,34 @@ public class SipPhone extends SipPhoneBase {
             }
             switch (errorCode) {
                 case SipErrorCode.SERVER_UNREACHABLE:
-                    onError(Connection.DisconnectCause.SERVER_UNREACHABLE);
+                    onError(DisconnectCause.SERVER_UNREACHABLE);
                     break;
                 case SipErrorCode.PEER_NOT_REACHABLE:
-                    onError(Connection.DisconnectCause.NUMBER_UNREACHABLE);
+                    onError(DisconnectCause.NUMBER_UNREACHABLE);
                     break;
                 case SipErrorCode.INVALID_REMOTE_URI:
-                    onError(Connection.DisconnectCause.INVALID_NUMBER);
+                    onError(DisconnectCause.INVALID_NUMBER);
                     break;
                 case SipErrorCode.TIME_OUT:
                 case SipErrorCode.TRANSACTION_TERMINTED:
-                    onError(Connection.DisconnectCause.TIMED_OUT);
+                    onError(DisconnectCause.TIMED_OUT);
                     break;
                 case SipErrorCode.DATA_CONNECTION_LOST:
-                    onError(Connection.DisconnectCause.LOST_SIGNAL);
+                    onError(DisconnectCause.LOST_SIGNAL);
                     break;
                 case SipErrorCode.INVALID_CREDENTIALS:
-                    onError(Connection.DisconnectCause.INVALID_CREDENTIALS);
+                    onError(DisconnectCause.INVALID_CREDENTIALS);
                     break;
                 case SipErrorCode.CROSS_DOMAIN_AUTHENTICATION:
-                    onError(Connection.DisconnectCause.OUT_OF_NETWORK);
+                    onError(DisconnectCause.OUT_OF_NETWORK);
                     break;
                 case SipErrorCode.SERVER_ERROR:
-                    onError(Connection.DisconnectCause.SERVER_ERROR);
+                    onError(DisconnectCause.SERVER_ERROR);
                     break;
                 case SipErrorCode.SOCKET_ERROR:
                 case SipErrorCode.CLIENT_ERROR:
                 default:
-                    onError(Connection.DisconnectCause.ERROR_UNSPECIFIED);
+                    onError(DisconnectCause.ERROR_UNSPECIFIED);
             }
         }
 
