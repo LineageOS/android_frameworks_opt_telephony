@@ -28,6 +28,7 @@ import android.telephony.PhoneNumberUtils;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.telephony.DisconnectCause;
 import android.telephony.ThirdPartyCallListener;
 
 import com.android.internal.telephony.Call;
@@ -65,7 +66,7 @@ class ThirdPartyConnection extends Connection {
     // The time when the Connection last transitioned into HOLDING
     private long mHoldingStartTimeReal;
 
-    private DisconnectCause mCause = DisconnectCause.NOT_DISCONNECTED;
+    private int mCause = DisconnectCause.NOT_DISCONNECTED;
 
     private ThirdPartyCall mOwner;
     private Call.State mState = Call.State.IDLE;
@@ -161,7 +162,7 @@ class ThirdPartyConnection extends Connection {
     }
 
     @Override
-    public DisconnectCause getDisconnectCause() {
+    public int getDisconnectCause() {
         return mCause;
     }
 
@@ -321,7 +322,7 @@ class ThirdPartyConnection extends Connection {
         mState = state;
     }
 
-    private void handleCallEnded(DisconnectCause cause) {
+    private void handleCallEnded(int cause) {
         if (DBG) log("handleCallEnded cause: " + cause);
         mTimeoutHandler.removeCallbacks(mTimeoutRunnable);
         if (getDisconnectCause() != DisconnectCause.LOCAL) {
@@ -336,7 +337,7 @@ class ThirdPartyConnection extends Connection {
         }
     }
 
-    private void setDisconnectCause(DisconnectCause cause) {
+    private void setDisconnectCause(int cause) {
         if (DBG) log("setDisconnectCause: prev=" + mCause + " new=" + cause);
         mCause = cause;
     }
@@ -426,7 +427,7 @@ class ThirdPartyConnection extends Connection {
             }
         };
 
-        private DisconnectCause getDisconnectCauseFromReason(int reason) {
+        private int getDisconnectCauseFromReason(int reason) {
             switch (reason) {
                 case ThirdPartyCallListener.CALL_END_NORMAL:
                     return DisconnectCause.NORMAL;
