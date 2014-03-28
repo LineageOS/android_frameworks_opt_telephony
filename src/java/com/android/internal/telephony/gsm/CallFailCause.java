@@ -49,5 +49,15 @@ public interface CallFailCause {
     static final int ACM_LIMIT_EXCEEDED = 68;
     static final int CALL_BARRED        = 240;
     static final int FDN_BLOCKED        = 241;
+
+    // Stk Call Control
+    static final int DIAL_MODIFIED_TO_USSD = 244;
+    static final int DIAL_MODIFIED_TO_SS = 245;
+    static final int DIAL_MODIFIED_TO_DIAL = 246;
+
+    // Emergency redial
+    static final int EMERGENCY_TEMP_FAILURE = 325;
+    static final int EMERGENCY_PERM_FAILURE = 326;
+
     static final int ERROR_UNSPECIFIED = 0xffff;
 }

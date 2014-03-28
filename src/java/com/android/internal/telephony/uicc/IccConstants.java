@@ -1,4 +1,8 @@
 /*
+ * Copyright (c) 2013, Linux Foundation. All rights reserved.
+ * Not a Contribution, Apache license notifications and license are retained
+ * for attribution purposes only.
+ *
  * Copyright (C) 2006 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +32,7 @@ public interface IccConstants {
     static final int EF_EXT1 = 0x6F4A;
     static final int EF_EXT2 = 0x6F4B;
     static final int EF_EXT3 = 0x6F4C;
+    static final int EF_EXT5 = 0x6F4E;
     static final int EF_EXT6 = 0x6fc8;   // Ext record for EF[MBDN]
     static final int EF_MWIS = 0x6FCA;
     static final int EF_MBDN = 0x6fc7;
@@ -57,6 +62,9 @@ public interface IccConstants {
     static final int EF_CSP_CPHS = 0x6f15;
 
     // CDMA RUIM file ids from 3GPP2 C.S0023-0
+    // RUIM EF stores the (up to) 56-bit electronic identification
+    // number (ID) unique to the R-UIM. (Removable UIM_ID)
+    static final int EF_RUIM_ID = 0x6f31;
     static final int EF_CST = 0x6f32;
     static final int EF_RUIM_SPN =0x6F41;
 
@@ -77,8 +85,13 @@ public interface IccConstants {
     static final int EF_IST = 0x6f07;
     static final int EF_PCSCF = 0x6f09;
 
+    //plmnwact
+    static final int EF_PLMNWACT = 0x6F60;
+
     // SMS record length from TS 51.011 10.5.3
     static public final int SMS_RECORD_LENGTH = 176;
+    // SMS record length from C.S0023 3.4.27
+    static public final int CDMA_SMS_RECORD_LENGTH = 255;
 
     static final String MF_SIM = "3F00";
     static final String DF_TELECOM = "7F10";

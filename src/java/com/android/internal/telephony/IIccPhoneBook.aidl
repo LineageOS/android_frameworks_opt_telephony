@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentValues;
+
 import com.android.internal.telephony.uicc.AdnRecord;
 
 
@@ -69,6 +71,21 @@ interface IIccPhoneBook {
             String pin2);
 
     /**
+     * Replace oldAdn with newAdn in ADN-like record in EF
+     *
+     * getAdnRecordsInEf must be called at least once before this function,
+     * otherwise an error will be returned
+     *
+     * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
+     * @param values to be updated
+     * @param pin2 required to update EF_FDN, otherwise must be null
+     * @return true for success
+     */
+    boolean updateAdnRecordsWithContentValuesInEfBySearch(int efid,
+            in ContentValues values,
+            String pin2);
+
+    /**
      * Update an ADN-like EF record by record index
      *
      * This is useful for iteration the whole ADN file, such as write the whole
@@ -98,4 +115,56 @@ interface IIccPhoneBook {
      */
     int[] getAdnRecordsSize(int efid);
 
+    /**
+     * Update an ADN-like EF record by record index
+     *
+     * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
+     * @param newTag adn tag to be stored
+     * @param newPhoneNumber adn number to be stored
+     *        Set both newTag and newPhoneNubmer to "" means to replace the old
+     *        record with empty one, aka, delete old record
+     * @param anrNumbers adn additional number to be stored
+     * @param emails adn email to be stored
+     * @param index is 1-based adn record index to be updated
+     * @param pin2 required to update EF_FDN, otherwise must be null
+     * @return true for success
+     */
+    boolean updateUsimAdnRecordsInEfByIndex(int efid, String newTag,
+            String newPhoneNumber, in String[] anrNumbers, in String[] emails, int index,
+            String pin2);
+
+    /**
+     * Get the adn count of sim card
+     *
+     * @return the adn count of sim card
+     */
+    int getAdnCount();
+
+    /**
+     * Get the anr count of sim card
+     *
+     * @return the anr count of sim card
+     */
+    int getAnrCount();
+
+    /**
+     * Get the email count of sim card
+     *
+     * @return the email count of sim card
+     */
+    int getEmailCount();
+
+    /**
+     * Get the spare anr count of sim card
+     *
+     * @return the spare anr count of sim card
+     */
+    int getSpareAnrCount();
+
+    /**
+     * Get the spare email count of sim card
+     *
+     * @return the spare email count of sim card
+     */
+    int getSpareEmailCount();
 }

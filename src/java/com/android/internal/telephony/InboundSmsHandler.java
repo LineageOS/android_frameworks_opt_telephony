@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
  * Copyright (C) 2013 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +27,7 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
@@ -33,6 +36,7 @@ import android.os.Build;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.SystemProperties;
+import android.preference.PreferenceManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
@@ -40,6 +44,7 @@ import android.telephony.SmsMessage;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.util.BlacklistUtils;
+import com.android.internal.telephony.PhoneBase;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -218,6 +223,10 @@ public abstract class InboundSmsHandler extends StateMachine {
         while (mWakeLock.isHeld()) {
             mWakeLock.release();
         }
+    }
+
+    public PhoneBase getPhone() {
+        return mPhone;
     }
 
     /**
@@ -753,7 +762,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param permission receivers are required to have this permission
      * @param appOp app op that is being performed when dispatching to a receiver
      */
-    void dispatchIntent(Intent intent, String permission, int appOp,
+    protected void dispatchIntent(Intent intent, String permission, int appOp,
             BroadcastReceiver resultReceiver) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
         mContext.sendOrderedBroadcast(intent, permission, appOp, resultReceiver,
@@ -856,6 +865,24 @@ public abstract class InboundSmsHandler extends StateMachine {
     static boolean isCurrentFormat3gpp2() {
         int activePhone = TelephonyManager.getDefault().getCurrentPhoneType();
         return (PHONE_TYPE_CDMA == activePhone);
+    }
+
+    protected void storeVoiceMailCount() {
+        // Store the voice mail count in persistent memory.
+        String imsi = mPhone.getSubscriberId();
+        int mwi = mPhone.getVoiceMessageCount();
+
+        log("Storing Voice Mail Count = " + mwi
+                    + " for imsi = " + imsi
+                    + " for mVmCountKey = " + ((PhoneBase)mPhone).VM_COUNT
+                    + " vmId = " + ((PhoneBase)mPhone).VM_ID
+                    + " in preferences.");
+
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putInt(mPhone.VM_COUNT, mwi);
+        editor.putString(mPhone.VM_ID, imsi);
+        editor.commit();
     }
 
     /**

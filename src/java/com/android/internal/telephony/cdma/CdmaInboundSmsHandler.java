@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
  * Copyright (C) 2013 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +20,9 @@ package com.android.internal.telephony.cdma;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.os.Message;
 import android.os.SystemProperties;
-import android.preference.PreferenceManager;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.SmsCbMessage;
 
@@ -46,7 +46,7 @@ import java.util.Arrays;
 public class CdmaInboundSmsHandler extends InboundSmsHandler {
 
     private final CdmaSMSDispatcher mSmsDispatcher;
-    private final CdmaServiceCategoryProgramHandler mServiceCategoryProgramHandler;
+    protected CdmaServiceCategoryProgramHandler mServiceCategoryProgramHandler;
 
     private byte[] mLastDispatchedSmsFingerprint;
     private byte[] mLastAcknowledgedSmsFingerprint;
@@ -57,14 +57,19 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     /**
      * Create a new inbound SMS handler for CDMA.
      */
-    private CdmaInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
+    protected CdmaInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
             PhoneBase phone, CdmaSMSDispatcher smsDispatcher) {
-        super("CdmaInboundSmsHandler", context, storageMonitor, phone,
-                CellBroadcastHandler.makeCellBroadcastHandler(context));
+        super("CdmaInboundSmsHandler", context, storageMonitor, phone, null);
         mSmsDispatcher = smsDispatcher;
+        init(context, phone);
+        mPhone = phone;
+        phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
+    }
+
+    protected void init(Context context, PhoneBase phone) {
+        mCellBroadcastHandler = CellBroadcastHandler.makeCellBroadcastHandler(context);
         mServiceCategoryProgramHandler = CdmaServiceCategoryProgramHandler.makeScpHandler(context,
                 phone.mCi);
-        phone.mCi.setOnNewCdmaSms(getHandler(), EVENT_NEW_SMS, null);
     }
 
     /**
@@ -168,6 +173,10 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
                 // handled below, after storage check
                 break;
 
+            case SmsEnvelope.TELESERVICE_CT_WAP:
+                // handled below, after TELESERVICE_WAP
+                break;
+
             default:
                 loge("unsupported teleservice 0x" + Integer.toHexString(teleService));
                 return Intents.RESULT_SMS_UNSUPPORTED;
@@ -182,6 +191,14 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         }
 
         if (SmsEnvelope.TELESERVICE_WAP == teleService) {
+            return processCdmaWapPdu(sms.getUserData(), sms.mMessageRef,
+                    sms.getOriginatingAddress(), sms.getTimestampMillis());
+        } else if (SmsEnvelope.TELESERVICE_CT_WAP == teleService) {
+            /* China Telecom WDP header contains Message identifier
+               and User data subparametrs extract these fields */
+            if (!sms.processCdmaCTWdpHeader(sms)) {
+                return Intents.RESULT_SMS_HANDLED;
+            }
             return processCdmaWapPdu(sms.getUserData(), sms.mMessageRef,
                     sms.getOriginatingAddress(), sms.getTimestampMillis());
         }
@@ -221,6 +238,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     protected void onUpdatePhoneObject(PhoneBase phone) {
         super.onUpdatePhoneObject(phone);
         mCellBroadcastHandler.updatePhoneObject(phone);
+        mServiceCategoryProgramHandler.updatePhoneObject(phone);
     }
 
     /**
@@ -252,12 +270,18 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         int voicemailCount = sms.getNumOfVoicemails();
         if (DBG) log("Voicemail count=" + voicemailCount);
 
-        // Store the voicemail count in preferences.
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        SharedPreferences.Editor editor = sp.edit();
-        editor.putInt(CDMAPhone.VM_COUNT_CDMA, voicemailCount);
-        editor.apply();
-        mPhone.setVoiceMessageWaiting(1, voicemailCount);
+        // range check
+        if (voicemailCount < 0) {
+            voicemailCount = -1;
+        } else if (voicemailCount > 99) {
+            // C.S0015-B v2, 4.5.12
+            // range: 0-99
+            voicemailCount = 99;
+        }
+        // update voice mail count in phone
+        mPhone.setVoiceMessageCount(voicemailCount);
+        // store voice mail count in preferences
+        storeVoiceMailCount();
     }
 
     /**

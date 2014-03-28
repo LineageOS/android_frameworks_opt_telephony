@@ -42,19 +42,19 @@ public class ApnContext {
     protected static final boolean DBG = false;
 
     private final Context mContext;
-
-    private final String mApnType;
+    private final String mDataProfileType;
 
     private DctConstants.State mState;
 
-    private ArrayList<ApnSetting> mWaitingApns = null;
+    private ArrayList<DataProfile> mWaitingDataProfiles = null;
+    private final int mPriority;
 
     public final int priority;
 
     /** A zero indicates that all waiting APNs had a permanent error */
     private AtomicInteger mWaitingApnsPermanentFailureCountDown;
 
-    private ApnSetting mApnSetting;
+    private DataProfile mDataProfile;
 
     DcAsyncChannel mDcAc;
 
@@ -71,11 +71,12 @@ public class ApnContext {
      * carrier requirements met
      */
     AtomicBoolean mDependencyMet;
-
-    public ApnContext(Context context, String apnType, String logTag, NetworkConfig config) {
+    public ApnContext(Context context, String dataProfileType, String logTag,
+            NetworkConfig config) {
         mContext = context;
-        mApnType = apnType;
+        mDataProfileType = dataProfileType;
         mState = DctConstants.State.IDLE;
+        mPriority = DcTrackerBase.mApnPriorities.get(mDataProfileType);
         setReason(Phone.REASON_DATA_ENABLED);
         mDataEnabled = new AtomicBoolean(false);
         mDependencyMet = new AtomicBoolean(config.dependencyMet);
@@ -84,8 +85,8 @@ public class ApnContext {
         LOG_TAG = logTag;
     }
 
-    public String getApnType() {
-        return mApnType;
+    public String getDataProfileType() {
+        return mDataProfileType;
     }
 
     public synchronized DcAsyncChannel getDcAc() {
@@ -108,19 +109,19 @@ public class ApnContext {
         mReconnectAlarmIntent = intent;
     }
 
-    public synchronized ApnSetting getApnSetting() {
-        log("getApnSetting: apnSetting=" + mApnSetting);
-        return mApnSetting;
+    public synchronized DataProfile getDataProfile() {
+        log("getDataProfile: mDataProfile=" + mDataProfile);
+        return mDataProfile;
     }
 
-    public synchronized void setApnSetting(ApnSetting apnSetting) {
-        log("setApnSetting: apnSetting=" + apnSetting);
-        mApnSetting = apnSetting;
+    public synchronized void setDataProfile(DataProfile dataProfile) {
+        log("setDataProfile: mDataProfile=" + dataProfile);
+        mDataProfile = dataProfile;
     }
 
-    public synchronized void setWaitingApns(ArrayList<ApnSetting> waitingApns) {
-        mWaitingApns = waitingApns;
-        mWaitingApnsPermanentFailureCountDown.set(mWaitingApns.size());
+    public synchronized void setWaitingDataProfiles(ArrayList<DataProfile> waitingDataProfiles) {
+        mWaitingDataProfiles = waitingDataProfiles;
+        mWaitingApnsPermanentFailureCountDown.set(mWaitingDataProfiles.size());
     }
 
     public int getWaitingApnsPermFailCount() {
@@ -131,9 +132,9 @@ public class ApnContext {
         mWaitingApnsPermanentFailureCountDown.decrementAndGet();
     }
 
-    public synchronized ApnSetting getNextWaitingApn() {
-        ArrayList<ApnSetting> list = mWaitingApns;
-        ApnSetting apn = null;
+    public synchronized DataProfile getNextWaitingApn() {
+        ArrayList<DataProfile> list = mWaitingDataProfiles;
+        DataProfile apn = null;
 
         if (list != null) {
             if (!list.isEmpty()) {
@@ -143,17 +144,33 @@ public class ApnContext {
         return apn;
     }
 
-    public synchronized void removeWaitingApn(ApnSetting apn) {
-        if (mWaitingApns != null) {
-            mWaitingApns.remove(apn);
+    public synchronized void removeWaitingApn(DataProfile apn) {
+        if (mWaitingDataProfiles != null) {
+            mWaitingDataProfiles.remove(apn);
         }
     }
 
-    public synchronized ArrayList<ApnSetting> getWaitingApns() {
-        if (mWaitingApns == null) {
-            return new ArrayList<ApnSetting>();
+    public synchronized ArrayList<DataProfile> getWaitingApns() {
+        if (mWaitingDataProfiles == null) {
+            return new ArrayList<DataProfile>();
         }
-        return mWaitingApns;
+        return mWaitingDataProfiles;
+    }
+
+    public synchronized int getPriority() {
+        return mPriority;
+    }
+
+    public synchronized boolean isHigherPriority(ApnContext context) {
+        return this.mPriority > context.getPriority();
+    }
+
+    public synchronized boolean isLowerPriority(ApnContext context) {
+        return this.mPriority < context.getPriority();
+    }
+
+    public synchronized boolean isEqualPriority(ApnContext context) {
+        return this.mPriority == context.getPriority();
     }
 
     public synchronized void setState(DctConstants.State s) {
@@ -164,8 +181,8 @@ public class ApnContext {
         mState = s;
 
         if (mState == DctConstants.State.FAILED) {
-            if (mWaitingApns != null) {
-                mWaitingApns.clear(); // when teardown the connection and set to IDLE
+            if (mWaitingDataProfiles != null) {
+                mWaitingDataProfiles.clear(); // when teardown the connection and set to IDLE
             }
         }
     }
@@ -237,8 +254,8 @@ public class ApnContext {
         if (TextUtils.isEmpty(provisioningApn)) {
             return false;
         }
-        if ((mApnSetting != null) && (mApnSetting.apn != null)) {
-            return (mApnSetting.apn.equals(provisioningApn));
+        if ((mDataProfile != null) && (mDataProfile.apn != null)) {
+            return (mDataProfile.apn.equals(provisioningApn));
         } else {
             return false;
         }
@@ -247,14 +264,15 @@ public class ApnContext {
     @Override
     public synchronized String toString() {
         // We don't print mDataConnection because its recursive.
-        return "{mApnType=" + mApnType + " mState=" + getState() + " mWaitingApns={" + mWaitingApns +
+        return "{mApnType=" + mDataProfileType + " mState=" + getState() +
+                " mWaitingDataProfiles={" + mWaitingDataProfiles +
                 "} mWaitingApnsPermanentFailureCountDown=" + mWaitingApnsPermanentFailureCountDown +
-                " mApnSetting={" + mApnSetting + "} mReason=" + mReason +
+                " mDataProfile={" + mDataProfile + "} mReason=" + mReason +
                 " mDataEnabled=" + mDataEnabled + " mDependencyMet=" + mDependencyMet + "}";
     }
 
     protected void log(String s) {
-        Rlog.d(LOG_TAG, "[ApnContext:" + mApnType + "] " + s);
+        Rlog.d(LOG_TAG, "[ApnContext:" + mDataProfileType + "] " + s);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

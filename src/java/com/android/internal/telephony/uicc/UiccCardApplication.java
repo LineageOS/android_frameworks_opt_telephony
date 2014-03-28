@@ -48,6 +48,8 @@ public class UiccCardApplication {
     private static final int EVENT_QUERY_FACILITY_LOCK_DONE = 6;
     private static final int EVENT_CHANGE_FACILITY_LOCK_DONE = 7;
     private static final int EVENT_PIN2_PUK2_DONE = 8;
+    private int mPin1RetryCount = -1;
+    private int mPin2RetryCount = -1;
 
     private final Object  mLock = new Object();
     private UiccCard      mUiccCard; //parent
@@ -74,7 +76,7 @@ public class UiccCardApplication {
 
     private RegistrantList mReadyRegistrants = new RegistrantList();
     private RegistrantList mPinLockedRegistrants = new RegistrantList();
-    private RegistrantList mNetworkLockedRegistrants = new RegistrantList();
+    private RegistrantList mPersoLockedRegistrants = new RegistrantList();
 
     UiccCardApplication(UiccCard uiccCard,
                         IccCardApplicationStatus as,
@@ -132,8 +134,8 @@ public class UiccCardApplication {
             }
 
             if (mPersoSubState != oldPersoSubState &&
-                    mPersoSubState == PersoSubState.PERSOSUBSTATE_SIM_NETWORK) {
-                notifyNetworkLockedRegistrantsIfNeeded(null);
+                    isPersoLocked()) {
+                notifyPersoLockedRegistrantsIfNeeded(null);
             }
 
             if (mAppState != oldAppState) {
@@ -241,6 +243,9 @@ public class UiccCardApplication {
                 if (DBG) log("EVENT_CHANGE_FACILITY_FDN_DONE: " +
                         "mIccFdnEnabled=" + mIccFdnEnabled);
             } else {
+                if (ar.result != null) {
+                    parsePinPukErrorResult(ar, false);
+                }
                 attemptsRemaining = parsePinPukErrorResult(ar);
                 loge("Error change facility fdn with exception " + ar.exception);
             }
@@ -321,6 +326,9 @@ public class UiccCardApplication {
                 if (DBG) log( "EVENT_CHANGE_FACILITY_LOCK_DONE: mIccLockEnabled= "
                         + mIccLockEnabled);
             } else {
+                if (ar.result != null) {
+                    parsePinPukErrorResult(ar, true);
+                }
                 attemptsRemaining = parsePinPukErrorResult(ar);
                 loge("Error change facility lock with exception " + ar.exception);
             }
@@ -349,6 +357,37 @@ public class UiccCardApplication {
         }
     }
 
+    /**
+     * Parse the error response to obtain No of attempts remaining to unlock PIN1/PUK1
+     */
+    private void parsePinPukErrorResult(AsyncResult ar, boolean isPin1) {
+        int[] result = (int[]) ar.result;
+        int length = result.length;
+        mPin1RetryCount = -1;
+        mPin2RetryCount = -1;
+        if (length > 0) {
+            if (isPin1) {
+                mPin1RetryCount = result[0];
+            } else {
+                mPin2RetryCount = result[0];
+            }
+        }
+    }
+
+     /**
+     * @return No. of Attempts remaining to unlock PIN1/PUK1
+     */
+     public int getIccPin1RetryCount() {
+         return mPin1RetryCount;
+     }
+
+     /**
+      * @return No. of Attempts remaining to unlock PIN2/PUK2
+     */
+     public int getIccPin2RetryCount() {
+         return mPin2RetryCount;
+     }
+
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg){
@@ -365,11 +404,16 @@ public class UiccCardApplication {
                 case EVENT_PIN2_PUK2_DONE:
                 case EVENT_CHANGE_PIN1_DONE:
                 case EVENT_CHANGE_PIN2_DONE:
-                    // a PIN/PUK/PIN2/PUK2 complete
                     // request has completed. ar.userObj is the response Message
-                    int attemptsRemaining = -1;
                     ar = (AsyncResult)msg.obj;
+                    int attemptsRemaining = -1;
                     if ((ar.exception != null) && (ar.result != null)) {
+                        if (msg.what == EVENT_PIN1_PUK1_DONE ||
+                                msg.what == EVENT_CHANGE_PIN1_DONE) {
+                            parsePinPukErrorResult(ar, true);
+                        } else {
+                            parsePinPukErrorResult(ar, false);
+                        }
                         attemptsRemaining = parsePinPukErrorResult(ar);
                     }
                     Message response = (Message)ar.userObj;
@@ -398,6 +442,31 @@ public class UiccCardApplication {
             }
         }
     };
+
+    void onRefresh(IccRefreshResponse refreshResponse){
+        if (refreshResponse == null) {
+            loge("onRefresh received without input");
+            return;
+        }
+
+        if (refreshResponse.aid == null ||
+                refreshResponse.aid.equals(mAid)) {
+            log("refresh for app " + refreshResponse.aid);
+        } else {
+         // This is for a different app. Ignore.
+            return;
+        }
+
+        switch (refreshResponse.refreshResult) {
+            case IccRefreshResponse.REFRESH_RESULT_INIT:
+            case IccRefreshResponse.REFRESH_RESULT_RESET:
+                log("onRefresh: Setting app state to unknown");
+                // Move our state to Unknown as soon as we know about a refresh
+                // so that anyone interested does not get a stale state.
+                mAppState = AppState.APPSTATE_UNKNOWN;
+                break;
+        }
+    }
 
     public void registerForReady(Handler h, int what, Object obj) {
         synchronized (mLock) {
@@ -431,19 +500,19 @@ public class UiccCardApplication {
     }
 
     /**
-     * Notifies handler of any transition into State.NETWORK_LOCKED
+     * Notifies handler of any transition into State.PERSO_LOCKED
      */
-    public void registerForNetworkLocked(Handler h, int what, Object obj) {
+    public void registerForPersoLocked(Handler h, int what, Object obj) {
         synchronized (mLock) {
             Registrant r = new Registrant (h, what, obj);
-            mNetworkLockedRegistrants.add(r);
-            notifyNetworkLockedRegistrantsIfNeeded(r);
+            mPersoLockedRegistrants.add(r);
+            notifyPersoLockedRegistrantsIfNeeded(r);
         }
     }
 
-    public void unregisterForNetworkLocked(Handler h) {
+    public void unregisterForPersoLocked(Handler h) {
         synchronized (mLock) {
-            mNetworkLockedRegistrants.remove(h);
+            mPersoLockedRegistrants.remove(h);
         }
     }
 
@@ -507,19 +576,20 @@ public class UiccCardApplication {
      *
      * @param r Registrant to be notified. If null - all registrants will be notified
      */
-    private void notifyNetworkLockedRegistrantsIfNeeded(Registrant r) {
+    private void notifyPersoLockedRegistrantsIfNeeded(Registrant r) {
         if (mDestroyed) {
             return;
         }
 
         if (mAppState == AppState.APPSTATE_SUBSCRIPTION_PERSO &&
-                mPersoSubState == PersoSubState.PERSOSUBSTATE_SIM_NETWORK) {
+                isPersoLocked()) {
+            AsyncResult ar = new AsyncResult(null, mPersoSubState.ordinal(), null);
             if (r == null) {
-                if (DBG) log("Notifying registrants: NETWORK_LOCKED");
-                mNetworkLockedRegistrants.notifyRegistrants();
+                if (DBG) log("Notifying registrants: PERSO_LOCKED");
+                mPersoLockedRegistrants.notifyRegistrants(ar);
             } else {
-                if (DBG) log("Notifying 1 registrant: NETWORK_LOCED");
-                r.notifyRegistrant(new AsyncResult(null, null, null));
+                if (DBG) log("Notifying 1 registrant: PERSO_LOCKED");
+                r.notifyRegistrant(ar);
             }
         }
     }
@@ -548,6 +618,10 @@ public class UiccCardApplication {
         }
     }
 
+    public String getAppLabel() {
+        return mAppLabel;
+    }
+
     public PinState getPin1State() {
         synchronized (mLock) {
             if (mPin1Replaced) {
@@ -566,6 +640,17 @@ public class UiccCardApplication {
     public IccRecords getIccRecords() {
         synchronized (mLock) {
             return mIccRecords;
+        }
+    }
+
+    public boolean isPersoLocked() {
+        switch (mPersoSubState) {
+            case PERSOSUBSTATE_UNKNOWN:
+            case PERSOSUBSTATE_IN_PROGRESS:
+            case PERSOSUBSTATE_READY:
+                return false;
+            default:
+                return true;
         }
     }
 
@@ -638,10 +723,10 @@ public class UiccCardApplication {
         }
     }
 
-    public void supplyNetworkDepersonalization (String pin, Message onComplete) {
+    public void supplyDepersonalization (String pin, String type, Message onComplete) {
         synchronized (mLock) {
-            if (DBG) log("supplyNetworkDepersonalization");
-            mCi.supplyNetworkDepersonalization(pin, onComplete);
+            if (DBG) log("Network Despersonalization: pin = **** , type = " + type);
+            mCi.supplyDepersonalization(pin, type, onComplete);
         }
     }
 
@@ -837,10 +922,10 @@ public class UiccCardApplication {
             pw.println("  mPinLockedRegistrants[" + i + "]="
                     + ((Registrant)mPinLockedRegistrants.get(i)).getHandler());
         }
-        pw.println(" mNetworkLockedRegistrants: size=" + mNetworkLockedRegistrants.size());
-        for (int i = 0; i < mNetworkLockedRegistrants.size(); i++) {
-            pw.println("  mNetworkLockedRegistrants[" + i + "]="
-                    + ((Registrant)mNetworkLockedRegistrants.get(i)).getHandler());
+        pw.println(" mPersoLockedRegistrants: size=" + mPersoLockedRegistrants.size());
+        for (int i = 0; i < mPersoLockedRegistrants.size(); i++) {
+            pw.println("  mPersoLockedRegistrants[" + i + "]="
+                    + ((Registrant)mPersoLockedRegistrants.get(i)).getHandler());
         }
         pw.flush();
     }

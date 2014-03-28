@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 import android.telephony.Rlog;
 import android.util.Log;
+import com.android.internal.telephony.CallStateException;
 
 /**
  * {@hide}
@@ -27,6 +28,10 @@ public abstract class Connection {
     //Caller Name Display
     protected String mCnapName;
     protected int mCnapNamePresentation  = PhoneConstants.PRESENTATION_ALLOWED;
+
+    public CallDetails callDetails = new CallDetails();
+    public CallModify callModifyRequest = null;
+    public String errorInfo;
 
     private static String LOG_TAG = "Connection";
 
@@ -57,6 +62,9 @@ public abstract class Connection {
         CS_RESTRICTED_NORMAL,           /* call was blocked by restricted normal voice access */
         CS_RESTRICTED_EMERGENCY,        /* call was blocked by restricted emergency voice access */
         UNOBTAINABLE_NUMBER,            /* Unassigned number (3GPP TS 24.008 table 10.5.123) */
+        DIAL_MODIFIED_TO_USSD,          /* Stk Call Control modified DIAL request to USSD request */
+        DIAL_MODIFIED_TO_SS,            /* Stk Call Control modified DIAL request to SS request */
+        DIAL_MODIFIED_TO_DIAL,          /* Stk Call Control modified DIAL request to DIAL with modified data */
         CDMA_LOCKED_UNTIL_POWER_CYCLE,  /* MS is locked until next power cycle */
         CDMA_DROP,
         CDMA_INTERCEPT,                 /* INTERCEPT order received, MS state idle entered */
@@ -67,10 +75,25 @@ public abstract class Connection {
         CDMA_PREEMPTED,
         CDMA_NOT_EMERGENCY,              /* not an emergency call */
         CDMA_ACCESS_BLOCKED,            /* Access Blocked by CDMA network */
-        ERROR_UNSPECIFIED
+        EMERGENCY_TEMP_FAILURE,         /* EMERGENCY call failed with temporary fail cause */
+        EMERGENCY_PERM_FAILURE,         /* EMERGENCY call failed with permanent fail cause */
+        ERROR_UNSPECIFIED,
+        /* Ims Disconnect cause grouped from here */
+        SRVCC_CALL_DROP,                /* Call dropped because of SRVCC*/
+        ANSWERED_ELSEWHERE,             /* MT call has ended due to a release from the network
+                                         * because the call was answered elsewhere */
+
+        CALL_FAIL_MISC
     }
 
     Object mUserData;
+
+    /*
+     * This time/timespan values are based on SystemClock.elapsedRealTime(),
+     * i.e., time since boot.  They are appropriate for comparison and
+     * calculating deltas.
+     */
+    public long mConnectTimeReal;
 
     /* Instance Methods */
 
@@ -105,7 +128,31 @@ public abstract class Connection {
      */
 
     public int getCnapNamePresentation() {
-       return mCnapNamePresentation;
+        return mCnapNamePresentation;
+    }
+
+    public CallDetails getCallDetails() {
+        return callDetails;
+    }
+
+    public CallModify getCallModify() {
+        return callModifyRequest;
+    }
+
+    public String getErrorInfo() {
+        return errorInfo;
+    }
+
+    public void setConnectionDetails(CallDetails ConnDetails) {
+        callDetails = ConnDetails;
+    }
+
+    public void setModifyConnectionDetails(CallModify modifyConn) {
+        callModifyRequest = modifyConn;
+    }
+
+    public void setErrorInfo(String errorInfo) {
+        errorInfo = errorInfo;
     }
 
     /**
@@ -128,6 +175,16 @@ public abstract class Connection {
      * Returns 0 before then.
      */
     public abstract long getConnectTime();
+
+    /**
+     * Set connection connect time in currentTimeMillis() format.
+     * This API may be used to change connect time of the
+     * Connection for scenarios like IMS Volte SRVCC where
+     * connect time is transferred from PS Connection to CS.
+     */
+    public void setConnectTime(long timeInMillis) {
+        Rlog.e(LOG_TAG, "setConnectTime() not implemented");
+    }
 
     /**
      * Disconnect time in currentTimeMillis() format.
@@ -285,6 +342,16 @@ public abstract class Connection {
      * @return UUSInfo containing the UUS userdata.
      */
     public abstract UUSInfo getUUSInfo();
+
+    /**
+     * Gets connection index associated with connection.
+     * @return index or exception if unavailable or phone
+     * does not support this API
+     */
+
+    public int getIndex() throws CallStateException {
+        throw new CallStateException("Connection index not assigned");
+    }
 
     /**
      * Build a human representation of a connection instance, suitable for debugging.

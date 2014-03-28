@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Not a Contribution.
  * Copyright (C) 2008 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,6 +18,7 @@
 
 package com.android.internal.telephony.cdma;
 
+import android.content.Context;
 import android.os.Parcel;
 import android.os.SystemProperties;
 import android.telephony.PhoneNumberUtils;
@@ -26,6 +29,7 @@ import android.telephony.Rlog;
 import android.util.Log;
 
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsMessageBase;
@@ -299,6 +303,26 @@ public class SmsMessage extends SmsMessageBase {
      */
     public static SubmitPdu getSubmitPdu(String scAddr, String destAddr, String message,
             boolean statusReportRequested, SmsHeader smsHeader) {
+        return getSubmitPdu(scAddr, destAddr, message, statusReportRequested, smsHeader, -1);
+    }
+
+    /**
+     * Get an SMS-SUBMIT PDU for a destination address and a message
+     *
+     * @param scAddr                Service Centre address.  Null means use default.
+     * @param destAddr              Address of the recipient.
+     * @param message               String representation of the message payload.
+     * @param statusReportRequested Indicates whether a report is requested for this message.
+     * @param smsHeader             Array containing the data for the User Data Header, preceded
+     *                              by the Element Identifiers.
+     * @param priority              Priority level of the message
+     * @return a <code>SubmitPdu</code> containing the encoded SC
+     *         address, if applicable, and the encoded message.
+     *         Returns null on encode error.
+     * @hide
+     */
+    public static SubmitPdu getSubmitPdu(String scAddr, String destAddr, String message,
+            boolean statusReportRequested, SmsHeader smsHeader, int priority) {
 
         /**
          * TODO(cleanup): Do we really want silent failure like this?
@@ -312,7 +336,7 @@ public class SmsMessage extends SmsMessageBase {
         UserData uData = new UserData();
         uData.payloadStr = message;
         uData.userDataHeader = smsHeader;
-        return privateGetSubmitPdu(destAddr, statusReportRequested, uData);
+        return privateGetSubmitPdu(destAddr, statusReportRequested, uData, priority);
     }
 
     /**
@@ -327,8 +351,27 @@ public class SmsMessage extends SmsMessageBase {
      *         address, if applicable, and the encoded message.
      *         Returns null on encode error.
      */
+    public static SubmitPdu getSubmitPdu(String scAddr, String destAddr,
+            int destPort, byte[] data, boolean statusReportRequested) {
+        return getSubmitPdu(scAddr, destAddr, destPort, 0, data,statusReportRequested);
+    }
+
+
+    /**
+     * Get an SMS-SUBMIT PDU for a data message to a destination address and port.
+     *
+     * @param scAddr Service Centre address. null == use default
+     * @param destAddr the address of the destination for the message
+     * @param destPort the port to deliver the message to at the
+     *        destination
+     * @param origPort  the originator port set by the sender
+     * @param data the data for the message
+     * @return a <code>SubmitPdu</code> containing the encoded SC
+     *         address, if applicable, and the encoded message.
+     *         Returns null on encode error.
+     */
     public static SubmitPdu getSubmitPdu(String scAddr, String destAddr, int destPort,
-            byte[] data, boolean statusReportRequested) {
+             int origPort, byte[] data, boolean statusReportRequested) {
 
         /**
          * TODO(cleanup): this is not a general-purpose SMS creation
@@ -339,7 +382,7 @@ public class SmsMessage extends SmsMessageBase {
 
         SmsHeader.PortAddrs portAddrs = new SmsHeader.PortAddrs();
         portAddrs.destPort = destPort;
-        portAddrs.origPort = 0;
+        portAddrs.origPort = origPort;
         portAddrs.areEightBits = false;
 
         SmsHeader smsHeader = new SmsHeader();
@@ -367,6 +410,22 @@ public class SmsMessage extends SmsMessageBase {
     public static SubmitPdu getSubmitPdu(String destAddr, UserData userData,
             boolean statusReportRequested) {
         return privateGetSubmitPdu(destAddr, statusReportRequested, userData);
+    }
+
+    /**
+     * Get an SMS-SUBMIT PDU for a data message to a destination address &amp; port
+     *
+     * @param destAddr the address of the destination for the message
+     * @param userData the data for the message
+     * @param statusReportRequested Indicates whether a report is requested for this message.
+     * @param priority Priority level of the message
+     * @return a <code>SubmitPdu</code> containing the encoded SC
+     *         address, if applicable, and the encoded message.
+     *         Returns null on encode error.
+     */
+    public static SubmitPdu getSubmitPdu(String destAddr, UserData userData,
+            boolean statusReportRequested, int priority) {
+        return privateGetSubmitPdu(destAddr, statusReportRequested, userData, priority);
     }
 
     /**
@@ -727,8 +786,12 @@ public class SmsMessage extends SmsMessageBase {
             mMessageBody = mBearerData.userData.payloadStr;
         }
 
+        // Add + for international numbers if + is not existing
         if (mOriginatingAddress != null) {
             mOriginatingAddress.address = new String(mOriginatingAddress.origBytes);
+            if (mOriginatingAddress.ton == CdmaSmsAddress.TON_INTERNATIONAL_OR_IP) {
+                mOriginatingAddress.address = "+" + mOriginatingAddress.address;
+            }
             if (VDBG) Rlog.v(LOG_TAG, "SMS originating address: "
                     + mOriginatingAddress.address);
         }
@@ -772,7 +835,7 @@ public class SmsMessage extends SmsMessageBase {
     /**
      * Parses a broadcast SMS, possibly containing a CMAS alert.
      */
-    SmsCbMessage parseBroadcastSms() {
+    public SmsCbMessage parseBroadcastSms() {
         BearerData bData = BearerData.decode(mEnvelope.bearerData, mEnvelope.serviceCategory);
         if (bData == null) {
             Rlog.w(LOG_TAG, "BearerData.decode() returned null");
@@ -834,6 +897,15 @@ public class SmsMessage extends SmsMessageBase {
      */
     private static SubmitPdu privateGetSubmitPdu(String destAddrStr, boolean statusReportRequested,
             UserData userData) {
+        return privateGetSubmitPdu(destAddrStr, statusReportRequested, userData, -1);
+    }
+
+    /**
+     * Creates BearerData and Envelope from parameters for a Submit SMS.
+     * @return byte stream for SubmitPdu.
+     */
+    private static SubmitPdu privateGetSubmitPdu(String destAddrStr, boolean statusReportRequested,
+            UserData userData, int priority) {
 
         /**
          * TODO(cleanup): give this function a more meaningful name.
@@ -862,6 +934,10 @@ public class SmsMessage extends SmsMessageBase {
         bearerData.userAckReq = false;
         bearerData.readAckReq = false;
         bearerData.reportReq = false;
+        if (priority != -1) {
+            bearerData.priorityIndicatorSet = true;
+            bearerData.priority = priority;
+        }
 
         bearerData.userData = userData;
 
@@ -875,6 +951,13 @@ public class SmsMessage extends SmsMessageBase {
         int teleservice = bearerData.hasUserDataHeader ?
                 SmsEnvelope.TELESERVICE_WEMT : SmsEnvelope.TELESERVICE_WMT;
 
+        Context context = PhoneFactory.getContext();
+        boolean ascii7bitForLongMsg = context.getResources().
+            getBoolean(com.android.internal.R.bool.config_ascii_7bit_support_for_long_message);
+        if (ascii7bitForLongMsg) {
+            Rlog.d(LOG_TAG, "ascii7bitForLongMsg = " + ascii7bitForLongMsg);
+            teleservice = SmsEnvelope.TELESERVICE_WMT;
+        }
         SmsEnvelope envelope = new SmsEnvelope();
         envelope.messageType = SmsEnvelope.MESSAGE_TYPE_POINT_TO_POINT;
         envelope.teleService = teleservice;
@@ -1027,8 +1110,64 @@ public class SmsMessage extends SmsMessageBase {
     /**
      * Returns the list of service category program data, if present.
      * @return a list of CdmaSmsCbProgramData objects, or null if not present
+     * @hide
      */
-    ArrayList<CdmaSmsCbProgramData> getSmsCbProgramData() {
+    public ArrayList<CdmaSmsCbProgramData> getSmsCbProgramData() {
         return mBearerData.serviceCategoryProgramData;
+    }
+
+    /**
+    * CT WDP header contains WDP Msg Identifier and WDP Userdata
+    */
+    protected boolean processCdmaCTWdpHeader(SmsMessage sms) {
+        int subparamId = 0;
+        int subParamLen = 0;
+        int msgID = 0;
+        boolean decodeSuccess = false;
+        try {
+            BitwiseInputStream inStream = new BitwiseInputStream(sms.getUserData());
+
+            /* Decode WDP Messsage Identifier */
+            subparamId = inStream.read(8);
+            if (subparamId != 0) {
+                Rlog.e(LOG_TAG, "Invalid WDP SubparameterId");
+                return false;
+            }
+            subParamLen = inStream.read(8);
+            if (subParamLen != 3) {
+                Rlog.e(LOG_TAG, "Invalid WDP subparameter length");
+                return false;
+            }
+            sms.mBearerData.messageType = inStream.read(4);
+            msgID = inStream.read(8) << 8;
+            msgID |= inStream.read(8);
+            sms.mBearerData.hasUserDataHeader = (inStream.read(1) == 1);
+            if (sms.mBearerData.hasUserDataHeader) {
+                Rlog.e(LOG_TAG, "Invalid WDP UserData header value");
+                return false;
+            }
+            inStream.skip(3);
+            sms.mBearerData.messageId = msgID;
+            sms.mMessageRef = msgID;
+
+            /* Decode WDP User Data */
+            subparamId = inStream.read(8);
+            subParamLen = inStream.read(8) * 8;
+            sms.mBearerData.userData.msgEncoding = inStream.read(5);
+            int consumedBits = 5;
+            if (sms.mBearerData.userData.msgEncoding != 0) {
+                Rlog.e(LOG_TAG, "Invalid WDP encoding");
+                return false;
+            }
+            sms.mBearerData.userData.numFields = inStream.read(8);
+            consumedBits += 8;
+            int dataBits = subParamLen - consumedBits;
+            sms.mBearerData.userData.payload = inStream.readByteArray(dataBits);
+            sms.mUserData = sms.mBearerData.userData.payload;
+            decodeSuccess = true;
+        } catch (BitwiseInputStream.AccessException ex) {
+            Rlog.e(LOG_TAG, "CT WDP Header decode failed: " + ex);
+        }
+        return decodeSuccess;
     }
 }

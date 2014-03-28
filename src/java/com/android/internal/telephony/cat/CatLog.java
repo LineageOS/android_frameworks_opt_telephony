@@ -38,4 +38,13 @@ public abstract class CatLog {
 
         Rlog.d("CAT", caller + ": " + msg);
     }
+    public static void e(Object caller, String msg) {
+        String className = caller.getClass().getName();
+        Rlog.e("CAT", className.substring(className.lastIndexOf('.') + 1) + ": "
+                + msg);
+    }
+
+    public static void e(String caller, String msg) {
+        Rlog.e("CAT", caller + ": " + msg);
+    }
 }

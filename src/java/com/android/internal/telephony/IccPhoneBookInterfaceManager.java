@@ -16,18 +16,23 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.ServiceManager;
+import android.telephony.Rlog;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.AdnRecordCache;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.UiccCard;
+import com.android.internal.telephony.uicc.UiccCardApplication;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -40,11 +45,14 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
     protected static final boolean DBG = true;
 
     protected PhoneBase mPhone;
+    private   UiccCardApplication mCurrentApp = null;
     protected AdnRecordCache mAdnCache;
     protected final Object mLock = new Object();
     protected int mRecordSize[];
     protected boolean mSuccess;
+    private   boolean mIs3gCard = false;  // flag to determine if card is 3G or 2G
     protected List<AdnRecord> mRecords;
+
 
     protected static final boolean ALLOW_SIM_OP_IN_UI_THREAD = false;
 
@@ -109,20 +117,80 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
 
     public IccPhoneBookInterfaceManager(PhoneBase phone) {
         this.mPhone = phone;
-        IccRecords r = phone.mIccRecords.get();
-        if (r != null) {
-            mAdnCache = r.getAdnCache();
+    }
+
+    private void cleanUp() {
+        if (mAdnCache != null) {
+            mAdnCache.reset();
+            mAdnCache = null;
         }
+        mIs3gCard = false;
+        mCurrentApp = null;
     }
 
     public void dispose() {
+        cleanUp();
     }
 
-    public void updateIccRecords(IccRecords iccRecords) {
-        if (iccRecords != null) {
-            mAdnCache = iccRecords.getAdnCache();
-        } else {
-            mAdnCache = null;
+    public void setIccCard(UiccCard card) {
+        logd("Card update received: " + card);
+
+        if (card == null) {
+            logd("Card is null. Cleanup");
+            cleanUp();
+            return;
+        }
+
+        UiccCardApplication validApp = null;
+        int numApps = card.getNumApplications();
+        boolean isCurrentAppFound = false;
+
+        for (int i = 0; i < numApps; i++) {
+            UiccCardApplication app = card.getApplicationIndex(i);
+            if (app != null) {
+                // Determine if the card is a 3G card by looking
+                // for a CSIM/USIM/ISIM app on the card
+                AppType type = app.getType();
+                if (type == AppType.APPTYPE_CSIM || type == AppType.APPTYPE_USIM
+                        || type == AppType.APPTYPE_ISIM) {
+                    logd("Card is 3G");
+                    mIs3gCard = true;
+                }
+                // Check if the app we have is present.
+                // If yes, then continue using that.
+                if (!isCurrentAppFound) {
+                    // if not, then find a valid app.
+                    // It does not matter which app, since we are
+                    // accessing non-app specific files
+                    if (validApp == null && type != AppType.APPTYPE_UNKNOWN) {
+                        validApp = app;
+                    }
+
+                    if (mCurrentApp == app) {
+                        logd("Existing app found");
+                        isCurrentAppFound = true;
+                    }
+                }
+
+                // We have determined that this is 3g card
+                // and we also found the current app
+                // We are done
+                if (mIs3gCard && isCurrentAppFound) {
+                    break;
+                }
+            }
+        }
+
+        //Set a new currentApp if
+        // - one was not set before
+        // OR
+        // - the previously set app no longer exists
+        if (mCurrentApp == null || !isCurrentAppFound) {
+            if (validApp != null) {
+                logd("Setting currentApp: " + validApp);
+                mCurrentApp = validApp;
+                mAdnCache = mCurrentApp.getIccRecords().getAdnCache();
+            }
         }
     }
 
@@ -183,6 +251,49 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
             Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, status);
             AdnRecord oldAdn = new AdnRecord(oldTag, oldPhoneNumber);
             AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber);
+            if (mAdnCache != null) {
+                mAdnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
+                waitForResult(status);
+            } else {
+                loge("Failure while trying to update by search due to uninitialised adncache");
+            }
+        }
+        return mSuccess;
+    }
+
+    @Override
+    public boolean updateAdnRecordsWithContentValuesInEfBySearch(int efid, ContentValues values,
+            String pin2) {
+
+        if (mPhone.getContext().checkCallingOrSelfPermission(
+                android.Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            throw new SecurityException("Requires android.permission.WRITE_CONTACTS permission");
+        }
+
+        String oldTag = values.getAsString(IccProvider.STR_TAG);
+        String newTag = values.getAsString(IccProvider.STR_NEW_TAG);
+        String oldPhoneNumber = values.getAsString(IccProvider.STR_NUMBER);
+        String newPhoneNumber = values.getAsString(IccProvider.STR_NEW_NUMBER);
+        String oldEmail = values.getAsString(IccProvider.STR_EMAILS);
+        String newEmail = values.getAsString(IccProvider.STR_NEW_EMAILS);
+        String oldAnr = values.getAsString(IccProvider.STR_ANRS);
+        String newAnr = values.getAsString(IccProvider.STR_NEW_ANRS);
+        String[] oldEmailArray = TextUtils.isEmpty(oldEmail) ? null : getStringArray(oldEmail);
+        String[] newEmailArray = TextUtils.isEmpty(newEmail) ? null : getStringArray(newEmail);
+        String[] oldAnrArray = TextUtils.isEmpty(oldAnr) ? null : getStringArray(oldAnr);
+        String[] newAnrArray = TextUtils.isEmpty(newAnr) ? null : getStringArray(newAnr);
+        efid = updateEfForIccType(efid);
+
+        if (DBG)
+            logd("updateAdnRecordsInEfBySearch: efid=" + efid + ", values = " + values + ", pin2="
+                    + pin2);
+        synchronized (mLock) {
+            checkThread();
+            mSuccess = false;
+            AtomicBoolean status = new AtomicBoolean(false);
+            Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, status);
+            AdnRecord oldAdn = new AdnRecord(oldTag, oldPhoneNumber, oldEmailArray, oldAnrArray);
+            AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber, newEmailArray, newAnrArray);
             if (mAdnCache != null) {
                 mAdnCache.updateAdnBySearch(efid, oldAdn, newAdn, pin2, response);
                 waitForResult(status);
@@ -300,6 +411,13 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
         }
     }
 
+    private String[] getStringArray(String str) {
+        if (str != null) {
+            return str.split(",");
+        }
+        return null;
+    }
+
     protected void waitForResult(AtomicBoolean status) {
         while (!status.get()) {
             try {
@@ -311,13 +429,102 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
     }
 
     private int updateEfForIccType(int efid) {
-        // Check if we are trying to read ADN records
-        if (efid == IccConstants.EF_ADN) {
-            if (mPhone.getCurrentUiccAppType() == AppType.APPTYPE_USIM) {
-                return IccConstants.EF_PBR;
-            }
+        // If we are trying to read ADN records on a 3G card
+        // use EF_PBR
+        if (efid == IccConstants.EF_ADN && mIs3gCard) {
+            logd("Translate EF_ADN to EF_PBR");
+            return IccConstants.EF_PBR;
         }
         return efid;
+    }
+
+    @Override
+    public boolean updateUsimAdnRecordsInEfByIndex(int efid, String newTag, String newPhoneNumber,
+            String[] anrNumbers, String[] emails, int index, String pin2) {
+
+        if (mPhone.getContext().checkCallingOrSelfPermission(
+                android.Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            throw new SecurityException("Requires android.permission.WRITE_CONTACTS permission");
+        }
+
+        if (DBG)
+            logd("updateAdnRecordsInEfByIndex: efid=" + efid + " Index=" + index + " ==> " + "("
+                    + newTag + "," + newPhoneNumber + ")" + " pin2=" + pin2);
+        synchronized (mLock) {
+            checkThread();
+            mSuccess = false;
+            AtomicBoolean status = new AtomicBoolean(false);
+            Message response = mBaseHandler.obtainMessage(EVENT_UPDATE_DONE, status);
+            AdnRecord newAdn = new AdnRecord(newTag, newPhoneNumber, emails, anrNumbers);
+            efid = updateEfForIccType(efid);
+            if (mAdnCache != null) {
+                mAdnCache.updateUsimAdnByIndex(efid, newAdn, index, pin2, response);
+                waitForResult(status);
+            } else {
+                if (DBG)
+                    logd("Failure while trying to update by index due to uninitialised adncache");
+            }
+        }
+        return mSuccess;
+    }
+
+    @Override
+    public int getAdnCount() {
+        int adnCount = 0;
+        if (mAdnCache != null) {
+            if (mPhone.getCurrentUiccAppType() == AppType.APPTYPE_USIM) {
+                adnCount = mAdnCache.getUsimAdnCount();
+            } else {
+                adnCount = mAdnCache.getAdnCount();
+            }
+        } else {
+            loge("mAdnCache is NULL when getAdnCount.");
+        }
+        return adnCount;
+    }
+
+    @Override
+    public int getAnrCount() {
+        int anrCount = 0;
+        if (mAdnCache != null) {
+            anrCount = mAdnCache.getAnrCount();
+        } else {
+            loge("mAdnCache is NULL when getAnrCount.");
+        }
+        return anrCount;
+    }
+
+    @Override
+    public int getEmailCount() {
+        int emailCount = 0;
+        if (mAdnCache != null) {
+            emailCount = mAdnCache.getEmailCount();
+        } else {
+            loge("mAdnCache is NULL when getEmailCount.");
+        }
+        return emailCount;
+    }
+
+    @Override
+    public int getSpareAnrCount() {
+        int spareAnrCount = 0;
+        if (mAdnCache != null) {
+            spareAnrCount = mAdnCache.getSpareAnrCount();
+        } else {
+            loge("mAdnCache is NULL when getSpareAnrCount.");
+        }
+        return spareAnrCount;
+    }
+
+    @Override
+    public int getSpareEmailCount() {
+        int spareEmailCount = 0;
+        if (mAdnCache != null) {
+            spareEmailCount = mAdnCache.getSpareEmailCount();
+        } else {
+            loge("mAdnCache is NULL when getSpareEmailCount.");
+        }
+        return spareEmailCount;
     }
 }
 
