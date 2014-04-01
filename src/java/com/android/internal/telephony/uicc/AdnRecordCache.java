@@ -350,12 +350,12 @@ public final class AdnRecordCache extends Handler implements IccConstants {
             //First Load from gloabl and then load from local PhoneBook.
             useLocalPb(false);
             result = mUsimPhoneBookManager.loadEfFilesFromUsim();
-            combinedResult.addAll(result);
+            if (null != result) combinedResult.addAll(result);
             useLocalPb(true);
             result = mUsimPhoneBookManager.loadEfFilesFromUsim();
-            combinedResult.addAll(result);
+            if (null != result) combinedResult.addAll(result);
 
-            result = combinedResult;
+            if (!combinedResult.isEmpty()) result = combinedResult;
         } else {
             result = getRecordsIfLoaded(efid);
         }
