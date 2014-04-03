@@ -478,14 +478,18 @@ public final class RuimRecords extends IccRecords {
                     mImsi = null;
                 }
 
-                log("IMSI: " + mImsi.substring(0, 6) + "xxxxxxxxx");
+                // FIXME: CSIM IMSI may not contain the MNC.
+                if (false) {
+                    log("IMSI: " + mImsi.substring(0, 6) + "xxxxxxxxx");
 
-                String operatorNumeric = getRUIMOperatorNumeric();
-                if (operatorNumeric != null) {
-                    if(operatorNumeric.length() <= 6){
-                        MccTable.updateMccMncConfiguration(mContext, operatorNumeric, false);
+                    String operatorNumeric = getRUIMOperatorNumeric();
+                    if (operatorNumeric != null) {
+                        if (operatorNumeric.length() <= 6) {
+                            MccTable.updateMccMncConfiguration(mContext, operatorNumeric, false);
+                        }
                     }
                 }
+
             break;
 
             case EVENT_GET_CDMA_SUBSCRIPTION_DONE:
@@ -630,21 +634,24 @@ public final class RuimRecords extends IccRecords {
 
         // Further records that can be inserted are Operator/OEM dependent
 
-        String operator = getRUIMOperatorNumeric();
-        if (!TextUtils.isEmpty(operator)) {
-            log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
-                    operator + "'");
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
-        } else {
-            log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
-        }
+        // FIXME: CSIM IMSI may not contain the MNC.
+        if (false) {
+            String operator = getRUIMOperatorNumeric();
+            if (!TextUtils.isEmpty(operator)) {
+                log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
+                        operator + "'");
+                SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
+            } else {
+                log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
+            }
 
-        if (!TextUtils.isEmpty(mImsi)) {
-            log("onAllRecordsLoaded set mcc imsi=" + mImsi);
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
-                    MccTable.countryCodeForMcc(Integer.parseInt(mImsi.substring(0,3))));
-        } else {
-            log("onAllRecordsLoaded empty imsi skipping setting mcc");
+            if (!TextUtils.isEmpty(mImsi)) {
+                log("onAllRecordsLoaded set mcc imsi=" + mImsi);
+                SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
+                        MccTable.countryCodeForMcc(Integer.parseInt(mImsi.substring(0,3))));
+            } else {
+                log("onAllRecordsLoaded empty imsi skipping setting mcc");
+            }
         }
 
         setLocaleFromCsim();
