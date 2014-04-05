@@ -231,7 +231,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     @Override
     protected RadioState getRadioStateFromInt(int stateInt) {
         if(!oldRilState)
-            super.getRadioStateFromInt(stateInt);
+             return super.getRadioStateFromInt(stateInt);
         RadioState state;
 
         /* RIL_RadioState ril.h */
@@ -288,10 +288,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 ret = responseInts(p);
                 setRadioPower(false, null);
                 setPreferredNetworkType(mPreferredNetworkType, null);
-                int cdmaSubscription = Settings.Global.getInt(mContext.getContentResolver(), Settings.Global.CDMA_SUBSCRIPTION_MODE, -1);
-                if(cdmaSubscription != -1) {
-                    setCdmaSubscriptionSource(mCdmaSubscription, null);
-                }
+                setCdmaSubscriptionSource(mCdmaSubscription, null);
                 if(mRilVersion >= 8)
                     setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
