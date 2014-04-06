@@ -68,6 +68,7 @@ public final class RuimRecords extends IccRecords {
     private String mMin;
     private String mHomeSystemId;
     private String mHomeNetworkId;
+    private boolean mMSIMRecordeEnabled = false;
 
     @Override
     public String toString() {
@@ -86,6 +87,7 @@ public final class RuimRecords extends IccRecords {
     }
 
     // ***** Event Constants
+    private static final int EVENT_GET_IMSI_DONE = 3;
     private static final int EVENT_GET_DEVICE_IDENTITY_DONE = 4;
     private static final int EVENT_GET_ICCID_DONE = 5;
     private static final int EVENT_GET_CDMA_SUBSCRIPTION_DONE = 10;
@@ -424,7 +426,8 @@ public final class RuimRecords extends IccRecords {
             //Update MccTable with the retrieved IMSI
             String operatorNumeric = getOperatorNumeric();
             if (operatorNumeric != null) {
-                if(operatorNumeric.length() <= 6){
+                if(operatorNumeric.length() <= 6) {
+                    mMSIMRecordeEnabled = true;
                     MccTable.updateMccMncConfiguration(mContext, operatorNumeric);
                 }
             }
@@ -514,6 +517,35 @@ public final class RuimRecords extends IccRecords {
             case EVENT_GET_DEVICE_IDENTITY_DONE:
                 log("Event EVENT_GET_DEVICE_IDENTITY_DONE Received");
             break;
+
+            /* IO events */
+            case EVENT_GET_IMSI_DONE:
+                isRecordLoadResponse = true;
+
+                ar = (AsyncResult)msg.obj;
+                if (ar.exception != null) {
+                    loge("Exception querying IMSI, Exception:" + ar.exception);
+                    break;
+                }
+
+                mImsi = (String) ar.result;
+
+                // IMSI (MCC+MNC+MSIN) is at least 6 digits, but not more
+                // than 15 (and usually 15).
+                if (mImsi != null && (mImsi.length() < 6 || mImsi.length() > 15)) {
+                    loge("invalid IMSI " + mImsi);
+                    mImsi = null;
+                }
+
+                log("IMSI: " + mImsi.substring(0, 6) + "xxxxxxxxx");
+
+                String operatorNumeric = getOperatorNumeric();
+                if (operatorNumeric != null) {
+                    if(operatorNumeric.length() <= 6) {
+                        MccTable.updateMccMncConfiguration(mContext, operatorNumeric);
+                    }
+                }
+                break;
 
             case EVENT_GET_CDMA_SUBSCRIPTION_DONE:
                 ar = (AsyncResult)msg.obj;
@@ -690,6 +722,10 @@ public final class RuimRecords extends IccRecords {
         mRecordsRequested = true;
 
         if (DBG) log("fetchRuimRecords " + mRecordsToLoad);
+        if (!mMSIMRecordeEnabled) {
+            mCi.getIMSIForApp(mParentApp.getAid(), obtainMessage(EVENT_GET_IMSI_DONE));
+            mRecordsToLoad++;
+        }
 
         mFh.loadEFTransparent(EF_ICCID,
                 obtainMessage(EVENT_GET_ICCID_DONE));
