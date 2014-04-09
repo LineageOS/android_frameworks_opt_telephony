@@ -1081,6 +1081,32 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     /**
+     * Gets the voice mail count from preferences
+     */
+    public int getStoredVoiceMessageCount() {
+        int countVoiceMessages = 0;
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        int sub = getSubscription();
+        String imsi = sp.getString(VM_ID + sub, null);
+        String currentImsi = getSubscriberId();
+
+        if (DEBUG_PHONE) {
+            Rlog.d(LOG_TAG, "Voicemail count retrieval for Imsi = " + imsi +
+                    " current Imsi = " + currentImsi + " sub = " + sub);
+        }
+
+        if ((imsi != null) && (currentImsi != null)
+                && (currentImsi.equals(imsi))) {
+            // get voice mail count from preferences
+            countVoiceMessages = sp.getInt(VM_COUNT + sub, 0);
+            if (DEBUG_PHONE) {
+                Rlog.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages);
+            }
+        }
+        return countVoiceMessages;
+    }
+
+    /**
      * Returns the CDMA ERI icon index to display
      */
     @Override
