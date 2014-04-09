@@ -18,8 +18,8 @@ package com.android.internal.telephony;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.net.LinkCapabilities;
 import android.net.LinkProperties;
+import android.net.NetworkCapabilities;
 import android.net.wifi.WifiManager;
 import android.os.AsyncResult;
 import android.os.Build;
@@ -1356,8 +1356,8 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
-    public LinkCapabilities getLinkCapabilities(String apnType) {
-        return mDcTracker.getLinkCapabilities(apnType);
+    public NetworkCapabilities getNetworkCapabilities(String apnType) {
+        return mDcTracker.getNetworkCapabilities(apnType);
     }
 
     @Override

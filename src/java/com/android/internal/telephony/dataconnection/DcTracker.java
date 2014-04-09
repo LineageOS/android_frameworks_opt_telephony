@@ -28,8 +28,8 @@ import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
-import android.net.LinkCapabilities;
 import android.net.LinkProperties;
+import android.net.NetworkCapabilities;
 import android.net.NetworkConfig;
 import android.net.NetworkUtils;
 import android.net.ProxyInfo;
@@ -300,17 +300,19 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     @Override
-    public LinkCapabilities getLinkCapabilities(String apnType) {
+    public NetworkCapabilities getNetworkCapabilities(String apnType) {
         ApnContext apnContext = mApnContexts.get(apnType);
         if (apnContext!=null) {
             DcAsyncChannel dataConnectionAc = apnContext.getDcAc();
             if (dataConnectionAc != null) {
-                if (DBG) log("get active pdp is not null, return link Capabilities for " + apnType);
-                return dataConnectionAc.getLinkCapabilitiesSync();
+                if (DBG) {
+                    log("get active pdp is not null, return NetworkCapabilities for " + apnType);
+                }
+                return dataConnectionAc.getNetworkCapabilitiesSync();
             }
         }
-        if (DBG) log("return new LinkCapabilities");
-        return new LinkCapabilities();
+        if (DBG) log("return new NetworkCapabilities");
+        return new NetworkCapabilities();
     }
 
     @Override
@@ -1624,9 +1626,10 @@ public final class DcTracker extends DcTrackerBase {
                             intent.putExtra(PhoneConstants.DATA_IFACE_NAME_KEY, iface);
                         }
                     }
-                    LinkCapabilities linkCapabilities = getLinkCapabilities(apnType);
-                    if (linkCapabilities != null) {
-                        intent.putExtra(PhoneConstants.DATA_LINK_CAPABILITIES_KEY, linkCapabilities);
+                    NetworkCapabilities networkCapabilities = getNetworkCapabilities(apnType);
+                    if (networkCapabilities != null) {
+                        intent.putExtra(PhoneConstants.DATA_NETWORK_CAPABILITIES_KEY,
+                                networkCapabilities);
                     }
 
                     mPhone.getContext().sendBroadcastAsUser(intent, UserHandle.ALL);

@@ -17,8 +17,8 @@
 package com.android.internal.telephony;
 
 import android.content.Context;
-import android.net.LinkCapabilities;
 import android.net.LinkProperties;
+import android.net.NetworkCapabilities;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.CellInfo;
@@ -283,9 +283,9 @@ public interface Phone {
     LinkProperties getLinkProperties(String apnType);
 
     /**
-     * Return the LinkCapabilities
+     * Return the NetworkCapabilities
      */
-    LinkCapabilities getLinkCapabilities(String apnType);
+    NetworkCapabilities getNetworkCapabilities(String apnType);
 
     /**
      * Get current signal strength. No change notification available on this

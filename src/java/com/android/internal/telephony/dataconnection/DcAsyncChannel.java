@@ -21,8 +21,8 @@ import com.android.internal.telephony.dataconnection.DataConnection.DisconnectPa
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 
-import android.net.LinkCapabilities;
 import android.net.LinkProperties;
+import android.net.NetworkCapabilities;
 import android.net.ProxyInfo;
 import android.os.Message;
 
@@ -53,8 +53,8 @@ public class DcAsyncChannel extends AsyncChannel {
     public static final int REQ_SET_LINK_PROPERTIES_HTTP_PROXY = BASE + 8;
     public static final int RSP_SET_LINK_PROPERTIES_HTTP_PROXY = BASE + 9;
 
-    public static final int REQ_GET_LINK_CAPABILITIES = BASE + 10;
-    public static final int RSP_GET_LINK_CAPABILITIES = BASE + 11;
+    public static final int REQ_GET_NETWORK_CAPABILITIES = BASE + 10;
+    public static final int RSP_GET_NETWORK_CAPABILITIES = BASE + 11;
 
     public static final int REQ_RESET = BASE + 12;
     public static final int RSP_RESET = BASE + 13;
@@ -74,8 +74,8 @@ public class DcAsyncChannel extends AsyncChannel {
                 "REQ_SET_LINK_PROPERTIES_HTTP_PROXY";
         sCmdToString[RSP_SET_LINK_PROPERTIES_HTTP_PROXY - BASE] =
                 "RSP_SET_LINK_PROPERTIES_HTTP_PROXY";
-        sCmdToString[REQ_GET_LINK_CAPABILITIES - BASE] = "REQ_GET_LINK_CAPABILITIES";
-        sCmdToString[RSP_GET_LINK_CAPABILITIES - BASE] = "RSP_GET_LINK_CAPABILITIES";
+        sCmdToString[REQ_GET_NETWORK_CAPABILITIES - BASE] = "REQ_GET_NETWORK_CAPABILITIES";
+        sCmdToString[RSP_GET_NETWORK_CAPABILITIES - BASE] = "RSP_GET_NETWORK_CAPABILITIES";
         sCmdToString[REQ_RESET - BASE] = "REQ_RESET";
         sCmdToString[RSP_RESET - BASE] = "RSP_RESET";
     }
@@ -307,48 +307,47 @@ public class DcAsyncChannel extends AsyncChannel {
     }
 
     /**
-     * Request the connections LinkCapabilities.
-     * Response {@link #rspLinkCapabilities}
+     * Request the connections NetworkCapabilities.
+     * Response {@link #rspNetworkCapabilities}
      */
-    public void reqLinkCapabilities() {
-        sendMessage(REQ_GET_LINK_CAPABILITIES);
-        if (DBG) log("reqLinkCapabilities");
+    public void reqNetworkCapabilities() {
+        sendMessage(REQ_GET_NETWORK_CAPABILITIES);
+        if (DBG) log("reqNetworkCapabilities");
     }
 
     /**
-     * Evaluate RSP_GET_LINK_CAPABILITIES
+     * Evaluate RSP_GET_NETWORK_CAPABILITIES
      *
      * @param response
-     * @return LinkCapabilites, maybe null.
+     * @return NetworkCapabilites, maybe null.
      */
-    public LinkCapabilities rspLinkCapabilities(Message response) {
-        LinkCapabilities retVal = (LinkCapabilities) response.obj;
-        if (DBG) log("rspLinkCapabilities=" + retVal);
+    public NetworkCapabilities rspNetworkCapabilities(Message response) {
+        NetworkCapabilities retVal = (NetworkCapabilities) response.obj;
+        if (DBG) log("rspNetworkCapabilities=" + retVal);
         return retVal;
     }
 
     /**
-     * Get the connections LinkCapabilities.
+     * Get the connections NetworkCapabilities.
      *
-     * @return LinkCapabilities or null if an error
+     * @return NetworkCapabilities or null if an error
      */
-    public LinkCapabilities getLinkCapabilitiesSync() {
-        LinkCapabilities value;
+    public NetworkCapabilities getNetworkCapabilitiesSync() {
+        NetworkCapabilities value;
         if (isCallerOnDifferentThread()) {
-            Message response = sendMessageSynchronously(REQ_GET_LINK_CAPABILITIES);
-            if ((response != null) && (response.what == RSP_GET_LINK_CAPABILITIES)) {
-                value = rspLinkCapabilities(response);
+            Message response = sendMessageSynchronously(REQ_GET_NETWORK_CAPABILITIES);
+            if ((response != null) && (response.what == RSP_GET_NETWORK_CAPABILITIES)) {
+                value = rspNetworkCapabilities(response);
             } else {
                 value = null;
             }
         } else {
-            value = mDc.getCopyLinkCapabilities();
+            value = mDc.getCopyNetworkCapabilities();
         }
         return value;
     }
 
     /**
-     * Request the connections LinkCapabilities.
      * Response RSP_RESET when complete
      */
     public void reqReset() {

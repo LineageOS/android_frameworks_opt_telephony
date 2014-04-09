@@ -26,8 +26,8 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.database.ContentObserver;
 import android.net.ConnectivityManager;
-import android.net.LinkCapabilities;
 import android.net.LinkProperties;
+import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 import android.net.TrafficStats;
 import android.net.wifi.WifiManager;
@@ -1031,13 +1031,13 @@ public abstract class DcTrackerBase extends Handler {
         }
     }
 
-    public LinkCapabilities getLinkCapabilities(String apnType) {
+    public NetworkCapabilities getNetworkCapabilities(String apnType) {
         int id = apnTypeToId(apnType);
         if (isApnIdEnabled(id)) {
             DcAsyncChannel dcac = mDataConnectionAcHashMap.get(0);
-            return dcac.getLinkCapabilitiesSync();
+            return dcac.getNetworkCapabilitiesSync();
         } else {
-            return new LinkCapabilities();
+            return new NetworkCapabilities();
         }
     }
 

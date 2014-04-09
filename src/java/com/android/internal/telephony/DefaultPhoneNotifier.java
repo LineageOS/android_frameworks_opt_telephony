@@ -16,8 +16,8 @@
 
 package com.android.internal.telephony;
 
-import android.net.LinkCapabilities;
 import android.net.LinkProperties;
+import android.net.NetworkCapabilities;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
@@ -122,12 +122,12 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         // pass apnType back up to fetch particular for this one.
         TelephonyManager telephony = TelephonyManager.getDefault();
         LinkProperties linkProperties = null;
-        LinkCapabilities linkCapabilities = null;
+        NetworkCapabilities networkCapabilities = null;
         boolean roaming = false;
 
         if (state == PhoneConstants.DataState.CONNECTED) {
             linkProperties = sender.getLinkProperties(apnType);
-            linkCapabilities = sender.getLinkCapabilities(apnType);
+            networkCapabilities = sender.getNetworkCapabilities(apnType);
         }
         ServiceState ss = sender.getServiceState();
         if (ss != null) roaming = ss.getRoaming();
@@ -139,7 +139,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
                     sender.getActiveApnHost(apnType),
                     apnType,
                     linkProperties,
-                    linkCapabilities,
+                    networkCapabilities,
                     ((telephony!=null) ? telephony.getNetworkType() :
                     TelephonyManager.NETWORK_TYPE_UNKNOWN),
                     roaming);

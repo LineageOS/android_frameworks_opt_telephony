@@ -30,8 +30,8 @@ import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
 import android.app.PendingIntent;
-import android.net.LinkCapabilities;
 import android.net.LinkProperties;
+import android.net.NetworkCapabilities;
 import android.net.ProxyInfo;
 import android.os.AsyncResult;
 import android.os.Build;
@@ -157,7 +157,7 @@ public final class DataConnection extends StateMachine {
 
     private PhoneBase mPhone;
     private LinkProperties mLinkProperties = new LinkProperties();
-    private LinkCapabilities mLinkCapabilities = new LinkCapabilities();
+    private NetworkCapabilities mNetworkCapabilities = new NetworkCapabilities();
     private long mCreateTime;
     private long mLastFailTime;
     private DcFailCause mLastFailCause;
@@ -246,8 +246,8 @@ public final class DataConnection extends StateMachine {
 
     /* Getter functions */
 
-    LinkCapabilities getCopyLinkCapabilities() {
-        return new LinkCapabilities(mLinkCapabilities);
+    NetworkCapabilities getCopyNetworkCapabilities() {
+        return new NetworkCapabilities(mNetworkCapabilities);
     }
 
     LinkProperties getCopyLinkProperties() {
@@ -797,7 +797,7 @@ public final class DataConnection extends StateMachine {
             mApnSetting = null;
             mPhone = null;
             mLinkProperties = null;
-            mLinkCapabilities = null;
+            mNetworkCapabilities = null;
             mLastFailCause = null;
             mUserData = null;
             mDcController = null;
@@ -863,10 +863,10 @@ public final class DataConnection extends StateMachine {
                     mAc.replyToMessage(msg, DcAsyncChannel.RSP_SET_LINK_PROPERTIES_HTTP_PROXY);
                     break;
                 }
-                case DcAsyncChannel.REQ_GET_LINK_CAPABILITIES: {
-                    LinkCapabilities lc = getCopyLinkCapabilities();
-                    if (VDBG) log("REQ_GET_LINK_CAPABILITIES linkCapabilities" + lc);
-                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_LINK_CAPABILITIES, lc);
+                case DcAsyncChannel.REQ_GET_NETWORK_CAPABILITIES: {
+                    NetworkCapabilities nc = getCopyNetworkCapabilities();
+                    if (VDBG) log("REQ_GET_NETWORK_CAPABILITIES networkCapabilities" + nc);
+                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_NETWORK_CAPABILITIES, nc);
                     break;
                 }
                 case DcAsyncChannel.REQ_RESET:
@@ -1751,7 +1751,7 @@ public final class DataConnection extends StateMachine {
                 + " mTag=" + mTag
                 + " mRetryManager=" + mRetryManager
                 + " mLinkProperties=" + mLinkProperties
-                + " mLinkCapabilities=" + mLinkCapabilities;
+                + " mNetworkCapabilities=" + mNetworkCapabilities;
     }
 
     @Override
@@ -1788,7 +1788,7 @@ public final class DataConnection extends StateMachine {
         pw.flush();
         pw.println(" mDataRegState=" + mDataRegState);
         pw.println(" mRilRat=" + mRilRat);
-        pw.println(" mLinkCapabilities=" + mLinkCapabilities);
+        pw.println(" mNetworkCapabilities=" + mNetworkCapabilities);
         pw.println(" mCreateTime=" + TimeUtils.logTimeOfDay(mCreateTime));
         pw.println(" mLastFailTime=" + TimeUtils.logTimeOfDay(mLastFailTime));
         pw.println(" mLastFailCause=" + mLastFailCause);
