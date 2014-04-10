@@ -397,7 +397,8 @@ public abstract class DcTrackerBase extends Handler {
 
         public void register() {
             mResolver.registerContentObserver(
-                    Settings.Global.getUriFor(Settings.Global.DATA_ROAMING), false, this);
+                    Settings.Global.getUriFor(Settings.Global.DATA_ROAMING +
+                    mPhone.getPhoneId()), false, this);
         }
 
         public void unregister() {
@@ -570,8 +571,8 @@ public abstract class DcTrackerBase extends Handler {
         filter.addAction(INTENT_DATA_STALL_ALARM);
         filter.addAction(INTENT_PROVISIONING_APN_ALARM);
 
-        mUserDataEnabled = Settings.Global.getInt(
-                mPhone.getContext().getContentResolver(), Settings.Global.MOBILE_DATA, 1) == 1;
+        mUserDataEnabled = Settings.Global.getInt(mPhone.getContext().getContentResolver(),
+                Settings.Global.MOBILE_DATA + mPhone.getPhoneId(), 1) == 1;
 
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
 
@@ -698,7 +699,8 @@ public abstract class DcTrackerBase extends Handler {
     public void setDataOnRoamingEnabled(boolean enabled) {
         if (getDataOnRoamingEnabled() != enabled) {
             final ContentResolver resolver = mPhone.getContext().getContentResolver();
-            Settings.Global.putInt(resolver, Settings.Global.DATA_ROAMING, enabled ? 1 : 0);
+            Settings.Global.putInt(resolver,
+                    Settings.Global.DATA_ROAMING + mPhone.getPhoneId(), enabled ? 1 : 0);
             // will trigger handleDataOnRoamingChange() through observer
         }
     }
@@ -709,7 +711,8 @@ public abstract class DcTrackerBase extends Handler {
     public boolean getDataOnRoamingEnabled() {
         try {
             final ContentResolver resolver = mPhone.getContext().getContentResolver();
-            return Settings.Global.getInt(resolver, Settings.Global.DATA_ROAMING) != 0;
+            return Settings.Global.getInt(resolver,
+                    Settings.Global.DATA_ROAMING + mPhone.getPhoneId()) != 0;
         } catch (SettingNotFoundException snfe) {
             return false;
         }
@@ -730,7 +733,8 @@ public abstract class DcTrackerBase extends Handler {
     public boolean getDataEnabled() {
         try {
             final ContentResolver resolver = mPhone.getContext().getContentResolver();
-            return Settings.Global.getInt(resolver, Settings.Global.MOBILE_DATA) != 0;
+            return Settings.Global.getInt(resolver,
+                    Settings.Global.MOBILE_DATA + mPhone.getPhoneId()) != 0;
         } catch (SettingNotFoundException snfe) {
             return false;
         }
@@ -1305,7 +1309,7 @@ public abstract class DcTrackerBase extends Handler {
             if (mUserDataEnabled != enabled) {
                 mUserDataEnabled = enabled;
                 Settings.Global.putInt(mPhone.getContext().getContentResolver(),
-                        Settings.Global.MOBILE_DATA, enabled ? 1 : 0);
+                        Settings.Global.MOBILE_DATA + mPhone.getPhoneId(), enabled ? 1 : 0);
                 if (getDataOnRoamingEnabled() == false &&
                         mPhone.getServiceState().getRoaming() == true) {
                     if (enabled) {
@@ -1842,6 +1846,7 @@ public abstract class DcTrackerBase extends Handler {
         pw.println(" mEnabledCount=" + mEnabledCount);
         pw.println(" mRequestedApnType=" + mRequestedApnType);
         pw.println(" mPhone=" + mPhone.getPhoneName());
+        pw.println(" mPhoneId=" + mPhone.getPhoneId());
         pw.println(" mActivity=" + mActivity);
         pw.println(" mState=" + mState);
         pw.println(" mTxPkts=" + mTxPkts);

@@ -29,6 +29,7 @@ import android.database.Cursor;
 import android.content.Intent;
 import android.provider.BaseColumns;
 import android.provider.Settings;
+import android.provider.Settings.SettingNotFoundException;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 
@@ -1142,6 +1143,33 @@ public class SubscriptionController extends ISub.Stub {
         return subId;
     }
 
+    /* Returns User SMS Prompt property,  enabled or not */
+    @Override
+    public boolean isSMSPromptEnabled() {
+        boolean prompt = false;
+        int value = 0;
+        try {
+            value = Settings.Global.getInt(mContext.getContentResolver(),
+                    Settings.Global.MULTI_SIM_SMS_PROMPT);
+        } catch (SettingNotFoundException snfe) {
+            loge("Settings Exception Reading Dual Sim SMS Prompt Values");
+        }
+        prompt = (value == 0) ? false : true ;
+        if (VDBG) logd("SMS Prompt option:" + prompt);
+
+       return prompt;
+    }
+
+    /*Sets User SMS Prompt property,  enable or not */
+    @Override
+    public void setSMSPromptEnabled(boolean enabled) {
+        int value = (enabled == false) ? 0 : 1;
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_SMS_PROMPT, value);
+        logd("setSMSPromptOption to " + enabled);
+    }
+
+
     @Override
     public long getDefaultDataSubId() {
         long subId = Settings.Global.getLong(mContext.getContentResolver(),
@@ -1509,5 +1537,31 @@ public class SubscriptionController extends ISub.Stub {
             !isSMSPromptEnabled()) {
             setDefaultSmsSubId(mNextActivatedSub.subId);
         }
+    }
+
+    /* Returns User Voice Prompt property,  enabled or not */
+    @Override
+    public boolean isVoicePromptEnabled() {
+        boolean prompt = false;
+        int value = 0;
+        try {
+            value = Settings.Global.getInt(mContext.getContentResolver(),
+                    Settings.Global.MULTI_SIM_VOICE_PROMPT);
+        } catch (SettingNotFoundException snfe) {
+            loge("Settings Exception Reading Dual Sim Voice Prompt Values");
+        }
+        prompt = (value == 0) ? false : true ;
+        if (VDBG) logd("Voice Prompt option:" + prompt);
+
+       return prompt;
+    }
+
+    /*Sets User SMS Prompt property,  enable or not */
+    @Override
+    public void setVoicePromptEnabled(boolean enabled) {
+        int value = (enabled == false) ? 0 : 1;
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_VOICE_PROMPT, value);
+        logd("setVoicePromptOption to " + enabled);
     }
 }
