@@ -393,7 +393,7 @@ public class DctController extends Handler {
     }
 
     private boolean isValidphoneId(int phoneId) {
-        return phoneId >= 0 && phoneId <= mPhoneNum;
+        return phoneId >= 0 && phoneId < mPhoneNum;
     }
 
     private boolean isValidApnType(String apnType) {

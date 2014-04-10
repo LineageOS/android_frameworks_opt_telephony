@@ -52,7 +52,7 @@ public class UiccSmsController extends ISms.Stub {
     public boolean
     updateMessageOnIccEf(String callingPackage, int index, int status, byte[] pdu)
             throws android.os.RemoteException {
-        return  updateMessageOnIccEfForSubscriber(getPreferredSmsSubscription(), callingPackage,
+        return  updateMessageOnIccEfForSubscriber(getDefaultSmsSubId(), callingPackage,
                 index, status, pdu);
     }
 
@@ -71,7 +71,7 @@ public class UiccSmsController extends ISms.Stub {
 
     public boolean copyMessageToIccEf(String callingPackage, int status, byte[] pdu, byte[] smsc)
             throws android.os.RemoteException {
-        return copyMessageToIccEfForSubscriber(getPreferredSmsSubscription(), callingPackage, status,
+        return copyMessageToIccEfForSubscriber(getDefaultSmsSubId(), callingPackage, status,
                 pdu, smsc);
     }
 
@@ -89,7 +89,7 @@ public class UiccSmsController extends ISms.Stub {
 
     public List<SmsRawData> getAllMessagesFromIccEf(String callingPackage)
             throws android.os.RemoteException {
-        return getAllMessagesFromIccEfForSubscriber(getPreferredSmsSubscription(), callingPackage);
+        return getAllMessagesFromIccEfForSubscriber(getDefaultSmsSubId(), callingPackage);
     }
 
     public List<SmsRawData> getAllMessagesFromIccEfForSubscriber(long subId, String callingPackage)
@@ -106,7 +106,7 @@ public class UiccSmsController extends ISms.Stub {
 
     public void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-         sendDataForSubscriber(getPreferredSmsSubscription(), callingPackage, destAddr, scAddr,
+         sendDataForSubscriber(getDefaultSmsSubId(), callingPackage, destAddr, scAddr,
                  destPort, data, sentIntent, deliveryIntent);
     }
 
@@ -145,7 +145,7 @@ public class UiccSmsController extends ISms.Stub {
 
     public void sendText(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        sendTextForSubscriber(getPreferredSmsSubscription(), callingPackage, destAddr, scAddr,
+        sendTextForSubscriber(getDefaultSmsSubId(), callingPackage, destAddr, scAddr,
             text, sentIntent, deliveryIntent);
     }
 
@@ -177,7 +177,7 @@ public class UiccSmsController extends ISms.Stub {
     public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
             List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents) throws android.os.RemoteException {
-         sendMultipartTextForSubscriber(getPreferredSmsSubscription(), callingPackage, destAddr,
+         sendMultipartTextForSubscriber(getDefaultSmsSubId(), callingPackage, destAddr,
                  scAddr, parts, sentIntents, deliveryIntents);
     }
 
@@ -210,7 +210,7 @@ public class UiccSmsController extends ISms.Stub {
     }
 
     public boolean enableCellBroadcast(int messageIdentifier) throws android.os.RemoteException {
-        return enableCellBroadcastForSubscriber(getPreferredSmsSubscription(), messageIdentifier);
+        return enableCellBroadcastForSubscriber(getDefaultSmsSubId(), messageIdentifier);
     }
 
     public boolean enableCellBroadcastForSubscriber(long subId, int messageIdentifier)
@@ -220,7 +220,7 @@ public class UiccSmsController extends ISms.Stub {
 
     public boolean enableCellBroadcastRange(int startMessageId, int endMessageId)
             throws android.os.RemoteException {
-        return enableCellBroadcastRangeForSubscriber(getPreferredSmsSubscription(), startMessageId,
+        return enableCellBroadcastRangeForSubscriber(getDefaultSmsSubId(), startMessageId,
                 endMessageId);
     }
 
@@ -237,7 +237,7 @@ public class UiccSmsController extends ISms.Stub {
     }
 
     public boolean disableCellBroadcast(int messageIdentifier) throws android.os.RemoteException {
-        return disableCellBroadcastForSubscriber(getPreferredSmsSubscription(), messageIdentifier);
+        return disableCellBroadcastForSubscriber(getDefaultSmsSubId(), messageIdentifier);
     }
 
     public boolean disableCellBroadcastForSubscriber(long subId, int messageIdentifier)
@@ -247,7 +247,7 @@ public class UiccSmsController extends ISms.Stub {
 
     public boolean disableCellBroadcastRange(int startMessageId, int endMessageId)
             throws android.os.RemoteException {
-        return disableCellBroadcastRangeForSubscriber(getPreferredSmsSubscription(), startMessageId,
+        return disableCellBroadcastRangeForSubscriber(getDefaultSmsSubId(), startMessageId,
                 endMessageId);
     }
 
@@ -264,7 +264,7 @@ public class UiccSmsController extends ISms.Stub {
     }
 
     public int getPremiumSmsPermission(String packageName) {
-        return getPremiumSmsPermissionForSubscriber(getPreferredSmsSubscription(), packageName);
+        return getPremiumSmsPermissionForSubscriber(getDefaultSmsSubId(), packageName);
     }
 
     @Override
@@ -280,7 +280,7 @@ public class UiccSmsController extends ISms.Stub {
     }
 
     public void setPremiumSmsPermission(String packageName, int permission) {
-         setPremiumSmsPermissionForSubscriber(getPreferredSmsSubscription(), packageName, permission);
+         setPremiumSmsPermissionForSubscriber(getDefaultSmsSubId(), packageName, permission);
     }
 
     @Override
@@ -294,7 +294,7 @@ public class UiccSmsController extends ISms.Stub {
     }
 
     public boolean isImsSmsSupported() {
-        return isImsSmsSupportedForSubscriber(getPreferredSmsSubscription());
+        return isImsSmsSupportedForSubscriber(getDefaultSmsSubId());
     }
 
     @Override
@@ -309,7 +309,7 @@ public class UiccSmsController extends ISms.Stub {
     }
 
     public String getImsSmsFormat() {
-        return getImsSmsFormatForSubscriber(getPreferredSmsSubscription());
+        return getImsSmsFormatForSubscriber(getDefaultSmsSubId());
     }
 
     @Override
@@ -352,7 +352,7 @@ public class UiccSmsController extends ISms.Stub {
 
         try {
             return (IccSmsInterfaceManager)
-                ((PhoneProxy)mPhone[(int)phoneId]).getIccSmsInterfaceManager();
+                ((PhoneProxy)mPhone[phoneId]).getIccSmsInterfaceManager();
         } catch (NullPointerException e) {
             Rlog.e(LOG_TAG, "Exception is :"+e.toString()+" For subscription :"+subId );
             e.printStackTrace(); //This will print stact trace
@@ -364,17 +364,8 @@ public class UiccSmsController extends ISms.Stub {
         }
     }
 
-    /**
-       Gets User preferred SMS subscription */
-    public long getPreferredSmsSubscription() {
-        return  SubscriptionManager.getDefaultSmsSubId();
-    }
-
-    /**
-     * Get SMS prompt property,  enabled or not
-     **/
-    public boolean isSMSPromptEnabled() {
-        return PhoneFactory.isSMSPromptEnabled();
+    private long getDefaultSmsSubId() {
+        return  SubscriptionController.getInstance().getDefaultSmsSubId();
     }
 
     @Override
