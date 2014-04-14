@@ -1462,6 +1462,8 @@ public class SIMRecords extends IccRecords {
         mFh.loadEFTransparent(EF_GID1, obtainMessage(EVENT_GET_GID1_DONE));
         mRecordsToLoad++;
 
+        mFh.getEFLinearRecordSize(EF_SMS, obtainMessage(EVENT_GET_SMS_RECORD_SIZE_DONE));
+
         // XXX should seek instead of examining them all
         if (false) { // XXX
             mFh.loadEFLinearFixedAll(EF_SMS, obtainMessage(EVENT_GET_ALL_SMS_DONE));

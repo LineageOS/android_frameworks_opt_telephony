@@ -792,6 +792,15 @@ public abstract class PhoneBase extends Handler implements Phone {
         return uiccApplication.getIccFileHandler();
     }
 
+    /**
+     * Retrieves the IccRecords of the Phone instance
+     */
+    public IccRecords getIccRecords(){
+        UiccCardApplication uiccApplication = mUiccApplication.get();
+        if (uiccApplication == null) return null;
+        return uiccApplication.getIccRecords();
+    }
+
     /*
      * Retrieves the Handler of the Phone instance
      */
