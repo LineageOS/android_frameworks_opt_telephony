@@ -77,7 +77,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected int mMncLength = UNINITIALIZED;
     protected int mMailboxIndex = 0; // 0 is no mailbox dailing number associated
 
-    private String mSpn;
+    protected int mSmsCountOnIcc = -1;
+
+    protected String mSpn;
 
     protected String mGid1;
 
@@ -106,6 +108,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     private static final int EVENT_AKA_AUTHENTICATE_DONE          = 90;
 
     private boolean mOEMHookSimRefresh = false;
+    protected static final int EVENT_GET_SMS_RECORD_SIZE_DONE = 35;
 
     @Override
     public String toString() {
@@ -522,6 +525,28 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 }
 
                 break;
+            case EVENT_GET_SMS_RECORD_SIZE_DONE:
+                ar = (AsyncResult) msg.obj;
+
+                if (ar.exception != null) {
+                    loge("Exception in EVENT_GET_SMS_RECORD_SIZE_DONE " + ar.exception);
+                    break;
+                }
+
+                int[] recordSize = (int[])ar.result;
+                try {
+                    // recordSize[0]  is the record length
+                    // recordSize[1]  is the total length of the EF file
+                    // recordSize[2]  is the number of records in the EF file
+                    mSmsCountOnIcc = recordSize[2];
+                    log("EVENT_GET_SMS_RECORD_SIZE_DONE Size " + recordSize[0]
+                            + " total " + recordSize[1]
+                                    + " record " + recordSize[2]);
+                } catch (ArrayIndexOutOfBoundsException exc) {
+                    loge("ArrayIndexOutOfBoundsException in EVENT_GET_SMS_RECORD_SIZE_DONE: "
+                            + exc.toString());
+                }
+                break;
 
             default:
                 super.handleMessage(msg);
@@ -760,6 +785,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected boolean requirePowerOffOnSimRefreshReset() {
         return mContext.getResources().getBoolean(
             com.android.internal.R.bool.config_requireRadioPowerOffOnSimRefreshReset);
+    }
+
+    /**
+     * To get SMS capacity count on ICC card.
+     */
+    public int getSmsCapacityOnIcc() {
+        if (DBG) log("getSmsCapacityOnIcc: " + mSmsCountOnIcc);
+        return mSmsCountOnIcc;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
