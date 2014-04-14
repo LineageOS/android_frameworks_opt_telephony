@@ -802,6 +802,26 @@ public class MSimSmsManager {
             return false;
         }
     }
+
+    /**
+     * Get the capacity count of sms on Icc card
+     *
+     * @return the capacity count of sms on Icc card
+     * @hide
+     */
+    public static int getSmsCapacityOnIcc(int subscription) {
+        int ret = -1;
+        try {
+            ISmsMSim iccISms = ISmsMSim.Stub.asInterface(ServiceManager.getService("isms_msim"));
+            if (iccISms != null) {
+                ret = iccISms.getSmsCapacityOnIcc(subscription);
+            }
+        } catch (RemoteException ex) {
+            //ignore it
+        }
+        return ret;
+    }
+
     // see SmsMessage.getStatusOnIcc
 
     /** Free space (TS 51.011 10.5.3 / 3GPP2 C.S0023 3.4.27). */

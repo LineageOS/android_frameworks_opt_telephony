@@ -362,4 +362,10 @@ interface ISmsMSim {
      */
     boolean isSMSPromptEnabled();
 
+    /**
+     * Get the capacity count of sms on Icc card.
+     *
+     * @return capacity of ICC
+     */
+    int getSmsCapacityOnIcc(int subscription);
 }
