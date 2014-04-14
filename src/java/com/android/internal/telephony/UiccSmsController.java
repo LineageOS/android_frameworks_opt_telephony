@@ -413,4 +413,20 @@ public class UiccSmsController extends ISms.Stub {
             sendErrorInPendingIntent(intent, errorCode);
         }
     }
+
+    /**
+     * Get the capacity count of sms on Icc card.
+     **/
+    @Override
+    public int getSmsCapacityOnIccForSubscriber(int subId)
+            throws android.os.RemoteException {
+       IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+
+        if (iccSmsIntMgr != null ) {
+            return iccSmsIntMgr.getSmsCapacityOnIcc();
+        } else {
+            Rlog.e(LOG_TAG, "iccSmsIntMgr is null for " + " subId: " + subId);
+            return -1;
+        }
+    }
 }

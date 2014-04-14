@@ -1309,6 +1309,13 @@ public abstract class PhoneBase extends Handler implements Phone {
         return fh;
     }
 
+    /**
+     * Retrieves the IccRecords of the Phone instance
+     */
+    public IccRecords getIccRecords() {
+        return mIccRecords.get();
+    }
+
     /*
      * Retrieves the Handler of the Phone instance
      */
