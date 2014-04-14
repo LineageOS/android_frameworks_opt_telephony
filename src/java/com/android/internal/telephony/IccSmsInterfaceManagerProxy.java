@@ -298,6 +298,11 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
         return mIccSmsInterfaceManager.getImsSmsFormat();
     }
 
+    @Override
+    public int getSmsCapacityOnIcc() {
+        return mIccSmsInterfaceManager.getSmsCapacityOnIcc();
+    }
+
     private void broadcastOutgoingSms(String callingPackage, String destAddr, String scAddr,
             boolean multipart, ArrayList<String> parts,
             ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents,
