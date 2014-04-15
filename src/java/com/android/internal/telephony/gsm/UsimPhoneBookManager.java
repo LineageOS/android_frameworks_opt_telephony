@@ -828,8 +828,8 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
 
     private byte[] buildEmailData(int length, int adnRecIndex, String email) {
         byte[] data = new byte[length];
-        for (byte mData : data) {
-            mData = (byte) 0xff;
+        for (int i=0; i<length; i++ ) {
+            data[i]= (byte)0xff;
         }
         if (TextUtils.isEmpty(email)) {
             log("[buildEmailData] Empty email record");
