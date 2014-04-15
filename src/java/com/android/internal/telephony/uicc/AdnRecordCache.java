@@ -249,12 +249,13 @@ public final class AdnRecordCache extends Handler implements IccConstants {
             count++;
         }
 
+        Log.d("AdnRecordCache", "updateAdnBySearch, update oldADN:" + oldAdn.toString() +
+                ", newAdn:" + newAdn.toString() + ",index :" + index);
+
         if (index == -1) {
             sendErrorResponse(response, "Adn record don't exist for " + oldAdn);
             return;
         }
-        Log.d("AdnRecordCache", "updateAdnBySearch, update oldADN:" + oldAdn.toString() +
-                ", newAdn:" + newAdn.toString() + ",index :" + index);
 
         if (efid == EF_PBR) {
             AdnRecord foundAdn = oldAdnList.get(index-1);

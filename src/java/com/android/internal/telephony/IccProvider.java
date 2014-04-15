@@ -435,7 +435,7 @@ public class IccProvider extends ContentProvider {
             // Load the results
             final int N = adnRecords.size();
             final MatrixCursor cursor = new MatrixCursor(ADDRESS_BOOK_COLUMN_NAMES, N);
-            if (DBG) log("adnRecords.size=" + N);
+            log("adnRecords.size=" + N);
             for (int i = 0; i < N ; i++) {
                 loadRecord(adnRecords.get(i), cursor, i);
             }
