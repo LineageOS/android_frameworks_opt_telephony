@@ -22,6 +22,7 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.CellInfo;
+import android.telephony.DataConnectionRealTimeInfo;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.PreciseCallState;
@@ -171,6 +172,16 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     public void notifyCellInfo(Phone sender, List<CellInfo> cellInfo) {
         try {
             mRegistry.notifyCellInfo(cellInfo);
+        } catch (RemoteException ex) {
+
+        }
+    }
+
+    @Override
+    public void notifyDataConnectionRealTimeInfo(Phone sender,
+                                                 DataConnectionRealTimeInfo dcRtInfo) {
+        try {
+            mRegistry.notifyDataConnectionRealTimeInfo(dcRtInfo);
         } catch (RemoteException ex) {
 
         }
