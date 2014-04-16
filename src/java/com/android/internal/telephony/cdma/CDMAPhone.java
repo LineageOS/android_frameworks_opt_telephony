@@ -420,12 +420,6 @@ public class CDMAPhone extends PhoneBase {
     }
 
     @Override
-    public void
-    setNetworkSelectionModeAutomatic(Message response) {
-        Rlog.e(LOG_TAG, "method setNetworkSelectionModeAutomatic is NOT supported in CDMA!");
-    }
-
-    @Override
     public void unregisterForSuppServiceNotification(Handler h) {
         Rlog.e(LOG_TAG, "method unregisterForSuppServiceNotification is NOT supported in CDMA!");
     }
@@ -560,13 +554,6 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public CdmaCall getForegroundCall() {
         return mCT.mForegroundCall;
-    }
-
-    @Override
-    public void
-    selectNetworkManually(OperatorInfo network,
-            Message response) {
-        Rlog.e(LOG_TAG, "selectNetworkManually: not possible in CDMA");
     }
 
     @Override

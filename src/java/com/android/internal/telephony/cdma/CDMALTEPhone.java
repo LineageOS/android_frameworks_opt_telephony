@@ -56,34 +56,9 @@ public class CDMALTEPhone extends CDMAPhone {
     private SIMRecords mSimRecords;
     private IsimUiccRecords mIsimUiccRecords;
 
-    /**
-     * Small container class used to hold information relevant to
-     * the carrier selection process. operatorNumeric can be ""
-     * if we are looking for automatic selection. operatorAlphaLong is the
-     * corresponding operator name.
-     */
-    private static class NetworkSelectMessage {
-        public Message message;
-        public String operatorNumeric;
-        public String operatorAlphaLong;
-    }
-
     // Constructors
     public CDMALTEPhone(Context context, CommandsInterface ci, PhoneNotifier notifier) {
         super(context, ci, notifier, false);
-    }
-
-    @Override
-    public void handleMessage (Message msg) {
-        switch (msg.what) {
-            // handle the select network completion callbacks.
-            case EVENT_SET_NETWORK_MANUAL_COMPLETE:
-                handleSetSelectNetwork((AsyncResult) msg.obj);
-                break;
-
-            default:
-                super.handleMessage(msg);
-        }
     }
 
     @Override
@@ -142,59 +117,6 @@ public class CDMALTEPhone extends CDMAPhone {
         log("getDataConnectionState apnType=" + apnType + " ret=" + ret);
         return ret;
     }
-
-    @Override
-    public void
-    selectNetworkManually(OperatorInfo network,
-            Message response) {
-        // wrap the response message in our own message along with
-        // the operator's id.
-        NetworkSelectMessage nsm = new NetworkSelectMessage();
-        nsm.message = response;
-        nsm.operatorNumeric = network.getOperatorNumeric();
-        nsm.operatorAlphaLong = network.getOperatorAlphaLong();
-
-        // get the message
-        Message msg = obtainMessage(EVENT_SET_NETWORK_MANUAL_COMPLETE, nsm);
-
-        mCi.setNetworkSelectionModeManual(network.getOperatorNumeric(), msg);
-    }
-
-    /**
-     * Used to track the settings upon completion of the network change.
-     */
-    private void handleSetSelectNetwork(AsyncResult ar) {
-        // look for our wrapper within the asyncresult, skip the rest if it
-        // is null.
-        if (!(ar.userObj instanceof NetworkSelectMessage)) {
-            loge("unexpected result from user object.");
-            return;
-        }
-
-        NetworkSelectMessage nsm = (NetworkSelectMessage) ar.userObj;
-
-        // found the object, now we send off the message we had originally
-        // attached to the request.
-        if (nsm.message != null) {
-            if (DBG) log("sending original message to recipient");
-            AsyncResult.forMessage(nsm.message, ar.result, ar.exception);
-            nsm.message.sendToTarget();
-        }
-
-        // open the shared preferences editor, and write the value.
-        // nsm.operatorNumeric is "" if we're in automatic.selection.
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-        SharedPreferences.Editor editor = sp.edit();
-        editor.putString(NETWORK_SELECTION_KEY, nsm.operatorNumeric);
-        editor.putString(NETWORK_SELECTION_NAME_KEY, nsm.operatorAlphaLong);
-
-        // commit and log the result.
-        if (! editor.commit()) {
-            loge("failed to commit network selection preference");
-        }
-
-    }
-
 
     /**
      * Sets the "current" field in the telephony provider according to the
@@ -326,7 +248,7 @@ public class CDMALTEPhone extends CDMAPhone {
 
     protected void loge(String s, Throwable e) {
         Rlog.e(LOG_LTE_TAG, s, e);
-}
+    }
 
     @Override
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
