@@ -23,7 +23,10 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.os.SystemClock;
+import android.telephony.DataConnectionRealTimeInfo;
 import android.telephony.Rlog;
+
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
@@ -63,6 +66,10 @@ class DcController extends StateMachine {
     static final int DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE = 0;
     static final int DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT = 1;
     static final int DATA_CONNECTION_ACTIVE_PH_LINK_UP = 2;
+    static final int DATA_CONNECTION_ACTIVE_UNKNOWN = Integer.MAX_VALUE;
+
+    // One of the DATA_CONNECTION_ACTIVE_XXX values
+    int mOverallDataConnectionActiveState = DATA_CONNECTION_ACTIVE_UNKNOWN;
 
     private DccDefaultState mDccDefaultState = new DccDefaultState();
 
@@ -311,6 +318,8 @@ class DcController extends StateMachine {
                 }
             }
 
+            int newOverallDataConnectionActiveState = mOverallDataConnectionActiveState;
+
             if (isAnyDataCallDormant && !isAnyDataCallActive) {
                 // There is no way to indicate link activity per APN right now. So
                 // Link Activity will be considered dormant only when all data calls
@@ -321,6 +330,7 @@ class DcController extends StateMachine {
                     log("onDataStateChanged: Data Activity updated to DORMANT. stopNetStatePoll");
                 }
                 mDct.sendStopNetStatPoll(DctConstants.Activity.DORMANT);
+                newOverallDataConnectionActiveState = DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT;
             } else {
                 if (DBG) {
                     log("onDataStateChanged: Data Activity updated to NONE. " +
@@ -328,8 +338,34 @@ class DcController extends StateMachine {
                             " isAnyDataCallDormant = " + isAnyDataCallDormant);
                 }
                 if (isAnyDataCallActive) {
+                    newOverallDataConnectionActiveState = DATA_CONNECTION_ACTIVE_PH_LINK_UP;
                     mDct.sendStartNetStatPoll(DctConstants.Activity.NONE);
+                } else {
+                    newOverallDataConnectionActiveState = DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE;
                 }
+            }
+
+            // Temporary notification until RIL implementation is complete.
+            if (mOverallDataConnectionActiveState != newOverallDataConnectionActiveState) {
+                mOverallDataConnectionActiveState = newOverallDataConnectionActiveState;
+                long time = SystemClock.elapsedRealtimeNanos();
+                int dcPowerState;
+                switch (mOverallDataConnectionActiveState) {
+                    case DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE:
+                    case DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT:
+                        dcPowerState = DataConnectionRealTimeInfo.DC_POWER_STATE_LOW;
+                        break;
+                    case DATA_CONNECTION_ACTIVE_PH_LINK_UP:
+                        dcPowerState = DataConnectionRealTimeInfo.DC_POWER_STATE_HIGH;
+                        break;
+                    default:
+                        dcPowerState = DataConnectionRealTimeInfo.DC_POWER_STATE_UNKNOWN;
+                        break;
+                }
+                DataConnectionRealTimeInfo dcRtInfo =
+                        new DataConnectionRealTimeInfo(time , dcPowerState);
+                log("onDataStateChanged: notify DcRtInfo changed dcRtInfo=" + dcRtInfo);
+                mPhone.notifyDataConnectionRealTimeInfo(dcRtInfo);
             }
 
             if (DBG) {

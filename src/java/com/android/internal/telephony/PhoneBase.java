@@ -33,6 +33,7 @@ import android.provider.Settings;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoCdma;
+import android.telephony.DataConnectionRealTimeInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -486,7 +487,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     // Inherited documentation suffices.
     @Override
     public void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj){
-        mCi.registerForInCallVoicePrivacyOn(h,what,obj);
+        mCi.registerForInCallVoicePrivacyOn(h, what, obj);
     }
 
     // Inherited documentation suffices.
@@ -498,7 +499,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     // Inherited documentation suffices.
     @Override
     public void registerForInCallVoicePrivacyOff(Handler h, int what, Object obj){
-        mCi.registerForInCallVoicePrivacyOff(h,what,obj);
+        mCi.registerForInCallVoicePrivacyOff(h, what, obj);
     }
 
     // Inherited documentation suffices.
@@ -707,7 +708,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     // Inherited documentation suffices.
     @Override
     public void registerForRingbackTone(Handler h, int what, Object obj) {
-        mCi.registerForRingbackTone(h,what,obj);
+        mCi.registerForRingbackTone(h, what, obj);
     }
 
     // Inherited documentation suffices.
@@ -719,7 +720,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     // Inherited documentation suffices.
     @Override
     public void registerForResendIncallMute(Handler h, int what, Object obj) {
-        mCi.registerForResendIncallMute(h,what,obj);
+        mCi.registerForResendIncallMute(h, what, obj);
     }
 
     // Inherited documentation suffices.
@@ -1098,6 +1099,10 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     public void notifyCellInfo(List<CellInfo> cellInfo) {
         mNotifier.notifyCellInfo(this, privatizeCellInfoList(cellInfo));
+    }
+
+    public void notifyDataConnectionRealTimeInfo(DataConnectionRealTimeInfo dcRtInfo) {
+        mNotifier.notifyDataConnectionRealTimeInfo(this, dcRtInfo);
     }
 
     /**
