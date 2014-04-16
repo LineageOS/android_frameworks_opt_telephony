@@ -256,7 +256,7 @@ public final class SmsApplication {
      */
     private static SmsApplicationData getApplication(Context context, boolean updateIfNeeded) {
         TelephonyManager tm = (TelephonyManager)context.getSystemService(Context.TELEPHONY_SERVICE);
-        if (tm.getPhoneType() == TelephonyManager.PHONE_TYPE_NONE) {
+        if (!tm.isSmsCapable()) {
             // No phone, no SMS
             return null;
         }
@@ -368,7 +368,7 @@ public final class SmsApplication {
      */
     public static void setDefaultApplication(String packageName, Context context) {
         TelephonyManager tm = (TelephonyManager)context.getSystemService(Context.TELEPHONY_SERVICE);
-        if (tm.getPhoneType() == TelephonyManager.PHONE_TYPE_NONE) {
+        if (!tm.isSmsCapable()) {
             // No phone, no SMS
             return;
         }
