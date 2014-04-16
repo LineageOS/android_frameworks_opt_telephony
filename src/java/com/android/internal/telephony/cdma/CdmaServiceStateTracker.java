@@ -292,11 +292,18 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 if (DBG) log("Receive EVENT_RUIM_READY and Send Request getCDMASubscription.");
                 getSubscriptionInfoAndStartPollingThreads();
             }
+
+            // Only support automatic selection mode in CDMA.
+            mPhone.setNetworkSelectionModeAutomatic(null);
+
             mPhone.prepareEri();
             break;
 
         case EVENT_NV_READY:
             updatePhoneObject();
+
+            // Only support automatic selection mode in CDMA.
+            mPhone.setNetworkSelectionModeAutomatic(null);
 
             // For Non-RUIM phones, the subscription information is stored in
             // Non Volatile. Here when Non-Volatile is ready, we can poll the CDMA

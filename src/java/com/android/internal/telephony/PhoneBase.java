@@ -124,6 +124,18 @@ public abstract class PhoneBase extends Handler implements Phone {
     // Key used to read/write "disable DNS server check" pref (used for testing)
     public static final String DNS_SERVER_CHECK_DISABLED_KEY = "dns_server_check_disabled_key";
 
+    /**
+     * Small container class used to hold information relevant to
+     * the carrier selection process. operatorNumeric can be ""
+     * if we are looking for automatic selection. operatorAlphaLong is the
+     * corresponding operator name.
+     */
+    protected static class NetworkSelectMessage {
+        public Message message;
+        public String operatorNumeric;
+        public String operatorAlphaLong;
+    }
+
     /* Instance Variables */
     public CommandsInterface mCi;
     boolean mDnsCheckDisabled;
@@ -375,6 +387,12 @@ public abstract class PhoneBase extends Handler implements Phone {
                 onUpdateIccAvailability();
                 break;
 
+            // handle the select network completion callbacks.
+            case EVENT_SET_NETWORK_MANUAL_COMPLETE:
+            case EVENT_SET_NETWORK_AUTOMATIC_COMPLETE:
+                handleSetSelectNetwork((AsyncResult) msg.obj);
+                break;
+
             default:
                 throw new RuntimeException("unexpected event not handled");
         }
@@ -560,6 +578,66 @@ public abstract class PhoneBase extends Handler implements Phone {
         checkCorrectThread(h);
 
         mMmiCompleteRegistrants.remove(h);
+    }
+
+    @Override
+    public void setNetworkSelectionModeAutomatic(Message response) {
+        // wrap the response message in our own message along with
+        // an empty string (to indicate automatic selection) for the
+        // operator's id.
+        NetworkSelectMessage nsm = new NetworkSelectMessage();
+        nsm.message = response;
+        nsm.operatorNumeric = "";
+        nsm.operatorAlphaLong = "";
+
+        Message msg = obtainMessage(EVENT_SET_NETWORK_AUTOMATIC_COMPLETE, nsm);
+        mCi.setNetworkSelectionModeAutomatic(msg);
+    }
+
+    @Override
+    public void selectNetworkManually(OperatorInfo network, Message response) {
+        // wrap the response message in our own message along with
+        // the operator's id.
+        NetworkSelectMessage nsm = new NetworkSelectMessage();
+        nsm.message = response;
+        nsm.operatorNumeric = network.getOperatorNumeric();
+        nsm.operatorAlphaLong = network.getOperatorAlphaLong();
+
+        Message msg = obtainMessage(EVENT_SET_NETWORK_MANUAL_COMPLETE, nsm);
+        mCi.setNetworkSelectionModeManual(network.getOperatorNumeric(), msg);
+    }
+
+    /**
+     * Used to track the settings upon completion of the network change.
+     */
+    private void handleSetSelectNetwork(AsyncResult ar) {
+        // look for our wrapper within the asyncresult, skip the rest if it
+        // is null.
+        if (!(ar.userObj instanceof NetworkSelectMessage)) {
+            Rlog.e(LOG_TAG, "unexpected result from user object.");
+            return;
+        }
+
+        NetworkSelectMessage nsm = (NetworkSelectMessage) ar.userObj;
+
+        // found the object, now we send off the message we had originally
+        // attached to the request.
+        if (nsm.message != null) {
+            AsyncResult.forMessage(nsm.message, ar.result, ar.exception);
+            nsm.message.sendToTarget();
+        }
+
+        // open the shared preferences editor, and write the value.
+        // nsm.operatorNumeric is "" if we're in automatic.selection.
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putString(NETWORK_SELECTION_KEY, nsm.operatorNumeric);
+        editor.putString(NETWORK_SELECTION_NAME_KEY, nsm.operatorAlphaLong);
+
+        // commit and log the result.
+        if (!editor.commit()) {
+            Rlog.e(LOG_TAG, "failed to commit network selection preference");
+        }
     }
 
     /**
