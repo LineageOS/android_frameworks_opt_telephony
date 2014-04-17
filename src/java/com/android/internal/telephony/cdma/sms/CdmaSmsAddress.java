@@ -229,7 +229,9 @@ public class CdmaSmsAddress extends SmsAddress {
         }
 
         if (addr.digitMode == DIGIT_MODE_8BIT_CHAR) {
-            filteredAddr = filterWhitespace(filteredAddr);
+            if (filteredAddr == null) {
+                filteredAddr = filterWhitespace(address);
+            }
             origBytes = UserData.stringToAscii(filteredAddr);
             if (origBytes == null) {
                 return null;
