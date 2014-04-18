@@ -354,4 +354,16 @@ abstract class ValueParser {
             throw new ResultException(ResultCode.CMD_DATA_NOT_UNDERSTOOD);
         }
     }
+
+    static int retrieveTarget(ComprehensionTlv ctlv) throws ResultException {
+        ActivateDescriptor activateDesc = new ActivateDescriptor();
+        byte[] rawValue = ctlv.getRawValue();
+        int valueIndex = ctlv.getValueIndex();
+        try {
+            activateDesc.target = rawValue[valueIndex] & 0xff;
+            return activateDesc.target;
+        } catch (IndexOutOfBoundsException e) {
+            throw new ResultException(ResultCode.REQUIRED_VALUES_MISSING);
+        }
+    }
 }

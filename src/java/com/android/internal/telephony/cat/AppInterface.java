@@ -55,6 +55,18 @@ public interface AppInterface {
                                     "org.codeaurora.intent.action.stk.check_screen_idle";
 
     /*
+     * Intent action broadcasted by StkAppService when the ACTIVATE proactive command
+     * arrives.
+     */
+    public static final String CAT_ACTIVATE_NOTIFY_ACTION =
+                                    "org.codeaurora.intent.action.stk.activate_notify";
+    /*
+     * Intent action broadcasted by NfcService when the HCI Connectivity event occurs.
+     */
+    public static final String CAT_HCI_CONNECTIVITY_ACTION =
+                                    "org.codeaurora.intent.action.stk.hci_connectivity";
+
+    /*
      * Callback function from app to telephony to pass a result code and user's
      * input back to the ICC.
      */
@@ -87,7 +99,8 @@ public interface AppInterface {
         CLOSE_CHANNEL(0x41),
         RECEIVE_DATA(0x42),
         SEND_DATA(0x43),
-        GET_CHANNEL_STATUS(0x44);
+        GET_CHANNEL_STATUS(0x44),
+        ACTIVATE(0x70);
 
         private int mValue;
 
