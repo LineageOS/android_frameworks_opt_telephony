@@ -224,3 +224,13 @@ class BIPClientParams extends CommandParams {
         return false;
     }
 }
+class ActivateParams extends CommandParams {
+    int mActivateTarget;
+
+
+    ActivateParams(CommandDetails cmdDet, int target) {
+        super(cmdDet);
+        mActivateTarget = target;
+    }
+}
+

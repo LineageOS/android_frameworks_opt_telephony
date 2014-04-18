@@ -68,6 +68,7 @@ public class CatCmdMessage implements Parcelable {
         public static final int LANGUAGE_SELECTION_EVENT     = 0x07;
         public static final int BROWSER_TERMINATION_EVENT    = 0x08;
         public static final int BROWSING_STATUS_EVENT        = 0x0F;
+        public static final int HCI_CONNECTIVITY_EVENT       = 0x13;
     }
 
     public final class BrowserTerminationCauses {
@@ -126,6 +127,7 @@ public class CatCmdMessage implements Parcelable {
             mSetupEventListSettings = new SetupEventListSettings();
             mSetupEventListSettings.eventList = ((SetEventListParams) cmdParams).mEventInfo;
             break;
+        case ACTIVATE:
         case PROVIDE_LOCAL_INFORMATION:
         default:
             break;
