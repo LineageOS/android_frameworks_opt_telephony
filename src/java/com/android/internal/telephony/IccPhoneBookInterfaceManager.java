@@ -123,6 +123,9 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
         }
         mIs3gCard = false;
         mCurrentApp = null;
+        if (mRecords != null) {
+            mRecords.clear();
+        }
     }
 
     public void dispose() {
