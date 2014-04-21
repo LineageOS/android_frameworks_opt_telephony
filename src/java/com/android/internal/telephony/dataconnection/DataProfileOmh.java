@@ -124,6 +124,7 @@ public class DataProfileOmh extends DataProfile {
                 "IP", "IP", 0);
         this.mProfileId = profileId;
         this.mPriority = priority;
+        this.types = new String[0];
     }
 
     @Override
