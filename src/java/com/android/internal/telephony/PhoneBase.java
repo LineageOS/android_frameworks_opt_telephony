@@ -80,7 +80,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     /**
      * Indicates whether Out Of Service is considered as data call disconnect.
      */
-    protected static final String PROPERTY_OOS_IS_DISCONNECT = "persist.telephony.oosisdc";
+    public static final String PROPERTY_OOS_IS_DISCONNECT = "persist.telephony.oosisdc";
 
     // Key used to read and write the saved network selection numeric value
     public static final String NETWORK_SELECTION_KEY = "network_selection_key";
