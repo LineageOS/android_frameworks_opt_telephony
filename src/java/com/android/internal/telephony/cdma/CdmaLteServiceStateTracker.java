@@ -19,8 +19,11 @@ package com.android.internal.telephony.cdma;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.Phone;
@@ -421,19 +424,34 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 }
                 mSS.setOperatorAlphaLong(eriText);
             }
-
+            UiccCardApplication gsmapp = mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
+            IccRecords gsmrecords=null;
+            if(gsmapp!= null){
+                gsmrecords = gsmapp.getIccRecords();
+            }
+            String spn = null;
             if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY &&
                     mIccRecords != null) {
                 // SIM is found on the device. If ERI roaming is OFF, and SID/NID matches
                 // one configured in SIM, use operator name  from CSIM record.
-                boolean showSpn =
-                    ((RuimRecords)mIccRecords).getCsimSpnDisplayCondition();
                 int iconIndex = mSS.getCdmaEriIconIndex();
-
-                if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF) &&
-                    isInHomeSidNid(mSS.getSystemId(), mSS.getNetworkId()) &&
+                if ((iconIndex == EriInfo.ROAMING_INDICATOR_OFF) &&
                     mIccRecords != null) {
-                    mSS.setOperatorAlphaLong(mIccRecords.getServiceProviderName());
+                    spn = mIccRecords.getServiceProviderName();
+                    if (spn != null){
+                        mSS.setOperatorAlphaLong(spn);
+                    }
+                }
+            }
+            if (gsmapp != null && gsmapp.getState() == AppState.APPSTATE_READY &&
+                gsmrecords != null && spn == null) {
+                int iconIndex = mSS.getCdmaEriIconIndex();
+                if (iconIndex == EriInfo.ROAMING_INDICATOR_OFF) {
+                    spn = gsmrecords.getServiceProviderName();
+                   // log("debug: "+spn);
+                    if (spn != null){
+                        mSS.setOperatorAlphaLong(spn);
+                    }
                 }
             }
 
