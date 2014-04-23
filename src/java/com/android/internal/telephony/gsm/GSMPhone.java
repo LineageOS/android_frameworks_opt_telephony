@@ -1332,8 +1332,15 @@ public class GSMPhone extends PhoneBase {
                 break;
 
             case EVENT_SET_NETWORK_AUTOMATIC:
-                ar = (AsyncResult)msg.obj;
-                setNetworkSelectionModeAutomatic((Message)ar.result);
+                // Automatic network selection from EF_CSP SIM record
+                ar = (AsyncResult) msg.obj;
+                if (mSST.mSS.getIsManualSelection()) {
+                    setNetworkSelectionModeAutomatic((Message) ar.result);
+                    Rlog.d(LOG_TAG, "SET_NETWORK_SELECTION_AUTOMATIC: set to automatic");
+                } else {
+                    // prevent duplicate request which will push current PLMN to low priority
+                    Rlog.d(LOG_TAG, "SET_NETWORK_SELECTION_AUTOMATIC: already automatic, ignore");
+                }
                 break;
 
             case EVENT_ICC_RECORD_EVENTS:
