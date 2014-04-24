@@ -2591,6 +2591,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_SEND_SMS_EXPECT_MORE: ret =  responseSMS(p); break;
             case RIL_REQUEST_SETUP_DATA_CALL: ret =  responseSetupDataCall(p); break;
             case RIL_REQUEST_SIM_IO: ret =  responseICC_IO(p); break;
+            case RIL_REQUEST_SIM_TRANSMIT_BASIC: ret =  responseICC_IO(p); break;
+            case RIL_REQUEST_SIM_OPEN_CHANNEL: ret  = responseInts(p); break;
+            case RIL_REQUEST_SIM_CLOSE_CHANNEL: ret  = responseVoid(p); break;
+            case RIL_REQUEST_SIM_TRANSMIT_CHANNEL: ret = responseICC_IO(p); break;
+            case RIL_REQUEST_SIM_GET_ATR: ret = responseString(p); break;
             case RIL_REQUEST_SEND_USSD: ret =  responseVoid(p); break;
             case RIL_REQUEST_CANCEL_USSD: ret =  responseVoid(p); break;
             case RIL_REQUEST_GET_CLIR: ret =  responseInts(p); break;
@@ -4102,6 +4107,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_SEND_SMS_EXPECT_MORE: return "SEND_SMS_EXPECT_MORE";
             case RIL_REQUEST_SETUP_DATA_CALL: return "SETUP_DATA_CALL";
             case RIL_REQUEST_SIM_IO: return "SIM_IO";
+            case RIL_REQUEST_SIM_TRANSMIT_BASIC: return "SIM_TRANSMIT_BASIC";
+            case RIL_REQUEST_SIM_OPEN_CHANNEL: return "SIM_OPEN_CHANNEL";
+            case RIL_REQUEST_SIM_CLOSE_CHANNEL: return "SIM_CLOSE_CHANNEL";
+            case RIL_REQUEST_SIM_TRANSMIT_CHANNEL: return "SIM_TRANSMIT_CHANNEL";
+            case RIL_REQUEST_SIM_GET_ATR: return "SIM_GET_ATR";
             case RIL_REQUEST_SEND_USSD: return "SEND_USSD";
             case RIL_REQUEST_CANCEL_USSD: return "CANCEL_USSD";
             case RIL_REQUEST_GET_CLIR: return "GET_CLIR";
@@ -4607,5 +4617,79 @@ public class RIL extends BaseCommands implements CommandsInterface {
         }
         pw.println(" mLastNITZTimeInfo=" + mLastNITZTimeInfo);
         pw.println(" mTestingEmergencyCall=" + mTestingEmergencyCall.get());
+    }
+
+    public void
+    iccExchangeApdu(int cla, int command, int channel, int p1, int p2, int p3,
+            String data, Message result) {
+        RILRequest rr;
+        if (channel == 0) {
+            rr = RILRequest.obtain(RIL_REQUEST_SIM_TRANSMIT_BASIC, result);
+        } else {
+            rr = RILRequest.obtain(RIL_REQUEST_SIM_TRANSMIT_CHANNEL, result);
+        }
+
+        rr.mParcel.writeInt(command);
+        rr.mParcel.writeInt(channel);
+        rr.mParcel.writeString(null);
+        rr.mParcel.writeInt(p1);
+        rr.mParcel.writeInt(p2);
+        rr.mParcel.writeInt(p3);
+        rr.mParcel.writeString(data);
+        rr.mParcel.writeString(null);
+        rr.mParcel.writeInt(cla);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> iccExchangeAPDU: "
+                + requestToString(rr.mRequest)
+                + "Channel 0x" + Integer.toHexString(channel) + ": "
+                + " 0x" + Integer.toHexString(cla)
+                + " 0x" + Integer.toHexString(command)
+                + " 0x" + Integer.toHexString(p1)
+                + " 0x" + Integer.toHexString(p2)
+                + " 0x" + Integer.toHexString(p3)
+                );
+
+        send(rr);
+    }
+
+    public void
+    iccOpenChannel(String aid, Message result) {
+        RILRequest rr
+                = RILRequest.obtain(RIL_REQUEST_SIM_OPEN_CHANNEL, result);
+
+        rr.mParcel.writeString(aid);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> iccOpenChannel: "
+                + requestToString(rr.mRequest) + " " + aid);
+
+        send(rr);
+    }
+
+    public void
+    iccCloseChannel(int channel, Message result) {
+        RILRequest rr
+                = RILRequest.obtain(RIL_REQUEST_SIM_CLOSE_CHANNEL, result);
+
+        rr.mParcel.writeInt(1);
+        rr.mParcel.writeInt(channel);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> iccCloseChannel: "
+                + requestToString(rr.mRequest) + " " + channel);
+
+        send(rr);
+    }
+
+    public void
+    iccGetAtr(Message result) {
+        RILRequest rr
+                = RILRequest.obtain(RIL_REQUEST_SIM_GET_ATR, result);
+        int slotId = 0;
+        rr.mParcel.writeInt(1);
+        rr.mParcel.writeInt(slotId);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> iccGetAtr: "
+                + requestToString(rr.mRequest) + " " + slotId);
+
+        send(rr);
     }
 }

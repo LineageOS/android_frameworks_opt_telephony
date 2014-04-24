@@ -241,4 +241,43 @@ public interface IccCard {
      * @return true if ICC card is PUK2 blocked
      */
     public boolean getIccPuk2Blocked();
+
+    /**
+     * Exchange an APDU with the ICC card over a logical channel
+     *
+     * @param cla Class of the APDU command.
+     * @param command Command passed on to the ICC card.
+     * @param channel Channel id passed on to the ICC card.
+     * @param p1 P1 value of APDU command.
+     * @param p2 P2 value of APDU command.
+     * @param p3 P3 value of APDU command.
+     * @param data Data to be sent with the APDU.
+     */
+    public void exchangeApdu(int cla, int command, int channel, int p1, int p2,
+            int p3, String data, Message onComplete);
+
+    /**
+     * Opens a logical channel to the ICC card.
+     *
+     * @param aid Application Id.
+     */
+    public void openLogicalChannel(String aid, Message onComplete);
+
+    /**
+     * Closes a previously opened logical channel to the ICC card.
+     *
+     * @param channel Channel id to be closed.
+     */
+    public void closeLogicalChannel(int channel, Message onComplete);
+
+    /**
+     * Carry out a ICC I/O operation.
+     */
+    public void exchangeIccIo(int fileId, int command,
+             int p1, int p2, int p3, String pathId, Message onComplete);
+
+    /**
+     * Get ATR from ICC Card.
+     */
+    public void getAtr(Message onComplete);
 }

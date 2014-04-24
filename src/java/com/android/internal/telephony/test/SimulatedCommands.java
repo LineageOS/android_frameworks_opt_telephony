@@ -1695,5 +1695,26 @@ public final class SimulatedCommands extends BaseCommands
         unimplemented(response);
     }
 
+    @Override
+    public void iccExchangeApdu (int cla, int command, int channel, int p1,
+            int p2, int p3, String data, Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void iccOpenChannel(String aid, Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void iccCloseChannel(int channel, Message response) {
+        unimplemented(response);
+    }
+
+    @Override
+    public void iccGetAtr(Message response) {
+        unimplemented(response);
+    }
+
     public boolean needsOldRilFeature(String feature) { return false; }
 }
