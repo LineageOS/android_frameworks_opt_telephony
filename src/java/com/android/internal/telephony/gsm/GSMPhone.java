@@ -317,7 +317,8 @@ public class GSMPhone extends PhoneBase {
             // get voice mail count from SIM
             countVoiceMessages = r.getVoiceMessageCount();
         }
-        if (countVoiceMessages == 0) {
+        //card read error or unknown voicemail count. Check count stored in persist memory.
+        if (countVoiceMessages == -1) {
             countVoiceMessages = getStoredVoiceMessageCount();
         }
         Rlog.d(LOG_TAG, "updateVoiceMail countVoiceMessages = " + countVoiceMessages);
