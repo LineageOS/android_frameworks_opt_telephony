@@ -331,14 +331,15 @@ public class SipPhone extends SipPhoneBase {
     }
 
     @Override
-    public void setEchoSuppressionEnabled(boolean enabled) {
-        // TODO: Remove the enabled argument. We should check the speakerphone
-        // state with AudioManager instead of keeping a state here so the
-        // method with a state argument is redundant. Also rename the method
-        // to something like onSpeaerphoneStateChanged(). Echo suppression may
-        // not be available on every device.
+    public void setEchoSuppressionEnabled() {
+        // Echo suppression may not be available on every device. So, check
+        // whether it is supported
         synchronized (SipPhone.class) {
-            mForegroundCall.setAudioGroupMode();
+            AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
+            String echoSuppression = audioManager.getParameters("ec_supported");
+            if (echoSuppression.contains("off")) {
+                mForegroundCall.setAudioGroupMode();
+            }
         }
     }
 

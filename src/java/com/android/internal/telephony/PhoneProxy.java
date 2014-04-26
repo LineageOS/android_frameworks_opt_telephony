@@ -814,8 +814,8 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
-    public void setEchoSuppressionEnabled(boolean enabled) {
-        mActivePhone.setEchoSuppressionEnabled(enabled);
+    public void setEchoSuppressionEnabled() {
+        mActivePhone.setEchoSuppressionEnabled();
     }
 
     @Override

@@ -1146,7 +1146,7 @@ public interface Phone {
     /**
      * Enables or disables echo suppression.
      */
-    void setEchoSuppressionEnabled(boolean enabled);
+    void setEchoSuppressionEnabled();
 
     /**
      * Invokes RIL_REQUEST_OEM_HOOK_RAW on RIL implementation.
