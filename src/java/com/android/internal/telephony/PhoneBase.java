@@ -730,7 +730,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
-    public void setEchoSuppressionEnabled(boolean enabled) {
+    public void setEchoSuppressionEnabled() {
         // no need for regular phone
     }
 

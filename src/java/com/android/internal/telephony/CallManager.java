@@ -967,18 +967,18 @@ public final class CallManager {
     /**
      * Enables or disables echo suppression.
      */
-    public void setEchoSuppressionEnabled(boolean enabled) {
+    public void setEchoSuppressionEnabled() {
         if (VDBG) {
-            Rlog.d(LOG_TAG, " setEchoSuppression(" + enabled + ")");
+            Rlog.d(LOG_TAG, " setEchoSuppression()");
             Rlog.d(LOG_TAG, toString());
         }
 
         if (hasActiveFgCall()) {
-            getActiveFgCall().getPhone().setEchoSuppressionEnabled(enabled);
+            getActiveFgCall().getPhone().setEchoSuppressionEnabled();
         }
 
         if (VDBG) {
-            Rlog.d(LOG_TAG, "End setEchoSuppression(" + enabled + ")");
+            Rlog.d(LOG_TAG, "End setEchoSuppression()");
             Rlog.d(LOG_TAG, toString());
         }
     }
