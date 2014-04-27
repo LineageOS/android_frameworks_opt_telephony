@@ -158,6 +158,14 @@ public class SmsMessage {
             wrappedMessage = com.android.internal.telephony.gsm.SmsMessage.createFromPdu(pdu);
         }
 
+        // Hangouts, and some other bad citizens, are using this deprecated API call.
+        // Make sure that WhisperPush and Voice+ integration properly work,
+        // as this may be a synthetic message.
+        if (wrappedMessage == null) {
+            // returns null if it is not synthetic. (likely malformed)
+            wrappedMessage = com.android.internal.telephony.SyntheticSmsMessage.createFromPdu(pdu);
+        }
+
         return new SmsMessage(wrappedMessage);
     }
 
