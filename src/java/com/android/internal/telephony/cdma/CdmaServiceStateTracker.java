@@ -752,13 +752,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 // When registration state is roaming and TSB58
                 // roaming indicator is not in the carrier-specified
                 // list of ERIs for home system, mCdmaRoaming is true.
-                mCdmaRoaming =
-                        regCodeIsRoaming(registrationState) && !isRoamIndForHomeSystem(states[10]);
-                mCdmaRoaming = mCdmaRoaming || mDataRoaming;
+                mCdmaRoaming = regCodeIsRoaming(registrationState);
                 mNewSS.setState (regCodeToServiceState(registrationState));
-
                 mNewSS.setRilVoiceRadioTechnology(radioTechnology);
-
                 mNewSS.setCssIndicator(cssIndicator);
                 mNewSS.setSystemAndNetworkId(systemId, networkId);
                 mRoamingIndicator = roamingIndicator;
@@ -866,7 +862,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             if (!isSidsAllZeros() && isHomeSid(mNewSS.getSystemId())) {
                 namMatch = true;
             }
-
+            mCdmaRoaming =
+                    (mCdmaRoaming || mDataRoaming) &&
+                            !isRoamIndForHomeSystem(String.valueOf(mRoamingIndicator));
             // Setting SS Roaming (general)
             if (mIsSubscriptionFromRuim) {
                 mNewSS.setRoaming(isRoamingBetweenOperators(mCdmaRoaming, mNewSS));
