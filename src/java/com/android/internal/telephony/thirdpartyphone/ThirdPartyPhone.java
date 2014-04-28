@@ -291,7 +291,7 @@ public class ThirdPartyPhone extends PhoneBase {
     }
 
     @Override
-    public void setEchoSuppressionEnabled(boolean enabled) {
+    public void setEchoSuppressionEnabled() {
         // TODO(sail): This is not supported yet.
     }
 
