@@ -90,168 +90,175 @@ public class WapPushOverSms implements ServiceConnection {
 
         if (DBG) Rlog.d(TAG, "Rx: " + IccUtils.bytesToHexString(pdu));
 
-        int index = 0;
-        int transactionId = pdu[index++] & 0xFF;
-        int pduType = pdu[index++] & 0xFF;
+        try {
+            int index = 0;
+            int transactionId = pdu[index++] & 0xFF;
+            int pduType = pdu[index++] & 0xFF;
 
-        if ((pduType != WspTypeDecoder.PDU_TYPE_PUSH) &&
-                (pduType != WspTypeDecoder.PDU_TYPE_CONFIRMED_PUSH)) {
-            index = mContext.getResources().getInteger(
-                    com.android.internal.R.integer.config_valid_wappush_index);
-            if(index != -1) {
-                transactionId = pdu[index++] & 0xff;
-                pduType = pdu[index++] & 0xff;
-                if (DBG)
-                    Rlog.d(TAG, "index = " + index + " PDU Type = " + pduType +
-                            " transactionID = " + transactionId);
+            if ((pduType != WspTypeDecoder.PDU_TYPE_PUSH) &&
+                    (pduType != WspTypeDecoder.PDU_TYPE_CONFIRMED_PUSH)) {
+                index = mContext.getResources().getInteger(
+                        com.android.internal.R.integer.config_valid_wappush_index);
+                if (index != -1) {
+                    transactionId = pdu[index++] & 0xff;
+                    pduType = pdu[index++] & 0xff;
+                    if (DBG)
+                        Rlog.d(TAG, "index = " + index + " PDU Type = " + pduType +
+                                " transactionID = " + transactionId);
 
-                // recheck wap push pduType
-                if ((pduType != WspTypeDecoder.PDU_TYPE_PUSH)
-                        && (pduType != WspTypeDecoder.PDU_TYPE_CONFIRMED_PUSH)) {
+                    // recheck wap push pduType
+                    if ((pduType != WspTypeDecoder.PDU_TYPE_PUSH)
+                            && (pduType != WspTypeDecoder.PDU_TYPE_CONFIRMED_PUSH)) {
+                        if (DBG) Rlog.w(TAG, "Received non-PUSH WAP PDU. Type = " + pduType);
+                        return Intents.RESULT_SMS_HANDLED;
+                    }
+                } else {
                     if (DBG) Rlog.w(TAG, "Received non-PUSH WAP PDU. Type = " + pduType);
                     return Intents.RESULT_SMS_HANDLED;
                 }
+            }
+
+            WspTypeDecoder pduDecoder = new WspTypeDecoder(pdu);
+
+            /**
+             * Parse HeaderLen(unsigned integer).
+             * From wap-230-wsp-20010705-a section 8.1.2
+             * The maximum size of a uintvar is 32 bits.
+             * So it will be encoded in no more than 5 octets.
+             */
+            if (pduDecoder.decodeUintvarInteger(index) == false) {
+                if (DBG) Rlog.w(TAG, "Received PDU. Header Length error.");
+                return Intents.RESULT_SMS_GENERIC_ERROR;
+            }
+            int headerLength = (int) pduDecoder.getValue32();
+            index += pduDecoder.getDecodedDataLength();
+
+            int headerStartIndex = index;
+
+            /**
+             * Parse Content-Type.
+             * From wap-230-wsp-20010705-a section 8.4.2.24
+             *
+             * Content-type-value = Constrained-media | Content-general-form
+             * Content-general-form = Value-length Media-type
+             * Media-type = (Well-known-media | Extension-Media) *(Parameter)
+             * Value-length = Short-length | (Length-quote Length)
+             * Short-length = <Any octet 0-30>   (octet <= WAP_PDU_SHORT_LENGTH_MAX)
+             * Length-quote = <Octet 31>         (WAP_PDU_LENGTH_QUOTE)
+             * Length = Uintvar-integer
+             */
+            if (pduDecoder.decodeContentType(index) == false) {
+                if (DBG) Rlog.w(TAG, "Received PDU. Header Content-Type error.");
+                return Intents.RESULT_SMS_GENERIC_ERROR;
+            }
+
+            String mimeType = pduDecoder.getValueString();
+            long binaryContentType = pduDecoder.getValue32();
+            index += pduDecoder.getDecodedDataLength();
+
+            byte[] header = new byte[headerLength];
+            System.arraycopy(pdu, headerStartIndex, header, 0, header.length);
+
+            byte[] intentData;
+
+            if (mimeType != null && mimeType.equals(WspTypeDecoder.CONTENT_TYPE_B_PUSH_CO)) {
+                intentData = pdu;
             } else {
-                if (DBG) Rlog.w(TAG, "Received non-PUSH WAP PDU. Type = " + pduType);
-                return Intents.RESULT_SMS_HANDLED;
-            }
-        }
-
-        WspTypeDecoder pduDecoder = new WspTypeDecoder(pdu);
-
-        /**
-         * Parse HeaderLen(unsigned integer).
-         * From wap-230-wsp-20010705-a section 8.1.2
-         * The maximum size of a uintvar is 32 bits.
-         * So it will be encoded in no more than 5 octets.
-         */
-        if (pduDecoder.decodeUintvarInteger(index) == false) {
-            if (DBG) Rlog.w(TAG, "Received PDU. Header Length error.");
-            return Intents.RESULT_SMS_GENERIC_ERROR;
-        }
-        int headerLength = (int) pduDecoder.getValue32();
-        index += pduDecoder.getDecodedDataLength();
-
-        int headerStartIndex = index;
-
-        /**
-         * Parse Content-Type.
-         * From wap-230-wsp-20010705-a section 8.4.2.24
-         *
-         * Content-type-value = Constrained-media | Content-general-form
-         * Content-general-form = Value-length Media-type
-         * Media-type = (Well-known-media | Extension-Media) *(Parameter)
-         * Value-length = Short-length | (Length-quote Length)
-         * Short-length = <Any octet 0-30>   (octet <= WAP_PDU_SHORT_LENGTH_MAX)
-         * Length-quote = <Octet 31>         (WAP_PDU_LENGTH_QUOTE)
-         * Length = Uintvar-integer
-         */
-        if (pduDecoder.decodeContentType(index) == false) {
-            if (DBG) Rlog.w(TAG, "Received PDU. Header Content-Type error.");
-            return Intents.RESULT_SMS_GENERIC_ERROR;
-        }
-
-        String mimeType = pduDecoder.getValueString();
-        long binaryContentType = pduDecoder.getValue32();
-        index += pduDecoder.getDecodedDataLength();
-
-        byte[] header = new byte[headerLength];
-        System.arraycopy(pdu, headerStartIndex, header, 0, header.length);
-
-        byte[] intentData;
-
-        if (mimeType != null && mimeType.equals(WspTypeDecoder.CONTENT_TYPE_B_PUSH_CO)) {
-            intentData = pdu;
-        } else {
-            int dataIndex = headerStartIndex + headerLength;
-            intentData = new byte[pdu.length - dataIndex];
-            System.arraycopy(pdu, dataIndex, intentData, 0, intentData.length);
-        }
-
-        /**
-         * Seek for application ID field in WSP header.
-         * If application ID is found, WapPushManager substitute the message
-         * processing. Since WapPushManager is optional module, if WapPushManager
-         * is not found, legacy message processing will be continued.
-         */
-        if (pduDecoder.seekXWapApplicationId(index, index + headerLength - 1)) {
-            index = (int) pduDecoder.getValue32();
-            pduDecoder.decodeXWapApplicationId(index);
-            String wapAppId = pduDecoder.getValueString();
-            if (wapAppId == null) {
-                wapAppId = Integer.toString((int) pduDecoder.getValue32());
+                int dataIndex = headerStartIndex + headerLength;
+                intentData = new byte[pdu.length - dataIndex];
+                System.arraycopy(pdu, dataIndex, intentData, 0, intentData.length);
             }
 
-            String contentType = ((mimeType == null) ?
-                                  Long.toString(binaryContentType) : mimeType);
-            if (DBG) Rlog.v(TAG, "appid found: " + wapAppId + ":" + contentType);
+            /**
+             * Seek for application ID field in WSP header.
+             * If application ID is found, WapPushManager substitute the message
+             * processing. Since WapPushManager is optional module, if WapPushManager
+             * is not found, legacy message processing will be continued.
+             */
+            if (pduDecoder.seekXWapApplicationId(index, index + headerLength - 1)) {
+                index = (int) pduDecoder.getValue32();
+                pduDecoder.decodeXWapApplicationId(index);
+                String wapAppId = pduDecoder.getValueString();
+                if (wapAppId == null) {
+                    wapAppId = Integer.toString((int) pduDecoder.getValue32());
+                }
 
-            try {
-                boolean processFurther = true;
-                IWapPushManager wapPushMan = mWapPushManager;
+                String contentType = ((mimeType == null) ?
+                        Long.toString(binaryContentType) : mimeType);
+                if (DBG) Rlog.v(TAG, "appid found: " + wapAppId + ":" + contentType);
 
-                if (wapPushMan == null) {
-                    if (DBG) Rlog.w(TAG, "wap push manager not found!");
-                } else {
-                    Intent intent = new Intent();
-                    intent.putExtra("transactionId", transactionId);
-                    intent.putExtra("pduType", pduType);
-                    intent.putExtra("header", header);
-                    intent.putExtra("data", intentData);
-                    intent.putExtra("contentTypeParameters",
-                            pduDecoder.getContentParameters());
+                try {
+                    boolean processFurther = true;
+                    IWapPushManager wapPushMan = mWapPushManager;
 
-                    int procRet = wapPushMan.processMessage(wapAppId, contentType, intent);
-                    if (DBG) Rlog.v(TAG, "procRet:" + procRet);
-                    if ((procRet & WapPushManagerParams.MESSAGE_HANDLED) > 0
-                        && (procRet & WapPushManagerParams.FURTHER_PROCESSING) == 0) {
-                        processFurther = false;
+                    if (wapPushMan == null) {
+                        if (DBG) Rlog.w(TAG, "wap push manager not found!");
+                    } else {
+                        Intent intent = new Intent();
+                        intent.putExtra("transactionId", transactionId);
+                        intent.putExtra("pduType", pduType);
+                        intent.putExtra("header", header);
+                        intent.putExtra("data", intentData);
+                        intent.putExtra("contentTypeParameters",
+                                pduDecoder.getContentParameters());
+
+                        int procRet = wapPushMan.processMessage(wapAppId, contentType, intent);
+                        if (DBG) Rlog.v(TAG, "procRet:" + procRet);
+                        if ((procRet & WapPushManagerParams.MESSAGE_HANDLED) > 0
+                                && (procRet & WapPushManagerParams.FURTHER_PROCESSING) == 0) {
+                            processFurther = false;
+                        }
                     }
+                    if (!processFurther) {
+                        return Intents.RESULT_SMS_HANDLED;
+                    }
+                } catch (RemoteException e) {
+                    if (DBG) Rlog.w(TAG, "remote func failed...");
                 }
-                if (!processFurther) {
-                    return Intents.RESULT_SMS_HANDLED;
-                }
-            } catch (RemoteException e) {
-                if (DBG) Rlog.w(TAG, "remote func failed...");
             }
-        }
-        if (DBG) Rlog.v(TAG, "fall back to existing handler");
+            if (DBG) Rlog.v(TAG, "fall back to existing handler");
 
-        if (mimeType == null) {
-            if (DBG) Rlog.w(TAG, "Header Content-Type error.");
+            if (mimeType == null) {
+                if (DBG) Rlog.w(TAG, "Header Content-Type error.");
+                return Intents.RESULT_SMS_GENERIC_ERROR;
+            }
+
+            String permission;
+            int appOp;
+
+            if (mimeType.equals(WspTypeDecoder.CONTENT_TYPE_B_MMS)) {
+                permission = android.Manifest.permission.RECEIVE_MMS;
+                appOp = AppOpsManager.OP_RECEIVE_MMS;
+            } else {
+                permission = android.Manifest.permission.RECEIVE_WAP_PUSH;
+                appOp = AppOpsManager.OP_RECEIVE_WAP_PUSH;
+            }
+
+            Intent intent = new Intent(Intents.WAP_PUSH_DELIVER_ACTION);
+            intent.setType(mimeType);
+            intent.putExtra("transactionId", transactionId);
+            intent.putExtra("pduType", pduType);
+            intent.putExtra("header", header);
+            intent.putExtra("data", intentData);
+            intent.putExtra("contentTypeParameters", pduDecoder.getContentParameters());
+
+            // Direct the intent to only the default MMS app. If we can't find a default MMS app
+            // then sent it to all broadcast receivers.
+            ComponentName componentName = SmsApplication.getDefaultMmsApplication(mContext, true);
+            if (componentName != null) {
+                // Deliver MMS message only to this receiver
+                intent.setComponent(componentName);
+                if (DBG) Rlog.v(TAG, "Delivering MMS to: " + componentName.getPackageName() +
+                        " " + componentName.getClassName());
+            }
+
+            handler.dispatchIntent(intent, permission, appOp, receiver);
+            return Activity.RESULT_OK;
+        } catch (ArrayIndexOutOfBoundsException aie) {
+            // 0-byte WAP PDU or other unexpected WAP PDU contents can easily throw this;
+            // log exception string without stack trace and return false.
+            Rlog.e(TAG, "ignoring dispatchWapPdu() array index exception: " + aie);
             return Intents.RESULT_SMS_GENERIC_ERROR;
         }
-
-        String permission;
-        int appOp;
-
-        if (mimeType.equals(WspTypeDecoder.CONTENT_TYPE_B_MMS)) {
-            permission = android.Manifest.permission.RECEIVE_MMS;
-            appOp = AppOpsManager.OP_RECEIVE_MMS;
-        } else {
-            permission = android.Manifest.permission.RECEIVE_WAP_PUSH;
-            appOp = AppOpsManager.OP_RECEIVE_WAP_PUSH;
-        }
-
-        Intent intent = new Intent(Intents.WAP_PUSH_DELIVER_ACTION);
-        intent.setType(mimeType);
-        intent.putExtra("transactionId", transactionId);
-        intent.putExtra("pduType", pduType);
-        intent.putExtra("header", header);
-        intent.putExtra("data", intentData);
-        intent.putExtra("contentTypeParameters", pduDecoder.getContentParameters());
-
-        // Direct the intent to only the default MMS app. If we can't find a default MMS app
-        // then sent it to all broadcast receivers.
-        ComponentName componentName = SmsApplication.getDefaultMmsApplication(mContext, true);
-        if (componentName != null) {
-            // Deliver MMS message only to this receiver
-            intent.setComponent(componentName);
-            if (DBG) Rlog.v(TAG, "Delivering MMS to: " + componentName.getPackageName() +
-                  " " + componentName.getClassName());
-        }
-
-        handler.dispatchIntent(intent, permission, appOp, receiver);
-        return Activity.RESULT_OK;
     }
 }

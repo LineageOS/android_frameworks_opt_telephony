@@ -625,7 +625,8 @@ public class SIMRecords extends IccRecords {
 
                 if (mMncLength != UNKNOWN && mMncLength != UNINITIALIZED) {
                     // finally have both the imsi and the mncLength and can parse the imsi properly
-                    MccTable.updateMccMncConfiguration(mContext, mImsi.substring(0, 3 + mMncLength));
+                    MccTable.updateMccMncConfiguration(mContext,
+                            mImsi.substring(0, 3 + mMncLength), false);
                 }
                 mImsiReadyRegistrants.notifyRegistrants();
             break;
@@ -890,7 +891,7 @@ public class SIMRecords extends IccRecords {
                         // finally have both imsi and the length of the mnc and can parse
                         // the imsi properly
                         MccTable.updateMccMncConfiguration(mContext,
-                                mImsi.substring(0, 3 + mMncLength));
+                                mImsi.substring(0, 3 + mMncLength), false);
                     }
                 }
             break;
@@ -1238,6 +1239,7 @@ public class SIMRecords extends IccRecords {
                 * desired power state has changed in the interim, we don't want to
                 * override it with an unconditional power on.
                 */
+                mAdnCache.reset();
                 break;
             default:
                 // unknown refresh operation

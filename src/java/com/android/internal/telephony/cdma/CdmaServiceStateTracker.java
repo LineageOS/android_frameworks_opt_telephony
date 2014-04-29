@@ -1070,7 +1070,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     SystemProperties.get(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, "");
             operatorNumeric = mSS.getOperatorNumeric();
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, operatorNumeric);
-
+            updateCarrierMccMncConfiguration(operatorNumeric,
+                    prevOperatorNumeric, mPhone.getContext());
             if (operatorNumeric == null) {
                 if (DBG) log("operatorNumeric is null");
                 mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
