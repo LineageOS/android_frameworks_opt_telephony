@@ -470,6 +470,7 @@ public abstract class DcTrackerBase extends Handler {
         String apnType = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE);
 
         ApnContext apnContext = mApnContexts.get(apnType);
+        if (apnContext == null) return;
 
         if (DBG) {
             log("onActionIntentReconnectAlarm: mState=" + mState + " reason=" + reason +
@@ -477,7 +478,7 @@ public abstract class DcTrackerBase extends Handler {
                     " mDataConnectionAsyncChannels=" + mDataConnectionAcHashMap);
         }
 
-        if ((apnContext != null) && (apnContext.isEnabled())) {
+        if (apnContext.isEnabled()) {
             apnContext.setReason(reason);
             DctConstants.State apnContextState = apnContext.getState();
             if (DBG) {
@@ -507,6 +508,8 @@ public abstract class DcTrackerBase extends Handler {
     protected void onActionIntentRestartTrySetupAlarm(Intent intent) {
         String apnType = intent.getStringExtra(INTENT_RESTART_TRYSETUP_ALARM_EXTRA_TYPE);
         ApnContext apnContext = mApnContexts.get(apnType);
+        if (apnContext == null) return;
+
         if (DBG) {
             log("onActionIntentRestartTrySetupAlarm: mState=" + mState +
                     " apnType=" + apnType + " apnContext=" + apnContext +
@@ -1032,10 +1035,9 @@ public abstract class DcTrackerBase extends Handler {
     }
 
     public NetworkCapabilities getNetworkCapabilities(String apnType) {
-        int id = apnTypeToId(apnType);
-        if (isApnIdEnabled(id)) {
-            DcAsyncChannel dcac = mDataConnectionAcHashMap.get(0);
-            return dcac.getNetworkCapabilitiesSync();
+        ApnContext apnContext = mApnContexts.get(apnType);
+        if (apnContext != null) {
+            return apnContext.getNetworkCapabilities();
         } else {
             return new NetworkCapabilities();
         }

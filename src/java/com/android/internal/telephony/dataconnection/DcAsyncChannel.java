@@ -22,7 +22,6 @@ import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 
 import android.net.LinkProperties;
-import android.net.NetworkCapabilities;
 import android.net.ProxyInfo;
 import android.os.Message;
 
@@ -53,11 +52,8 @@ public class DcAsyncChannel extends AsyncChannel {
     public static final int REQ_SET_LINK_PROPERTIES_HTTP_PROXY = BASE + 8;
     public static final int RSP_SET_LINK_PROPERTIES_HTTP_PROXY = BASE + 9;
 
-    public static final int REQ_GET_NETWORK_CAPABILITIES = BASE + 10;
-    public static final int RSP_GET_NETWORK_CAPABILITIES = BASE + 11;
-
-    public static final int REQ_RESET = BASE + 12;
-    public static final int RSP_RESET = BASE + 13;
+    public static final int REQ_RESET = BASE + 10;
+    public static final int RSP_RESET = BASE + 11;
 
     private static final int CMD_TO_STRING_COUNT = RSP_RESET - BASE + 1;
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
@@ -74,8 +70,6 @@ public class DcAsyncChannel extends AsyncChannel {
                 "REQ_SET_LINK_PROPERTIES_HTTP_PROXY";
         sCmdToString[RSP_SET_LINK_PROPERTIES_HTTP_PROXY - BASE] =
                 "RSP_SET_LINK_PROPERTIES_HTTP_PROXY";
-        sCmdToString[REQ_GET_NETWORK_CAPABILITIES - BASE] = "REQ_GET_NETWORK_CAPABILITIES";
-        sCmdToString[RSP_GET_NETWORK_CAPABILITIES - BASE] = "RSP_GET_NETWORK_CAPABILITIES";
         sCmdToString[REQ_RESET - BASE] = "REQ_RESET";
         sCmdToString[RSP_RESET - BASE] = "RSP_RESET";
     }
@@ -304,47 +298,6 @@ public class DcAsyncChannel extends AsyncChannel {
         } else {
             mDc.setLinkPropertiesHttpProxy(proxy);
         }
-    }
-
-    /**
-     * Request the connections NetworkCapabilities.
-     * Response {@link #rspNetworkCapabilities}
-     */
-    public void reqNetworkCapabilities() {
-        sendMessage(REQ_GET_NETWORK_CAPABILITIES);
-        if (DBG) log("reqNetworkCapabilities");
-    }
-
-    /**
-     * Evaluate RSP_GET_NETWORK_CAPABILITIES
-     *
-     * @param response
-     * @return NetworkCapabilites, maybe null.
-     */
-    public NetworkCapabilities rspNetworkCapabilities(Message response) {
-        NetworkCapabilities retVal = (NetworkCapabilities) response.obj;
-        if (DBG) log("rspNetworkCapabilities=" + retVal);
-        return retVal;
-    }
-
-    /**
-     * Get the connections NetworkCapabilities.
-     *
-     * @return NetworkCapabilities or null if an error
-     */
-    public NetworkCapabilities getNetworkCapabilitiesSync() {
-        NetworkCapabilities value;
-        if (isCallerOnDifferentThread()) {
-            Message response = sendMessageSynchronously(REQ_GET_NETWORK_CAPABILITIES);
-            if ((response != null) && (response.what == RSP_GET_NETWORK_CAPABILITIES)) {
-                value = rspNetworkCapabilities(response);
-            } else {
-                value = null;
-            }
-        } else {
-            value = mDc.getCopyNetworkCapabilities();
-        }
-        return value;
     }
 
     /**
