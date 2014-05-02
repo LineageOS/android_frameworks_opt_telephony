@@ -32,7 +32,7 @@ import com.android.internal.util.StateMachine;
 import android.app.PendingIntent;
 import android.net.LinkCapabilities;
 import android.net.LinkProperties;
-import android.net.ProxyProperties;
+import android.net.ProxyInfo;
 import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Message;
@@ -266,7 +266,7 @@ public final class DataConnection extends StateMachine {
         return mApnSetting;
     }
 
-    void setLinkPropertiesHttpProxy(ProxyProperties proxy) {
+    void setLinkPropertiesHttpProxy(ProxyInfo proxy) {
         mLinkProperties.setHttpProxy(proxy);
     }
 
@@ -857,7 +857,7 @@ public final class DataConnection extends StateMachine {
                     break;
                 }
                 case DcAsyncChannel.REQ_SET_LINK_PROPERTIES_HTTP_PROXY: {
-                    ProxyProperties proxy = (ProxyProperties) msg.obj;
+                    ProxyInfo proxy = (ProxyInfo) msg.obj;
                     if (VDBG) log("REQ_SET_LINK_PROPERTIES_HTTP_PROXY proxy=" + proxy);
                     setLinkPropertiesHttpProxy(proxy);
                     mAc.replyToMessage(msg, DcAsyncChannel.RSP_SET_LINK_PROPERTIES_HTTP_PROXY);
