@@ -320,6 +320,10 @@ public class PhoneFactory {
         return getGsmPhone(phoneId);
     }
 
+    public static Context getContext() {
+        return sContext;
+    }
+
     /**
      * Makes a {@link SipPhone} object.
      * @param sipUri the local SIP URI the phone runs on

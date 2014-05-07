@@ -16,6 +16,12 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.content.res.Resources;
+import android.content.Context;
+import android.telephony.Rlog;
+
+import com.android.internal.R;
+import com.android.internal.telephony.PhoneFactory;
+
 import java.util.HashMap;
 
 /**
@@ -88,15 +94,22 @@ public enum DcFailCause {
     }
 
     public boolean isPermanentFail() {
-        return (this == OPERATOR_BARRED) || (this == MISSING_UNKNOWN_APN) ||
-                (this == UNKNOWN_PDP_ADDRESS_TYPE) || (this == USER_AUTHENTICATION) ||
-                (this == ACTIVATION_REJECT_GGSN) || (this == SERVICE_OPTION_NOT_SUPPORTED) ||
-                (this == SERVICE_OPTION_NOT_SUBSCRIBED) || (this == NSAPI_IN_USE) ||
-                (this == ONLY_IPV4_ALLOWED) || (this == ONLY_IPV6_ALLOWED) ||
-                (this == PROTOCOL_ERRORS) ||
-                (this == RADIO_POWER_OFF) || (this == TETHERED_CALL_ACTIVE) ||
-                (this == RADIO_NOT_AVAILABLE) || (this == UNACCEPTABLE_NETWORK_PARAMETER) ||
-                (this == SIGNAL_LOST);
+        Context context = PhoneFactory.getContext();
+        if (this == ACTIVATION_REJECT_GGSN) {
+            return (context.getResources().
+                    getBoolean(com.android.internal.R.bool.config_reject_ggsn_perm_failure));
+        } else if (this == PROTOCOL_ERRORS) {
+            return (context.getResources().
+                    getBoolean(com.android.internal.R.bool.config_protocol_errors_perm_failure));
+        } else {
+            return (this == OPERATOR_BARRED) || (this == MISSING_UNKNOWN_APN) ||
+                    (this == UNKNOWN_PDP_ADDRESS_TYPE) || (this == USER_AUTHENTICATION) ||
+                    (this == SERVICE_OPTION_NOT_SUPPORTED) ||
+                    (this == SERVICE_OPTION_NOT_SUBSCRIBED) || (this == NSAPI_IN_USE) ||
+                    (this == ONLY_IPV4_ALLOWED) || (this == ONLY_IPV6_ALLOWED) ||
+                    (this == RADIO_POWER_OFF) || (this == TETHERED_CALL_ACTIVE) ||
+                    (this == RADIO_NOT_AVAILABLE) || (this == UNACCEPTABLE_NETWORK_PARAMETER);
+        }
     }
 
     public boolean isEventLoggable() {
