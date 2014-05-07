@@ -32,7 +32,7 @@ import android.net.LinkCapabilities;
 import android.net.LinkProperties;
 import android.net.NetworkConfig;
 import android.net.NetworkUtils;
-import android.net.ProxyProperties;
+import android.net.ProxyInfo;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Build;
@@ -1567,7 +1567,7 @@ public final class DcTracker extends DcTrackerBase {
                     try {
                         String port = apn.port;
                         if (TextUtils.isEmpty(port)) port = "8080";
-                        ProxyProperties proxy = new ProxyProperties(apn.proxy,
+                        ProxyInfo proxy = new ProxyInfo(apn.proxy,
                                 Integer.parseInt(port), null);
                         dcac.setLinkPropertiesHttpProxySync(proxy);
                     } catch (NumberFormatException e) {
