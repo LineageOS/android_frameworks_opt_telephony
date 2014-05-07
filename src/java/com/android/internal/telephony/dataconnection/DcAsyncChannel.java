@@ -23,7 +23,7 @@ import com.android.internal.util.Protocol;
 
 import android.net.LinkCapabilities;
 import android.net.LinkProperties;
-import android.net.ProxyProperties;
+import android.net.ProxyInfo;
 import android.os.Message;
 
 /**
@@ -284,7 +284,7 @@ public class DcAsyncChannel extends AsyncChannel {
      * Request setting the connections LinkProperties.HttpProxy.
      * Response RSP_SET_LINK_PROPERTIES when complete.
      */
-    public void reqSetLinkPropertiesHttpProxy(ProxyProperties proxy) {
+    public void reqSetLinkPropertiesHttpProxy(ProxyInfo proxy) {
         sendMessage(REQ_SET_LINK_PROPERTIES_HTTP_PROXY, proxy);
         if (DBG) log("reqSetLinkPropertiesHttpProxy proxy=" + proxy);
     }
@@ -292,7 +292,7 @@ public class DcAsyncChannel extends AsyncChannel {
     /**
      * Set the connections LinkProperties.HttpProxy
      */
-    public void setLinkPropertiesHttpProxySync(ProxyProperties proxy) {
+    public void setLinkPropertiesHttpProxySync(ProxyInfo proxy) {
         if (isCallerOnDifferentThread()) {
             Message response =
                 sendMessageSynchronously(REQ_SET_LINK_PROPERTIES_HTTP_PROXY, proxy);
