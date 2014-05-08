@@ -247,10 +247,16 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     /** Set Local Call Hold subscription */
     private static final int OEMHOOK_EVT_HOOK_SET_LOCAL_CALL_HOLD = OEMHOOK_BASE + 13;
+    /** Get Modem Capabilities*/
+    private static final int OEMHOOK_EVT_HOOK_GET_MODEM_CAPABILITY = OEMHOOK_BASE + 35;
+    /** Update Stack Binding*/
+    private static final int OEMHOOK_EVT_HOOK_UPDATE_SUB_BINDING = OEMHOOK_BASE + 36;
+
 
     private static final int INT_SIZE = 4;
     private static final String OEM_IDENTIFIER = "QOEMHOOK";
     int mHeaderSize = OEM_IDENTIFIER.length() + 2 * INT_SIZE;
+    final int QCRIL_EVT_HOOK_UNSOL_MODEM_CAPABILITY = OEMHOOK_BASE + 1020;
 
     //***** Instance Variables
 
@@ -2103,6 +2109,22 @@ public class RIL extends BaseCommands implements CommandsInterface {
         sendOemRilRequestRaw(OEMHOOK_EVT_HOOK_SET_LOCAL_CALL_HOLD, 1, payload, null);
     }
 
+    @Override
+    public void getModemCapability(Message response) {
+        Rlog.d(RILJ_LOG_TAG, "GetModemCapability");
+        sendOemRilRequestRaw(OEMHOOK_EVT_HOOK_GET_MODEM_CAPABILITY, 0, null, response);
+    }
+
+    @Override
+    public void updateStackBinding(int stack, int enable, Message response) {
+        byte[] payload = new byte[]{(byte)stack,(byte)enable};
+        Rlog.d(RILJ_LOG_TAG, "UpdateStackBinding: on Stack: " + stack +
+                ", enable/disable: " + enable);
+
+        sendOemRilRequestRaw(OEMHOOK_EVT_HOOK_UPDATE_SUB_BINDING, 2, payload, response);
+    }
+
+
     private void sendOemRilRequestRaw(int requestId, int numPayload, byte[] payload,
             Message response) {
         byte[] request = new byte[mHeaderSize + numPayload * BYTE_SIZE];
@@ -3447,6 +3469,24 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return true;
     }
 
+    final public class UnsolOemHookBuffer {
+        private int mRilInstance;
+        private byte[] mData;
+
+        public UnsolOemHookBuffer(int rilInstance, byte[] data) {
+            mRilInstance = rilInstance;
+            mData = data;
+        }
+
+        public int getRilInstance() {
+            return mRilInstance;
+        }
+
+        public byte[] getUnsolOemHookBuffer() {
+            return mData;
+        }
+    }
+
     private void processUnsolOemhookResponse(ByteBuffer oemHookResponse) {
         int responseId = 0, responseSize = 0, responseVoiceId = 0;
 
@@ -3478,6 +3518,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 notifySimRefresh(responseData);
                 break;
 
+            case QCRIL_EVT_HOOK_UNSOL_MODEM_CAPABILITY:
+                Rlog.d(RILJ_LOG_TAG, "QCRIL_EVT_HOOK_UNSOL_MODEM_CAPABILITY = mInstanceId"
+                        + mInstanceId);
+                notifyModemCap(responseData, mInstanceId);
+                break;
+
             default:
                 Rlog.d(RILJ_LOG_TAG, "Response ID " + responseId
                         + " is not served in this process.");
@@ -3503,6 +3549,18 @@ public class RIL extends BaseCommands implements CommandsInterface {
         AsyncResult ar = new AsyncResult(null, userdata, null);
         mSimRefreshRegistrants.notifyRegistrants(ar);
         Rlog.d(RILJ_LOG_TAG, "SIM_REFRESH notified to registrants");
+    }
+
+    /** Notify registrants of MODEM_CAPABILITY event. */
+    protected void notifyModemCap(byte[] data, Integer phoneId) {
+        UnsolOemHookBuffer buffer = new UnsolOemHookBuffer(phoneId, data);
+
+        //Had notifyRegistrants not discarded userObj, we could have easily
+        //passed the subId as ar.userObj.
+        AsyncResult ar = new AsyncResult(null, buffer, null);
+
+        mModemCapRegistrants.notifyRegistrants(ar);
+        Rlog.d(RILJ_LOG_TAG, "MODEM_CAPABILITY on phone=" + phoneId + " notified to registrants");
     }
 
     protected Object

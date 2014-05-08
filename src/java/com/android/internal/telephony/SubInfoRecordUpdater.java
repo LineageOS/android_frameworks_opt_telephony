@@ -59,6 +59,7 @@ public class SubInfoRecordUpdater extends Handler {
     private static final int EVENT_OFFSET = 8;
     private static final int EVENT_QUERY_ICCID_DONE = 1;
     private static final int EVENT_ICC_CHANGED = 2;
+    private static final int EVENT_STACK_READY = 3;
     private static final String ICCID_STRING_FOR_NO_SIM = "";
     /**
      *  int[] sInsertSimState maintains all slots' SIM inserted status currently,
@@ -104,6 +105,7 @@ public class SubInfoRecordUpdater extends Handler {
         SubscriptionHelper.init(context, ci);
         mUiccController = UiccController.getInstance();
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
+        ModemStackController.getInstance().registerForStackReady(this, EVENT_STACK_READY, null);
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             sCardState[i] = CardState.CARDSTATE_ABSENT;
         }
@@ -255,6 +257,12 @@ public class SubInfoRecordUpdater extends Handler {
             case EVENT_ICC_CHANGED:
                 updateIccAvailability();
                 break;
+            case EVENT_STACK_READY:
+                logd("EVENT_STACK_READY" );
+                if (isAllIccIdQueryDone()) {
+                    updateSimInfoByIccId();
+                }
+                break;
             default:
                 logd("Unknown msg:" + msg.what);
         }
@@ -334,6 +342,7 @@ public class SubInfoRecordUpdater extends Handler {
 
     synchronized public void updateSimInfoByIccId() {
         logd("[updateSimInfoByIccId]+ Start");
+        if (!ModemStackController.getInstance().isStackReady()) return;
         sNeedUpdate = false;
 
         SubscriptionManager.clearSubInfo();

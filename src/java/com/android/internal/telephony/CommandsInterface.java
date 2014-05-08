@@ -1944,6 +1944,21 @@ public interface CommandsInterface {
     public void setDataAllowed(boolean allowed, Message result);
 
     /**
+      * Request to get modem stack capabilities
+      * @param response is callback message
+      */
+    void getModemCapability(Message response);
+
+
+    /**
+      * Request to update binding status on the stack
+      * @param stackId is stack to update binding
+      * @param enable is to tell enable or disable binding
+      * @param response is callback message
+      */
+    void updateStackBinding(int stackId, int enable, Message response);
+
+    /**
      * Inform RIL that the device is shutting down
      *
      * @param result Callback message contains the information of SUCCESS/FAILURE
@@ -1976,4 +1991,15 @@ public interface CommandsInterface {
      * @param lchStatus, true if call is in lch state
      */
     public void setLocalCallHold(int lchStatus);
+
+    /**
+     * Register/unregister for modem capability oem hook event
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+
+    void registerForModemCapEvent(Handler h, int what, Object obj);
+    void unregisterForModemCapEvent(Handler h);
 }

@@ -64,6 +64,8 @@ public class PhoneFactory {
 
     static private CommandsInterface sCommandsInterface = null;
     static private SubInfoRecordUpdater sSubInfoRecordUpdater = null;
+    static private ModemBindingPolicyHandler sModemBindingPolicyHandler;
+    static private ModemStackController sModemStackController;
 
     static private boolean sMadeDefaults = false;
     static private PhoneNotifier sPhoneNotifier;
@@ -180,6 +182,10 @@ public class PhoneFactory {
                 // Instantiate UiccController so that all other classes can just
                 // call getInstance()
                 mUiccController = UiccController.make(context, sCommandsInterfaces);
+                sModemStackController = ModemStackController.make(context,
+                        mUiccController, sCommandsInterfaces);
+                sModemBindingPolicyHandler = ModemBindingPolicyHandler.make(context,
+                        mUiccController, sCommandsInterfaces);
 
                 for (int i = 0; i < numPhones; i++) {
                     PhoneBase phone = null;

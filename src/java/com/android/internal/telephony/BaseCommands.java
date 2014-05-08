@@ -74,6 +74,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mHardwareConfigChangeRegistrants = new RegistrantList();
     protected RegistrantList mWwanIwlanCoexistenceRegistrants = new RegistrantList();
     protected RegistrantList mSimRefreshRegistrants = new RegistrantList();
+    protected RegistrantList mModemCapRegistrants = new RegistrantList();
 
     protected Registrant mGsmSmsRegistrant;
     protected Registrant mCdmaSmsRegistrant;
@@ -772,6 +773,14 @@ public abstract class BaseCommands implements CommandsInterface {
         mSimRefreshRegistrants.remove(h);
     }
 
+    public void registerForModemCapEvent(Handler h, int what, Object obj) {
+        mModemCapRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForModemCapEvent(Handler h) {
+        mModemCapRegistrants.remove(h);
+    }
+
     @Override
     public void getDataCallProfile(int appType, Message result) {
     }
@@ -826,6 +835,12 @@ public abstract class BaseCommands implements CommandsInterface {
     }
 
     protected void onRadioAvailable() {
+    }
+
+    public void getModemCapability(Message response) {
+    }
+
+    public void updateStackBinding(int stackId, int enable, Message response) {
     }
 
     /**
