@@ -47,6 +47,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import com.android.ims.ImsManager;
@@ -1293,7 +1294,12 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     @Override
     public void setPreferredNetworkType(int networkType, Message response) {
-        mCi.setPreferredNetworkType(networkType, response);
+        if (TelephonyManager.getDefault().getPhoneCount() > 1) {
+            ModemBindingPolicyHandler.getInstance().setPreferredNetworkType(networkType,
+                    getPhoneId(),response);
+        } else {
+            mCi.setPreferredNetworkType(networkType, response);
+        }
     }
 
     @Override

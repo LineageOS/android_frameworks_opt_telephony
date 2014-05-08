@@ -1555,17 +1555,18 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public int setSubState(long subId, int subStatus) {
+        int result = 0;
         logd("setSubState, subStatus: " + subStatus + " subId: " + subId);
+        if (ModemStackController.getInstance().isStackReady()) {
+            ContentValues value = new ContentValues(1);
+            value.put(SubscriptionManager.SUB_STATE, subStatus);
+            result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                    value, BaseColumns._ID + "=" + Long.toString(subId), null);
 
-        ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.SUB_STATE, subStatus);
-
-        int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
-                value, BaseColumns._ID + "=" + Long.toString(subId), null);
+            if (subStatus == SubscriptionManager.INACTIVE) updateUserPrefs();
+        }
         broadcastSimInfoContentChanged(subId,
                 SubscriptionManager.SUB_STATE, subStatus, SubscriptionManager.DEFAULT_STRING_VALUE);
-
-        if (subStatus == SubscriptionManager.INACTIVE) updateUserPrefs();
         return result;
     }
 
