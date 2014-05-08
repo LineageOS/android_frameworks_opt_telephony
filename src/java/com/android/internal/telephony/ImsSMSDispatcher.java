@@ -615,7 +615,7 @@ public class ImsSMSDispatcher extends SMSDispatcher {
             SubmitPdu submitPdu =
                     android.telephony.SmsMessage.getSubmitPdu(
                                                         scAddress,
-                                                        MOCK_ADDRESS,
+                                                        senderAddress,
                                                         msg,
                                                         false);
 
