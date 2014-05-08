@@ -1557,6 +1557,7 @@ public class SIMRecords extends IccRecords {
                     if (DBG) log("Load EF_SPN: " + mSpn
                             + " spnDisplayCondition: " + mSpnDisplayCondition);
                     setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+                    mRecordsEventsRegistrants.notifyResult(EVENT_SPN);
 
                     mSpnState = GetSpnFsmState.IDLE;
                 } else {
@@ -1578,7 +1579,7 @@ public class SIMRecords extends IccRecords {
 
                     if (DBG) log("Load EF_SPN_CPHS: " + mSpn);
                     setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
-
+                    mRecordsEventsRegistrants.notifyResult(EVENT_SPN);
                     mSpnState = GetSpnFsmState.IDLE;
                 } else {
                     mFh.loadEFTransparent(
@@ -1595,6 +1596,7 @@ public class SIMRecords extends IccRecords {
 
                     if (DBG) log("Load EF_SPN_SHORT_CPHS: " + mSpn);
                     setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+                    mRecordsEventsRegistrants.notifyResult(EVENT_SPN);
                 }else {
                     if (DBG) log("No SPN loaded in either CHPS or 3GPP");
                 }

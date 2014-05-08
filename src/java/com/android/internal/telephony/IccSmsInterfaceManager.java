@@ -458,7 +458,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
                 callingParts[0]) != AppOpsManager.MODE_ALLOWED) {
             return;
         }
-        mDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent, -1);
+        mDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent, -1, false, -1);
     }
 
     /**
@@ -485,24 +485,27 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      *  broadcast when the message is delivered to the recipient.  The
      *  raw pdu of the status report is in the extended data ("pdu").
      * @param priority Priority level of the message
+     * @param validityPeriod Validity Period of the message in Minutes.
      */
     @Override
     public void sendTextWithOptions(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
-            int priority) {
+            int priority, boolean isExpectMore, int validityPeriod) {
         mPhone.getContext().enforceCallingPermission(
                 Manifest.permission.SEND_SMS,
                 "Sending SMS message");
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("sendText: destAddr=" + destAddr + " scAddr=" + scAddr +
                 " text='"+ text + "' sentIntent=" +
-                sentIntent + " deliveryIntent=" + deliveryIntent);
+                sentIntent + " deliveryIntent=" + deliveryIntent +
+                "validityPeriod" + validityPeriod);
         }
         if (mAppOps.noteOp(AppOpsManager.OP_SEND_SMS, Binder.getCallingUid(),
                 callingPackage) != AppOpsManager.MODE_ALLOWED) {
             return;
         }
-        mDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent, priority);
+        mDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent, priority,
+                isExpectMore, validityPeriod);
     }
 
     /**
@@ -560,7 +563,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         }
         mDispatcher.sendMultipartText(destAddr, scAddr, (ArrayList<String>) parts,
                 (ArrayList<PendingIntent>) sentIntents, (ArrayList<PendingIntent>) deliveryIntents,
-                -1);
+                -1, false, -1);
     }
 
     /**
@@ -588,11 +591,13 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      *   to the recipient.  The raw pdu of the status report is in the
      *   extended data ("pdu").
      * @param priority Priority level of the message
+     * @param validityPeriod Validity Period of the message in Minutes.
      */
     @Override
     public void sendMultipartTextWithOptions(String callingPackage, String destAddr,
             String scAddr, List<String> parts, List<PendingIntent> sentIntents,
-            List<PendingIntent> deliveryIntents, int priority) {
+            List<PendingIntent> deliveryIntents, int priority, boolean isExpectMore,
+            int validityPeriod) {
         mPhone.getContext().enforceCallingPermission(
                 Manifest.permission.SEND_SMS,
                 "Sending SMS message");
@@ -609,7 +614,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         }
         mDispatcher.sendMultipartText(destAddr, scAddr, (ArrayList<String>) parts,
                 (ArrayList<PendingIntent>) sentIntents, (ArrayList<PendingIntent>) deliveryIntents,
-                priority);
+                priority, isExpectMore, validityPeriod);
     }
 
     @Override

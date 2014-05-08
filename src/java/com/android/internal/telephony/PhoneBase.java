@@ -80,7 +80,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     /**
      * Indicates whether Out Of Service is considered as data call disconnect.
      */
-    protected static final String PROPERTY_OOS_IS_DISCONNECT = "persist.telephony.oosisdc";
+    public static final String PROPERTY_OOS_IS_DISCONNECT = "persist.telephony.oosisdc";
 
     // Key used to read and write the saved network selection numeric value
     public static final String NETWORK_SELECTION_KEY = "network_selection_key";
@@ -195,7 +195,7 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     // Flag that indicates that Out Of Service is considered as data call disconnect
     protected boolean mOosIsDisconnect = SystemProperties.getBoolean(
-            PROPERTY_OOS_IS_DISCONNECT, false);
+            PROPERTY_OOS_IS_DISCONNECT, true);
 
     /**
      * Set a system property, unless we're in unit test mode
@@ -1085,6 +1085,32 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     /**
+     * Gets the voice mail count from preferences
+     */
+    public int getStoredVoiceMessageCount() {
+        int countVoiceMessages = 0;
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        int sub = getSubscription();
+        String imsi = sp.getString(VM_ID + sub, null);
+        String currentImsi = getSubscriberId();
+
+        if (DEBUG_PHONE) {
+            Rlog.d(LOG_TAG, "Voicemail count retrieval for Imsi = " + imsi +
+                    " current Imsi = " + currentImsi + " sub = " + sub);
+        }
+
+        if ((imsi != null) && (currentImsi != null)
+                && (currentImsi.equals(imsi))) {
+            // get voice mail count from preferences
+            countVoiceMessages = sp.getInt(VM_COUNT + sub, 0);
+            if (DEBUG_PHONE) {
+                Rlog.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages);
+            }
+        }
+        return countVoiceMessages;
+    }
+
+    /**
      * Returns the CDMA ERI icon index to display
      */
     @Override
@@ -1561,6 +1587,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     public void hangupWithReason(int callId, String userUri,
             boolean mpty, int failCause, String errorInfo) throws CallStateException {
         throw new CallStateException("hangupWithReason is not supported in this phone "
+                + this);
+    }
+
+    public void deflectCall(int connId, String number, Message response) throws CallStateException {
+        throw new CallStateException("deflectCall is not supported in this phone "
                 + this);
     }
 
