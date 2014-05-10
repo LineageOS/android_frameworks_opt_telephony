@@ -611,13 +611,25 @@ public class ImsSMSDispatcher extends SMSDispatcher {
          */
         private byte[][] getPdus(String scAddress, String senderAddress, String msg) {
 
-            // Get a SubmitPdu (use a phone number to get a valid pdu)
-            SubmitPdu submitPdu =
-                    android.telephony.SmsMessage.getSubmitPdu(
-                                                        scAddress,
-                                                        senderAddress,
-                                                        msg,
-                                                        false);
+            // If we have a valid senderAddress, use it to get a valid SubmitPdu
+            if (PhoneNumberUtils.isWellFormedSmsAddress(senderAddress)) {
+                SubmitPdu submitPdu =
+                        android.telephony.SmsMessage.getSubmitPdu(
+                                                            scAddress,
+                                                            senderAddress,
+                                                            msg,
+                                                            false);
+
+            // Else use the predefined MOCK_ADDRESS to ensure a valid SubmitPdu
+            } else {
+                SubmitPdu submitPdu =
+                        android.telephony.SmsMessage.getSubmitPdu(
+                                                            scAddress,
+                                                            MOCK_ADDRESS,
+                                                            msg,
+                                                            false);
+            }
+
 
             // Translate the submit data to a received PDU
             int dataLen = android.telephony.SmsMessage.calculateLength(msg, true)[1];
