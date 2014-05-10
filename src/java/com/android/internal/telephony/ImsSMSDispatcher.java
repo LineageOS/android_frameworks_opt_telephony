@@ -611,13 +611,12 @@ public class ImsSMSDispatcher extends SMSDispatcher {
          */
         private byte[][] getPdus(String scAddress, String senderAddress, String msg) {
 
-            // Get a SubmitPdu (use a phone number to get a valid pdu)
-            SubmitPdu submitPdu =
-                    android.telephony.SmsMessage.getSubmitPdu(
-                                                        scAddress,
-                                                        MOCK_ADDRESS,
-                                                        msg,
-                                                        false);
+            // If we have a valid senderAddress, use it to get a valid SubmitPdu. Otherwise, we
+            // should relay in a MOCK_ADDRESS to ensure a valid SubmitPdu
+            boolean isWellFormed = PhoneNumberUtils.isWellFormedSmsAddress(senderAddress);
+            String pduSenderAddress = isWellFormed ? senderAddress : MOCK_ADDRESS;
+            SubmitPdu submitPdu = android.telephony.SmsMessage.getSubmitPdu(scAddress,
+                    pduSenderAddress, msg, false);
 
             // Translate the submit data to a received PDU
             int dataLen = android.telephony.SmsMessage.calculateLength(msg, true)[1];
@@ -634,7 +633,7 @@ public class ImsSMSDispatcher extends SMSDispatcher {
                     encMsg, 0, submitPdu.encodedMessage.length - dataPos);
             byte[] encSender = null;
             // Check if the senderAddress is a vanish number
-            if (!PhoneNumberUtils.isWellFormedSmsAddress(senderAddress)) {
+            if (!isWellFormed) {
                 try {
                     byte[] sender7BitPacked = GsmAlphabet.stringToGsm7BitPacked(senderAddress);
                     encSender = new byte[2 + sender7BitPacked.length - 1];
