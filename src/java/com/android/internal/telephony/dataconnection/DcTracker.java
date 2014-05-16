@@ -117,6 +117,10 @@ public final class DcTracker extends DcTrackerBase {
     /** Watches for changes to the APN db. */
     private ApnChangeObserver mApnObserver;
 
+    /** Used to send us NetworkRequests from ConnectivityService.  Remeber it so we can
+     * unregister on dispose. */
+    private Messenger mNetworkFactoryMessenger;
+
     //***** Constructor
 
     public DcTracker(PhoneBase p) {
@@ -150,12 +154,19 @@ public final class DcTracker extends DcTrackerBase {
 
         ConnectivityManager cm = (ConnectivityManager)p.getContext().getSystemService(
                 Context.CONNECTIVITY_SERVICE);
-        cm.registerNetworkFactory(new Messenger(this));
+        mNetworkFactoryMessenger = new Messenger(this);
+        cm.registerNetworkFactory(mNetworkFactoryMessenger, "Telephony");
     }
 
     @Override
     public void dispose() {
         if (DBG) log("GsmDCT.dispose");
+
+        ConnectivityManager cm = (ConnectivityManager)mPhone.getContext().getSystemService(
+                Context.CONNECTIVITY_SERVICE);
+        cm.unregisterNetworkFactory(mNetworkFactoryMessenger);
+        mNetworkFactoryMessenger = null;
+
         cleanUpAllConnections(true, null);
 
         super.dispose();
