@@ -1054,6 +1054,16 @@ public class GSMPhone extends PhoneBase {
         mDcTracker.setDataOnRoamingEnabled(enable);
     }
 
+    @Override
+    public boolean getDataEnabled() {
+        return mDcTracker.getDataEnabled();
+    }
+
+    @Override
+    public void setDataEnabled(boolean enable) {
+        mDcTracker.setDataEnabled(enable);
+    }
+
     /**
      * Removes the given MMI from the pending list and notifies
      * registrants that it is complete.

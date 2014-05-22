@@ -879,6 +879,16 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public boolean getDataEnabled() {
+        return mActivePhone.getDataEnabled();
+    }
+
+    @Override
+    public void setDataEnabled(boolean enable) {
+        mActivePhone.setDataEnabled(enable);
+    }
+
+    @Override
     public void queryCdmaRoamingPreference(Message response) {
         mActivePhone.queryCdmaRoamingPreference(response);
     }

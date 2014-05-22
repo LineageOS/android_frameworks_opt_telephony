@@ -1247,6 +1247,16 @@ public interface Phone {
     void setDataRoamingEnabled(boolean enable);
 
     /**
+     * @return true if user has enabled data
+     */
+    boolean getDataEnabled();
+
+    /**
+     * @param @enable set {@code true} if enable data connection
+     */
+    void setDataEnabled(boolean enable);
+
+    /**
      *  Query the CDMA roaming preference setting
      *
      * @param response is callback message to report one of  CDMA_RM_*

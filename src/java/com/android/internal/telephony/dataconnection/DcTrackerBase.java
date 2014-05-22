@@ -682,6 +682,27 @@ public abstract class DcTrackerBase extends Handler {
         }
     }
 
+    /**
+     * Modify {@link android.provider.Settings.Global#MOBILE_DATA} value.
+     */
+    public void setDataEnabled(boolean enable) {
+        Message msg = obtainMessage(DctConstants.CMD_SET_USER_DATA_ENABLE);
+        msg.arg1 = enable ? 1 : 0;
+        sendMessage(msg);
+    }
+
+    /**
+     * Return current {@link android.provider.Settings.Global#MOBILE_DATA} value.
+     */
+    public boolean getDataEnabled() {
+        try {
+            final ContentResolver resolver = mPhone.getContext().getContentResolver();
+            return Settings.Global.getInt(resolver, Settings.Global.MOBILE_DATA) != 0;
+        } catch (SettingNotFoundException snfe) {
+            return false;
+        }
+    }
+
     // abstract methods
     protected abstract void restartRadio();
     protected abstract void log(String s);

@@ -797,6 +797,16 @@ public class CDMAPhone extends PhoneBase {
     }
 
     @Override
+    public void setDataEnabled(boolean enable) {
+        mDcTracker.setDataEnabled(enable);
+    }
+
+    @Override
+    public boolean getDataEnabled() {
+        return mDcTracker.getDataEnabled();
+    }
+
+    @Override
     public void setVoiceMailNumber(String alphaTag,
                                    String voiceMailNumber,
                                    Message onComplete) {

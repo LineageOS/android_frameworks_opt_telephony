@@ -446,6 +446,15 @@ abstract class SipPhoneBase extends PhoneBase {
     public void setDataRoamingEnabled(boolean enable) {
     }
 
+    @Override
+    public boolean getDataEnabled() {
+        return false;
+    }
+
+    @Override
+    public void setDataEnabled(boolean enable) {
+    }
+
     public boolean enableDataConnectivity() {
         return false;
     }
