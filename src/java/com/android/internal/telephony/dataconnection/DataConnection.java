@@ -157,6 +157,7 @@ public final class DataConnection extends StateMachine {
 
     private PhoneBase mPhone;
     private LinkProperties mLinkProperties = new LinkProperties();
+    private NetworkCapabilities mNetworkCapabilities = new NetworkCapabilities();
     private long mCreateTime;
     private long mLastFailTime;
     private DcFailCause mLastFailCause;
@@ -245,6 +246,10 @@ public final class DataConnection extends StateMachine {
 
     /* Getter functions */
 
+    NetworkCapabilities getCopyNetworkCapabilities() {
+        return new NetworkCapabilities(mNetworkCapabilities);
+    }
+
     LinkProperties getCopyLinkProperties() {
         return new LinkProperties(mLinkProperties);
     }
@@ -263,7 +268,6 @@ public final class DataConnection extends StateMachine {
 
     void setLinkPropertiesHttpProxy(ProxyInfo proxy) {
         mLinkProperties.setHttpProxy(proxy);
-        for (ApnContext ac : mApnContexts) ac.sendLinkProperties(mLinkProperties);
     }
 
     static class UpdateLinkPropertyResult {
@@ -298,7 +302,7 @@ public final class DataConnection extends StateMachine {
             log("updateLinkProperty new LP=" + result.newLp);
         }
         mLinkProperties = result.newLp;
-        for (ApnContext ac : mApnContexts) ac.sendLinkProperties(mLinkProperties);
+
         return result;
     }
 
@@ -484,10 +488,10 @@ public final class DataConnection extends StateMachine {
     }
 
     private void notifyAllWithEvent(ApnContext alreadySent, int event, String reason) {
-        for (ApnContext ac : mApnContexts) {
-            if (ac == alreadySent) continue;
-            if (reason != null) ac.setReason(reason);
-            Message msg = mDct.obtainMessage(event, ac);
+        for (ApnContext apnContext : mApnContexts) {
+            if (apnContext == alreadySent) continue;
+            if (reason != null) apnContext.setReason(reason);
+            Message msg = mDct.obtainMessage(event, apnContext);
             AsyncResult.forMessage(msg);
             msg.sendToTarget();
         }
@@ -741,8 +745,6 @@ public final class DataConnection extends StateMachine {
 
         if (!mApnContexts.contains(apnContext)) {
             mApnContexts.add(apnContext);
-            apnContext.sendRat(mRilRat);
-            apnContext.sendLinkProperties(mLinkProperties);
         }
         configureRetry(mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT));
         mRetryManager.setRetryCount(0);
@@ -795,6 +797,7 @@ public final class DataConnection extends StateMachine {
             mApnSetting = null;
             mPhone = null;
             mLinkProperties = null;
+            mNetworkCapabilities = null;
             mLastFailCause = null;
             mUserData = null;
             mDcController = null;
@@ -860,6 +863,12 @@ public final class DataConnection extends StateMachine {
                     mAc.replyToMessage(msg, DcAsyncChannel.RSP_SET_LINK_PROPERTIES_HTTP_PROXY);
                     break;
                 }
+                case DcAsyncChannel.REQ_GET_NETWORK_CAPABILITIES: {
+                    NetworkCapabilities nc = getCopyNetworkCapabilities();
+                    if (VDBG) log("REQ_GET_NETWORK_CAPABILITIES networkCapabilities" + nc);
+                    mAc.replyToMessage(msg, DcAsyncChannel.RSP_GET_NETWORK_CAPABILITIES, nc);
+                    break;
+                }
                 case DcAsyncChannel.REQ_RESET:
                     if (VDBG) log("DcDefaultState: msg.what=REQ_RESET");
                     transitionTo(mInactiveState);
@@ -912,7 +921,6 @@ public final class DataConnection extends StateMachine {
                     Pair<Integer, Integer> drsRatPair = (Pair<Integer, Integer>)ar.result;
                     mDataRegState = drsRatPair.first;
                     mRilRat = drsRatPair.second;
-                    for (ApnContext ac : mApnContexts) ac.sendRat(mRilRat);
                     if (DBG) {
                         log("DcDefaultState: EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED"
                                 + " drs=" + mDataRegState
@@ -1113,7 +1121,6 @@ public final class DataConnection extends StateMachine {
                         }
                         mDataRegState = drs;
                         mRilRat = rat;
-                        for (ApnContext ac : mApnContexts) ac.sendRat(rat);
                     }
                     retVal = HANDLED;
                     break;
@@ -1421,9 +1428,6 @@ public final class DataConnection extends StateMachine {
                         log("DcActiveState ERROR already added apnContext=" + cp.mApnContext);
                     } else {
                         mApnContexts.add(cp.mApnContext);
-                        cp.mApnContext.sendRat(mRilRat);
-                        cp.mApnContext.sendLinkProperties(mLinkProperties);
-
                         if (DBG) {
                             log("DcActiveState msg.what=EVENT_CONNECT RefCount="
                                     + mApnContexts.size());
@@ -1746,7 +1750,8 @@ public final class DataConnection extends StateMachine {
                 + " mLastFailCause=" + mLastFailCause
                 + " mTag=" + mTag
                 + " mRetryManager=" + mRetryManager
-                + " mLinkProperties=" + mLinkProperties;
+                + " mLinkProperties=" + mLinkProperties
+                + " mNetworkCapabilities=" + mNetworkCapabilities;
     }
 
     @Override
@@ -1783,6 +1788,7 @@ public final class DataConnection extends StateMachine {
         pw.flush();
         pw.println(" mDataRegState=" + mDataRegState);
         pw.println(" mRilRat=" + mRilRat);
+        pw.println(" mNetworkCapabilities=" + mNetworkCapabilities);
         pw.println(" mCreateTime=" + TimeUtils.logTimeOfDay(mCreateTime));
         pw.println(" mLastFailTime=" + TimeUtils.logTimeOfDay(mLastFailTime));
         pw.println(" mLastFailCause=" + mLastFailCause);

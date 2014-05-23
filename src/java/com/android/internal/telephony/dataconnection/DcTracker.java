@@ -28,12 +28,9 @@ import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
-import static android.net.ConnectivityServiceProtocol.NetworkFactoryProtocol;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkConfig;
-import android.net.NetworkInfo;
-import android.net.NetworkRequest;
 import android.net.NetworkUtils;
 import android.net.ProxyInfo;
 import android.net.Uri;
@@ -53,7 +50,6 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
-import android.util.Pair;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.Phone;
@@ -152,10 +148,26 @@ public final class DcTracker extends DcTrackerBase {
         p.getContext().getContentResolver().registerContentObserver(
                 Telephony.Carriers.CONTENT_URI, true, mApnObserver);
 
+        initApnContexts();
+
+        for (ApnContext apnContext : mApnContexts.values()) {
+            // Register the reconnect and restart actions.
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(INTENT_RECONNECT_ALARM + '.' + apnContext.getApnType());
+            filter.addAction(INTENT_RESTART_TRYSETUP_ALARM + '.' + apnContext.getApnType());
+            mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
+        }
+
         ConnectivityManager cm = (ConnectivityManager)p.getContext().getSystemService(
                 Context.CONNECTIVITY_SERVICE);
-        mNetworkFactoryMessenger = new Messenger(this);
-        cm.registerNetworkFactory(mNetworkFactoryMessenger, "Telephony");
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_MMS, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_SUPL, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_DUN, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_HIPRI, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_FOTA, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_IMS, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_CBS, new Messenger(this));
     }
 
     @Override
@@ -229,20 +241,58 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private ApnContext addApnContext(String type, NetworkConfig networkConfig) {
-        ApnContext apnContext = new ApnContext(getLooper(), mPhone.getContext(), type, LOG_TAG,
-                networkConfig, this, networkConfig.type);
-        // TODO - make the score dynamic and/or depend on NetworkScore class
-        // for now, be less than 60 in WifiStateMachine.java
-        apnContext.sendNetworkScore(50);
+        ApnContext apnContext = new ApnContext(mPhone.getContext(), type, LOG_TAG, networkConfig);
         mApnContexts.put(type, apnContext);
         mPrioritySortedApnContexts.add(apnContext);
-
-        // Register the reconnect and restart actions.
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(INTENT_RECONNECT_ALARM + '.' + apnContext.getApnType());
-        filter.addAction(INTENT_RESTART_TRYSETUP_ALARM + '.' + apnContext.getApnType());
-        mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
         return apnContext;
+    }
+
+    protected void initApnContexts() {
+        log("initApnContexts: E");
+        boolean defaultEnabled = SystemProperties.getBoolean(DEFALUT_DATA_ON_BOOT_PROP, true);
+        // Load device network attributes from resources
+        String[] networkConfigStrings = mPhone.getContext().getResources().getStringArray(
+                com.android.internal.R.array.networkAttributes);
+        for (String networkConfigString : networkConfigStrings) {
+            NetworkConfig networkConfig = new NetworkConfig(networkConfigString);
+            ApnContext apnContext = null;
+
+            switch (networkConfig.type) {
+            case ConnectivityManager.TYPE_MOBILE:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_DEFAULT, networkConfig);
+                apnContext.setEnabled(defaultEnabled);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_MMS:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_MMS, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_SUPL:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_SUPL, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_DUN:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_DUN, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_HIPRI:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_HIPRI, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_FOTA:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_FOTA, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_IMS:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_IMS, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_CBS:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_CBS, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_IA:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_IA, networkConfig);
+                break;
+            default:
+                log("initApnContexts: skipping unknown type=" + networkConfig.type);
+                continue;
+            }
+            log("initApnContexts: apnContext=" + apnContext);
+        }
+        log("initApnContexts: X mApnContexts=" + mApnContexts);
     }
 
     @Override
@@ -259,6 +309,21 @@ public final class DcTracker extends DcTrackerBase {
         return new LinkProperties();
     }
 
+    @Override
+    public NetworkCapabilities getNetworkCapabilities(String apnType) {
+        ApnContext apnContext = mApnContexts.get(apnType);
+        if (apnContext!=null) {
+            DcAsyncChannel dataConnectionAc = apnContext.getDcAc();
+            if (dataConnectionAc != null) {
+                if (DBG) {
+                    log("get active pdp is not null, return NetworkCapabilities for " + apnType);
+                }
+                return dataConnectionAc.getNetworkCapabilitiesSync();
+            }
+        }
+        if (DBG) log("return new NetworkCapabilities");
+        return new NetworkCapabilities();
+    }
 
     @Override
     // Return all active apn types
@@ -1458,10 +1523,6 @@ public final class DcTracker extends DcTrackerBase {
         mIsProvisioning = false;
         mProvisioningUrl = null;
 
-        apnContext.networkInfo.setDetailedState(NetworkInfo.DetailedState.CONNECTED,
-                apnContext.getReason(), null);
-        apnContext.sendNetworkInfo();
-
         mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
         startNetStatPoll();
         startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
@@ -1473,6 +1534,7 @@ public final class DcTracker extends DcTrackerBase {
      */
     @Override
     protected void onDataSetupComplete(AsyncResult ar) {
+
         DcFailCause cause = DcFailCause.UNKNOWN;
         boolean handleError = false;
         ApnContext apnContext = null;
@@ -1574,7 +1636,7 @@ public final class DcTracker extends DcTrackerBase {
                             intent.putExtra(PhoneConstants.DATA_IFACE_NAME_KEY, iface);
                         }
                     }
-                    NetworkCapabilities networkCapabilities = apnContext.getNetworkCapabilities();
+                    NetworkCapabilities networkCapabilities = getNetworkCapabilities(apnType);
                     if (networkCapabilities != null) {
                         intent.putExtra(PhoneConstants.DATA_NETWORK_CAPABILITIES_KEY,
                                 networkCapabilities);
@@ -1695,9 +1757,6 @@ public final class DcTracker extends DcTrackerBase {
 
         if(DBG) log("onDisconnectDone: EVENT_DISCONNECT_DONE apnContext=" + apnContext);
         apnContext.setState(DctConstants.State.IDLE);
-        apnContext.networkInfo.setDetailedState(NetworkInfo.DetailedState.DISCONNECTED,
-                apnContext.getReason(), null);
-        apnContext.sendNetworkInfo();
 
         mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
 
@@ -2072,127 +2131,6 @@ public final class DcTracker extends DcTrackerBase {
         return null;
     }
 
-    private Pair<String, Integer> apnInfoForNetworkRequest(NetworkRequest nr) {
-        NetworkCapabilities nc = nr.networkCapabilities;
-        // for now, ignore the bandwidth stuff
-        if (nc.getTransportTypes().size() > 0 &&
-                nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == false) {
-            return null;
-        }
-
-        // in the near term just do 1-1 matches.
-        // TODO - actually try to match the set of capabilities
-        Pair<String, Integer> result = null;
-        boolean error = false;
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
-            if (result != null) error = true;
-            result = new Pair(PhoneConstants.APN_TYPE_DEFAULT,
-                    new Integer(ConnectivityManager.TYPE_MOBILE));
-        }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)) {
-            if (result != null) error = true;
-            result = new Pair(PhoneConstants.APN_TYPE_MMS,
-                    new Integer(ConnectivityManager.TYPE_MOBILE_MMS));
-        }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)) {
-            if (result != null) error = true;
-            result = new Pair(PhoneConstants.APN_TYPE_SUPL,
-                    new Integer(ConnectivityManager.TYPE_MOBILE_SUPL));
-        }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)) {
-            if (result != null) error = true;
-            result = new Pair(PhoneConstants.APN_TYPE_DUN,
-                    new Integer(ConnectivityManager.TYPE_MOBILE_DUN));
-        }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_FOTA)) {
-            if (result != null) error = true;
-            result = new Pair(PhoneConstants.APN_TYPE_FOTA,
-                    new Integer(ConnectivityManager.TYPE_MOBILE_FOTA));
-        }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
-            if (result != null) error = true;
-            result = new Pair(PhoneConstants.APN_TYPE_IMS,
-                    new Integer(ConnectivityManager.TYPE_MOBILE_IMS));
-        }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_CBS)) {
-            if (result != null) error = true;
-            result = new Pair(PhoneConstants.APN_TYPE_CBS,
-                    new Integer(ConnectivityManager.TYPE_MOBILE_CBS));
-        }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_IA)) {
-            if (result != null) error = true;
-            result = new Pair(PhoneConstants.APN_TYPE_IA,
-                    new Integer(ConnectivityManager.TYPE_MOBILE_IA));
-        }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_RCS)) {
-            if (result != null) error = true;
-            result = null;
-            loge("RCS APN type not yet supported");
-        }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_XCAP)) {
-            if (result != null) error = true;
-            result = null;
-            loge("XCAP APN type not yet supported");
-        }
-        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
-            if (result != null) error = true;
-            result = null;
-            loge("EIMS APN type not yet supported");
-        }
-        if (error) {
-            loge("Multiple apn types specified in request - result is unspecified!");
-        }
-        return result;
-    }
-
-    private void onNetworkRequest(NetworkRequest nr, int score) {
-        if (DBG) log("Cellular got networkRequest " + nr + " with score " + score);
-        Pair<String, Integer> apnInfo = apnInfoForNetworkRequest(nr);
-        ApnContext apnContext = null;
-        if (apnInfo != null) {
-            String apnType = apnInfo.first;
-            int connType = apnInfo.second.intValue();
-            if (DBG) log("Cellular using " + apnType + " for NetworkRequest " + nr);
-            apnContext = mApnContexts.get(apnType);
-            if (apnContext == null) {
-                if (DBG) log("Attempting to create new ApnContext for " + apnType);
-
-                // Load device network attributes from resources
-                String[] networkConfigStrings = mPhone.getContext().getResources().getStringArray(
-                        com.android.internal.R.array.networkAttributes);
-                for (String networkConfigString : networkConfigStrings) {
-                    NetworkConfig networkConfig = new NetworkConfig(networkConfigString);
-                    if (networkConfig.type == connType) {
-                        apnContext = addApnContext(apnType, networkConfig);
-                        break;
-                    }
-                }
-            }
-            if (apnContext != null) {
-                apnContext.addNetworkRequest(nr, score);
-            } else {
-                if (DBG) log("Cellular can't satisfy request " + nr);
-            }
-        } else {
-            if (DBG) log("Cellular can't satisfy request " + nr);
-        }
-    }
-
-    private void onNetworkRequestCancel(NetworkRequest nr) {
-        Pair<String, Integer> apnInfo = apnInfoForNetworkRequest(nr);
-        if (apnInfo != null) {
-            if (DBG) log("Cellular turning off " + apnInfo.first + " for NetworkRequest " + nr);
-            ApnContext apnContext = mApnContexts.get(apnInfo.first);
-            apnContext.removeNetworkRequest(nr);
-            if (apnContext.hasRequests() == false) {
-                mApnContexts.remove(apnInfo.first);
-                mPrioritySortedApnContexts.remove(apnContext);
-            }
-        } else {
-            if (DBG) log("Cellular can't cancel request " + nr);
-        }
-    }
-
     @Override
     public void handleMessage (Message msg) {
         if (DBG) log("handleMessage msg=" + msg);
@@ -2203,14 +2141,6 @@ public final class DcTracker extends DcTrackerBase {
         }
 
         switch (msg.what) {
-            case NetworkFactoryProtocol.CMD_REQUEST_NETWORK:
-                onNetworkRequest((NetworkRequest)msg.obj, msg.arg1);
-                break;
-
-            case NetworkFactoryProtocol.CMD_CANCEL_REQUEST:
-                onNetworkRequestCancel((NetworkRequest)msg.obj);
-                break;
-
             case DctConstants.EVENT_RECORDS_LOADED:
                 onRecordsLoaded();
                 break;
