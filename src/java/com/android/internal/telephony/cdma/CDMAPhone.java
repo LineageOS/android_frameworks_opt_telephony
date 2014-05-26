@@ -232,6 +232,13 @@ public class CDMAPhone extends PhoneBase {
             mSST.unregisterForNetworkAttached(this); //EVENT_REGISTERED_TO_NETWORK
             mCi.unSetOnSuppServiceNotification(this);
             mCi.unregisterForExitEmergencyCallbackMode(this);
+            if (mIsPhoneInEcmState) {
+                exitEmergencyCallbackMode();
+                mIsPhoneInEcmState = false;
+                setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
+                // notify change
+                sendEmergencyCallbackModeChange();
+            }
             removeCallbacks(mExitEcmRunnable);
 
             mPendingMmis.clear();
