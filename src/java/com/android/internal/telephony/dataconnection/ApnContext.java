@@ -66,12 +66,18 @@ public class ApnContext {
      */
     AtomicBoolean mDataEnabled;
 
+    private final Object mRefCountLock = new Object();
+    private int mRefCount = 0;
+
     /**
      * carrier requirements met
      */
     AtomicBoolean mDependencyMet;
 
-    public ApnContext(Context context, String apnType, String logTag, NetworkConfig config) {
+    private final DcTrackerBase mDcTracker;
+
+    public ApnContext(Context context, String apnType, String logTag, NetworkConfig config,
+            DcTrackerBase tracker) {
         mContext = context;
         mApnType = apnType;
         mState = DctConstants.State.IDLE;
@@ -81,6 +87,7 @@ public class ApnContext {
         mWaitingApnsPermanentFailureCountDown = new AtomicInteger(0);
         priority = config.priority;
         LOG_TAG = logTag;
+        mDcTracker = tracker;
     }
 
     public String getApnType() {
@@ -234,6 +241,22 @@ public class ApnContext {
             return (mApnSetting.apn.equals(provisioningApn));
         } else {
             return false;
+        }
+    }
+
+    public void incRefCount() {
+        synchronized (mRefCountLock) {
+            if (mRefCount++ == 0) {
+                mDcTracker.setEnabled(mDcTracker.apnTypeToId(mApnType), true);
+            }
+        }
+    }
+
+    public void decRefCount() {
+        synchronized (mRefCountLock) {
+            if (mRefCount-- == 1) {
+                mDcTracker.setEnabled(mDcTracker.apnTypeToId(mApnType), false);
+            }
         }
     }
 
