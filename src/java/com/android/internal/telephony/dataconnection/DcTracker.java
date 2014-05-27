@@ -1310,14 +1310,20 @@ public class DcTracker extends DcTrackerBase {
             ((GSMPhone)mPhone).updateCurrentCarrierInProvider();
         }
 
-        // TODO: It'd be nice to only do this if the changed entrie(s)
-        // match the current operator.
-        if (DBG) log("tryRestartDataConnections: createAllApnList and cleanUpAllConnections");
-        createAllApnList();
-        setInitialAttachApn();
-        cleanUpAllConnections(!isDisconnected, reason);
-        if (isDisconnected) {
-            setupDataOnConnectableApns(reason);
+        if (mOmhDpt != null) {
+            log("OMH: tryRestartDataConnections(): calling loadProfiles()");
+            /* query for data profiles stored in the modem */
+            mOmhDpt.loadProfiles();
+        } else {
+            // TODO: It'd be nice to only do this if the changed entrie(s)
+            // match the current operator.
+            if (DBG) log("tryRestartDataConnections: createAllApnList and cleanUpAllConnections");
+            createAllApnList();
+            setInitialAttachApn();
+            cleanUpAllConnections(!isDisconnected, reason);
+            if (isDisconnected) {
+                setupDataOnConnectableApns(reason);
+            }
         }
     }
 
@@ -1325,8 +1331,10 @@ public class DcTracker extends DcTrackerBase {
         if (mState == DctConstants.State.FAILED) {
             cleanUpAllConnections(false, Phone.REASON_PS_RESTRICT_ENABLED);
         }
-        if (DBG) log("OMH: onModemDataProfileReady(): Setting up data call");
-        setupDataOnConnectableApns(Phone.REASON_SIM_LOADED);
+        if (isDisconnected()) {
+            if (DBG) log("OMH: onModemDataProfileReady(): Setting up data call");
+            setupDataOnConnectableApns(Phone.REASON_SIM_LOADED);
+        }
     }
 
     /**
@@ -1545,8 +1553,13 @@ public class DcTracker extends DcTrackerBase {
                 if (DBG) log("onRecordsLoaded: notifying data availability");
                 notifyOffApnsOfAvailability(Phone.REASON_SIM_LOADED);
             }
-            setupDataOnConnectableApns(Phone.REASON_SIM_LOADED);
-       }
+            boolean isDisconnected = isDisconnected();
+            log("onRecordsLoaded: isDisconnected = " + isDisconnected);
+            // If the state is already connected don't setup data now.
+            if (isDisconnected) {
+                setupDataOnConnectableApns(Phone.REASON_SIM_LOADED);
+            }
+        }
     }
 
     private void onNvReady() {
@@ -2075,8 +2088,12 @@ public class DcTracker extends DcTrackerBase {
         // If APN is still enabled, try to bring it back up automatically
         if (mAttached.get() && apnContext.isReady() && retryAfterDisconnected(apnContext)) {
             if (Objects.equal(apnContext.getReason(), Phone.REASON_NW_TYPE_CHANGED)) {
-                // Retry immediately if reason is nw_type_changed (like rat switch, for instance)
-                setupDataOnConnectableApns(Phone.REASON_NW_TYPE_CHANGED);
+                // Retry immediately if reason is nw_type_changed and
+                // the overall state is disconnected (like rat switch, for instance)
+                if (isDisconnected()) {
+                    log("onDisconnectDone: Cleanup due to NW type changed done. Restart all apns");
+                    setupDataOnConnectableApns(Phone.REASON_NW_TYPE_CHANGED);
+                }
             } else {
                 SystemProperties.set(PUPPET_MASTER_RADIO_STRESS_TEST, "false");
                 // Wait a bit before trying the next APN, so that
@@ -2097,13 +2114,17 @@ public class DcTracker extends DcTrackerBase {
             apnContext.setDataConnectionAc(null);
             if (isOnlySingleDcAllowed(mPhone.getServiceState().getRilDataRadioTechnology())) {
                 if(DBG) log("onDisconnectDone: isOnlySigneDcAllowed true so setup single apn");
-                setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION);
+                if (isDisconnected()) {
+                    setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION);
+                } else {
+                    if(DBG) log("onDisconnectDone: Wait for all apn contexts to be disconnected");
+                }
             } else {
                 if(DBG) log("onDisconnectDone: not retrying");
             }
         }
 
-        if (SUPPORT_MPDN == false) {
+        if (SUPPORT_MPDN == false && isDisconnected()) {
             setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION);
         }
     }
