@@ -31,11 +31,14 @@ import android.net.ConnectivityManager;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkConfig;
+import android.net.NetworkFactory;
+import android.net.NetworkRequest;
 import android.net.NetworkUtils;
 import android.net.ProxyInfo;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Build;
+import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.SystemClock;
@@ -116,9 +119,10 @@ public final class DcTracker extends DcTrackerBase {
     /** Used to send us NetworkRequests from ConnectivityService.  Remeber it so we can
      * unregister on dispose. */
     private Messenger mNetworkFactoryMessenger;
+    private NetworkFactory mNetworkFactory;
+    private NetworkCapabilities mNetworkFilter;
 
     //***** Constructor
-
     public DcTracker(PhoneBase p) {
         super(p);
         if (DBG) log("GsmDCT.constructor");
@@ -150,26 +154,29 @@ public final class DcTracker extends DcTrackerBase {
         p.getContext().getContentResolver().registerContentObserver(
                 Telephony.Carriers.CONTENT_URI, true, mApnObserver);
 
-        initApnContexts();
-
-        for (ApnContext apnContext : mApnContexts.values()) {
-            // Register the reconnect and restart actions.
-            IntentFilter filter = new IntentFilter();
-            filter.addAction(INTENT_RECONNECT_ALARM + '.' + apnContext.getApnType());
-            filter.addAction(INTENT_RESTART_TRYSETUP_ALARM + '.' + apnContext.getApnType());
-            mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
-        }
-
         ConnectivityManager cm = (ConnectivityManager)p.getContext().getSystemService(
                 Context.CONNECTIVITY_SERVICE);
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_MMS, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_SUPL, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_DUN, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_HIPRI, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_FOTA, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_IMS, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_CBS, new Messenger(this));
+
+        mNetworkFilter = new NetworkCapabilities();
+        mNetworkFilter.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
+        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
+        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
+        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
+        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IA);
+        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_RCS);
+        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_XCAP);
+        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
+        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+        mNetworkFactory = new TelephonyNetworkFactory(this.getLooper(), p.getContext(),
+                "TelephonyNetworkFactory", mNetworkFilter);
+        mNetworkFactory.setScoreFilter(50);
+        mNetworkFactoryMessenger = new Messenger(mNetworkFactory);
+        cm.registerNetworkFactory(mNetworkFactoryMessenger, "Telephony");
     }
 
     @Override
@@ -205,6 +212,122 @@ public final class DcTracker extends DcTrackerBase {
         mPrioritySortedApnContexts.clear();
 
         destroyDataConnections();
+    }
+
+    private class TelephonyNetworkFactory extends NetworkFactory {
+        public TelephonyNetworkFactory(Looper l, Context c, String TAG, NetworkCapabilities nc) {
+            super(l, c, TAG, nc);
+        }
+
+        @Override
+        protected void needNetworkFor(NetworkRequest networkRequest, int score) {
+            // figure out the apn type and enable it
+            if (DBG) log("Cellular needs Network for " + networkRequest);
+            ApnContext apnContext = apnContextForNetworkRequest(networkRequest);
+            if (apnContext != null) apnContext.incRefCount();
+        }
+
+        @Override
+        protected void releaseNetworkFor(NetworkRequest networkRequest) {
+            if (DBG) log("Cellular releasing Network for " + networkRequest);
+            ApnContext apnContext = apnContextForNetworkRequest(networkRequest);
+            if (apnContext != null) apnContext.decRefCount();
+        }
+    }
+
+    private ApnContext apnContextForNetworkRequest(NetworkRequest nr) {
+        NetworkCapabilities nc = nr.networkCapabilities;
+        // for now, ignore the bandwidth stuff
+        if (nc.getTransportTypes().size() > 0 &&
+                nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == false) {
+            return null;
+        }
+
+        // in the near term just do 1-1 matches.
+        // TODO - actually try to match the set of capabilities
+        int type = -1;
+        String name = null;
+
+        boolean error = false;
+        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+            if (name != null) error = true;
+            name = PhoneConstants.APN_TYPE_DEFAULT;
+            type = ConnectivityManager.TYPE_MOBILE;
+        }
+        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)) {
+            if (name != null) error = true;
+            name = PhoneConstants.APN_TYPE_MMS;
+            type = ConnectivityManager.TYPE_MOBILE_MMS;
+        }
+        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)) {
+            if (name != null) error = true;
+            name = PhoneConstants.APN_TYPE_SUPL;
+            type = ConnectivityManager.TYPE_MOBILE_SUPL;
+        }
+        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)) {
+            if (name != null) error = true;
+            name = PhoneConstants.APN_TYPE_DUN;
+            type = ConnectivityManager.TYPE_MOBILE_DUN;
+        }
+        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_FOTA)) {
+            if (name != null) error = true;
+            name = PhoneConstants.APN_TYPE_FOTA;
+            type = ConnectivityManager.TYPE_MOBILE_FOTA;
+        }
+        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
+            if (name != null) error = true;
+            name = PhoneConstants.APN_TYPE_IMS;
+            type = ConnectivityManager.TYPE_MOBILE_IMS;
+        }
+        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_CBS)) {
+            if (name != null) error = true;
+            name = PhoneConstants.APN_TYPE_CBS;
+            type = ConnectivityManager.TYPE_MOBILE_CBS;
+        }
+        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_IA)) {
+            if (name != null) error = true;
+            name = PhoneConstants.APN_TYPE_IA;
+            type = ConnectivityManager.TYPE_MOBILE_IA;
+        }
+        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_RCS)) {
+            if (name != null) error = true;
+            name = null;
+            loge("RCS APN type not yet supported");
+        }
+        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_XCAP)) {
+            if (name != null) error = true;
+            name = null;
+            loge("XCAP APN type not yet supported");
+        }
+        if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
+            if (name != null) error = true;
+            name = null;
+            loge("EIMS APN type not yet supported");
+        }
+        if (error) {
+            loge("Multiple apn types specified in request - result is unspecified!");
+        }
+        if (type == -1 || name == null) {
+            loge("Unsupported NetworkRequest in Telephony: " + nr);
+            return null;
+        }
+        ApnContext apnContext = mApnContexts.get(name);
+        if (apnContext == null) {
+            if (DBG) log("Attempting to create new ApnContext for " + type);
+            String[] networkConfigStrings = mPhone.getContext().getResources().getStringArray(
+                    com.android.internal.R.array.networkAttributes);
+            for (String networkConfigString : networkConfigStrings) {
+                NetworkConfig networkConfig = new NetworkConfig(networkConfigString);
+                if (networkConfig.type == type) {
+                    apnContext = addApnContext(name, networkConfig);
+                    break;
+                }
+            }
+            if (apnContext == null) {
+                loge("Unable to create new ApnContext for " + type);
+            }
+        }
+        return apnContext;
     }
 
     @Override
@@ -243,58 +366,11 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private ApnContext addApnContext(String type, NetworkConfig networkConfig) {
-        ApnContext apnContext = new ApnContext(mPhone.getContext(), type, LOG_TAG, networkConfig);
+        ApnContext apnContext = new ApnContext(mPhone.getContext(), type, LOG_TAG, networkConfig,
+                this);
         mApnContexts.put(type, apnContext);
         mPrioritySortedApnContexts.add(apnContext);
         return apnContext;
-    }
-
-    protected void initApnContexts() {
-        log("initApnContexts: E");
-        boolean defaultEnabled = SystemProperties.getBoolean(DEFALUT_DATA_ON_BOOT_PROP, true);
-        // Load device network attributes from resources
-        String[] networkConfigStrings = mPhone.getContext().getResources().getStringArray(
-                com.android.internal.R.array.networkAttributes);
-        for (String networkConfigString : networkConfigStrings) {
-            NetworkConfig networkConfig = new NetworkConfig(networkConfigString);
-            ApnContext apnContext = null;
-
-            switch (networkConfig.type) {
-            case ConnectivityManager.TYPE_MOBILE:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_DEFAULT, networkConfig);
-                apnContext.setEnabled(defaultEnabled);
-                break;
-            case ConnectivityManager.TYPE_MOBILE_MMS:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_MMS, networkConfig);
-                break;
-            case ConnectivityManager.TYPE_MOBILE_SUPL:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_SUPL, networkConfig);
-                break;
-            case ConnectivityManager.TYPE_MOBILE_DUN:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_DUN, networkConfig);
-                break;
-            case ConnectivityManager.TYPE_MOBILE_HIPRI:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_HIPRI, networkConfig);
-                break;
-            case ConnectivityManager.TYPE_MOBILE_FOTA:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_FOTA, networkConfig);
-                break;
-            case ConnectivityManager.TYPE_MOBILE_IMS:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_IMS, networkConfig);
-                break;
-            case ConnectivityManager.TYPE_MOBILE_CBS:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_CBS, networkConfig);
-                break;
-            case ConnectivityManager.TYPE_MOBILE_IA:
-                apnContext = addApnContext(PhoneConstants.APN_TYPE_IA, networkConfig);
-                break;
-            default:
-                log("initApnContexts: skipping unknown type=" + networkConfig.type);
-                continue;
-            }
-            log("initApnContexts: apnContext=" + apnContext);
-        }
-        log("initApnContexts: X mApnContexts=" + mApnContexts);
     }
 
     @Override

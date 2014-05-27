@@ -30,12 +30,18 @@ import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
 import android.app.PendingIntent;
+import android.content.Context;
+import android.net.ConnectivityManager;
 import android.net.LinkProperties;
+import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.net.ProxyInfo;
 import android.os.AsyncResult;
 import android.os.Build;
+import android.os.Looper;
 import android.os.Message;
+import android.os.Messenger;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.telephony.Rlog;
@@ -157,7 +163,6 @@ public final class DataConnection extends StateMachine {
 
     private PhoneBase mPhone;
     private LinkProperties mLinkProperties = new LinkProperties();
-    private NetworkCapabilities mNetworkCapabilities = new NetworkCapabilities();
     private long mCreateTime;
     private long mLastFailTime;
     private DcFailCause mLastFailCause;
@@ -165,6 +170,8 @@ public final class DataConnection extends StateMachine {
     private Object mUserData;
     private int mRilRat = Integer.MAX_VALUE;
     private int mDataRegState = Integer.MAX_VALUE;
+    private NetworkInfo mNetworkInfo;
+    private NetworkAgent mNetworkAgent;
 
     //***** Package visible variables
     int mTag;
@@ -188,8 +195,10 @@ public final class DataConnection extends StateMachine {
     static final int EVENT_LOST_CONNECTION = BASE + 9;
     static final int EVENT_RETRY_CONNECTION = BASE + 10;
     static final int EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED = BASE + 11;
+    static final int EVENT_DATA_CONNECTION_ROAM_ON = BASE + 12;
+    static final int EVENT_DATA_CONNECTION_ROAM_OFF = BASE + 13;
 
-    private static final int CMD_TO_STRING_COUNT = EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED - BASE + 1;
+    private static final int CMD_TO_STRING_COUNT = EVENT_DATA_CONNECTION_ROAM_OFF - BASE + 1;
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
         sCmdToString[EVENT_CONNECT - BASE] = "EVENT_CONNECT";
@@ -206,6 +215,8 @@ public final class DataConnection extends StateMachine {
         sCmdToString[EVENT_RETRY_CONNECTION - BASE] = "EVENT_RETRY_CONNECTION";
         sCmdToString[EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED - BASE] =
                 "EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED";
+        sCmdToString[EVENT_DATA_CONNECTION_ROAM_ON - BASE] = "EVENT_DATA_CONNECTION_ROAM_ON";
+        sCmdToString[EVENT_DATA_CONNECTION_ROAM_OFF - BASE] = "EVENT_DATA_CONNECTION_ROAM_OFF";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
@@ -247,7 +258,7 @@ public final class DataConnection extends StateMachine {
     /* Getter functions */
 
     NetworkCapabilities getCopyNetworkCapabilities() {
-        return new NetworkCapabilities(mNetworkCapabilities);
+        return makeNetworkCapabilities();
     }
 
     LinkProperties getCopyLinkProperties() {
@@ -322,8 +333,14 @@ public final class DataConnection extends StateMachine {
         mId = id;
         mCid = -1;
         mDcRetryAlarmController = new DcRetryAlarmController(mPhone, this);
-        mRilRat = mPhone.getServiceState().getRilDataRadioTechnology();
+        ServiceState ss = mPhone.getServiceState();
+        mRilRat = ss.getRilDataRadioTechnology();
         mDataRegState = mPhone.getServiceState().getDataRegState();
+        int networkType = ss.getDataNetworkType();
+        mNetworkInfo = new NetworkInfo(ConnectivityManager.TYPE_MOBILE,
+                networkType, "Cellular", TelephonyManager.getNetworkTypeName(networkType));
+        mNetworkInfo.setRoaming(ss.getRoaming());
+        mNetworkInfo.setIsAvailable(true);
 
         addState(mDefaultState);
             addState(mInactiveState, mDefaultState);
@@ -488,6 +505,8 @@ public final class DataConnection extends StateMachine {
     }
 
     private void notifyAllWithEvent(ApnContext alreadySent, int event, String reason) {
+        mNetworkInfo.setDetailedState(mNetworkInfo.getDetailedState(), reason,
+                mNetworkInfo.getExtraInfo());
         for (ApnContext apnContext : mApnContexts) {
             if (apnContext == alreadySent) continue;
             if (reason != null) apnContext.setReason(reason);
@@ -697,6 +716,85 @@ public final class DataConnection extends StateMachine {
         return true;
     }
 
+    private NetworkCapabilities makeNetworkCapabilities() {
+        NetworkCapabilities result = new NetworkCapabilities();
+        result.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+
+        if (mApnSetting != null) {
+            for (String type : mApnSetting.types) {
+                switch (type) {
+                    case PhoneConstants.APN_TYPE_DEFAULT: {
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+                        break;
+                    }
+                    case PhoneConstants.APN_TYPE_MMS: {
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+                        break;
+                    }
+                    case PhoneConstants.APN_TYPE_SUPL: {
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
+                        break;
+                    }
+                    case PhoneConstants.APN_TYPE_DUN: {
+                        // TODO - secure?
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
+                        result.removeNetworkCapability(
+                                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+                        break;
+                    }
+                    case PhoneConstants.APN_TYPE_FOTA: {
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
+                        result.removeNetworkCapability(
+                                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+                        break;
+                    }
+                    case PhoneConstants.APN_TYPE_IMS: {
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+                        result.removeNetworkCapability(
+                                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+                        break;
+                    }
+                    case PhoneConstants.APN_TYPE_CBS: {
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
+                        result.removeNetworkCapability(
+                                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+                        break;
+                    }
+                    case PhoneConstants.APN_TYPE_IA: {
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IA);
+                        result.removeNetworkCapability(
+                                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+                        break;
+                    }
+                    default:
+                }
+            }
+        }
+        int up = 14;
+        int down = 14;
+        switch (mRilRat) {
+            case TelephonyManager.NETWORK_TYPE_GPRS: up = 80; down = 80; break;
+            case TelephonyManager.NETWORK_TYPE_EDGE: up = 59; down = 236; break;
+            case TelephonyManager.NETWORK_TYPE_UMTS: up = 384; down = 384; break;
+            case TelephonyManager.NETWORK_TYPE_CDMA: up = 14; down = 14; break;
+            case TelephonyManager.NETWORK_TYPE_EVDO_0: up = 153; down = 2457; break;
+            case TelephonyManager.NETWORK_TYPE_EVDO_A: up = 1843; down = 3174; break;
+            case TelephonyManager.NETWORK_TYPE_1xRTT: up = 100; down = 100; break;
+            case TelephonyManager.NETWORK_TYPE_HSDPA: up = 2048; down = 14336; break;
+            case TelephonyManager.NETWORK_TYPE_HSUPA: up = 5898; down = 14336; break;
+            case TelephonyManager.NETWORK_TYPE_HSPA: up = 5898; down = 14336; break;
+            case TelephonyManager.NETWORK_TYPE_IDEN: up = 14; down = 14; break;
+            case TelephonyManager.NETWORK_TYPE_EVDO_B: up = 1843; down = 5017; break;
+            case TelephonyManager.NETWORK_TYPE_LTE: up = 51200; down = 102400; break;
+            case TelephonyManager.NETWORK_TYPE_EHRPD: up = 153; down = 2516; break;
+            case TelephonyManager.NETWORK_TYPE_HSPAP: up = 11264; down = 43008; break;
+            default:
+        }
+        result.setLinkUpstreamBandwidthKbps(up);
+        result.setLinkDownstreamBandwidthKbps(down);
+        return result;
+    }
+
     private boolean isIpAddress(String address) {
         if (address == null) return false;
 
@@ -772,6 +870,11 @@ public final class DataConnection extends StateMachine {
             mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(getHandler(),
                     DataConnection.EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED, null);
 
+            mPhone.getServiceStateTracker().registerForRoamingOn(getHandler(),
+                    DataConnection.EVENT_DATA_CONNECTION_ROAM_ON, null);
+            mPhone.getServiceStateTracker().registerForRoamingOff(getHandler(),
+                    DataConnection.EVENT_DATA_CONNECTION_ROAM_OFF, null);
+
             // Add ourselves to the list of data connections
             mDcController.addDc(DataConnection.this);
         }
@@ -781,6 +884,9 @@ public final class DataConnection extends StateMachine {
 
             // Unregister for DRS or RAT change.
             mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(getHandler());
+
+            mPhone.getServiceStateTracker().unregisterForRoamingOn(getHandler());
+            mPhone.getServiceStateTracker().unregisterForRoamingOff(getHandler());
 
             // Remove ourselves from the DC lists
             mDcController.removeDc(DataConnection.this);
@@ -797,7 +903,6 @@ public final class DataConnection extends StateMachine {
             mApnSetting = null;
             mPhone = null;
             mLinkProperties = null;
-            mNetworkCapabilities = null;
             mLastFailCause = null;
             mUserData = null;
             mDcController = null;
@@ -926,6 +1031,22 @@ public final class DataConnection extends StateMachine {
                                 + " drs=" + mDataRegState
                                 + " mRilRat=" + mRilRat);
                     }
+                    ServiceState ss = mPhone.getServiceState();
+                    int networkType = ss.getDataNetworkType();
+                    mNetworkInfo.setSubtype(networkType,
+                            TelephonyManager.getNetworkTypeName(networkType));
+                    if (mNetworkAgent != null) {
+                        mNetworkAgent.sendNetworkCapabilities(makeNetworkCapabilities());
+                        mNetworkAgent.sendNetworkInfo(mNetworkInfo);
+                    }
+                    break;
+
+                case EVENT_DATA_CONNECTION_ROAM_ON:
+                    mNetworkInfo.setRoaming(true);
+                    break;
+
+                case EVENT_DATA_CONNECTION_ROAM_OFF:
+                    mNetworkInfo.setRoaming(false);
                     break;
 
                 default:
@@ -1121,6 +1242,11 @@ public final class DataConnection extends StateMachine {
                         }
                         mDataRegState = drs;
                         mRilRat = rat;
+                        // TODO - pass the other type here too?
+                        ServiceState ss = mPhone.getServiceState();
+                        int networkType = ss.getDataNetworkType();
+                        mNetworkInfo.setSubtype(networkType,
+                                TelephonyManager.getNetworkTypeName(networkType));
                     }
                     retVal = HANDLED;
                     break;
@@ -1407,11 +1533,22 @@ public final class DataConnection extends StateMachine {
             // if it didn't then this is effectively a NOP.
             mRetryManager.restoreCurMaxRetryCount();
             mDcController.addActiveDcByCid(DataConnection.this);
+
+            mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.CONNECTED,
+                    mNetworkInfo.getReason(), null);
+            mNetworkInfo.setExtraInfo(mApnSetting.apn);
+            mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
+                    "DcNetworkAgent", mNetworkInfo, makeNetworkCapabilities(), mLinkProperties,
+                    50);
         }
 
         @Override
         public void exit() {
             if (DBG) log("DcActiveState: exit dc=" + this);
+            mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.DISCONNECTED,
+                    mNetworkInfo.getReason(), mNetworkInfo.getExtraInfo());
+            mNetworkAgent.sendNetworkInfo(mNetworkInfo);
+            mNetworkAgent = null;
         }
 
         @Override
@@ -1500,6 +1637,18 @@ public final class DataConnection extends StateMachine {
                         mInactiveState.setEnterNotificationParams(DcFailCause.LOST_CONNECTION);
                         transitionTo(mInactiveState);
                     }
+                    retVal = HANDLED;
+                    break;
+                }
+                case EVENT_DATA_CONNECTION_ROAM_ON: {
+                    mNetworkInfo.setRoaming(true);
+                    mNetworkAgent.sendNetworkInfo(mNetworkInfo);
+                    retVal = HANDLED;
+                    break;
+                }
+                case EVENT_DATA_CONNECTION_ROAM_OFF: {
+                    mNetworkInfo.setRoaming(false);
+                    mNetworkAgent.sendNetworkInfo(mNetworkInfo);
                     retVal = HANDLED;
                     break;
                 }
@@ -1606,6 +1755,17 @@ public final class DataConnection extends StateMachine {
     }
     private DcDisconnectionErrorCreatingConnection mDisconnectingErrorCreatingConnection =
                 new DcDisconnectionErrorCreatingConnection();
+
+
+    private class DcNetworkAgent extends NetworkAgent {
+        public DcNetworkAgent(Looper l, Context c, String TAG, NetworkInfo ni,
+                NetworkCapabilities nc, LinkProperties lp, int score) {
+            super(l, c, TAG, ni, nc, lp, score);
+        }
+
+        protected void unwanted() {
+        }
+    }
 
     // ******* "public" interface
 
@@ -1751,7 +1911,7 @@ public final class DataConnection extends StateMachine {
                 + " mTag=" + mTag
                 + " mRetryManager=" + mRetryManager
                 + " mLinkProperties=" + mLinkProperties
-                + " mNetworkCapabilities=" + mNetworkCapabilities;
+                + " linkCapabilities=" + makeNetworkCapabilities();
     }
 
     @Override
@@ -1788,7 +1948,7 @@ public final class DataConnection extends StateMachine {
         pw.flush();
         pw.println(" mDataRegState=" + mDataRegState);
         pw.println(" mRilRat=" + mRilRat);
-        pw.println(" mNetworkCapabilities=" + mNetworkCapabilities);
+        pw.println(" mNetworkCapabilities=" + makeNetworkCapabilities());
         pw.println(" mCreateTime=" + TimeUtils.logTimeOfDay(mCreateTime));
         pw.println(" mLastFailTime=" + TimeUtils.logTimeOfDay(mLastFailTime));
         pw.println(" mLastFailCause=" + mLastFailCause);
