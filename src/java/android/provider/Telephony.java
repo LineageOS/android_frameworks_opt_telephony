@@ -686,6 +686,39 @@ public final class Telephony {
 
             /**
              * Broadcast Action: A new text-based SMS message has been received
+             * by the device. This intent will only be delivered to the default
+             * carrier app which is responsible for filtering the message.
+             * If the carrier app wants to drop a message, it should set the result
+             * code to {@link android.app.Activity#RESULT_CANCELED}. The carrier app can
+             * also modify the SMS PDU by setting the "pdus" value in result extras.</p>
+             *
+             * The intent will have the following extra values:</p>
+             *
+             * <ul>
+             *   <li><em>"pdus"</em> - An Object[] of byte[]s containing the PDUs
+             *   that make up the message.</li>
+             *   <li><em>"format"</em> - A String describing the format of the PDUs. It can
+             *   be either "3gpp" or "3gpp2".</li>
+             *   <li><em>"destport"</em> - An int describing the destination port of a data
+             *   SMS. It will be -1 for text SMS.</li>
+             * </ul>
+             *
+             * <p>The extra values can be extracted using
+             * {@link #getMessagesFromIntent(Intent)}.</p>
+             *
+             * <p class="note"><strong>Note:</strong>
+             * The broadcast receiver that filters for this intent must declare
+             * {@link android.Manifest.permission#BROADCAST_SMS} as a required permission in
+             * the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">{@code
+             * &lt;receiver>}</a> tag.
+             * @hide
+             */
+            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+            public static final String SMS_FILTER_ACTION =
+                    "android.provider.Telephony.SMS_FILTER";
+
+            /**
+             * Broadcast Action: A new text-based SMS message has been received
              * by the device. This intent will be delivered to all registered
              * receivers as a notification. These apps are not expected to write the
              * message or notify the user. The intent will have the following extra
