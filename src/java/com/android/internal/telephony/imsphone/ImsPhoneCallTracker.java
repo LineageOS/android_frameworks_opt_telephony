@@ -1005,7 +1005,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
         @Override
         public void onCallMergeFailed(ImsCall call, ImsReasonInfo reasonInfo) {
-            // TODO : What should be done?
+            if (DBG) log("onCallMergeFailed reasonCode=" + reasonInfo.getCode());
+            mPhone.notifySuppServiceFailed(Phone.SuppService.CONFERENCE);
         }
     };
 
