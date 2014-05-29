@@ -145,8 +145,6 @@ public final class DcTracker extends DcTrackerBase {
                 DctConstants.EVENT_PS_RESTRICT_ENABLED, null);
         p.getServiceStateTracker().registerForPsRestrictedDisabled(this,
                 DctConstants.EVENT_PS_RESTRICT_DISABLED, null);
-        p.getServiceStateTracker().registerForDataRegStateOrRatChanged(this,
-                DctConstants.EVENT_DATA_RAT_CHANGED, null);
 
         mDataConnectionTracker = this;
 
@@ -2294,11 +2292,6 @@ public final class DcTracker extends DcTrackerBase {
                     loge("EVENT_CLEAN_UP_CONNECTION request w/o apn context, call super");
                     super.handleMessage(msg);
                 }
-                break;
-
-            case DctConstants.EVENT_DATA_RAT_CHANGED:
-                //May new Network allow setupData, so try it here
-                setupDataOnConnectableApns(Phone.REASON_NW_TYPE_CHANGED);
                 break;
 
             default:
