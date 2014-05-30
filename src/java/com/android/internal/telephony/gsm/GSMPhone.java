@@ -1618,7 +1618,8 @@ public class GSMPhone extends PhoneBase {
 
                 if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Baseband version: " + ar.result);
 
-                if (SubscriptionManager.isValidPhoneId(mPhoneId)) {
+                if (SubscriptionManager.isValidPhoneId(mPhoneId) &&
+                        !"".equals((String)ar.result)) {
                     String prop = PROPERTY_BASEBAND_VERSION +
                             ((mPhoneId == 0 ) ? "" : Integer.toString(mPhoneId));
                     SystemProperties.set(prop, (String)ar.result);
