@@ -385,9 +385,12 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public Connection
     dial (String dialString) throws CallStateException {
-        if (mVoicePhone != null
-                && mVoicePhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
-                && !PhoneNumberUtils.isEmergencyNumber(dialString)) {
+        if ( mVoicePhone != null
+                && ((mVoicePhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+                && !PhoneNumberUtils.isEmergencyNumber(dialString))
+                || (PhoneNumberUtils.isEmergencyNumber(dialString)
+                && mContext.getResources().getBoolean(
+                        com.android.internal.R.bool.useImsAlwaysForEmergencyCall))) ) {
             try {
                 return mVoicePhone.dial(dialString);
             } catch (CallStateException e) {
