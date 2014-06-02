@@ -16,6 +16,24 @@
       "revId": "3af44fb7ed24df3e1fbc819f3e04f22a4ba688c4",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da0c15f0_3579b494",
+        "filename": "src/java/com/android/internal/telephony/ImsSMSDispatcher.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 623,
+      "author": {
+        "id": 4884
+      },
+      "writtenOn": "2014-06-02T19:13:07Z",
+      "side": 1,
+      "message": "+1",
+      "parentUuid": "da0c15f0_b53e64b6",
+      "revId": "3af44fb7ed24df3e1fbc819f3e04f22a4ba688c4",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
