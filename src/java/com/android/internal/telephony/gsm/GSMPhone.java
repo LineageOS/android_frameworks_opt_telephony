@@ -178,7 +178,6 @@ public class GSMPhone extends PhoneBase {
         mCi.registerForOn(this, EVENT_RADIO_ON, null);
         mCi.setOnUSSD(this, EVENT_USSD, null);
         mCi.setOnSuppServiceNotification(this, EVENT_SSN, null);
-        mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         setProperties();
     }
@@ -239,7 +238,6 @@ public class GSMPhone extends PhoneBase {
             mSST.unregisterForNetworkAttached(this); //EVENT_REGISTERED_TO_NETWORK
             mCi.unSetOnUSSD(this);
             mCi.unSetOnSuppServiceNotification(this);
-            mCi.unregisterForSrvccStateChanged(this);
 
             mPendingMMIs.clear();
 
@@ -1307,39 +1305,6 @@ public class GSMPhone extends PhoneBase {
         }
     }
 
-    private void handleSrvccStateChanged(int[] ret) {
-        Rlog.d(LOG_TAG, "handleSrvccStateChanged");
-
-        Connection conn = null;
-        Call.SrvccState srvccState = Call.SrvccState.NONE;
-        if (ret != null && ret.length != 0) {
-            int state = ret[0];
-            switch(state) {
-                case VoLteServiceState.HANDOVER_STARTED:
-                    srvccState = Call.SrvccState.STARTED;
-                    conn = ((VoicePhone)mVoicePhone).getHandoverConnection();
-                    break;
-                case VoLteServiceState.HANDOVER_COMPLETED:
-                    srvccState = Call.SrvccState.COMPLETED;
-                    ((VoicePhone) mVoicePhone).notifySrvccState(srvccState);
-                    break;
-                case VoLteServiceState.HANDOVER_FAILED:
-                case VoLteServiceState.HANDOVER_CANCELED:
-                    srvccState = Call.SrvccState.FAILED;
-                    break;
-
-                default:
-                    //ignore invalid state
-                    return;
-            }
-
-            mCT.notifySrvccState(srvccState, conn);
-
-            VoLteServiceState lteState = new VoLteServiceState(state);
-            notifyVoLteServiceStateChanged(lteState);
-        }
-    }
-
     @Override
     public void handleMessage (Message msg) {
         AsyncResult ar;
@@ -1528,13 +1493,6 @@ public class GSMPhone extends PhoneBase {
             case EVENT_SUBSCRIPTION_DEACTIVATED:
                 log("EVENT_SUBSCRIPTION_DEACTIVATED");
                 onSubscriptionDeactivated();
-                break;
-
-            case EVENT_SRVCC_STATE_CHANGED:
-                ar = (AsyncResult)msg.obj;
-                if (ar.exception == null) {
-                    handleSrvccStateChanged((int[]) ar.result);
-                }
                 break;
 
              default:

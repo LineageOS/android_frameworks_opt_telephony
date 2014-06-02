@@ -90,7 +90,6 @@ public final class GsmCallTracker extends CallTracker {
     PhoneConstants.State mState = PhoneConstants.State.IDLE;
 
     Call.SrvccState mSrvccState = Call.SrvccState.NONE;
-    Connection mHandoverConnection;
 
 
     //***** Events
@@ -854,15 +853,6 @@ public final class GsmCallTracker extends CallTracker {
                 return Phone.SuppService.TRANSFER;
         }
         return Phone.SuppService.UNKNOWN;
-    }
-
-    /* package */
-    void notifySrvccState(Call.SrvccState state, Connection c) {
-        if (state == Call.SrvccState.STARTED) {
-            mHandoverConnection = c;
-        } else if (state != Call.SrvccState.COMPLETED) {
-            mHandoverConnection = null;
-        }
     }
 
     //****** Overridden from Handler

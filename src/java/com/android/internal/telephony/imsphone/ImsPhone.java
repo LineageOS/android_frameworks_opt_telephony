@@ -856,10 +856,17 @@ public class ImsPhone extends ImsPhoneBase implements VoicePhone {
 
     @Override
     public ImsPhoneConnection getHandoverConnection() {
+        // handover for single foreground call
         ImsPhoneConnection conn = getForegroundCall().getHandoverConnection();
 
+        // handover for single background call
         if (conn == null) {
             conn = getBackgroundCall().getHandoverConnection();
+        }
+
+        // handover for single ringing call
+        if (conn == null) {
+            conn = getRingingCall().getHandoverConnection();
         }
 
         return conn;

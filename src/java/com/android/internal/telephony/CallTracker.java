@@ -41,9 +41,9 @@ public abstract class CallTracker extends Handler {
     protected int mPendingOperations;
     protected boolean mNeedsPoll;
     protected Message mLastRelevantPoll;
+    protected Connection mHandoverConnection;
 
     public CommandsInterface mCi;
-
 
     //***** Events
 
@@ -88,6 +88,14 @@ public abstract class CallTracker extends Handler {
     }
 
     protected abstract void handlePollCalls(AsyncResult ar);
+
+    protected void notifySrvccState(Call.SrvccState state, Connection c) {
+        if (state == Call.SrvccState.STARTED) {
+            mHandoverConnection = c;
+        } else if (state != Call.SrvccState.COMPLETED) {
+            mHandoverConnection = null;
+        }
+    }
 
     protected void handleRadioAvailable() {
         pollCallsWhenSafe();

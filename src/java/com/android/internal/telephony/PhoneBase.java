@@ -374,6 +374,8 @@ public abstract class PhoneBase extends Handler implements Phone {
         filter.addAction(ImsManager.ACTION_IMS_SERVICE_UP);
         filter.addAction(ImsManager.ACTION_IMS_SERVICE_DOWN);
         mContext.registerReceiver(mImsIntentReceiver, filter);
+
+        mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
     }
 
     @Override
@@ -388,6 +390,7 @@ public abstract class PhoneBase extends Handler implements Phone {
             mSmsStorageMonitor.dispose();
             mSmsUsageMonitor.dispose();
             mUiccController.unregisterForIccChanged(this);
+            mCi.unregisterForSrvccStateChanged(this);
 
             if (mTelephonyTester != null) {
                 mTelephonyTester.dispose();
@@ -479,8 +482,58 @@ public abstract class PhoneBase extends Handler implements Phone {
                 }
                 break;
 
+            case EVENT_SRVCC_STATE_CHANGED:
+                ar = (AsyncResult)msg.obj;
+                if (ar.exception == null) {
+                    handleSrvccStateChanged((int[]) ar.result);
+                } else {
+                    Rlog.e(LOG_TAG, "Srvcc exception: " + ar.exception);
+                }
+                break;
+
             default:
                 throw new RuntimeException("unexpected event not handled");
+        }
+    }
+
+    private void handleSrvccStateChanged(int[] ret) {
+        Rlog.d(LOG_TAG, "handleSrvccStateChanged");
+
+        Connection conn = null;
+        Call.SrvccState srvccState = Call.SrvccState.NONE;
+        if (ret != null && ret.length != 0) {
+            int state = ret[0];
+            switch(state) {
+                case VoLteServiceState.HANDOVER_STARTED:
+                    srvccState = Call.SrvccState.STARTED;
+                    if (mVoicePhone != null) {
+                        conn = ((VoicePhone)mVoicePhone).getHandoverConnection();
+                    } else {
+                        Rlog.d(LOG_TAG, "HANDOVER_STARTED: mVoicePhone null");
+                    }
+                    break;
+                case VoLteServiceState.HANDOVER_COMPLETED:
+                    srvccState = Call.SrvccState.COMPLETED;
+                    if (mVoicePhone != null) {
+                        ((VoicePhone) mVoicePhone).notifySrvccState(srvccState);
+                    } else {
+                        Rlog.d(LOG_TAG, "HANDOVER_COMPLETED: mVoicePhone null");
+                    }
+                    break;
+                case VoLteServiceState.HANDOVER_FAILED:
+                case VoLteServiceState.HANDOVER_CANCELED:
+                    srvccState = Call.SrvccState.FAILED;
+                    break;
+
+                default:
+                    //ignore invalid state
+                    return;
+            }
+
+            getCallTracker().notifySrvccState(srvccState, conn);
+
+            VoLteServiceState lteState = new VoLteServiceState(state);
+            notifyVoLteServiceStateChanged(lteState);
         }
     }
 
