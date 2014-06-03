@@ -437,6 +437,7 @@ public class GsmConnection extends Connection {
                 changed = mParent.connectionDisconnected(this);
             }
         }
+        clearPostDialListeners();
         releaseWakeLock();
         return changed;
     }
@@ -622,6 +623,7 @@ public class GsmConnection extends Connection {
         if (mPartialWakeLock.isHeld()) {
             Rlog.e(LOG_TAG, "[GSMConn] UNEXPECTED; mPartialWakeLock is held when finalizing.");
         }
+        clearPostDialListeners();
         releaseWakeLock();
     }
 
@@ -731,6 +733,7 @@ public class GsmConnection extends Connection {
             releaseWakeLock();
         }
         mPostDialState = s;
+        notifyPostDialListeners();
     }
 
     private void
