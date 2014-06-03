@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.telephony.SmsManager.RESULT_ERROR_GENERIC_FAILURE;
+import static android.telephony.SmsManager.RESULT_ERROR_NULL_PDU;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -198,6 +199,45 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
         } else {
             mGsmDispatcher.sendText(destAddr, scAddr,
                     text, sentIntent, deliveryIntent);
+        }
+    }
+
+    @Override
+    protected void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
+        Rlog.d(TAG, "ImsSMSDispatcher:injectSmsPdu");
+        try {
+            // TODO We need to decide whether we should allow injecting GSM(3gpp)
+            // SMS pdus when the phone is camping on CDMA(3gpp2) network and vice versa.
+            android.telephony.SmsMessage msg =
+                    android.telephony.SmsMessage.createFromPdu(pdu, format);
+
+            // Only class 1 SMS are allowed to be injected.
+            if (msg.getMessageClass() != android.telephony.SmsMessage.MessageClass.CLASS_1) {
+                if (receivedIntent != null)
+                    receivedIntent.send(Intents.RESULT_SMS_GENERIC_ERROR);
+                return;
+            }
+
+            AsyncResult ar = new AsyncResult(receivedIntent, msg, null);
+
+            if (format.equals(SmsConstants.FORMAT_3GPP)) {
+                Rlog.i(TAG, "ImsSMSDispatcher:injectSmsText Sending msg=" + msg +
+                        ", format=" + format + "to mGsmInboundSmsHandler");
+                mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_INJECT_SMS, ar);
+            } else if (format.equals(SmsConstants.FORMAT_3GPP2)) {
+                Rlog.i(TAG, "ImsSMSDispatcher:injectSmsText Sending msg=" + msg +
+                        ", format=" + format + "to mCdmaInboundSmsHandler");
+                mCdmaInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_INJECT_SMS, ar);
+            } else {
+                // Invalid pdu format.
+                Rlog.e(TAG, "Invalid pdu format: " + format);
+                receivedIntent.send(Intents.RESULT_SMS_GENERIC_ERROR);
+            }
+        } catch (Exception e) {
+            Rlog.e(TAG, "injectSmsPdu failed: ", e);
+            try {
+              receivedIntent.send(Intents.RESULT_SMS_GENERIC_ERROR);
+            } catch (CanceledException ex) {}
         }
     }
 

@@ -105,6 +105,37 @@ public final class SmsManager {
     }
 
     /**
+     * TODO Move this to new CarrierSmsManager class.
+     *
+     * Inject an SMS PDU into the android application framework.
+     *
+     * @param pdu is the byte array of pdu to be injected into android application framework
+     * @param format is the format of SMS pdu (3gpp or 3gpp2)
+     * @param receivedIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is successfully received by the
+     *  android application framework. This intent is broadcasted at
+     *  the same time an SMS received from radio is acknowledged back.
+     *
+     *  @throws IllegalArgumentException if format is not one of 3gpp and 3gpp2.
+     *  {@hide}
+     */
+    public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
+        if (!format.equals(SmsMessage.FORMAT_3GPP) && !format.equals(SmsMessage.FORMAT_3GPP2)) {
+            // Format must be either 3gpp or 3gpp2.
+            throw new IllegalArgumentException(
+                    "Invalid pdu format. format must be either 3gpp or 3gpp2");
+        }
+        try {
+            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            if (iccISms != null) {
+                iccISms.injectSmsPdu(pdu, format, receivedIntent);
+            }
+        } catch (RemoteException ex) {
+          // ignore it
+        }
+    }
+
+    /**
      * Divide a message text into several fragments, none bigger than
      * the maximum SMS message size.
      *

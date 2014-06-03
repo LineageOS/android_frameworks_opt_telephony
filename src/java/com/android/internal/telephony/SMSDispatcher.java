@@ -512,6 +512,18 @@ public abstract class SMSDispatcher extends Handler {
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent);
 
     /**
+     * Inject an SMS PDU into the android platform.
+     *
+     * @param pdu is the byte array of pdu to be injected into android telephony layer
+     * @param format is the format of SMS pdu (3gpp or 3gpp2)
+     * @param receivedIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is successfully received by the
+     *  android telephony layer. This intent is broadcasted at
+     *  the same time an SMS received from radio is responded back.
+     */
+    protected abstract void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent);
+
+    /**
      * Calculate the number of septets needed to encode the message.
      *
      * @param messageBody the message to encode

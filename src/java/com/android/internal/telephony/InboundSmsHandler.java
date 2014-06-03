@@ -18,6 +18,8 @@ package com.android.internal.telephony;
 
 import android.app.Activity;
 import android.app.AppOpsManager;
+import android.app.PendingIntent;
+import android.app.PendingIntent.CanceledException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentResolver;
@@ -116,6 +118,9 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     /** Update phone object */
     static final int EVENT_UPDATE_PHONE_OBJECT = 7;
+
+    /** New SMS received as an AsyncResult. */
+    public static final int EVENT_INJECT_SMS = 8;
 
     /** Wakelock release delay when returning to idle state. */
     private static final int WAKELOCK_TIMEOUT = 3000;
@@ -254,6 +259,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         public boolean processMessage(Message msg) {
             switch (msg.what) {
                 case EVENT_NEW_SMS:
+                case EVENT_INJECT_SMS:
                 case EVENT_BROADCAST_SMS:
                     deferMessage(msg);
                     return HANDLED;
@@ -294,6 +300,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             if (DBG) log("Idle state processing message type " + msg.what);
             switch (msg.what) {
                 case EVENT_NEW_SMS:
+                case EVENT_INJECT_SMS:
                 case EVENT_BROADCAST_SMS:
                     deferMessage(msg);
                     transitionTo(mDeliveringState);
@@ -347,6 +354,12 @@ public abstract class InboundSmsHandler extends StateMachine {
                 case EVENT_NEW_SMS:
                     // handle new SMS from RIL
                     handleNewSms((AsyncResult) msg.obj);
+                    sendMessage(EVENT_RETURN_TO_IDLE);
+                    return HANDLED;
+
+                case EVENT_INJECT_SMS:
+                    // handle new injected SMS
+                    handleInjectSms((AsyncResult) msg.obj);
                     sendMessage(EVENT_RETURN_TO_IDLE);
                     return HANDLED;
 
@@ -433,6 +446,33 @@ public abstract class InboundSmsHandler extends StateMachine {
         if (result != Activity.RESULT_OK) {
             boolean handled = (result == Intents.RESULT_SMS_HANDLED);
             notifyAndAcknowledgeLastIncomingSms(handled, result, null);
+        }
+    }
+
+    /**
+     * This method is called when a new SMS PDU is injected into application framework.
+     * @param ar is the AsyncResult that has the SMS PDU to be injected.
+     */
+    void handleInjectSms(AsyncResult ar) {
+        int result;
+        PendingIntent receivedIntent = null;
+        try {
+            receivedIntent = (PendingIntent) ar.userObj;
+            SmsMessage sms = (SmsMessage) ar.result;
+            if (sms == null) {
+              result = Intents.RESULT_SMS_GENERIC_ERROR;
+            } else {
+              result = dispatchMessage(sms.mWrappedSmsMessage);
+            }
+        } catch (RuntimeException ex) {
+            loge("Exception dispatching message", ex);
+            result = Intents.RESULT_SMS_GENERIC_ERROR;
+        }
+
+        if (receivedIntent != null) {
+            try {
+                receivedIntent.send(result);
+            } catch (CanceledException e) { }
         }
     }
 

@@ -123,6 +123,12 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     @Override
+    protected void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
+        throw new IllegalStateException("This method must be called only on ImsSMSDispatcher");
+    }
+
+    /** {@inheritDoc} */
+    @Override
     protected GsmAlphabet.TextEncodingDetails calculateLength(CharSequence messageBody,
             boolean use7bitOnly) {
         return SmsMessage.calculateLength(messageBody, use7bitOnly);

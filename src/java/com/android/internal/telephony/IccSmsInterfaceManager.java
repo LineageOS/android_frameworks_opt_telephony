@@ -394,6 +394,27 @@ public class IccSmsInterfaceManager extends ISms.Stub {
     }
 
     /**
+     * Inject an SMS PDU into the android application framework.
+     *
+     * @param pdu is the byte array of pdu to be injected into android application framework
+     * @param format is the format of SMS pdu (3gpp or 3gpp2)
+     * @param receivedIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is successfully received by the
+     *  android application framework. This intent is broadcasted at
+     *  the same time an SMS received from radio is acknowledged back.
+     */
+    @Override
+    public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
+        // TODO Check if the calling package has access to call this SIM restricted API.
+        if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
+            log("pdu: " + pdu +
+                "\n format=" + format +
+                "\n receivedIntent=" + receivedIntent);
+        }
+        mDispatcher.injectSmsPdu(pdu, format, receivedIntent);
+    }
+
+    /**
      * Send a multi-part text based SMS.
      *
      * @param destAddr the address to send the message to
