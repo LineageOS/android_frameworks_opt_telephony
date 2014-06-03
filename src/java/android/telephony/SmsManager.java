@@ -96,11 +96,9 @@ public final class SmsManager {
         }
 
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
-            if (iccISms != null) {
-                iccISms.sendText(ActivityThread.currentPackageName(), destinationAddress,
-                        scAddress, text, sentIntent, deliveryIntent);
-            }
+            ISms iccISms = getISmsServiceOrThrow();
+            iccISms.sendText(ActivityThread.currentPackageName(), destinationAddress,
+                    scAddress, text, sentIntent, deliveryIntent);
         } catch (RemoteException ex) {
             // ignore it
         }
@@ -176,12 +174,10 @@ public final class SmsManager {
 
         if (parts.size() > 1) {
             try {
-                ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
-                if (iccISms != null) {
-                    iccISms.sendMultipartText(ActivityThread.currentPackageName(),
-                            destinationAddress, scAddress, parts,
-                            sentIntents, deliveryIntents);
-                }
+                ISms iccISms = getISmsServiceOrThrow();
+                iccISms.sendMultipartText(ActivityThread.currentPackageName(),
+                        destinationAddress, scAddress, parts,
+                        sentIntents, deliveryIntents);
             } catch (RemoteException ex) {
                 // ignore it
             }
@@ -241,12 +237,10 @@ public final class SmsManager {
         }
 
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
-            if (iccISms != null) {
-                iccISms.sendData(ActivityThread.currentPackageName(),
-                        destinationAddress, scAddress, destinationPort & 0xFFFF,
-                        data, sentIntent, deliveryIntent);
-            }
+            ISms iccISms = getISmsServiceOrThrow();
+            iccISms.sendData(ActivityThread.currentPackageName(),
+                    destinationAddress, scAddress, destinationPort & 0xFFFF,
+                    data, sentIntent, deliveryIntent);
         } catch (RemoteException ex) {
             // ignore it
         }
@@ -263,6 +257,22 @@ public final class SmsManager {
 
     private SmsManager() {
         //nothing
+    }
+
+    /**
+     * Returns the ISms service, or throws an UnsupportedOperationException if
+     * the service does not exist.
+     */
+    private static ISms getISmsServiceOrThrow() {
+        ISms iccISms = getISmsService();
+        if (iccISms == null) {
+            throw new UnsupportedOperationException("Sms is not supported");
+        }
+        return iccISms;
+    }
+
+    private static ISms getISmsService() {
+        return ISms.Stub.asInterface(ServiceManager.getService("isms"));
     }
 
     /**
@@ -286,7 +296,7 @@ public final class SmsManager {
             throw new IllegalArgumentException("pdu is NULL");
         }
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            ISms iccISms = getISmsService();
             if (iccISms != null) {
                 success = iccISms.copyMessageToIccEf(ActivityThread.currentPackageName(),
                         status, pdu, smsc);
@@ -315,7 +325,7 @@ public final class SmsManager {
         Arrays.fill(pdu, (byte)0xff);
 
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            ISms iccISms = getISmsService();
             if (iccISms != null) {
                 success = iccISms.updateMessageOnIccEf(ActivityThread.currentPackageName(),
                         messageIndex, STATUS_ON_ICC_FREE, pdu);
@@ -345,7 +355,7 @@ public final class SmsManager {
         boolean success = false;
 
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            ISms iccISms = getISmsService();
             if (iccISms != null) {
                 success = iccISms.updateMessageOnIccEf(ActivityThread.currentPackageName(),
                         messageIndex, newStatus, pdu);
@@ -370,7 +380,7 @@ public final class SmsManager {
         List<SmsRawData> records = null;
 
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            ISms iccISms = getISmsService();
             if (iccISms != null) {
                 records = iccISms.getAllMessagesFromIccEf(ActivityThread.currentPackageName());
             }
@@ -401,7 +411,7 @@ public final class SmsManager {
         boolean success = false;
 
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            ISms iccISms = getISmsService();
             if (iccISms != null) {
                 success = iccISms.enableCellBroadcast(messageIdentifier);
             }
@@ -432,7 +442,7 @@ public final class SmsManager {
         boolean success = false;
 
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            ISms iccISms = getISmsService();
             if (iccISms != null) {
                 success = iccISms.disableCellBroadcast(messageIdentifier);
             }
@@ -469,7 +479,7 @@ public final class SmsManager {
             throw new IllegalArgumentException("endMessageId < startMessageId");
         }
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            ISms iccISms = getISmsService();
             if (iccISms != null) {
                 success = iccISms.enableCellBroadcastRange(startMessageId, endMessageId);
             }
@@ -506,7 +516,7 @@ public final class SmsManager {
             throw new IllegalArgumentException("endMessageId < startMessageId");
         }
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            ISms iccISms = getISmsService();
             if (iccISms != null) {
                 success = iccISms.disableCellBroadcastRange(startMessageId, endMessageId);
             }
@@ -556,7 +566,7 @@ public final class SmsManager {
     boolean isImsSmsSupported() {
         boolean boSupported = false;
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            ISms iccISms = getISmsService();
             if (iccISms != null) {
                 boSupported = iccISms.isImsSmsSupported();
             }
@@ -581,7 +591,7 @@ public final class SmsManager {
     String getImsSmsFormat() {
         String format = com.android.internal.telephony.SmsConstants.FORMAT_UNKNOWN;
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            ISms iccISms = getISmsService();
             if (iccISms != null) {
                 format = iccISms.getImsSmsFormat();
             }
