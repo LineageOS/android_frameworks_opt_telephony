@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -25,6 +26,7 @@ import android.os.SystemClock;
 import android.telephony.CellInfo;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.text.TextUtils;
 import android.util.Pair;
 import android.util.TimeUtils;
 import android.net.ConnectivityManager;
@@ -847,5 +849,13 @@ public abstract class ServiceStateTracker extends Handler {
 
         DcTrackerBase dcTracker = mPhoneBase.mDcTracker;
         dcTracker.disableApnType(PhoneConstants.APN_TYPE_DEFAULT);
+    }
+
+    protected void updateCarrierMccMncConfiguration(String newOp, String oldOp, Context context) {
+        // if we have a change in operator, notify wifi (even to/from none)
+        if (((newOp == null) && (TextUtils.isEmpty(oldOp) == false)) ||
+                ((newOp != null) && (newOp.equals(oldOp) == false))) {
+            MccTable.updateMccMncConfiguration(context, newOp, true);
+        }
     }
 }
