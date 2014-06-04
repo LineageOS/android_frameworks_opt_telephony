@@ -738,37 +738,28 @@ public final class DataConnection extends StateMachine {
                     case PhoneConstants.APN_TYPE_DUN: {
                         // TODO - secure?
                         result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
-                        result.removeNetworkCapability(
-                                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_FOTA: {
                         result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
-                        result.removeNetworkCapability(
-                                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_IMS: {
                         result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
-                        result.removeNetworkCapability(
-                                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_CBS: {
                         result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
-                        result.removeNetworkCapability(
-                                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_IA: {
                         result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IA);
-                        result.removeNetworkCapability(
-                                NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
                         break;
                     }
                     default:
                 }
             }
+            ConnectivityManager.maybeMarkCapabilitiesRestricted(result);
         }
         int up = 14;
         int down = 14;
