@@ -1928,6 +1928,21 @@ public interface Phone {
     public void unregisterForModifyCallRequest(Handler h) throws CallStateException;
 
     /**
+     * When both the party in an IMS Call wants to upgrade or downgrade a
+     * call, a CallModifyRequest success or failure message is received.
+     * This function registers for that indication and sends a message
+     * to the handler when such an indication occurs.
+     * @param h The handler that will receive the message
+     * @param what The message to send
+     * @param obj User object to send with the message
+     * @throws CallStateException
+     */
+    public void registerForModifyCallResponse(Handler h, int what, Object obj)
+            throws CallStateException;
+
+    public void unregisterForModifyCallResponse(Handler h) throws CallStateException;
+
+    /**
      * When upgrade to video call and remote party does not support AVPF, IMS
      * Phone retries upgrade request and this function registers for the failure
      * indication

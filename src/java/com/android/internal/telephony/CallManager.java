@@ -85,6 +85,7 @@ public class CallManager {
     private static final int EVENT_POST_DIAL_CHARACTER = 119;
     private static final int EVENT_SUPP_SERVICE_NOTIFY = 120;
     private static final int EVENT_CALL_MODIFY = 121;
+    private static final int EVENT_CALL_MODIFY_RESPONSE = 122;
 
     private static final String PROPERTY_QCHAT_ENABLED = "persist.atel.qchat_enabled";
 
@@ -186,6 +187,9 @@ public class CallManager {
     = new RegistrantList();
 
     protected final RegistrantList mCallModifyRegistrants
+    = new RegistrantList();
+
+    protected final RegistrantList mModifyCallResponseRegistrants
     = new RegistrantList();
 
     protected CallManager() {
@@ -573,6 +577,8 @@ public class CallManager {
             phone.registerForEcmTimerReset(mHandler, EVENT_ECM_TIMER_RESET, null);
             try {
                 phone.registerForModifyCallRequest(mHandler, EVENT_CALL_MODIFY, null);
+                phone.registerForModifyCallResponse(
+                      mHandler, EVENT_CALL_MODIFY_RESPONSE, null);
             } catch (CallStateException e) {
                 Rlog.e(LOG_TAG, "registerForModifyCallRequest: CallStateException:" + e);
             }
@@ -624,6 +630,7 @@ public class CallManager {
             phone.unregisterForEcmTimerReset(mHandler);
             try {
                 phone.unregisterForModifyCallRequest(mHandler);
+                phone.unregisterForModifyCallResponse(mHandler);
             } catch (CallStateException e) {
                 Rlog.e(LOG_TAG, "unregisterForModifyCallRequest ", e);
             }
@@ -1718,6 +1725,17 @@ public class CallManager {
         mCallModifyRegistrants.remove(h);
     }
 
+    /*
+     * Registrants for CallModify Failed or Succeed
+     */
+    public void registerForCallModifyResponse(Handler h, int what, Object obj) {
+        mModifyCallResponseRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForCallModifyResponse(Handler h) {
+        mModifyCallResponseRegistrants.remove(h);
+    }
+
     /* APIs to access foregroudCalls, backgroudCalls, and ringingCalls
      * 1. APIs to access list of calls
      * 2. APIs to check if any active call, which has connection other than
@@ -2091,6 +2109,16 @@ public class CallManager {
                         notifyMsg.obj = msg.obj;
                         notifyMsg.arg1 = msg.arg1;
                         notifyMsg.sendToTarget();
+                    }
+                    break;
+                 case EVENT_CALL_MODIFY_RESPONSE:
+                    if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_CALL_MODIFY_RESPONSE)");
+                    AsyncResult res = (AsyncResult) msg.obj;
+                    if (res != null && res.result != null && res.exception == null) {
+                        mModifyCallResponseRegistrants.notifyRegistrants(new AsyncResult(null,
+                                res.result, null));
+                    } else {
+                        Rlog.e(LOG_TAG, "EVENT_MODIFY_CALL_RESPONSE AsyncResult res= " + res);
                     }
                     break;
             }
