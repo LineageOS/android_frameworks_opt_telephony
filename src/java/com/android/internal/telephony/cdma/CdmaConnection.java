@@ -605,10 +605,11 @@ public class CdmaConnection extends Connection {
 
     private void
     doDisconnect() {
-       mIndex = -1;
-       mDisconnectTime = System.currentTimeMillis();
-       mDuration = SystemClock.elapsedRealtime() - mConnectTimeReal;
-       mDisconnected = true;
+        mIndex = -1;
+        mDisconnectTime = System.currentTimeMillis();
+        mDuration = SystemClock.elapsedRealtime() - mConnectTimeReal;
+        mDisconnected = true;
+        clearPostDialListeners();
     }
 
     /*package*/ void
@@ -804,6 +805,7 @@ public class CdmaConnection extends Connection {
             releaseWakeLock();
         }
         mPostDialState = s;
+        notifyPostDialListeners();
     }
 
     private void createWakeLock(Context context) {
