@@ -723,6 +723,16 @@ public final class DataConnection extends StateMachine {
         if (mApnSetting != null) {
             for (String type : mApnSetting.types) {
                 switch (type) {
+                    case PhoneConstants.APN_TYPE_ALL: {
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
+                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IA);
+                        break;
+                    }
                     case PhoneConstants.APN_TYPE_DEFAULT: {
                         result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
                         break;
