@@ -19,14 +19,23 @@ package com.android.internal.telephony;
 import android.telephony.Rlog;
 import android.util.Log;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * {@hide}
  */
 public abstract class Connection {
 
+    public interface PostDialListener {
+        void onPostDialWait();
+    }
+
     //Caller Name Display
     protected String mCnapName;
     protected int mCnapNamePresentation  = PhoneConstants.PRESENTATION_ALLOWED;
+
+    private List<PostDialListener> mPostDialListeners = new ArrayList<>();
 
     private static String LOG_TAG = "Connection";
 
@@ -210,6 +219,24 @@ public abstract class Connection {
 
     public void clearUserData(){
         mUserData = null;
+    }
+
+    public final void addPostDialListener(PostDialListener listener) {
+        if (!mPostDialListeners.contains(listener)) {
+            mPostDialListeners.add(listener);
+        }
+    }
+
+    protected final void clearPostDialListeners() {
+        mPostDialListeners.clear();
+    }
+
+    protected final void notifyPostDialListeners() {
+        if (getPostDialState() == PostDialState.WAIT) {
+            for (PostDialListener listener : new ArrayList<>(mPostDialListeners)) {
+                listener.onPostDialWait();
+            }
+        }
     }
 
     public abstract PostDialState getPostDialState();
