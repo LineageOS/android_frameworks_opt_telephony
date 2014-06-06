@@ -2390,7 +2390,7 @@ public class DcTracker extends DcTrackerBase {
                 log("buildWaitingApns: Preferred APN:" + operator + ":"
                         + mPreferredDp.numeric + ":" + mPreferredDp);
             }
-            if (mPreferredDp.numeric.equals(operator)) {
+            if (mPreferredDp.numeric != null && mPreferredDp.numeric.equals(operator)) {
                 if (mPreferredDp.bearer == 0 || mPreferredDp.bearer == radioTech) {
                     apnList.add(mPreferredDp);
                     if (DBG) log("buildWaitingApns: X added preferred apnList=" + apnList);
