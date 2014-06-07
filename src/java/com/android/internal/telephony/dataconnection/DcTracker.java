@@ -135,6 +135,13 @@ public class DcTracker extends DcTrackerBase {
     private static final String PROPERTY_CDMA_ROAMING_IPPROTOCOL = SystemProperties.get(
             "persist.telephony.cdma.rproto", "IP");
 
+    /*
+     * Flag that indicates that Out Of Service is considered as data call disconnect
+     */
+    protected boolean mOosIsDisconnect = SystemProperties.getBoolean(
+            PhoneBase.PROPERTY_OOS_IS_DISCONNECT, true);
+
+
     private boolean mCanSetPreferApn = false;
 
     private AtomicBoolean mAttached = new AtomicBoolean(false);
@@ -861,7 +868,7 @@ public class DcTracker extends DcTrackerBase {
     // Disabled apn's still need avail/unavail notificiations - send them out
     protected void notifyOffApnsOfAvailability(String reason) {
         for (ApnContext apnContext : mApnContexts.values()) {
-            if (!mAttached.get() || !apnContext.isReady()) {
+            if ((!mAttached.get() && mOosIsDisconnect) || !apnContext.isReady()) {
                 if (VDBG) {
                     log("notifyOffApnOfAvailability type:" +
                             apnContext.getDataProfileType());
@@ -2191,7 +2198,7 @@ public class DcTracker extends DcTrackerBase {
     protected void notifyDataConnection(String reason) {
         if (DBG) log("notifyDataConnection: reason=" + reason);
         for (ApnContext apnContext : mApnContexts.values()) {
-            if (mAttached.get() && apnContext.isReady()) {
+            if ((mAttached.get() || !mOosIsDisconnect) && apnContext.isReady()) {
                 if (DBG) log("notifyDataConnection: type:" + apnContext.getDataProfileType());
                 mPhone.notifyDataConnection(reason != null ? reason : apnContext.getReason(),
                         apnContext.getDataProfileType());

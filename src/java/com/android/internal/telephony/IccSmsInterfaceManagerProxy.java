@@ -195,18 +195,19 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
         ArrayList<PendingIntent> deliveryIntents = new ArrayList<PendingIntent>();
         deliveryIntents.add(deliveryIntent);
         broadcastOutgoingSms(callingPackage, destAddr, scAddr, false, parts, sentIntents,
-                deliveryIntents, -1);
+                deliveryIntents, -1, false, -1);
     }
 
     @Override
     public void sendTextWithOptions(String callingPackage, String destAddr, String scAddr,
-            String text, PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+            String text, PendingIntent sentIntent, PendingIntent deliveryIntent, int priority,
+            boolean isExpectMore, int validityPeriod) {
         mContext.enforceCallingPermission(
                 android.Manifest.permission.SEND_SMS,
                 "Sending SMS message");
         if (mIccSmsInterfaceManager.isShortSMSCode(destAddr)) {
             mIccSmsInterfaceManager.sendTextWithOptions(callingPackage, destAddr, scAddr, text,
-                    sentIntent, deliveryIntent, priority);
+                    sentIntent, deliveryIntent, priority, isExpectMore, validityPeriod);
             return;
         }
         ArrayList<String> parts = new ArrayList<String>();
@@ -216,7 +217,7 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
         ArrayList<PendingIntent> deliveryIntents = new ArrayList<PendingIntent>();
         deliveryIntents.add(deliveryIntent);
         broadcastOutgoingSms(callingPackage, destAddr, scAddr, false, parts, sentIntents,
-                deliveryIntents, priority);
+                deliveryIntents, priority, isExpectMore, validityPeriod);
     }
 
     @Override
@@ -235,26 +236,26 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
                 parts != null ? new ArrayList<String>(parts) : null,
                 sentIntents != null ? new ArrayList<PendingIntent>(sentIntents) : null,
                 deliveryIntents != null ?  new ArrayList<PendingIntent>(deliveryIntents) : null,
-                -1);
+                -1, false, -1);
     }
 
     @Override
     public void sendMultipartTextWithOptions(String callingPackage, String destAddr, String scAddr,
             List<String> parts, List<PendingIntent> sentIntents,
-            List<PendingIntent> deliveryIntents, int priority) {
+            List<PendingIntent> deliveryIntents, int priority, boolean isExpectMore, int validityPeriod) {
         mContext.enforceCallingPermission(
                 android.Manifest.permission.SEND_SMS,
                 "Sending SMS message");
         if (mIccSmsInterfaceManager.isShortSMSCode(destAddr)) {
             mIccSmsInterfaceManager.sendMultipartTextWithOptions(callingPackage, destAddr, scAddr,
-                    parts, sentIntents, deliveryIntents, priority);
+                    parts, sentIntents, deliveryIntents, priority, isExpectMore, validityPeriod);
             return;
         }
         broadcastOutgoingSms(callingPackage, destAddr, scAddr, true,
                 parts != null ? new ArrayList<String>(parts) : null,
                 sentIntents != null ? new ArrayList<PendingIntent>(sentIntents) : null,
                 deliveryIntents != null ?  new ArrayList<PendingIntent>(deliveryIntents) : null,
-                priority);
+                priority, isExpectMore, validityPeriod);
     }
 
     @Override
@@ -300,7 +301,7 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
     private void broadcastOutgoingSms(String callingPackage, String destAddr, String scAddr,
             boolean multipart, ArrayList<String> parts,
             ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents,
-            int priority) {
+            int priority, boolean isExpectMore, int validityPeriod) {
         Intent broadcast = new Intent(Intent.ACTION_NEW_OUTGOING_SMS);
         broadcast.putExtra("destAddr", destAddr);
         broadcast.putExtra("scAddr", scAddr);
@@ -311,6 +312,8 @@ public class IccSmsInterfaceManagerProxy extends ISms.Stub {
         broadcast.putParcelableArrayListExtra("sentIntents", sentIntents);
         broadcast.putParcelableArrayListExtra("deliveryIntents", deliveryIntents);
         broadcast.putExtra("priority", priority);
+        broadcast.putExtra("isExpectMore", isExpectMore);
+        broadcast.putExtra("validityPeriod", validityPeriod);
         mContext.sendOrderedBroadcastAsUser(broadcast, UserHandle.OWNER,
                 android.Manifest.permission.INTERCEPT_SMS,
                 mReceiver, null, Activity.RESULT_OK, destAddr, null);

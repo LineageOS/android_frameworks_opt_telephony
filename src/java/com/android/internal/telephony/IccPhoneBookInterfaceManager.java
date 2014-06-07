@@ -126,6 +126,9 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
         }
         mIs3gCard = false;
         mCurrentApp = null;
+        if (mRecords != null) {
+            mRecords.clear();
+        }
     }
 
     public void dispose() {
@@ -144,7 +147,7 @@ public abstract class IccPhoneBookInterfaceManager extends IIccPhoneBook.Stub {
         UiccCardApplication validApp = null;
         int numApps = card.getNumApplications();
         boolean isCurrentAppFound = false;
-
+        mIs3gCard = false;
         for (int i = 0; i < numApps; i++) {
             UiccCardApplication app = card.getApplicationIndex(i);
             if (app != null) {

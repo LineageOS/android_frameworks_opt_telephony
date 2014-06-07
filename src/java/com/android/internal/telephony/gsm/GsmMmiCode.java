@@ -1233,8 +1233,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                     Rlog.i(LOG_TAG, "FDN_CHECK_FAILURE");
                     sb.append(mContext.getText(com.android.internal.R.string.mmiFdnError));
                 } else {
-                    sb.append(mContext.getText(
-                            com.android.internal.R.string.mmiError));
+                    sb.append(getErrorMessage(ar));
                 }
             } else {
                 sb.append(mContext.getText(

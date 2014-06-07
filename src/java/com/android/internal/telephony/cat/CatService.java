@@ -329,12 +329,6 @@ public class CatService extends Handler implements AppInterface {
                 sendTerminalResponse(cmdParams.mCmdDet, resultCode, false, 0, null);
                 break;
             case DISPLAY_TEXT:
-                // when application is not required to respond, send an immediate response.
-                if (!cmdMsg.geTextMessage().responseNeeded) {
-                    resultCode = cmdParams.mLoadIconFailed ? ResultCode.PRFRMD_ICON_NOT_DISPLAYED
-                                                                            : ResultCode.OK;
-                    sendTerminalResponse(cmdParams.mCmdDet, resultCode, false, 0, null);
-                }
                 break;
             case REFRESH:
                 //Stk app service displays alpha id to user if it is present, nothing to do here
@@ -468,6 +462,7 @@ public class CatService extends Handler implements AppInterface {
 
     protected void broadcastCatCmdIntent(CatCmdMessage cmdMsg) {
         Intent intent = new Intent(AppInterface.CAT_CMD_ACTION);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         intent.putExtra("STK CMD", cmdMsg);
         mContext.sendBroadcast(intent);
     }
@@ -481,6 +476,7 @@ public class CatService extends Handler implements AppInterface {
 
         mCurrntCmd = mMenuCmd;
         Intent intent = new Intent(AppInterface.CAT_SESSION_END_ACTION);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         mContext.sendBroadcast(intent);
     }
 
@@ -932,6 +928,7 @@ public class CatService extends Handler implements AppInterface {
         CatLog.d(this, "Broadcasting CAT Alpha message from card: " + alphaString);
         Intent intent = new Intent(AppInterface.CAT_ALPHA_NOTIFY_ACTION);
         intent.putExtra(AppInterface.ALPHA_STRING, alphaString);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         mContext.sendBroadcast(intent);
     }
     /**
@@ -943,6 +940,7 @@ public class CatService extends Handler implements AppInterface {
     protected void  broadcastCardStateAndIccRefreshResp(CardState cardState,
             IccRefreshResponse iccRefreshState) {
         Intent intent = new Intent(AppInterface.CAT_ICC_STATUS_CHANGE);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         boolean cardPresent = (cardState == CardState.CARDSTATE_PRESENT);
 
         if (iccRefreshState != null) {
@@ -1019,7 +1017,6 @@ public class CatService extends Handler implements AppInterface {
         boolean helpRequired = false;
         CommandDetails cmdDet = resMsg.getCmdDetails();
         AppInterface.CommandType type = AppInterface.CommandType.fromInt(cmdDet.typeOfCommand);
-
         switch (resMsg.mResCode) {
         case HELP_INFO_REQUIRED:
             helpRequired = true;
@@ -1060,9 +1057,14 @@ public class CatService extends Handler implements AppInterface {
                 }
                 break;
             case DISPLAY_TEXT:
-            //For screenbusy case there will be addtional information in the terminal
-            //response. And the value of the additional information byte is 0x01.
-                resMsg.setAdditionalInfo(0x01);
+                if (resMsg.mResCode == ResultCode.TERMINAL_CRNTLY_UNABLE_TO_PROCESS) {
+                    // For screenbusy case there will be addtional information in the terminal
+                    // response. And the value of the additional information byte is 0x01.
+                    resMsg.setAdditionalInfo(0x01);
+                } else {
+                    resMsg.mIncludeAdditionalInfo = false;
+                    resMsg.mAdditionalInfo = 0;
+                }
                 break;
             case LAUNCH_BROWSER:
                 break;

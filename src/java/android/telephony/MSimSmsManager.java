@@ -128,6 +128,7 @@ public class MSimSmsManager {
      *  raw pdu of the status report is in the extended data ("pdu").
      * @param priority Priority level of the message
      * @param subscription on which the SMS has to be sent.
+     * @param validityPeriod Validity Period of the message in Minutes.
      *
      * @throws IllegalArgumentException if destinationAddress or text are empty
      *
@@ -136,7 +137,7 @@ public class MSimSmsManager {
     public void sendTextMessage(
             String destinationAddress, String scAddress, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent, int priority,
-            int subscription) {
+            boolean isExpectMore, int validityPeriod, int subscription) {
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
@@ -150,7 +151,7 @@ public class MSimSmsManager {
             if (iccISms != null) {
                 iccISms.sendTextWithOptions(ActivityThread.currentPackageName(),
                         destinationAddress, scAddress, text, sentIntent, deliveryIntent,
-                        priority, subscription);
+                        priority, isExpectMore, validityPeriod, subscription);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -274,12 +275,14 @@ public class MSimSmsManager {
      *   extended data ("pdu").
      * @param priority Priority level of the message
      * @param subscription on which the SMS has to be sent.
+     * @param validityPeriod Validity Period of the message in Minutes.
      *
      * @throws IllegalArgumentException if destinationAddress or data are empty
      */
     public void sendMultipartTextMessage(String destinationAddress, String scAddress,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
-            ArrayList<PendingIntent> deliveryIntents, int priority, int subscription) {
+            ArrayList<PendingIntent> deliveryIntents, int priority, boolean isExpectMore,
+            int validityPeriod, int subscription) {
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
@@ -294,7 +297,7 @@ public class MSimSmsManager {
                 if (iccISms != null) {
                     iccISms.sendMultipartTextWithOptions(ActivityThread.currentPackageName(),
                             destinationAddress, scAddress, parts, sentIntents, deliveryIntents,
-                            priority, subscription);
+                            priority, isExpectMore, validityPeriod, subscription);
                 }
             } catch (RemoteException ex) {
                 // ignore it
@@ -309,7 +312,8 @@ public class MSimSmsManager {
                 deliveryIntent = deliveryIntents.get(0);
             }
             sendTextMessage(destinationAddress, scAddress, parts.get(0),
-                    sentIntent, deliveryIntent, priority, subscription);
+                    sentIntent, deliveryIntent, priority, isExpectMore, validityPeriod,
+                    subscription);
         }
     }
 

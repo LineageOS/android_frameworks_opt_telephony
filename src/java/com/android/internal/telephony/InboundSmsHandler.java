@@ -871,6 +871,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         // Store the voice mail count in persistent memory.
         String imsi = mPhone.getSubscriberId();
         int mwi = mPhone.getVoiceMessageCount();
+        int sub = mPhone.getSubscription();
 
         log("Storing Voice Mail Count = " + mwi
                     + " for imsi = " + imsi
@@ -880,8 +881,8 @@ public abstract class InboundSmsHandler extends StateMachine {
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
         SharedPreferences.Editor editor = sp.edit();
-        editor.putInt(mPhone.VM_COUNT, mwi);
-        editor.putString(mPhone.VM_ID, imsi);
+        editor.putInt(mPhone.VM_COUNT + sub, mwi);
+        editor.putString(mPhone.VM_ID + sub, imsi);
         editor.commit();
     }
 
