@@ -169,7 +169,7 @@ public class DataCallResponse {
                             throw new UnknownHostException("Non-numeric dns addr=" + addr);
                         }
                         if (! ia.isAnyLocalAddress()) {
-                            linkProperties.addDns(ia);
+                            linkProperties.addDnsServer(ia);
                         }
                     }
                 } else if (okToUseSystemPropertyDns){
@@ -186,7 +186,7 @@ public class DataCallResponse {
                             throw new UnknownHostException("Non-numeric dns addr=" + dnsAddr);
                         }
                         if (! ia.isAnyLocalAddress()) {
-                            linkProperties.addDns(ia);
+                            linkProperties.addDnsServer(ia);
                         }
                     }
                 } else {
