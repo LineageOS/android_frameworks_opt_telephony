@@ -724,46 +724,46 @@ public final class DataConnection extends StateMachine {
             for (String type : mApnSetting.types) {
                 switch (type) {
                     case PhoneConstants.APN_TYPE_ALL: {
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IA);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_IA);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_DEFAULT: {
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_MMS: {
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_SUPL: {
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_DUN: {
                         // TODO - secure?
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_FOTA: {
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_IMS: {
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_CBS: {
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
                         break;
                     }
                     case PhoneConstants.APN_TYPE_IA: {
-                        result.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IA);
+                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_IA);
                         break;
                     }
                     default:
