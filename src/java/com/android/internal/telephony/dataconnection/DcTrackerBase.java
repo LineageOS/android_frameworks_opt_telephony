@@ -872,8 +872,6 @@ public abstract class DcTrackerBase extends Handler {
                     loge("CMD_ENABLE_MOBILE_PROVISIONING: provisioningUrl=" + mProvisioningUrl);
                     mIsProvisioning = true;
                     startProvisioningApnAlarm();
-                    onSetInternalDataEnabled(true);
-                    enableApnType("default");
                 }
                 break;
             }
