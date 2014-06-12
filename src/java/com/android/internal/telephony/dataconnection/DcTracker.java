@@ -159,18 +159,18 @@ public final class DcTracker extends DcTrackerBase {
 
         mNetworkFilter = new NetworkCapabilities();
         mNetworkFilter.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
-        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
-        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
-        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
-        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
-        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
-        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
-        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_IA);
-        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_RCS);
-        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_XCAP);
-        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
-        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
-        mNetworkFilter.addNetworkCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+        mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
+        mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
+        mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
+        mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
+        mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_IA);
+        mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_RCS);
+        mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_XCAP);
+        mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
+        mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
         mNetworkFactory = new TelephonyNetworkFactory(this.getLooper(), p.getContext(),
                 "TelephonyNetworkFactory", mNetworkFilter);
@@ -238,7 +238,7 @@ public final class DcTracker extends DcTrackerBase {
     private ApnContext apnContextForNetworkRequest(NetworkRequest nr) {
         NetworkCapabilities nc = nr.networkCapabilities;
         // for now, ignore the bandwidth stuff
-        if (nc.getTransportTypes().size() > 0 &&
+        if (nc.getTransportTypes().length > 0 &&
                 nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == false) {
             return null;
         }
