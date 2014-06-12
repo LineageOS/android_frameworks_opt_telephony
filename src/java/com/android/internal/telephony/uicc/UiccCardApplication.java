@@ -548,6 +548,10 @@ public class UiccCardApplication {
         }
     }
 
+    public String getAppLabel() {
+        return mAppLabel;
+    }
+
     public PinState getPin1State() {
         synchronized (mLock) {
             if (mPin1Replaced) {

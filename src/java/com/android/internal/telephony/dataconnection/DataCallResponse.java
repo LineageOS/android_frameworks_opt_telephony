@@ -47,6 +47,7 @@ public class DataCallResponse {
     public String [] dnses = new String[0];
     public String[] gateways = new String[0];
     public int suggestedRetryTime = -1;
+    public String [] pcscf = new String[0];
 
     /**
      * Class returned by onSetupConnectionCompleted.
@@ -100,6 +101,12 @@ public class DataCallResponse {
             sb.append(",");
         }
         if (gateways.length > 0) sb.deleteCharAt(sb.length()-1);
+        sb.append("] pcscf=[");
+        for (String addr : pcscf) {
+            sb.append(addr);
+            sb.append(",");
+        }
+        if (pcscf.length > 0) sb.deleteCharAt(sb.length()-1);
         sb.append("]}");
         return sb.toString();
     }

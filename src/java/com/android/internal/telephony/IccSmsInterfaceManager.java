@@ -47,7 +47,7 @@ import static android.telephony.SmsManager.STATUS_ON_ICC_UNREAD;
  * IccSmsInterfaceManager to provide an inter-process communication to
  * access Sms in Icc.
  */
-public class IccSmsInterfaceManager extends ISms.Stub {
+public class IccSmsInterfaceManager {
     static final String LOG_TAG = "IccSmsInterfaceManager";
     static final boolean DBG = true;
 
@@ -120,9 +120,6 @@ public class IccSmsInterfaceManager extends ISms.Stub {
         mAppOps = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
         mDispatcher = new ImsSMSDispatcher(phone,
                 phone.mSmsStorageMonitor, phone.mSmsUsageMonitor);
-        if (ServiceManager.getService("isms") == null) {
-            ServiceManager.addService("isms", this);
-        }
     }
 
     protected void markMessagesAsRead(ArrayList<byte[]> messages) {
@@ -181,7 +178,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      * @return success or not
      *
      */
-    @Override
+
     public boolean
     updateMessageOnIccEf(String callingPackage, int index, int status, byte[] pdu) {
         if (DBG) log("updateMessageOnIccEf: index=" + index +
@@ -236,7 +233,6 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      * @return success or not
      *
      */
-    @Override
     public boolean copyMessageToIccEf(String callingPackage, int status, byte[] pdu, byte[] smsc) {
         //NOTE smsc not used in RUIM
         if (DBG) log("copyMessageToIccEf: status=" + status + " ==> " +
@@ -274,7 +270,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      *
      * @return list of SmsRawData of all sms on Icc
      */
-    @Override
+
     public List<SmsRawData> getAllMessagesFromIccEf(String callingPackage) {
         if (DBG) log("getAllMessagesFromEF");
 
@@ -333,7 +329,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      *  broadcast when the message is delivered to the recipient.  The
      *  raw pdu of the status report is in the extended data ("pdu").
      */
-    @Override
+
     public void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         mPhone.getContext().enforceCallingPermission(
@@ -375,7 +371,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      *  broadcast when the message is delivered to the recipient.  The
      *  raw pdu of the status report is in the extended data ("pdu").
      */
-    @Override
+
     public void sendText(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         mPhone.getContext().enforceCallingPermission(
@@ -418,7 +414,7 @@ public class IccSmsInterfaceManager extends ISms.Stub {
      *   to the recipient.  The raw pdu of the status report is in the
      *   extended data ("pdu").
      */
-    @Override
+
     public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
             List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents) {
@@ -440,12 +436,12 @@ public class IccSmsInterfaceManager extends ISms.Stub {
                 (ArrayList<PendingIntent>) sentIntents, (ArrayList<PendingIntent>) deliveryIntents);
     }
 
-    @Override
+
     public int getPremiumSmsPermission(String packageName) {
         return mDispatcher.getPremiumSmsPermission(packageName);
     }
 
-    @Override
+
     public void setPremiumSmsPermission(String packageName, int permission) {
         mDispatcher.setPremiumSmsPermission(packageName, permission);
     }

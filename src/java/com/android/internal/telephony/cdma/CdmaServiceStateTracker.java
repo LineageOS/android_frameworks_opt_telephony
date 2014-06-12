@@ -38,6 +38,8 @@ import android.telephony.CellInfoCdma;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.TelephonyManager;
+import android.telephony.SubscriptionManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
@@ -500,6 +502,11 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             }
             break;
 
+        case EVENT_CHANGE_IMS_STATE:
+            if (DBG) log("EVENT_CHANGE_IMS_STATE");
+            setPowerStateToDesired();
+            break;
+
         default:
             super.handleMessage(msg);
         break;
@@ -537,6 +544,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     protected void updateSpnDisplay() {
         // mOperatorAlphaLong contains the ERI text
         String plmn = mSS.getOperatorAlphaLong();
+
         if (!TextUtils.equals(plmn, mCurPlmn)) {
             // Allow A blank plmn, "" to set showPlmn to true. Previously, we
             // would set showPlmn to true only if plmn was not empty, i.e. was not
@@ -553,6 +561,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             intent.putExtra(TelephonyIntents.EXTRA_SPN, "");
             intent.putExtra(TelephonyIntents.EXTRA_SHOW_PLMN, showPlmn);
             intent.putExtra(TelephonyIntents.EXTRA_PLMN, plmn);
+            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
             mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
         }
 
@@ -1291,7 +1300,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
      */
     private
     boolean isRoamingBetweenOperators(boolean cdmaRoaming, ServiceState s) {
-        String spn = SystemProperties.get(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA, "empty");
+        String spn = getSystemProperty(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA, "empty");
 
         // NOTE: in case of RUIM we should completely ignore the ERI data file and
         // mOperatorAlphaLong is set from RIL_REQUEST_OPERATOR response 0 (alpha ONS)
@@ -1377,7 +1386,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 zone = TimeZone.getTimeZone( tzname );
             }
 
-            String iso = SystemProperties.get(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY);
+            String iso = getSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
 
             if (zone == null) {
                 if (mGotCountryCode) {
@@ -1634,7 +1643,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
      */
     String getImsi() {
         // TODO: When RUIM is enabled, IMSI will come from RUIM not build-time props.
-        String operatorNumeric = SystemProperties.get(
+        String operatorNumeric = getSystemProperty(
                 TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
 
         if (!TextUtils.isEmpty(operatorNumeric) && getCdmaMin() != null) {
@@ -1730,14 +1739,18 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         }
     }
 
+    protected UiccCardApplication getUiccCardApplication() {
+            return  mUiccController.getUiccCardApplication(mPhone.getPhoneId(),
+                    UiccController.APP_FAM_3GPP2);
+    }
+
     @Override
     protected void onUpdateIccAvailability() {
         if (mUiccController == null ) {
             return;
         }
 
-        UiccCardApplication newUiccApplication =
-                mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP2);
+        UiccCardApplication newUiccApplication = getUiccCardApplication();
 
         if (mUiccApplcation != newUiccApplication) {
             if (mUiccApplcation != null) {
@@ -1809,5 +1822,25 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         pw.println(" mCdmaSSM=" + mCdmaSSM);
         pw.println(" mRegistrationDeniedReason=" + mRegistrationDeniedReason);
         pw.println(" mCurrentCarrier=" + mCurrentCarrier);
+    }
+
+    @Override
+    public void setImsRegistrationState(boolean registered) {
+        log("ImsRegistrationState - registered : " + registered);
+
+        if (mImsRegistrationOnOff && !registered) {
+            if (mAlarmSwitch) {
+                mImsRegistrationOnOff = registered;
+
+                Context context = mPhone.getContext();
+                AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+                am.cancel(mRadioOffIntent);
+                mAlarmSwitch = false;
+
+                sendMessage(obtainMessage(EVENT_CHANGE_IMS_STATE));
+                return;
+            }
+        }
+        mImsRegistrationOnOff = registered;
     }
 }

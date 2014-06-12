@@ -30,6 +30,7 @@ import android.telephony.gsm.GsmCellLocation;
 import android.util.EventLog;
 import android.telephony.Rlog;
 
+import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CommandsInterface;
@@ -88,6 +89,8 @@ public final class GsmCallTracker extends CallTracker {
 
     PhoneConstants.State mState = PhoneConstants.State.IDLE;
 
+    Call.SrvccState mSrvccState = Call.SrvccState.NONE;
+    Connection mHandoverConnection;
 
 
     //***** Events
@@ -504,6 +507,10 @@ public final class GsmCallTracker extends CallTracker {
                     // it's a ringing call
                     if (mConnections[i].getCall() == mRingingCall) {
                         newRinging = mConnections[i];
+                    } else if (mHandoverConnection != null) {
+                        // Single Radio Voice Call Continuity (SRVCC) completed
+                        mConnections[i].migrateFrom(mHandoverConnection);
+                        mHandoverConnection = null;
                     } else {
                         // Something strange happened: a call appeared
                         // which is neither a ringing call or one we created.
@@ -847,6 +854,15 @@ public final class GsmCallTracker extends CallTracker {
                 return Phone.SuppService.TRANSFER;
         }
         return Phone.SuppService.UNKNOWN;
+    }
+
+    /* package */
+    void notifySrvccState(Call.SrvccState state, Connection c) {
+        if (state == Call.SrvccState.STARTED) {
+            mHandoverConnection = c;
+        } else if (state != Call.SrvccState.COMPLETED) {
+            mHandoverConnection = null;
+        }
     }
 
     //****** Overridden from Handler

@@ -29,6 +29,7 @@ import android.telephony.SignalStrength;
 
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IsimRecords;
+import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UsimServiceTable;
 
 import com.android.internal.telephony.PhoneConstants.*; // ???? 
@@ -104,6 +105,7 @@ public interface Phone {
     static final String REASON_LOST_DATA_CONNECTION = "lostDataConnection";
     static final String REASON_CONNECTED = "connected";
     static final String REASON_SINGLE_PDN_ARBITRATION = "SinglePdnArbitration";
+    static final String REASON_DATA_SPECIFIC_DISABLED = "specificDisabled";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = 0; // selected by baseband automatically
@@ -384,6 +386,23 @@ public interface Phone {
     void unregisterForRingbackTone(Handler h);
 
     /**
+     * Notifies when out-band on-hold tone is needed.<p>
+     *
+     *  Messages received from this:
+     *  Message.obj will be an AsyncResult
+     *  AsyncResult.userObj = obj
+     *  AsyncResult.result = boolean, true to start play on-hold tone
+     *                       and false to stop. <p>
+     */
+    void registerForOnHoldTone(Handler h, int what, Object obj);
+
+    /**
+     * Unregisters for on-hold tone notification.
+     */
+
+    void unregisterForOnHoldTone(Handler h);
+
+    /**
      * Registers the handler to reset the uplink mute state to get
      * uplink audio.
      */
@@ -590,6 +609,20 @@ public interface Phone {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForSubscriptionInfoReady(Handler h);
+
+    /**
+     * Registration point for Sim records loaded
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForSimRecordsLoaded(Handler h, int what, Object obj);
+
+    /**
+     * Unregister for notifications for Sim records loaded
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForSimRecordsLoaded(Handler h);
 
     /**
      * Returns SIM record load state. Use
@@ -1693,16 +1726,6 @@ public interface Phone {
     IsimRecords getIsimRecords();
 
     /**
-     * Request the ISIM application on the UICC to perform the AKA
-     * challenge/response algorithm for IMS authentication. The nonce string
-     * and challenge response are Base64 encoded Strings.
-     *
-     * @param nonce the nonce string to pass with the ISIM authentication request
-     * @param response a callback message with the String response in the obj field
-     */
-    void requestIsimAuthentication(String nonce, Message response);
-
-    /**
      * Sets the SIM voice message waiting indicator records.
      * @param line GSM Subscriber Profile Number, one-based. Only '1' is supported
      * @param countWaiting The number of messages waiting, if known. Use
@@ -1716,6 +1739,12 @@ public interface Phone {
      * @return an interface to the UsimServiceTable record, or null if not available
      */
     UsimServiceTable getUsimServiceTable();
+
+    /**
+     * Gets the Uicc card corresponding to this phone.
+     * @return the UiccCard object corresponding to the phone ID.
+     */
+    UiccCard getUiccCard();
 
     /**
      * Unregister from all events it registered for and dispose objects
@@ -1772,4 +1801,36 @@ public interface Phone {
      * @param response Callback message.
      */
     void nvResetConfig(int resetType, Message response);
+
+    /*
+     * Returns the subscription id.
+     */
+    public long getSubId();
+
+    /*
+     * Returns the phone id.
+     */
+    public int getPhoneId();
+
+    /**
+     * Get P-CSCF address from PCO after data connection is established or modified.
+     */
+    public String[] getPcscfAddress();
+
+    /**
+     * Set IMS registration state
+     */
+    public void setImsRegistrationState(boolean registered);
+
+    /**
+     * Return an instance of a ImsPhone phone
+     * @return an interface of a ImsPhone phone
+     */
+    Phone getVoicePhone();
+
+    /**
+     * Return the service state of mVoicePhone if it is STATE_IN_SERVICE
+     * otherwise return the current voice service state
+     */
+    int getVoiceServiceState();
 }

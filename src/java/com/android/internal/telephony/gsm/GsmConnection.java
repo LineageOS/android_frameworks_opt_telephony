@@ -81,6 +81,8 @@ public class GsmConnection extends Connection {
     UUSInfo mUusInfo;
     int mPreciseCause = 0;
 
+    Connection mOrigConnection;
+
     Handler mHandler;
 
     private PowerManager.WakeLock mPartialWakeLock;
@@ -186,6 +188,11 @@ public class GsmConnection extends Connection {
         // and therefore don't need to compare the phone number anyway.
         if (! (mIsIncoming || c.isMT)) return true;
 
+        // A new call appearing by SRVCC may have invalid number
+        //  if IMS service is not tightly coupled with cellular modem stack.
+        // Thus we prefer the preexisting handover connection instance.
+        if (mOrigConnection != null) return true;
+
         // ... but we can compare phone numbers on MT calls, and we have
         // no control over when they begin, so we might as well
 
@@ -214,6 +221,11 @@ public class GsmConnection extends Connection {
     }
 
     @Override
+    public long getConnectTimeReal() {
+        return mConnectTimeReal;
+    }
+
+    @Override
     public long getDisconnectTime() {
         return mDisconnectTime;
     }
@@ -227,6 +239,11 @@ public class GsmConnection extends Connection {
         } else {
             return mDuration;
         }
+    }
+
+    @Override
+    public long getHoldingStartTime() {
+        return mHoldingStartTime;
     }
 
     @Override
@@ -375,9 +392,7 @@ public class GsmConnection extends Connection {
             default:
                 GSMPhone phone = mOwner.mPhone;
                 int serviceState = phone.getServiceState().getState();
-                UiccCardApplication cardApp = UiccController
-                        .getInstance()
-                        .getUiccCardApplication(UiccController.APP_FAM_3GPP);
+                UiccCardApplication cardApp = phone.getUiccCardApplication();
                 AppState uiccAppState = (cardApp != null) ? cardApp.getState() :
                                                             AppState.APPSTATE_UNKNOWN;
                 if (serviceState == ServiceState.STATE_POWER_OFF) {
@@ -436,6 +451,8 @@ public class GsmConnection extends Connection {
             if (mParent != null) {
                 changed = mParent.connectionDisconnected(this);
             }
+
+            mOrigConnection = null;
         }
         clearPostDialListeners();
         releaseWakeLock();
@@ -452,10 +469,15 @@ public class GsmConnection extends Connection {
 
         newParent = parentFromDCState(dc.state);
 
-        if (!equalsHandlesNulls(mAddress, dc.number)) {
-            if (Phone.DEBUG_PHONE) log("update: phone # changed!");
-            mAddress = dc.number;
-            changed = true;
+        //Ignore dc.number and dc.name in case of a handover connection
+        if (mOrigConnection != null) {
+            if (Phone.DEBUG_PHONE) log("update: mOrigConnection is not null");
+        } else {
+            if (!equalsHandlesNulls(mAddress, dc.number)) {
+                if (Phone.DEBUG_PHONE) log("update: phone # changed!");
+                mAddress = dc.number;
+                changed = true;
+            }
         }
 
         // A null cnapName should be the same as ""
@@ -774,5 +796,46 @@ public class GsmConnection extends Connection {
 
     public int getPreciseDisconnectCause() {
         return mPreciseCause;
+    }
+
+    /* package */ void
+    migrateFrom(Connection c) {
+        if (c == null) return;
+
+        this.mAddress = c.getAddress();
+        this.mNumberPresentation = c.getNumberPresentation();
+
+        this.mDialString = c.getOrigDialString();
+
+        this.mCnapName = c.getCnapName();
+        this.mCnapNamePresentation = c.getCnapNamePresentation();
+
+        this.mIsIncoming = c.isIncoming();
+
+        this.mCreateTime = c.getCreateTime();
+        this.mConnectTime = c.getConnectTime();
+        this.mConnectTimeReal = c.getConnectTimeReal();
+
+        this.mHoldingStartTime = c.getHoldingStartTime();
+
+        this.mUusInfo = c.getUUSInfo();
+
+        this.setUserData(c.getUserData());
+
+        this.mOrigConnection = c;
+    }
+
+    @Override
+    public Connection getOrigConnection() {
+        return mOrigConnection;
+    }
+
+    @Override
+    public boolean isMultiparty() {
+        if (mOrigConnection != null) {
+            return mOrigConnection.isMultiparty();
+        }
+
+        return false;
     }
 }

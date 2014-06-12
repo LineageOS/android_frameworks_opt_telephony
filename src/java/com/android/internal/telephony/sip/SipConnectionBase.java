@@ -198,4 +198,24 @@ abstract class SipConnectionBase extends Connection {
     public int getPreciseDisconnectCause() {
         return 0;
     }
+
+    @Override
+    public long getHoldingStartTime() {
+        return mHoldingStartTime;
+    }
+
+    @Override
+    public long getConnectTimeReal() {
+        return mConnectTimeReal;
+    }
+
+    @Override
+    public Connection getOrigConnection() {
+        return null;
+    }
+
+    @Override
+    public boolean isMultiparty() {
+        return false;
+    }
 }

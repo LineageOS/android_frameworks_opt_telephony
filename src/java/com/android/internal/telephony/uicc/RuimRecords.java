@@ -32,6 +32,7 @@ import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.telephony.TelephonyManager;
 import android.telephony.Rlog;
 import android.text.TextUtils;
 
@@ -135,6 +136,7 @@ public final class RuimRecords extends IccRecords {
     protected void resetRecords() {
         mCountVoiceMessages = 0;
         mMncLength = UNINITIALIZED;
+        log("setting0 mMncLength" + mMncLength);
         mIccId = null;
 
         mAdnCache.reset();
@@ -487,9 +489,13 @@ public final class RuimRecords extends IccRecords {
                     String operatorNumeric = getRUIMOperatorNumeric();
                     if (operatorNumeric != null) {
                         if (operatorNumeric.length() <= 6) {
+                            log("update mccmnc=" + operatorNumeric);
                             MccTable.updateMccMncConfiguration(mContext, operatorNumeric, false);
                         }
                     }
+                } else {
+                    String operatorNumeric = getRUIMOperatorNumeric();
+                    log("NO update mccmnc=" + operatorNumeric);
                 }
 
             break;
@@ -642,6 +648,7 @@ public final class RuimRecords extends IccRecords {
             if (!TextUtils.isEmpty(operator)) {
                 log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
                         operator + "'");
+                log("update icc_operator_numeric=" + operator);
                 SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
             } else {
                 log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
@@ -856,5 +863,13 @@ public final class RuimRecords extends IccRecords {
         pw.println(" mHomeSystemId=" + mHomeSystemId);
         pw.println(" mHomeNetworkId=" + mHomeNetworkId);
         pw.flush();
+    }
+
+    private void setSystemProperty(String key, String val) {
+        // Update the system properties only in case NON-DSDS.
+        // TODO: Shall have a better approach!
+        if (!TelephonyManager.getDefault().isMultiSimEnabled()) {
+            SystemProperties.set(key, val);
+        }
     }
 }

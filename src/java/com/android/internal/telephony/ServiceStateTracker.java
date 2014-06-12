@@ -16,7 +16,9 @@
 
 package com.android.internal.telephony;
 
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -26,6 +28,7 @@ import android.os.SystemClock;
 import android.telephony.CellInfo;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Pair;
 import android.util.TimeUtils;
@@ -106,8 +109,8 @@ public abstract class ServiceStateTracker extends Handler {
     protected RegistrantList mPsRestrictDisabledRegistrants = new RegistrantList();
 
     /* Radio power off pending flag and tag counter */
-    private boolean mPendingRadioPowerOffAfterDataOff = false;
-    private int mPendingRadioPowerOffAfterDataOffTag = 0;
+    protected boolean mPendingRadioPowerOffAfterDataOff = false;
+    protected int mPendingRadioPowerOffAfterDataOffTag = 0;
 
     /** Signal strength poll rate. */
     protected static final int POLL_PERIOD_MILLIS = 20 * 1000;
@@ -156,9 +159,10 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED  = 39;
     protected static final int EVENT_CDMA_PRL_VERSION_CHANGED          = 40;
     protected static final int EVENT_RADIO_ON                          = 41;
-    protected static final int EVENT_ICC_CHANGED                       = 42;
+    public static final int EVENT_ICC_CHANGED                          = 42;
     protected static final int EVENT_GET_CELL_INFO_LIST                = 43;
     protected static final int EVENT_UNSOL_CELL_INFO_LIST              = 44;
+    protected static final int EVENT_CHANGE_IMS_STATE                  = 45;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -199,6 +203,13 @@ public abstract class ServiceStateTracker extends Handler {
     /** Reason for registration denial. */
     protected static final String REGISTRATION_DENIED_GEN  = "General";
     protected static final String REGISTRATION_DENIED_AUTH = "Authentication Failure";
+
+    protected boolean mImsRegistrationOnOff = false;
+    protected boolean mAlarmSwitch = false;
+    protected IntentFilter mIntentFilter = null;
+    protected PendingIntent mRadioOffIntent = null;
+    protected static final String ACTION_RADIO_OFF = "android.intent.action.ACTION_RADIO_OFF";
+    protected boolean mPowerOffDelayNeed = true;
 
     protected ServiceStateTracker(PhoneBase phoneBase, CommandsInterface ci, CellInfo cellInfo) {
         mPhoneBase = phoneBase;
@@ -455,6 +466,8 @@ public abstract class ServiceStateTracker extends Handler {
     public abstract int getCurrentDataConnectionState();
     public abstract boolean isConcurrentVoiceAndDataAllowed();
 
+    public abstract void setImsRegistrationState(boolean registered);
+
     /**
      * Registration point for transition into DataConnection attached.
      * @param h handler to notify
@@ -707,6 +720,10 @@ public abstract class ServiceStateTracker extends Handler {
         return retVal;
     }
 
+    public String getSystemProperty(String property, String defValue) {
+        return TelephonyManager.getTelephonyProperty(property, mPhoneBase.getSubId(), defValue);
+    }
+
     /**
      * @return all available cell information or null if none.
      */
@@ -798,6 +815,7 @@ public abstract class ServiceStateTracker extends Handler {
         // if we have a change in operator, notify wifi (even to/from none)
         if (((newOp == null) && (TextUtils.isEmpty(oldOp) == false)) ||
                 ((newOp != null) && (newOp.equals(oldOp) == false))) {
+            log("update mccmnc=" + newOp + " fromServiceState=true");
             MccTable.updateMccMncConfiguration(context, newOp, true);
         }
     }

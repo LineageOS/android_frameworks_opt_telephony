@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 
 
 import android.content.Context;
+import android.os.Message;
 import android.os.RegistrantList;
 import android.os.Registrant;
 import android.os.Handler;
@@ -64,6 +65,9 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mRilConnectedRegistrants = new RegistrantList();
     protected RegistrantList mIccRefreshRegistrants = new RegistrantList();
     protected RegistrantList mRilCellInfoListRegistrants = new RegistrantList();
+    protected RegistrantList mSubscriptionStatusRegistrants = new RegistrantList();
+    protected RegistrantList mSrvccStateRegistrants = new RegistrantList();
+    protected RegistrantList mHardwareConfigChangeRegistrants = new RegistrantList();
 
     protected Registrant mGsmSmsRegistrant;
     protected Registrant mCdmaSmsRegistrant;
@@ -636,6 +640,17 @@ public abstract class BaseCommands implements CommandsInterface {
         mExitEmergencyCallbackModeRegistrants.remove(h);
     }
 
+    @Override
+    public void registerForHardwareConfigChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mHardwareConfigChangeRegistrants.add(r);
+    }
+
+    @Override
+    public void unregisterForHardwareConfigChanged(Handler h) {
+        mHardwareConfigChangeRegistrants.remove(h);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -652,6 +667,15 @@ public abstract class BaseCommands implements CommandsInterface {
     public void unregisterForRilConnected(Handler h) {
         mRilConnectedRegistrants.remove(h);
     }
+
+     public void registerForSubscriptionStatusChanged(Handler h, int what, Object obj) {
+         Registrant r = new Registrant (h, what, obj);
+         mSubscriptionStatusRegistrants.add(r);
+     }
+
+     public void unregisterForSubscriptionStatusChanged(Handler h) {
+         mSubscriptionStatusRegistrants.remove(h);
+     }
 
     //***** Protected Methods
     /**
@@ -724,10 +748,29 @@ public abstract class BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void registerForSrvccStateChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+
+        mSrvccStateRegistrants.add(r);
+    }
+
+    @Override
+    public void unregisterForSrvccStateChanged(Handler h) {
+        mSrvccStateRegistrants.remove(h);
+    }
+
+    @Override
     public void testingEmergencyCall() {}
 
     @Override
     public int getRilVersion() {
         return mRilVersion;
+    }
+
+    public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
+            Message response) {
+    }
+
+    public void setDataAllowed(boolean allowed, Message response) {
     }
 }

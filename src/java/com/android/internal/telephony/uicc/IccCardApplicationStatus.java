@@ -27,6 +27,7 @@ import com.android.internal.telephony.uicc.IccCardStatus.PinState;
  * {@hide}
  */
 public class IccCardApplicationStatus {
+    // TODO: Replace with constants from PhoneConstants.APPTYPE_xxx
     public enum AppType{
         APPTYPE_UNKNOWN,
         APPTYPE_SIM,

@@ -625,6 +625,10 @@ class UsimDataDownloadCommands extends BaseCommands {
     }
 
     @Override
+    public void requestIccSimAuthentication(String data, Message response) {
+    }
+
+    @Override
     public void getVoiceRadioTechnology(Message response) {
     }
 

@@ -49,6 +49,31 @@ public class CellBroadcastMessage implements Parcelable {
     private final long mDeliveryTime;
     private boolean mIsRead;
 
+    /**
+     * Indicates the subId
+     *
+     * @hide
+     */
+    private long mSubId = 0;
+
+    /**
+     * set Subscription information
+     *
+     * @hide
+     */
+    public void setSubId(long subId) {
+        mSubId = subId;
+    }
+
+    /**
+     * get Subscription information
+     *
+     * @hide
+     */
+    public long getSubId() {
+        return mSubId;
+    }
+
     public CellBroadcastMessage(SmsCbMessage message) {
         mSmsCbMessage = message;
         mDeliveryTime = System.currentTimeMillis();

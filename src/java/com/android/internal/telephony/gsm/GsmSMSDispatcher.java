@@ -25,6 +25,7 @@ import android.os.Message;
 import android.provider.Telephony.Sms;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
+import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.ImsSMSDispatcher;
@@ -35,6 +36,7 @@ import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.SmsUsageMonitor;
+import android.telephony.SubscriptionManager;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
@@ -264,7 +266,10 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     }
 
     protected UiccCardApplication getUiccCardApplication() {
-        return mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
+            Rlog.d(TAG, "GsmSMSDispatcher: subId = " + mPhone.getSubId()
+                    + " slotId = " + mPhone.getPhoneId());
+                return mUiccController.getUiccCardApplication(mPhone.getPhoneId(),
+                        UiccController.APP_FAM_3GPP);
     }
 
     private void onUpdateIccAvailability() {

@@ -45,6 +45,9 @@ public abstract class Call {
         }
     }
 
+    public enum SrvccState {
+        NONE, STARTED, COMPLETED, FAILED, CANCELED;
+    }
 
     /* Instance Variables */
 

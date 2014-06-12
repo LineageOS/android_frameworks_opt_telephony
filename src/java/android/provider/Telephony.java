@@ -27,10 +27,12 @@ import android.database.Cursor;
 import android.database.sqlite.SqliteWrapper;
 import android.net.Uri;
 import android.telephony.SmsMessage;
+import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 import android.util.Patterns;
 
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SmsApplication;
 
 
@@ -238,7 +240,14 @@ public final class Telephony {
         public static final String LOCKED = "locked";
 
         /**
-         * Error code associated with sending or receiving this message.
+         * The sub_id to which the message belongs to
+         * <p>Type: INTEGER (long) </p>
+         * @hide
+         */
+        public static final String SUB_ID = "sub_id";
+
+        /**
+         * Error code associated with sending or receiving this message
          * <P>Type: INTEGER</P>
          */
         public static final String ERROR_CODE = "error_code";
@@ -314,7 +323,29 @@ public final class Telephony {
         public static Uri addMessageToUri(ContentResolver resolver,
                 Uri uri, String address, String body, String subject,
                 Long date, boolean read, boolean deliveryReport) {
-            return addMessageToUri(resolver, uri, address, body, subject,
+            return addMessageToUri(SubscriptionManager.getPreferredSmsSubId(),
+                    resolver, uri, address, body, subject, date, read, deliveryReport, -1L);
+        }
+
+        /**
+         * Add an SMS to the given URI.
+         *
+         * @param resolver the content resolver to use
+         * @param uri the URI to add the message to
+         * @param address the address of the sender
+         * @param body the body of the message
+         * @param subject the psuedo-subject of the message
+         * @param date the timestamp for the message
+         * @param read true if the message has been read, false if not
+         * @param deliveryReport true if a delivery report was requested, false if not
+         * @param subId the sub_id which the message belongs to
+         * @return the URI for the new message
+         * @hide
+         */
+        public static Uri addMessageToUri(long subId, ContentResolver resolver,
+                Uri uri, String address, String body, String subject,
+                Long date, boolean read, boolean deliveryReport) {
+            return addMessageToUri(subId, resolver, uri, address, body, subject,
                     date, read, deliveryReport, -1L);
         }
 
@@ -336,8 +367,34 @@ public final class Telephony {
         public static Uri addMessageToUri(ContentResolver resolver,
                 Uri uri, String address, String body, String subject,
                 Long date, boolean read, boolean deliveryReport, long threadId) {
-            ContentValues values = new ContentValues(7);
+            return addMessageToUri(SubscriptionManager.getPreferredSmsSubId(),
+                    resolver, uri, address, body, subject,
+                    date, read, deliveryReport, threadId);
+        }
 
+        /**
+         * Add an SMS to the given URI with thread_id specified.
+         *
+         * @param resolver the content resolver to use
+         * @param uri the URI to add the message to
+         * @param address the address of the sender
+         * @param body the body of the message
+         * @param subject the psuedo-subject of the message
+         * @param date the timestamp for the message
+         * @param read true if the message has been read, false if not
+         * @param deliveryReport true if a delivery report was requested, false if not
+         * @param threadId the thread_id of the message
+         * @param subId the sub_id which the message belongs to
+         * @return the URI for the new message
+         * @hide
+         */
+        public static Uri addMessageToUri(long subId, ContentResolver resolver,
+                Uri uri, String address, String body, String subject,
+                Long date, boolean read, boolean deliveryReport, long threadId) {
+            ContentValues values = new ContentValues(8);
+            Rlog.v(TAG,"Telephony addMessageToUri sub id: " + subId);
+
+            values.put(SUB_ID, subId);
             values.put(ADDRESS, address);
             if (date != null) {
                 values.put(DATE, date);
@@ -450,7 +507,26 @@ public final class Telephony {
             public static Uri addMessage(ContentResolver resolver,
                     String address, String body, String subject, Long date,
                     boolean read) {
-                return addMessageToUri(resolver, CONTENT_URI, address, body,
+                return addMessageToUri(SubscriptionManager.getPreferredSmsSubId(),
+                        resolver, CONTENT_URI, address, body, subject, date, read, false);
+            }
+
+            /**
+             * Add an SMS to the Draft box.
+             *
+             * @param resolver the content resolver to use
+             * @param address the address of the sender
+             * @param body the body of the message
+             * @param subject the psuedo-subject of the message
+             * @param date the timestamp for the message
+             * @param read true if the message has been read, false if not
+             * @param subId the sub_id which the message belongs to
+             * @return the URI for the new message
+             * @hide
+             */
+            public static Uri addMessage(long subId, ContentResolver resolver,
+                    String address, String body, String subject, Long date, boolean read) {
+                return addMessageToUri(subId, resolver, CONTENT_URI, address, body,
                         subject, date, read, false);
             }
         }
@@ -490,7 +566,25 @@ public final class Telephony {
              */
             public static Uri addMessage(ContentResolver resolver,
                     String address, String body, String subject, Long date) {
-                return addMessageToUri(resolver, CONTENT_URI, address, body,
+                return addMessageToUri(SubscriptionManager.getPreferredSmsSubId(),
+                        resolver, CONTENT_URI, address, body, subject, date, true, false);
+            }
+
+            /**
+             * Add an SMS to the Draft box.
+             *
+             * @param resolver the content resolver to use
+             * @param address the address of the sender
+             * @param body the body of the message
+             * @param subject the psuedo-subject of the message
+             * @param date the timestamp for the message
+             * @param subId the sub_id which the message belongs to
+             * @return the URI for the new message
+             * @hide
+             */
+            public static Uri addMessage(long subId, ContentResolver resolver,
+                    String address, String body, String subject, Long date) {
+                return addMessageToUri(subId, resolver, CONTENT_URI, address, body,
                         subject, date, true, false);
             }
         }
@@ -511,6 +605,33 @@ public final class Telephony {
              * The {@code content://} style URL for this table.
              */
             public static final Uri CONTENT_URI = Uri.parse("content://sms/draft");
+
+           /**
+            * @hide
+            */
+            public static Uri addMessage(ContentResolver resolver,
+                    String address, String body, String subject, Long date) {
+                return addMessageToUri(SubscriptionManager.getPreferredSmsSubId(),
+                        resolver, CONTENT_URI, address, body, subject, date, true, false);
+            }
+
+            /**
+             * Add an SMS to the Draft box.
+             *
+             * @param resolver the content resolver to use
+             * @param address the address of the sender
+             * @param body the body of the message
+             * @param subject the psuedo-subject of the message
+             * @param date the timestamp for the message
+             * @param subId the sub_id which the message belongs to
+             * @return the URI for the new message
+             * @hide
+             */
+            public static Uri addMessage(long subId, ContentResolver resolver,
+                    String address, String body, String subject, Long date) {
+                return addMessageToUri(subId, resolver, CONTENT_URI, address, body,
+                        subject, date, true, false);
+            }
 
             /**
              * The default sort order for this table.
@@ -555,7 +676,28 @@ public final class Telephony {
             public static Uri addMessage(ContentResolver resolver,
                     String address, String body, String subject, Long date,
                     boolean deliveryReport, long threadId) {
-                return addMessageToUri(resolver, CONTENT_URI, address, body,
+                return addMessageToUri(SubscriptionManager.getPreferredSmsSubId(),
+                        resolver, CONTENT_URI, address, body, subject, date,
+                        true, deliveryReport, threadId);
+            }
+
+            /**
+             * Add an SMS to the Out box.
+             *
+             * @param resolver the content resolver to use
+             * @param address the address of the sender
+             * @param body the body of the message
+             * @param subject the psuedo-subject of the message
+             * @param date the timestamp for the message
+             * @param deliveryReport whether a delivery report was requested for the message
+             * @param subId the sub_id which the message belongs to
+             * @return the URI for the new message
+             * @hide
+             */
+            public static Uri addMessage(long subId, ContentResolver resolver,
+                    String address, String body, String subject, Long date,
+                    boolean deliveryReport, long threadId) {
+                return addMessageToUri(subId, resolver, CONTENT_URI, address, body,
                         subject, date, true, deliveryReport, threadId);
             }
         }
@@ -888,6 +1030,9 @@ public final class Telephony {
             public static SmsMessage[] getMessagesFromIntent(Intent intent) {
                 Object[] messages = (Object[]) intent.getSerializableExtra("pdus");
                 String format = intent.getStringExtra("format");
+                long subId = intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY, 0);
+
+                Rlog.v(TAG, " getMessagesFromIntent sub_id : " + subId);
 
                 int pduCount = messages.length;
                 SmsMessage[] msgs = new SmsMessage[pduCount];
@@ -895,6 +1040,7 @@ public final class Telephony {
                 for (int i = 0; i < pduCount; i++) {
                     byte[] pdu = (byte[]) messages[i];
                     msgs[i] = SmsMessage.createFromPdu(pdu, format);
+                    msgs[i].setSubId(subId);
                 }
                 return msgs;
             }
@@ -1452,6 +1598,14 @@ public final class Telephony {
          * <P>Type: INTEGER (boolean)</P>
          */
         public static final String LOCKED = "locked";
+
+        /**
+         * The sub id to which message belongs to
+         * <p>Type: INTEGER</p>
+         * @hide
+         */
+        public static final String SUB_ID = "sub_id";
+
     }
 
     /**
@@ -2181,6 +2335,13 @@ public final class Telephony {
              * <P>Type: INTEGER (long)</P>
              */
             public static final String LAST_TRY = "last_try";
+
+            /**
+             * The sub_id to which the pending message belongs to
+             * <p>Type: INTEGER (long) </p>
+             * @hide
+             */
+            public static final String SUB_ID = "pending_sub_id";
         }
 
         /**
@@ -2387,6 +2548,14 @@ public final class Telephony {
          * <P>Type: TEXT</P>
          */
         public static final String MVNO_MATCH_DATA = "mvno_match_data";
+
+        /**
+         * The sub_id to which the APN belongs to
+         * <p>Type: INTEGER (long) </p>
+         * @hide
+         */
+        public static final String SUB_ID = "sub_id";
+
     }
 
     /**

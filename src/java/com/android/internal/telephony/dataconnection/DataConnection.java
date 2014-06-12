@@ -58,6 +58,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import java.net.InetAddress;
+import java.util.Collection;
+
 /**
  * {@hide}
  *
@@ -103,6 +106,8 @@ public final class DataConnection extends StateMachine {
 
     // The DCT that's talking to us, we only support one!
     private DcTrackerBase mDct = null;
+
+    protected String[] mPcscfAddr;
 
     /**
      * Used internally for saving connecting parameters.
@@ -291,6 +296,40 @@ public final class DataConnection extends StateMachine {
         }
     }
 
+    public boolean isIpv4Connected() {
+        boolean ret = false;
+        Collection <InetAddress> addresses = mLinkProperties.getAddresses();
+
+        for (InetAddress addr: addresses) {
+            if (addr instanceof java.net.Inet4Address) {
+                java.net.Inet4Address i4addr = (java.net.Inet4Address) addr;
+                if (!i4addr.isAnyLocalAddress() && !i4addr.isLinkLocalAddress() &&
+                        !i4addr.isLoopbackAddress() && !i4addr.isMulticastAddress()) {
+                    ret = true;
+                    break;
+                }
+            }
+        }
+        return ret;
+    }
+
+    public boolean isIpv6Connected() {
+        boolean ret = false;
+        Collection <InetAddress> addresses = mLinkProperties.getAddresses();
+
+        for (InetAddress addr: addresses) {
+            if (addr instanceof java.net.Inet6Address) {
+                java.net.Inet6Address i6addr = (java.net.Inet6Address) addr;
+                if (!i6addr.isAnyLocalAddress() && !i6addr.isLinkLocalAddress() &&
+                        !i6addr.isLoopbackAddress() && !i6addr.isMulticastAddress()) {
+                    ret = true;
+                    break;
+                }
+            }
+        }
+        return ret;
+    }
+
     UpdateLinkPropertyResult updateLinkProperty(DataCallResponse newState) {
         UpdateLinkPropertyResult result = new UpdateLinkPropertyResult(mLinkProperties);
 
@@ -434,6 +473,7 @@ public final class DataConnection extends StateMachine {
             response.gateways = new String[0];
             response.suggestedRetryTime =
                     mDcTesterFailBringUpAll.getDcFailBringUp().mSuggestedRetryTime;
+            response.pcscf = new String[0];
 
             Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
             AsyncResult.forMessage(msg, response, null);
@@ -645,6 +685,8 @@ public final class DataConnection extends StateMachine {
         mLastFailCause = DcFailCause.NONE;
         mCid = -1;
 
+        mPcscfAddr = new String[5];
+
         mLinkProperties = new LinkProperties();
         mApnContexts.clear();
         mApnSetting = null;
@@ -690,6 +732,9 @@ public final class DataConnection extends StateMachine {
         } else {
             if (DBG) log("onSetupConnectionCompleted received DataCallResponse: " + response);
             mCid = response.cid;
+
+            mPcscfAddr = response.pcscf;
+
             result = updateLinkProperty(response).setupResult;
         }
 
