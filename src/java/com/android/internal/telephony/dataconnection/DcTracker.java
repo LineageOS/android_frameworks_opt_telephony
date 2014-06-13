@@ -155,6 +155,16 @@ public final class DcTracker extends DcTrackerBase {
         p.getContext().getContentResolver().registerContentObserver(
                 Telephony.Carriers.CONTENT_URI, true, mApnObserver);
 
+        initApnContexts();
+
+        for (ApnContext apnContext : mApnContexts.values()) {
+            // Register the reconnect and restart actions.
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(INTENT_RECONNECT_ALARM + '.' + apnContext.getApnType());
+            filter.addAction(INTENT_RESTART_TRYSETUP_ALARM + '.' + apnContext.getApnType());
+            mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
+        }
+
         ConnectivityManager cm = (ConnectivityManager)p.getContext().getSystemService(
                 Context.CONNECTIVITY_SERVICE);
 
@@ -346,19 +356,7 @@ public final class DcTracker extends DcTrackerBase {
         }
         ApnContext apnContext = mApnContexts.get(name);
         if (apnContext == null) {
-            if (DBG) log("Attempting to create new ApnContext for " + type);
-            String[] networkConfigStrings = mPhone.getContext().getResources().getStringArray(
-                    com.android.internal.R.array.networkAttributes);
-            for (String networkConfigString : networkConfigStrings) {
-                NetworkConfig networkConfig = new NetworkConfig(networkConfigString);
-                if (networkConfig.type == type) {
-                    apnContext = addApnContext(name, networkConfig);
-                    break;
-                }
-            }
-            if (apnContext == null) {
-                loge("Unable to create new ApnContext for " + type);
-            }
+            loge("Request for unsupported mobile type: " + type);
         }
         return apnContext;
     }
@@ -423,6 +421,52 @@ public final class DcTracker extends DcTrackerBase {
         mApnContexts.put(type, apnContext);
         mPrioritySortedApnContexts.add(apnContext);
         return apnContext;
+    }
+
+    protected void initApnContexts() {
+        log("initApnContexts: E");
+        // Load device network attributes from resources
+        String[] networkConfigStrings = mPhone.getContext().getResources().getStringArray(
+                com.android.internal.R.array.networkAttributes);
+        for (String networkConfigString : networkConfigStrings) {
+            NetworkConfig networkConfig = new NetworkConfig(networkConfigString);
+            ApnContext apnContext = null;
+
+            switch (networkConfig.type) {
+            case ConnectivityManager.TYPE_MOBILE:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_DEFAULT, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_MMS:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_MMS, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_SUPL:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_SUPL, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_DUN:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_DUN, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_HIPRI:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_HIPRI, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_FOTA:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_FOTA, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_IMS:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_IMS, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_CBS:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_CBS, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_IA:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_IA, networkConfig);
+                break;
+            default:
+                log("initApnContexts: skipping unknown type=" + networkConfig.type);
+                continue;
+            }
+            log("initApnContexts: apnContext=" + apnContext);
+        }
+        log("initApnContexts: X mApnContexts=" + mApnContexts);
     }
 
     @Override
