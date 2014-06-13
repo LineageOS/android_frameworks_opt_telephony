@@ -21,6 +21,7 @@ package com.android.internal.telephony;
 import android.app.PendingIntent;
 import android.os.ServiceManager;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 
 import com.android.internal.telephony.ISms;
 import com.android.internal.telephony.Phone;
@@ -271,6 +272,16 @@ public class UiccSmsController extends ISms.Stub {
             Rlog.e(LOG_TAG, "getImsSmsFormat iccSmsIntMgr is null");
         }
         return null;
+    }
+
+    @Override
+    public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
+        injectSmsPdu(SubscriptionManager.getPreferredSmsSubId(), pdu, format, receivedIntent);
+    }
+
+    // FIXME: Add injectSmsPdu to ISms.aidl
+    public void injectSmsPdu(long subId, byte[] pdu, String format, PendingIntent receivedIntent) {
+        getIccSmsInterfaceManager(subId).injectSmsPdu(pdu, format, receivedIntent);
     }
 
     /**
