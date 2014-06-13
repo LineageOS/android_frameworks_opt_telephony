@@ -399,7 +399,6 @@ public class IccSmsInterfaceManager {
      *  android application framework. This intent is broadcasted at
      *  the same time an SMS received from radio is acknowledged back.
      */
-    @Override
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
         // TODO Check if the calling package has access to call this SIM restricted API.
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
