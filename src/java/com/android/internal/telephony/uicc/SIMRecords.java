@@ -23,6 +23,7 @@ import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.telephony.TelephonyManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsMessage;
 import android.text.TextUtils;
@@ -227,6 +228,7 @@ public class SIMRecords extends IccRecords {
         mVoiceMailNum = null;
         mCountVoiceMessages = 0;
         mMncLength = UNINITIALIZED;
+        log("setting0 mMncLength" + mMncLength);
         mIccId = null;
         // -1 means no EF_SPN found; treat accordingly.
         mSpnDisplayCondition = -1;
@@ -239,9 +241,10 @@ public class SIMRecords extends IccRecords {
         mAdnCache.reset();
 
         log("SIMRecords: onRadioOffOrNotAvailable set 'gsm.sim.operator.numeric' to operator=null");
-        SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, null);
-        SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, null);
-        SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, null);
+        log("update icc_operator_numeric=" + null);
+        setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, null);
+        setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, null);
+        setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, null);
 
         // recordsRequested is set to false indicating that the SIM
         // read requests made so far are not valid. This is set to
@@ -598,7 +601,8 @@ public class SIMRecords extends IccRecords {
                     mImsi = null;
                 }
 
-                log("IMSI: " + /* imsi.substring(0, 6) +*/ "xxxxxxx");
+                log("IMSI: mMncLength=" + mMncLength);
+                log("IMSI: " + mImsi.substring(0, 6) + "xxxxxxx");
 
                 if (((mMncLength == UNKNOWN) || (mMncLength == 2)) &&
                         ((mImsi != null) && (mImsi.length() >= 6))) {
@@ -606,6 +610,7 @@ public class SIMRecords extends IccRecords {
                     for (String mccmnc : MCCMNC_CODES_HAVING_3DIGITS_MNC) {
                         if (mccmnc.equals(mccmncCode)) {
                             mMncLength = 3;
+                            log("IMSI: setting1 mMncLength=" + mMncLength);
                             break;
                         }
                     }
@@ -617,13 +622,15 @@ public class SIMRecords extends IccRecords {
                     try {
                         int mcc = Integer.parseInt(mImsi.substring(0,3));
                         mMncLength = MccTable.smallestDigitsMccForMnc(mcc);
+                        log("setting2 mMncLength=" + mMncLength);
                     } catch (NumberFormatException e) {
                         mMncLength = UNKNOWN;
-                        loge("Corrupt IMSI!");
+                        loge("Corrupt IMSI! setting3 mMncLength=" + mMncLength);
                     }
                 }
 
                 if (mMncLength != UNKNOWN && mMncLength != UNINITIALIZED) {
+                    log("update mccmnc=" + mImsi.substring(0, 3 + mMncLength));
                     // finally have both the imsi and the mncLength and can parse the imsi properly
                     MccTable.updateMccMncConfiguration(mContext,
                             mImsi.substring(0, 3 + mMncLength), false);
@@ -854,17 +861,21 @@ public class SIMRecords extends IccRecords {
                     }
 
                     mMncLength = data[3] & 0xf;
+                    log("setting4 mMncLength=" + mMncLength);
 
                     if (mMncLength == 0xf) {
                         mMncLength = UNKNOWN;
+                        log("setting5 mMncLength=" + mMncLength);
                     }
                 } finally {
                     if (((mMncLength == UNINITIALIZED) || (mMncLength == UNKNOWN) ||
                             (mMncLength == 2)) && ((mImsi != null) && (mImsi.length() >= 6))) {
                         String mccmncCode = mImsi.substring(0, 6);
+                        log("mccmncCode=" + mccmncCode);
                         for (String mccmnc : MCCMNC_CODES_HAVING_3DIGITS_MNC) {
                             if (mccmnc.equals(mccmncCode)) {
                                 mMncLength = 3;
+                                log("setting6 mMncLength=" + mMncLength);
                                 break;
                             }
                         }
@@ -876,20 +887,21 @@ public class SIMRecords extends IccRecords {
                                 int mcc = Integer.parseInt(mImsi.substring(0,3));
 
                                 mMncLength = MccTable.smallestDigitsMccForMnc(mcc);
+                                log("setting7 mMncLength=" + mMncLength);
                             } catch (NumberFormatException e) {
                                 mMncLength = UNKNOWN;
-                                loge("Corrupt IMSI!");
+                                loge("Corrupt IMSI! setting8 mMncLength=" + mMncLength);
                             }
                         } else {
                             // Indicate we got this info, but it didn't contain the length.
                             mMncLength = UNKNOWN;
-
-                            log("MNC length not present in EF_AD");
+                            log("MNC length not present in EF_AD setting9 mMncLength=" + mMncLength);
                         }
                     }
                     if (mImsi != null && mMncLength != UNKNOWN) {
                         // finally have both imsi and the length of the mnc and can parse
                         // the imsi properly
+                        log("update mccmnc=" + mImsi.substring(0, 3 + mMncLength));
                         MccTable.updateMccMncConfiguration(mContext,
                                 mImsi.substring(0, 3 + mMncLength), false);
                     }
@@ -1338,14 +1350,15 @@ public class SIMRecords extends IccRecords {
         if (!TextUtils.isEmpty(operator)) {
             log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
                     operator + "'");
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
+            log("update icc_operator_numeric=" + operator);
+            setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
         } else {
             log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
         }
 
         if (!TextUtils.isEmpty(mImsi)) {
             log("onAllRecordsLoaded set mcc imsi=" + mImsi);
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
+            setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
                     MccTable.countryCodeForMcc(Integer.parseInt(mImsi.substring(0,3))));
         } else {
             log("onAllRecordsLoaded empty imsi skipping setting mcc");
@@ -1582,7 +1595,7 @@ public class SIMRecords extends IccRecords {
 
                     if (DBG) log("Load EF_SPN: " + mSpn
                             + " spnDisplayCondition: " + mSpnDisplayCondition);
-                    SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
 
                     mSpnState = GetSpnFsmState.IDLE;
                 } else {
@@ -1603,7 +1616,7 @@ public class SIMRecords extends IccRecords {
                     mSpn = IccUtils.adnStringFieldToString(data, 0, data.length);
 
                     if (DBG) log("Load EF_SPN_CPHS: " + mSpn);
-                    SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
 
                     mSpnState = GetSpnFsmState.IDLE;
                 } else {
@@ -1620,7 +1633,7 @@ public class SIMRecords extends IccRecords {
                     mSpn = IccUtils.adnStringFieldToString(data, 0, data.length);
 
                     if (DBG) log("Load EF_SPN_SHORT_CPHS: " + mSpn);
-                    SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
                 }else {
                     if (DBG) log("No SPN loaded in either CHPS or 3GPP");
                 }
@@ -1770,5 +1783,13 @@ public class SIMRecords extends IccRecords {
         pw.println(" mUsimServiceTable=" + mUsimServiceTable);
         pw.println(" mGid1=" + mGid1);
         pw.flush();
+    }
+
+    private void setSystemProperty(String key, String val) {
+        // Update the system properties only in case NON-DSDS.
+        // TODO: Shall have a better approach!
+        if (!TelephonyManager.getDefault().isMultiSimEnabled()) {
+            SystemProperties.set(key, val);
+        }
     }
 }

@@ -76,6 +76,7 @@ public interface IccConstants {
     static final int EF_DOMAIN = 0x6f03;
     static final int EF_IST = 0x6f07;
     static final int EF_PCSCF = 0x6f09;
+    static final int EF_PSI = 0x6fe5;
 
     // SMS record length from TS 51.011 10.5.3
     static public final int SMS_RECORD_LENGTH = 176;

@@ -37,6 +37,8 @@ public final class IsimFileHandler extends IccFileHandler implements IccConstant
         case EF_IMPI:
         case EF_IMPU:
         case EF_DOMAIN:
+        case EF_IST:
+        case EF_PCSCF:
             return MF_SIM + DF_ADF;
         }
         String path = getCommonIccEFPath(efid);

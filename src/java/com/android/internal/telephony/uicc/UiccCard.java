@@ -81,10 +81,21 @@ public class UiccCard {
     private static final int EVENT_CLOSE_LOGICAL_CHANNEL_DONE = 16;
     private static final int EVENT_TRANSMIT_APDU_DONE = 17;
 
+    int mSlotId;
+
     public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics) {
         if (DBG) log("Creating");
         mCardState = ics.mCardState;
         update(c, ci, ics);
+    }
+
+    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int slotId) {
+        mCardState = ics.mCardState;
+        mSlotId = slotId;
+        update(c, ci, ics);
+    }
+
+    protected UiccCard() {
     }
 
     public void dispose() {
@@ -134,18 +145,7 @@ public class UiccCard {
                 }
             }
 
-            if (mUiccApplications.length > 0 && mUiccApplications[0] != null) {
-                // Initialize or Reinitialize CatService
-                mCatService = CatService.getInstance(mCi,
-                                                     mContext,
-                                                     this);
-            } else {
-                if (mCatService != null) {
-                    mCatService.dispose();
-                }
-                mCatService = null;
-            }
-
+            createAndUpdateCatService();
             sanitizeApplicationIndexes();
 
             RadioState radioState = mCi.getRadioState();
@@ -166,6 +166,26 @@ public class UiccCard {
             }
             mLastRadioState = radioState;
         }
+    }
+
+    protected void createAndUpdateCatService() {
+        if (mUiccApplications.length > 0 && mUiccApplications[0] != null) {
+            // Initialize or Reinitialize CatService
+            if (mCatService == null) {
+                mCatService = CatService.getInstance(mCi, mContext, this, mSlotId);
+            } else {
+                ((CatService)mCatService).update(mCi, mContext, this);
+            }
+        } else {
+            if (mCatService != null) {
+                mCatService.dispose();
+            }
+            mCatService = null;
+        }
+    }
+
+    public CatService getCatService() {
+        return mCatService;
     }
 
     @Override
@@ -362,6 +382,24 @@ public class UiccCard {
     }
 
     /**
+     * Returns the SIM application of the specified type.
+     *
+     * @param type ICC application type (@see com.android.internal.telephony.PhoneConstants#APPTYPE_xxx)
+     * @return application corresponding to type or a null if no match found
+     */
+    public UiccCardApplication getApplicationByType(int type) {
+        synchronized (mLock) {
+            for (int i = 0 ; i < mUiccApplications.length; i++) {
+                if (mUiccApplications[i] != null &&
+                        mUiccApplications[i].getType().ordinal() == type) {
+                    return mUiccApplications[i];
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
      * Exposes {@link CommandsInterface.iccOpenLogicalChannel}
      */
     public void iccOpenLogicalChannel(String AID, Message response) {
@@ -391,6 +429,17 @@ public class UiccCard {
      */
     public void sendEnvelopeWithStatus(String contents, Message response) {
         mCi.sendEnvelopeWithStatus(contents, response);
+    }
+
+    /* Returns number of applications on this card */
+    public int getNumApplications() {
+        int count = 0;
+        for (UiccCardApplication a : mUiccApplications) {
+            if (a != null) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private void log(String msg) {

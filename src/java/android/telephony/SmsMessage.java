@@ -96,6 +96,28 @@ public class SmsMessage {
      */
     public SmsMessageBase mWrappedSmsMessage;
 
+    /** Indicates the subId
+     *
+     * @hide
+     */
+    private long mSubId = 0;
+
+    /** set Subscription information
+     *
+     * @hide
+     */
+    public void setSubId(long subId) {
+        mSubId = subId;
+    }
+
+    /** get Subscription information
+     *
+     * @hide
+     */
+    public long getSubId() {
+        return mSubId;
+    }
+
     public static class SubmitPdu {
 
         public byte[] encodedScAddress; // Null if not applicable.

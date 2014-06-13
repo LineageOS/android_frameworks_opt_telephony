@@ -540,6 +540,10 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void requestIccSimAuthentication(String data, Message response) {
+    }
+
+    @Override
     public void getVoiceRadioTechnology(Message result) {
     }
 
@@ -588,5 +592,9 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
 
     @Override
     public void nvResetConfig(int resetType, Message response) {
+    }
+
+    @Override
+    public void getHardwareConfig(Message result) {
     }
 }

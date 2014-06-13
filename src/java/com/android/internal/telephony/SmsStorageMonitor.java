@@ -26,6 +26,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 
 /**
  * Monitors the device and ICC storage, and sends the appropriate events.
@@ -54,6 +55,9 @@ public final class SmsStorageMonitor extends Handler {
 
     private boolean mReportMemoryStatusPending;
 
+    /** it is use to put in to extra value for SIM_FULL_ACTION and SMS_REJECTED_ACTION */
+    PhoneBase mPhone;
+
     final CommandsInterface mCi;                            // accessed from inner class
     boolean mStorageAvailable = true;                       // accessed from inner class
 
@@ -68,6 +72,7 @@ public final class SmsStorageMonitor extends Handler {
      * @param phone the Phone to use
      */
     public SmsStorageMonitor(PhoneBase phone) {
+        mPhone = phone;
         mContext = phone.getContext();
         mCi = phone.mCi;
 
@@ -139,6 +144,7 @@ public final class SmsStorageMonitor extends Handler {
         // broadcast SIM_FULL intent
         Intent intent = new Intent(Intents.SIM_FULL_ACTION);
         mWakeLock.acquire(WAKE_LOCK_TIMEOUT);
+        SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
         mContext.sendBroadcast(intent, android.Manifest.permission.RECEIVE_SMS);
     }
 

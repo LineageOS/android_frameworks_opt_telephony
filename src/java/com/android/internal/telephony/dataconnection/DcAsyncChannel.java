@@ -429,4 +429,8 @@ public class DcAsyncChannel extends AsyncChannel {
     private void log(String s) {
         android.telephony.Rlog.d(mLogTag, "DataConnectionAc " + s);
     }
+
+    public String[] getPcscfAddr() {
+        return mDc.mPcscfAddr;
+    }
 }

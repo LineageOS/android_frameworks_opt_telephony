@@ -41,4 +41,24 @@ public interface IsimRecords {
      * @return an array of IMS public user identity strings, or null if not available
      */
     String[] getIsimImpu();
+
+    /**
+     * Returns the IMS Service Table (IST) that was loaded from the ISIM.
+     * @return IMS Service Table or null if not present or not loaded
+     */
+    String getIsimIst();
+
+    /**
+     * Returns the IMS Proxy Call Session Control Function(PCSCF) that were loaded from the ISIM.
+     * @return an array of  PCSCF strings with one PCSCF per string, or null if
+     *      not present or not loaded
+     */
+    String[] getIsimPcscf();
+
+    /**
+     * Returns the response of ISIM Authetification through RIL.
+     * Returns null if the Authentification hasn't been successed or isn't present iphonesubinfo.
+     * @return the response of ISIM Authetification, or null if not available
+     */
+    String getIsimChallengeResponse(String nonce);
 }

@@ -1643,6 +1643,11 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     @Override
+    public void requestIccSimAuthentication(String data, Message response) {
+        unimplemented(response);
+    }
+
+    @Override
     public void getVoiceRadioTechnology(Message response) {
         unimplemented(response);
     }
@@ -1719,5 +1724,10 @@ public final class SimulatedCommands extends BaseCommands
     @Override
     public void nvResetConfig(int resetType, Message response) {
         unimplemented(response);
+    }
+
+    @Override
+    public void getHardwareConfig(Message result) {
+        unimplemented(result);
     }
 }

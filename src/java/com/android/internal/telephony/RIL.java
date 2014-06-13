@@ -41,6 +41,7 @@ import android.os.Parcel;
 import android.os.PowerManager;
 import android.os.SystemProperties;
 import android.os.PowerManager.WakeLock;
+import android.provider.Settings.SettingNotFoundException;
 import android.telephony.CellInfo;
 import android.telephony.NeighboringCellInfo;
 import android.telephony.PhoneNumberUtils;
@@ -63,6 +64,8 @@ import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DcFailCause;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
+import com.android.internal.telephony.TelephonyDevController;
+import com.android.internal.telephony.HardwareConfig;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -89,6 +92,7 @@ class RILRequest {
     private static RILRequest sPool = null;
     private static int sPoolSize = 0;
     private static final int MAX_POOL_SIZE = 4;
+    private Context mContext;
 
     //***** Instance Variables
     int mSerial;
@@ -243,6 +247,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     // When we are testing emergency calls
     AtomicBoolean mTestingEmergencyCall = new AtomicBoolean(false);
 
+    private Integer mInstanceId;
+
     //***** Events
 
     static final int EVENT_SEND                 = 1;
@@ -255,7 +261,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     static final int RESPONSE_SOLICITED = 0;
     static final int RESPONSE_UNSOLICITED = 1;
 
-    static final String SOCKET_NAME_RIL = "rild";
+    static final String[] SOCKET_NAME_RIL = {"rild", "rild2", "rild3"};
 
     static final int SOCKET_OPEN_RETRY_MILLIS = 4 * 1000;
 
@@ -464,14 +470,21 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         public void
         run() {
             int retryCount = 0;
+            String rilSocket = "rild";
 
             try {for (;;) {
                 LocalSocket s = null;
                 LocalSocketAddress l;
 
+                if (mInstanceId == null || mInstanceId == 0 ) {
+                    rilSocket = SOCKET_NAME_RIL[0];
+                } else {
+                    rilSocket = SOCKET_NAME_RIL[mInstanceId];
+                }
+
                 try {
                     s = new LocalSocket();
-                    l = new LocalSocketAddress(SOCKET_NAME_RIL,
+                    l = new LocalSocketAddress(rilSocket,
                             LocalSocketAddress.Namespace.RESERVED);
                     s.connect(l);
                 } catch (IOException ex){
@@ -488,12 +501,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
                     if (retryCount == 8) {
                         Rlog.e (RILJ_LOG_TAG,
-                            "Couldn't find '" + SOCKET_NAME_RIL
+                            "Couldn't find '" + rilSocket
                             + "' socket after " + retryCount
                             + " times, continuing to retry silently");
                     } else if (retryCount > 0 && retryCount < 8) {
                         Rlog.i (RILJ_LOG_TAG,
-                            "Couldn't find '" + SOCKET_NAME_RIL
+                            "Couldn't find '" + rilSocket
                             + "' socket; retrying after timeout");
                     }
 
@@ -509,7 +522,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 retryCount = 0;
 
                 mSocket = s;
-                Rlog.i(RILJ_LOG_TAG, "Connected to '" + SOCKET_NAME_RIL + "' socket");
+                Rlog.i(RILJ_LOG_TAG, "Connected to '" + rilSocket + "' socket");
 
                 int length = 0;
                 try {
@@ -535,14 +548,14 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         p.recycle();
                     }
                 } catch (java.io.IOException ex) {
-                    Rlog.i(RILJ_LOG_TAG, "'" + SOCKET_NAME_RIL + "' socket closed",
+                    Rlog.i(RILJ_LOG_TAG, "'" + rilSocket + "' socket closed",
                           ex);
                 } catch (Throwable tr) {
                     Rlog.e(RILJ_LOG_TAG, "Uncaught exception read length=" + length +
                         "Exception:" + tr.toString());
                 }
 
-                Rlog.i(RILJ_LOG_TAG, "Disconnected from '" + SOCKET_NAME_RIL
+                Rlog.i(RILJ_LOG_TAG, "Disconnected from '" + rilSocket
                       + "' socket");
 
                 setRadioState (RadioState.RADIO_UNAVAILABLE);
@@ -571,15 +584,22 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     //***** Constructors
 
     public RIL(Context context, int preferredNetworkType, int cdmaSubscription) {
+        this(context, preferredNetworkType, cdmaSubscription, null);
+    }
+
+    public RIL(Context context, int preferredNetworkType,
+            int cdmaSubscription, Integer instanceId) {
         super(context);
         if (RILJ_LOGD) {
             riljLog("RIL(context, preferredNetworkType=" + preferredNetworkType +
                     " cdmaSubscription=" + cdmaSubscription + ")");
         }
 
+        mContext = context;
         mCdmaSubscription  = cdmaSubscription;
         mPreferredNetworkType = preferredNetworkType;
         mPhoneType = RILConstants.NO_PHONE;
+        mInstanceId = instanceId;
 
         PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, RILJ_LOG_TAG);
@@ -609,6 +629,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             filter.addAction(Intent.ACTION_SCREEN_OFF);
             context.registerReceiver(mIntentReceiver, filter);
         }
+
+        TelephonyDevController tdc = TelephonyDevController.getInstance();
+        tdc.registerRIL(this);
     }
 
     //***** CommandsInterface implementation
@@ -654,6 +677,33 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
+        send(rr);
+    }
+
+    public void setUiccSubscription(int slotId, int appIndex, int subId,
+            int subStatus, Message result) {
+        //Note: This RIL request is also valid for SIM and RUIM (ICC card)
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_UICC_SUBSCRIPTION, result);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                + " slot: " + slotId + " appIndex: " + appIndex
+                + " subId: " + subId + " subStatus: " + subStatus);
+
+        rr.mParcel.writeInt(slotId);
+        rr.mParcel.writeInt(appIndex);
+        rr.mParcel.writeInt(subId);
+        rr.mParcel.writeInt(subStatus);
+
+        send(rr);
+    }
+
+    // FIXME This API should take an AID and slot ID
+    public void setDataAllowed(boolean allowed, Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_ALLOW_DATA, result);
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        rr.mParcel.writeInt(1);
+        rr.mParcel.writeInt(allowed ? 1 : 0);
         send(rr);
     }
 
@@ -1133,6 +1183,16 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     getOperator(Message result) {
         RILRequest rr
                 = RILRequest.obtain(RIL_REQUEST_OPERATOR, result);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
+    }
+
+    @Override
+    public void
+    getHardwareConfig (Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_HARDWARE_CONFIG, result);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
@@ -2433,6 +2493,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_NV_WRITE_ITEM: ret = responseVoid(p); break;
             case RIL_REQUEST_NV_WRITE_CDMA_PRL: ret = responseVoid(p); break;
             case RIL_REQUEST_NV_RESET_CONFIG: ret = responseVoid(p); break;
+            case RIL_REQUEST_SET_UICC_SUBSCRIPTION: ret = responseVoid(p); break;
+            case RIL_REQUEST_ALLOW_DATA: ret = responseVoid(p); break;
+            case RIL_REQUEST_GET_HARDWARE_CONFIG: ret = responseHardwareConfig(p); break;
+            case RIL_REQUEST_ICC_SIM_AUTHENTICATION: ret =  responseString(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -2556,6 +2620,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 sb.append(cell).append(" ");
             }
             s = sb.toString();
+        } else if (req == RIL_REQUEST_GET_HARDWARE_CONFIG) {
+            ArrayList<HardwareConfig> hwcfgs = (ArrayList<HardwareConfig>) ret;
+            sb = new StringBuilder(" ");
+            for (HardwareConfig hwcfg : hwcfgs) {
+                sb.append("[").append(hwcfg).append("] ");
+            }
+            s = sb.toString();
         } else {
             s = ret.toString();
         }
@@ -2613,6 +2684,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_VOICE_RADIO_TECH_CHANGED: ret =  responseInts(p); break;
             case RIL_UNSOL_CELL_INFO_LIST: ret = responseCellInfoList(p); break;
             case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED: ret =  responseVoid(p); break;
+            case RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED: ret =  responseInts(p); break;
+            case RIL_UNSOL_SRVCC_STATE_NOTIFY: ret = responseInts(p); break;
+            case RIL_UNSOL_HARDWARE_CONFIG_CHANGED: ret = responseHardwareConfig(p); break;
 
             default:
                 throw new RuntimeException("Unrecognized unsol response: " + response);
@@ -2986,6 +3060,32 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 }
                 break;
             }
+            case RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED: {
+                if (RILJ_LOGD) unsljLogRet(response, ret);
+
+                if (mSubscriptionStatusRegistrants != null) {
+                    mSubscriptionStatusRegistrants.notifyRegistrants(
+                                        new AsyncResult (null, ret, null));
+                }
+                break;
+            }
+            case RIL_UNSOL_SRVCC_STATE_NOTIFY: {
+                if (RILJ_LOGD) unsljLogRet(response, ret);
+
+                if (mSrvccStateRegistrants != null) {
+                    mSrvccStateRegistrants
+                            .notifyRegistrants(new AsyncResult(null, ret, null));
+                }
+                break;
+            }
+            case RIL_UNSOL_HARDWARE_CONFIG_CHANGED:
+                if (RILJ_LOGD) unsljLogRet(response, ret);
+
+                if (mHardwareConfigChangeRegistrants != null) {
+                    mHardwareConfigChangeRegistrants.notifyRegistrants(
+                                             new AsyncResult (null, ret, null));
+                }
+                break;
         }
     }
 
@@ -3284,6 +3384,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             if (!TextUtils.isEmpty(gateways)) {
                 dataCall.gateways = gateways.split(" ");
             }
+            String pcscf = p.readString();
+            if (!TextUtils.isEmpty(pcscf)) {
+                dataCall.pcscf = pcscf.split(" ");
+            }
         }
         return dataCall;
     }
@@ -3337,6 +3441,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 if (RILJ_LOGD) riljLog("responseSetupDataCall got gateways=" + gateways);
                 if (!TextUtils.isEmpty(gateways)) {
                     dataCall.gateways = gateways.split(" ");
+                }
+            }
+            if (num >= 6) {
+                String pcscf = p.readString();
+                if (RILJ_LOGD) riljLog("responseSetupDataCall got pcscf=" + pcscf);
+                if (!TextUtils.isEmpty(pcscf)) {
+                    dataCall.pcscf = pcscf.split(" ");
                 }
             }
         } else {
@@ -3617,6 +3728,44 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return response;
     }
 
+   private Object
+   responseHardwareConfig(Parcel p) {
+      int num;
+      ArrayList<HardwareConfig> response;
+      HardwareConfig hw;
+
+      num = p.readInt();
+      response = new ArrayList<HardwareConfig>(num);
+
+      if (RILJ_LOGV) {
+         riljLog("responseHardwareConfig: num=" + num);
+      }
+      for (int i = 0 ; i < num ; i++) {
+         int type = p.readInt();
+         switch(type) {
+            case HardwareConfig.DEV_HARDWARE_TYPE_MODEM: {
+               hw = new HardwareConfig(type);
+               hw.assignModem(p.readString(), p.readInt(), p.readInt(),
+                  p.readInt(), p.readInt(), p.readInt(), p.readInt());
+               break;
+            }
+            case HardwareConfig.DEV_HARDWARE_TYPE_SIM: {
+               hw = new HardwareConfig(type);
+               hw.assignSim(p.readString(), p.readInt(), p.readString());
+               break;
+            }
+            default: {
+               throw new RuntimeException(
+                  "RIL_REQUEST_GET_HARDWARE_CONFIG invalid hardward type:" + type);
+            }
+         }
+
+         response.add(hw);
+      }
+
+      return response;
+   }
+
     static String
     requestToString(int request) {
 /*
@@ -3746,6 +3895,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_NV_WRITE_ITEM: return "RIL_REQUEST_NV_WRITE_ITEM";
             case RIL_REQUEST_NV_WRITE_CDMA_PRL: return "RIL_REQUEST_NV_WRITE_CDMA_PRL";
             case RIL_REQUEST_NV_RESET_CONFIG: return "RIL_REQUEST_NV_RESET_CONFIG";
+            case RIL_REQUEST_SET_UICC_SUBSCRIPTION: return "RIL_REQUEST_SET_UICC_SUBSCRIPTION";
+            case RIL_REQUEST_ALLOW_DATA: return "RIL_REQUEST_ALLOW_DATA";
+            case RIL_REQUEST_GET_HARDWARE_CONFIG: return "GET_HARDWARE_CONFIG";
+            case RIL_REQUEST_ICC_SIM_AUTHENTICATION: return "RIL_REQUEST_SIM_AUTHENTICATION";
             default: return "<unknown request>";
         }
     }
@@ -3798,16 +3951,23 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_CELL_INFO_LIST: return "UNSOL_CELL_INFO_LIST";
             case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
                 return "UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED";
+            case RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED:
+                    return "RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED";
+            case RIL_UNSOL_SRVCC_STATE_NOTIFY:
+                    return "UNSOL_SRVCC_STATE_NOTIFY";
+            case RIL_UNSOL_HARDWARE_CONFIG_CHANGED: return "RIL_UNSOL_HARDWARE_CONFIG_CHANGED";
             default: return "<unknown response>";
         }
     }
 
     private void riljLog(String msg) {
-        Rlog.d(RILJ_LOG_TAG, msg);
+        Rlog.d(RILJ_LOG_TAG, msg
+                + (mInstanceId != null ? (" [SUB" + mInstanceId + "]") : ""));
     }
 
     private void riljLogv(String msg) {
-        Rlog.v(RILJ_LOG_TAG, msg);
+        Rlog.v(RILJ_LOG_TAG, msg
+                + (mInstanceId != null ? (" [SUB" + mInstanceId + "]") : ""));
     }
 
     private void unsljLog(int response) {
@@ -4031,6 +4191,17 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_ISIM_AUTHENTICATION, response);
 
         rr.mParcel.writeString(nonce);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
+    }
+
+    @Override
+    public void requestIccSimAuthentication(String data, Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_ICC_SIM_AUTHENTICATION, response);
+
+        rr.mParcel.writeString(data);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 

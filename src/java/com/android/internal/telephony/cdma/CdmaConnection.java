@@ -251,6 +251,11 @@ public class CdmaConnection extends Connection {
     }
 
     @Override
+    public long getConnectTimeReal() {
+        return mConnectTimeReal;
+    }
+
+    @Override
     public long getDisconnectTime() {
         return mDisconnectTime;
     }
@@ -264,6 +269,11 @@ public class CdmaConnection extends Connection {
         } else {
             return mDuration;
         }
+    }
+
+    @Override
+    public long getHoldingStartTime() {
+        return mHoldingStartTime;
     }
 
     @Override
@@ -963,4 +973,13 @@ public class CdmaConnection extends Connection {
         return mPreciseCause;
     }
 
+    @Override
+    public Connection getOrigConnection() {
+        return null;
+    }
+
+    @Override
+    public boolean isMultiparty() {
+        return false;
+    }
 }

@@ -255,7 +255,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         // Store the voicemail count in preferences.
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
         SharedPreferences.Editor editor = sp.edit();
-        editor.putInt(CDMAPhone.VM_COUNT_CDMA, voicemailCount);
+        editor.putInt(CDMAPhone.VM_COUNT_CDMA + mPhone.getPhoneId(), voicemailCount);
         editor.apply();
         mPhone.setVoiceMessageWaiting(1, voicemailCount);
     }

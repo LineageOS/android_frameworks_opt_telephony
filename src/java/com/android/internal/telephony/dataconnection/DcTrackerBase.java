@@ -43,6 +43,7 @@ import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.EventLog;
@@ -81,6 +82,7 @@ public abstract class DcTrackerBase extends Handler {
     protected static final boolean VDBG_STALL = true; // STOPSHIP if true
     protected static final boolean RADIO_TESTS = false;
 
+    static boolean mIsCleanupRequired = false;
     /**
      * Constants for the data connection activity:
      * physical link down/up
@@ -469,6 +471,17 @@ public abstract class DcTrackerBase extends Handler {
         String reason = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON);
         String apnType = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE);
 
+        long phoneSubId = mPhone.getSubId();
+        long currSubId = intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                SubscriptionManager.INVALID_SUB_ID);
+        log("onActionIntentReconnectAlarm: currSubId = " + currSubId + " phoneSubId=" + phoneSubId);
+
+        // Stop reconnect if not current subId is not correct.
+        if ((currSubId == SubscriptionManager.INVALID_SUB_ID) || (currSubId != phoneSubId)) {
+            log("receive ReconnectAlarm but subId incorrect, ignore");
+            return;
+        }
+
         ApnContext apnContext = mApnContexts.get(apnType);
 
         if (DBG) {
@@ -530,8 +543,8 @@ public abstract class DcTrackerBase extends Handler {
      */
     protected DcTrackerBase(PhoneBase phone) {
         super();
-        if (DBG) log("DCT.constructor");
         mPhone = phone;
+        if (DBG) log("DCT.constructor");
         mResolver = mPhone.getContext().getContentResolver();
         mUiccController = UiccController.getInstance();
         mUiccController.registerForIccChanged(this, DctConstants.EVENT_ICC_CHANGED, null);
@@ -727,6 +740,9 @@ public abstract class DcTrackerBase extends Handler {
     public abstract boolean isDataPossible(String apnType);
     protected abstract void onUpdateIcc();
     protected abstract void completeConnection(ApnContext apnContext);
+    public abstract void setDataAllowed(boolean enable, Message response);
+    public abstract String[] getPcscfAddress();
+    public abstract void setImsRegistrationState(boolean registered);
 
     @Override
     public void handleMessage(Message msg) {
@@ -1345,7 +1361,7 @@ public abstract class DcTrackerBase extends Handler {
                     if (!prevEnabled) {
                         onTrySetupData(Phone.REASON_DATA_ENABLED);
                     } else {
-                        onCleanUpAllConnections(Phone.REASON_DATA_DISABLED);
+                        onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
                     }
                 }
             }
@@ -1364,7 +1380,7 @@ public abstract class DcTrackerBase extends Handler {
                     if (!prevEnabled) {
                         onTrySetupData(Phone.REASON_DATA_ENABLED);
                     } else {
-                        onCleanUpAllConnections(Phone.REASON_DATA_DISABLED);
+                        onCleanUpAllConnections(Phone.REASON_DATA_SPECIFIC_DISABLED);
                     }
                 }
             }

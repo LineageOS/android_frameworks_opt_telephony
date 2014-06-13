@@ -24,6 +24,7 @@ import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.RemoteException;
 import android.os.SystemProperties;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Slog;
 
@@ -175,8 +176,17 @@ public final class MccTable
      */
     public static void updateMccMncConfiguration(Context context, String mccmnc,
             boolean fromServiceState) {
+        Slog.d(LOG_TAG, "updateMccMncConfiguration mccmnc='" + mccmnc + "' fromServiceState=" + fromServiceState);
         if (!TextUtils.isEmpty(mccmnc)) {
             int mcc, mnc;
+
+            String defaultMccMnc = TelephonyManager.getDefault().getSimOperator();
+            Slog.d(LOG_TAG, "updateMccMncConfiguration defaultMccMnc=" + defaultMccMnc);
+            //Update mccmnc only for default subscription in case of MultiSim.
+//            if (!defaultMccMnc.equals(mccmnc)) {
+//                Slog.d(LOG_TAG, "Not a Default subscription, ignoring mccmnc config update.");
+//                return;
+//            }
 
             try {
                 mcc = Integer.parseInt(mccmnc.substring(0,3));
@@ -237,7 +247,8 @@ public final class MccTable
      * @return Locale or null if no appropriate value
      *  {@hide}
      */
-    public static Locale getLocaleForLanguageCountry(Context context, String language, String country) {
+    public static Locale getLocaleForLanguageCountry(Context context, String language,
+            String country) {
         String l = SystemProperties.get("persist.sys.language");
         String c = SystemProperties.get("persist.sys.country");
 

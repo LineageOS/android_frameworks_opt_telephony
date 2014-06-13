@@ -27,15 +27,12 @@ import java.util.List;
  * SimPhoneBookInterfaceManager to provide an inter-process communication to
  * access ADN-like SIM records.
  */
-public class IccPhoneBookInterfaceManagerProxy extends IIccPhoneBook.Stub {
+public class IccPhoneBookInterfaceManagerProxy {
     private IccPhoneBookInterfaceManager mIccPhoneBookInterfaceManager;
 
     public IccPhoneBookInterfaceManagerProxy(IccPhoneBookInterfaceManager
             iccPhoneBookInterfaceManager) {
         mIccPhoneBookInterfaceManager = iccPhoneBookInterfaceManager;
-        if(ServiceManager.getService("simphonebook") == null) {
-            ServiceManager.addService("simphonebook", this);
-        }
     }
 
     public void setmIccPhoneBookInterfaceManager(
@@ -43,7 +40,6 @@ public class IccPhoneBookInterfaceManagerProxy extends IIccPhoneBook.Stub {
         mIccPhoneBookInterfaceManager = iccPhoneBookInterfaceManager;
     }
 
-    @Override
     public boolean
     updateAdnRecordsInEfBySearch (int efid,
             String oldTag, String oldPhoneNumber,
@@ -53,7 +49,6 @@ public class IccPhoneBookInterfaceManagerProxy extends IIccPhoneBook.Stub {
                 efid, oldTag, oldPhoneNumber, newTag, newPhoneNumber, pin2);
     }
 
-    @Override
     public boolean
     updateAdnRecordsInEfByIndex(int efid, String newTag,
             String newPhoneNumber, int index, String pin2) {
@@ -61,12 +56,10 @@ public class IccPhoneBookInterfaceManagerProxy extends IIccPhoneBook.Stub {
                 newTag, newPhoneNumber, index, pin2);
     }
 
-    @Override
     public int[] getAdnRecordsSize(int efid) {
         return mIccPhoneBookInterfaceManager.getAdnRecordsSize(efid);
     }
 
-    @Override
     public List<AdnRecord> getAdnRecordsInEf(int efid) {
         return mIccPhoneBookInterfaceManager.getAdnRecordsInEf(efid);
     }

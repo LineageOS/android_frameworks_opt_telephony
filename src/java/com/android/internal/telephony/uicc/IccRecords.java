@@ -67,6 +67,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected boolean mIsVoiceMailFixed = false;
     protected int mCountVoiceMessages = 0;
     protected String mImsi;
+    private String auth_rsp;
 
     protected int mMncLength = UNINITIALIZED;
     protected int mMailboxIndex = 0; // 0 is no mailbox dailing number associated
@@ -74,6 +75,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected String mSpn;
 
     protected String mGid1;
+
+    private final Object mLock = new Object();
 
     // ***** Constants
 
@@ -93,6 +96,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     public static final int EVENT_GET_ICC_RECORD_DONE = 100;
     protected static final int EVENT_APP_READY = 1;
+    private static final int EVENT_AKA_AUTHENTICATE_DONE          = 90;
 
     @Override
     public String toString() {
@@ -391,10 +395,12 @@ public abstract class IccRecords extends Handler implements IccConstants {
     //***** Overridden from Handler
     @Override
     public void handleMessage(Message msg) {
+        AsyncResult ar;
+
         switch (msg.what) {
             case EVENT_GET_ICC_RECORD_DONE:
                 try {
-                    AsyncResult ar = (AsyncResult) msg.obj;
+                    ar = (AsyncResult) msg.obj;
                     IccRecordLoaded recordLoaded = (IccRecordLoaded) ar.userObj;
                     if (DBG) log(recordLoaded.getEfName() + " LOADED");
 
@@ -410,6 +416,27 @@ public abstract class IccRecords extends Handler implements IccConstants {
                     // Count up record load responses even if they are fails
                     onRecordLoaded();
                 }
+                break;
+
+            case EVENT_AKA_AUTHENTICATE_DONE:
+                ar = (AsyncResult)msg.obj;
+                auth_rsp = null;
+                if (DBG) log("EVENT_AKA_AUTHENTICATE_DONE");
+                if (ar.exception != null) {
+                    loge("Exception ICC SIM AKA: " + ar.exception);
+                    break;
+                } else {
+                    try {
+                        auth_rsp = (String)ar.result;
+                        if (DBG) log("ICC SIM AKA: auth_rsp = " + auth_rsp);
+                    } catch (Exception e) {
+                        loge("Failed to parse ICC SIM AKA contents: " + e);
+                    }
+                }
+                synchronized (mLock) {
+                    mLock.notifyAll();
+                }
+
                 break;
 
             default:
@@ -503,6 +530,41 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     public UsimServiceTable getUsimServiceTable() {
         return null;
+    }
+
+    /**
+     * Returns the response of the SIM application on the UICC to authentication
+     * challenge/response algorithm. The data string and challenge response are
+     * Base64 encoded Strings.
+     * Can support EAP-SIM, EAP-AKA with results encoded per 3GPP TS 31.102.
+     *
+     * @param data authentication challenge data
+     * @return challenge response
+     */
+    public String getIccSimChallengeResponse(String data) {
+        if (DBG) log("getIccSimChallengeResponse-data: (original) " + data);
+
+        data = data + mParentApp.getAid();
+
+        if (DBG) log("getIccSimChallengeResponse-data: (with AID) " + data);
+
+        try {
+            synchronized(mLock) {
+                mCi.requestIccSimAuthentication(data, obtainMessage(EVENT_AKA_AUTHENTICATE_DONE));
+                try {
+                    mLock.wait();
+                } catch (InterruptedException e) {
+                    loge("interrupted while trying to request Icc Sim Auth");
+                }
+            }
+        } catch(Exception e) {
+            loge( "Fail while trying to request Icc Sim Auth");
+            return null;
+        }
+
+        if (DBG) log("getIccSimChallengeResponse-auth_rsp" + auth_rsp);
+
+        return auth_rsp;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

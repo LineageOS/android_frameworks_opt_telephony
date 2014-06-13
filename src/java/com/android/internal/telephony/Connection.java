@@ -99,6 +99,14 @@ public abstract class Connection {
     public abstract long getConnectTime();
 
     /**
+     * Connection connect time in elapsedRealtime() format.
+     * For outgoing calls: Begins at (DIALING|ALERTING) -> ACTIVE transition.
+     * For incoming calls: Begins at (INCOMING|WAITING) -> ACTIVE transition.
+     * Returns 0 before then.
+     */
+    public abstract long getConnectTimeReal();
+
+    /**
      * Disconnect time in currentTimeMillis() format.
      * The time when this Connection makes a transition into ENDED or FAIL.
      * Returns 0 before then.
@@ -112,6 +120,13 @@ public abstract class Connection {
      * time since connect.
      */
     public abstract long getDurationMillis();
+
+    /**
+     * The time when this Connection last transitioned into HOLDING
+     * in elapsedRealtime() format.
+     * Returns 0, if it has never made a transition into HOLDING.
+     */
+    public abstract long getHoldingStartTime();
 
     /**
      * If this connection is HOLDING, return the number of milliseconds
@@ -280,6 +295,19 @@ public abstract class Connection {
      * RIL_REQUEST_LAST_CALL_FAIL_CAUSE
      */
     public abstract int getPreciseDisconnectCause();
+
+    /**
+     * Returns the original Connection instance associated with
+     * this Connection
+     */
+    public abstract Connection getOrigConnection();
+
+    /**
+     * Returns whether the original ImsPhoneConnection was a member
+     * of a conference call
+     * @return valid only when getOrigConnection() is not null
+     */
+    public abstract boolean isMultiparty();
 
     /**
      * Build a human representation of a connection instance, suitable for debugging.

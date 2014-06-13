@@ -16,11 +16,15 @@
 
 package com.android.internal.telephony.cdma;
 
+import android.content.Intent;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneFactory;
 
 import android.telephony.CellInfo;
 import android.telephony.CellInfoLte;
@@ -29,14 +33,22 @@ import android.telephony.CellIdentityLte;
 import android.telephony.SignalStrength;
 import android.telephony.ServiceState;
 import android.telephony.cdma.CdmaCellLocation;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.os.AsyncResult;
 import android.os.Message;
+import android.os.UserHandle;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 
 import android.telephony.Rlog;
 import android.util.EventLog;
+
+import com.android.internal.telephony.dataconnection.DcTrackerBase;
+import com.android.internal.telephony.ProxyController;
+import android.telephony.SubscriptionManager;
+import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.internal.telephony.uicc.UiccController;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -46,6 +58,7 @@ import java.util.List;
 public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     private CDMALTEPhone mCdmaLtePhone;
     private final CellInfoLte mCellInfoLte;
+    private static final int EVENT_ALL_DATA_DISCONNECTED = 1001;
 
     private CellIdentityLte mNewCellIdentityLte = new CellIdentityLte();
     private CellIdentityLte mLasteCellIdentityLte = new CellIdentityLte();
@@ -94,6 +107,19 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             // again to update to the roaming state with
             // the latest variables.
             pollState();
+            break;
+        case EVENT_ALL_DATA_DISCONNECTED:
+            long dds = SubscriptionManager.getDefaultDataSubId();
+            ProxyController.getInstance().unregisterForAllDataDisconnected(dds, this);
+            synchronized(this) {
+                if (mPendingRadioPowerOffAfterDataOff) {
+                    if (DBG) log("EVENT_ALL_DATA_DISCONNECTED, turn radio off now.");
+                    hangupAndPowerOff();
+                    mPendingRadioPowerOffAfterDataOff = false;
+                } else {
+                    log("EVENT_ALL_DATA_DISCONNECTED is stale");
+                }
+            }
             break;
         default:
             super.handleMessage(msg);
@@ -566,6 +592,63 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             }
             if (DBG) log ("getAllCellInfo: arrayList=" + arrayList);
             return arrayList;
+        }
+    }
+
+    @Override
+    protected UiccCardApplication getUiccCardApplication() {
+            return  mUiccController.getUiccCardApplication(((CDMALTEPhone)mPhone).
+                    getPhoneId(), UiccController.APP_FAM_3GPP2);
+    }
+
+    protected void updateCdmaSubscription() {
+        mCi.getCDMASubscription(obtainMessage(EVENT_POLL_STATE_CDMA_SUBSCRIPTION));
+    }
+
+    /**
+     * Clean up existing voice and data connection then turn off radio power.
+     *
+     * Hang up the existing voice calls to decrease call drop rate.
+     */
+    @Override
+    public void powerOffRadioSafely(DcTrackerBase dcTracker) {
+        synchronized (this) {
+            if (!mPendingRadioPowerOffAfterDataOff) {
+                long dds = SubscriptionManager.getDefaultDataSubId();
+                // To minimize race conditions we call cleanUpAllConnections on
+                // both if else paths instead of before this isDisconnected test.
+                if (dcTracker.isDisconnected()
+                        && (dds == mPhone.getSubId()
+                            || (dds != mPhone.getSubId()
+                                && ProxyController.getInstance().isDataDisconnected(dds)))) {
+                    // To minimize race conditions we do this after isDisconnected
+                    dcTracker.cleanUpAllConnections(Phone.REASON_RADIO_TURNED_OFF);
+                    if (DBG) log("Data disconnected, turn off radio right away.");
+                    hangupAndPowerOff();
+                } else {
+                    dcTracker.cleanUpAllConnections(Phone.REASON_RADIO_TURNED_OFF);
+                    if (dds != mPhone.getSubId()
+                            && !ProxyController.getInstance().isDataDisconnected(dds)) {
+                        if (DBG) log("Data is active on DDS.  Wait for all data disconnect");
+                        // Data is not disconnected on DDS. Wait for the data disconnect complete
+                        // before sending the RADIO_POWER off.
+                        ProxyController.getInstance().registerForAllDataDisconnected(dds, this,
+                                EVENT_ALL_DATA_DISCONNECTED, null);
+                        mPendingRadioPowerOffAfterDataOff = true;
+                    }
+                    Message msg = Message.obtain(this);
+                    msg.what = EVENT_SET_RADIO_POWER_OFF;
+                    msg.arg1 = ++mPendingRadioPowerOffAfterDataOffTag;
+                    if (sendMessageDelayed(msg, 30000)) {
+                        if (DBG) log("Wait upto 30s for data to disconnect, then turn off radio.");
+                        mPendingRadioPowerOffAfterDataOff = true;
+                    } else {
+                        log("Cannot send delayed Msg, turn off radio right away.");
+                        hangupAndPowerOff();
+                        mPendingRadioPowerOffAfterDataOff = false;
+                    }
+                }
+            }
         }
     }
 

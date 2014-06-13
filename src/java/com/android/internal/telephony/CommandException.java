@@ -44,6 +44,7 @@ public class CommandException extends RuntimeException {
         ILLEGAL_SIM_OR_ME,
         MISSING_RESOURCE,
         NO_SUCH_ELEMENT,
+        SUBSCRIPTION_NOT_SUPPORTED,
     }
 
     public CommandException(Error e) {
@@ -89,6 +90,8 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.MISSING_RESOURCE);
             case RILConstants.NO_SUCH_ELEMENT:
                 return new CommandException(Error.NO_SUCH_ELEMENT);
+            case RILConstants.SUBSCRIPTION_NOT_SUPPORTED:
+                return new CommandException(Error.SUBSCRIPTION_NOT_SUPPORTED);
             default:
                 Rlog.e("GSM", "Unrecognized RIL errno " + ril_errno);
                 return new CommandException(Error.INVALID_RESPONSE);
