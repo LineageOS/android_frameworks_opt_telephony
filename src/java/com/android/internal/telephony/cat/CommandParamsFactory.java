@@ -901,6 +901,10 @@ public class CommandParamsFactory extends Handler {
         ctlv = searchForTag(ComprehensionTlvTag.ALPHA_ID, ctlvs);
         if (ctlv != null) {
             textMsg.text = ValueParser.retrieveAlphaId(ctlv);
+            // Assign the tone message text to empty string, if alpha identifier
+            // data is null. If no alpha identifier tlv is present, then tone
+            // message text will be null.
+            if (textMsg.text == null) textMsg.text = "";
         }
         // parse tone duration
         ctlv = searchForTag(ComprehensionTlvTag.DURATION, ctlvs);

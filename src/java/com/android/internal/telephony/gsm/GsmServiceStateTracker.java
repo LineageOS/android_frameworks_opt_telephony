@@ -933,6 +933,8 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
 
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
+        boolean needNotifyData = (mSS.getCssIndicator() != mNewSS.getCssIndicator());
+
         // Add an event log when connection state changes
         if (hasVoiceRegStateChanged || hasDataRegStateChanged) {
             EventLog.writeEvent(EventLogTags.GSM_SERVICE_STATE_CHANGE,
@@ -1158,9 +1160,14 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
                 //DCT shall inform the availability of APN for all non-default
                 //contexts.
                 mIwlanRegistrants.notifyRegistrants();
+                needNotifyData =  false;
             } else {
-                mPhone.notifyDataConnection(null);
+                needNotifyData = true;
             }
+        }
+
+        if (needNotifyData) {
+            mPhone.notifyDataConnection(null);
         }
 
         if (hasGprsAttached) {
