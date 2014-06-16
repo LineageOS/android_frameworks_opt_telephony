@@ -206,6 +206,11 @@ public class GsmConnection extends Connection {
     }
 
     @Override
+    public void setCreateTime(long timeInMillis) {
+        mCreateTime = timeInMillis;
+    }
+
+    @Override
     public long getConnectTime() {
         return mConnectTime;
     }
