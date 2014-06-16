@@ -1810,6 +1810,12 @@ public final class DataConnection extends StateMachine {
         }
 
         protected void unwanted() {
+            for (ApnContext apnContext : mApnContexts) {
+                Message msg = mDct.obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, apnContext);
+                DisconnectParams dp = new DisconnectParams(apnContext, apnContext.getReason(), msg);
+                DataConnection.this.sendMessage(DataConnection.this.
+                        obtainMessage(EVENT_DISCONNECT, dp));
+            }
         }
     }
 

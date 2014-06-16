@@ -1531,6 +1531,7 @@ public final class DcTracker extends DcTrackerBase {
                     apnContext.getDependencyMet() +"))");
         }
         if (apnContext.isReady()) {
+            cleanup = true;
             if (enabled && met) {
                 DctConstants.State state = apnContext.getState();
                 switch(state) {
@@ -1552,12 +1553,15 @@ public final class DcTracker extends DcTrackerBase {
                         break;
                     }
                 }
-            } else if (!enabled) {
+            } else if (met) {
                 apnContext.setReason(Phone.REASON_DATA_DISABLED);
+                // If ConnectivityService has disabled this network, stop trying to bring
+                // it up, but do not tear it down - ConnectivityService will do that
+                // directly by talking with the DataConnection.
+                cleanup = false;
             } else {
                 apnContext.setReason(Phone.REASON_DATA_DEPENDENCY_UNMET);
             }
-            cleanup = true;
         } else {
             if (enabled && met) {
                 if (apnContext.isEnabled()) {
