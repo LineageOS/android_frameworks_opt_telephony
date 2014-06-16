@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba0121b8_cd0449c8",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2014-06-16T11:21:13Z",
+      "side": 1,
+      "message": "this is already defined up there so remove the bool.",
+      "revId": "45f67f4382e7f7413e9d4382f3d772466e125aff",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
