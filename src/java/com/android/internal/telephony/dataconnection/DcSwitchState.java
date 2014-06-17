@@ -84,7 +84,8 @@ public class DcSwitchState extends StateMachine {
     private int setupConnection(String type) {
         mApnTypes.add(type);
         log("DcSwitchState:setupConnection type = " + type);
-        return mPhone.enableApnType(type);
+//        return mPhone.enableApnType(type); TODO
+        return PhoneConstants.APN_REQUEST_STARTED;
     }
 
     private int teardownConnection(String type) {
@@ -92,12 +93,13 @@ public class DcSwitchState extends StateMachine {
         if (mApnTypes.isEmpty()) {
             log("No APN is using, then clean up all");
             // Since last type is removed from mApnTypes and will not be disabled in requestDataIdle()
-            mPhone.disableApnType(type);
+//            mPhone.disableApnType(type); TODO
             requestDataIdle();
             transitionTo(mDeactingState);
             return PhoneConstants.APN_REQUEST_STARTED;
         } else {
-            return mPhone.disableApnType(type);
+//            return mPhone.disableApnType(type); TODO
+            return PhoneConstants.APN_REQUEST_STARTED;
         }
     }
 
@@ -105,7 +107,7 @@ public class DcSwitchState extends StateMachine {
         if (DBG) log("requestDataIdle is triggered");
         Iterator<String> itrType = mApnTypes.iterator();
         while (itrType.hasNext()) {
-            mPhone.disableApnType(itrType.next());
+//            mPhone.disableApnType(itrType.next()); TODO
         }
         mApnTypes.clear();
         PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
@@ -440,7 +442,7 @@ public class DcSwitchState extends StateMachine {
                     log("Just transit to Idle state");
                     Iterator<String> itrType = mApnTypes.iterator();
                     while (itrType.hasNext()) {
-                        mPhone.disableApnType(itrType.next());
+//                        mPhone.disableApnType(itrType.next()); TODO
                     }
                     mApnTypes.clear();
                     transitionTo(mIdleState);
