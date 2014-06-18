@@ -550,7 +550,10 @@ public class SubscriptionController extends ISub.Stub {
                     // do not add another subId for same slotId/phoneId.
                     long[] sub = getSubId(slotId);
 
-                    if ((mSimInfo.size() == 0) || (sub[0] <= 0)) {
+                    // FIXME: This is only adding records if there isn't any or sub is returning "dummy" values.
+                    // this should probably be updating if the recorddoesn't contain the specific slotId/subId mapping.
+                    // But that will be for another time and likely there will be other changes in the mean time.
+                    if ((mSimInfo.size() == 0) || (sub != null && sub.length > 0 && sub[0] <= 0)) {
                         // set the first entry as default sub
                         // TODO While two subs active, if user deactivats first
                         // one, need to update the default subId with second
@@ -563,7 +566,7 @@ public class SubscriptionController extends ISub.Stub {
                         logd("[addSubInfoRecord] mSimInfo.size=" + mSimInfo.size()
                                 + " slotId = " + slotId + " subId = " + subId);
                     } else {
-                        logd("[addSubInfoRecord] size != 0 && sub[0] > 0, IGNORE");
+                        logd("[addSubInfoRecord] size != 0 && sub[] isn't valid, IGNORE");
                     }
                 } while (cursor.moveToNext());
             } else {
@@ -993,11 +996,16 @@ public class SubscriptionController extends ISub.Stub {
                 // Broadcast an Intent for default sub change
                 Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_SUBSCRIPTION_CHANGED);
                 intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-                SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId);
-                if (VDBG) logd("setDefaultSubId: " + subId + " Broadcasting Default SubId Changed");
+                SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId, subId);
+                if (VDBG) {
+                    logd("setDefaultSubId: broadcast default subId changed phoneId=" + phoneId
+                            + " subId=" + subId);
+                }
                 mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
             } else {
-                if (VDBG) logd("setDefaultSubId: not set invalid phoneId=" + phoneId + " subId=" + subId);
+                if (VDBG) {
+                    logd("setDefaultSubId: not set invalid phoneId=" + phoneId + " subId=" + subId);
+                }
             }
         } else {
             if (VDBG) logd("setDefaultSubId: not set invalid subId=" + subId);
