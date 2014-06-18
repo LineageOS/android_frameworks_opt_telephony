@@ -231,12 +231,14 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
             } else {
                 // Invalid pdu format.
                 Rlog.e(TAG, "Invalid pdu format: " + format);
-                receivedIntent.send(Intents.RESULT_SMS_GENERIC_ERROR);
+                if (receivedIntent != null)
+                    receivedIntent.send(Intents.RESULT_SMS_GENERIC_ERROR);
             }
         } catch (Exception e) {
             Rlog.e(TAG, "injectSmsPdu failed: ", e);
             try {
-              receivedIntent.send(Intents.RESULT_SMS_GENERIC_ERROR);
+                if (receivedIntent != null)
+                    receivedIntent.send(Intents.RESULT_SMS_GENERIC_ERROR);
             } catch (CanceledException ex) {}
         }
     }
