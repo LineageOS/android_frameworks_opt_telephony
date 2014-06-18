@@ -477,10 +477,11 @@ public abstract class DcTrackerBase extends Handler {
         log("onActionIntentReconnectAlarm: currSubId = " + currSubId + " phoneSubId=" + phoneSubId);
 
         // Stop reconnect if not current subId is not correct.
-        if ((currSubId == SubscriptionManager.INVALID_SUB_ID) || (currSubId != phoneSubId)) {
-            log("receive ReconnectAlarm but subId incorrect, ignore");
-            return;
-        }
+        // FIXME STOPSHIP - phoneSubId is coming up as -1 way after boot and failing this.
+//        if ((currSubId == SubscriptionManager.INVALID_SUB_ID) || (currSubId != phoneSubId)) {
+//            log("receive ReconnectAlarm but subId incorrect, ignore");
+//            return;
+//        }
 
         ApnContext apnContext = mApnContexts.get(apnType);
 
