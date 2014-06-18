@@ -21,9 +21,11 @@ import android.app.PendingIntent;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.android.internal.telephony.ISms;
 import com.android.internal.telephony.SmsRawData;
+import com.android.internal.telephony.mms.IMms;
 import com.android.internal.telephony.uicc.IccConstants;
 
 import java.util.ArrayList;
@@ -987,4 +989,68 @@ public final class SmsManager {
     static public final int RESULT_ERROR_LIMIT_EXCEEDED     = 5;
     /** Failed because FDN is enabled. {@hide} */
     static public final int RESULT_ERROR_FDN_CHECK_FAILURE  = 6;
+
+    /**
+     * Send an MMS message
+     *
+     * @param pdu the MMS message encoded in standard MMS PDU format
+     * @param locationUrl the optional location url where message should be sent to
+     * @param sentIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is successfully sent, or failed
+     * @hide
+     */
+    public void sendMultimediaMessage(byte[] pdu, String locationUrl, PendingIntent sentIntent) {
+        if (pdu == null || pdu.length == 0) {
+            throw new IllegalArgumentException("Empty or zero length PDU");
+        }
+        try {
+            final IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
+            if (iMms == null) {
+                return;
+            }
+            iMms.sendMessage(ActivityThread.currentPackageName(), pdu, locationUrl, sentIntent);
+        } catch (RemoteException e) {
+            // Ignore it
+        }
+    }
+
+    /**
+     * Download an MMS message from carrier by a given location URL
+     *
+     * @param locationUrl the location URL of the MMS message to be downloaded, usually obtained
+     *  from the MMS WAP push notification
+     * @param downloadedIntent if not NULL this <code>PendingIntent</code> is
+     *  broadcast when the message is downloaded, or the download is failed
+     * @hide
+     */
+    public void downloadMultimediaMessage(String locationUrl, PendingIntent downloadedIntent) {
+        if (TextUtils.isEmpty(locationUrl)) {
+            throw new IllegalArgumentException("Empty MMS location URL");
+        }
+        try {
+            final IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
+            if (iMms == null) {
+                return;
+            }
+            iMms.downloadMessage(ActivityThread.currentPackageName(), locationUrl,
+                    downloadedIntent);
+        } catch (RemoteException e) {
+            // Ignore it
+        }
+    }
+
+    // MMS send/download failure result codes
+    /**@hide*/
+    public static final int MMS_ERROR_UNSPECIFIED = 1;
+    /**@hide*/
+    public static final int MMS_ERROR_INVALID_APN = 2;
+    /**@hide*/
+    public static final int MMS_ERROR_UNABLE_CONNECT_MMS = 3;
+    /**@hide*/
+    public static final int MMS_ERROR_HTTP_FAILURE = 4;
+
+    // Intent extra name for result data
+    /**@hide*/
+    public static final String MMS_EXTRA_DATA = "data";
+
 }
