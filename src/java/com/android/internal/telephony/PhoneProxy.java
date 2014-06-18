@@ -957,16 +957,6 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
-    public int enableApnType(String type) {
-        return mActivePhone.enableApnType(type);
-    }
-
-    @Override
-    public int disableApnType(String type) {
-        return mActivePhone.disableApnType(type);
-    }
-
-    @Override
     public boolean isDataConnectivityPossible() {
         return mActivePhone.isDataConnectivityPossible(PhoneConstants.APN_TYPE_DEFAULT);
     }

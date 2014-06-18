@@ -1318,38 +1318,6 @@ public interface Phone {
     SimulatedRadioControl getSimulatedRadioControl();
 
     /**
-     * Enables the specified APN type. Only works for "special" APN types,
-     * i.e., not the default APN.
-     * @param type The desired APN type. Cannot be {@link PhoneConstants#APN_TYPE_DEFAULT}.
-     * @return <code>APN_ALREADY_ACTIVE</code> if the current APN
-     * services the requested type.<br/>
-     * <code>APN_TYPE_NOT_AVAILABLE</code> if the carrier does not
-     * support the requested APN.<br/>
-     * <code>APN_REQUEST_STARTED</code> if the request has been initiated.<br/>
-     * <code>APN_REQUEST_FAILED</code> if the request was invalid.<br/>
-     * A <code>ACTION_ANY_DATA_CONNECTION_STATE_CHANGED</code> broadcast will
-     * indicate connection state progress.
-     */
-    int enableApnType(String type);
-
-    /**
-     * Disables the specified APN type, and switches back to the default APN,
-     * if necessary. Switching to the default APN will not happen if default
-     * data traffic has been explicitly disabled via a call to ITelephony#disableDataConnectivity.
-     * <p/>Only works for "special" APN types,
-     * i.e., not the default APN.
-     * @param type The desired APN type. Cannot be {@link PhoneConstants#APN_TYPE_DEFAULT}.
-     * @return <code>APN_ALREADY_ACTIVE</code> if the default APN
-     * is already active.<br/>
-     * <code>APN_REQUEST_STARTED</code> if the request to switch to the default
-     * APN has been initiated.<br/>
-     * <code>APN_REQUEST_FAILED</code> if the request was invalid.<br/>
-     * A <code>ACTION_ANY_DATA_CONNECTION_STATE_CHANGED</code> broadcast will
-     * indicate connection state progress.
-     */
-    int disableApnType(String type);
-
-    /**
      * Report on whether data connectivity is allowed.
      */
     boolean isDataConnectivityPossible();

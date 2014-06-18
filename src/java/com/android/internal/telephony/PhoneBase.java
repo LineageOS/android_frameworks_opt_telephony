@@ -1468,16 +1468,6 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
-    public int enableApnType(String type) {
-        return mDcTracker.enableApnType(type);
-    }
-
-    @Override
-    public int disableApnType(String type) {
-        return mDcTracker.disableApnType(type);
-    }
-
-    @Override
     public boolean isDataConnectivityPossible() {
         return isDataConnectivityPossible(PhoneConstants.APN_TYPE_DEFAULT);
     }
