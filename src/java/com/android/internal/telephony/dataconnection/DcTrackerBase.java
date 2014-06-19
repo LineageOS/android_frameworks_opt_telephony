@@ -1025,6 +1025,8 @@ public abstract class DcTrackerBase extends Handler {
             return DctConstants.APN_CBS_ID;
         } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_IA)) {
             return DctConstants.APN_IA_ID;
+        } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_EMERGENCY)) {
+            return DctConstants.APN_EMERGENCY_ID;
         } else {
             return DctConstants.APN_INVALID_ID;
         }
@@ -1050,6 +1052,8 @@ public abstract class DcTrackerBase extends Handler {
             return PhoneConstants.APN_TYPE_CBS;
         case DctConstants.APN_IA_ID:
             return PhoneConstants.APN_TYPE_IA;
+        case DctConstants.APN_EMERGENCY_ID:
+            return PhoneConstants.APN_TYPE_EMERGENCY;
         default:
             log("Unknown id (" + id + ") in apnIdToType");
             return PhoneConstants.APN_TYPE_DEFAULT;

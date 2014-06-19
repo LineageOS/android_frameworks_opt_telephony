@@ -379,7 +379,10 @@ public final class DcTracker extends DcTrackerBase {
         DctConstants.State apnContextState = apnContext.getState();
         boolean apnTypePossible = !(apnContextIsEnabled &&
                 (apnContextState == DctConstants.State.FAILED));
-        boolean dataAllowed = isDataAllowed();
+        boolean isEmergencyApn = apnContext.getApnType().equals(PhoneConstants.APN_TYPE_EMERGENCY);
+        // Set the emergency APN availability status as TRUE irrespective of conditions checked in
+        // isDataAllowed() like IN_SERVICE, MOBILE DATA status etc.
+        boolean dataAllowed = isEmergencyApn || isDataAllowed();
         boolean possible = dataAllowed && apnTypePossible;
 
         if (VDBG) {
@@ -413,6 +416,7 @@ public final class DcTracker extends DcTrackerBase {
         cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_FOTA, new Messenger(this));
         cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_IMS, new Messenger(this));
         cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_CBS, new Messenger(this));
+        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_EMERGENCY, new Messenger(this));
     }
 
     private ApnContext addApnContext(String type, NetworkConfig networkConfig) {
@@ -459,6 +463,9 @@ public final class DcTracker extends DcTrackerBase {
                 break;
             case ConnectivityManager.TYPE_MOBILE_IA:
                 apnContext = addApnContext(PhoneConstants.APN_TYPE_IA, networkConfig);
+                break;
+            case ConnectivityManager.TYPE_MOBILE_EMERGENCY:
+                apnContext = addApnContext(PhoneConstants.APN_TYPE_EMERGENCY, networkConfig);
                 break;
             default:
                 log("initApnContexts: skipping unknown type=" + networkConfig.type);
@@ -785,13 +792,16 @@ public final class DcTracker extends DcTrackerBase {
             return true;
         }
 
+        // Allow SETUP_DATA request for E-APN to be completed during emergency call
+        // and MOBILE DATA On/Off cases as well.
+        boolean isEmergencyApn = apnContext.getApnType().equals(PhoneConstants.APN_TYPE_EMERGENCY);
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
         boolean checkUserDataEnabled =
                     !(apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IMS));
 
-        if (apnContext.isConnectable() &&
-                isDataAllowed(apnContext) &&
-                getAnyDataEnabled(checkUserDataEnabled) && !isEmergency()) {
+        if (apnContext.isConnectable() && (isEmergencyApn ||
+                (isDataAllowed(apnContext) &&
+                getAnyDataEnabled(checkUserDataEnabled) && !isEmergency()))) {
             if (apnContext.getState() == DctConstants.State.FAILED) {
                 if (DBG) log("trySetupData: make a FAILED ApnContext IDLE so its reusable");
                 apnContext.setState(DctConstants.State.IDLE);

@@ -341,10 +341,14 @@ public class GSMPhone extends PhoneBase {
             // already been called
 
             ret = PhoneConstants.DataState.DISCONNECTED;
-        } else if (mSST.getCurrentDataConnectionState()
-                != ServiceState.STATE_IN_SERVICE) {
+        } else if (!apnType.equals(PhoneConstants.APN_TYPE_EMERGENCY) &&
+                mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE) {
             // If we're out of service, open TCP sockets may still work
             // but no data will flow
+
+            // Emergency APN is available even in Out Of Service
+            // Pass the actual State of EPDN
+
             ret = PhoneConstants.DataState.DISCONNECTED;
         } else if (mDcTracker.isApnTypeEnabled(apnType) == false ||
                 mDcTracker.isApnTypeActive(apnType) == false) {
