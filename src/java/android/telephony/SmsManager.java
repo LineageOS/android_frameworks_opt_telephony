@@ -25,7 +25,7 @@ import android.util.Log;
 
 import com.android.internal.telephony.ISms;
 import com.android.internal.telephony.SmsRawData;
-import com.android.internal.telephony.mms.IMms;
+import com.android.internal.telephony.IMms;
 import com.android.internal.telephony.uicc.IccConstants;
 
 import java.util.ArrayList;
