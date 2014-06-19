@@ -32,6 +32,7 @@ import android.database.SQLException;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.SystemProperties;
@@ -713,24 +714,11 @@ public abstract class InboundSmsHandler extends StateMachine {
             return (result == Activity.RESULT_OK);
         }
 
-        Intent intent;
-        if (destPort == -1) {
-            intent = new Intent(Intents.SMS_DELIVER_ACTION);
+        Intent intent = new Intent(Intents.SMS_FILTER_ACTION);
 
-            // Direct the intent to only the default SMS app. If we can't find a default SMS app
-            // then sent it to all broadcast receivers.
-            ComponentName componentName = SmsApplication.getDefaultSmsApplication(mContext, true);
-            if (componentName != null) {
-                // Deliver SMS message only to this receiver
-                intent.setComponent(componentName);
-                log("Delivering SMS to: " + componentName.getPackageName() +
-                        " " + componentName.getClassName());
-            }
-        } else {
-            Uri uri = Uri.parse("sms://localhost:" + destPort);
-            intent = new Intent(Intents.DATA_SMS_RECEIVED_ACTION, uri);
-        }
-
+        // FIX this once the carrier app API is finalized.
+        // We should direct the intent to only the default carrier app.
+        intent.putExtra("destport", destPort);
         intent.putExtra("pdus", pdus);
         intent.putExtra("format", tracker.getFormat());
         dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
@@ -763,6 +751,36 @@ public abstract class InboundSmsHandler extends StateMachine {
             loge("No rows were deleted from raw table!");
         } else if (DBG) {
             log("Deleted " + rows + " rows from raw table.");
+        }
+    }
+
+    /**
+     * Set the appropriate intent action and direct the intent to the default SMS app or the
+     * appropriate port.
+     *
+     * @param intent the intent to set and direct
+     * @param destPort the destination port
+     */
+    void setAndDirectIntent(Intent intent, int destPort) {
+        if (destPort == -1) {
+            intent.setAction(Intents.SMS_DELIVER_ACTION);
+
+            // Direct the intent to only the default SMS app. If we can't find a default SMS app
+            // then sent it to all broadcast receivers.
+            ComponentName componentName = SmsApplication.getDefaultSmsApplication(mContext, true);
+            if (componentName != null) {
+                // Deliver SMS message only to this receiver.
+                intent.setComponent(componentName);
+                log("Delivering SMS to: " + componentName.getPackageName() +
+                    " " + componentName.getClassName());
+            } else {
+                intent.setComponent(null);
+            }
+        } else {
+            intent.setAction(Intents.DATA_SMS_RECEIVED_ACTION);
+            Uri uri = Uri.parse("sms://localhost:" + destPort);
+            intent.setData(uri);
+            intent.setComponent(null);
         }
     }
 
@@ -870,7 +888,30 @@ public abstract class InboundSmsHandler extends StateMachine {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            if (action.equals(Intents.SMS_DELIVER_ACTION)) {
+            if (action.equals(Intents.SMS_FILTER_ACTION)) {
+                int rc = getResultCode();
+                if (rc == Activity.RESULT_OK) {
+                  // Overwrite pdus data if the SMS filter has set it.
+                  Bundle resultExtras = getResultExtras(false);
+                  if (resultExtras != null && resultExtras.containsKey("pdus")) {
+                      intent.putExtra("pdus", (byte[][]) resultExtras.get("pdus"));
+                  }
+                  if (intent.hasExtra("destport")) {
+                      int destPort = intent.getIntExtra("destport", -1);
+                      intent.removeExtra("destport");
+                      setAndDirectIntent(intent, destPort);
+                      dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
+                                     AppOpsManager.OP_RECEIVE_SMS, this);
+                  } else {
+                      loge("destport doesn't exist in the extras for SMS filter action.");
+                  }
+                } else {
+                  // Drop this SMS.
+                  log("SMS filtered by result code " + rc);
+                  deleteFromRawTable(mDeleteWhere, mDeleteWhereArgs);
+                  sendMessage(EVENT_BROADCAST_COMPLETE);
+                }
+            } else if (action.equals(Intents.SMS_DELIVER_ACTION)) {
                 // Now dispatch the notification only intent
                 intent.setAction(Intents.SMS_RECEIVED_ACTION);
                 intent.setComponent(null);
@@ -885,6 +926,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             } else {
                 // Now that the intents have been deleted we can clean up the PDU data.
                 if (!Intents.DATA_SMS_RECEIVED_ACTION.equals(action)
+                        && !Intents.SMS_RECEIVED_ACTION.equals(action)
                         && !Intents.DATA_SMS_RECEIVED_ACTION.equals(action)
                         && !Intents.WAP_PUSH_RECEIVED_ACTION.equals(action)) {
                     loge("unexpected BroadcastReceiver action: " + action);
