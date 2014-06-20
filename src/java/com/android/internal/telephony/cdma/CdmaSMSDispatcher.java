@@ -24,6 +24,7 @@ import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
@@ -31,6 +32,7 @@ import android.provider.Telephony.Sms;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
+import android.telephony.SubscriptionManager;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.ImsSMSDispatcher;
@@ -43,6 +45,8 @@ import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.cdma.sms.UserData;
 
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class CdmaSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "CdmaSMSDispatcher";
@@ -110,8 +114,8 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, destPort, data, (deliveryIntent != null));
         HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
-        SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent,
-                getFormat());
+        SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
+                null/*messageUri*/);
         sendSubmitPdu(tracker);
     }
 
@@ -121,10 +125,19 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, text, (deliveryIntent != null), null);
-        HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
-        SmsTracker tracker = getSmsTracker(map, sentIntent,
-                deliveryIntent, getFormat());
-        sendSubmitPdu(tracker);
+        if (pdu != null) {
+            final Uri messageUri = writeOutboxMessage(
+                    SubscriptionManager.getPreferredSmsSubId(),
+                    destAddr,
+                    text,
+                    deliveryIntent != null);
+            HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
+            SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
+                    messageUri);
+            sendSubmitPdu(tracker);
+        } else {
+            Rlog.e(TAG, "CdmaSMSDispatcher.sendText(): getSubmitPdu() returned null");
+        }
     }
 
     /** {@inheritDoc} */
@@ -144,7 +157,8 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
     @Override
     protected void sendNewSubmitPdu(String destinationAddress, String scAddress,
             String message, SmsHeader smsHeader, int encoding,
-            PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart) {
+            PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart,
+            AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri) {
         UserData uData = new UserData();
         uData.payloadStr = message;
         uData.userDataHeader = smsHeader;
@@ -165,20 +179,16 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         HashMap map = getSmsTrackerMap(destinationAddress, scAddress,
                 message, submitPdu);
         SmsTracker tracker = getSmsTracker(map, sentIntent,
-                deliveryIntent, getFormat());
+                deliveryIntent, getFormat(), unsentPartCount, anyPartFailed, messageUri);
         sendSubmitPdu(tracker);
     }
 
     protected void sendSubmitPdu(SmsTracker tracker) {
         if (SystemProperties.getBoolean(TelephonyProperties.PROPERTY_INECM_MODE, false)) {
-            if (tracker.mSentIntent != null) {
-                try {
-                    tracker.mSentIntent.send(SmsManager.RESULT_ERROR_NO_SERVICE);
-                } catch (CanceledException ex) {}
-            }
             if (VDBG) {
                 Rlog.d(TAG, "Block SMS in Emergency Callback mode");
             }
+            tracker.onFailed(mContext, SmsManager.RESULT_ERROR_NO_SERVICE, 0/*errorCode*/);
             return;
         }
         sendRawPdu(tracker);

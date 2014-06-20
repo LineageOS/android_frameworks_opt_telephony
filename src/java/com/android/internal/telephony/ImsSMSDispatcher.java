@@ -17,14 +17,16 @@
 package com.android.internal.telephony;
 
 import static android.telephony.SmsManager.RESULT_ERROR_GENERIC_FAILURE;
-import static android.telephony.SmsManager.RESULT_ERROR_NULL_PDU;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
@@ -32,10 +34,8 @@ import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CdmaSMSDispatcher;
 import com.android.internal.telephony.gsm.GsmSMSDispatcher;
-import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
-import com.android.internal.telephony.SmsBroadcastUndelivered;
 
 public final class ImsSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "RIL_ImsSms";
@@ -338,13 +338,7 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
                        (map.containsKey("data") && map.containsKey("destPort"))))) {
             // should never come here...
             Rlog.e(TAG, "sendRetrySms failed to re-encode per missing fields!");
-            if (tracker.mSentIntent != null) {
-                int error = RESULT_ERROR_GENERIC_FAILURE;
-                // Done retrying; return an error to the app.
-                try {
-                    tracker.mSentIntent.send(mContext, error, null);
-                } catch (CanceledException ex) {}
-            }
+            tracker.onFailed(mContext, RESULT_ERROR_GENERIC_FAILURE, 0/*errorCode*/);
             return;
         }
         String scAddr = (String)map.get("scAddr");
@@ -411,7 +405,8 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     @Override
     protected void sendNewSubmitPdu(String destinationAddress, String scAddress, String message,
             SmsHeader smsHeader, int format, PendingIntent sentIntent,
-            PendingIntent deliveryIntent, boolean lastPart) {
+            PendingIntent deliveryIntent, boolean lastPart,
+            AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri) {
         Rlog.e(TAG, "Error! Not implemented for IMS.");
     }
 
