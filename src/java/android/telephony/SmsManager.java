@@ -175,27 +175,6 @@ public final class SmsManager {
     }
 
     /**
-     * Update the status of a pending (send-by-IP) SMS message and resend by PSTN if necessary.
-     * This outbound message was handled by the carrier app. If the carrier app fails to send
-     * this message, it would be resent by PSTN.
-     *
-     * @param messageRef the reference number of the SMS message.
-     * @param success True if and only if the message was sent successfully. If its value is
-     *  false, this message should be resent via PSTN.
-     * {@hide}
-     */
-    public void updateSmsSendStatus(int messageRef, boolean success) {
-        try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
-            if (iccISms != null) {
-                iccISms.updateSmsSendStatus(messageRef, success);
-            }
-        } catch (RemoteException ex) {
-          // ignore it
-        }
-    }
-
-    /**
      * Divide a message text into several fragments, none bigger than
      * the maximum SMS message size.
      *

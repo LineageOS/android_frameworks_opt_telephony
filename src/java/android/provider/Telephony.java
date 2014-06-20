@@ -1054,37 +1054,6 @@ public final class Telephony {
                 "android.provider.Telephony.SMS_REJECTED";
 
             /**
-             * Broadcast Action: A new SMS PDU needs to be sent from
-             * the device. This intent will only be delivered to the default
-             * carrier app. That app is responsible for sending the PDU.
-             * The intent will have the following extra values:</p>
-             *
-             * <ul>
-             *   <li><em>"pdu"</em> - (byte[]) The PDU to send.</li>
-             *   <li><em>"smsc"</em> - (byte[]) The service center address (for GSM PDU only).</li>
-             *   <li><em>"format"</em> - (String) The format of the PDU. Either 3gpp or 3gpp2. </li>
-             *   <li><em>"messageref"</em> - (int) The message reference number.</li>
-             * </ul>
-             *
-             * <p>If a BroadcastReceiver successfully sends the message,
-             *  it should set the result code to {@link android.app.Activity#RESULT_OK}.</p>
-             *
-             * <p>If a BroadcastReceiver fails to send the message, it should not set the result
-             *  code and the platform will send it via the normal pathway.
-             * </p>
-             *
-             * <p class="note"><strong>Note:</strong>
-             * The broadcast receiver that filters for this intent must declare
-             * {@link android.Manifest.permission#BROADCAST_SMS} as a required permission in
-             * the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">{@code
-             * &lt;receiver>}</a> tag.
-             * @hide
-             */
-            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
-            public static final String SMS_SEND_ACTION =
-                "android.provider.Telephony.SMS_SEND";
-
-            /**
              * Read the PDUs out of an {@link #SMS_RECEIVED_ACTION} or a
              * {@link #DATA_SMS_RECEIVED_ACTION} intent.
              *
