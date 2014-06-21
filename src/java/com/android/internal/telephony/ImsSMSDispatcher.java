@@ -20,6 +20,7 @@ import static android.telephony.SmsManager.RESULT_ERROR_GENERIC_FAILURE;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
@@ -186,6 +187,66 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
         //  sendSms is a helper function to other send functions, sendText/Data...
         //  it is not part of ISms.stub
         Rlog.e(TAG, "sendSms should never be called from here!");
+    }
+
+    @Override
+    protected void sendSmsByPstn(SmsTracker tracker) {
+        // This function should be defined in Gsm/CdmaDispatcher.
+        Rlog.e(TAG, "sendSmsByPstn should never be called from here!");
+    }
+
+    @Override
+    protected void updateSmsSendStatus(int messageRef, boolean success) {
+        if (isCdmaMo()) {
+            updateSmsSendStatusHelper(messageRef, mCdmaDispatcher.sendPendingList,
+                                      mCdmaDispatcher, success);
+            updateSmsSendStatusHelper(messageRef, mGsmDispatcher.sendPendingList,
+                                      null, success);
+        } else {
+            updateSmsSendStatusHelper(messageRef, mGsmDispatcher.sendPendingList,
+                                      mGsmDispatcher, success);
+            updateSmsSendStatusHelper(messageRef, mCdmaDispatcher.sendPendingList,
+                                      null, success);
+        }
+    }
+
+    /**
+     * Find a tracker in a list to update its status. If the status is successful,
+     * send an EVENT_SEND_SMS_COMPLETE message. Otherwise, resend the message by PSTN if
+     * feasible.
+     *
+     * @param messageRef the reference number of the tracker.
+     * @param sendPendingList the list of trackers to look into.
+     * @param smsDispatcher the dispatcher for resending the message by PSTN.
+     * @param success true iff the message was sent successfully.
+     */
+    private void updateSmsSendStatusHelper(int messageRef,
+                                           List<SmsTracker> sendPendingList,
+                                           SMSDispatcher smsDispatcher,
+                                           boolean success) {
+        synchronized (sendPendingList) {
+            for (int i = 0, count = sendPendingList.size(); i < count; i++) {
+                SmsTracker tracker = sendPendingList.get(i);
+                if (tracker.mMessageRef == messageRef) {
+                    // Found it.  Remove from list and broadcast.
+                    sendPendingList.remove(i);
+                    if (success) {
+                        Rlog.d(TAG, "Sending SMS by IP succeeded.");
+                        sendMessage(obtainMessage(EVENT_SEND_SMS_COMPLETE,
+                                                  new AsyncResult(tracker, null, null)));
+                    } else {
+                        Rlog.d(TAG, "Sending SMS by IP failed.");
+                        if (smsDispatcher != null) {
+                            smsDispatcher.sendSmsByPstn(tracker);
+                        } else {
+                            Rlog.e(TAG, "No feasible way to send this SMS.");
+                        }
+                    }
+                    // Only expect to see one tracker matching this messageref.
+                    break;
+                }
+            }
+        }
     }
 
     @Override

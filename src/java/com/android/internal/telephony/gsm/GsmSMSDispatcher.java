@@ -17,8 +17,12 @@
 package com.android.internal.telephony.gsm;
 
 import android.app.Activity;
+import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Message;
@@ -211,10 +215,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     protected void sendSms(SmsTracker tracker) {
         HashMap<String, Object> map = tracker.mData;
 
-        byte smsc[] = (byte[]) map.get("smsc");
         byte pdu[] = (byte[]) map.get("pdu");
-
-        Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
 
         if (tracker.mRetryCount > 0) {
             Rlog.d(TAG, "sendSms: "
@@ -231,11 +232,38 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
             }
         }
         Rlog.d(TAG, "sendSms: "
-                +" isIms()="+isIms()
-                +" mRetryCount="+tracker.mRetryCount
-                +" mImsRetry="+tracker.mImsRetry
-                +" mMessageRef="+tracker.mMessageRef
-                +" SS=" +mPhone.getServiceState().getState());
+                + " isIms()=" + isIms()
+                + " mRetryCount=" + tracker.mRetryCount
+                + " mImsRetry=" + tracker.mImsRetry
+                + " mMessageRef=" + tracker.mMessageRef
+                + " SS=" + mPhone.getServiceState().getState());
+
+        // FIX this once the carrier app and SIM restricted API is finalized.
+        // We should direct the intent to only the default carrier app.
+
+        // Send SMS via the carrier app.
+        BroadcastReceiver resultReceiver = new SMSDispatcherReceiver(tracker);
+
+        Intent intent = new Intent(Intents.SMS_SEND_ACTION);
+        intent.putExtra("pdu", pdu);
+        intent.putExtra("smsc", (byte[]) map.get("smsc"));
+        intent.putExtra("format", getFormat());
+        intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
+        Rlog.d(TAG, "Sending SMS by carrier app.");
+
+        mContext.sendOrderedBroadcast(intent, android.Manifest.permission.RECEIVE_SMS,
+                                      AppOpsManager.OP_RECEIVE_SMS, resultReceiver,
+                                      null, Activity.RESULT_CANCELED, null, null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    protected void sendSmsByPstn(SmsTracker tracker) {
+        HashMap<String, Object> map = tracker.mData;
+
+        byte smsc[] = (byte[]) map.get("smsc");
+        byte[] pdu = (byte[]) map.get("pdu");
+        Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
 
         // sms over gsm is used:
         //   if sms over IMS is not supported AND
@@ -261,6 +289,13 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
             // next retry will be sent using IMS request again.
             tracker.mImsRetry++;
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    protected void updateSmsSendStatus(int messageRef, boolean success) {
+        // This function should be defined in ImsDispatcher.
+        Rlog.e(TAG, "updateSmsSendStatus should never be called from here!");
     }
 
     protected UiccCardApplication getUiccCardApplication() {
