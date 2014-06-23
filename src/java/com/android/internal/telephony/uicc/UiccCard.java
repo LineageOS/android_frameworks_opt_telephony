@@ -22,6 +22,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.Signature;
 import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Handler;
@@ -30,6 +31,7 @@ import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.telephony.Rlog;
+import android.telephony.TelephonyManager;
 import android.view.WindowManager;
 
 import com.android.internal.telephony.CommandsInterface;
@@ -72,6 +74,7 @@ public class UiccCard {
     private CatService mCatService;
     private boolean mDestroyed = false; //set to true once this card is commanded to be disposed of.
     private RadioState mLastRadioState =  RadioState.RADIO_UNAVAILABLE;
+    private UiccCarrierPrivilegeRules mCarrierPrivilegeRules;
 
     private RegistrantList mAbsentRegistrants = new RegistrantList();
 
@@ -109,6 +112,7 @@ public class UiccCard {
             }
             mCatService = null;
             mUiccApplications = null;
+            mCarrierPrivilegeRules = null;
         }
     }
 
@@ -146,6 +150,15 @@ public class UiccCard {
             }
 
             createAndUpdateCatService();
+
+            // Reload the carrier privilege rules if necessary.
+            log("Before privilege rules: " + mCarrierPrivilegeRules + " : " + mCardState);
+            if (mCarrierPrivilegeRules == null && mCardState == CardState.CARDSTATE_PRESENT) {
+                mCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(this);
+            } else if (mCarrierPrivilegeRules != null && mCardState != CardState.CARDSTATE_PRESENT) {
+                mCarrierPrivilegeRules = null;
+            }
+
             sanitizeApplicationIndexes();
 
             RadioState radioState = mCi.getRadioState();
@@ -440,6 +453,15 @@ public class UiccCard {
             }
         }
         return count;
+    }
+
+    /**
+     * Exposes {@link UiccCarrierPrivilegeRules.hasCarrierPrivileges}.
+     */
+    public int hasCarrierPrivileges(Signature signature, String packageName) {
+        return mCarrierPrivilegeRules == null ?
+            TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED :
+            mCarrierPrivilegeRules.hasCarrierPrivileges(signature, packageName);
     }
 
     private void log(String msg) {
