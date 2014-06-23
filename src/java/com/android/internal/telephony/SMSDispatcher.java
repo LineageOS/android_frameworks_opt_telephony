@@ -20,6 +20,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -34,12 +35,14 @@ import android.database.sqlite.SqliteWrapper;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Binder;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms;
+import android.provider.Telephony.Sms.Intents;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -61,7 +64,9 @@ import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.ImsSMSDispatcher;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -255,6 +260,10 @@ public abstract class SMSDispatcher extends Handler {
      */
     /** Sent messages awaiting a delivery status report. */
     protected final ArrayList<SmsTracker> deliveryPendingList = new ArrayList<SmsTracker>();
+
+    /** Outgoing messages being handled by the carrier app. */
+    protected final List<SmsTracker> sendPendingList =
+        Collections.synchronizedList(new ArrayList<SmsTracker>());
 
     /**
      * Handles events coming from the phone stack. Overridden from handler.
@@ -532,6 +541,55 @@ public abstract class SMSDispatcher extends Handler {
      */
     protected abstract TextEncodingDetails calculateLength(CharSequence messageBody,
             boolean use7bitOnly);
+
+    /**
+     * Update the status of a pending (send-by-IP) SMS message and resend by PSTN if necessary.
+     * This outbound message was handled by the carrier app. If the carrier app fails to send
+     * this message, it would be resent by PSTN.
+     *
+     * @param messageRef the reference number of the SMS message.
+     * @param success True if and only if the message was sent successfully. If its value is
+     *  false, this message should be resent via PSTN.
+     */
+    protected abstract void updateSmsSendStatus(int messageRef, boolean success);
+
+    /**
+     * Handler for a {@link GsmSMSDispatcher} or {@link CdmaSMSDispatcher} broadcast.
+     * If SMS sending is successfuly, sends EVENT_SEND_SMS_COMPLETE message. Otherwise,
+     * send the message via the GSM/CDMA network.
+     */
+    protected final class SMSDispatcherReceiver extends BroadcastReceiver {
+
+        private final SmsTracker mTracker;
+
+        public SMSDispatcherReceiver(SmsTracker tracker) {
+            mTracker = tracker;
+        }
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (action.equals(Intents.SMS_SEND_ACTION)) {
+                int rc = getResultCode();
+                if (rc == Activity.RESULT_OK) {
+                    Rlog.d(TAG, "Sending SMS by IP pending.");
+                    Bundle resultExtras = getResultExtras(false);
+                    if (resultExtras != null && resultExtras.containsKey("messageref")) {
+                        mTracker.mMessageRef = resultExtras.getInt("messageref");
+                        Rlog.d(TAG, "messageref = " + mTracker.mMessageRef);
+                    } else {
+                        Rlog.e(TAG, "Can't find messageref in result extras.");
+                    }
+                    sendPendingList.add(mTracker);
+                } else {
+                    Rlog.d(TAG, "Sending SMS by IP failed.");
+                    sendSmsByPstn(mTracker);
+                }
+            } else {
+                Rlog.e(TAG, "unexpected BroadcastReceiver action: " + action);
+            }
+        }
+    }
 
     /**
      * Send a multi-part text based SMS.
@@ -952,6 +1010,13 @@ public abstract class SMSDispatcher extends Handler {
      * @param tracker holds the SMS message to send
      */
     protected abstract void sendSms(SmsTracker tracker);
+
+    /**
+     * Send the SMS via the PSTN network.
+     *
+     * @param tracker holds the Sms tracker ready to be sent
+     */
+    protected abstract void sendSmsByPstn(SmsTracker tracker);
 
     /**
      * Retry the message along to the radio.

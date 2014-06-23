@@ -17,12 +17,18 @@
 package com.android.internal.telephony.cdma;
 
 import android.app.Activity;
+import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.provider.Telephony.Sms;
+import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
 
@@ -186,14 +192,43 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         // byte[] smsc = (byte[]) map.get("smsc");  // unused for CDMA
         byte[] pdu = (byte[]) map.get("pdu");
 
-        Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
-
         Rlog.d(TAG, "sendSms: "
-                +" isIms()="+isIms()
-                +" mRetryCount="+tracker.mRetryCount
-                +" mImsRetry="+tracker.mImsRetry
-                +" mMessageRef="+tracker.mMessageRef
-                +" SS=" +mPhone.getServiceState().getState());
+                + " isIms()=" + isIms()
+                + " mRetryCount=" + tracker.mRetryCount
+                + " mImsRetry=" + tracker.mImsRetry
+                + " mMessageRef=" + tracker.mMessageRef
+                + " SS=" + mPhone.getServiceState().getState());
+
+        // FIX this once the carrier app and SIM restricted API is finalized.
+        // We should direct the intent to only the default carrier app.
+
+        // Send SMS via the carrier app.
+        BroadcastReceiver resultReceiver = new SMSDispatcherReceiver(tracker);
+
+        // Direct the intent to only the default carrier app.
+        Intent intent = new Intent(Intents.SMS_SEND_ACTION);
+        intent.putExtra("pdu", pdu);
+        intent.putExtra("format", getFormat());
+        intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
+        Rlog.d(TAG, "Sending SMS by carrier app.");
+
+        mContext.sendOrderedBroadcast(intent, android.Manifest.permission.RECEIVE_SMS,
+                                      AppOpsManager.OP_RECEIVE_SMS, resultReceiver,
+                                      null, Activity.RESULT_CANCELED, null, null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    protected void updateSmsSendStatus(int messageRef, boolean success) {
+        // This function should be defined in ImsDispatcher.
+        Rlog.e(TAG, "updateSmsSendStatus should never be called from here!");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    protected void sendSmsByPstn(SmsTracker tracker) {
+        Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
+        byte[] pdu = (byte[]) tracker.mData.get("pdu");
 
         // sms over cdma is used:
         //   if sms over IMS is not supported AND
