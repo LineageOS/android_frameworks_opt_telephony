@@ -419,7 +419,6 @@ public class IccSmsInterfaceManager {
      *  false, this message should be resent via PSTN.
      * {@hide}
      */
-    @Override
     public void updateSmsSendStatus(int messageRef, boolean success) {
         mDispatcher.updateSmsSendStatus(messageRef, success);
     }
