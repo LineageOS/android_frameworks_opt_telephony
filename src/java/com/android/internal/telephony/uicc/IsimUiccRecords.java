@@ -134,7 +134,6 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
                     log("EVENT_AKA_AUTHENTICATE_DONE");
                     if (ar.exception != null) {
                         log("Exception ISIM AKA: " + ar.exception);
-                        break;
                     } else {
                         try {
                             auth_rsp = (String)ar.result;

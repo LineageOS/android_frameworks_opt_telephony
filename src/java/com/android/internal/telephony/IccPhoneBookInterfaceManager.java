@@ -103,11 +103,10 @@ public abstract class IccPhoneBookInterfaceManager {
         }
 
         private void notifyPending(AsyncResult ar) {
-            if (ar.userObj == null) {
-                return;
+            if (ar.userObj != null) {
+                AtomicBoolean status = (AtomicBoolean) ar.userObj;
+                status.set(true);
             }
-            AtomicBoolean status = (AtomicBoolean) ar.userObj;
-            status.set(true);
             mLock.notifyAll();
         }
     };

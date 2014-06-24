@@ -424,7 +424,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 if (DBG) log("EVENT_AKA_AUTHENTICATE_DONE");
                 if (ar.exception != null) {
                     loge("Exception ICC SIM AKA: " + ar.exception);
-                    break;
                 } else {
                     try {
                         auth_rsp = (String)ar.result;
