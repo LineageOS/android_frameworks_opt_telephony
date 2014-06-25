@@ -391,6 +391,7 @@ public class IccCardProxy extends Handler implements IccCard {
 
         if (mUiccApplication == null) {
             setExternalState(State.NOT_READY);
+            return;
         }
 
         switch (mUiccApplication.getState()) {
