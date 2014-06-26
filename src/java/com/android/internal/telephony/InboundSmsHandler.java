@@ -31,6 +31,7 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
 import android.os.AsyncResult;
+import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
@@ -42,6 +43,7 @@ import android.telephony.Rlog;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.util.HexDump;
@@ -900,6 +902,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                       int destPort = intent.getIntExtra("destport", -1);
                       intent.removeExtra("destport");
                       setAndDirectIntent(intent, destPort);
+                      writeInboxMessage(intent);
                       dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
                                      AppOpsManager.OP_RECEIVE_SMS, this);
                   } else {
@@ -979,5 +982,96 @@ public abstract class InboundSmsHandler extends StateMachine {
     @Override
     protected void loge(String s, Throwable e) {
         Rlog.e(getName(), s, e);
+    }
+
+    /**
+     * Store a received SMS into Telephony provider
+     *
+     * @param intent The intent containing the received SMS
+     * @return The URI of written message
+     */
+    private Uri writeInboxMessage(Intent intent) {
+        if (!SystemProperties.getBoolean("telephony.sms.autopersist", false)) {
+            // TODO(ywen): Temporarily only enable this with a system property
+            // so not to break existing apps
+            return null;
+        }
+        final SmsMessage[] messages = Telephony.Sms.Intents.getMessagesFromIntent(intent);
+        if (messages == null || messages.length < 1) {
+            loge("Failed to parse SMS pdu");
+            return null;
+        }
+        // Sometimes, SmsMessage.mWrappedSmsMessage is null causing NPE when we access
+        // the methods on it although the SmsMessage itself is not null. So do this check
+        // before we do anything on the parsed SmsMessages.
+        for (final SmsMessage sms : messages) {
+            try {
+                sms.getDisplayMessageBody();
+            } catch (NullPointerException e) {
+                loge("NPE inside SmsMessage");
+                return null;
+            }
+        }
+        final ContentValues values = parseSmsMessage(messages);
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            return mContext.getContentResolver().insert(Telephony.Sms.Inbox.CONTENT_URI, values);
+        } catch (Exception e) {
+            loge("Failed to persist inbox message", e);
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+        return null;
+    }
+
+    /**
+     * Convert SmsMessage[] into SMS database schema columns
+     *
+     * @param msgs The SmsMessage array of the received SMS
+     * @return ContentValues representing the columns of parsed SMS
+     */
+    private static ContentValues parseSmsMessage(SmsMessage[] msgs) {
+        final SmsMessage sms = msgs[0];
+        final ContentValues values = new ContentValues();
+        values.put(Telephony.Sms.Inbox.ADDRESS, sms.getDisplayOriginatingAddress());
+        values.put(Telephony.Sms.Inbox.BODY, buildMessageBodyFromPdus(msgs));
+        values.put(Telephony.Sms.Inbox.DATE_SENT, sms.getTimestampMillis());
+        values.put(Telephony.Sms.Inbox.DATE, System.currentTimeMillis());
+        values.put(Telephony.Sms.Inbox.PROTOCOL, sms.getProtocolIdentifier());
+        values.put(Telephony.Sms.Inbox.SEEN, 0);
+        values.put(Telephony.Sms.Inbox.READ, 0);
+        final String subject = sms.getPseudoSubject();
+        if (!TextUtils.isEmpty(subject)) {
+            values.put(Telephony.Sms.Inbox.SUBJECT, subject);
+        }
+        values.put(Telephony.Sms.Inbox.REPLY_PATH_PRESENT, sms.isReplyPathPresent() ? 1 : 0);
+        values.put(Telephony.Sms.Inbox.SERVICE_CENTER, sms.getServiceCenterAddress());
+        return values;
+    }
+
+    /**
+     * Build up the SMS message body from the SmsMessage array of received SMS
+     *
+     * @param msgs The SmsMessage array of the received SMS
+     * @return The text message body
+     */
+    private static String buildMessageBodyFromPdus(SmsMessage[] msgs) {
+        if (msgs.length == 1) {
+            // There is only one part, so grab the body directly.
+            return replaceFormFeeds(msgs[0].getDisplayMessageBody());
+        } else {
+            // Build up the body from the parts.
+            StringBuilder body = new StringBuilder();
+            for (SmsMessage msg: msgs) {
+                // getDisplayMessageBody() can NPE if mWrappedMessage inside is null.
+                body.append(msg.getDisplayMessageBody());
+            }
+            return replaceFormFeeds(body.toString());
+        }
+    }
+
+    // Some providers send formfeeds in their messages. Convert those formfeeds to newlines.
+    private static String replaceFormFeeds(String s) {
+        return s == null ? "" : s.replace('\f', '\n');
     }
 }
