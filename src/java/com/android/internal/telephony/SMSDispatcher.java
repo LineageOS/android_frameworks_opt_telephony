@@ -1194,18 +1194,17 @@ public abstract class SMSDispatcher extends Handler {
             }
             if (mSentIntent != null) {
                 try {
-                    Intent fillIn = null;
+                    // Extra information to send with the sent intent
+                    Intent fillIn = new Intent();
+                    if (mMessageUri != null) {
+                        // Pass this to SMS apps so that they know where it is stored
+                        fillIn.putExtra("uri", mMessageUri.toString());
+                    }
                     if (errorCode != 0) {
-                        if (fillIn == null) {
-                            fillIn = new Intent();
-                        }
                         fillIn.putExtra("errorCode", errorCode);
                     }
                     if (mUnsentPartCount != null && isSinglePartOrLastPart) {
                         // Is multipart and last part
-                        if (fillIn == null) {
-                            fillIn = new Intent();
-                        }
                         fillIn.putExtra(SEND_NEXT_MSG_EXTRA, true);
                     }
                     mSentIntent.send(context, error, fillIn);
@@ -1239,14 +1238,17 @@ public abstract class SMSDispatcher extends Handler {
             }
             if (mSentIntent != null) {
                 try {
+                    // Extra information to send with the sent intent
+                    Intent fillIn = new Intent();
+                    if (mMessageUri != null) {
+                        // Pass this to SMS apps so that they know where it is stored
+                        fillIn.putExtra("uri", mMessageUri.toString());
+                    }
                     if (mUnsentPartCount != null && isSinglePartOrLastPart) {
                         // Is multipart and last part
-                        Intent sendNext = new Intent();
-                        sendNext.putExtra(SEND_NEXT_MSG_EXTRA, true);
-                        mSentIntent.send(context, Activity.RESULT_OK, sendNext);
-                    } else {
-                        mSentIntent.send(Activity.RESULT_OK);
+                        fillIn.putExtra(SEND_NEXT_MSG_EXTRA, true);
                     }
+                    mSentIntent.send(context, Activity.RESULT_OK, fillIn);
                 } catch (CanceledException ex) {
                     Rlog.e(TAG, "Failed to send result");
                 }

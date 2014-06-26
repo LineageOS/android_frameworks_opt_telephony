@@ -902,7 +902,11 @@ public abstract class InboundSmsHandler extends StateMachine {
                       int destPort = intent.getIntExtra("destport", -1);
                       intent.removeExtra("destport");
                       setAndDirectIntent(intent, destPort);
-                      writeInboxMessage(intent);
+                      final Uri uri = writeInboxMessage(intent);
+                      if (uri != null) {
+                          // Pass this to SMS apps so that they know where it is stored
+                          intent.putExtra("uri", uri.toString());
+                      }
                       dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
                                      AppOpsManager.OP_RECEIVE_SMS, this);
                   } else {
