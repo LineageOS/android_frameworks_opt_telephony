@@ -24,12 +24,13 @@ import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.provider.Telephony.Sms;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
-import android.telephony.TelephonyManager;
+import android.telephony.SubscriptionManager;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.ImsSMSDispatcher;
@@ -38,19 +39,15 @@ import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
-import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.SmsUsageMonitor;
-import android.telephony.SubscriptionManager;
-import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.uicc.UsimServiceTable;
-import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class GsmSMSDispatcher extends SMSDispatcher {
@@ -162,8 +159,8 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                 scAddr, destAddr, destPort, data, (deliveryIntent != null));
         if (pdu != null) {
             HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
-            SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent,
-                    getFormat());
+            SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
+                    null/*messageUri*/);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendData(): getSubmitPdu() returned null");
@@ -177,9 +174,14 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, text, (deliveryIntent != null));
         if (pdu != null) {
+            final Uri messageUri = writeOutboxMessage(
+                    SubscriptionManager.getPreferredSmsSubId(),
+                    destAddr,
+                    text,
+                    deliveryIntent != null);
             HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
-            SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent,
-                    getFormat());
+            SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
+                    messageUri);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendText(): getSubmitPdu() returned null");
@@ -203,7 +205,8 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     @Override
     protected void sendNewSubmitPdu(String destinationAddress, String scAddress,
             String message, SmsHeader smsHeader, int encoding,
-            PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart) {
+            PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart,
+            AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(scAddress, destinationAddress,
                 message, deliveryIntent != null, SmsHeader.toByteArray(smsHeader),
                 encoding, smsHeader.languageTable, smsHeader.languageShiftTable);
@@ -211,7 +214,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
             HashMap map =  getSmsTrackerMap(destinationAddress, scAddress,
                     message, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent,
-                    deliveryIntent, getFormat());
+                    deliveryIntent, getFormat(), unsentPartCount, anyPartFailed, messageUri);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendNewSubmitPdu(): getSubmitPdu() returned null");
