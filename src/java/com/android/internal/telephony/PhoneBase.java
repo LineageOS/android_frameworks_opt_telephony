@@ -922,8 +922,17 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     public IccFileHandler getIccFileHandler(){
         UiccCardApplication uiccApplication = mUiccApplication.get();
-        if (uiccApplication == null) return null;
-        return uiccApplication.getIccFileHandler();
+        IccFileHandler fh;
+
+        if (uiccApplication == null) {
+            Rlog.d(LOG_TAG, "getIccFileHandler: uiccApplication == null, return null");
+            fh = null;
+        } else {
+            fh = uiccApplication.getIccFileHandler();
+        }
+
+        Rlog.d(LOG_TAG, "getIccFileHandler: fh=" + fh);
+        return fh;
     }
 
     /*

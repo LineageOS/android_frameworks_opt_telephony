@@ -218,18 +218,21 @@ public class SubInfoRecordUpdater extends Handler {
     }
 
     private void queryIccId(int slotId) {
+        logd("queryIccId: slotid=" + slotId);
         if (sFh[slotId] == null) {
             logd("Getting IccFileHandler");
             sFh[slotId] = ((PhoneProxy)sPhone[slotId]).getIccFileHandler();
         }
         if (sFh[slotId] != null) {
-            if (sIccId[slotId] == null) {
+            String iccId = sIccId[slotId];
+            if (iccId == null) {
                 logd("Querying IccId");
                 sFh[slotId].loadEFTransparent(IccConstants.EF_ICCID, obtainMessage(encodeEventId(EVENT_QUERY_ICCID_DONE, slotId)));
+            } else {
+                logd("NOT Querying IccId its already set sIccid[" + slotId + "]=" + iccId);
             }
         } else {
-            sIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
-            logd("sFh[" + slotId + "] is null, SIM not inserted");
+            logd("sFh[" + slotId + "] is null, ignore");
         }
     }
 
