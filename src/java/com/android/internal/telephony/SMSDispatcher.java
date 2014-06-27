@@ -345,9 +345,8 @@ public abstract class SMSDispatcher extends Handler {
         if (ar.exception == null) {
             if (DBG) Rlog.d(TAG, "SMS send complete. Broadcasting intent: " + sentIntent);
 
-            if (!SystemProperties.getBoolean("telephony.sms.autopersist", false)) {
-                // TODO(ywen): Temporarily only disable this with a system property
-                // so not to break existing apps
+            if (!Telephony.NEW_API) {
+                // TODO(ywen):Temporarily only enable this with a flag so not to break existing apps
                 if (SmsApplication.shouldWriteMessageForPackage(
                         tracker.mAppInfo.applicationInfo.packageName, mContext)) {
                     // Persist it into the SMS database as a sent message
@@ -1121,9 +1120,8 @@ public abstract class SMSDispatcher extends Handler {
          * @param errorCode The error code
          */
         private void updateMessageErrorCode(Context context, int errorCode) {
-            if (!SystemProperties.getBoolean("telephony.sms.autopersist", false)) {
-                // TODO(ywen): Temporarily only enable this with a system property
-                // so not to break existing apps
+            if (!Telephony.NEW_API) {
+                // TODO(ywen):Temporarily only enable this with a flag so not to break existing apps
                 return;
             }
             if (mMessageUri == null) {
@@ -1149,9 +1147,8 @@ public abstract class SMSDispatcher extends Handler {
          * @param messageType The final message type
          */
         private void setMessageFinalState(Context context, int messageType) {
-            if (!SystemProperties.getBoolean("telephony.sms.autopersist", false)) {
-                // TODO(ywen): Temporarily only enable this with a system property
-                // so not to break existing apps
+            if (!Telephony.NEW_API) {
+                // TODO(ywen):Temporarily only enable this with a flag so not to break existing apps
                 return;
             }
             if (mMessageUri == null) {
@@ -1414,9 +1411,8 @@ public abstract class SMSDispatcher extends Handler {
 
     protected Uri writeOutboxMessage(long subId, String address, String text,
             boolean requireDeliveryReport) {
-        if (!SystemProperties.getBoolean("telephony.sms.autopersist", false)) {
-            // TODO(ywen): Temporarily only enable this with a system property
-            // so not to break existing apps
+        if (!Telephony.NEW_API) {
+            // TODO(ywen): Temporarily only enable this with a flag so not to break existing apps
             return null;
         }
         final ContentValues values = new ContentValues(7);

@@ -995,9 +995,8 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @return The URI of written message
      */
     private Uri writeInboxMessage(Intent intent) {
-        if (!SystemProperties.getBoolean("telephony.sms.autopersist", false)) {
-            // TODO(ywen): Temporarily only enable this with a system property
-            // so not to break existing apps
+        if (!Telephony.NEW_API) {
+            // TODO(ywen): Temporarily only enable this with a flag so not to break existing apps
             return null;
         }
         final SmsMessage[] messages = Telephony.Sms.Intents.getMessagesFromIntent(intent);

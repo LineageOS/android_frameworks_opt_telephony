@@ -107,6 +107,12 @@ public final class Telephony {
     private static final String TAG = "Telephony";
 
     /**
+     * TODO(ywen): temoprary flag to turn off new SMS API semantics
+     * @hide
+     */
+    public static final boolean NEW_API = false;
+
+    /**
      * Not instantiable.
      * @hide
      */
@@ -1131,6 +1137,8 @@ public final class Telephony {
         public static final int MESSAGE_BOX_DRAFTS = 3;
         /** Message box: outbox. */
         public static final int MESSAGE_BOX_OUTBOX = 4;
+        /** Message box: failed. */
+        public static final int MESSAGE_BOX_FAILED = 5;
 
         /**
          * The thread ID of the message.
