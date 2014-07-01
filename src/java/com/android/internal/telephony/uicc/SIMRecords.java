@@ -662,7 +662,8 @@ public class SIMRecords extends IccRecords {
 
                 if (mMncLength != UNKNOWN && mMncLength != UNINITIALIZED) {
                     // finally have both the imsi and the mncLength and can parse the imsi properly
-                    MccTable.updateMccMncConfiguration(mContext, mImsi.substring(0, 3 + mMncLength));
+                    MccTable.updateMccMncConfiguration(mContext,
+                            mImsi.substring(0, 3 + mMncLength), false);
                 }
                 mImsiReadyRegistrants.notifyRegistrants();
             break;
@@ -905,7 +906,7 @@ public class SIMRecords extends IccRecords {
                         // finally have both imsi and the length of the mnc and can parse
                         // the imsi properly
                         MccTable.updateMccMncConfiguration(mContext,
-                                mImsi.substring(0, 3 + mMncLength));
+                                mImsi.substring(0, 3 + mMncLength), false);
                     }
                 }
             break;
@@ -1206,6 +1207,47 @@ public class SIMRecords extends IccRecords {
                 // TODO: Handle other cases, instead of fetching all.
                 mAdnCache.reset();
                 fetchSimRecords();
+                break;
+        }
+    }
+
+    private void handleSimRefresh(IccRefreshResponse refreshResponse){
+        if (refreshResponse == null) {
+            if (DBG) log("handleSimRefresh received without input");
+            return;
+        }
+
+        if (refreshResponse.aid != null &&
+                !refreshResponse.aid.equals(mParentApp.getAid())) {
+            // This is for different app. Ignore.
+            return;
+        }
+
+        switch (refreshResponse.refreshResult) {
+            case IccRefreshResponse.REFRESH_RESULT_FILE_UPDATE:
+                if (DBG) log("handleSimRefresh with SIM_FILE_UPDATED");
+                handleFileUpdate(refreshResponse.efId);
+                break;
+            case IccRefreshResponse.REFRESH_RESULT_INIT:
+                if (DBG) log("handleSimRefresh with SIM_REFRESH_INIT");
+                // need to reload all files (that we care about)
+                onIccRefreshInit();
+                break;
+            case IccRefreshResponse.REFRESH_RESULT_RESET:
+                if (DBG) log("handleSimRefresh with SIM_REFRESH_RESET");
+                mCi.setRadioPower(false, null);
+                /* Note: no need to call setRadioPower(true).  Assuming the desired
+                * radio power state is still ON (as tracked by ServiceStateTracker),
+                * ServiceStateTracker will call setRadioPower when it receives the
+                * RADIO_STATE_CHANGED notification for the power off.  And if the
+                * desired power state has changed in the interim, we don't want to
+                * override it with an unconditional power on.
+                */
+                mAdnCache.reset();
+                break;
+            default:
+                // unknown refresh operation
+                if (DBG) log("handleSimRefresh with unknown operation");
                 break;
         }
     }
@@ -1557,6 +1599,7 @@ public class SIMRecords extends IccRecords {
                     if (DBG) log("Load EF_SPN: " + mSpn
                             + " spnDisplayCondition: " + mSpnDisplayCondition);
                     setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+                    mRecordsEventsRegistrants.notifyResult(EVENT_SPN);
 
                     mSpnState = GetSpnFsmState.IDLE;
                 } else {
@@ -1578,7 +1621,7 @@ public class SIMRecords extends IccRecords {
 
                     if (DBG) log("Load EF_SPN_CPHS: " + mSpn);
                     setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
-
+                    mRecordsEventsRegistrants.notifyResult(EVENT_SPN);
                     mSpnState = GetSpnFsmState.IDLE;
                 } else {
                     mFh.loadEFTransparent(
@@ -1595,6 +1638,7 @@ public class SIMRecords extends IccRecords {
 
                     if (DBG) log("Load EF_SPN_SHORT_CPHS: " + mSpn);
                     setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+                    mRecordsEventsRegistrants.notifyResult(EVENT_SPN);
                 }else {
                     if (DBG) log("No SPN loaded in either CHPS or 3GPP");
                 }

@@ -29,6 +29,8 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import android.os.*;
 import android.telephony.PhoneNumberUtils;
 import android.text.SpannableStringBuilder;
+import android.text.BidiFormatter;
+import android.text.TextDirectionHeuristics;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 
@@ -1231,8 +1233,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                     Rlog.i(LOG_TAG, "FDN_CHECK_FAILURE");
                     sb.append(mContext.getText(com.android.internal.R.string.mmiFdnError));
                 } else {
-                    sb.append(mContext.getText(
-                            com.android.internal.R.string.mmiError));
+                    sb.append(getErrorMessage(ar));
                 }
             } else {
                 sb.append(mContext.getText(
@@ -1433,7 +1434,8 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         //      {2} is time in seconds
 
         destinations[0] = serviceClassToCFString(info.serviceClass & serviceClassMask);
-        destinations[1] = PhoneNumberUtils.stringFromStringAndTOA(info.number, info.toa);
+        destinations[1] = formatLtr(
+                PhoneNumberUtils.stringFromStringAndTOA(info.number, info.toa));
         destinations[2] = Integer.toString(info.timeSeconds);
 
         if (info.reason == CommandsInterface.CF_REASON_UNCONDITIONAL &&
@@ -1449,6 +1451,13 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         return TextUtils.replace(template, sources, destinations);
     }
 
+    /**
+     * Used to format a string that should be displayed as LTR even in RTL locales
+     */
+    private String formatLtr(String str) {
+        BidiFormatter fmt = BidiFormatter.getInstance();
+        return str == null ? str : fmt.unicodeWrap(str, TextDirectionHeuristics.LTR, true);
+    }
 
     private void
     onQueryCfComplete(AsyncResult ar) {

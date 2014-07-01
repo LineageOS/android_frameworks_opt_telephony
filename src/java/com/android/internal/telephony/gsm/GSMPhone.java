@@ -1866,25 +1866,6 @@ public class GSMPhone extends PhoneBase {
         mCi.changeBarringPassword(facility, oldPwd, newPwd, result);
     }
 
-    /** gets the voice mail count from preferences */
-    private int getStoredVoiceMessageCount() {
-        int countVoiceMessages = 0;
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        String imsi = sp.getString(VM_ID, null);
-        String currentImsi = getSubscriberId();
-
-        Rlog.d(LOG_TAG, "Voicemail count retrieval for Imsi = " + imsi +
-                " current Imsi = " + currentImsi );
-
-        if ((imsi != null) && (currentImsi != null)
-                && (currentImsi.equals(imsi))) {
-            // get voice mail count from preferences
-            countVoiceMessages = sp.getInt(VM_COUNT, 0);
-            Rlog.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages );
-        }
-        return countVoiceMessages;
-    }
-
      /**
      * Sets the SIM voice message waiting indicator records.
      * @param line GSM Subscriber Profile Number, one-based. Only '1' is supported

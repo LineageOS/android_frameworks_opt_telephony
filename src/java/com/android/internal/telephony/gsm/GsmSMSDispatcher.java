@@ -183,13 +183,14 @@ public class GsmSMSDispatcher extends SMSDispatcher {
     /** {@inheritDoc} */
     @Override
     protected void sendText(String destAddr, String scAddr, String text,
-            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority,
+            boolean isExpectMore, int validityPeriod) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
-                scAddr, destAddr, text, (deliveryIntent != null));
+                scAddr, destAddr, text, (deliveryIntent != null), validityPeriod);
         if (pdu != null) {
             HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent,
-                    getFormat());
+                    getFormat(), isExpectMore);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendText(): getSubmitPdu() returned null");
@@ -208,15 +209,16 @@ public class GsmSMSDispatcher extends SMSDispatcher {
     protected void sendNewSubmitPdu(String destinationAddress, String scAddress,
             String message, SmsHeader smsHeader, int encoding,
             PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart,
-            int priority) {
+            int priority, boolean isExpectMore, int validityPeriod) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(scAddress, destinationAddress,
                 message, deliveryIntent != null, SmsHeader.toByteArray(smsHeader),
-                encoding, smsHeader.languageTable, smsHeader.languageShiftTable);
+                encoding, smsHeader.languageTable, smsHeader.languageShiftTable,
+                validityPeriod);
         if (pdu != null) {
             HashMap map =  getSmsTrackerMap(destinationAddress, scAddress,
                     message, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent,
-                    deliveryIntent, getFormat(), !lastPart);
+                    deliveryIntent, getFormat(), (!lastPart || isExpectMore));
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendNewSubmitPdu(): getSubmitPdu() returned null");

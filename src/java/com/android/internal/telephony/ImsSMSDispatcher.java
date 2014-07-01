@@ -212,13 +212,14 @@ public class ImsSMSDispatcher extends SMSDispatcher {
     @Override
     protected void sendMultipartText(String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
-            ArrayList<PendingIntent> deliveryIntents, int priority) {
+            ArrayList<PendingIntent> deliveryIntents, int priority, boolean isExpectMore,
+            int validityPeriod) {
         if (isCdmaMo()) {
             mCdmaDispatcher.sendMultipartText(destAddr, scAddr,
-                    parts, sentIntents, deliveryIntents, priority);
+                    parts, sentIntents, deliveryIntents, priority, isExpectMore, validityPeriod);
         } else {
             mGsmDispatcher.sendMultipartText(destAddr, scAddr,
-                    parts, sentIntents, deliveryIntents, priority);
+                    parts, sentIntents, deliveryIntents, priority, isExpectMore, validityPeriod);
         }
     }
 
@@ -231,14 +232,15 @@ public class ImsSMSDispatcher extends SMSDispatcher {
 
     @Override
     protected void sendText(String destAddr, String scAddr, String text,
-            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority) {
+            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority,
+            boolean isExpectMore, int validityPeriod) {
         Rlog.d(TAG, "sendText");
         if (isCdmaMo()) {
             mCdmaDispatcher.sendText(destAddr, scAddr,
-                    text, sentIntent, deliveryIntent, priority);
+                    text, sentIntent, deliveryIntent, priority, isExpectMore, validityPeriod);
         } else {
             mGsmDispatcher.sendText(destAddr, scAddr,
-                    text, sentIntent, deliveryIntent, priority);
+                    text, sentIntent, deliveryIntent, priority, isExpectMore, validityPeriod);
         }
     }
 
@@ -256,6 +258,7 @@ public class ImsSMSDispatcher extends SMSDispatcher {
         if (oldFormat.equals(newFormat)) {
             if (isCdmaFormat(newFormat)) {
                 Rlog.d(TAG, "old format matched new format (cdma)");
+                shouldSendSmsOverIms();
                 mCdmaDispatcher.sendSms(tracker);
                 return;
             } else {
@@ -298,6 +301,7 @@ public class ImsSMSDispatcher extends SMSDispatcher {
                 Rlog.d(TAG, "old format (gsm) ==> new format (cdma)");
                 pdu = com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(
                         scAddr, destAddr, text, (tracker.mDeliveryIntent != null), null);
+                shouldSendSmsOverIms();
             } else {
                 Rlog.d(TAG, "old format (cdma) ==> new format (gsm)");
                 pdu = com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(
@@ -313,6 +317,7 @@ public class ImsSMSDispatcher extends SMSDispatcher {
                 pdu = com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(
                             scAddr, destAddr, destPort.intValue(), data,
                             (tracker.mDeliveryIntent != null));
+                shouldSendSmsOverIms();
             } else {
                 Rlog.d(TAG, "old format (cdma) ==> new format (gsm)");
                 pdu = com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(
@@ -349,7 +354,8 @@ public class ImsSMSDispatcher extends SMSDispatcher {
     @Override
     protected void sendNewSubmitPdu(String destinationAddress, String scAddress, String message,
             SmsHeader smsHeader, int format, PendingIntent sentIntent,
-            PendingIntent deliveryIntent, boolean lastPart, int priority) {
+            PendingIntent deliveryIntent, boolean lastPart, int priority, boolean isExpectMore,
+            int validityPeriod) {
         Rlog.e(TAG, "Error! Not implemented for IMS.");
     }
 
@@ -611,13 +617,12 @@ public class ImsSMSDispatcher extends SMSDispatcher {
          */
         private byte[][] getPdus(String scAddress, String senderAddress, String msg) {
 
-            // Get a SubmitPdu (use a phone number to get a valid pdu)
-            SubmitPdu submitPdu =
-                    android.telephony.SmsMessage.getSubmitPdu(
-                                                        scAddress,
-                                                        MOCK_ADDRESS,
-                                                        msg,
-                                                        false);
+            // If we have a valid senderAddress, use it to get a valid SubmitPdu. Otherwise, we
+            // should relay in a MOCK_ADDRESS to ensure a valid SubmitPdu
+            boolean isWellFormed = PhoneNumberUtils.isWellFormedSmsAddress(senderAddress);
+            String pduSenderAddress = isWellFormed ? senderAddress : MOCK_ADDRESS;
+            SubmitPdu submitPdu = android.telephony.SmsMessage.getSubmitPdu(scAddress,
+                    pduSenderAddress, msg, false);
 
             // Translate the submit data to a received PDU
             int dataLen = android.telephony.SmsMessage.calculateLength(msg, true)[1];
@@ -634,7 +639,7 @@ public class ImsSMSDispatcher extends SMSDispatcher {
                     encMsg, 0, submitPdu.encodedMessage.length - dataPos);
             byte[] encSender = null;
             // Check if the senderAddress is a vanish number
-            if (!PhoneNumberUtils.isWellFormedSmsAddress(senderAddress)) {
+            if (!isWellFormed) {
                 try {
                     byte[] sender7BitPacked = GsmAlphabet.stringToGsm7BitPacked(senderAddress);
                     encSender = new byte[2 + sender7BitPacked.length - 1];

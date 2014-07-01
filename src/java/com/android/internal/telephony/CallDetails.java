@@ -81,6 +81,21 @@ public class CallDetails {
                                                 * Phone.CALL_TYPE_SMS;SMS Type
                                                 */
 
+    public static final int CALL_TYPE_VT_PAUSE = 6; /*
+                                                     * Indicates that video is paused;
+                                                     * This is an internal call type.
+                                                     * The type is used by TeleService and
+                                                     * InCallUI only. See CALL_TYPE_VT_RESUME
+                                                     */
+
+    public static final int CALL_TYPE_VT_RESUME = 7; /*
+                                                      * This is an internal call
+                                                      * type. VT_RESUME call
+                                                      * type is used to send
+                                                      * unpause request to
+                                                      * TeleService.
+                                                      */
+
     public static final int CALL_TYPE_UNKNOWN = 10; /*
                                                      * Phone.CALL_TYPE_UNKNOWN;
                                                      * Unknown Call type, may be
@@ -98,6 +113,7 @@ public class CallDetails {
                                                        * not yet selected a
                                                        * domain for a call
                                                        */
+
     public static final int CALL_DOMAIN_CS = 1; /*
                                                  * Phone.CALL_DOMAIN_CS; Circuit
                                                  * switched domain
@@ -135,12 +151,25 @@ public class CallDetails {
                                                                * disabled
                                                                */
 
+    public static final int VIDEO_PAUSE_STATE_PAUSED = 1; /*
+                                                           * Indicates that
+                                                           * video is paused;
+                                                           */
+
+    public static final int VIDEO_PAUSE_STATE_RESUMED = 2; /*
+                                                            * Indicates that
+                                                            * video is resumed;
+                                                            */
+
     public static final String EXTRAS_IS_CONFERENCE_URI = "isConferenceUri";
     public static final String EXTRAS_PARENT_CALL_ID = "parentCallId";
+    public static final String EXTRAS_HANDOVER_INFORMATION = "handoverInfo";
+    public static final int EXTRA_TYPE_LTE_TO_IWLAN_HO_FAIL = 1;
 
     public int call_type;
     public int call_domain;
     public String[] extras;
+    private int mVideoPauseState = VIDEO_PAUSE_STATE_RESUMED;
 
     public static class ServiceStatus {
         public boolean isValid;
@@ -207,6 +236,19 @@ public class CallDetails {
         this.extras = getExtrasFromMap(newExtras);
     }
 
+    public void setVideoPauseState(int videoPauseState) {
+        // Validate and set the new video pause state.
+        switch (videoPauseState) {
+            case VIDEO_PAUSE_STATE_RESUMED:
+            case VIDEO_PAUSE_STATE_PAUSED:
+                mVideoPauseState = videoPauseState;
+        }
+    }
+
+    public int getVideoPauseState() {
+        return mVideoPauseState;
+    }
+
     public String getValueForKeyFromExtras(String[] extras, String key) {
         for (int i = 0; extras != null && i < extras.length; i++) {
             if (extras[i] != null) {
@@ -254,6 +296,7 @@ public class CallDetails {
         return (" " + call_type
                 + " " + call_domain
                 + " " + extrasResult
+                + " videoPauseState" + mVideoPauseState
                 + " Local Ability " + localSrvAbility
                 + " Peer Ability " + peerSrvAbility);
     }

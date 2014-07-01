@@ -519,10 +519,11 @@ public abstract class SMSDispatcher extends Handler {
      *  broadcast when the message is delivered to the recipient.  The
      *  raw pdu of the status report is in the extended data ("pdu").
      * @param priority Priority level of the message
+     * @param validityPeriod Validity Period of the message in Minutes.
      */
     protected abstract void sendText(String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
-            int priority);
+            int priority, boolean isExpectMore, int validityPeriod);
 
     /**
      * Calculate the number of septets needed to encode the message.
@@ -560,16 +561,12 @@ public abstract class SMSDispatcher extends Handler {
      *   to the recipient.  The raw pdu of the status report is in the
      *   extended data ("pdu").
      * @param priority Priority level of the message
+     * @param validityPeriod Validity Period of the message in Minutes.
      */
     protected void sendMultipartText(String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
-            ArrayList<PendingIntent> deliveryIntents, int priority) {
-        if (mSmsPseudoMultipart) {
-            // Send as individual messages as the combination of device and
-            // carrier behavior may not process concatenated messages correctly.
-            sendPseudoMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents, priority);
-            return;
-        }
+            ArrayList<PendingIntent> deliveryIntents, int priority, boolean isExpectMore,
+            int validityPeriod) {
 
         int refNumber = getNextConcatenatedRef() & 0x00FF;
         int msgCount = parts.size();
@@ -620,7 +617,8 @@ public abstract class SMSDispatcher extends Handler {
             }
 
             sendNewSubmitPdu(destAddr, scAddr, parts.get(i), smsHeader, encoding,
-                    sentIntent, deliveryIntent, (i == (msgCount - 1)), priority);
+                    sentIntent, deliveryIntent, (i == (msgCount - 1)), priority, isExpectMore,
+                    validityPeriod);
         }
 
     }
@@ -654,7 +652,8 @@ public abstract class SMSDispatcher extends Handler {
      */
     private void sendPseudoMultipartText(String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
-            ArrayList<PendingIntent> deliveryIntents, int priority) {
+            ArrayList<PendingIntent> deliveryIntents, int priority,
+            boolean isExpectMore, int validityPeriod) {
         int msgCount = parts.size();
 
         mRemainingMessages = msgCount;
@@ -670,7 +669,8 @@ public abstract class SMSDispatcher extends Handler {
                 deliveryIntent = deliveryIntents.get(i);
             }
 
-            sendText(destAddr, scAddr, parts.get(i), sentIntent, deliveryIntent, priority);
+            sendText(destAddr, scAddr, parts.get(i), sentIntent, deliveryIntent, priority,
+                    isExpectMore, validityPeriod);
         }
     }
 
@@ -680,7 +680,7 @@ public abstract class SMSDispatcher extends Handler {
     protected abstract void sendNewSubmitPdu(String destinationAddress, String scAddress,
             String message, SmsHeader smsHeader, int encoding,
             PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart,
-            int priority);
+            int priority, boolean isExpectMore, int validityPeriod);
 
     /**
      * Send a SMS
@@ -1068,7 +1068,8 @@ public abstract class SMSDispatcher extends Handler {
             return;
         }
 
-        sendMultipartText(destinationAddress, scAddress, parts, sentIntents, deliveryIntents, -1);
+        sendMultipartText(destinationAddress, scAddress, parts, sentIntents, deliveryIntents, -1,
+                tracker.mExpectMore, -1);
     }
 
     /**
