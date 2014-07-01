@@ -67,7 +67,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected boolean mIsVoiceMailFixed = false;
     protected int mCountVoiceMessages = 0;
     protected String mImsi;
-    private String auth_rsp;
+    private IccIoResult auth_rsp;
 
     protected int mMncLength = UNINITIALIZED;
     protected int mMailboxIndex = 0; // 0 is no mailbox dailing number associated
@@ -426,7 +426,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
                     loge("Exception ICC SIM AKA: " + ar.exception);
                 } else {
                     try {
-                        auth_rsp = (String)ar.result;
+                        auth_rsp = (IccIoResult)ar.result;
                         if (DBG) log("ICC SIM AKA: auth_rsp = " + auth_rsp);
                     } catch (Exception e) {
                         loge("Failed to parse ICC SIM AKA contents: " + e);
@@ -537,19 +537,17 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * Base64 encoded Strings.
      * Can support EAP-SIM, EAP-AKA with results encoded per 3GPP TS 31.102.
      *
+     * @param authContext parameter P2 that specifies the authentication context per 3GPP TS 31.102 (Section 7.1.2)
      * @param data authentication challenge data
      * @return challenge response
      */
-    public String getIccSimChallengeResponse(String data) {
-        if (DBG) log("getIccSimChallengeResponse-data: (original) " + data);
-
-        data = data + mParentApp.getAid();
-
-        if (DBG) log("getIccSimChallengeResponse-data: (with AID) " + data);
+    public String getIccSimChallengeResponse(int authContext, String data) {
+        if (DBG) log("getIccSimChallengeResponse-data: " + data);
 
         try {
             synchronized(mLock) {
-                mCi.requestIccSimAuthentication(data, obtainMessage(EVENT_AKA_AUTHENTICATE_DONE));
+                mCi.requestIccSimAuthentication(authContext, data, mParentApp.getAid(),
+                        obtainMessage(EVENT_AKA_AUTHENTICATE_DONE));
                 try {
                     mLock.wait();
                 } catch (InterruptedException e) {
@@ -563,7 +561,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
         if (DBG) log("getIccSimChallengeResponse-auth_rsp" + auth_rsp);
 
-        return auth_rsp;
+        return IccUtils.bytesToHexString(auth_rsp.payload);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
