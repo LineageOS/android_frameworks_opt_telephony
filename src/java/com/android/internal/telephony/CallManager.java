@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.sip.SipPhone;
 
 import android.content.Context;
@@ -244,7 +245,7 @@ public final class CallManager {
     private Phone getPhone(long subId) {
         Phone p = null;
         for (Phone phone : mPhones) {
-            if (phone.getSubId() == subId && !(phone instanceof VoicePhone)) {
+            if (phone.getSubId() == subId && !(phone instanceof ImsPhone)) {
                 p = phone;
                 break;
             }
@@ -428,7 +429,7 @@ public final class CallManager {
                         phone.getPhoneName() + " " + phone + ")");
             }
 
-            Phone vPhone = basePhone.getVoicePhone();
+            Phone vPhone = basePhone.getImsPhone();
             if (vPhone != null) {
                unregisterPhone(vPhone);
             }
@@ -949,7 +950,7 @@ public final class CallManager {
 
             // Manipulation between IMS phone and its owner
             // will be treated in GSM/CDMA phone.
-            Phone vPhone = basePhone.getVoicePhone();
+            Phone vPhone = basePhone.getImsPhone();
             if (activePhone != basePhone
                     && (vPhone == null || vPhone != activePhone)) {
                 if (hasBgCall) {

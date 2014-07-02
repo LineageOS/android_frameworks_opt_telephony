@@ -37,16 +37,13 @@ import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.gsm.GSMPhone;
-import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.cdma.CDMALTEPhone;
-import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UsimServiceTable;
-import com.android.internal.telephony.CallManager;
 
 import java.util.List;
 
@@ -1354,12 +1351,12 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
-    public Phone getVoicePhone() {
+    public Phone getImsPhone() {
         return null;
     }
 
     @Override
-    public int getVoiceServiceState() {
-        return mActivePhone.getVoiceServiceState();
+    public int getVoicePhoneServiceState() {
+        return mActivePhone.getVoicePhoneServiceState();
     }
 }

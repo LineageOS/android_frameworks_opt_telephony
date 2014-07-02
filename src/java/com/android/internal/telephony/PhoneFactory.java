@@ -33,6 +33,7 @@ import com.android.internal.telephony.cdma.CDMALTEPhone;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.gsm.GSMPhone;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.sip.SipPhone;
 import com.android.internal.telephony.sip.SipPhoneFactory;
 import com.android.internal.telephony.uicc.UiccController;
@@ -503,7 +504,7 @@ public class PhoneFactory {
      * Makes a {@link ImsPhone} object.
      * @return the {@code ImsPhone} object or null if the exception occured
      */
-    public static Phone makeImsPhone(PhoneNotifier phoneNotifier, Phone defaultPhone) {
+    public static ImsPhone makeImsPhone(PhoneNotifier phoneNotifier, Phone defaultPhone) {
         return ImsPhoneFactory.makePhone(sContext, phoneNotifier, defaultPhone);
     }
 }

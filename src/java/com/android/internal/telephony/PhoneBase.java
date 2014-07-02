@@ -46,6 +46,7 @@ import android.text.TextUtils;
 import com.android.ims.ImsManager;
 import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -84,10 +85,10 @@ public abstract class PhoneBase extends Handler implements Phone {
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_UP)) {
                 mImsServiceReady = true;
-                updateVoicePhone();
+                updateImsPhone();
             } else if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_DOWN)) {
                 mImsServiceReady = false;
-                updateVoicePhone();
+                updateImsPhone();
             }
         }
     };
@@ -187,7 +188,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected int mPhoneId;
 
     protected boolean mImsServiceReady = false;
-    protected Phone mVoicePhone = null;
+    protected ImsPhone mImsPhone = null;
 
     @Override
     public String getPhoneName() {
@@ -396,9 +397,9 @@ public abstract class PhoneBase extends Handler implements Phone {
                 mTelephonyTester.dispose();
             }
 
-            if (mVoicePhone != null) {
-                ((VoicePhone)mVoicePhone).unregisterForSilentRedial(this);
-                mVoicePhone.dispose();
+            if (mImsPhone != null) {
+                mImsPhone.unregisterForSilentRedial(this);
+                mImsPhone.dispose();
             }
         }
     }
@@ -412,9 +413,9 @@ public abstract class PhoneBase extends Handler implements Phone {
         mDcTracker = null;
         mUiccController = null;
 
-        if (mVoicePhone != null) {
-            mVoicePhone.removeReferences();
-            mVoicePhone = null;
+        if (mImsPhone != null) {
+            mImsPhone.removeReferences();
+            mImsPhone = null;
         }
     }
 
@@ -506,18 +507,18 @@ public abstract class PhoneBase extends Handler implements Phone {
             switch(state) {
                 case VoLteServiceState.HANDOVER_STARTED:
                     srvccState = Call.SrvccState.STARTED;
-                    if (mVoicePhone != null) {
-                        conn = ((VoicePhone)mVoicePhone).getHandoverConnection();
+                    if (mImsPhone != null) {
+                        conn = mImsPhone.getHandoverConnection();
                     } else {
-                        Rlog.d(LOG_TAG, "HANDOVER_STARTED: mVoicePhone null");
+                        Rlog.d(LOG_TAG, "HANDOVER_STARTED: mImsPhone null");
                     }
                     break;
                 case VoLteServiceState.HANDOVER_COMPLETED:
                     srvccState = Call.SrvccState.COMPLETED;
-                    if (mVoicePhone != null) {
-                        ((VoicePhone) mVoicePhone).notifySrvccState(srvccState);
+                    if (mImsPhone != null) {
+                        mImsPhone.notifySrvccState(srvccState);
                     } else {
-                        Rlog.d(LOG_TAG, "HANDOVER_COMPLETED: mVoicePhone null");
+                        Rlog.d(LOG_TAG, "HANDOVER_COMPLETED: mImsPhone null");
                     }
                     break;
                 case VoLteServiceState.HANDOVER_FAILED:
@@ -1700,26 +1701,26 @@ public abstract class PhoneBase extends Handler implements Phone {
      * Return an instance of a IMS phone
      */
     @Override
-    public Phone getVoicePhone() {
-        return mVoicePhone;
+    public Phone getImsPhone() {
+        return mImsPhone;
     }
 
-    protected void updateVoicePhone() {
-        Rlog.d(LOG_TAG, "updateVoicePhone"
+    protected void updateImsPhone() {
+        Rlog.d(LOG_TAG, "updateImsPhone"
                 + " mImsServiceReady=" + mImsServiceReady);
 
-        if (mImsServiceReady && (mVoicePhone == null)) {
-            mVoicePhone = PhoneFactory.makeImsPhone(mNotifier, this);
-            CallManager.getInstance().registerPhone(mVoicePhone);
-            ((VoicePhone)mVoicePhone).registerForSilentRedial(
+        if (mImsServiceReady && (mImsPhone == null)) {
+            mImsPhone = PhoneFactory.makeImsPhone(mNotifier, this);
+            CallManager.getInstance().registerPhone(mImsPhone);
+            mImsPhone.registerForSilentRedial(
                     this, EVENT_INITIATE_SILENT_REDIAL, null);
-        } else if (!mImsServiceReady && (mVoicePhone != null)) {
-            CallManager.getInstance().unregisterPhone(mVoicePhone);
-            ((VoicePhone)mVoicePhone).unregisterForSilentRedial(this);
+        } else if (!mImsServiceReady && (mImsPhone != null)) {
+            CallManager.getInstance().unregisterPhone(mImsPhone);
+            mImsPhone.unregisterForSilentRedial(this);
 
-            mVoicePhone.dispose();
-            mVoicePhone.removeReferences();
-            mVoicePhone = null;
+            mImsPhone.dispose();
+            mImsPhone.removeReferences();
+            mImsPhone = null;
         }
     }
 
@@ -1788,13 +1789,13 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     /**
-     * Return the service state of mVoicePhone if it is STATE_IN_SERVICE
+     * Return the service state of mImsPhone if it is STATE_IN_SERVICE
      * otherwise return the current voice service state
      */
     @Override
-    public int getVoiceServiceState() {
-        if (mVoicePhone != null
-                && mVoicePhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
+    public int getVoicePhoneServiceState() {
+        if (mImsPhone != null
+                && mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
             return ServiceState.STATE_IN_SERVICE;
         }
         return getServiceState().getState();

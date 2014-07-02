@@ -68,7 +68,6 @@ import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.Subscription;
-import com.android.internal.telephony.VoicePhone;
 import com.android.internal.telephony.uicc.IccRecords;
 
 import java.util.ArrayList;
@@ -77,7 +76,7 @@ import java.util.List;
 /**
  * {@hide}
  */
-public class ImsPhone extends ImsPhoneBase implements VoicePhone {
+public class ImsPhone extends ImsPhoneBase {
     private static final String LOG_TAG = "ImsPhone";
     private static final boolean DBG = true;
     private static final boolean VDBG = false; // STOPSHIP if true
@@ -86,6 +85,8 @@ public class ImsPhone extends ImsPhoneBase implements VoicePhone {
     protected static final int EVENT_GET_CALL_BARRING_DONE          = EVENT_LAST + 2;
     protected static final int EVENT_SET_CALL_WAITING_DONE          = EVENT_LAST + 3;
     protected static final int EVENT_GET_CALL_WAITING_DONE          = EVENT_LAST + 4;
+
+    public static final String CS_FALLBACK = "cs_fallback";
 
     // Instance Variables
     PhoneBase mDefaultPhone;
@@ -438,7 +439,7 @@ public class ImsPhone extends ImsPhoneBase implements VoicePhone {
         } else if (!mmi.isSupportedOverImsPhone()) {
             // If the mmi is not supported by IMS service,
             // try to initiate dialing with default phone
-            throw new CallStateException(VoicePhone.CS_FALLBACK);
+            throw new CallStateException(CS_FALLBACK);
         } else {
             mPendingMMIs.add(mmi);
             mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));
@@ -854,7 +855,6 @@ public class ImsPhone extends ImsPhoneBase implements VoicePhone {
         }
     }
 
-    @Override
     public ImsPhoneConnection getHandoverConnection() {
         // handover for single foreground call
         ImsPhoneConnection conn = getForegroundCall().getHandoverConnection();
@@ -872,7 +872,6 @@ public class ImsPhone extends ImsPhoneBase implements VoicePhone {
         return conn;
     }
 
-    @Override
     public void notifySrvccState(Call.SrvccState state) {
         mCT.notifySrvccState(state);
     }
@@ -886,12 +885,10 @@ public class ImsPhone extends ImsPhoneBase implements VoicePhone {
         }
     }
 
-    @Override
     public void registerForSilentRedial(Handler h, int what, Object obj) {
         mSilentRedialRegistrants.addUnique(h, what, obj);
     }
 
-    @Override
     public void unregisterForSilentRedial(Handler h) {
         mSilentRedialRegistrants.remove(h);
     }

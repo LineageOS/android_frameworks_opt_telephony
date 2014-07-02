@@ -63,8 +63,8 @@ import com.android.internal.telephony.SmsBroadcastUndelivered;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.VoicePhone;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.uicc.IccException;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.RuimRecords;
@@ -385,16 +385,16 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public Connection
     dial (String dialString) throws CallStateException {
-        if ( mVoicePhone != null
-                && ((mVoicePhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+        if ( mImsPhone != null
+                && ((mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
                 && !PhoneNumberUtils.isEmergencyNumber(dialString))
                 || (PhoneNumberUtils.isEmergencyNumber(dialString)
                 && mContext.getResources().getBoolean(
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall))) ) {
             try {
-                return mVoicePhone.dial(dialString);
+                return mImsPhone.dial(dialString);
             } catch (CallStateException e) {
-                if (!VoicePhone.CS_FALLBACK.equals(e.getMessage())) {
+                if (!ImsPhone.CS_FALLBACK.equals(e.getMessage())) {
                     CallStateException ce = new CallStateException(e.getMessage());
                     ce.setStackTrace(e.getStackTrace());
                     throw ce;
@@ -1163,8 +1163,8 @@ public class CDMAPhone extends PhoneBase {
 
             case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:{
                 Rlog.d(LOG_TAG, "Event EVENT_RADIO_OFF_OR_NOT_AVAILABLE Received");
-                if (mVoicePhone != null) {
-                    mVoicePhone.getServiceState().setStateOff();
+                if (mImsPhone != null) {
+                    mImsPhone.getServiceState().setStateOff();
                 }
             }
             break;
@@ -1172,8 +1172,8 @@ public class CDMAPhone extends PhoneBase {
             case EVENT_RADIO_ON:{
                 Rlog.d(LOG_TAG, "Event EVENT_RADIO_ON Received");
                 handleCdmaSubscriptionSource(mCdmaSSM.getCdmaSubscriptionSource());
-                if (mVoicePhone != null) {
-                    mVoicePhone.getServiceState().setStateOutOfService();
+                if (mImsPhone != null) {
+                    mImsPhone.getServiceState().setStateOutOfService();
                 }
             }
             break;

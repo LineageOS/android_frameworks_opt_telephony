@@ -73,7 +73,7 @@ import com.android.internal.telephony.Subscription;
 import android.telephony.SubscriptionManager;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.VoicePhone;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccVmNotSupportedException;
@@ -722,9 +722,9 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public boolean handleInCallMmiCommands(String dialString) throws CallStateException {
-        if (mVoicePhone != null
-                && mVoicePhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
-            return mVoicePhone.handleInCallMmiCommands(dialString);
+        if (mImsPhone != null
+                && mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
+            return mImsPhone.handleInCallMmiCommands(dialString);
         }
 
         if (!isInCall()) {
@@ -784,16 +784,16 @@ public class GSMPhone extends PhoneBase {
     @Override
     public Connection
     dial (String dialString, UUSInfo uusInfo) throws CallStateException {
-        if ( mVoicePhone != null
-                && ((mVoicePhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+        if ( mImsPhone != null
+                && ((mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
                 && !PhoneNumberUtils.isEmergencyNumber(dialString))
                 || (PhoneNumberUtils.isEmergencyNumber(dialString)
                 && mContext.getResources().getBoolean(
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall))) ) {
             try {
-                return mVoicePhone.dial(dialString);
+                return mImsPhone.dial(dialString);
             } catch (CallStateException e) {
-                if (!VoicePhone.CS_FALLBACK.equals(e.getMessage())) {
+                if (!ImsPhone.CS_FALLBACK.equals(e.getMessage())) {
                     CallStateException ce = new CallStateException(e.getMessage());
                     ce.setStackTrace(e.getStackTrace());
                     throw ce;
@@ -1073,9 +1073,9 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public void getCallForwardingOption(int commandInterfaceCFReason, Message onComplete) {
-        if ((mVoicePhone != null)
-                && (mVoicePhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
-            mVoicePhone.getCallForwardingOption(commandInterfaceCFReason, onComplete);
+        if ((mImsPhone != null)
+                && (mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
+            mImsPhone.getCallForwardingOption(commandInterfaceCFReason, onComplete);
             return;
         }
 
@@ -1097,9 +1097,9 @@ public class GSMPhone extends PhoneBase {
             String dialingNumber,
             int timerSeconds,
             Message onComplete) {
-        if ((mVoicePhone != null)
-                && (mVoicePhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
-            mVoicePhone.setCallForwardingOption(commandInterfaceCFAction,
+        if ((mImsPhone != null)
+                && (mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
+            mImsPhone.setCallForwardingOption(commandInterfaceCFAction,
                     commandInterfaceCFReason, dialingNumber, timerSeconds, onComplete);
             return;
         }
@@ -1138,9 +1138,9 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public void getCallWaiting(Message onComplete) {
-        if ((mVoicePhone != null)
-                && (mVoicePhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
-            mVoicePhone.getCallWaiting(onComplete);
+        if ((mImsPhone != null)
+                && (mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
+            mImsPhone.getCallWaiting(onComplete);
             return;
         }
 
@@ -1151,9 +1151,9 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public void setCallWaiting(boolean enable, Message onComplete) {
-        if ((mVoicePhone != null)
-                && (mVoicePhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
-            mVoicePhone.setCallWaiting(enable, onComplete);
+        if ((mImsPhone != null)
+                && (mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
+            mImsPhone.setCallWaiting(enable, onComplete);
             return;
         }
 
@@ -1333,8 +1333,8 @@ public class GSMPhone extends PhoneBase {
             break;
 
             case EVENT_RADIO_ON:
-                if (mVoicePhone != null) {
-                    mVoicePhone.getServiceState().setStateOutOfService();
+                if (mImsPhone != null) {
+                    mImsPhone.getServiceState().setStateOutOfService();
                 }
             break;
 
@@ -1413,8 +1413,8 @@ public class GSMPhone extends PhoneBase {
                         mPendingMMIs.get(i).onUssdFinishedError();
                     }
                 }
-                if (mVoicePhone != null) {
-                    mVoicePhone.getServiceState().setStateOff();
+                if (mImsPhone != null) {
+                    mImsPhone.getServiceState().setStateOff();
                 }
             break;
 

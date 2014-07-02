@@ -1792,14 +1792,14 @@ public interface Phone {
     public void setImsRegistrationState(boolean registered);
 
     /**
-     * Return an instance of a ImsPhone phone
-     * @return an interface of a ImsPhone phone
+     * Return the ImsPhone phone co-managed with this phone
+     * @return an instance of an ImsPhone phone
      */
-    Phone getVoicePhone();
+    Phone getImsPhone();
 
     /**
-     * Return the service state of mVoicePhone if it is STATE_IN_SERVICE
+     * Return the service state of mImsPhone if it is STATE_IN_SERVICE
      * otherwise return the current voice service state
      */
-    int getVoiceServiceState();
+    int getVoicePhoneServiceState();
 }

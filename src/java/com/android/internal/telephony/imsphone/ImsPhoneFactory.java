@@ -34,7 +34,7 @@ public class ImsPhoneFactory {
      *      object
      * @return the {@code ImsPhone} object
      */
-    public static Phone makePhone(Context context,
+    public static ImsPhone makePhone(Context context,
             PhoneNotifier phoneNotifier, Phone defaultPhone) {
 
         try {
