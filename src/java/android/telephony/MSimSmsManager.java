@@ -550,7 +550,7 @@ public class MSimSmsManager {
             // ignore it
         }
 
-        return createMessageListFromRawRecords(records);
+        return createMessageListFromRawRecords(records, subscription);
     }
 
     /**
@@ -702,7 +702,8 @@ public class MSimSmsManager {
      *   <code>getAllMessagesFromIcc</code>
      * @return <code>ArrayList</code> of <code>SmsMessage</code> objects.
      */
-    private static ArrayList<SmsMessage> createMessageListFromRawRecords(List<SmsRawData> records) {
+    private static ArrayList<SmsMessage> createMessageListFromRawRecords(List<SmsRawData> records,
+            int subscription) {
         ArrayList<SmsMessage> messages = new ArrayList<SmsMessage>();
         if (records != null) {
             int count = records.size();
@@ -710,7 +711,8 @@ public class MSimSmsManager {
                 SmsRawData data = records.get(i);
                 // List contains all records, including "free" records (null)
                 if (data != null) {
-                    SmsMessage sms = SmsMessage.createFromEfRecord(i+1, data.getBytes());
+                    SmsMessage sms = SmsMessage.createFromEfRecord(i+1, data.getBytes(),
+                            subscription);
                     if (sms != null) {
                         messages.add(sms);
                     }
