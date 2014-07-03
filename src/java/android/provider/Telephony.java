@@ -2249,6 +2249,76 @@ public final class Telephony {
                     = "android.intent.action.CONTENT_CHANGED";
 
             /**
+             * Broadcast Action: A new MMS PDU needs to be sent from
+             * the device. This intent will only be delivered to the default
+             * carrier app. That app is responsible for sending the PDU.
+             * The intent will have the following extra values:</p>
+             *
+             * <ul>
+             *   <li><em>"pdu"</em> - (byte[]) The PDU to send.</li>
+             *   <li><em>"url"</em> - (String) The optional url to send this MMS PDU.
+             *   If this is not specified, PDU should be sent to the default MMSC url.</li>
+             * </ul>
+             *
+             * <p>If a BroadcastReceiver is trying to send the message,
+             *  it should set the result code to {@link android.app.Activity#RESULT_OK} and set
+             *  the following in the result extra values:</p>
+             *
+             * <ul>
+             *   <li><em>"messageref"</em> - (int) The new message reference number which will be
+             *   later used in the updateMmsSendStatus call.</li>
+             * </ul>
+             *
+             * <p>If a BroadcastReceiver cannot send the message, it should not set the result
+             *  code and the platform will send it via the normal pathway.
+             * </p>
+             *
+             * <p class="note"><strong>Note:</strong>
+             * The broadcast receiver that filters for this intent must declare
+             * {@link android.Manifest.permission#BROADCAST_WAP_PUSH} as a required permission in
+             * the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">{@code
+             * &lt;receiver>}</a> tag.
+             * @hide
+             */
+            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+            public static final String MMS_SEND_ACTION =
+                    "android.provider.Telephony.MMS_SEND";
+
+            /**
+             * Broadcast Action: A new MMS needs to be downloaded.
+             * This intent will only be delivered to the default
+             * carrier app. That app is responsible for downloading the message at the URL.
+             * The intent will have the following extra values:</p>
+             *
+             * <ul>
+             *   <li><em>"url"</em> - (String) The message URL to be downloaded.</li>
+             * </ul>
+             *
+             * <p>If a BroadcastReceiver is trying to download the message,
+             *  it should set the result code to {@link android.app.Activity#RESULT_OK} and set
+             *  the following in the result extra values:</p>
+             *
+             * <ul>
+             *   <li><em>"messageref"</em> - (int) The new message reference number which will be
+             *   later used in the updateMmsDownloadStatus call.</li>
+             * </ul>
+             *
+             * <p>If a BroadcastReceiver cannot download the message, it should not set the result
+             *  code and the platform will download it via the normal pathway.
+             * </p>
+             *
+             * <p class="note"><strong>Note:</strong>
+             * The broadcast receiver that filters for this intent must declare
+             * {@link android.Manifest.permission#BROADCAST_WAP_PUSH} as a required permission in
+             * the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">{@code
+             * &lt;receiver>}</a> tag.
+             * @hide
+             */
+            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+            public static final String MMS_DOWNLOAD_ACTION =
+                    "android.provider.Telephony.MMS_DOWNLOAD";
+
+            /**
              * An extra field which stores the URI of deleted contents.
              */
             public static final String DELETED_CONTENTS = "deleted_contents";
