@@ -18,7 +18,10 @@ package com.android.internal.telephony;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+
 import android.telephony.CellInfo;
+import android.telephony.DataConnectionRealTimeInfo;
+import android.telephony.VoLteServiceState;
 
 import java.util.List;
 
@@ -65,5 +68,22 @@ public class TestPhoneNotifier implements PhoneNotifier {
     }
 
     public void notifyCellInfo(Phone sender, List<CellInfo> cellInfo) {
+    }
+
+    public void notifyPreciseCallState(Phone sender) {
+    }
+
+    public void notifyDisconnectCause(int cause, int preciseCause) {
+    }
+
+    public void notifyPreciseDataConnectionFailed(Phone sender, String reason, String apnType,
+            String apn, String failCause) {
+    }
+
+    public void notifyDataConnectionRealTimeInfo(Phone sender,
+            DataConnectionRealTimeInfo dcRtInfo) {
+    }
+
+    public void notifyVoLteServiceStateChanged(Phone sender, VoLteServiceState lteState) {
     }
 }
