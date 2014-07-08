@@ -29,6 +29,7 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Telephony;
+import android.telecomm.VideoCallProfile;
 import android.telephony.CellLocation;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
@@ -777,13 +778,13 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public Connection
-    dial(String dialString) throws CallStateException {
-        return dial(dialString, null);
+    dial(String dialString, int videoState) throws CallStateException {
+        return dial(dialString, null, videoState);
     }
 
     @Override
     public Connection
-    dial (String dialString, UUSInfo uusInfo) throws CallStateException {
+    dial (String dialString, UUSInfo uusInfo, int videoState) throws CallStateException {
         if ( mImsPhone != null
                 && ((mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
                 && !PhoneNumberUtils.isEmergencyNumber(dialString))
@@ -791,7 +792,7 @@ public class GSMPhone extends PhoneBase {
                 && mContext.getResources().getBoolean(
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall))) ) {
             try {
-                return mImsPhone.dial(dialString);
+                return mImsPhone.dial(dialString, VideoCallProfile.VIDEO_STATE_AUDIO_ONLY);
             } catch (CallStateException e) {
                 if (!ImsPhone.CS_FALLBACK.equals(e.getMessage())) {
                     CallStateException ce = new CallStateException(e.getMessage());
@@ -801,12 +802,14 @@ public class GSMPhone extends PhoneBase {
             }
         }
 
-        return dialInternal(dialString, null);
+        return dialInternal(dialString, null, videoState);
     }
 
     @Override
     protected Connection
-    dialInternal (String dialString, UUSInfo uusInfo) throws CallStateException {
+    dialInternal (String dialString, UUSInfo uusInfo, int videoState)
+            throws CallStateException {
+
         // Need to make sure dialString gets parsed properly
         String newDialString = PhoneNumberUtils.stripSeparators(dialString);
 

@@ -179,13 +179,13 @@ public class SipPhone extends SipPhoneBase {
     }
 
     @Override
-    public Connection dial(String dialString) throws CallStateException {
+    public Connection dial(String dialString, int videoState) throws CallStateException {
         synchronized (SipPhone.class) {
-            return dialInternal(dialString);
+            return dialInternal(dialString, videoState);
         }
     }
 
-    private Connection dialInternal(String dialString)
+    private Connection dialInternal(String dialString, int videoState)
             throws CallStateException {
         if (DBG) log("dialInternal: dialString=" + (VDBG ? dialString : "xxxxxx"));
         clearDisconnected();

@@ -675,13 +675,13 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
-    public Connection dial(String dialString) throws CallStateException {
-        return mActivePhone.dial(dialString);
+    public Connection dial(String dialString, int videoState) throws CallStateException {
+        return mActivePhone.dial(dialString, videoState);
     }
 
     @Override
-    public Connection dial(String dialString, UUSInfo uusInfo) throws CallStateException {
-        return mActivePhone.dial(dialString, uusInfo);
+    public Connection dial(String dialString, UUSInfo uusInfo, int videoState) throws CallStateException {
+        return mActivePhone.dial(dialString, uusInfo, videoState);
     }
 
     @Override

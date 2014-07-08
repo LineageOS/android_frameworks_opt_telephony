@@ -33,6 +33,7 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.telecomm.VideoCallProfile;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoCdma;
@@ -476,7 +477,7 @@ public abstract class PhoneBase extends Handler implements Phone {
                     String dialString = (String) ar.result;
                     if (TextUtils.isEmpty(dialString)) return;
                     try {
-                        dialInternal(dialString, null);
+                        dialInternal(dialString, null, VideoCallProfile.VIDEO_STATE_AUDIO_ONLY);
                     } catch (CallStateException e) {
                         Rlog.e(LOG_TAG, "silent redial failed: " + e);
                     }
@@ -1724,7 +1725,16 @@ public abstract class PhoneBase extends Handler implements Phone {
         }
     }
 
-    protected Connection dialInternal(String dialString, UUSInfo uusInfo)
+    /**
+     * Dials a number.
+     *
+     * @param dialString The number to dial.
+     * @param uusInfo The UUSInfo.
+     * @param videoState The video state for the call.
+     * @return The Connection.
+     * @throws CallStateException
+     */
+    protected Connection dialInternal(String dialString, UUSInfo uusInfo, int videoState)
             throws CallStateException {
         // dialInternal shall be overriden by GSMPhone and CDMAPhone
         return null;

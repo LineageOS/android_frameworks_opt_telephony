@@ -61,10 +61,10 @@ abstract class ImsPhoneBase extends PhoneBase {
     }
 
     @Override
-    public Connection dial(String dialString, UUSInfo uusInfo)
+    public Connection dial(String dialString, UUSInfo uusInfo, int videoState)
             throws CallStateException {
         // ignore UUSInfo
-        return dial(dialString);
+        return dial(dialString, videoState);
     }
 
     void migrateFrom(ImsPhoneBase from) {

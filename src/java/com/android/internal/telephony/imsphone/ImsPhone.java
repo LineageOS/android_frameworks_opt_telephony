@@ -412,7 +412,12 @@ public class ImsPhone extends ImsPhoneBase {
 
     @Override
     public Connection
-    dial(String dialString) throws CallStateException {
+    dial(String dialString, int videoState) throws CallStateException {
+        return dialInternal(dialString, videoState);
+    }
+
+    protected Connection dialInternal(String dialString, int videoState)
+            throws CallStateException {
         // Need to make sure dialString gets parsed properly
         String newDialString = PhoneNumberUtils.stripSeparators(dialString);
 
@@ -422,7 +427,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
 
         if (mDefaultPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
-            return mCT.dial(dialString);
+            return mCT.dial(dialString, videoState);
         }
 
         // Only look at the Network portion for mmi
@@ -433,9 +438,9 @@ public class ImsPhone extends ImsPhoneBase {
                 "dialing w/ mmi '" + mmi + "'...");
 
         if (mmi == null) {
-            return mCT.dial(dialString);
+            return mCT.dial(dialString, videoState);
         } else if (mmi.isTemporaryModeCLIR()) {
-            return mCT.dial(mmi.getDialingNumber(), mmi.getCLIRMode());
+            return mCT.dial(mmi.getDialingNumber(), mmi.getCLIRMode(), videoState);
         } else if (!mmi.isSupportedOverImsPhone()) {
             // If the mmi is not supported by IMS service,
             // try to initiate dialing with default phone
@@ -448,7 +453,6 @@ public class ImsPhone extends ImsPhoneBase {
             return null;
         }
     }
-
 
     @Override
     public void

@@ -915,7 +915,8 @@ public final class CallManager {
      * dialing, alerting, ringing, or waiting.  Other errors are
      * handled asynchronously.
      */
-    public Connection dial(Phone phone, String dialString) throws CallStateException {
+    public Connection dial(Phone phone, String dialString, int videoState)
+            throws CallStateException {
         Phone basePhone = getPhoneBase(phone);
         long subId = phone.getSubId();
         Connection result;
@@ -963,7 +964,7 @@ public final class CallManager {
             }
         }
 
-        result = basePhone.dial(dialString);
+        result = basePhone.dial(dialString, videoState);
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End dial(" + basePhone + ", "+ dialString + ")");
@@ -983,8 +984,9 @@ public final class CallManager {
      * dialing, alerting, ringing, or waiting.  Other errors are
      * handled asynchronously.
      */
-    public Connection dial(Phone phone, String dialString, UUSInfo uusInfo) throws CallStateException {
-        return phone.dial(dialString, uusInfo);
+    public Connection dial(Phone phone, String dialString, UUSInfo uusInfo, int videoState)
+            throws CallStateException {
+        return phone.dial(dialString, uusInfo, videoState);
     }
 
     /**

@@ -29,6 +29,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
+import android.telecomm.VideoCallProfile;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
@@ -243,17 +244,17 @@ public final class ImsPhoneCallTracker extends CallTracker {
     }
 
     Connection
-    dial(String dialString) throws CallStateException {
+    dial(String dialString, int videoState) throws CallStateException {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
         int oirMode = sp.getInt(PhoneBase.CLIR_KEY, CommandsInterface.CLIR_DEFAULT);
-        return dial(dialString, oirMode);
+        return dial(dialString, oirMode, videoState);
     }
 
     /**
      * oirMode is one of the CLIR_ constants
      */
     synchronized Connection
-    dial(String dialString, int clirMode) throws CallStateException {
+    dial(String dialString, int clirMode, int videoState) throws CallStateException {
         if (DBG) log("dial clirMode=" + clirMode);
 
         // note that this triggers call state changed notif
@@ -309,7 +310,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
         addConnection(mPendingMO);
 
         if (!holdBeforeDial) {
-            dialInternal(mPendingMO, clirMode);
+            dialInternal(mPendingMO, clirMode, videoState);
         }
 
         updatePhoneState();
@@ -318,7 +319,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
         return mPendingMO;
     }
 
-    private void dialInternal(ImsPhoneConnection conn, int clirMode) {
+    private void dialInternal(ImsPhoneConnection conn, int clirMode, int videoState) {
         if (conn == null) {
             return;
         }
@@ -334,12 +335,13 @@ public final class ImsPhoneCallTracker extends CallTracker {
         // Always unmute when initiating a new call
         setMute(false);
         int serviceType = PhoneNumberUtils.isEmergencyNumber(conn.getAddress()) ?
-        ImsCallProfile.SERVICE_TYPE_EMERGENCY : ImsCallProfile.SERVICE_TYPE_NORMAL;
+                ImsCallProfile.SERVICE_TYPE_EMERGENCY : ImsCallProfile.SERVICE_TYPE_NORMAL;
+        int callType = getCallType(videoState);
 
         try {
             String[] callees = new String[] { conn.getAddress() };
             ImsCallProfile profile = mImsManager.createCallProfile(mServiceId,
-                    serviceType, ImsCallProfile.CALL_TYPE_VOICE);
+                    serviceType, callType);
             profile.setCallExtraInt(ImsCallProfile.EXTRA_OIR, clirMode);
 
             ImsCall imsCall = mImsManager.makeCall(mServiceId, profile,
@@ -350,6 +352,40 @@ public final class ImsPhoneCallTracker extends CallTracker {
             conn.setDisconnectCause(DisconnectCause.ERROR_UNSPECIFIED);
             sendEmptyMessageDelayed(EVENT_HANGUP_PENDINGMO, TIMEOUT_HANGUP_PENDINGMO);
         }
+    }
+
+    /**
+     * Converts from the video state values defined in {@link VideoCallProfile} to the call types
+     * defined in {@link ImsCallProfile}.
+     *
+     * @param videoState The video state.
+     * @return The call type.
+     */
+    private int getCallType(int videoState) {
+        boolean videoTx = isVideoStateSet(videoState, VideoCallProfile.VIDEO_STATE_TX_ENABLED);
+        boolean videoRx = isVideoStateSet(videoState, VideoCallProfile.VIDEO_STATE_RX_ENABLED);
+        boolean isPaused = isVideoStateSet(videoState, VideoCallProfile.VIDEO_STATE_PAUSED);
+        if (isPaused) {
+            return ImsCallProfile.CALL_TYPE_VT_NODIR;
+        } else if (videoTx && !videoRx) {
+            return ImsCallProfile.CALL_TYPE_VT_TX;
+        } else if (!videoTx && videoRx) {
+            return ImsCallProfile.CALL_TYPE_VT_RX;
+        } else if (videoTx && videoRx) {
+            return ImsCallProfile.CALL_TYPE_VT;
+        }
+        return ImsCallProfile.CALL_TYPE_VOICE;
+    }
+
+    /**
+     * Determines if a video state is set in a video state bit-mask.
+     *
+     * @param videoState The video state bit mask.
+     * @param videoStateToCheck The particular video state to check.
+     * @return True if the video state is set in the bit-mask.
+     */
+    private boolean isVideoStateSet(int videoState, int videoStateToCheck) {
+        return (videoState & videoStateToCheck) == videoStateToCheck;
     }
 
     void
@@ -1157,7 +1193,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 }
                 break;
             case EVENT_DIAL_PENDINGMO:
-                dialInternal(mPendingMO, mClirMode);
+                dialInternal(mPendingMO, mClirMode, VideoCallProfile.VIDEO_STATE_AUDIO_ONLY);
                 break;
         }
     }

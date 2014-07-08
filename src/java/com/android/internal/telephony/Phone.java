@@ -791,12 +791,14 @@ public interface Phone {
      * cannot assume the audio path is connected (or a call index has been
      * assigned) until PhoneStateChanged notification has occurred.
      *
+     * @param dialString The dial string.
+     * @param videoState The desired video state for the connection.
      * @exception CallStateException if a new outgoing call is not currently
      * possible because no more call slots exist or a call exists that is
      * dialing, alerting, ringing, or waiting.  Other errors are
      * handled asynchronously.
      */
-    Connection dial(String dialString) throws CallStateException;
+    Connection dial(String dialString, int videoState) throws CallStateException;
 
     /**
      * Initiate a new voice connection with supplementary User to User
@@ -804,12 +806,15 @@ public interface Phone {
      * path is connected (or a call index has been assigned) until
      * PhoneStateChanged notification has occurred.
      *
+     * @param dialString The dial string.
+     * @param uusInfo The UUSInfo.
+     * @param videoState The desired video state for the connection.
      * @exception CallStateException if a new outgoing call is not currently
      *                possible because no more call slots exist or a call exists
      *                that is dialing, alerting, ringing, or waiting. Other
      *                errors are handled asynchronously.
      */
-    Connection dial(String dialString, UUSInfo uusInfo) throws CallStateException;
+    Connection dial(String dialString, UUSInfo uusInfo, int videoState) throws CallStateException;
 
     /**
      * Handles PIN MMI commands (PIN/PIN2/PUK/PUK2), which are initiated
