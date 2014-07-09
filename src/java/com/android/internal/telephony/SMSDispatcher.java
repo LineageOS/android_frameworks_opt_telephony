@@ -46,10 +46,10 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
-import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.Html;
 import android.text.Spanned;
+import android.text.TextUtils;
 import android.util.EventLog;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -345,7 +345,7 @@ public abstract class SMSDispatcher extends Handler {
         if (ar.exception == null) {
             if (DBG) Rlog.d(TAG, "SMS send complete. Broadcasting intent: " + sentIntent);
 
-            if (!Telephony.NEW_API) {
+            if (!Telephony.AUTO_PERSIST) {
                 // TODO(ywen):Temporarily only enable this with a flag so not to break existing apps
                 if (SmsApplication.shouldWriteMessageForPackage(
                         tracker.mAppInfo.applicationInfo.packageName, mContext)) {
@@ -473,8 +473,7 @@ public abstract class SMSDispatcher extends Handler {
 
     /**
      * Send a text based SMS.
-     *
-     * @param destAddr the address to send the message to
+     *  @param destAddr the address to send the message to
      * @param scAddr is the service center address or null to use
      *  the current default SMSC
      * @param text the body of the message to send
@@ -494,10 +493,12 @@ public abstract class SMSDispatcher extends Handler {
      *  which cause smaller number of SMS to be sent in checking period.
      * @param deliveryIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is delivered to the recipient.  The
-     *  raw pdu of the status report is in the extended data ("pdu").
+     * @param messageUri optional URI of the message if it is already stored in the system
+     * @param callingPkg the calling package name
      */
-    protected abstract void sendText(String destAddr, String scAddr,
-            String text, PendingIntent sentIntent, PendingIntent deliveryIntent);
+    protected abstract void sendText(String destAddr, String scAddr, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent, Uri messageUri,
+            String callingPkg);
 
     /**
      * Inject an SMS PDU into the android platform.
@@ -572,8 +573,7 @@ public abstract class SMSDispatcher extends Handler {
 
     /**
      * Send a multi-part text based SMS.
-     *
-     * @param destAddr the address to send the message to
+     *  @param destAddr the address to send the message to
      * @param scAddr is the service center address or null to use
      *   the current default SMSC
      * @param parts an <code>ArrayList</code> of strings that, in order,
@@ -594,16 +594,22 @@ public abstract class SMSDispatcher extends Handler {
      *   <code>PendingIntent</code>s (one for each message part) that is
      *   broadcast when the corresponding message part has been delivered
      *   to the recipient.  The raw pdu of the status report is in the
-     *   extended data ("pdu").
+     * @param messageUri optional URI of the message if it is already stored in the system
+     * @param callingPkg the calling package name
      */
     protected void sendMultipartText(String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
-            ArrayList<PendingIntent> deliveryIntents) {
-        Uri messageUri = writeOutboxMessage(
-                SubscriptionManager.getPreferredSmsSubId(),
-                destAddr,
-                getMultipartMessageText(parts),
-                deliveryIntents != null && deliveryIntents.size() > 0);
+            ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg) {
+        if (messageUri == null) {
+            messageUri = writeOutboxMessage(
+                    getSubId(),
+                    destAddr,
+                    getMultipartMessageText(parts),
+                    deliveryIntents != null && deliveryIntents.size() > 0,
+                    callingPkg);
+        } else {
+            moveToOutbox(getSubId(), messageUri, callingPkg);
+        }
         int refNumber = getNextConcatenatedRef() & 0x00FF;
         int msgCount = parts.size();
         int encoding = SmsConstants.ENCODING_UNKNOWN;
@@ -1026,7 +1032,8 @@ public abstract class SMSDispatcher extends Handler {
             return;
         }
 
-        sendMultipartText(destinationAddress, scAddress, parts, sentIntents, deliveryIntents);
+        sendMultipartText(destinationAddress, scAddress, parts, sentIntents, deliveryIntents,
+                null/*messageUri*/, null/*callingPkg*/);
     }
 
     /**
@@ -1120,7 +1127,7 @@ public abstract class SMSDispatcher extends Handler {
          * @param errorCode The error code
          */
         private void updateMessageErrorCode(Context context, int errorCode) {
-            if (!Telephony.NEW_API) {
+            if (!Telephony.AUTO_PERSIST) {
                 // TODO(ywen):Temporarily only enable this with a flag so not to break existing apps
                 return;
             }
@@ -1147,7 +1154,7 @@ public abstract class SMSDispatcher extends Handler {
          * @param messageType The final message type
          */
         private void setMessageFinalState(Context context, int messageType) {
-            if (!Telephony.NEW_API) {
+            if (!Telephony.AUTO_PERSIST) {
                 // TODO(ywen):Temporarily only enable this with a flag so not to break existing apps
                 return;
             }
@@ -1410,18 +1417,21 @@ public abstract class SMSDispatcher extends Handler {
     }
 
     protected Uri writeOutboxMessage(long subId, String address, String text,
-            boolean requireDeliveryReport) {
-        if (!Telephony.NEW_API) {
+            boolean requireDeliveryReport, String creator) {
+        if (!Telephony.AUTO_PERSIST) {
             // TODO(ywen): Temporarily only enable this with a flag so not to break existing apps
             return null;
         }
-        final ContentValues values = new ContentValues(7);
+        final ContentValues values = new ContentValues(8);
         values.put(Telephony.Sms.SUB_ID, subId);
         values.put(Telephony.Sms.ADDRESS, address);
+        values.put(Telephony.Sms.BODY, text);
         values.put(Telephony.Sms.DATE, System.currentTimeMillis()); // milliseconds
         values.put(Telephony.Sms.SEEN, 1);
         values.put(Telephony.Sms.READ, 1);
-        values.put(Telephony.Sms.BODY, text);
+        if (!TextUtils.isEmpty(creator)) {
+            values.put(Telephony.Sms.CREATOR, creator);
+        }
         if (requireDeliveryReport) {
             values.put(Telephony.Sms.STATUS, Telephony.Sms.STATUS_PENDING);
         }
@@ -1431,8 +1441,31 @@ public abstract class SMSDispatcher extends Handler {
                     Telephony.Sms.Outbox.CONTENT_URI, values);
             return uri;
         } catch (Exception e) {
-            Rlog.e(TAG, "Failed to persist outbox message", e);
+            Rlog.e(TAG, "writeOutboxMessage: Failed to persist outbox message", e);
             return null;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+    }
+
+    protected void moveToOutbox(long subId, Uri messageUri, String creator) {
+        final ContentValues values = new ContentValues(4);
+        values.put(Telephony.Sms.SUB_ID, subId);
+        if (!TextUtils.isEmpty(creator)) {
+            // Reset creator/sender
+            values.put(Telephony.Sms.CREATOR, creator);
+        }
+        // Reset the timestamp
+        values.put(Telephony.Sms.DATE, System.currentTimeMillis()); // milliseconds
+        values.put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_OUTBOX);
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            if (mContext.getContentResolver().update(messageUri, values,
+                    null/*where*/, null/*selectionArgs*/) != 1) {
+                Rlog.e(TAG, "moveToOutbox: failed to update message " + messageUri);
+            }
+        } catch (Exception e) {
+            Rlog.e(TAG, "moveToOutbox: Failed to update message", e);
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -1446,5 +1479,9 @@ public abstract class SMSDispatcher extends Handler {
             }
         }
         return sb.toString();
+    }
+
+    protected long getSubId() {
+        return SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhone.mPhoneId);
     }
 }

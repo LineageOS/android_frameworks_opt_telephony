@@ -45,7 +45,6 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
-import com.android.internal.telephony.PhoneBase;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -995,7 +994,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @return The URI of written message
      */
     private Uri writeInboxMessage(Intent intent) {
-        if (!Telephony.NEW_API) {
+        if (!Telephony.AUTO_PERSIST) {
             // TODO(ywen): Temporarily only enable this with a flag so not to break existing apps
             return null;
         }
