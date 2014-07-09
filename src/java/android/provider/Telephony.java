@@ -107,10 +107,10 @@ public final class Telephony {
     private static final String TAG = "Telephony";
 
     /**
-     * TODO(ywen): temoprary flag to turn off new SMS API semantics
+     * TODO(ywen): temoprary flag to turn on/off SMS/MMS auto persisting
      * @hide
      */
-    public static final boolean NEW_API = false;
+    public static final boolean AUTO_PERSIST = false;
 
     /**
      * Not instantiable.
@@ -257,6 +257,18 @@ public final class Telephony {
          * <P>Type: INTEGER</P>
          */
         public static final String ERROR_CODE = "error_code";
+
+        /**
+         * If the message is archived
+         * @hide
+         */
+        public static final String ARCHIVED = "archived";
+
+        /**
+         * The creator of a sent or imported message
+         * @hide
+         */
+        public static final String CREATOR = "creator";
     }
 
     /**
@@ -1683,6 +1695,17 @@ public final class Telephony {
          */
         public static final String SUB_ID = "sub_id";
 
+        /**
+         * If the message is archived
+         * @hide
+         */
+        public static final String ARCHIVED = "archived";
+
+        /**
+         * The creator of a sent or imported message
+         * @hide
+         */
+        public static final String CREATOR = "creator";
     }
 
     /**
