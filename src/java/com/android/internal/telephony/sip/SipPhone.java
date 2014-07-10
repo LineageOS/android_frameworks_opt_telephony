@@ -90,18 +90,18 @@ public class SipPhone extends SipPhoneBase {
         return getSipUri().equals(phone.getSipUri());
     }
 
-    public boolean canTake(Object incomingCall) {
+    public Connection takeIncomingCall(Object incomingCall) {
         // FIXME: Is synchronizing on the class necessary, should we use a mLockObj?
         // Also there are many things not synchronized, of course
         // this may be true of CdmaPhone and GsmPhone too!!!
         synchronized (SipPhone.class) {
             if (!(incomingCall instanceof SipAudioCall)) {
-                if (DBG) log("canTake: ret=false, not a SipAudioCall");
-                return false;
+                if (DBG) log("takeIncomingCall: ret=null, not a SipAudioCall");
+                return null;
             }
             if (mRingingCall.getState().isAlive()) {
-                if (DBG) log("canTake: ret=false, ringingCall not alive");
-                return false;
+                if (DBG) log("takeIncomingCall: ret=null, ringingCall not alive");
+                return null;
             }
 
             // FIXME: is it true that we cannot take any incoming call if
@@ -109,37 +109,37 @@ public class SipPhone extends SipPhoneBase {
             if (mForegroundCall.getState().isAlive()
                     && mBackgroundCall.getState().isAlive()) {
                 if (DBG) {
-                    log("canTake: ret=false," +
-                            " foreground and background both alive");
+                    log("takeIncomingCall: ret=null," + " foreground and background both alive");
                 }
-                return false;
+                return null;
             }
 
             try {
                 SipAudioCall sipAudioCall = (SipAudioCall) incomingCall;
-                if (DBG) log("canTake: taking call from: "
+                if (DBG) log("takeIncomingCall: taking call from: "
                         + sipAudioCall.getPeerProfile().getUriString());
                 String localUri = sipAudioCall.getLocalProfile().getUriString();
                 if (localUri.equals(mProfile.getUriString())) {
                     boolean makeCallWait = mForegroundCall.getState().isAlive();
-                    mRingingCall.initIncomingCall(sipAudioCall, makeCallWait);
-                    if (sipAudioCall.getState()
-                            != SipSession.State.INCOMING_CALL) {
+                    SipConnection connection = mRingingCall.initIncomingCall(sipAudioCall,
+                            makeCallWait);
+                    if (sipAudioCall.getState() != SipSession.State.INCOMING_CALL) {
                         // Peer cancelled the call!
-                        if (DBG) log("    canTake: call cancelled !!");
+                        if (DBG) log("    takeIncomingCall: call cancelled !!");
                         mRingingCall.reset();
+                        connection = null;
                     }
-                    return true;
+                    return connection;
                 }
             } catch (Exception e) {
                 // Peer may cancel the call at any time during the time we hook
                 // up ringingCall with sipAudioCall. Clean up ringingCall when
                 // that happens.
-                if (DBG) log("    canTake: exception e=" + e);
+                if (DBG) log("    takeIncomingCall: exception e=" + e);
                 mRingingCall.reset();
             }
-            if (DBG) log("canTake: NOT taking !!");
-            return false;
+            if (DBG) log("takeIncomingCall: NOT taking !!");
+            return null;
         }
     }
 
@@ -517,7 +517,7 @@ public class SipPhone extends SipPhoneBase {
             }
         }
 
-        void initIncomingCall(SipAudioCall sipAudioCall, boolean makeCallWait) {
+        SipConnection initIncomingCall(SipAudioCall sipAudioCall, boolean makeCallWait) {
             SipProfile callee = sipAudioCall.getPeerProfile();
             SipConnection c = new SipConnection(this, callee);
             mConnections.add(c);
@@ -527,6 +527,7 @@ public class SipPhone extends SipPhoneBase {
 
             setState(newState);
             notifyNewRingingConnectionP(c);
+            return c;
         }
 
         void rejectCall() throws CallStateException {
