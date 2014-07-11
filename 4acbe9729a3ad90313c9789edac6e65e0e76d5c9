@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a061dce_dd135b0c",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaInboundSmsHandler.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 191,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-07-11T05:24:39Z",
+      "side": 1,
+      "message": "You\u0027ve got some pretty verbose logging.",
+      "revId": "4acbe9729a3ad90313c9789edac6e65e0e76d5c9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a061dce_fd0e1fe4",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaInboundSmsHandler.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-07-11T05:24:39Z",
+      "side": 1,
+      "message": "Could just use better control flow here, rather than relying on an exception to bring you out of this bit of logic.",
+      "revId": "4acbe9729a3ad90313c9789edac6e65e0e76d5c9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a061dce_bd04a7c6",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaInboundSmsHandler.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-07-11T05:24:39Z",
+      "side": 1,
+      "message": "Line length too long.",
+      "revId": "4acbe9729a3ad90313c9789edac6e65e0e76d5c9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a061dce_1df673d7",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaInboundSmsHandler.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-07-11T05:24:39Z",
+      "side": 1,
+      "message": "Long line lengths again.",
+      "revId": "4acbe9729a3ad90313c9789edac6e65e0e76d5c9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a061dce_7d032fb9",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaInboundSmsHandler.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 264,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-07-11T05:24:39Z",
+      "side": 1,
+      "message": "This is kind of weird here, going from a specific exception to a generic one.",
+      "revId": "4acbe9729a3ad90313c9789edac6e65e0e76d5c9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a061dce_5d00ebaa",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaInboundSmsHandler.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-07-11T05:24:39Z",
+      "side": 1,
+      "message": "Same here.",
+      "revId": "4acbe9729a3ad90313c9789edac6e65e0e76d5c9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
