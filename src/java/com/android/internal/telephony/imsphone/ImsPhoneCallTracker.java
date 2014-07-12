@@ -184,14 +184,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     private void getImsService() {
         if (DBG) log("getImsService");
-        mImsManager = ImsManager.getInstance(mPhone.getContext());
+        mImsManager = ImsManager.getInstance(mPhone.getContext(), mPhone.getSubId());
         try {
-            // If there are multiple GSM phones,
-            // each GSM phone creates IMS phone for itself.
-            // IMS service needs something to determine appropriate IMS phone.
-            //
-            // TODO: add additional parameter to identity the IMS phone's
-            // subscriber's information.
             mServiceId = mImsManager.open(ImsServiceClass.MMTEL,
                     createIncomingCallPendingIntent(),
                     mImsConnectionStateListener);

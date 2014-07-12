@@ -84,6 +84,12 @@ public abstract class PhoneBase extends Handler implements Phone {
     private BroadcastReceiver mImsIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            // TODO: MSIM potentially replace SUBID with information available to external
+            // service, e.g. slot ID
+            if (intent.hasExtra(ImsManager.EXTRA_SUBID)) {
+                if (intent.getLongExtra(ImsManager.EXTRA_SUBID, -1) != getSubId())
+                    return;
+            }
             if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_UP)) {
                 mImsServiceReady = true;
                 updateImsPhone();
