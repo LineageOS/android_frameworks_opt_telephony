@@ -19,8 +19,6 @@
 package com.android.internal.telephony;
 
 import android.app.PendingIntent;
-import android.net.Uri;
-import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
@@ -322,32 +320,6 @@ public class UiccSmsController extends ISms.Stub {
      **/
     public boolean isSMSPromptEnabled() {
         return PhoneFactory.isSMSPromptEnabled();
-    }
-
-    @Override
-    public void sendStoredText(long subId, String callingPkg, Uri messageUri, String scAddress,
-            PendingIntent sentIntent, PendingIntent deliveryIntent) throws RemoteException {
-        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
-        if (iccSmsIntMgr != null) {
-            iccSmsIntMgr.sendStoredText(callingPkg, messageUri, scAddress, sentIntent,
-                    deliveryIntent);
-        } else {
-            Rlog.e(LOG_TAG,"sendStoredText iccSmsIntMgr is null for subscription: " + subId);
-        }
-    }
-
-    @Override
-    public void sendStoredMultipartText(long subId, String callingPkg, Uri messageUri,
-            String scAddress, List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents)
-            throws RemoteException {
-        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
-        if (iccSmsIntMgr != null ) {
-            iccSmsIntMgr.sendStoredMultipartText(callingPkg, messageUri, scAddress, sentIntents,
-                    deliveryIntents);
-        } else {
-            Rlog.e(LOG_TAG,"sendStoredMultipartText iccSmsIntMgr is null for subscription: "
-                    + subId);
-        }
     }
 
 }

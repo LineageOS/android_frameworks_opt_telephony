@@ -19,20 +19,16 @@ package com.android.internal.telephony;
 import android.Manifest;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
-import android.content.ContentResolver;
 import android.content.Context;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteException;
-import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
-import android.provider.Telephony;
+import android.os.ServiceManager;
 import android.telephony.Rlog;
-import android.telephony.SmsManager;
 import android.util.Log;
 
+import com.android.internal.telephony.ISms;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccConstants;
@@ -390,8 +386,7 @@ public class IccSmsInterfaceManager {
                 callingPackage) != AppOpsManager.MODE_ALLOWED) {
             return;
         }
-        mDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
-                null/*messageUri*/, callingPackage);
+        mDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent);
     }
 
     /**
@@ -472,8 +467,7 @@ public class IccSmsInterfaceManager {
             return;
         }
         mDispatcher.sendMultipartText(destAddr, scAddr, (ArrayList<String>) parts,
-                (ArrayList<PendingIntent>) sentIntents, (ArrayList<PendingIntent>) deliveryIntents,
-                null/*messageUri*/, callingPackage);
+                (ArrayList<PendingIntent>) sentIntents, (ArrayList<PendingIntent>) deliveryIntents);
     }
 
 
@@ -841,139 +835,5 @@ public class IccSmsInterfaceManager {
 
     public String getImsSmsFormat() {
         return mDispatcher.getImsSmsFormat();
-    }
-
-    public void sendStoredText(String callingPkg, Uri messageUri, String scAddress,
-            PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        mPhone.getContext().enforceCallingPermission(Manifest.permission.SEND_SMS,
-                "Sending SMS message");
-        if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
-            log("sendStoredText: scAddr=" + scAddress + " messageUri=" + messageUri
-                    + " sentIntent=" + sentIntent + " deliveryIntent=" + deliveryIntent);
-        }
-        if (mAppOps.noteOp(AppOpsManager.OP_SEND_SMS, Binder.getCallingUid(), callingPkg)
-                != AppOpsManager.MODE_ALLOWED) {
-            return;
-        }
-        final ContentResolver resolver = mPhone.getContext().getContentResolver();
-        if (!isFailedOrDraft(resolver, messageUri)) {
-            Log.e(LOG_TAG, "[IccSmsInterfaceManager]sendStoredText: not FAILED or DRAFT message");
-            returnUnspecifiedFailure(sentIntent);
-            return;
-        }
-        final String[] textAndAddress = loadTextAndAddress(resolver, messageUri);
-        if (textAndAddress == null) {
-            Log.e(LOG_TAG, "[IccSmsInterfaceManager]sendStoredText: can not load text");
-            returnUnspecifiedFailure(sentIntent);
-            return;
-        }
-        mDispatcher.sendText(textAndAddress[1], scAddress, textAndAddress[0],
-                sentIntent, deliveryIntent, messageUri, callingPkg);
-    }
-
-    public void sendStoredMultipartText(String callingPkg, Uri messageUri, String scAddress,
-            List<PendingIntent> sentIntents, List<PendingIntent> deliveryIntents) {
-        mPhone.getContext().enforceCallingPermission(Manifest.permission.SEND_SMS,
-                "Sending SMS message");
-        if (mAppOps.noteOp(AppOpsManager.OP_SEND_SMS, Binder.getCallingUid(), callingPkg)
-                != AppOpsManager.MODE_ALLOWED) {
-            return;
-        }
-        final ContentResolver resolver = mPhone.getContext().getContentResolver();
-        if (!isFailedOrDraft(resolver, messageUri)) {
-            Log.e(LOG_TAG, "[IccSmsInterfaceManager]sendStoredMultipartText: "
-                    + "not FAILED or DRAFT message");
-            returnUnspecifiedFailure(sentIntents);
-            return;
-        }
-        final String[] textAndAddress = loadTextAndAddress(resolver, messageUri);
-        if (textAndAddress == null) {
-            Log.e(LOG_TAG, "[IccSmsInterfaceManager]sendStoredMultipartText: can not load text");
-            returnUnspecifiedFailure(sentIntents);
-            return;
-        }
-        final ArrayList<String> parts = SmsManager.getDefault().divideMessage(textAndAddress[0]);
-        if (parts == null || parts.size() < 1) {
-            Log.e(LOG_TAG, "[IccSmsInterfaceManager]sendStoredMultipartText: can not divide text");
-            returnUnspecifiedFailure(sentIntents);
-            return;
-        }
-        mDispatcher.sendMultipartText(
-                textAndAddress[1], // destAddress
-                scAddress,
-                parts,
-                (ArrayList<PendingIntent>) sentIntents,
-                (ArrayList<PendingIntent>) deliveryIntents,
-                messageUri,
-                callingPkg);
-    }
-
-    private boolean isFailedOrDraft(ContentResolver resolver, Uri messageUri) {
-        Cursor cursor = null;
-        try {
-            cursor = resolver.query(
-                    messageUri,
-                    new String[]{ Telephony.Sms.TYPE },
-                    null/*selection*/,
-                    null/*selectionArgs*/,
-                    null/*sortOrder*/);
-            if (cursor != null && cursor.moveToFirst()) {
-                final int type = cursor.getInt(0);
-                return type == Telephony.Sms.MESSAGE_TYPE_DRAFT
-                        || type == Telephony.Sms.MESSAGE_TYPE_FAILED;
-            }
-        } catch (SQLiteException e) {
-            Log.e(LOG_TAG, "[IccSmsInterfaceManager]isFailedOrDraft: query message type failed", e);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-        return false;
-    }
-
-    // Return an array including both the SMS text (0) and address (1)
-    private String[] loadTextAndAddress(ContentResolver resolver, Uri messageUri) {
-        Cursor cursor = null;
-        try {
-            cursor = resolver.query(
-                    messageUri,
-                    new String[]{
-                            Telephony.Sms.BODY,
-                            Telephony.Sms.ADDRESS
-                    },
-                    null/*selection*/,
-                    null/*selectionArgs*/,
-                    null/*sortOrder*/);
-            if (cursor != null && cursor.moveToFirst()) {
-                return new String[]{ cursor.getString(0), cursor.getString(1) };
-            }
-        } catch (SQLiteException e) {
-            Log.e(LOG_TAG, "[IccSmsInterfaceManager]loadText: query message text failed", e);
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-        return null;
-    }
-
-    private void returnUnspecifiedFailure(PendingIntent pi) {
-        if (pi != null) {
-            try {
-                pi.send(SmsManager.RESULT_ERROR_GENERIC_FAILURE);
-            } catch (PendingIntent.CanceledException e) {
-                // ignore
-            }
-        }
-    }
-
-    private void returnUnspecifiedFailure(List<PendingIntent> pis) {
-        if (pis == null) {
-            return;
-        }
-        for (PendingIntent pi : pis) {
-            returnUnspecifiedFailure(pi);
-        }
     }
 }

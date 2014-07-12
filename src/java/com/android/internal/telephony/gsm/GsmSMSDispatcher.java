@@ -21,6 +21,8 @@ import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncResult;
@@ -28,6 +30,7 @@ import android.os.Message;
 import android.provider.Telephony.Sms;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.ImsSMSDispatcher;
@@ -166,21 +169,16 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     @Override
-    protected void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
-            PendingIntent deliveryIntent, Uri messageUri, String callingPkg) {
+    protected void sendText(String destAddr, String scAddr, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, text, (deliveryIntent != null));
         if (pdu != null) {
-            if (messageUri == null) {
-                messageUri = writeOutboxMessage(
-                        getSubId(),
-                        destAddr,
-                        text,
-                        deliveryIntent != null,
-                        callingPkg);
-            } else {
-                moveToOutbox(getSubId(), messageUri, callingPkg);
-            }
+            final Uri messageUri = writeOutboxMessage(
+                    SubscriptionManager.getPreferredSmsSubId(),
+                    destAddr,
+                    text,
+                    deliveryIntent != null);
             HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
                     messageUri);
