@@ -573,27 +573,50 @@ public final class RuimRecords extends IccRecords {
         }
     }
 
-    private String findBestLanguage(byte[] languages) {
-        String bestMatch = null;
-        String[] locales = mContext.getAssets().getLocales();
+    /**
+     * Returns an array of languages we have assets for.
+     *
+     * NOTE: This array will have duplicates. If this method will be caused
+     * frequently or in a tight loop, it can be rewritten for efficiency.
+     */
+    private static String[] getAssetLanguages(Context ctx) {
+        final String[] locales = ctx.getAssets().getLocales();
+        final String[] localeLangs = new String[locales.length];
+        for (int i = 0; i < locales.length; ++i) {
+            final String localeStr = locales[i];
+            final int separator = localeStr.indexOf('-');
+            if (separator < 0) {
+                localeLangs[i] = localeStr;
+            } else {
+                localeLangs[i] = localeStr.substring(0, separator);
+            }
+        }
 
-        if ((languages == null) || (locales == null)) return null;
+        return localeLangs;
+    }
+
+    private String findBestLanguage(byte[] languages) {
+        final String[] assetLanguages = getAssetLanguages(mContext);
+
+        if ((languages == null) || (assetLanguages == null)) return null;
 
         // Each 2-bytes consists of one language
         for (int i = 0; (i + 1) < languages.length; i += 2) {
+            final String lang;
             try {
-                String lang = new String(languages, i, 2, "ISO-8859-1");
-                for (int j = 0; j < locales.length; j++) {
-                    if (locales[j] != null && locales[j].length() >= 2 &&
-                        locales[j].substring(0, 2).equals(lang)) {
-                        return lang;
-                    }
-                }
-                if (bestMatch != null) break;
+                lang = new String(languages, i, 2, "ISO-8859-1");
             } catch(java.io.UnsupportedEncodingException e) {
-                log ("Failed to parse SIM language records");
+                log("Failed to parse SIM language records");
+                continue;
+            }
+
+            for (int j = 0; j < assetLanguages.length; j++) {
+                if (assetLanguages[j].equals(lang)) {
+                    return lang;
+                }
             }
         }
+
         // no match found. return null
         return null;
     }
