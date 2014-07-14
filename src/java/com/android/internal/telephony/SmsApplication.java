@@ -33,6 +33,7 @@ import android.net.Uri;
 import android.provider.Settings;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
+import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
 import com.android.internal.content.PackageMonitor;
 
@@ -593,6 +594,10 @@ public final class SmsApplication {
      */
     public static boolean shouldWriteMessageForPackage(String packageName, Context context) {
         if (packageName == null) return true;
+
+        if (SmsManager.getDefault().getAutoPersisting()) {
+            return true;
+        }
 
         String defaultSmsPackage = null;
         ComponentName component = getDefaultSmsApplication(context, false);

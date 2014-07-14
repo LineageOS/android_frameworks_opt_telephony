@@ -43,6 +43,7 @@ import android.os.RemoteException;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.MessagingConfigurationManager;
+import android.telephony.SmsManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.Rlog;
 import android.util.Log;
@@ -195,8 +196,10 @@ public class WapPushOverSms implements ServiceConnection {
                 System.arraycopy(pdu, dataIndex, intentData, 0, intentData.length);
             }
 
-            // Store the wap push data in telephony
-            writeInboxMessage(intentData);
+            if (SmsManager.getDefault().getAutoPersisting()) {
+                // Store the wap push data in telephony
+                writeInboxMessage(intentData);
+            }
 
             /**
              * Seek for application ID field in WSP header.
@@ -294,10 +297,6 @@ public class WapPushOverSms implements ServiceConnection {
     }
 
     private void writeInboxMessage(byte[] pushData) {
-        if (!Telephony.AUTO_PERSIST) {
-            // TODO(ywen): Temporarily only enable this with a flag so not to break existing apps
-            return;
-        }
         final GenericPdu pdu = new PduParser(pushData).parse();
         if (pdu == null) {
             Rlog.e(TAG, "Invalid PUSH PDU");

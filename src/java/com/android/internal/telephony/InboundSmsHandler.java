@@ -40,6 +40,7 @@ import android.os.SystemProperties;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
+import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -902,10 +903,12 @@ public abstract class InboundSmsHandler extends StateMachine {
                       int destPort = intent.getIntExtra("destport", -1);
                       intent.removeExtra("destport");
                       setAndDirectIntent(intent, destPort);
-                      final Uri uri = writeInboxMessage(intent);
-                      if (uri != null) {
-                          // Pass this to SMS apps so that they know where it is stored
-                          intent.putExtra("uri", uri.toString());
+                      if (SmsManager.getDefault().getAutoPersisting()) {
+                          final Uri uri = writeInboxMessage(intent);
+                          if (uri != null) {
+                              // Pass this to SMS apps so that they know where it is stored
+                              intent.putExtra("uri", uri.toString());
+                          }
                       }
                       dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
                                      AppOpsManager.OP_RECEIVE_SMS, this);
@@ -995,10 +998,6 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @return The URI of written message
      */
     private Uri writeInboxMessage(Intent intent) {
-        if (!Telephony.AUTO_PERSIST) {
-            // TODO(ywen): Temporarily only enable this with a flag so not to break existing apps
-            return null;
-        }
         final SmsMessage[] messages = Telephony.Sms.Intents.getMessagesFromIntent(intent);
         if (messages == null || messages.length < 1) {
             loge("Failed to parse SMS pdu");
