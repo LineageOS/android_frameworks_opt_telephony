@@ -16,8 +16,13 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.content.pm.Signature;
 import android.os.AsyncResult;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.Rlog;
@@ -160,13 +165,13 @@ public class UiccCarrierPrivilegeRules extends Handler {
     }
 
     /**
-     * Returns true if the certificate and packageName has carrier privileges.
+     * Returns the status of the carrier privileges for the input certificate and package name.
      *
      * @param signature The signature of the certificate.
      * @param packageName name of the package.
      * @return Access status.
      */
-    public int hasCarrierPrivileges(Signature signature, String packageName) {
+    public int getCarrierPrivilegeStatus(Signature signature, String packageName) {
         Rlog.d(LOG_TAG, "hasCarrierPrivileges: " + signature + " : " + packageName);
         int state = mState.get();
         if (state == STATE_LOADING) {
@@ -191,6 +196,75 @@ public class UiccCarrierPrivilegeRules extends Handler {
 
         Rlog.d(LOG_TAG, "No matching rule found. Returning false.");
         return TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
+    }
+
+    /**
+     * Returns the status of the carrier privileges for the input package name.
+     *
+     * @param packageManager PackageManager for getting signatures.
+     * @param packageName name of the package.
+     * @return Access status.
+     */
+    public int getCarrierPrivilegeStatus(PackageManager packageManager, String packageName) {
+        try {
+            PackageInfo pInfo = packageManager.getPackageInfo(packageName,
+                PackageManager.GET_SIGNATURES);
+            Signature[] signatures = pInfo.signatures;
+            for (Signature sig : signatures) {
+                int accessStatus = getCarrierPrivilegeStatus(sig, pInfo.packageName);
+                if (accessStatus != TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS) {
+                    return accessStatus;
+                }
+            }
+        } catch (PackageManager.NameNotFoundException ex) {
+            Rlog.e(LOG_TAG, "NameNotFoundException", ex);
+        }
+        return TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
+    }
+
+    /**
+     * Returns the status of the carrier privileges for the caller of the current transaction.
+     *
+     * @param packageManager PackageManager for getting signatures and package names.
+     * @return Access status.
+     */
+    public int getCarrierPrivilegeStatusForCurrentTransaction(PackageManager packageManager) {
+        String[] packages = packageManager.getPackagesForUid(Binder.getCallingUid());
+
+        for (String pkg : packages) {
+            int accessStatus = getCarrierPrivilegeStatus(packageManager, pkg);
+            if (accessStatus != TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS) {
+                return accessStatus;
+            }
+        }
+        return TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
+    }
+
+    /**
+     * Given an intent, returns the package name of the carrier app that should handle the intent.
+     *
+     * @param packageManager PackageManager for getting receivers.
+     * @param intent Intent that will be broadcast.
+     * @return packageName name of package that should handle the intent. Will return an empty
+     *         string if no matching package is found.
+     */
+    public String getCarrierPackageNameForBroadcastIntent(
+            PackageManager packageManager, Intent intent) {
+        List<ResolveInfo> receivers = packageManager.queryBroadcastReceivers(intent, 0);
+        for (ResolveInfo resolveInfo : receivers) {
+            if (resolveInfo.activityInfo == null) {
+                continue;
+            }
+            String packageName = resolveInfo.activityInfo.packageName;
+            if (getCarrierPrivilegeStatus(packageManager, packageName) ==
+                    TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
+                return packageName;
+            }
+        }
+
+        // Return an empty package name so that no packages match.
+        // TODO: This creates an unnecessary ordered broadcast that can be avoided.
+        return "";
     }
 
     @Override

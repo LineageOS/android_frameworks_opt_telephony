@@ -22,6 +22,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.content.res.Resources;
 import android.os.AsyncResult;
@@ -466,12 +467,40 @@ public class UiccCard {
     }
 
     /**
-     * Exposes {@link UiccCarrierPrivilegeRules.hasCarrierPrivileges}.
+     * Exposes {@link UiccCarrierPrivilegeRules.getCarrierPrivilegeStatus}.
      */
-    public int hasCarrierPrivileges(Signature signature, String packageName) {
+    public int getCarrierPrivilegeStatus(Signature signature, String packageName) {
         return mCarrierPrivilegeRules == null ?
             TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED :
-            mCarrierPrivilegeRules.hasCarrierPrivileges(signature, packageName);
+            mCarrierPrivilegeRules.getCarrierPrivilegeStatus(signature, packageName);
+    }
+
+    /**
+     * Exposes {@link UiccCarrierPrivilegeRules.getCarrierPrivilegeStatus}.
+     */
+    public int getCarrierPrivilegeStatus(PackageManager packageManager, String packageName) {
+        return mCarrierPrivilegeRules == null ?
+            TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED :
+            mCarrierPrivilegeRules.getCarrierPrivilegeStatus(packageManager, packageName);
+    }
+
+    /**
+     * Exposes {@link UiccCarrierPrivilegeRules.getCarrierPrivilegeStatusForCurrentTransaction}.
+     */
+    public int getCarrierPrivilegeStatusForCurrentTransaction(PackageManager packageManager) {
+        return mCarrierPrivilegeRules == null ?
+            TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED :
+            mCarrierPrivilegeRules.getCarrierPrivilegeStatusForCurrentTransaction(packageManager);
+    }
+
+    /**
+     * Exposes {@link UiccCarrierPrivilegeRules.getCarrierPackageNameForBroadcastIntent}.
+     */
+    public String getCarrierPackageNameForBroadcastIntent(
+            PackageManager packageManager, Intent intent) {
+        return mCarrierPrivilegeRules == null ? "" :
+            mCarrierPrivilegeRules.getCarrierPackageNameForBroadcastIntent(
+                    packageManager, intent);
     }
 
     private void log(String msg) {
