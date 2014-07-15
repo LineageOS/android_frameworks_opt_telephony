@@ -1184,6 +1184,12 @@ public final class DcTracker extends DcTrackerBase {
         boolean checkUserDataEnabled =
                     !(apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IMS));
 
+        // If set the special property, enable mms data even if mobile data is turned off.
+        if (apnContext.getApnType().equals(PhoneConstants.APN_TYPE_MMS)) {
+            checkUserDataEnabled = checkUserDataEnabled && !(mPhone.getContext().getResources().
+                    getBoolean(com.android.internal.R.bool.config_enable_mms_with_mobile_data_off));
+        }
+
         if (apnContext.isConnectable() && (isEmergencyApn ||
                 (isDataAllowed(apnContext) &&
                 getAnyDataEnabled(checkUserDataEnabled) && !isEmergency()))) {
@@ -2357,6 +2363,11 @@ public final class DcTracker extends DcTrackerBase {
                 log(String.format("onDataSetupComplete: error apn=%s cause=%s",
                         (apn == null ? "unknown" : apn.apn), cause));
             }
+
+            if (cause == null) {
+                cause = DcFailCause.UNKNOWN;
+            }
+
             if (cause.isEventLoggable()) {
                 // Log this failure to the Event Logs.
                 int cid = getCellLocationId();
