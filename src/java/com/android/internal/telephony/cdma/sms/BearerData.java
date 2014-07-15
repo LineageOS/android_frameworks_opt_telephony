@@ -490,10 +490,23 @@ public final class BearerData {
                 ted.codeUnitCount = msg.length();
                 int octets = ted.codeUnitCount * 2;
                 if (octets > SmsConstants.MAX_USER_DATA_BYTES) {
-                    ted.msgCount = (octets + (SmsConstants.MAX_USER_DATA_BYTES_WITH_HEADER - 1)) /
+                    // If EMS is not supported, break down EMS into single segment SMS
+                    // and add page info " x/y".
+                    // In the case of UCS2 encoding type, we need 8 bytes for this
+                    // but we only have 6 bytes from UDH, so truncate the limit for
+                    // each segment by 2 bytes (1 char).
+                    int max_user_data_bytes_with_header =
                             SmsConstants.MAX_USER_DATA_BYTES_WITH_HEADER;
+                    if (!android.telephony.SmsMessage.hasEmsSupport()) {
+                        // make sure total number of segments is less than 10
+                        if (octets <= 9 * (max_user_data_bytes_with_header - 2))
+                            max_user_data_bytes_with_header -= 2;
+                    }
+
+                    ted.msgCount = (octets + (max_user_data_bytes_with_header - 1)) /
+                            max_user_data_bytes_with_header;
                     ted.codeUnitsRemaining = ((ted.msgCount *
-                            SmsConstants.MAX_USER_DATA_BYTES_WITH_HEADER) - octets) / 2;
+                            max_user_data_bytes_with_header) - octets) / 2;
                 } else {
                     ted.msgCount = 1;
                     ted.codeUnitsRemaining = (SmsConstants.MAX_USER_DATA_BYTES - octets)/2;
