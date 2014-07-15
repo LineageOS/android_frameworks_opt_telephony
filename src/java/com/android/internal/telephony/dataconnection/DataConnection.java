@@ -427,7 +427,7 @@ public final class DataConnection extends StateMachine {
         int networkType = ss.getDataNetworkType();
         mNetworkInfo = new NetworkInfo(ConnectivityManager.TYPE_MOBILE,
                 networkType, NETWORK_TYPE, TelephonyManager.getNetworkTypeName(networkType));
-        mNetworkInfo.setRoaming(ss.getRoaming());
+        mNetworkInfo.setRoaming(ss.getDataRoaming());
         mNetworkInfo.setIsAvailable(true);
 
         addState(mDefaultState);
@@ -560,7 +560,7 @@ public final class DataConnection extends StateMachine {
         }
 
         String protocol;
-        if (mPhone.getServiceState().getRoaming()) {
+        if (mPhone.getServiceState().getDataRoaming()) {
             protocol = mApnSetting.roamingProtocol;
         } else {
             protocol = mApnSetting.protocol;
@@ -1063,9 +1063,9 @@ public final class DataConnection extends StateMachine {
             mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(getHandler(),
                     DataConnection.EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED, null);
 
-            mPhone.getServiceStateTracker().registerForRoamingOn(getHandler(),
+            mPhone.getServiceStateTracker().registerForDataRoamingOn(getHandler(),
                     DataConnection.EVENT_DATA_CONNECTION_ROAM_ON, null);
-            mPhone.getServiceStateTracker().registerForRoamingOff(getHandler(),
+            mPhone.getServiceStateTracker().registerForDataRoamingOff(getHandler(),
                     DataConnection.EVENT_DATA_CONNECTION_ROAM_OFF, null);
 
             // Add ourselves to the list of data connections
@@ -1078,8 +1078,8 @@ public final class DataConnection extends StateMachine {
             // Unregister for DRS or RAT change.
             mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(getHandler());
 
-            mPhone.getServiceStateTracker().unregisterForRoamingOn(getHandler());
-            mPhone.getServiceStateTracker().unregisterForRoamingOff(getHandler());
+            mPhone.getServiceStateTracker().unregisterForDataRoamingOn(getHandler());
+            mPhone.getServiceStateTracker().unregisterForDataRoamingOff(getHandler());
 
             // Remove ourselves from the DC lists
             mDcController.removeDc(DataConnection.this);

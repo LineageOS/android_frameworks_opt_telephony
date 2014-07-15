@@ -245,6 +245,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             mNewSS.setRilDataRadioTechnology(type);
             int dataRegState = regCodeToServiceState(regState);
             mNewSS.setDataRegState(dataRegState);
+            // voice roaming state in done while handling EVENT_POLL_STATE_REGISTRATION_CDMA
+            mNewSS.setDataRoaming(regCodeIsRoaming(regState));
             if (DBG) {
                 log("handlPollStateResultMessage: CdmaLteSST setDataRegState=" + dataRegState
                         + " regState=" + regState
@@ -351,9 +353,13 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
         boolean hasChanged = !mNewSS.equals(mSS);
 
-        boolean hasRoamingOn = !mSS.getRoaming() && mNewSS.getRoaming();
+        boolean hasVoiceRoamingOn = !mSS.getVoiceRoaming() && mNewSS.getVoiceRoaming();
 
-        boolean hasRoamingOff = mSS.getRoaming() && !mNewSS.getRoaming();
+        boolean hasVoiceRoamingOff = mSS.getVoiceRoaming() && !mNewSS.getVoiceRoaming();
+
+        boolean hasDataRoamingOn = !mSS.getDataRoaming() && mNewSS.getDataRoaming();
+
+        boolean hasDataRoamingOff = mSS.getDataRoaming() && !mNewSS.getDataRoaming();
 
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
@@ -388,8 +394,10 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 + " hasVoiceRadioTechnologyChanged= " + hasVoiceRadioTechnologyChanged
                 + " hasDataRadioTechnologyChanged=" + hasDataRadioTechnologyChanged
                 + " hasChanged=" + hasChanged
-                + " hasRoamingOn=" + hasRoamingOn
-                + " hasRoamingOff=" + hasRoamingOff
+                + " hasVoiceRoamingOn=" + hasVoiceRoamingOn
+                + " hasVoiceRoamingOff=" + hasVoiceRoamingOff
+                + " hasDataRoamingOn=" + hasDataRoamingOn
+                + " hasDataRoamingOff=" + hasDataRoamingOff
                 + " hasLocationChanged=" + hasLocationChanged
                 + " has4gHandoff = " + has4gHandoff
                 + " hasMultiApnSupport=" + hasMultiApnSupport
@@ -522,9 +530,11 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             }
 
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
-                    mSS.getRoaming() ? "true" : "false");
+                    (mSS.getVoiceRoaming() || mSS.getDataRoaming()) ? "true" : "false");
 
             updateSpnDisplay();
+            setRoamingType(mSS);
+            log("Broadcasting ServiceState : " + mSS);
             mPhone.notifyServiceStateChanged(mSS);
         }
 
@@ -561,12 +571,20 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             mAttachedRegistrants.notifyRegistrants();
         }
 
-        if (hasRoamingOn) {
-            mRoamingOnRegistrants.notifyRegistrants();
+        if (hasVoiceRoamingOn) {
+            mVoiceRoamingOnRegistrants.notifyRegistrants();
         }
 
-        if (hasRoamingOff) {
-            mRoamingOffRegistrants.notifyRegistrants();
+        if (hasVoiceRoamingOff) {
+            mVoiceRoamingOffRegistrants.notifyRegistrants();
+        }
+
+        if (hasDataRoamingOn) {
+            mDataRoamingOnRegistrants.notifyRegistrants();
+        }
+
+        if (hasDataRoamingOff) {
+            mDataRoamingOffRegistrants.notifyRegistrants();
         }
 
         if (hasLocationChanged) {

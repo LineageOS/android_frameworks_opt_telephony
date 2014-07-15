@@ -903,9 +903,53 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 (isSameNamedOperators(mNewSS) || isOperatorConsideredNonRoaming(mNewSS))) {
                 roaming = false;
             }
-            mNewSS.setRoaming(roaming);
+            mNewSS.setVoiceRoaming(roaming);
+            mNewSS.setDataRoaming(roaming);
             mNewSS.setEmergencyOnly(mEmergencyOnly);
             pollStateDone();
+        }
+    }
+
+    /**
+     * Set both voice and data roaming type,
+     * judging from the ISO country of SIM VS network.
+     */
+    protected void setRoamingType(ServiceState currentServiceState) {
+        final boolean isVoiceInService =
+                (currentServiceState.getVoiceRegState() == ServiceState.STATE_IN_SERVICE);
+        if (isVoiceInService) {
+            if (currentServiceState.getVoiceRoaming()) {
+                // check roaming type by MCC
+                if (inSameCountry(currentServiceState.getVoiceOperatorNumeric())) {
+                    currentServiceState.setVoiceRoamingType(
+                            ServiceState.ROAMING_TYPE_DOMESTIC);
+                } else {
+                    currentServiceState.setVoiceRoamingType(
+                            ServiceState.ROAMING_TYPE_INTERNATIONAL);
+                }
+            } else {
+                currentServiceState.setVoiceRoamingType(ServiceState.ROAMING_TYPE_NOT_ROAMING);
+            }
+        }
+        final boolean isDataInService =
+                (currentServiceState.getDataRegState() == ServiceState.STATE_IN_SERVICE);
+        final int dataRegType = currentServiceState.getRilDataRadioTechnology();
+        if (isDataInService) {
+            if (!currentServiceState.getDataRoaming()) {
+                currentServiceState.setDataRoamingType(ServiceState.ROAMING_TYPE_NOT_ROAMING);
+            } else if (ServiceState.isGsm(dataRegType)) {
+                if (isVoiceInService) {
+                    // GSM data should have the same state as voice
+                    currentServiceState.setDataRoamingType(currentServiceState
+                            .getVoiceRoamingType());
+                } else {
+                    // we can not decide GSM data roaming type without voice
+                    currentServiceState.setDataRoamingType(ServiceState.ROAMING_TYPE_UNKNOWN);
+                }
+            } else {
+                // we can not decide 3gpp2 roaming state here
+                currentServiceState.setDataRoamingType(ServiceState.ROAMING_TYPE_UNKNOWN);
+            }
         }
     }
 
@@ -1000,7 +1044,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
 
         if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
-            mNewSS.setRoaming(true);
+            mNewSS.setVoiceRoaming(true);
+            mNewSS.setDataRoaming(true);
         }
 
         useDataRegStateForDataOnlyDevices();
@@ -1035,9 +1080,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         boolean hasChanged = !mNewSS.equals(mSS);
 
-        boolean hasRoamingOn = !mSS.getRoaming() && mNewSS.getRoaming();
+        boolean hasVoiceRoamingOn = !mSS.getVoiceRoaming() && mNewSS.getVoiceRoaming();
 
-        boolean hasRoamingOff = mSS.getRoaming() && !mNewSS.getRoaming();
+        boolean hasVoiceRoamingOff = mSS.getVoiceRoaming() && !mNewSS.getVoiceRoaming();
+
+        boolean hasDataRoamingOn = !mSS.getDataRoaming() && mNewSS.getDataRoaming();
+
+        boolean hasDataRoamingOff = mSS.getDataRoaming() && !mNewSS.getDataRoaming();
 
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
@@ -1248,8 +1297,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             }
 
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
-                mSS.getRoaming() ? "true" : "false");
+                mSS.getVoiceRoaming() ? "true" : "false");
 
+            setRoamingType(mSS);
+            log("Broadcasting ServiceState : " + mSS);
             mPhone.notifyServiceStateChanged(mSS);
         }
 
@@ -1286,12 +1337,20 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             mAttachedRegistrants.notifyRegistrants();
         }
 
-        if (hasRoamingOn) {
-            mRoamingOnRegistrants.notifyRegistrants();
+        if (hasVoiceRoamingOn) {
+            mVoiceRoamingOnRegistrants.notifyRegistrants();
         }
 
-        if (hasRoamingOff) {
-            mRoamingOffRegistrants.notifyRegistrants();
+        if (hasVoiceRoamingOff) {
+            mVoiceRoamingOffRegistrants.notifyRegistrants();
+        }
+
+        if (hasDataRoamingOn) {
+            mDataRoamingOnRegistrants.notifyRegistrants();
+        }
+
+        if (hasDataRoamingOff) {
+            mDataRoamingOffRegistrants.notifyRegistrants();
         }
 
         if (hasLocationChanged) {
