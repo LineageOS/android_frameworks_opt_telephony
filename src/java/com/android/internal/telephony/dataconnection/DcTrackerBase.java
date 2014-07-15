@@ -409,7 +409,7 @@ public abstract class DcTrackerBase extends Handler {
         @Override
         public void onChange(boolean selfChange) {
             // already running on mPhone handler thread
-            if (mPhone.getServiceState().getRoaming()) {
+            if (mPhone.getServiceState().getDataRoaming()) {
                 sendMessage(obtainMessage(DctConstants.EVENT_ROAMING_ON));
             }
         }
@@ -1360,7 +1360,7 @@ public abstract class DcTrackerBase extends Handler {
                 Settings.Global.putInt(mPhone.getContext().getContentResolver(),
                         Settings.Global.MOBILE_DATA + phoneSubId, enabled ? 1 : 0);
                 if (getDataOnRoamingEnabled() == false &&
-                        mPhone.getServiceState().getRoaming() == true) {
+                        mPhone.getServiceState().getDataRoaming() == true) {
                     if (enabled) {
                         notifyOffApnsOfAvailability(Phone.REASON_ROAMING_ON);
                     } else {
@@ -1811,7 +1811,7 @@ public abstract class DcTrackerBase extends Handler {
             for (ApnSetting apn : mAllApnSettings) {
                 if (apn.modemCognitive) {
                     DataProfile dp = new DataProfile(apn,
-                            mPhone.getServiceState().getRoaming());
+                            mPhone.getServiceState().getDataRoaming());
                     boolean isDup = false;
                     for(DataProfile dpIn : dps) {
                         if (dp.equals(dpIn)) {
