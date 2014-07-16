@@ -647,9 +647,10 @@ public interface Phone {
      * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
      * java.lang.Object) registerForPreciseCallStateChanged()}.
      *
+     * @param videoState The video state in which to answer the call.
      * @exception CallStateException when no call is ringing or waiting
      */
-    void acceptCall() throws CallStateException;
+    void acceptCall(int videoState) throws CallStateException;
 
     /**
      * Reject (ignore) a ringing call. In GSM, this means UDUB

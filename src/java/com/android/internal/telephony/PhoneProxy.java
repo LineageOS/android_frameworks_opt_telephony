@@ -610,8 +610,8 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
-    public void acceptCall() throws CallStateException {
-        mActivePhone.acceptCall();
+    public void acceptCall(int videoState) throws CallStateException {
+        mActivePhone.acceptCall(videoState);
     }
 
     @Override

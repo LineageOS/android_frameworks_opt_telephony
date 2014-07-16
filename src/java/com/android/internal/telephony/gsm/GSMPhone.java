@@ -506,7 +506,7 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public void
-    acceptCall() throws CallStateException {
+    acceptCall(int videoState) throws CallStateException {
         mCT.acceptCall();
     }
 
