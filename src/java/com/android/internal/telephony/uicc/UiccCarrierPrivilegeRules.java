@@ -62,23 +62,43 @@ import java.util.Locale;
 public class UiccCarrierPrivilegeRules extends Handler {
     private static final String LOG_TAG = "UiccCarrierPrivilegeRules";
 
-    // TODO: These are temporary values. Put real ones here.
-    private static final String AID = "A0000000015141434D";
+    private static final String AID = "A0000000015141434C00";
     private static final int CLA = 0x80;
-    private static final int COMMAND = 0xCA;
-    private static final int P1 = 0xFF;
-    private static final int P2 = 0x40;
+    private static final int COMMAND = 0xB0;
+    private static final int P1 = 0x00;
+    private static final int P2 = 0x00;
     private static final int P3 = 0x00;
     private static final String DATA = "";
 
+    /*
+     * Rules format:
+     *   ALL_REF_AR_DO = TAG_ALL_REF_AR_DO + len + [REF_AR_DO]*n
+     *   REF_AR_DO = TAG_REF_AR_DO + len + REF-DO + AR-DO
+     *
+     *   REF_DO = TAG_REF_DO + len + DEVICE_APP_ID_REF_DO + (optional) PKG_REF_DO
+     *   AR_DO = TAG_AR_DO + len + PERM_AR_DO
+     *
+     *   DEVICE_APP_ID_REF_DO = TAG_DEVICE_APP_ID_REF_DO + len + sha1 hexstring of cert (20 bytes)
+     *   PKG_REF_DO = TAG_PKG_REF_DO + len + package name
+     *   PERM_AR_DO = TAG_PERM_AR_DO + len + detailed permission (8 bytes)
+     *
+     * Data objects hierarchy by TAG:
+     * FF40
+     *   E2
+     *     E1
+     *       C1
+     *       CA
+     *     E3
+     *       DB
+     */
     // Values from the data standard.
     private static final String TAG_ALL_REF_AR_DO = "FF40";
     private static final String TAG_REF_AR_DO = "E2";
     private static final String TAG_REF_DO = "E1";
-    private static final String TAG_AR_DO = "E3";
     private static final String TAG_DEVICE_APP_ID_REF_DO = "C1";
-    private static final String TAG_PERM_AR_DO = "DB";
     private static final String TAG_PKG_REF_DO = "CA";
+    private static final String TAG_AR_DO = "E3";
+    private static final String TAG_PERM_AR_DO = "DB";
 
     private static final int EVENT_OPEN_LOGICAL_CHANNEL_DONE = 1;
     private static final int EVENT_TRANSMIT_LOGICAL_CHANNEL_DONE = 2;
@@ -124,6 +144,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
         }
 
         public String parse(String data, boolean shouldConsumeAll) {
+            Rlog.d(LOG_TAG, "Parse TLV: " + tag);
             if (!data.startsWith(tag)) {
                 throw new IllegalArgumentException("Tags don't match.");
             }
@@ -144,7 +165,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
             }
             value = data.substring(index, index + length);
 
-            Rlog.e(LOG_TAG, "Got TLV: " + tag + "," + length + "," + value);
+            Rlog.d(LOG_TAG, "Got TLV: " + tag + "," + length + "," + value);
 
             return data.substring(index + length);
         }
@@ -190,6 +211,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
 
         for (AccessRule ar : mAccessRules) {
             if (ar.matches(certHash, packageName)) {
+                Rlog.d(LOG_TAG, "Match found!");
                 return TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
             }
         }
@@ -329,18 +351,13 @@ public class UiccCarrierPrivilegeRules extends Handler {
         rules = rules.toUpperCase(Locale.US);
         Rlog.d(LOG_TAG, "Got rules: " + rules);
 
-        /*
-         * Rules format.
-         *   ALL_REF_AR_DO = TAG_ALL_REF_AR_DO + len + [REF_AR_DO]xn
-         *   REF_AR_DO = TAG_REF_AR_DO + len + REF-DO | AR-DO
-         */
-        TLV allRefArDo = new TLV(TAG_ALL_REF_AR_DO);
+        TLV allRefArDo = new TLV(TAG_ALL_REF_AR_DO); //FF40
         allRefArDo.parse(rules, true);
 
         String arDos = allRefArDo.value;
         List<AccessRule> accessRules = new ArrayList<AccessRule>();
         while (!arDos.isEmpty()) {
-            TLV refArDo = new TLV(TAG_REF_AR_DO);
+            TLV refArDo = new TLV(TAG_REF_AR_DO); //E2
             arDos = refArDo.parse(arDos, false);
             accessRules.add(parseRefArdo(refArDo.value));
         }
@@ -353,41 +370,32 @@ public class UiccCarrierPrivilegeRules extends Handler {
     private static AccessRule parseRefArdo(String rule) {
         Rlog.d(LOG_TAG, "Got rule: " + rule);
 
-        /*
-         *   REF_AR_DO = TAG_REF_AR_DO + len + REF-DO | AR-DO
-         *   REF_DO = TAG_REF_DO + len + DEVICE_APP_ID_REF_DO | PKG_REF_DO
-         *   AR_DO = TAG_AR_DO + len + PERM_AR_DO
-         *   DEVICE_APP_ID_REF_DO = TAG_DEVICE_APP_ID_REF_DO + 20 | 0 + 20 byte hash (padded with FF)
-         *   PKG_REF_DO = TAG_PKG_REF_DO + 20 + 20 byte hash of package name (padded with FF)
-         *   PERM_AR_DO = TAG_PERM_AR_DO + 8 + 8 bytes
-         */
-
         String certificateHash = null;
         String packageName = null;
+        String tmp = null;
         long accessType = 0;
 
         while (!rule.isEmpty()) {
             if (rule.startsWith(TAG_REF_DO)) {
-                TLV refDo = new TLV(TAG_REF_DO);
+                TLV refDo = new TLV(TAG_REF_DO); //E1
                 rule = refDo.parse(rule, false);
 
-                if (refDo.value.startsWith(TAG_DEVICE_APP_ID_REF_DO)) {
-                    TLV deviceDo = new TLV(TAG_DEVICE_APP_ID_REF_DO);
-                    deviceDo.parse(refDo.value, true);
-                    certificateHash = deviceDo.value;
-                } else if (refDo.value.startsWith(TAG_PKG_REF_DO)) {
-                    TLV pkgDo = new TLV(TAG_PKG_REF_DO);
-                    pkgDo.parse(refDo.value, true);
-                    packageName = pkgDo.value;
+                TLV deviceDo = new TLV(TAG_DEVICE_APP_ID_REF_DO); //C1
+                tmp = deviceDo.parse(refDo.value, false);
+                certificateHash = deviceDo.value;
+
+                if (!tmp.isEmpty()) {
+                  TLV pkgDo = new TLV(TAG_PKG_REF_DO); //CA
+                  pkgDo.parse(tmp, true);
+                  packageName = new String(IccUtils.hexStringToBytes(pkgDo.value));
                 } else {
-                    throw new IllegalArgumentException(
-                        "Invalid REF_DO value tag: " + refDo.value);
+                  packageName = null;
                 }
             } else if (rule.startsWith(TAG_AR_DO)) {
-                TLV arDo = new TLV(TAG_AR_DO);
+                TLV arDo = new TLV(TAG_AR_DO); //E3
                 rule = arDo.parse(rule, false);
 
-                TLV permDo = new TLV(TAG_PERM_AR_DO);
+                TLV permDo = new TLV(TAG_PERM_AR_DO); //DB
                 permDo.parse(arDo.value, true);
                 Rlog.e(LOG_TAG, permDo.value);
             } else  {
