@@ -539,10 +539,6 @@ public class DcTracker extends DcTrackerBase {
         // If already active, return
         if (DBG) log("enableApnType: " + apnType + " mState(" + apnContext.getState() + ")");
 
-        if (apnContext.getState() == DctConstants.State.CONNECTED) {
-            if (DBG) log("enableApnType: return APN_ALREADY_ACTIVE");
-            return PhoneConstants.APN_ALREADY_ACTIVE;
-        }
         if (mPhone.mCi.needsOldRilFeature("singlepdp") && !PhoneConstants.APN_TYPE_DEFAULT.equals(apnType)) {
             ApnContext defContext = mApnContexts.get(PhoneConstants.APN_TYPE_DEFAULT);
             if (defContext.isEnabled()) {
@@ -550,6 +546,11 @@ public class DcTracker extends DcTrackerBase {
             }
         }
         setEnabled(apnTypeToId(apnType), true);
+
+        if (apnContext.getState() == DctConstants.State.CONNECTED) {
+            if (DBG) log("enableApnType: return APN_ALREADY_ACTIVE");
+            return PhoneConstants.APN_ALREADY_ACTIVE;
+        }
         if (DBG) {
             log("enableApnType: new apn request for type " + apnType +
                     " return APN_REQUEST_STARTED");
