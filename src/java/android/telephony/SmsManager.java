@@ -150,6 +150,9 @@ public final class SmsManager {
      *
      * Inject an SMS PDU into the android application framework.
      *
+     * The caller should have carrier privileges.
+     * @see android.telephony.TelephonyManager.hasCarrierPrivileges
+     *
      * @param pdu is the byte array of pdu to be injected into android application framework
      * @param format is the format of SMS pdu (3gpp or 3gpp2)
      * @param receivedIntent if not NULL this <code>PendingIntent</code> is
@@ -158,7 +161,6 @@ public final class SmsManager {
      *  the same time an SMS received from radio is acknowledged back.
      *
      *  @throws IllegalArgumentException if format is not one of 3gpp and 3gpp2.
-     *  {@hide}
      */
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
         if (!format.equals(SmsMessage.FORMAT_3GPP) && !format.equals(SmsMessage.FORMAT_3GPP2)) {
@@ -181,10 +183,12 @@ public final class SmsManager {
      * This outbound message was handled by the carrier app. If the carrier app fails to send
      * this message, it would be resent by PSTN.
      *
+     * The caller should have carrier privileges.
+     * @see android.telephony.TelephonyManager.hasCarrierPrivileges
+     *
      * @param messageRef the reference number of the SMS message.
      * @param success True if and only if the message was sent successfully. If its value is
      *  false, this message should be resent via PSTN.
-     * {@hide}
      */
     public void updateSmsSendStatus(int messageRef, boolean success) {
         try {
@@ -1115,10 +1119,12 @@ public final class SmsManager {
      * Update the status of a pending (send-by-IP) MMS message handled by the carrier app.
      * If the carrier app fails to send this message, it would be resent via carrier network.
      *
+     * The caller should have carrier privileges.
+     * @see android.telephony.TelephonyManager.hasCarrierPrivileges
+     *
      * @param messageRef the reference number of the MMS message.
      * @param success True if and only if the message was sent successfully. If its value is
      *  false, this message should be resent via carrier network
-     * {@hide}
      */
     public void updateMmsSendStatus(int messageRef, boolean success) {
         try {
@@ -1137,10 +1143,12 @@ public final class SmsManager {
      * If the carrier app fails to download this message, it would be re-downloaded via carrier
      * network.
      *
+     * The caller should have carrier privileges.
+     * @see android.telephony.TelephonyManager.hasCarrierPrivileges
+     *
      * @param messageRef the reference number of the MMS message.
      * @param pdu non-empty if downloaded successfully, otherwise, it is empty and the message
      *  will be downloaded via carrier network
-     * {@hide}
      */
     public void updateMmsDownloadStatus(int messageRef, byte[] pdu) {
         try {
