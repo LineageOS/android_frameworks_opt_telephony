@@ -15,7 +15,6 @@
  */
 
 package com.android.internal.telephony;
-
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
@@ -62,6 +61,7 @@ import android.widget.TextView;
 
 import com.android.internal.R;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
+import com.android.internal.telephony.uicc.UiccController;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -1479,6 +1479,11 @@ public abstract class SMSDispatcher extends Handler {
             }
         }
         return sb.toString();
+    }
+
+    protected String getCarrierAppPackageName(Intent intent) {
+        return UiccController.getInstance().getUiccCard().getCarrierPackageNameForBroadcastIntent(
+            mContext.getPackageManager(), intent);
     }
 
     protected long getSubId() {

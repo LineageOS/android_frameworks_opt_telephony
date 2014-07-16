@@ -846,7 +846,7 @@ public final class Telephony {
 
             /**
              * Broadcast Action: A new text-based SMS message has been received
-             * by the device. This intent will only be delivered to the default
+             * by the device. This intent will only be delivered to a
              * carrier app which is responsible for filtering the message.
              * If the carrier app wants to drop a message, it should set the result
              * code to {@link android.app.Activity#RESULT_CANCELED}. The carrier app can
@@ -867,10 +867,8 @@ public final class Telephony {
              * {@link #getMessagesFromIntent(Intent)}.</p>
              *
              * <p class="note"><strong>Note:</strong>
-             * The broadcast receiver that filters for this intent must declare
-             * {@link android.Manifest.permission#BROADCAST_SMS} as a required permission in
-             * the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">{@code
-             * &lt;receiver>}</a> tag.
+             * The broadcast receiver that filters for this intent must be a carrier privileged app.
+             * </p>
              * @hide
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
@@ -1073,7 +1071,7 @@ public final class Telephony {
 
             /**
              * Broadcast Action: A new SMS PDU needs to be sent from
-             * the device. This intent will only be delivered to the default
+             * the device. This intent will only be delivered to a
              * carrier app. That app is responsible for sending the PDU.
              * The intent will have the following extra values:</p>
              *
@@ -1097,10 +1095,8 @@ public final class Telephony {
              * </p>
              *
              * <p class="note"><strong>Note:</strong>
-             * The broadcast receiver that filters for this intent must declare
-             * {@link android.Manifest.permission#BROADCAST_SMS} as a required permission in
-             * the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">{@code
-             * &lt;receiver>}</a> tag.
+             * The broadcast receiver that filters for this intent must be a carrier privileged app.
+             * </p>
              * @hide
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
@@ -2273,7 +2269,7 @@ public final class Telephony {
 
             /**
              * Broadcast Action: A new MMS PDU needs to be sent from
-             * the device. This intent will only be delivered to the default
+             * the device. This intent will only be delivered to a
              * carrier app. That app is responsible for sending the PDU.
              * The intent will have the following extra values:</p>
              *
@@ -2297,10 +2293,8 @@ public final class Telephony {
              * </p>
              *
              * <p class="note"><strong>Note:</strong>
-             * The broadcast receiver that filters for this intent must declare
-             * {@link android.Manifest.permission#BROADCAST_WAP_PUSH} as a required permission in
-             * the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">{@code
-             * &lt;receiver>}</a> tag.
+             * The broadcast receiver that filters for this intent must be a carrier privileged app.
+             * </p>
              * @hide
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
@@ -2309,7 +2303,7 @@ public final class Telephony {
 
             /**
              * Broadcast Action: A new MMS needs to be downloaded.
-             * This intent will only be delivered to the default
+             * This intent will only be delivered to a
              * carrier app. That app is responsible for downloading the message at the URL.
              * The intent will have the following extra values:</p>
              *
@@ -2331,10 +2325,8 @@ public final class Telephony {
              * </p>
              *
              * <p class="note"><strong>Note:</strong>
-             * The broadcast receiver that filters for this intent must declare
-             * {@link android.Manifest.permission#BROADCAST_WAP_PUSH} as a required permission in
-             * the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">{@code
-             * &lt;receiver>}</a> tag.
+             * The broadcast receiver that filters for this intent must be a carrier privileged app.
+             * </p>
              * @hide
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)

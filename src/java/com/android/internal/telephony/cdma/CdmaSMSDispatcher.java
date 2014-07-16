@@ -218,6 +218,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
         // Direct the intent to only the default carrier app.
         Intent intent = new Intent(Intents.SMS_SEND_ACTION);
+        intent.setPackage(getCarrierAppPackageName(intent));
         intent.putExtra("pdu", pdu);
         intent.putExtra("format", getFormat());
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);

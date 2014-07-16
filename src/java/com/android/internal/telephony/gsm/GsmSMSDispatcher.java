@@ -258,6 +258,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         BroadcastReceiver resultReceiver = new SMSDispatcherReceiver(tracker);
 
         Intent intent = new Intent(Intents.SMS_SEND_ACTION);
+        intent.setPackage(getCarrierAppPackageName(intent));
         intent.putExtra("pdu", pdu);
         intent.putExtra("smsc", (byte[]) map.get("smsc"));
         intent.putExtra("format", getFormat());
