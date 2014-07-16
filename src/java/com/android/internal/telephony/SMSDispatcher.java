@@ -45,6 +45,7 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
 import android.text.Html;
 import android.text.Spanned;
@@ -345,15 +346,6 @@ public abstract class SMSDispatcher extends Handler {
         if (ar.exception == null) {
             if (DBG) Rlog.d(TAG, "SMS send complete. Broadcasting intent: " + sentIntent);
 
-            if (!Telephony.AUTO_PERSIST) {
-                // TODO(ywen):Temporarily only enable this with a flag so not to break existing apps
-                if (SmsApplication.shouldWriteMessageForPackage(
-                        tracker.mAppInfo.applicationInfo.packageName, mContext)) {
-                    // Persist it into the SMS database as a sent message
-                    // so the user can see it in their default app.
-                    tracker.writeSentMessage(mContext);
-                }
-            }
             if (tracker.mDeliveryIntent != null) {
                 // Expecting a status report.  Add it to the list.
                 deliveryPendingList.add(tracker);
@@ -601,12 +593,14 @@ public abstract class SMSDispatcher extends Handler {
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg) {
         if (messageUri == null) {
-            messageUri = writeOutboxMessage(
-                    getSubId(),
-                    destAddr,
-                    getMultipartMessageText(parts),
-                    deliveryIntents != null && deliveryIntents.size() > 0,
-                    callingPkg);
+            if (SmsApplication.shouldWriteMessageForPackage(callingPkg, mContext)) {
+                messageUri = writeOutboxMessage(
+                        getSubId(),
+                        destAddr,
+                        getMultipartMessageText(parts),
+                        deliveryIntents != null && deliveryIntents.size() > 0,
+                        callingPkg);
+            }
         } else {
             moveToOutbox(getSubId(), messageUri, callingPkg);
         }
@@ -1127,10 +1121,6 @@ public abstract class SMSDispatcher extends Handler {
          * @param errorCode The error code
          */
         private void updateMessageErrorCode(Context context, int errorCode) {
-            if (!Telephony.AUTO_PERSIST) {
-                // TODO(ywen):Temporarily only enable this with a flag so not to break existing apps
-                return;
-            }
             if (mMessageUri == null) {
                 return;
             }
@@ -1154,10 +1144,6 @@ public abstract class SMSDispatcher extends Handler {
          * @param messageType The final message type
          */
         private void setMessageFinalState(Context context, int messageType) {
-            if (!Telephony.AUTO_PERSIST) {
-                // TODO(ywen):Temporarily only enable this with a flag so not to break existing apps
-                return;
-            }
             if (mMessageUri == null) {
                 return;
             }
@@ -1418,10 +1404,6 @@ public abstract class SMSDispatcher extends Handler {
 
     protected Uri writeOutboxMessage(long subId, String address, String text,
             boolean requireDeliveryReport, String creator) {
-        if (!Telephony.AUTO_PERSIST) {
-            // TODO(ywen): Temporarily only enable this with a flag so not to break existing apps
-            return null;
-        }
         final ContentValues values = new ContentValues(8);
         values.put(Telephony.Sms.SUB_ID, subId);
         values.put(Telephony.Sms.ADDRESS, address);

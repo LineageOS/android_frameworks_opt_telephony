@@ -1157,6 +1157,8 @@ public final class SmsManager {
     /**
      * Import a text message into system's SMS store
      *
+     * Only default SMS apps can import SMS
+     *
      * @param address the destination(source) address of the sent(received) message
      * @param type the type of the message
      * @param text the message text
@@ -1191,6 +1193,8 @@ public final class SmsManager {
      * Import a multimedia message into system's MMS store. Only the following PDU type is
      * supported: Retrieve.conf, Send.req, Notification.ind, Delivery.ind, Read-Orig.ind
      *
+     * Only default SMS apps can import MMS
+     *
      * @param pdu the PDU of the message to import
      * @param messageId the optional message id. Use null if not specifying
      * @param timestampSecs the optional message timestamp. Use -1 if not specifying
@@ -1220,6 +1224,8 @@ public final class SmsManager {
     /**
      * Delete a system stored SMS or MMS message
      *
+     * Only default SMS apps can delete system stored SMS and MMS messages
+     *
      * @param messageUri the URI of the stored message
      * @return true if deletion is successful, false otherwise
      * @throws IllegalArgumentException if messageUri is empty
@@ -1242,6 +1248,8 @@ public final class SmsManager {
 
     /**
      * Delete a system stored SMS or MMS thread
+     *
+     * Only default SMS apps can delete system stored SMS and MMS conversations
      *
      * @param conversationId the ID of the message conversation
      * @return true if deletion is successful, false otherwise
@@ -1299,6 +1307,8 @@ public final class SmsManager {
     /**
      * Add a text message draft to system SMS store
      *
+     * Only default SMS apps can add SMS draft
+     *
      * @param address the destination address of message
      * @param text the body of the message to send
      * @return the URI of the stored draft message
@@ -1318,6 +1328,8 @@ public final class SmsManager {
 
     /**
      * Add a multimedia message draft to system MMS store
+     *
+     * Only default SMS apps can add MMS draft
      *
      * @param pdu the PDU data of the draft MMS
      * @return the URI of the stored draft message
@@ -1548,5 +1560,50 @@ public final class SmsManager {
         } catch (RemoteException ex) {
             // ignore it
         }
+    }
+
+    /**
+     * Turns on/off the flag to automatically write sent/received SMS/MMS messages into system
+     *
+     * When this flag is on, all SMS/MMS sent/received are stored by system automatically
+     * When this flag is off, only SMS/MMS sent by non-default SMS apps are stored by system
+     * automatically
+     *
+     * This flag can only be changed by default SMS apps
+     *
+     * @param enabled Whether to enable message auto persisting
+     * {@hide}
+     */
+    public void setAutoPersisting(boolean enabled) {
+        try {
+            IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
+            if (iMms != null) {
+                iMms.setAutoPersisting(ActivityThread.currentPackageName(), enabled);
+            }
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+    }
+
+    /**
+     * Get the value of the flag to automatically write sent/received SMS/MMS messages into system
+     *
+     * When this flag is on, all SMS/MMS sent/received are stored by system automatically
+     * When this flag is off, only SMS/MMS sent by non-default SMS apps are stored by system
+     * automatically
+     *
+     * @return the current value of the auto persist flag
+     * {@hide}
+     */
+    public boolean getAutoPersisting() {
+        try {
+            IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
+            if (iMms != null) {
+                return iMms.getAutoPersisting();
+            }
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+        return false;
     }
 }

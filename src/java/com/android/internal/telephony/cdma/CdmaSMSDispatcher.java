@@ -34,6 +34,7 @@ import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SMSDispatcher;
+import com.android.internal.telephony.SmsApplication;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsUsageMonitor;
@@ -123,12 +124,14 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                 scAddr, destAddr, text, (deliveryIntent != null), null);
         if (pdu != null) {
             if (messageUri == null) {
-                messageUri = writeOutboxMessage(
-                        getSubId(),
-                        destAddr,
-                        text,
-                        deliveryIntent != null,
-                        callingPkg);
+                if (SmsApplication.shouldWriteMessageForPackage(callingPkg, mContext)) {
+                    messageUri = writeOutboxMessage(
+                            getSubId(),
+                            destAddr,
+                            text,
+                            deliveryIntent != null,
+                            callingPkg);
+                }
             } else {
                 moveToOutbox(getSubId(), messageUri, callingPkg);
             }

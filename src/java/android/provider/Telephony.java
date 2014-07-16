@@ -107,12 +107,6 @@ public final class Telephony {
     private static final String TAG = "Telephony";
 
     /**
-     * TODO(ywen): temoprary flag to turn on/off SMS/MMS auto persisting
-     * @hide
-     */
-    public static final boolean AUTO_PERSIST = false;
-
-    /**
      * Not instantiable.
      * @hide
      */
