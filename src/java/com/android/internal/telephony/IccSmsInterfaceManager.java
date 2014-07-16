@@ -37,6 +37,7 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
+import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.HexDump;
 
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ import java.util.List;
 import static android.telephony.SmsManager.STATUS_ON_ICC_FREE;
 import static android.telephony.SmsManager.STATUS_ON_ICC_READ;
 import static android.telephony.SmsManager.STATUS_ON_ICC_UNREAD;
+import android.telephony.TelephonyManager;
 
 /**
  * IccSmsInterfaceManager to provide an inter-process communication to
@@ -405,7 +407,7 @@ public class IccSmsInterfaceManager {
      *  the same time an SMS received from radio is acknowledged back.
      */
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
-        // TODO Check if the calling package has access to call this SIM restricted API.
+        enforceCarrierPrivilege();
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("pdu: " + pdu +
                 "\n format=" + format +
@@ -425,6 +427,7 @@ public class IccSmsInterfaceManager {
      * {@hide}
      */
     public void updateSmsSendStatus(int messageRef, boolean success) {
+        enforceCarrierPrivilege();
         mDispatcher.updateSmsSendStatus(messageRef, success);
     }
 
@@ -974,6 +977,14 @@ public class IccSmsInterfaceManager {
         }
         for (PendingIntent pi : pis) {
             returnUnspecifiedFailure(pi);
+        }
+    }
+
+    private void enforceCarrierPrivilege() {
+        if (UiccController.getInstance().getUiccCard().getCarrierPrivilegeStatusForCurrentTransaction(
+                mContext.getPackageManager()) !=
+                    TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
+            throw new SecurityException("No Carrier Privilege.");
         }
     }
 }

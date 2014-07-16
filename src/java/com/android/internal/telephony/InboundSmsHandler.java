@@ -45,6 +45,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
+import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -716,9 +717,9 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
 
         Intent intent = new Intent(Intents.SMS_FILTER_ACTION);
-
-        // FIX this once the carrier app API is finalized.
-        // We should direct the intent to only the default carrier app.
+        intent.setPackage(
+                UiccController.getInstance().getUiccCard().getCarrierPackageNameForBroadcastIntent(
+                        mContext.getPackageManager(), intent));
         intent.putExtra("destport", destPort);
         intent.putExtra("pdus", pdus);
         intent.putExtra("format", tracker.getFormat());
