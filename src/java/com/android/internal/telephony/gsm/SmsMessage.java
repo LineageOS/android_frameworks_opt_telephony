@@ -19,6 +19,7 @@ package com.android.internal.telephony.gsm;
 import android.telephony.PhoneNumberUtils;
 import android.text.format.Time;
 import android.telephony.Rlog;
+import android.content.res.Resources;
 
 import com.android.internal.telephony.EncodeException;
 import com.android.internal.telephony.GsmAlphabet;
@@ -708,6 +709,23 @@ public class SmsMessage extends SmsMessageBase {
         }
 
         /**
+         * Interprets the user data payload as pack GSM 8-bit (a GSM alphabet string that's
+         * stored in 8-bit unpacked format) characters, and decodes them into a String.
+         *
+         * @param byteCount the number of byest in the user data payload
+         * @return a String with the decoded characters
+         */
+        String getUserDataGSM8bit(int byteCount) {
+            String ret;
+
+            ret = GsmAlphabet.gsm8BitUnpackedToString(mPdu, mCur, byteCount);
+
+            mCur += byteCount;
+
+            return ret;
+        }
+
+        /**
          * Interprets the user data payload as UCS2 characters, and
          * decodes them into a String.
          *
@@ -1090,6 +1108,15 @@ public class SmsMessage extends SmsMessageBase {
                     break;
 
                 case 1: // 8 bit data
+                    //Support decoding the user data payload as pack GSM 8-bit (a GSM alphabet string
+                    //that's stored in 8-bit unpacked format) characters.
+                    Resources r = Resources.getSystem();
+                    if (r.getBoolean(com.android.internal.
+                            R.bool.config_sms_decode_gsm_8bit_data)) {
+                        encodingType = ENCODING_8BIT;
+                        break;
+                    }
+
                 case 3: // reserved
                     Rlog.w(LOG_TAG, "1 - Unsupported SMS data coding scheme "
                             + (mDataCodingScheme & 0xff));
@@ -1161,8 +1188,19 @@ public class SmsMessage extends SmsMessageBase {
 
         switch (encodingType) {
         case ENCODING_UNKNOWN:
-        case ENCODING_8BIT:
             mMessageBody = null;
+            break;
+
+        case ENCODING_8BIT:
+            //Support decoding the user data payload as pack GSM 8-bit (a GSM alphabet string
+            //that's stored in 8-bit unpacked format) characters.
+            Resources r = Resources.getSystem();
+            if (r.getBoolean(com.android.internal.
+                    R.bool.config_sms_decode_gsm_8bit_data)) {
+                mMessageBody = p.getUserDataGSM8bit(count);
+            } else {
+                mMessageBody = null;
+            }
             break;
 
         case ENCODING_7BIT:
