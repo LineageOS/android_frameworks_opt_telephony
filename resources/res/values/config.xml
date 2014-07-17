@@ -34,4 +34,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <bool name="config_allowDataCallWithoutDns">false</bool>
      <!-- Configuration for sending and receiving Mms when mobile data is disabled.-->
      <bool name="config_enable_mms_with_mobile_data_off">false</bool>
+    <!-- Configuartion to support 7bit Ascii encoding and decoding
+            for long messages. -->
+    <bool name="config_ascii_7bit_support_for_long_message">false</bool>
 </resources>

@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.cdma;
 
+import android.content.Context;
 import android.os.Parcel;
 import android.os.SystemProperties;
 import android.telephony.PhoneNumberUtils;
@@ -38,6 +39,8 @@ import com.android.internal.telephony.cdma.sms.CdmaSmsAddress;
 import com.android.internal.telephony.cdma.sms.CdmaSmsSubaddress;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.telephony.cdma.sms.UserData;
+import com.android.internal.telephony.ConfigResourceUtil;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.util.BitwiseInputStream;
 import com.android.internal.util.HexDump;
@@ -100,6 +103,7 @@ public class SmsMessage extends SmsMessageBase {
 
     private SmsEnvelope mEnvelope;
     private BearerData mBearerData;
+    private static ConfigResourceUtil mConfigResUtil = new ConfigResourceUtil();
 
     public static class SubmitPdu extends SubmitPduBase {
     }
@@ -898,6 +902,13 @@ public class SmsMessage extends SmsMessageBase {
         int teleservice = bearerData.hasUserDataHeader ?
                 SmsEnvelope.TELESERVICE_WEMT : SmsEnvelope.TELESERVICE_WMT;
 
+        Context context = PhoneFactory.getDefaultPhone().getContext();
+        boolean ascii7bitForLongMsg = mConfigResUtil.getBooleanValue(context,
+                "config_ascii_7bit_support_for_long_message");
+        if (ascii7bitForLongMsg) {
+            Rlog.d(LOG_TAG, "ascii7bitForLongMsg = " + ascii7bitForLongMsg);
+            teleservice = SmsEnvelope.TELESERVICE_WMT;
+        }
         SmsEnvelope envelope = new SmsEnvelope();
         envelope.messageType = SmsEnvelope.MESSAGE_TYPE_POINT_TO_POINT;
         envelope.teleService = teleservice;

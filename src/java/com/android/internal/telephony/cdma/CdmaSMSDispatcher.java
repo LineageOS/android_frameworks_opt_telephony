@@ -29,6 +29,7 @@ import android.telephony.ServiceState;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
 
+import com.android.internal.telephony.ConfigResourceUtil;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.PhoneBase;
@@ -47,6 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CdmaSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "CdmaSMSDispatcher";
     private static final boolean VDBG = false;
+    private ConfigResourceUtil mConfigResUtil = new ConfigResourceUtil();
 
     public CdmaSMSDispatcher(PhoneBase phone, SmsUsageMonitor usageMonitor,
             ImsSMSDispatcher imsSMSDispatcher) {
@@ -194,6 +196,12 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         uData.userDataHeader = smsHeader;
         if (encoding == SmsConstants.ENCODING_7BIT) {
             uData.msgEncoding = UserData.ENCODING_GSM_7BIT_ALPHABET;
+            boolean ascii7bitForLongMsg = mConfigResUtil.getBooleanValue(mContext,
+                    "config_ascii_7bit_support_for_long_message");
+            if (ascii7bitForLongMsg) {
+                Rlog.d(TAG, "ascii7bitForLongMsg = " + ascii7bitForLongMsg);
+                uData.msgEncoding = UserData.ENCODING_7BIT_ASCII;
+            }
         } else { // assume UTF-16
             uData.msgEncoding = UserData.ENCODING_UNICODE_16;
         }
