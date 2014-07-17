@@ -120,6 +120,9 @@ public abstract class IccPhoneBookInterfaceManager {
     }
 
     public void dispose() {
+        if (mRecords != null) {
+            mRecords.clear();
+        }
     }
 
     public void updateIccRecords(IccRecords iccRecords) {
