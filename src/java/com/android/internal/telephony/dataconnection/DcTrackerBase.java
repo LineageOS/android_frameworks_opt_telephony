@@ -280,6 +280,9 @@ public abstract class DcTrackerBase extends Handler {
     /** Is packet service restricted by network */
     protected boolean mIsPsRestricted = false;
 
+    /** emergency apn Setting*/
+    protected ApnSetting mEmergencyApn = null;
+
     /* Once disposed dont handle any messages */
     protected boolean mIsDisposed = false;
 

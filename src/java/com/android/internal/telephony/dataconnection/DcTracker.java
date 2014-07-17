@@ -70,6 +70,7 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.AsyncChannel;
+import com.android.internal.util.ArrayUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -188,6 +189,10 @@ public final class DcTracker extends DcTrackerBase {
         mNetworkFactory.setScoreFilter(50);
         mNetworkFactoryMessenger = new Messenger(mNetworkFactory);
         cm.registerNetworkFactory(mNetworkFactoryMessenger, "Telephony");
+
+        // Add Emergency APN to APN setting list by default to support EPDN in sim absent cases
+        initEmergencyApnSetting();
+        addEmergencyApnSetting();
     }
 
     protected void registerForAllEvents() {
@@ -2141,6 +2146,8 @@ public final class DcTracker extends DcTrackerBase {
             }
         }
 
+        addEmergencyApnSetting();
+
         if (mAllApnSettings.isEmpty()) {
             if (DBG) log("createAllApnList: No APN found for carrier: " + operator);
             mPreferredApn = null;
@@ -2743,5 +2750,54 @@ public final class DcTracker extends DcTrackerBase {
         if (sst == null) return;
 
         sst.setImsRegistrationState(registered);
+    }
+
+    /**
+     * Read APN configuration from Telephony.db for Emergency APN
+     * All opertors recognize the connection request for EPDN based on APN type
+     * PLMN name,APN name are not mandatory parameters
+     */
+    private void initEmergencyApnSetting() {
+        // Operator Numeric is not available when sim records are not loaded.
+        // Query Telephony.db with APN type as EPDN request does not
+        // require APN name, plmn and all operators support same APN config.
+        // DB will contain only one entry for Emergency APN
+        String selection = "type=\"emergency\"";
+        Cursor cursor = mPhone.getContext().getContentResolver().query(
+                Telephony.Carriers.CONTENT_URI, null, selection, null, null);
+
+        if (cursor != null) {
+            if (cursor.getCount() > 0) {
+                if (cursor.moveToFirst()) {
+                    mEmergencyApn = makeApnSetting(cursor);
+                }
+            }
+            cursor.close();
+        }
+    }
+
+    /**
+     * Add the Emergency APN settings to APN settings list
+     */
+    private void addEmergencyApnSetting() {
+        if(mEmergencyApn != null) {
+            if(mAllApnSettings == null) {
+                mAllApnSettings = new ArrayList<ApnSetting>();
+            } else {
+                boolean hasEmergencyApn = false;
+                for (ApnSetting apn : mAllApnSettings) {
+                    if (ArrayUtils.contains(apn.types, PhoneConstants.APN_TYPE_EMERGENCY)) {
+                        hasEmergencyApn = true;
+                        break;
+                    }
+                }
+
+                if(hasEmergencyApn == false) {
+                    mAllApnSettings.add(mEmergencyApn);
+                } else {
+                    log("addEmergencyApnSetting - E-APN setting is already present");
+                }
+            }
+        }
     }
 }
