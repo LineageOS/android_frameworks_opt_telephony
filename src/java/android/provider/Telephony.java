@@ -862,8 +862,9 @@ public final class Telephony {
              *
              * <p class="note"><strong>Note:</strong>
              * The broadcast receiver that filters for this intent must be a carrier privileged app.
-             * </p>
-             * @hide
+             * It must also declare {@link android.Manifest.permission#BROADCAST_SMS} as a required
+             * permission in the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">
+             * {@code &lt;receiver>}</a> tag.
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SMS_FILTER_ACTION =
@@ -1090,8 +1091,9 @@ public final class Telephony {
              *
              * <p class="note"><strong>Note:</strong>
              * The broadcast receiver that filters for this intent must be a carrier privileged app.
-             * </p>
-             * @hide
+             * It must also declare {@link android.Manifest.permission#BROADCAST_SMS} as a required
+             * permission in the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">
+             * {@code &lt;receiver>}</a> tag.
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SMS_SEND_ACTION =
@@ -2288,8 +2290,9 @@ public final class Telephony {
              *
              * <p class="note"><strong>Note:</strong>
              * The broadcast receiver that filters for this intent must be a carrier privileged app.
-             * </p>
-             * @hide
+             * It must also declare {@link android.Manifest.permission#BROADCAST_WAP_PUSH} as a required
+             * permission in the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">
+             * {@code &lt;receiver>}</a> tag.
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String MMS_SEND_ACTION =
@@ -2320,8 +2323,9 @@ public final class Telephony {
              *
              * <p class="note"><strong>Note:</strong>
              * The broadcast receiver that filters for this intent must be a carrier privileged app.
-             * </p>
-             * @hide
+             * It must also declare {@link android.Manifest.permission#BROADCAST_WAP_PUSH} as a required
+             * permission in the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">
+             * {@code &lt;receiver>}</a> tag.
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String MMS_DOWNLOAD_ACTION =
