@@ -26,6 +26,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.Registrant;
+import android.telecomm.VideoCallProfile;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -707,7 +708,8 @@ public final class CallManager {
             }
         }
 
-        ringingPhone.acceptCall();
+        // We only support the AUDIO_ONLY video state in this scenario.
+        ringingPhone.acceptCall(VideoCallProfile.VIDEO_STATE_AUDIO_ONLY);
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End acceptCall(" +ringingCall + ")");

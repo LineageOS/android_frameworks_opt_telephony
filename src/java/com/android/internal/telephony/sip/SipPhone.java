@@ -144,7 +144,7 @@ public class SipPhone extends SipPhoneBase {
     }
 
     @Override
-    public void acceptCall() throws CallStateException {
+    public void acceptCall(int videoState) throws CallStateException {
         synchronized (SipPhone.class) {
             if ((mRingingCall.getState() == Call.State.INCOMING) ||
                     (mRingingCall.getState() == Call.State.WAITING)) {
