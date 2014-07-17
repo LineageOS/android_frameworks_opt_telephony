@@ -174,6 +174,13 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         uData.userDataHeader = smsHeader;
         if (encoding == SmsConstants.ENCODING_7BIT) {
             uData.msgEncoding = UserData.ENCODING_GSM_7BIT_ALPHABET;
+            Context context = mPhone.getContext();
+            boolean ascii7bitForLongMsg = context.getResources().
+                getBoolean(com.android.internal.R.bool.config_ascii_7bit_support_for_long_message);
+            if (ascii7bitForLongMsg) {
+                Rlog.d(TAG, "ascii7bitForLongMsg = " + ascii7bitForLongMsg);
+                uData.msgEncoding = UserData.ENCODING_7BIT_ASCII;
+            }
         } else { // assume UTF-16
             uData.msgEncoding = UserData.ENCODING_UNICODE_16;
         }
