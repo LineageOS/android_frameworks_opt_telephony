@@ -146,8 +146,6 @@ public final class SmsManager {
     }
 
     /**
-     * TODO Move this to new CarrierSmsManager class.
-     *
      * Inject an SMS PDU into the android application framework.
      *
      * The caller should have carrier privileges.
