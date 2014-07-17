@@ -52,7 +52,10 @@ import java.util.Locale;
  * after the UICC can be read. And it should be deleted when a UICC is changed.
  *
  * The spec for the rules:
- *     TODO: Put link here.
+ *     GP Secure Element Access Control:
+ *     http://www.globalplatform.org/specifications/review/GPD_SE_Access_Control_v1.0.20.pdf
+ *     Extension spec:
+ *     https://code.google.com/p/seek-for-android/
  *
  *
  * TODO: Notifications.
@@ -62,7 +65,7 @@ import java.util.Locale;
 public class UiccCarrierPrivilegeRules extends Handler {
     private static final String LOG_TAG = "UiccCarrierPrivilegeRules";
 
-    private static final String AID = "A0000000015141434C00";
+    private static final String AID = "A00000015141434C00";
     private static final int CLA = 0x80;
     private static final int COMMAND = 0xB0;
     private static final int P1 = 0x00;
