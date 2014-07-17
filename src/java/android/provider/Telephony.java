@@ -254,13 +254,11 @@ public final class Telephony {
 
         /**
          * If the message is archived
-         * @hide
          */
         public static final String ARCHIVED = "archived";
 
         /**
          * The creator of a sent or imported message
-         * @hide
          */
         public static final String CREATOR = "creator";
     }
@@ -1689,13 +1687,11 @@ public final class Telephony {
 
         /**
          * If the message is archived
-         * @hide
          */
         public static final String ARCHIVED = "archived";
 
         /**
          * The creator of a sent or imported message
-         * @hide
          */
         public static final String CREATOR = "creator";
     }

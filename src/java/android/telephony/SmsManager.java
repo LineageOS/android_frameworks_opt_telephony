@@ -1023,7 +1023,6 @@ public final class SmsManager {
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully sent, or failed
      * @throws IllegalArgumentException if pdu is empty
-     * @hide
      */
     public void sendMultimediaMessage(byte[] pdu, String locationUrl, PendingIntent sentIntent) {
         sendMultimediaMessage(getPreferredSmsSubscription(), pdu, locationUrl, sentIntent);
@@ -1038,7 +1037,7 @@ public final class SmsManager {
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully sent, or failed
      * @throws IllegalArgumentException if pdu is empty
-     * @hide
+     * {@hide}
      */
     public void sendMultimediaMessage(long subId, byte[] pdu, String locationUrl,
             PendingIntent sentIntent) {
@@ -1065,7 +1064,6 @@ public final class SmsManager {
      * @param downloadedIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is downloaded, or the download is failed
      * @throws IllegalArgumentException if locationUrl is empty
-     * {@hide}
      */
     public void downloadMultimediaMessage(String locationUrl, PendingIntent downloadedIntent) {
         downloadMultimediaMessage(getPreferredSmsSubscription(), locationUrl, downloadedIntent);
@@ -1080,7 +1078,7 @@ public final class SmsManager {
      * @param downloadedIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is downloaded, or the download is failed
      * @throws IllegalArgumentException if locationUrl is empty
-     * @hide
+     * {@hide}
      */
     public void downloadMultimediaMessage(long subId, String locationUrl,
             PendingIntent downloadedIntent) {
@@ -1100,17 +1098,12 @@ public final class SmsManager {
     }
 
     // MMS send/download failure result codes
-    /**@hide*/
     public static final int MMS_ERROR_UNSPECIFIED = 1;
-    /**@hide*/
     public static final int MMS_ERROR_INVALID_APN = 2;
-    /**@hide*/
     public static final int MMS_ERROR_UNABLE_CONNECT_MMS = 3;
-    /**@hide*/
     public static final int MMS_ERROR_HTTP_FAILURE = 4;
 
     // Intent extra name for result data
-    /**@hide*/
     public static final String MMS_EXTRA_DATA = "data";
 
     /**
@@ -1172,7 +1165,6 @@ public final class SmsManager {
      * @param seen if the message is seen
      * @param read if the message is read
      * @return the message URI, null if failed
-     * {@hide}
      */
     public Uri importTextMessage(String address, int type, String text, long timestampMillis,
             boolean seen, boolean read) {
@@ -1189,10 +1181,8 @@ public final class SmsManager {
     }
 
     /** Represents the received SMS message for importing */
-    /**{@hide}*/
     public static final int SMS_TYPE_INCOMING = 0;
     /** Represents the sent SMS message for importing */
-    /**{@hide}*/
     public static final int SMS_TYPE_OUTGOING = 1;
 
     /**
@@ -1208,7 +1198,6 @@ public final class SmsManager {
      * @param read if the message is read
      * @return the message URI, null if failed
      * @throws IllegalArgumentException if pdu is empty
-     * {@hide}
      */
     public Uri importMultimediaMessage(byte[] pdu, String messageId, long timestampSecs,
             boolean seen, boolean read) {
@@ -1235,7 +1224,6 @@ public final class SmsManager {
      * @param messageUri the URI of the stored message
      * @return true if deletion is successful, false otherwise
      * @throws IllegalArgumentException if messageUri is empty
-     * {@hide}
      */
     public boolean deleteStoredMessage(Uri messageUri) {
         if (messageUri == null) {
@@ -1259,7 +1247,6 @@ public final class SmsManager {
      *
      * @param conversationId the ID of the message conversation
      * @return true if deletion is successful, false otherwise
-     * {@hide}
      */
     public boolean deleteStoredConversation(long conversationId) {
         try {
@@ -1282,7 +1269,6 @@ public final class SmsManager {
      * @param statusValues a list of status properties in key-value pairs to update
      * @return true if deletion is successful, false otherwise
      * @throws IllegalArgumentException if messageUri is empty
-     * {@hide}
      */
     public boolean updateStoredMessageStatus(Uri messageUri, ContentValues statusValues) {
         if (messageUri == null) {
@@ -1301,13 +1287,10 @@ public final class SmsManager {
     }
 
     /** Message status property: whether the message has been seen. 1 means seen, 0 not*/
-    /**{@hide}*/
     public static final String MESSAGE_STATUS_SEEN = "seen";
     /** Message status property: whether the message has been read. 1 means read, 0 not*/
-    /**{@hide}*/
     public static final String MESSAGE_STATUS_READ = "read";
     /** Message status property: whether the message has been archived. 1 means archived, 0 not*/
-    /**{@hide}*/
     public static final String MESSAGE_STATUS_ARCHIVED = "archived";
 
     /**
@@ -1318,7 +1301,6 @@ public final class SmsManager {
      * @param address the destination address of message
      * @param text the body of the message to send
      * @return the URI of the stored draft message
-     * {@hide}
      */
     public Uri addTextMessageDraft(String address, String text) {
         try {
@@ -1340,7 +1322,6 @@ public final class SmsManager {
      * @param pdu the PDU data of the draft MMS
      * @return the URI of the stored draft message
      * @throws IllegalArgumentException if pdu is empty
-     * {@hide}
      */
     public Uri addMultimediaMessageDraft(byte[] pdu) {
         if (pdu == null || pdu.length == 0) {
@@ -1382,8 +1363,6 @@ public final class SmsManager {
      *  raw pdu of the status report is in the extended data ("pdu").
      *
      * @throws IllegalArgumentException if messageUri is empty
-     *
-     * {@hide}
      */
     public void sendStoredTextMessage(Uri messageUri, String scAddress, PendingIntent sentIntent,
             PendingIntent deliveryIntent) {
@@ -1417,7 +1396,6 @@ public final class SmsManager {
      *  raw pdu of the status report is in the extended data ("pdu").
      *
      * @throws IllegalArgumentException if messageUri is empty
-     *
      * {@hide}
      */
     public void sendStoredTextMessage(long subId, Uri messageUri, String scAddress,
@@ -1465,8 +1443,6 @@ public final class SmsManager {
      *   extended data ("pdu").
      *
      * @throws IllegalArgumentException if messageUri is empty
-     *
-     * {@hide}
      */
     public void sendStoredMultipartTextMessage(Uri messageUri, String scAddress,
             ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
@@ -1507,7 +1483,6 @@ public final class SmsManager {
      *   extended data ("pdu").
      *
      * @throws IllegalArgumentException if messageUri is empty
-     *
      * {@hide}
      */
     public void sendStoredMultipartTextMessage(long subId, Uri messageUri, String scAddress,
@@ -1534,7 +1509,6 @@ public final class SmsManager {
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully sent, or failed
      * @throws IllegalArgumentException if messageUri is empty
-     * {@hide}
      */
     public void sendStoredMultimediaMessage(Uri messageUri, PendingIntent sentIntent) {
         sendStoredMultimediaMessage(getPreferredSmsSubscription(), messageUri, sentIntent);
@@ -1578,7 +1552,6 @@ public final class SmsManager {
      * This flag can only be changed by default SMS apps
      *
      * @param enabled Whether to enable message auto persisting
-     * {@hide}
      */
     public void setAutoPersisting(boolean enabled) {
         try {
@@ -1599,7 +1572,6 @@ public final class SmsManager {
      * automatically
      *
      * @return the current value of the auto persist flag
-     * {@hide}
      */
     public boolean getAutoPersisting() {
         try {

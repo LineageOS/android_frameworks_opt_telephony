@@ -31,7 +31,6 @@ import android.os.ServiceManager;
  * can override the value of a specific configuration at runtime by calling the set methods.
  * However, those changes are not persistent and will be discarded if the managing system
  * process restarts.
- * {@hide}
  */
 public class MessagingConfigurationManager {
     /** Singleton object constructed during class initialization. */
