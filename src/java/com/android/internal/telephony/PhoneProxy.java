@@ -1359,4 +1359,9 @@ public class PhoneProxy extends Handler implements Phone {
     public int getVoicePhoneServiceState() {
         return mActivePhone.getVoicePhoneServiceState();
     }
+
+    @Override
+    public boolean setOperatorBrandOverride(String iccId, String brand) {
+        return mActivePhone.setOperatorBrandOverride(iccId, brand);
+    }
 }

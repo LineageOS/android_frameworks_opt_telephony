@@ -785,7 +785,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     String opNames[] = (String[])ar.result;
 
                     if (opNames != null && opNames.length >= 3) {
-                         mNewSS.setOperatorName (opNames[0], opNames[1], opNames[2]);
+                        String brandOverride = mUiccController.getUiccCard() != null ?
+                            mUiccController.getUiccCard().getOperatorBrandOverride() : null;
+                        if (brandOverride != null) {
+                            mNewSS.setOperatorName(brandOverride, brandOverride, opNames[2]);
+                        } else {
+                            mNewSS.setOperatorName(opNames[0], opNames[1], opNames[2]);
+                        }
                     }
                     break;
                 }
@@ -841,7 +847,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
      * and start over again if the radio notifies us that some
      * event has changed
      */
-    private void pollState() {
+    @Override
+    public void pollState() {
         mPollingContext = new int[1];
         mPollingContext[0] = 0;
 

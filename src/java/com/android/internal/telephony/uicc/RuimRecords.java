@@ -296,24 +296,25 @@ public final class RuimRecords extends IccRecords {
             }
 
             if (numBytes == 0) {
-                mSpn = "";
+                setServiceProviderName("");
                 return;
             }
             try {
                 switch (encoding) {
                 case UserData.ENCODING_OCTET:
                 case UserData.ENCODING_LATIN:
-                    mSpn = new String(spnData, 0, numBytes, "ISO-8859-1");
+                    setServiceProviderName(new String(spnData, 0, numBytes, "ISO-8859-1"));
                     break;
                 case UserData.ENCODING_IA5:
                 case UserData.ENCODING_GSM_7BIT_ALPHABET:
-                    mSpn = GsmAlphabet.gsm7BitPackedToString(spnData, 0, (numBytes*8)/7);
+                    setServiceProviderName(
+                            GsmAlphabet.gsm7BitPackedToString(spnData, 0, (numBytes*8)/7));
                     break;
                 case UserData.ENCODING_7BIT_ASCII:
-                    mSpn =  new String(spnData, 0, numBytes, "US-ASCII");
+                    setServiceProviderName(new String(spnData, 0, numBytes, "US-ASCII"));
                 break;
                 case UserData.ENCODING_UNICODE_16:
-                    mSpn =  new String(spnData, 0, numBytes, "utf-16");
+                    setServiceProviderName(new String(spnData, 0, numBytes, "utf-16"));
                     break;
                 default:
                     log("SPN encoding not supported");
@@ -321,9 +322,9 @@ public final class RuimRecords extends IccRecords {
             } catch(Exception e) {
                 log("spn decode error: " + e);
             }
-            if (DBG) log("spn=" + mSpn);
+            if (DBG) log("spn=" + getServiceProviderName());
             if (DBG) log("spnCondition=" + mCsimSpnDisplayCondition);
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+            SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
         }
     }
 
