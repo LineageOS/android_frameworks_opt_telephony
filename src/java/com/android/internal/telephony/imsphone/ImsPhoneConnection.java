@@ -24,6 +24,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
+import android.telecomm.VideoCallProfile;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
@@ -143,6 +144,15 @@ public class ImsPhoneConnection extends Connection {
                     imsCall.getCallProfile().getCallExtraInt(ImsCallProfile.EXTRA_OIR));
             mCnapNamePresentation = presentationFromOir(
                     imsCall.getCallProfile().getCallExtraInt(ImsCallProfile.EXTRA_CNAP));
+
+            ImsCallProfile imsCallProfile = imsCall.getCallProfile();
+            if (imsCallProfile != null) {
+                int callType = imsCall.getCallProfile().mCallType;
+                setVideoState(ImsCallProfile.getVideoStateFromCallType(callType));
+            }
+            //TODO(vt): Set the local and remote video capabilities appropriately.
+            setLocalVideoCapable(true);
+            setRemoteVideoCapable(true);
         } else {
             mNumberPresentation = PhoneConstants.PRESENTATION_UNKNOWN;
             mCnapNamePresentation = PhoneConstants.PRESENTATION_UNKNOWN;
@@ -641,3 +651,4 @@ public class ImsPhoneConnection extends Connection {
         }
     }
 }
+

@@ -330,7 +330,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
         setMute(false);
         int serviceType = PhoneNumberUtils.isEmergencyNumber(conn.getAddress()) ?
                 ImsCallProfile.SERVICE_TYPE_EMERGENCY : ImsCallProfile.SERVICE_TYPE_NORMAL;
-        int callType = getCallType(videoState);
+        int callType = ImsCallProfile.getCallTypeFromVideoState(videoState);
+        //TODO(vt): Is this sufficient?  At what point do we know the video state of the call?
+        conn.setVideoState(videoState);
 
         try {
             String[] callees = new String[] { conn.getAddress() };
@@ -346,40 +348,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
             conn.setDisconnectCause(DisconnectCause.ERROR_UNSPECIFIED);
             sendEmptyMessageDelayed(EVENT_HANGUP_PENDINGMO, TIMEOUT_HANGUP_PENDINGMO);
         }
-    }
-
-    /**
-     * Converts from the video state values defined in {@link VideoCallProfile} to the call types
-     * defined in {@link ImsCallProfile}.
-     *
-     * @param videoState The video state.
-     * @return The call type.
-     */
-    private int getCallType(int videoState) {
-        boolean videoTx = isVideoStateSet(videoState, VideoCallProfile.VIDEO_STATE_TX_ENABLED);
-        boolean videoRx = isVideoStateSet(videoState, VideoCallProfile.VIDEO_STATE_RX_ENABLED);
-        boolean isPaused = isVideoStateSet(videoState, VideoCallProfile.VIDEO_STATE_PAUSED);
-        if (isPaused) {
-            return ImsCallProfile.CALL_TYPE_VT_NODIR;
-        } else if (videoTx && !videoRx) {
-            return ImsCallProfile.CALL_TYPE_VT_TX;
-        } else if (!videoTx && videoRx) {
-            return ImsCallProfile.CALL_TYPE_VT_RX;
-        } else if (videoTx && videoRx) {
-            return ImsCallProfile.CALL_TYPE_VT;
-        }
-        return ImsCallProfile.CALL_TYPE_VOICE;
-    }
-
-    /**
-     * Determines if a video state is set in a video state bit-mask.
-     *
-     * @param videoState The video state bit mask.
-     * @param videoStateToCheck The particular video state to check.
-     * @return True if the video state is set in the bit-mask.
-     */
-    private boolean isVideoStateSet(int videoState, int videoStateToCheck) {
-        return (videoState & videoStateToCheck) == videoStateToCheck;
     }
 
     void
