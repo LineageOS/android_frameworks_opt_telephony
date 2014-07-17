@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony.cdma;
 
-import android.content.Context;
+import android.content.res.Resources;
 import android.os.Parcel;
 import android.os.SystemProperties;
 import android.telephony.PhoneNumberUtils;
@@ -29,6 +29,7 @@ import android.text.TextUtils;
 import android.content.res.Resources;
 
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsMessageBase;
@@ -974,6 +975,15 @@ public class SmsMessage extends SmsMessageBase {
         int teleservice = bearerData.hasUserDataHeader ?
                 SmsEnvelope.TELESERVICE_WEMT : SmsEnvelope.TELESERVICE_WMT;
 
+        Resources resource = Resources.getSystem();
+        if (resource != null) {
+            boolean ascii7bitForLongMsg = resource.
+                getBoolean(com.android.internal.R.bool.config_ascii_7bit_support_for_long_message);
+            if (ascii7bitForLongMsg) {
+                Rlog.d(LOG_TAG, "ascii7bitForLongMsg = " + ascii7bitForLongMsg);
+                teleservice = SmsEnvelope.TELESERVICE_WMT;
+            }
+        }
         SmsEnvelope envelope = new SmsEnvelope();
         envelope.messageType = SmsEnvelope.MESSAGE_TYPE_POINT_TO_POINT;
         envelope.teleService = teleservice;
