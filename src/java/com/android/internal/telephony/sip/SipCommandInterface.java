@@ -540,7 +540,7 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void requestIccSimAuthentication(String data, Message response) {
+    public void requestIccSimAuthentication(int authContext, String data, String aid, Message response) {
     }
 
     @Override

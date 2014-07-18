@@ -1643,7 +1643,7 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void requestIccSimAuthentication(String data, Message response) {
+    public void requestIccSimAuthentication(int authContext, String data, String aid, Message response) {
         unimplemented(response);
     }
 
