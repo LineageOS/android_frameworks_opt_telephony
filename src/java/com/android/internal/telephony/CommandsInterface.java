@@ -1655,10 +1655,14 @@ public interface CommandsInterface {
      * Base64 encoded Strings.
      * Can support EAP-SIM, EAP-AKA with results encoded per 3GPP TS 31.102.
      *
+     * @param authContext is the P2 parameter that specifies the authentication context per 3GPP TS
+     *                    31.102 (Section 7.1.2)
      * @param data authentication challenge data
+     * @param aid used to determine which application/slot to send the auth command to. See ETSI
+     *            102.221 8.1 and 101.220 4
      * @param response a callback message with the String response in the obj field
      */
-    public void requestIccSimAuthentication(String data, Message response);
+    public void requestIccSimAuthentication(int authContext, String data, String aid, Message response);
 
     /**
      * Get the current Voice Radio Technology.
