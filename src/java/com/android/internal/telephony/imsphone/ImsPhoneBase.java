@@ -34,10 +34,14 @@ import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.dataconnection.DataConnection;
+import com.android.internal.telephony.cdma.CDMAPhone;
+import com.android.internal.telephony.gsm.GSMPhone;
+import com.android.internal.telephony.CallManager;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
 import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.OperatorInfo;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
@@ -213,7 +217,13 @@ abstract class ImsPhoneBase extends PhoneBase {
     }
 
     void notifyNewRingingConnection(Connection c) {
-        super.notifyNewRingingConnectionP(c);
+        Phone defaultPhone = CallManager.getInstance().getDefaultPhone();
+        if ( defaultPhone != null && defaultPhone.getPhoneType() ==
+                PhoneConstants.PHONE_TYPE_GSM ) {
+           ((GSMPhone) defaultPhone).notifyNewRingingConnection(c);
+        } else { // Should be CDMA - also go here by default
+            ((CDMAPhone) defaultPhone).notifyNewRingingConnection(c);
+        }
     }
 
     void notifyDisconnect(Connection cn) {

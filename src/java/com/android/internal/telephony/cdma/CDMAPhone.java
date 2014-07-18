@@ -43,6 +43,7 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 
+import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CommandException;
@@ -316,7 +317,12 @@ public class CDMAPhone extends PhoneBase {
     }
 
     @Override
-    public CdmaCall getRingingCall() {
+    public Call getRingingCall() {
+        if ( mCT.mRingingCall != null && mCT.mRingingCall.isRinging() ) {
+            return mCT.mRingingCall;
+        } else if ( mImsPhone != null ) {
+            return mImsPhone.getRingingCall();
+        }
         return mCT.mRingingCall;
     }
 
@@ -467,7 +473,11 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public void
     acceptCall(int videoState) throws CallStateException {
-        mCT.acceptCall();
+        if ( mImsPhone != null && mImsPhone.getRingingCall().isRinging() ) {
+            mImsPhone.acceptCall(videoState);
+        } else {
+            mCT.acceptCall();
+        }
     }
 
     @Override
@@ -971,8 +981,7 @@ public class CDMAPhone extends PhoneBase {
          mNotifier.notifyCellLocation(this);
      }
 
-    /*package*/ void notifyNewRingingConnection(Connection c) {
-        /* we'd love it if this was package-scoped*/
+    public void notifyNewRingingConnection(Connection c) {
         super.notifyNewRingingConnectionP(c);
     }
 
