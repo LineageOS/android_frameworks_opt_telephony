@@ -1331,8 +1331,8 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
-    public String[] getPcscfAddress() {
-        return mActivePhone.getPcscfAddress();
+    public String[] getPcscfAddress(String apnType) {
+        return mActivePhone.getPcscfAddress(apnType);
     }
 
     @Override
