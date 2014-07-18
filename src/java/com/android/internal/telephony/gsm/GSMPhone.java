@@ -434,9 +434,7 @@ public class GSMPhone extends PhoneBase {
         super.notifyPreciseCallStateChangedP();
     }
 
-    /*package*/ void
-    notifyNewRingingConnection(Connection c) {
-        /* we'd love it if this was package-scoped*/
+    public void notifyNewRingingConnection(Connection c) {
         super.notifyNewRingingConnectionP(c);
     }
 
@@ -507,7 +505,11 @@ public class GSMPhone extends PhoneBase {
     @Override
     public void
     acceptCall(int videoState) throws CallStateException {
-        mCT.acceptCall();
+        if ( mImsPhone != null && mImsPhone.getRingingCall().isRinging() ) {
+            mImsPhone.acceptCall(videoState);
+        } else {
+            mCT.acceptCall();
+        }
     }
 
     @Override
@@ -564,8 +566,12 @@ public class GSMPhone extends PhoneBase {
     }
 
     @Override
-    public GsmCall
-    getRingingCall() {
+    public Call getRingingCall() {
+        if ( mCT.mRingingCall != null && mCT.mRingingCall.isRinging() ) {
+            return mCT.mRingingCall;
+        } else if ( mImsPhone != null ) {
+            return mImsPhone.getRingingCall();
+        }
         return mCT.mRingingCall;
     }
 

@@ -32,7 +32,7 @@ import java.util.List;
 /**
  * {@hide}
  */
-class ImsPhoneCall extends Call {
+public class ImsPhoneCall extends Call {
     /*************************** Instance Variables **************************/
 
     private static final String LOG_TAG = "ImsPhoneCall";
