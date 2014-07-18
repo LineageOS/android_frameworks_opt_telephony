@@ -235,9 +235,8 @@ public final class MccTable
      * @param country Two character country code desired
      *
      * @return Locale or null if no appropriate value
-     *  {@hide}
      */
-    public static Locale getLocaleForLanguageCountry(Context context, String language, String country) {
+    private static Locale getLocaleForLanguageCountry(Context context, String language, String country) {
         String l = SystemProperties.get("persist.sys.language");
         String c = SystemProperties.get("persist.sys.country");
 
@@ -245,53 +244,50 @@ public final class MccTable
             Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping no language");
             return null; // no match possible
         }
-        language = language.toLowerCase(Locale.ROOT);
         if (null == country) {
             country = "";
         }
-        country = country.toUpperCase(Locale.ROOT);
-
-        Locale locale;
         boolean alwaysPersist = false;
         if (Build.IS_DEBUGGABLE) {
             alwaysPersist = SystemProperties.getBoolean("persist.always.persist.locale", false);
         }
         if (alwaysPersist || ((null == l || 0 == l.length()) && (null == c || 0 == c.length()))) {
+            final Locale target = new Locale(language, country);
             try {
                 // try to find a good match
                 String[] locales = context.getAssets().getLocales();
                 final int N = locales.length;
-                String bestMatch = null;
+                Locale bestMatch = null;
                 for(int i = 0; i < N; i++) {
                     // only match full (lang + country) locales
-                    if (locales[i]!=null && locales[i].length() >= 5 &&
-                            locales[i].substring(0,2).equals(language)) {
-                        if (locales[i].substring(3,5).equals(country)) {
-                            bestMatch = locales[i];
-                            break;
-                        } else if (null == bestMatch) {
-                            bestMatch = locales[i];
+                    if (locales[i] != null && locales[i].length() >= 5) {
+                        final Locale locale = Locale.forLanguageTag(locales[i]);
+
+                        if (locale.getLanguage().equals(target.getLanguage())) {
+                            if (locale.getCountry().equals(target.getCountry())) {
+                                bestMatch = locale;
+                                break;
+                            } else if (bestMatch == null) {
+                                bestMatch = locale;
+                            }
                         }
                     }
                 }
                 if (null != bestMatch) {
-                    locale = new Locale(bestMatch.substring(0,2),
-                                               bestMatch.substring(3,5));
-                    Slog.d(LOG_TAG, "getLocaleForLanguageCountry: got match");
+                    Slog.d(LOG_TAG, "getLocaleForLanguageCountry: got match: " +
+                            bestMatch.toLanguageTag());
+                    return bestMatch;
                 } else {
-                    locale = null;
                     Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skip no match");
                 }
             } catch (Exception e) {
-                locale = null;
                 Slog.d(LOG_TAG, "getLocaleForLanguageCountry: exception", e);
             }
         } else {
-            locale = null;
             Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping already persisted");
         }
-        Slog.d(LOG_TAG, "getLocaleForLanguageCountry: X locale=" + locale);
-        return locale;
+
+        return null;
     }
 
     /**
