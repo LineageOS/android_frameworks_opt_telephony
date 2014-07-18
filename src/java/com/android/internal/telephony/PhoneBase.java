@@ -62,6 +62,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.android.internal.telephony.PhoneConstants.DEFAULT_SUBSCRIPTION;
@@ -947,14 +948,9 @@ public abstract class PhoneBase extends Handler implements Phone {
         for (int i = 0; i < carrierLocales.length; i+=3) {
             String c = carrierLocales[i].toString();
             if (carrier.equals(c)) {
-                String l = carrierLocales[i+1].toString();
-
-                String language = l.substring(0, 2);
-                String country = "";
-                if (l.length() >=5) {
-                    country = l.substring(3, 5);
-                }
-                MccTable.setSystemLocale(mContext, language, country);
+                final Locale l = Locale.forLanguageTag(carrierLocales[i + 1].toString().replace('_', '-'));
+                final String country = l.getCountry();
+                MccTable.setSystemLocale(mContext, l.getLanguage(), country);
 
                 if (!country.isEmpty()) {
                     try {
