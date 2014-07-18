@@ -21,14 +21,37 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * {@hide}
  */
 public abstract class Connection {
-
     public interface PostDialListener {
         void onPostDialWait();
+    }
+
+    /**
+     * Listener interface for events related to the connection which should be reported to the
+     * {@link android.telecomm.Connection}.
+     */
+    public interface Listener {
+        public void onVideoStateChanged(int videoState);
+        public void onLocalVideoCapabilityChanged(boolean capable);
+        public void onRemoteVideoCapabilityChanged(boolean capable);
+    }
+
+    /**
+     * Base listener implementation.
+     */
+    public abstract static class ListenerBase implements Listener {
+        @Override
+        public void onVideoStateChanged(int videoState) {}
+        @Override
+        public void onLocalVideoCapabilityChanged(boolean capable) {}
+        @Override
+        public void onRemoteVideoCapabilityChanged(boolean capable) {}
     }
 
     //Caller Name Display
@@ -36,10 +59,14 @@ public abstract class Connection {
     protected int mCnapNamePresentation  = PhoneConstants.PRESENTATION_ALLOWED;
 
     private List<PostDialListener> mPostDialListeners = new ArrayList<>();
+    private final Set<Listener> mListeners = new CopyOnWriteArraySet<>();
 
     private static String LOG_TAG = "Connection";
 
     Object mUserData;
+    private int mVideoState;
+    private boolean mLocalVideoCapable;
+    private boolean mRemoteVideoCapable;
 
     /* Instance Methods */
 
@@ -308,6 +335,89 @@ public abstract class Connection {
      * @return valid only when getOrigConnection() is not null
      */
     public abstract boolean isMultiparty();
+
+    /**
+     * Assign a listener to be notified of state changes.
+     *
+     * @param listener A listener.
+     */
+    public final void addListener(Listener listener) {
+        mListeners.add(listener);
+    }
+
+    /**
+     * Removes a listener.
+     *
+     * @param listener A listener.
+     */
+    public final void removeListener(Listener listener) {
+        mListeners.remove(listener);
+    }
+
+    /**
+     * Returns the current video state of the connection.
+     *
+     * @return The video state of the connection.
+     */
+    public int getVideoState() {
+        return mVideoState;
+    }
+
+    /**
+     * Returns the local video capability state for the connection.
+     *
+     * @return {@code True} if the connection has local video capabilities.
+     */
+    public boolean isLocalVideoCapable() {
+        return mLocalVideoCapable;
+    }
+
+    /**
+     * Returns the remote video capability state for the connection.
+     *
+     * @return {@code True} if the connection has remote video capabilities.
+     */
+    public boolean isRemoteVideoCapable() {
+        return mRemoteVideoCapable;
+    }
+
+
+    /**
+     * Sets the videoState for the current connection and reports the changes to all listeners.
+     * Valid video states are defined in {@link VideoCallProfile}.
+     *
+     * @return The video state.
+     */
+    public void setVideoState(int videoState) {
+        mVideoState = videoState;
+        for (Listener l : mListeners) {
+            l.onVideoStateChanged(mVideoState);
+        }
+    }
+
+    /**
+     * Sets whether video capability is present locally.
+     *
+     * @param capable {@code True} if video capable.
+     */
+    public void setLocalVideoCapable(boolean capable) {
+        mLocalVideoCapable = capable;
+        for (Listener l : mListeners) {
+            l.onLocalVideoCapabilityChanged(mLocalVideoCapable);
+        }
+    }
+
+    /**
+     * Sets whether video capability is present remotely.
+     *
+     * @param capable {@code True} if video capable.
+     */
+    public void setRemoteVideoCapable(boolean capable) {
+        mRemoteVideoCapable = capable;
+        for (Listener l : mListeners) {
+            l.onRemoteVideoCapabilityChanged(mRemoteVideoCapable);
+        }
+    }
 
     /**
      * Build a human representation of a connection instance, suitable for debugging.
