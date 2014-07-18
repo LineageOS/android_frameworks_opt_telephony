@@ -279,7 +279,15 @@ public class PhoneSubInfo {
             return null;
         }
 
-        return uiccApp.getIccRecords().getIccSimChallengeResponse(data);
+        int authContext = uiccApp.getAuthContext();
+
+        if(authContext == UiccCardApplication.AUTH_CONTEXT_UNDEFINED) {
+            Rlog.e(LOG_TAG, "getIccSimChallengeResponse() authContext undefined for app type " +
+                    appType);
+            return null;
+        }
+
+        return uiccApp.getIccRecords().getIccSimChallengeResponse(authContext, data);
     }
 
     private void log(String s) {
