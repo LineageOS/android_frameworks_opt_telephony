@@ -236,7 +236,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     }
 
     @Override
-    protected void pollState() {
+    public void pollState() {
         mPollingContext = new int[1];
         mPollingContext[0] = 0;
 

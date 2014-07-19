@@ -1375,7 +1375,7 @@ public class SIMRecords extends IccRecords {
 
     private void setSpnFromConfig(String carrier) {
         if (mSpnOverride.containsCarrier(carrier)) {
-            mSpn = mSpnOverride.getSpn(carrier);
+            setServiceProviderName(mSpnOverride.getSpn(carrier));
         }
     }
 
@@ -1491,7 +1491,7 @@ public class SIMRecords extends IccRecords {
     @Override
     public int getDisplayRule(String plmn) {
         int rule;
-        if (TextUtils.isEmpty(mSpn) || mSpnDisplayCondition == -1) {
+        if (TextUtils.isEmpty(getServiceProviderName()) || mSpnDisplayCondition == -1) {
             // No EF_SPN content was found on the SIM, or not yet loaded.  Just show ONS.
             rule = SPN_RULE_SHOW_PLMN;
         } else if (isOnMatchingPlmn(plmn)) {
@@ -1579,7 +1579,7 @@ public class SIMRecords extends IccRecords {
 
         switch(mSpnState){
             case INIT:
-                mSpn = null;
+                setServiceProviderName(null);
 
                 mFh.loadEFTransparent(EF_SPN,
                         obtainMessage(EVENT_GET_SPN_DONE));
@@ -1591,11 +1591,12 @@ public class SIMRecords extends IccRecords {
                 if (ar != null && ar.exception == null) {
                     data = (byte[]) ar.result;
                     mSpnDisplayCondition = 0xff & data[0];
-                    mSpn = IccUtils.adnStringFieldToString(data, 1, data.length - 1);
+                    setServiceProviderName(IccUtils.adnStringFieldToString(
+                            data, 1, data.length - 1));
 
-                    if (DBG) log("Load EF_SPN: " + mSpn
+                    if (DBG) log("Load EF_SPN: " + getServiceProviderName()
                             + " spnDisplayCondition: " + mSpnDisplayCondition);
-                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
 
                     mSpnState = GetSpnFsmState.IDLE;
                 } else {
@@ -1613,10 +1614,10 @@ public class SIMRecords extends IccRecords {
             case READ_SPN_CPHS:
                 if (ar != null && ar.exception == null) {
                     data = (byte[]) ar.result;
-                    mSpn = IccUtils.adnStringFieldToString(data, 0, data.length);
+                    setServiceProviderName(IccUtils.adnStringFieldToString(data, 0, data.length));
 
-                    if (DBG) log("Load EF_SPN_CPHS: " + mSpn);
-                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+                    if (DBG) log("Load EF_SPN_CPHS: " + getServiceProviderName());
+                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
 
                     mSpnState = GetSpnFsmState.IDLE;
                 } else {
@@ -1630,10 +1631,10 @@ public class SIMRecords extends IccRecords {
             case READ_SPN_SHORT_CPHS:
                 if (ar != null && ar.exception == null) {
                     data = (byte[]) ar.result;
-                    mSpn = IccUtils.adnStringFieldToString(data, 0, data.length);
+                    setServiceProviderName(IccUtils.adnStringFieldToString(data, 0, data.length));
 
-                    if (DBG) log("Load EF_SPN_SHORT_CPHS: " + mSpn);
-                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
+                    if (DBG) log("Load EF_SPN_SHORT_CPHS: " + getServiceProviderName());
+                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
                 }else {
                     if (DBG) log("No SPN loaded in either CHPS or 3GPP");
                 }

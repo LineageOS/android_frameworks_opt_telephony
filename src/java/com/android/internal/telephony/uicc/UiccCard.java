@@ -22,6 +22,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.content.res.Resources;
@@ -31,8 +32,10 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.preference.PreferenceManager;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.view.WindowManager;
 
 import com.android.internal.telephony.CommandsInterface;
@@ -61,6 +64,8 @@ import java.io.PrintWriter;
 public class UiccCard {
     protected static final String LOG_TAG = "UiccCard";
     protected static final boolean DBG = true;
+
+    private static final String OPERATOR_BRAND_OVERRIDE_PREFIX = "operator_branding_";
 
     private final Object mLock = new Object();
     private CardState mCardState;
@@ -501,6 +506,47 @@ public class UiccCard {
         return mCarrierPrivilegeRules == null ? "" :
             mCarrierPrivilegeRules.getCarrierPackageNameForBroadcastIntent(
                     packageManager, intent);
+    }
+
+    public boolean setOperatorBrandOverride(String iccId, String brand) {
+        log("setOperatorBrandOverride: " + iccId + " : " + brand);
+        log("current iccId: " + getIccId());
+
+        if (iccId.isEmpty() || !TextUtils.isDigitsOnly(iccId)) {
+            return false;
+        }
+
+        SharedPreferences.Editor spEditor =
+                PreferenceManager.getDefaultSharedPreferences(mContext).edit();
+        String key = OPERATOR_BRAND_OVERRIDE_PREFIX + iccId;
+        if (brand == null) {
+            spEditor.remove(key).commit();
+        } else {
+            spEditor.putString(key, brand).commit();
+        }
+        return true;
+    }
+
+    public String getOperatorBrandOverride() {
+        String iccId = getIccId();
+        if (iccId == null) {
+          return null;
+        }
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        return sp.getString(OPERATOR_BRAND_OVERRIDE_PREFIX + iccId, null);
+    }
+
+    private String getIccId() {
+        // ICCID should be same across all the apps.
+        for (UiccCardApplication app : mUiccApplications) {
+            if (app != null) {
+                IccRecords ir = app.getIccRecords();
+                if (ir != null && ir.getIccId() != null) {
+                    return ir.getIccId();
+                }
+            }
+        }
+        return null;
     }
 
     private void log(String msg) {

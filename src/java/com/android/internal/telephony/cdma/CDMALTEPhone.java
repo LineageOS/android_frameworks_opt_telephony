@@ -354,17 +354,21 @@ public class CDMALTEPhone extends CDMAPhone {
                 new Integer(PhoneConstants.PHONE_TYPE_CDMA).toString());
         // Sets operator alpha property by retrieving from build-time system property
         String operatorAlpha = SystemProperties.get("ro.cdma.home.operator.alpha");
-        setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, operatorAlpha);
+        if (!TextUtils.isEmpty(operatorAlpha)) {
+            setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, operatorAlpha);
+        }
 
         // Sets operator numeric property by retrieving from build-time system property
         String operatorNumeric = SystemProperties.get(PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
         log("update icc_operator_numeric=" + operatorNumeric);
-        setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
-        // Sets iso country property by retrieving from build-time system property
-        setIsoCountryProperty(operatorNumeric);
-        // Updates MCC MNC device configuration information
-        log("update mccmnc=" + operatorNumeric);
-        MccTable.updateMccMncConfiguration(mContext, operatorNumeric, false);
+        if (!TextUtils.isEmpty(operatorNumeric)) {
+            setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
+            // Sets iso country property by retrieving from build-time system property
+            setIsoCountryProperty(operatorNumeric);
+            // Updates MCC MNC device configuration information
+            log("update mccmnc=" + operatorNumeric);
+            MccTable.updateMccMncConfiguration(mContext, operatorNumeric, false);
+        }
         // Sets current entry in the telephony carrier table
         updateCurrentCarrierInProvider();
     }
