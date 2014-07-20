@@ -1037,7 +1037,6 @@ public final class SmsManager {
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully sent, or failed
      * @throws IllegalArgumentException if pdu is empty
-     * {@hide}
      */
     public void sendMultimediaMessage(long subId, byte[] pdu, String locationUrl,
             PendingIntent sentIntent) {
@@ -1078,7 +1077,6 @@ public final class SmsManager {
      * @param downloadedIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is downloaded, or the download is failed
      * @throws IllegalArgumentException if locationUrl is empty
-     * {@hide}
      */
     public void downloadMultimediaMessage(long subId, String locationUrl,
             PendingIntent downloadedIntent) {
@@ -1396,7 +1394,6 @@ public final class SmsManager {
      *  raw pdu of the status report is in the extended data ("pdu").
      *
      * @throws IllegalArgumentException if messageUri is empty
-     * {@hide}
      */
     public void sendStoredTextMessage(long subId, Uri messageUri, String scAddress,
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
@@ -1483,7 +1480,6 @@ public final class SmsManager {
      *   extended data ("pdu").
      *
      * @throws IllegalArgumentException if messageUri is empty
-     * {@hide}
      */
     public void sendStoredMultipartTextMessage(long subId, Uri messageUri, String scAddress,
             ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
@@ -1525,7 +1521,6 @@ public final class SmsManager {
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully sent, or failed
      * @throws IllegalArgumentException if messageUri is empty
-     * {@hide}
      */
     public void sendStoredMultimediaMessage(long subId, Uri messageUri, PendingIntent sentIntent) {
         if (messageUri == null) {
