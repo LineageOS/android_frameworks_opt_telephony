@@ -72,7 +72,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected int mMncLength = UNINITIALIZED;
     protected int mMailboxIndex = 0; // 0 is no mailbox dailing number associated
 
-    protected String mSpn;
+    private String mSpn;
 
     protected String mGid1;
 
@@ -304,11 +304,17 @@ public abstract class IccRecords extends Handler implements IccConstants {
     }
 
     /**
-     * Return Service Provider Name stored in SIM (EF_SPN=0x6F46) or in RUIM (EF_RUIM_SPN=0x6F41)
+     * Return Service Provider Name stored in SIM (EF_SPN=0x6F46) or in RUIM (EF_RUIM_SPN=0x6F41).
+     *
      * @return null if SIM is not yet ready or no RUIM entry
      */
     public String getServiceProviderName() {
-        return mSpn;
+        String brandOverride = mParentApp.getUiccCard().getOperatorBrandOverride();
+        return brandOverride == null ? mSpn : brandOverride;
+    }
+
+    protected void setServiceProviderName(String spn) {
+        mSpn = spn;
     }
 
     /**

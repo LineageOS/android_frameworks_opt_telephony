@@ -78,6 +78,7 @@ import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccVmNotSupportedException;
+import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.ServiceStateTracker;
@@ -1722,6 +1723,33 @@ public class GSMPhone extends PhoneBase {
         if (VDBG) pw.println(" mImei=" + mImei);
         if (VDBG) pw.println(" mImeiSv=" + mImeiSv);
         pw.println(" mVmNumber=" + mVmNumber);
+    }
+
+    @Override
+    public boolean setOperatorBrandOverride(String iccId, String brand) {
+        if (mUiccController == null) {
+            return false;
+        }
+
+        UiccCard card = mUiccController.getUiccCard();
+        if (card == null) {
+            return false;
+        }
+
+        boolean status = card.setOperatorBrandOverride(iccId, brand);
+
+        // Refresh.
+        if (status) {
+            IccRecords iccRecords = mIccRecords.get();
+            if (iccRecords != null) {
+                SystemProperties.set(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA,
+                        iccRecords.getServiceProviderName());
+            }
+            if (mSST != null) {
+                mSST.pollState();
+            }
+        }
+        return status;
     }
 
     /**

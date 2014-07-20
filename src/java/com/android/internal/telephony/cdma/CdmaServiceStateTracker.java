@@ -713,7 +713,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 } else {
                     mRegistrationDeniedReason = "";
                 }
-    
+
                 if (mRegistrationState == 3) {
                     if (DBG) log("Registration denied, " + mRegistrationDeniedReason);
                 }
@@ -721,8 +721,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
             case EVENT_POLL_STATE_OPERATOR_CDMA: // Handle RIL_REQUEST_OPERATOR
                 String opNames[] = (String[])ar.result;
-    
+
                 if (opNames != null && opNames.length >= 3) {
+                    // TODO: Do we care about overriding in this case.
                     // If the NUMERIC field isn't valid use PROPERTY_CDMA_HOME_OPERATOR_NUMERIC
                     if ((opNames[2] == null) || (opNames[2].length() < 5)
                             || ("00000".equals(opNames[2]))) {
@@ -741,17 +742,20 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                         // ERI text, so here it is ignored what is coming from the modem.
                         mNewSS.setOperatorName(null, opNames[1], opNames[2]);
                     } else {
-                        mNewSS.setOperatorName(opNames[0], opNames[1], opNames[2]);
+                        String brandOverride = mUiccController.getUiccCard() != null ?
+                            mUiccController.getUiccCard().getOperatorBrandOverride() : null;
+                        if (brandOverride != null) {
+                            mNewSS.setOperatorName(brandOverride, brandOverride, opNames[2]);
+                        } else {
+                            mNewSS.setOperatorName(opNames[0], opNames[1], opNames[2]);
+                        }
                     }
                 } else {
                     if (DBG) log("EVENT_POLL_STATE_OPERATOR_CDMA: error parsing opNames");
                 }
                 break;
 
-            
             default:
-    
-                
                 loge("handlePollStateResultMessage: RIL response handle in wrong phone!"
                         + " Expected CDMA RIL request and get GSM RIL request.");
                 break;
@@ -882,8 +886,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
      * and start over again if the radio notifies us that some
      * event has changed
      */
-    protected void
-    pollState() {
+    @Override
+    public void pollState() {
         mPollingContext = new int[1];
         mPollingContext[0] = 0;
 
