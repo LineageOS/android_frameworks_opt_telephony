@@ -467,6 +467,7 @@ public abstract class ServiceStateTracker extends Handler {
     public abstract boolean isConcurrentVoiceAndDataAllowed();
 
     public abstract void setImsRegistrationState(boolean registered);
+    public abstract void pollState();
 
     /**
      * Registration point for transition into DataConnection attached.

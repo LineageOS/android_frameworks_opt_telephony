@@ -1808,4 +1808,9 @@ public interface Phone {
      * otherwise return the current voice service state
      */
     int getVoicePhoneServiceState();
+
+    /**
+     * Override the service provider name and the operator name for the input ICCID.
+     */
+    public boolean setOperatorBrandOverride(String iccId, String brand);
 }

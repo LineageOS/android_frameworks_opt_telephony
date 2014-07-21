@@ -1728,4 +1728,31 @@ public class CDMAPhone extends PhoneBase {
         pw.println(" isMinInfoReady()=" + isMinInfoReady());
         pw.println(" isCspPlmnEnabled()=" + isCspPlmnEnabled());
     }
+
+    @Override
+    public boolean setOperatorBrandOverride(String iccId, String brand) {
+        if (mUiccController == null) {
+            return false;
+        }
+
+        UiccCard card = mUiccController.getUiccCard();
+        if (card == null) {
+            return false;
+        }
+
+        boolean status = card.setOperatorBrandOverride(iccId, brand);
+
+        // Refresh.
+        if (status) {
+            IccRecords iccRecords = mIccRecords.get();
+            if (iccRecords != null) {
+                SystemProperties.set(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA,
+                        iccRecords.getServiceProviderName());
+            }
+            if (mSST != null) {
+                mSST.pollState();
+            }
+        }
+        return status;
+    }
 }

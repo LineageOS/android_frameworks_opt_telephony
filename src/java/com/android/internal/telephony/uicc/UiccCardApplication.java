@@ -848,6 +848,10 @@ public class UiccCardApplication {
         }
     }
 
+    protected UiccCard getUiccCard() {
+        return mUiccCard;
+    }
+
     private void log(String msg) {
         Rlog.d(LOG_TAG, msg);
     }
