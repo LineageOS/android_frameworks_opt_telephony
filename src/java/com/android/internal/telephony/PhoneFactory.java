@@ -146,6 +146,14 @@ public class PhoneFactory {
                         networkModes[i] = preferredNetworkMode;
                     }
 
+                    if (sContext.getResources().getBoolean(
+                            com.android.internal.R.bool.config_global_phone_enabled) &&
+                            i == PhoneConstants.PHONE_ID1) {
+                        networkModes[i] = Phone.NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA;
+                        TelephonyManager.putIntAtIndex( context.getContentResolver(),
+                                Settings.Global.PREFERRED_NETWORK_MODE, i, networkModes[i]);
+                    }
+
                     Rlog.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkModes[i]));
                     sCommandsInterfaces[i] = new RIL(context, networkModes[i],
                             cdmaSubscription, i);
