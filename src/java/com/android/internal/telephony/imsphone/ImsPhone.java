@@ -29,6 +29,7 @@ import android.telephony.Rlog;
 import android.text.TextUtils;
 
 import com.android.ims.ImsCallForwardInfo;
+import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsException;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsSsInfo;
@@ -175,7 +176,7 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public void
     acceptCall(int videoState) throws CallStateException {
-        mCT.acceptCall();
+        mCT.acceptCall(videoState);
     }
 
     @Override
@@ -311,7 +312,7 @@ public class ImsPhone extends ImsPhoneBase {
             try {
                 if (getRingingCall().getState() != ImsPhoneCall.State.IDLE) {
                     if (DBG) Rlog.d(LOG_TAG, "MmiCode 2: accept ringing call");
-                    mCT.acceptCall();
+                    mCT.acceptCall(ImsCallProfile.CALL_TYPE_VOICE);
                 } else {
                     if (DBG) Rlog.d(LOG_TAG, "MmiCode 2: switchWaitingOrHoldingAndActive");
                     mCT.switchWaitingOrHoldingAndActive();
