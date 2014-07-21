@@ -503,7 +503,7 @@ public class UiccCard {
      */
     public String getCarrierPackageNameForBroadcastIntent(
             PackageManager packageManager, Intent intent) {
-        return mCarrierPrivilegeRules == null ? "" :
+        return mCarrierPrivilegeRules == null ? null :
             mCarrierPrivilegeRules.getCarrierPackageNameForBroadcastIntent(
                     packageManager, intent);
     }

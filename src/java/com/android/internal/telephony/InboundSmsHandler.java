@@ -718,10 +718,16 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
 
         Intent intent = new Intent(Intents.SMS_FILTER_ACTION);
-        intent.setPackage(
-                UiccController.getInstance().getUiccCard().getCarrierPackageNameForBroadcastIntent(
-                        mContext.getPackageManager(), intent));
-        intent.putExtra("destport", destPort);
+        String carrierPackage =
+            UiccController.getInstance().getUiccCard().getCarrierPackageNameForBroadcastIntent(
+                mContext.getPackageManager(), intent);
+        if (carrierPackage != null) {
+            intent.setPackage(carrierPackage);
+            intent.putExtra("destport", destPort);
+        } else {
+            setAndDirectIntent(intent, destPort);
+        }
+
         intent.putExtra("pdus", pdus);
         intent.putExtra("format", tracker.getFormat());
         dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,

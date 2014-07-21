@@ -270,8 +270,8 @@ public class UiccCarrierPrivilegeRules extends Handler {
      *
      * @param packageManager PackageManager for getting receivers.
      * @param intent Intent that will be broadcast.
-     * @return packageName name of package that should handle the intent. Will return an empty
-     *         string if no matching package is found.
+     * @return packageName name of package that should handle the intent. If null is returned,
+     *         no carrier app was found.
      */
     public String getCarrierPackageNameForBroadcastIntent(
             PackageManager packageManager, Intent intent) {
@@ -287,9 +287,8 @@ public class UiccCarrierPrivilegeRules extends Handler {
             }
         }
 
-        // Return an empty package name so that no packages match.
-        // TODO: This creates an unnecessary ordered broadcast that can be avoided.
-        return "";
+        // No carrier app, send null.
+        return null;
     }
 
     @Override
