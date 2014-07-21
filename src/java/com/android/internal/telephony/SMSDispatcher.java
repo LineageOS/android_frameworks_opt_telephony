@@ -62,6 +62,7 @@ import android.widget.TextView;
 
 import com.android.internal.R;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
+import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 
 import java.util.ArrayList;
@@ -1464,7 +1465,8 @@ public abstract class SMSDispatcher extends Handler {
     }
 
     protected String getCarrierAppPackageName(Intent intent) {
-        return UiccController.getInstance().getUiccCard().getCarrierPackageNameForBroadcastIntent(
+        UiccCard card = UiccController.getInstance().getUiccCard();
+        return card == null ? null : card.getCarrierPackageNameForBroadcastIntent(
             mContext.getPackageManager(), intent);
     }
 
