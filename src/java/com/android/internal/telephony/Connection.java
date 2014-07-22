@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.telecomm.CallVideoProvider;
 import android.telephony.Rlog;
 import android.util.Log;
 
@@ -40,6 +41,7 @@ public abstract class Connection {
         public void onVideoStateChanged(int videoState);
         public void onLocalVideoCapabilityChanged(boolean capable);
         public void onRemoteVideoCapabilityChanged(boolean capable);
+        public void onCallVideoProviderChanged(CallVideoProvider callVideoProvider);
     }
 
     /**
@@ -52,6 +54,8 @@ public abstract class Connection {
         public void onLocalVideoCapabilityChanged(boolean capable) {}
         @Override
         public void onRemoteVideoCapabilityChanged(boolean capable) {}
+        @Override
+        public void onCallVideoProviderChanged(CallVideoProvider callVideoProvider) {}
     }
 
     //Caller Name Display
@@ -67,6 +71,7 @@ public abstract class Connection {
     private int mVideoState;
     private boolean mLocalVideoCapable;
     private boolean mRemoteVideoCapable;
+    private CallVideoProvider mCallVideoProvider;
 
     /* Instance Methods */
 
@@ -381,6 +386,14 @@ public abstract class Connection {
         return mRemoteVideoCapable;
     }
 
+    /**
+     * Returns the {@link CallVideoProvider} for the connection.
+     *
+     * @return The {@link CallVideoProvider}.
+     */
+    public CallVideoProvider getCallVideoProvider() {
+        return mCallVideoProvider;
+    }
 
     /**
      * Sets the videoState for the current connection and reports the changes to all listeners.
@@ -416,6 +429,18 @@ public abstract class Connection {
         mRemoteVideoCapable = capable;
         for (Listener l : mListeners) {
             l.onRemoteVideoCapabilityChanged(mRemoteVideoCapable);
+        }
+    }
+
+    /**
+     * Sets the {@link CallVideoProvider} for the connection.
+     *
+     * @param callVideoProvider The call video provider.
+     */
+    public void setCallVideoProvider(CallVideoProvider callVideoProvider) {
+        mCallVideoProvider = callVideoProvider;
+        for (Listener l : mListeners) {
+            l.onCallVideoProviderChanged(mCallVideoProvider);
         }
     }
 
