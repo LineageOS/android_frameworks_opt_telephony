@@ -46,6 +46,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
+import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.State;
@@ -718,9 +719,12 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
 
         Intent intent = new Intent(Intents.SMS_FILTER_ACTION);
-        String carrierPackage =
-            UiccController.getInstance().getUiccCard().getCarrierPackageNameForBroadcastIntent(
-                mContext.getPackageManager(), intent);
+        String carrierPackage = null;
+        UiccCard card = UiccController.getInstance().getUiccCard();
+        if (card != null) {
+            carrierPackage = card.getCarrierPackageNameForBroadcastIntent(
+                    mContext.getPackageManager(), intent);
+        }
         if (carrierPackage != null) {
             intent.setPackage(carrierPackage);
             intent.putExtra("destport", destPort);
