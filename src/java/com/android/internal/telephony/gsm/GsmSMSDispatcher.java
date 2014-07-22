@@ -28,6 +28,7 @@ import android.os.Message;
 import android.provider.Telephony.Sms;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.ImsSMSDispatcher;
@@ -254,28 +255,36 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                 + " mMessageRef=" + tracker.mMessageRef
                 + " SS=" + mPhone.getServiceState().getState());
 
-        // FIX this once the carrier app and SIM restricted API is finalized.
-        // We should direct the intent to only the default carrier app.
-
         // Send SMS via the carrier app.
         BroadcastReceiver resultReceiver = new SMSDispatcherReceiver(tracker);
 
         Intent intent = new Intent(Intents.SMS_SEND_ACTION);
-        intent.setPackage(getCarrierAppPackageName(intent));
-        intent.putExtra("pdu", pdu);
-        intent.putExtra("smsc", (byte[]) map.get("smsc"));
-        intent.putExtra("format", getFormat());
-        intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
-        Rlog.d(TAG, "Sending SMS by carrier app.");
-
-        mContext.sendOrderedBroadcast(intent, android.Manifest.permission.RECEIVE_SMS,
-                                      AppOpsManager.OP_RECEIVE_SMS, resultReceiver,
-                                      null, Activity.RESULT_CANCELED, null, null);
+        String carrierPackage = getCarrierAppPackageName(intent);
+        if (carrierPackage != null) {
+            intent.setPackage(carrierPackage);
+            intent.putExtra("pdu", pdu);
+            intent.putExtra("smsc", (byte[]) map.get("smsc"));
+            intent.putExtra("format", getFormat());
+            intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
+            Rlog.d(TAG, "Sending SMS by carrier app.");
+            mContext.sendOrderedBroadcast(intent, android.Manifest.permission.RECEIVE_SMS,
+                                          AppOpsManager.OP_RECEIVE_SMS, resultReceiver,
+                                          null, Activity.RESULT_CANCELED, null, null);
+        } else {
+            sendSmsByPstn(tracker);
+        }
     }
 
     /** {@inheritDoc} */
     @Override
     protected void sendSmsByPstn(SmsTracker tracker) {
+        int ss = mPhone.getServiceState().getState();
+        // if sms over IMS is not supported on data and voice is not available...
+        if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
+            tracker.onFailed(mContext, getNotInServiceError(ss), 0/*errorCode*/);
+            return;
+        }
+
         HashMap<String, Object> map = tracker.mData;
 
         byte smsc[] = (byte[]) map.get("smsc");

@@ -739,14 +739,7 @@ public abstract class SMSDispatcher extends Handler {
                 return;
             }
 
-            int ss = mPhone.getServiceState().getState();
-
-            // if sms over IMS is not supported on data and voice is not available...
-            if (!isIms() && ss != ServiceState.STATE_IN_SERVICE) {
-                tracker.onFailed(mContext, getNotInServiceError(ss), 0/*errorCode*/);
-            } else {
-                sendSms(tracker);
-            }
+            sendSms(tracker);
         }
     }
 
