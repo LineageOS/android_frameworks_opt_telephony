@@ -24,11 +24,11 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
-import android.telecomm.VideoCallProfile;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 
+import com.android.ims.ImsException;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
@@ -632,6 +632,38 @@ public class ImsPhoneConnection extends Connection {
 
         changed = mParent.update(this, imsCall, state);
 
+        // Check for a change in the video capabilities for the call and update the
+        // {@link ImsPhoneConnection} with this information.
+        try {
+            // Get the current local VT capabilities (i.e. even if currentCallType above is
+            // audio-only, the local capability could support bi-directional video).
+            ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
+            if (localCallProfile != null) {
+                int localCallTypeCapability = localCallProfile.mCallType;
+                boolean newLocalVideoCapable = localCallTypeCapability
+                        == ImsCallProfile.CALL_TYPE_VT;
+
+                if (isLocalVideoCapable() != newLocalVideoCapable) {
+                    setLocalVideoCapable(newLocalVideoCapable);
+                    changed = true;
+                }
+            }
+        } catch (ImsException e) {
+            // No session in place -- no change
+        }
+
+        // Check for a change in the call type / video state of the {@link ImsCall} and update the
+        // {@link ImsPhoneConnection} with this information.
+        ImsCallProfile callProfile = imsCall.getCallProfile();
+        if (callProfile != null) {
+            int oldVideoState = getVideoState();
+            int newVideoState = ImsCallProfile.getVideoStateFromCallType(callProfile.mCallType);
+
+            if (oldVideoState != newVideoState) {
+                setVideoState(newVideoState);
+                changed = true;
+            }
+        }
         return changed;
     }
 

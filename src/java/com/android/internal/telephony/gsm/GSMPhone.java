@@ -799,7 +799,7 @@ public class GSMPhone extends PhoneBase {
                 && mContext.getResources().getBoolean(
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall))) ) {
             try {
-                return mImsPhone.dial(dialString, VideoCallProfile.VIDEO_STATE_AUDIO_ONLY);
+                return mImsPhone.dial(dialString, videoState);
             } catch (CallStateException e) {
                 if (!ImsPhone.CS_FALLBACK.equals(e.getMessage())) {
                     CallStateException ce = new CallStateException(e.getMessage());
@@ -809,7 +809,7 @@ public class GSMPhone extends PhoneBase {
             }
         }
 
-        return dialInternal(dialString, null, videoState);
+        return dialInternal(dialString, null, VideoCallProfile.VIDEO_STATE_AUDIO_ONLY);
     }
 
     @Override

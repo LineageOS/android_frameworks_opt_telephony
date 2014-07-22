@@ -87,7 +87,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                         if (DBG) log("onReceive : USSD");
                         mUssdSession = mImsManager.takeCall(mServiceId, intent, mImsUssdListener);
                         if (mUssdSession != null) {
-                            mUssdSession.accept();
+                            mUssdSession.accept(ImsCallProfile.CALL_TYPE_VOICE);
                         }
                         return;
                     }
@@ -350,8 +350,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    void
-    acceptCall () throws CallStateException {
+    /**
+     * Accepts a call with the specified video state.  The video state is the video state that the
+     * user has agreed upon in the InCall UI.
+     *
+     * @param videoState The video State
+     * @throws CallStateException
+     */
+    void acceptCall (int videoState) throws CallStateException {
         if (DBG) log("acceptCall");
 
         if (mForegroundCall.getState().isAlive()
@@ -370,7 +376,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             try {
                 ImsCall imsCall = mRingingCall.getImsCall();
                 if (imsCall != null) {
-                    imsCall.accept();
+                    imsCall.accept(ImsCallProfile.getCallTypeFromVideoState(videoState));
                 } else {
                     throw new CallStateException("no valid ims call");
                 }
@@ -690,7 +696,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             } else if (mRingingCall.getState() == ImsPhoneCall.State.WAITING) {
                 //accept waiting call after holding background call
                 ImsCall imsCall = mRingingCall.getImsCall();
-                if (imsCall != null) imsCall.accept();
+                if (imsCall != null) imsCall.accept(ImsCallProfile.CALL_TYPE_VOICE);
             } else {
                 //Just resume background call.
                 //To distinguish resuming call with swapping calls
