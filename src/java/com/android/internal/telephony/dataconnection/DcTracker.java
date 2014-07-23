@@ -66,6 +66,7 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.dataconnection.CdmaDataProfileTracker;
 import com.android.internal.util.AsyncChannel;
@@ -2310,13 +2311,8 @@ public class DcTracker extends DcTrackerBase {
             }
         }
 
-        if (mAllDps.isEmpty()) {
-            int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
-            if (!CdmaDataProfileTracker.OMH_ENABLED &&
-                    UiccController.getFamilyFromRadioTechnology(radioTech)
-                    == UiccController.APP_FAM_3GPP2) {
-                addDummyDataProfiles(operator);
-            }
+        if (mAllDps.isEmpty() && isDummyProfileNeeded()) {
+            addDummyDataProfiles(operator);
         }
 
         if (mAllDps.isEmpty()) {
@@ -2333,6 +2329,19 @@ public class DcTracker extends DcTrackerBase {
             if (DBG) log("createAllApnList: mPreferredApn=" + mPreferredDp);
         }
         if (DBG) log("createAllApnList: X mAllDps=" + mAllDps);
+    }
+
+    private boolean isDummyProfileNeeded() {
+        boolean ret = !CdmaDataProfileTracker.OMH_ENABLED;
+        int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
+        int radioTechFam = UiccController.getFamilyFromRadioTechnology(radioTech);
+        IccRecords r = mIccRecords.get();
+        if (DBG) log("isDummyProfileNeeded: radioTechFam = " + radioTechFam);
+        // If uicc app family based on data rat is unknown,
+        // check if records selected is RuimRecords.
+        return ret && (radioTechFam == UiccController.APP_FAM_3GPP2 ||
+                ((radioTechFam == UiccController.APP_FAM_UNKNOWN) &&
+                (r != null) && (r instanceof RuimRecords)));
     }
 
     private void addDummyDataProfiles(String operator) {
