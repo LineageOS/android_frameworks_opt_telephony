@@ -83,6 +83,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.util.AsyncChannel;
@@ -2727,11 +2728,8 @@ public final class DcTracker extends DcTrackerBase {
 
         dedupeApnSettings();
 
-        if (mAllApnSettings.isEmpty()) {
-            if(UiccController.getFamilyFromRadioTechnology(radioTech)
-                    == UiccController.APP_FAM_3GPP2) {
-                addDummyApnSettings(operator);
-            }
+        if (mAllApnSettings.isEmpty() && isDummyProfileNeeded()) {
+            addDummyApnSettings(operator);
         }
 
         addEmergencyApnSetting();
@@ -2858,6 +2856,18 @@ public final class DcTracker extends DcTrackerBase {
                 roamingProtocol, dest.carrierEnabled, dest.bearer, dest.profileId,
                 (dest.modemCognitive || src.modemCognitive), dest.maxConns, dest.waitTime,
                 dest.maxConnsTime, dest.mtu, dest.mvnoType, dest.mvnoMatchData);
+    }
+
+    private boolean isDummyProfileNeeded() {
+        int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
+        int radioTechFam = UiccController.getFamilyFromRadioTechnology(radioTech);
+        IccRecords r = mIccRecords.get();
+        if (DBG) log("isDummyProfileNeeded: radioTechFam = " + radioTechFam);
+        // If uicc app family based on data rat is unknown,
+        // check if records selected is RuimRecords.
+        return (radioTechFam == UiccController.APP_FAM_3GPP2 ||
+                ((radioTechFam == UiccController.APP_FAM_UNKNOWN) &&
+                (r != null) && (r instanceof RuimRecords)));
     }
 
     private void addDummyApnSettings(String operator) {
