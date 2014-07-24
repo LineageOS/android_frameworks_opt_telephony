@@ -57,6 +57,7 @@ import com.android.internal.R;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.List;
 
 /**
  * {@hide}
@@ -499,12 +500,12 @@ public class UiccCard {
     }
 
     /**
-     * Exposes {@link UiccCarrierPrivilegeRules.getCarrierPackageNameForBroadcastIntent}.
+     * Exposes {@link UiccCarrierPrivilegeRules.getCarrierPackageNamesForBroadcastIntent}.
      */
-    public String getCarrierPackageNameForBroadcastIntent(
+    public List<String> getCarrierPackageNamesForBroadcastIntent(
             PackageManager packageManager, Intent intent) {
         return mCarrierPrivilegeRules == null ? null :
-            mCarrierPrivilegeRules.getCarrierPackageNameForBroadcastIntent(
+            mCarrierPrivilegeRules.getCarrierPackageNamesForBroadcastIntent(
                     packageManager, intent);
     }
 

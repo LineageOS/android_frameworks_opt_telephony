@@ -1459,8 +1459,15 @@ public abstract class SMSDispatcher extends Handler {
 
     protected String getCarrierAppPackageName(Intent intent) {
         UiccCard card = UiccController.getInstance().getUiccCard();
-        return card == null ? null : card.getCarrierPackageNameForBroadcastIntent(
+        if (card == null) {
+            return null;
+        }
+
+        List<String> carrierPackages = card.getCarrierPackageNamesForBroadcastIntent(
             mContext.getPackageManager(), intent);
+        return (carrierPackages != null && carrierPackages.size() == 1) ?
+                carrierPackages.get(0) : null;
+
     }
 
     protected long getSubId() {

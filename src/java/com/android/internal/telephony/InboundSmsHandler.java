@@ -54,6 +54,7 @@ import com.android.internal.util.StateMachine;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
+import java.util.List;
 
 import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
 
@@ -719,14 +720,14 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
 
         Intent intent = new Intent(Intents.SMS_FILTER_ACTION);
-        String carrierPackage = null;
+        List<String> carrierPackages = null;
         UiccCard card = UiccController.getInstance().getUiccCard();
         if (card != null) {
-            carrierPackage = card.getCarrierPackageNameForBroadcastIntent(
+            carrierPackages = card.getCarrierPackageNamesForBroadcastIntent(
                     mContext.getPackageManager(), intent);
         }
-        if (carrierPackage != null) {
-            intent.setPackage(carrierPackage);
+        if (carrierPackages != null && carrierPackages.size() == 1) {
+            intent.setPackage(carrierPackages.get(0));
             intent.putExtra("destport", destPort);
         } else {
             setAndDirectIntent(intent, destPort);
