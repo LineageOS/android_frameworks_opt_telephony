@@ -2695,10 +2695,23 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     @Override
-    public String[] getPcscfAddress() {
+    public String[] getPcscfAddress(String apnType) {
         log("getPcscfAddress()");
+        ApnContext apnContext = null;
 
-        ApnContext apnContext = mApnContexts.get(PhoneConstants.APN_TYPE_IMS);
+        if(apnType == null){
+            log("apnType is null, return null");
+            return null;
+        }
+
+        if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_EMERGENCY)) {
+            apnContext = mApnContexts.get(PhoneConstants.APN_TYPE_EMERGENCY);
+        } else if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_IMS)) {
+            apnContext = mApnContexts.get(PhoneConstants.APN_TYPE_IMS);
+        } else {
+            log("apnType is invalid, return null");
+            return null;
+        }
 
         if (apnContext == null) {
             log("apnContext is null, return null");

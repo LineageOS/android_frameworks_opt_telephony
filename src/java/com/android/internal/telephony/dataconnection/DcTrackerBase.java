@@ -742,7 +742,7 @@ public abstract class DcTrackerBase extends Handler {
     protected abstract void onUpdateIcc();
     protected abstract void completeConnection(ApnContext apnContext);
     public abstract void setDataAllowed(boolean enable, Message response);
-    public abstract String[] getPcscfAddress();
+    public abstract String[] getPcscfAddress(String apnType);
     public abstract void setImsRegistrationState(boolean registered);
 
     @Override
