@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.telecomm.CallVideoProvider;
+import android.telecomm.VideoCallProvider;
 import android.telephony.Rlog;
 import android.util.Log;
 
@@ -41,7 +41,7 @@ public abstract class Connection {
         public void onVideoStateChanged(int videoState);
         public void onLocalVideoCapabilityChanged(boolean capable);
         public void onRemoteVideoCapabilityChanged(boolean capable);
-        public void onCallVideoProviderChanged(CallVideoProvider callVideoProvider);
+        public void onVideoCallProviderChanged(VideoCallProvider videoCallProvider);
     }
 
     /**
@@ -55,7 +55,7 @@ public abstract class Connection {
         @Override
         public void onRemoteVideoCapabilityChanged(boolean capable) {}
         @Override
-        public void onCallVideoProviderChanged(CallVideoProvider callVideoProvider) {}
+        public void onVideoCallProviderChanged(VideoCallProvider videoCallProvider) {}
     }
 
     //Caller Name Display
@@ -71,7 +71,7 @@ public abstract class Connection {
     private int mVideoState;
     private boolean mLocalVideoCapable;
     private boolean mRemoteVideoCapable;
-    private CallVideoProvider mCallVideoProvider;
+    private VideoCallProvider mVideoCallProvider;
 
     /* Instance Methods */
 
@@ -387,12 +387,12 @@ public abstract class Connection {
     }
 
     /**
-     * Returns the {@link CallVideoProvider} for the connection.
+     * Returns the {@link VideoCallProvider} for the connection.
      *
-     * @return The {@link CallVideoProvider}.
+     * @return The {@link VideoCallProvider}.
      */
-    public CallVideoProvider getCallVideoProvider() {
-        return mCallVideoProvider;
+    public VideoCallProvider getVideoCallProvider() {
+        return mVideoCallProvider;
     }
 
     /**
@@ -433,14 +433,14 @@ public abstract class Connection {
     }
 
     /**
-     * Sets the {@link CallVideoProvider} for the connection.
+     * Sets the {@link VideoCallProvider} for the connection.
      *
-     * @param callVideoProvider The call video provider.
+     * @param videoCallProvider The video call provider.
      */
-    public void setCallVideoProvider(CallVideoProvider callVideoProvider) {
-        mCallVideoProvider = callVideoProvider;
+    public void setVideoCallProvider(VideoCallProvider videoCallProvider) {
+        mVideoCallProvider = videoCallProvider;
         for (Listener l : mListeners) {
-            l.onCallVideoProviderChanged(mCallVideoProvider);
+            l.onVideoCallProviderChanged(mVideoCallProvider);
         }
     }
 
