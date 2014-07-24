@@ -40,10 +40,10 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Class that reads and stores the carrier privileged rules from the UICC.
@@ -266,29 +266,33 @@ public class UiccCarrierPrivilegeRules extends Handler {
     }
 
     /**
-     * Given an intent, returns the package name of the carrier app that should handle the intent.
+     * Returns the package name of the carrier app that should handle the input intent.
      *
      * @param packageManager PackageManager for getting receivers.
      * @param intent Intent that will be broadcast.
-     * @return packageName name of package that should handle the intent. If null is returned,
-     *         no carrier app was found.
+     * @return list of carrier app package names that can handle the intent.
+     *         Returns null if there is an error and an empty list if there
+     *         are no matching packages.
      */
-    public String getCarrierPackageNameForBroadcastIntent(
+    public List<String> getCarrierPackageNamesForBroadcastIntent(
             PackageManager packageManager, Intent intent) {
+        List<String> packages = new ArrayList<String>();
         List<ResolveInfo> receivers = packageManager.queryBroadcastReceivers(intent, 0);
         for (ResolveInfo resolveInfo : receivers) {
             if (resolveInfo.activityInfo == null) {
                 continue;
             }
             String packageName = resolveInfo.activityInfo.packageName;
-            if (getCarrierPrivilegeStatus(packageManager, packageName) ==
-                    TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
-                return packageName;
+            int status = getCarrierPrivilegeStatus(packageManager, packageName);
+            if (status == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
+                packages.add(packageName);
+            } else if (status != TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS) {
+                // Any status apart from HAS_ACCESS and NO_ACCESS is considered an error.
+                return null;
             }
         }
 
-        // No carrier app, send null.
-        return null;
+        return packages;
     }
 
     @Override
