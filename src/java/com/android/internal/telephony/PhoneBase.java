@@ -1686,10 +1686,11 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     /**
      * Get P-CSCF address from PCO after data connection is established or modified.
+     * @param apnType the apnType, "ims" for IMS APN, "emergency" for EMERGENCY APN
      */
     @Override
-    public String[] getPcscfAddress() {
-        return mDcTracker.getPcscfAddress();
+    public String[] getPcscfAddress(String apnType) {
+        return mDcTracker.getPcscfAddress(apnType);
     }
 
     /**
