@@ -309,8 +309,29 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return null if SIM is not yet ready or no RUIM entry
      */
     public String getServiceProviderName() {
-        String brandOverride = mParentApp.getUiccCard().getOperatorBrandOverride();
-        return brandOverride == null ? mSpn : brandOverride;
+        String providerName = mSpn;
+
+        // Check for null pointers, mParentApp can be null after dispose,
+        // which did occur after removing a SIM.
+        UiccCardApplication parentApp = mParentApp;
+        if (parentApp != null) {
+            UiccCard card = parentApp.getUiccCard();
+            if (card != null) {
+                String brandOverride = card.getOperatorBrandOverride();
+                if (brandOverride != null) {
+                    log("getServiceProviderName: override");
+                    providerName = brandOverride;
+                } else {
+                    log("getServiceProviderName: no brandOverride");
+                }
+            } else {
+                log("getServiceProviderName: card is null");
+            }
+        } else {
+            log("getServiceProviderName: mParentApp is null");
+        }
+        log("getServiceProviderName: providerName=" + providerName);
+        return providerName;
     }
 
     protected void setServiceProviderName(String spn) {
@@ -384,7 +405,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     protected void onIccRefreshInit() {
         mAdnCache.reset();
-        if (mParentApp.getState() == AppState.APPSTATE_READY) {
+        UiccCardApplication parentApp = mParentApp;
+        if ((parentApp != null) &&
+                (parentApp.getState() == AppState.APPSTATE_READY)) {
             // This will cause files to be reread
             sendMessage(obtainMessage(EVENT_APP_READY));
         }
@@ -548,24 +571,36 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return challenge response
      */
     public String getIccSimChallengeResponse(int authContext, String data) {
-        if (DBG) log("getIccSimChallengeResponse-data: " + data);
+        if (DBG) log("getIccSimChallengeResponse:");
 
         try {
             synchronized(mLock) {
-                mCi.requestIccSimAuthentication(authContext, data, mParentApp.getAid(),
-                        obtainMessage(EVENT_AKA_AUTHENTICATE_DONE));
-                try {
-                    mLock.wait();
-                } catch (InterruptedException e) {
-                    loge("interrupted while trying to request Icc Sim Auth");
+                CommandsInterface ci = mCi;
+                UiccCardApplication parentApp = mParentApp;
+                if (ci != null && parentApp != null) {
+                    ci.requestIccSimAuthentication(authContext, data,
+                            parentApp.getAid(),
+                            obtainMessage(EVENT_AKA_AUTHENTICATE_DONE));
+                    try {
+                        mLock.wait();
+                    } catch (InterruptedException e) {
+                        loge("getIccSimChallengeResponse: Fail, interrupted"
+                                + " while trying to request Icc Sim Auth");
+                        return null;
+                    }
+                } else {
+                    loge( "getIccSimChallengeResponse: "
+                            + "Fail, ci or parentApp is null");
+                    return null;
                 }
             }
         } catch(Exception e) {
-            loge( "Fail while trying to request Icc Sim Auth");
+            loge( "getIccSimChallengeResponse: "
+                    + "Fail while trying to request Icc Sim Auth");
             return null;
         }
 
-        if (DBG) log("getIccSimChallengeResponse-auth_rsp" + auth_rsp);
+        if (DBG) log("getIccSimChallengeResponse: return auth_rsp");
 
         return IccUtils.bytesToHexString(auth_rsp.payload);
     }
