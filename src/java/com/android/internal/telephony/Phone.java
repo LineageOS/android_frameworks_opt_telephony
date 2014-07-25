@@ -1733,13 +1733,6 @@ public interface Phone {
     void removeReferences();
 
     /**
-     * Update the phone object if the voice radio technology has changed
-     *
-     * @param voiceRadioTech The new voice radio technology
-     */
-    void updatePhoneObject(int voiceRadioTech);
-
-    /**
      * Read one of the NV items defined in {@link RadioNVItems} / {@code ril_nv_items.h}.
      * Used for device configuration by some CDMA operators.
      *
