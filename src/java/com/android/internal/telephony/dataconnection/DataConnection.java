@@ -353,6 +353,11 @@ public final class DataConnection extends StateMachine {
         }
         mLinkProperties = result.newLp;
 
+        if (result.newLp.equals(result.oldLp) == false &&
+                mNetworkAgent != null) {
+            mNetworkAgent.sendLinkProperties(mLinkProperties);
+        }
+
         return result;
     }
 
