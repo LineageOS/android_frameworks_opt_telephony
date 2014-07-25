@@ -38,6 +38,7 @@ import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccRefreshResponse;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 
 import java.io.ByteArrayOutputStream;
 import java.util.List;
@@ -188,17 +189,23 @@ public class CatService extends Handler implements AppInterface {
         UiccCardApplication ca = null;
         IccFileHandler fh = null;
         IccRecords ir = null;
+
         if (ic != null) {
             /* Since Cat is not tied to any application, but rather is Uicc application
              * in itself - just get first FileHandler and IccRecords object
              */
-            ca = ic.getApplicationIndex(0);
-            if (ca != null) {
-                fh = ca.getIccFileHandler();
-                ir = ca.getIccRecords();
+            for (int i = 0; i < ic.getNumApplications(); i++) {
+                ca = ic.getApplicationIndex(i);
+                if (ca != null && (ca.getType() != AppType.APPTYPE_UNKNOWN)) {
+                    fh = ca.getIccFileHandler();
+                    ir = ca.getIccRecords();
+                    break;
+                }
             }
         }
 
+        // FIXME this works for only single SIM, make changes
+        // to make it work for MSIM
         synchronized (sInstanceLock) {
             if (sInstance == null) {
                 if (ci == null || ca == null || ir == null || context == null || fh == null
@@ -207,15 +214,27 @@ public class CatService extends Handler implements AppInterface {
                 }
 
                 sInstance = new CatService(ci, ca, ir, context, fh, ic, slotId);
+                CatLog.d(sInstance, "NEW sInstance");
             } else if ((ir != null) && (mIccRecords != ir)) {
                 if (mIccRecords != null) {
                     mIccRecords.unregisterForRecordsLoaded(sInstance);
                 }
 
+                if (mUiccApplication != null) {
+                    mUiccApplication.unregisterForReady(sInstance);
+                }
+                CatLog.d(sInstance,
+                        "Reinitialize the Service with SIMRecords and UiccCardApplication");
                 mIccRecords = ir;
                 mUiccApplication = ca;
 
+
+                // re-Register for SIM ready event.
                 mIccRecords.registerForRecordsLoaded(sInstance, MSG_ID_ICC_RECORDS_LOADED, null);
+                mUiccApplication.registerForReady(sInstance, MSG_ID_SIM_READY, null);
+                CatLog.d(sInstance, "sr changed reinitialize and return current sInstance");
+            } else {
+                CatLog.d(sInstance, "Return current sInstance");
             }
             return sInstance;
         }
