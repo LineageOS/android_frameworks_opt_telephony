@@ -116,34 +116,8 @@ public class ProxyController {
         ((PhoneProxy) mProxyPhones[sub]).setInternalDataEnabled(false, dataCleanedUpMsg);
     }
 
-    public boolean enableDataConnectivityFlag(int sub) {
-        return ((PhoneProxy) mProxyPhones[sub]).setInternalDataEnabledFlag(true);
-    }
-
-    public boolean disableDataConnectivityFlag(int sub) {
-        return ((PhoneProxy) mProxyPhones[sub]).setInternalDataEnabledFlag(false);
-    }
-
     public void updateCurrentCarrierInProvider(int sub) {
         ((PhoneProxy) mProxyPhones[sub]).updateCurrentCarrierInProvider();
-    }
-
-    public void checkAndUpdatePhoneObject(Subscription userSub) {
-        int subId = userSub.subId;
-        if ((userSub.appType.equals("SIM")
-                || userSub.appType.equals("USIM"))
-                && (!mProxyPhones[subId].getPhoneName().equals("GSM"))) {
-            logd("gets New GSM phone" );
-            ((PhoneProxy) mProxyPhones[subId])
-                .updatePhoneObject(ServiceState.RIL_RADIO_TECHNOLOGY_GSM);
-        } else if ((userSub.appType.equals("RUIM")
-                || userSub.appType.equals("CSIM")
-                || userSub.appType.equals("GLOBAL"))
-                && (!mProxyPhones[subId].getPhoneName().equals("CDMA"))) {
-            logd("gets New CDMA phone" );
-            ((PhoneProxy) mProxyPhones[subId])
-                .updatePhoneObject(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
-        }
     }
 
     public void registerForAllDataDisconnected(long subId, Handler h, int what, Object obj) {
