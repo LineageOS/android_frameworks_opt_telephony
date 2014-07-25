@@ -302,7 +302,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             break;
 
         case EVENT_NV_READY:
-            updatePhoneObject();
 
             // Only support automatic selection mode in CDMA.
             mPhone.setNetworkSelectionModeAutomatic(null);
@@ -462,8 +461,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             break;
 
         case EVENT_RUIM_RECORDS_LOADED:
-            log("EVENT_RUIM_RECORDS_LOADED: what=" + msg.what);
-            updatePhoneObject();
             updateSpnDisplay();
             break;
 
@@ -1021,9 +1018,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         boolean hasCdmaDataConnectionChanged =
                        mSS.getDataRegState() != mNewSS.getDataRegState();
 
-        boolean hasRilVoiceRadioTechnologyChanged =
-                mSS.getRilVoiceRadioTechnology() != mNewSS.getRilVoiceRadioTechnology();
-
         boolean hasRilDataRadioTechnologyChanged =
                 mSS.getRilDataRadioTechnology() != mNewSS.getRilDataRadioTechnology();
 
@@ -1054,9 +1048,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         mCellLoc = mNewCellLoc;
         mNewCellLoc = tcl;
 
-        if (hasRilVoiceRadioTechnologyChanged) {
-            updatePhoneObject();
-        }
+        mNewSS.setStateOutOfService(); // clean slate for next time
 
         if (hasRilDataRadioTechnologyChanged) {
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
