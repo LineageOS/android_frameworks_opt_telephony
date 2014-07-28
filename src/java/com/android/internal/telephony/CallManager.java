@@ -709,7 +709,7 @@ public final class CallManager {
         }
 
         // We only support the AUDIO_ONLY video state in this scenario.
-        ringingPhone.acceptCall(VideoCallProfile.VIDEO_STATE_AUDIO_ONLY);
+        ringingPhone.acceptCall(VideoCallProfile.VideoState.AUDIO_ONLY);
 
         if (VDBG) {
             Rlog.d(LOG_TAG, "End acceptCall(" +ringingCall + ")");
