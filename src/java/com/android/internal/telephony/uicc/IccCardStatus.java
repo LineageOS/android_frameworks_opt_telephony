@@ -29,7 +29,7 @@ public class IccCardStatus {
         CARDSTATE_PRESENT,
         CARDSTATE_ERROR;
 
-        boolean isCardPresent() {
+        public boolean isCardPresent() {
             return this == CARDSTATE_PRESENT;
         }
     }
