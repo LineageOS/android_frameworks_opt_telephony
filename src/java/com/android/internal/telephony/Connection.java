@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony;
 
-import android.telecomm.VideoCallProvider;
+import android.telecomm.ConnectionService;
 import android.telephony.Rlog;
 import android.util.Log;
 
@@ -41,7 +41,8 @@ public abstract class Connection {
         public void onVideoStateChanged(int videoState);
         public void onLocalVideoCapabilityChanged(boolean capable);
         public void onRemoteVideoCapabilityChanged(boolean capable);
-        public void onVideoCallProviderChanged(VideoCallProvider videoCallProvider);
+        public void onVideoCallProviderChanged(
+                ConnectionService.VideoCallProvider videoCallProvider);
     }
 
     /**
@@ -55,7 +56,8 @@ public abstract class Connection {
         @Override
         public void onRemoteVideoCapabilityChanged(boolean capable) {}
         @Override
-        public void onVideoCallProviderChanged(VideoCallProvider videoCallProvider) {}
+        public void onVideoCallProviderChanged(
+                ConnectionService.VideoCallProvider videoCallProvider) {}
     }
 
     //Caller Name Display
@@ -71,7 +73,7 @@ public abstract class Connection {
     private int mVideoState;
     private boolean mLocalVideoCapable;
     private boolean mRemoteVideoCapable;
-    private VideoCallProvider mVideoCallProvider;
+    private ConnectionService.VideoCallProvider mVideoCallProvider;
 
     /* Instance Methods */
 
@@ -387,11 +389,11 @@ public abstract class Connection {
     }
 
     /**
-     * Returns the {@link VideoCallProvider} for the connection.
+     * Returns the {@link ConnectionService.VideoCallProvider} for the connection.
      *
-     * @return The {@link VideoCallProvider}.
+     * @return The {@link ConnectionService.VideoCallProvider}.
      */
-    public VideoCallProvider getVideoCallProvider() {
+    public ConnectionService.VideoCallProvider getVideoCallProvider() {
         return mVideoCallProvider;
     }
 
@@ -433,11 +435,11 @@ public abstract class Connection {
     }
 
     /**
-     * Sets the {@link VideoCallProvider} for the connection.
+     * Sets the {@link ConnectionService.VideoCallProvider} for the connection.
      *
      * @param videoCallProvider The video call provider.
      */
-    public void setVideoCallProvider(VideoCallProvider videoCallProvider) {
+    public void setVideoCallProvider(ConnectionService.VideoCallProvider videoCallProvider) {
         mVideoCallProvider = videoCallProvider;
         for (Listener l : mListeners) {
             l.onVideoCallProviderChanged(mVideoCallProvider);
