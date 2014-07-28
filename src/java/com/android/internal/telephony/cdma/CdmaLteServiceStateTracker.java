@@ -102,6 +102,9 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 mIsMinInfoReady = true;
                 updateOtaspState();
             }
+            // reload eri in case of IMSI changed
+            // eri.xml can be defined by mcc mnc
+            mPhone.prepareEri();
             // SID/NID/PRL is loaded. Poll service state
             // again to update to the roaming state with
             // the latest variables.
