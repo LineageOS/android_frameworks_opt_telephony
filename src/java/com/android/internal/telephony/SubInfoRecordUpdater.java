@@ -38,10 +38,15 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.TelephonyIntents;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
+import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.SpnOverride;
+import com.android.internal.telephony.uicc.UiccCard;
+import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.internal.telephony.uicc.UiccController;
 
 import java.util.List;
 
@@ -53,6 +58,7 @@ public class SubInfoRecordUpdater extends Handler {
     private static final int PROJECT_SIM_NUM = TelephonyManager.getDefault().getPhoneCount();
     private static final int EVENT_OFFSET = 8;
     private static final int EVENT_QUERY_ICCID_DONE = 1;
+    private static final int EVENT_ICC_CHANGED = 2;
     private static final String ICCID_STRING_FOR_NO_SIM = "";
     /**
      *  int[] sInsertSimState maintains all slots' SIM inserted status currently,
@@ -79,6 +85,9 @@ public class SubInfoRecordUpdater extends Handler {
 
     private static Phone[] sPhone;
     private static Context sContext = null;
+    private static CardState[] sCardState = new CardState[PROJECT_SIM_NUM];
+    private static UiccController mUiccController = null;
+    private static CommandsInterface[] sCi;
     private static IccFileHandler[] sFh = new IccFileHandler[PROJECT_SIM_NUM];
     private static String sIccId[] = new String[PROJECT_SIM_NUM];
     private static int[] sInsertSimState = new int[PROJECT_SIM_NUM];
@@ -91,8 +100,13 @@ public class SubInfoRecordUpdater extends Handler {
 
         sContext = context;
         sPhone = phoneProxy;
-        IntentFilter intentFilter = new IntentFilter(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
-        sContext.registerReceiver(sReceiver, intentFilter);
+        sCi = ci;
+        SubscriptionHelper.init(context, ci);
+        mUiccController = UiccController.getInstance();
+        mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
+        for (int i = 0; i < PROJECT_SIM_NUM; i++) {
+            sCardState[i] = CardState.CARDSTATE_ABSENT;
+        }
     }
 
     private static int encodeEventId(int event, int slotId) {
@@ -254,8 +268,50 @@ public class SubInfoRecordUpdater extends Handler {
                     updateSimInfoByIccId();
                 }
                 break;
+            case EVENT_ICC_CHANGED:
+                updateIccAvailability();
+                break;
             default:
                 logd("Unknown msg:" + msg.what);
+        }
+    }
+
+    private void updateIccAvailability() {
+        if (null == mUiccController) {
+            return;
+        }
+        logd("updateIccAvailability: Enter");
+
+        for (int slotId = 0; slotId < PROJECT_SIM_NUM; slotId++) {
+            CardState newState = CardState.CARDSTATE_ABSENT;
+            UiccCard newCard = mUiccController.getUiccCard(slotId);
+            if (newCard != null) {
+                newState = newCard.getCardState();
+            }
+            CardState oldState = sCardState[slotId];
+            sCardState[slotId] = newState;
+            logd("Slot[" + slotId + "]: New Card State = "
+                    + newState + " " + "Old Card State = " + oldState);
+            if (!newState.isCardPresent()) {
+                //Card moved to ABSENT State
+                if (sIccId[slotId] != null && !sIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
+                    logd("SIM" + (slotId + 1) + " hot plug out");
+                    sNeedUpdate = true;
+                }
+                sFh[slotId] = null;
+                sIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
+                if (isAllIccIdQueryDone() && sNeedUpdate) {
+                    updateSimInfoByIccId();
+                }
+            } else if (!oldState.isCardPresent() && newState.isCardPresent()) {
+                // Card moved to PRESENT State.
+                if (sIccId[slotId] != null && sIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
+                    logd("SIM" + (slotId + 1) + " hot plug in");
+                    sIccId[slotId] = null;
+                    sNeedUpdate = true;
+                }
+                queryIccId(slotId);
+            }
         }
     }
 
@@ -263,8 +319,20 @@ public class SubInfoRecordUpdater extends Handler {
         logd("queryIccId: slotid=" + slotId);
         if (sFh[slotId] == null) {
             logd("Getting IccFileHandler");
-            sFh[slotId] = ((PhoneProxy)sPhone[slotId]).getIccFileHandler();
+
+            UiccCardApplication validApp = null;
+            UiccCard uiccCard = mUiccController.getUiccCard(slotId);
+            int numApps = uiccCard.getNumApplications();
+            for (int i = 0; i < numApps; i++) {
+                UiccCardApplication app = uiccCard.getApplicationIndex(i);
+                if (app != null && app.getType() != AppType.APPTYPE_UNKNOWN) {
+                    validApp = app;
+                    break;
+                }
+            }
+            if (validApp != null) sFh[slotId] = validApp.getIccFileHandler();
         }
+
         if (sFh[slotId] != null) {
             String iccId = sIccId[slotId];
             if (iccId == null) {
@@ -274,11 +342,14 @@ public class SubInfoRecordUpdater extends Handler {
                 logd("NOT Querying IccId its already set sIccid[" + slotId + "]=" + iccId);
             }
         } else {
-            logd("sFh[" + slotId + "] is null, ignore");
+            //Reset to CardState to ABSENT so that on next EVENT_ICC_CHANGED, ICCID can be read.
+            sCardState[slotId] = CardState.CARDSTATE_ABSENT;
+            logd("sFh[" + slotId + "] is null, SIM not inserted");
         }
     }
 
     synchronized public void updateSimInfoByIccId() {
+        boolean[] sendSetUicc = new boolean[PROJECT_SIM_NUM];
         logd("[updateSimInfoByIccId]+ Start");
         sNeedUpdate = false;
 
@@ -388,6 +459,20 @@ public class SubInfoRecordUpdater extends Handler {
                 sInsertSimState[i] = SIM_REPOSITION;
             }
             logd("sInsertSimState[" + i + "] = " + sInsertSimState[i]);
+            if (sInsertSimState[i] != SIM_NOT_INSERT) {
+                long[] subId = SubscriptionController.getInstance().getSubId(i);
+
+                int subStatus = SubscriptionController.getInstance().getSubState(subId[0]);
+                logd("setUicc for [" + i + "] = " + subStatus + "subId = " + subId[0]);
+                // send SetUicc request for Activation/De-Activation
+                if (subStatus == SubscriptionManager.ACTIVE) {
+                    SubscriptionHelper.getInstance().
+                            setUiccSubscription(i, SubscriptionManager.ACTIVE);
+                } else {
+                    SubscriptionHelper.getInstance().
+                            setUiccSubscription(i, SubscriptionManager.INACTIVE);
+                }
+            }
         }
 
         List<SubInfoRecord> subInfos = SubscriptionManager.getActiveSubInfoList();
@@ -504,7 +589,6 @@ public class SubInfoRecordUpdater extends Handler {
 
     public void dispose() {
         logd("[dispose]");
-        sContext.unregisterReceiver(sReceiver);
     }
 
     private static void logd(String message) {

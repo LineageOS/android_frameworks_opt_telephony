@@ -279,10 +279,12 @@ public class SubscriptionController extends ISub.Stub {
                     SubscriptionManager.MCC));
             info.mnc = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.MNC));
+            info.mStatus = cursor.getInt(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.SUB_STATE));
 
             logd("[getSubInfoRecord] SubId:" + info.subId + " iccid:" + info.iccId + " slotId:" +
                     info.slotId + " displayName:" + info.displayName + " color:" + info.color +
-                    " mcc/mnc:" + info.mcc + "/" + info.mnc);
+                    " mcc/mnc:" + info.mcc + "/" + info.mnc + " subStatus: " + info.mStatus);
 
             return info;
     }
@@ -1299,18 +1301,16 @@ public class SubscriptionController extends ISub.Stub {
                 null, SubscriptionManager.SIM_ID + "=?", new String[] {String.valueOf(slotId)}, null);
         ArrayList<SubInfoRecord> subList = null;
         try {
-            if (cursor != null) {
-                while (cursor.moveToNext()) {
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
                     SubInfoRecord subInfo = getSubInfoRecord(cursor);
-                    if (subInfo != null)
-                    {
-                        if (subList == null)
-                        {
+                    if (subInfo != null) {
+                        if (subList == null) {
                             subList = new ArrayList<SubInfoRecord>();
                         }
                         subList.add(subInfo);
                     }
-                }
+                } while (cursor.moveToNext());
             }
         } finally {
             if (cursor != null) {
@@ -1418,5 +1418,90 @@ public class SubscriptionController extends ISub.Stub {
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
         pw.flush();
+    }
+
+    @Override
+    public void activateSubId(long subId) {
+        if (getSubState(subId) == SubscriptionManager.ACTIVE) {
+            logd("activateSubId: subscription already active");
+            return;
+        }
+
+        int slotId = getSlotId(subId);
+        SubscriptionHelper.getInstance().setUiccSubscription(slotId, SubscriptionManager.ACTIVE);
+    }
+
+    @Override
+    public void deactivateSubId(long subId) {
+        if (getSubState(subId) == SubscriptionManager.INACTIVE) {
+            return;
+        }
+
+        int slotId = getSlotId(subId);
+        SubscriptionHelper.getInstance().setUiccSubscription(slotId, SubscriptionManager.INACTIVE);
+    }
+
+    @Override
+    public int setSubState(long subId, int subStatus) {
+        logd("setSubState, subStatus: " + subStatus + " subId: " + subId);
+
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.SUB_STATE, subStatus);
+
+        int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                value, BaseColumns._ID + "=" + Long.toString(subId), null);
+        broadcastSimInfoContentChanged(subId,
+                SubscriptionManager.SUB_STATE, subStatus, SubscriptionManager.DEFAULT_STRING_VALUE);
+
+        if (subStatus == SubscriptionManager.INACTIVE) updateUserPrefs();
+        return result;
+    }
+
+    @Override
+    public int getSubState(long subId) {
+        SubInfoRecord subInfo = getSubInfoForSubscriber(subId);
+
+        if (subInfo != null)  {
+            return subInfo.mStatus;
+        } else {
+            loge("getSubState: invalid subId = " + subId);
+            return SubscriptionManager.INACTIVE;
+        }
+    }
+
+    private void updateUserPrefs() {
+        List<SubInfoRecord> subInfoList = getActivatedSubInfoList();
+        int mActCount = 0;
+        SubInfoRecord mNextActivatedSub = null;
+        //Get num of activated Subs and next available activated sub info.
+        for (SubInfoRecord subInfo : subInfoList) {
+            if (getSubState(subInfo.subId) == SubscriptionManager.ACTIVE) {
+                mActCount++;
+                if (mNextActivatedSub == null) mNextActivatedSub = subInfo;
+            }
+        }
+        //if activated sub count is less than 2, disable prompt.
+        if (mActCount < 2) {
+            setSMSPromptEnabled(false);
+            setVoicePromptEnabled(false);
+        }
+
+        //if there are no activated subs available, no need to update. EXIT.
+        if (mNextActivatedSub == null) return;
+
+        //if current data sub is not active, fallback to next active sub.
+        if (getSubState(getDefaultDataSubId()) == SubscriptionManager.INACTIVE) {
+            setDefaultDataSubId(mNextActivatedSub.subId);
+        }
+        //if current voice sub is not active and prompt not enabled, fallback to next active sub.
+        if (getSubState(getDefaultVoiceSubId()) == SubscriptionManager.INACTIVE &&
+            !isVoicePromptEnabled()) {
+            setDefaultVoiceSubId(mNextActivatedSub.subId);
+        }
+        //if current sms sub is not active and prompt not enabled, fallback to next active sub.
+        if (getSubState(getDefaultSmsSubId()) == SubscriptionManager.INACTIVE &&
+            !isSMSPromptEnabled()) {
+            setDefaultSmsSubId(mNextActivatedSub.subId);
+        }
     }
 }
