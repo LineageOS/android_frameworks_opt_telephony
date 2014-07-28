@@ -1270,12 +1270,13 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
      */
     private boolean isRoamIndForHomeSystem(String roamInd) {
         // retrieve the carrier-specified list of ERIs for home system
-        String homeRoamIndicators = SystemProperties.get("ro.cdma.homesystem");
+        String[] homeRoamIndicators = mPhone.getContext().getResources()
+                .getStringArray(com.android.internal.R.array.config_cdma_home_system);
 
-        if (!TextUtils.isEmpty(homeRoamIndicators)) {
+        if (homeRoamIndicators != null) {
             // searches through the comma-separated list for a match,
             // return true if one is found.
-            for (String homeRoamInd : homeRoamIndicators.split(",")) {
+            for (String homeRoamInd : homeRoamIndicators) {
                 if (homeRoamInd.equals(roamInd)) {
                     return true;
                 }
