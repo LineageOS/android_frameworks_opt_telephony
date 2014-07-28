@@ -311,7 +311,20 @@ public final class RuimRecords extends IccRecords {
                             GsmAlphabet.gsm7BitPackedToString(spnData, 0, (numBytes*8)/7));
                     break;
                 case UserData.ENCODING_7BIT_ASCII:
-                    setServiceProviderName(new String(spnData, 0, numBytes, "US-ASCII"));
+                    String spn = new String(spnData, 0, numBytes, "US-ASCII");
+                    // To address issues with incorrect encoding scheme
+                    // programmed in some commercial CSIM cards, the decoded
+                    // SPN is checked to have characters in printable ASCII
+                    // range. If not, they are decoded with
+                    // ENCODING_GSM_7BIT_ALPHABET scheme.
+                    if (TextUtils.isPrintableAsciiOnly(spn)) {
+                        setServiceProviderName(spn);
+                    } else {
+                        if (DBG) log("Some corruption in SPN decoding = " + spn);
+                        if (DBG) log("Using ENCODING_GSM_7BIT_ALPHABET scheme...");
+                        setServiceProviderName(
+                                GsmAlphabet.gsm7BitPackedToString(spnData, 0, (numBytes * 8) / 7));
+                    }
                 break;
                 case UserData.ENCODING_UNICODE_16:
                     setServiceProviderName(new String(spnData, 0, numBytes, "utf-16"));
