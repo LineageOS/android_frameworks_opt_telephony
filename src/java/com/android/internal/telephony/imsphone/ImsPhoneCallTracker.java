@@ -1161,7 +1161,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 }
                 break;
             case EVENT_DIAL_PENDINGMO:
-                dialInternal(mPendingMO, mClirMode, VideoCallProfile.VIDEO_STATE_AUDIO_ONLY);
+                dialInternal(mPendingMO, mClirMode, VideoCallProfile.VideoState.AUDIO_ONLY);
                 break;
         }
     }
