@@ -809,7 +809,7 @@ public class GSMPhone extends PhoneBase {
             }
         }
 
-        return dialInternal(dialString, null, VideoCallProfile.VIDEO_STATE_AUDIO_ONLY);
+        return dialInternal(dialString, null, VideoCallProfile.VideoState.AUDIO_ONLY);
     }
 
     @Override
