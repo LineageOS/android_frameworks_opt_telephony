@@ -484,7 +484,7 @@ public abstract class PhoneBase extends Handler implements Phone {
                     String dialString = (String) ar.result;
                     if (TextUtils.isEmpty(dialString)) return;
                     try {
-                        dialInternal(dialString, null, VideoCallProfile.VIDEO_STATE_AUDIO_ONLY);
+                        dialInternal(dialString, null, VideoCallProfile.VideoState.AUDIO_ONLY);
                     } catch (CallStateException e) {
                         Rlog.e(LOG_TAG, "silent redial failed: " + e);
                     }
