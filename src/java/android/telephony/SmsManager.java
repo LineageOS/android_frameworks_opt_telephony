@@ -1265,7 +1265,7 @@ public final class SmsManager {
      *
      * @param messageUri the URI of the stored message
      * @param statusValues a list of status properties in key-value pairs to update
-     * @return true if deletion is successful, false otherwise
+     * @return true if update is successful, false otherwise
      * @throws IllegalArgumentException if messageUri is empty
      */
     public boolean updateStoredMessageStatus(Uri messageUri, ContentValues statusValues) {
@@ -1288,8 +1288,26 @@ public final class SmsManager {
     public static final String MESSAGE_STATUS_SEEN = "seen";
     /** Message status property: whether the message has been read. 1 means read, 0 not*/
     public static final String MESSAGE_STATUS_READ = "read";
-    /** Message status property: whether the message has been archived. 1 means archived, 0 not*/
-    public static final String MESSAGE_STATUS_ARCHIVED = "archived";
+
+    /**
+     * Archive or unarchive a stored conversation
+     *
+     * @param conversationId the ID of the message conversation
+     * @param archived true to archive the conversation, false to unarchive
+     * @return true if update is successful, false otherwise
+     */
+    public boolean archiveStoredConversation(long conversationId, boolean archived) {
+        try {
+            IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
+            if (iMms != null) {
+                return iMms.archiveStoredConversation(ActivityThread.currentPackageName(),
+                        conversationId, archived);
+            }
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+        return false;
+    }
 
     /**
      * Add a text message draft to system SMS store
