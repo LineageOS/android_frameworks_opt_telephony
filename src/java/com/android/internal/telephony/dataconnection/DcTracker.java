@@ -708,7 +708,9 @@ public final class DcTracker extends DcTrackerBase {
             // update APN availability so that APN can be enabled.
             notifyOffApnsOfAvailability(Phone.REASON_DATA_ATTACHED);
         }
-        mAutoAttachOnCreation = true;
+        if (mAutoAttachOnCreationConfig) {
+            mAutoAttachOnCreation = true;
+        }
         setupDataOnConnectableApns(Phone.REASON_DATA_ATTACHED);
     }
 
@@ -1274,7 +1276,8 @@ public final class DcTracker extends DcTrackerBase {
         Message msg = obtainMessage();
         msg.what = DctConstants.EVENT_DATA_SETUP_COMPLETE;
         msg.obj = apnContext;
-        dcac.bringUp(apnContext, getInitialMaxRetry(), profileId, radioTech, msg);
+        dcac.bringUp(apnContext, getInitialMaxRetry(), profileId, radioTech, mAutoAttachOnCreation,
+                msg);
 
         if (DBG) log("setupData: initing!");
         return true;
@@ -1450,6 +1453,8 @@ public final class DcTracker extends DcTrackerBase {
 
     private void onRecordsLoaded() {
         if (DBG) log("onRecordsLoaded: createAllApnList");
+        mAutoAttachOnCreationConfig = mPhone.getContext().getResources()
+                .getBoolean(com.android.internal.R.bool.config_auto_attach_data_on_creation);
         createAllApnList();
         setInitialAttachApn();
         if (mPhone.mCi.getRadioState().isOn()) {
