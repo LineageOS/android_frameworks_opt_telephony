@@ -150,9 +150,20 @@ public class ImsPhoneConnection extends Connection {
                 int callType = imsCall.getCallProfile().mCallType;
                 setVideoState(ImsCallProfile.getVideoStateFromCallType(callType));
             }
-            //TODO(vt): Set the local and remote video capabilities appropriately.
-            setLocalVideoCapable(true);
-            setRemoteVideoCapable(true);
+
+            // Determine if the current call have video capabilities.
+            try {
+                ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
+                if (localCallProfile != null) {
+                    int localCallTypeCapability = localCallProfile.mCallType;
+                    boolean isLocalVideoCapable = localCallTypeCapability
+                            == ImsCallProfile.CALL_TYPE_VT;
+
+                    setLocalVideoCapable(isLocalVideoCapable);
+                }
+            } catch (ImsException e) {
+                // No session, so cannot get local capabilities.
+            }
         } else {
             mNumberPresentation = PhoneConstants.PRESENTATION_UNKNOWN;
             mCnapNamePresentation = PhoneConstants.PRESENTATION_UNKNOWN;
