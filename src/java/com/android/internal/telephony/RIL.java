@@ -3384,9 +3384,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             if (!TextUtils.isEmpty(gateways)) {
                 dataCall.gateways = gateways.split(" ");
             }
-            String pcscf = p.readString();
-            if (!TextUtils.isEmpty(pcscf)) {
-                dataCall.pcscf = pcscf.split(" ");
+            if (version >= 10) {
+                String pcscf = p.readString();
+                if (!TextUtils.isEmpty(pcscf)) {
+                    dataCall.pcscf = pcscf.split(" ");
+                }
             }
         }
         return dataCall;
