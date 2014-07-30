@@ -91,6 +91,7 @@ public abstract class PhoneBase extends Handler implements Phone {
                 if (intent.getLongExtra(ImsManager.EXTRA_SUBID, -1) != getSubId())
                     return;
             }
+
             if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_UP)) {
                 mImsServiceReady = true;
                 updateImsPhone();
@@ -195,7 +196,8 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected Subscription mSubscriptionData = null;
     protected int mPhoneId;
 
-    protected boolean mImsServiceReady = false;
+    private final Object mImsLock = new Object();
+    private boolean mImsServiceReady = false;
     protected ImsPhone mImsPhone = null;
 
     @Override
@@ -405,9 +407,10 @@ public abstract class PhoneBase extends Handler implements Phone {
                 mTelephonyTester.dispose();
             }
 
-            if (mImsPhone != null) {
-                mImsPhone.unregisterForSilentRedial(this);
-                mImsPhone.dispose();
+            ImsPhone imsPhone = mImsPhone;
+            if (imsPhone != null) {
+                imsPhone.unregisterForSilentRedial(this);
+                imsPhone.dispose();
             }
         }
     }
@@ -421,8 +424,9 @@ public abstract class PhoneBase extends Handler implements Phone {
         mDcTracker = null;
         mUiccController = null;
 
-        if (mImsPhone != null) {
-            mImsPhone.removeReferences();
+        ImsPhone imsPhone = mImsPhone;
+        if (imsPhone != null) {
+            imsPhone.removeReferences();
             mImsPhone = null;
         }
     }
@@ -509,22 +513,23 @@ public abstract class PhoneBase extends Handler implements Phone {
         Rlog.d(LOG_TAG, "handleSrvccStateChanged");
 
         Connection conn = null;
+        ImsPhone imsPhone = mImsPhone;
         Call.SrvccState srvccState = Call.SrvccState.NONE;
         if (ret != null && ret.length != 0) {
             int state = ret[0];
             switch(state) {
                 case VoLteServiceState.HANDOVER_STARTED:
                     srvccState = Call.SrvccState.STARTED;
-                    if (mImsPhone != null) {
-                        conn = mImsPhone.getHandoverConnection();
+                    if (imsPhone != null) {
+                        conn = imsPhone.getHandoverConnection();
                     } else {
                         Rlog.d(LOG_TAG, "HANDOVER_STARTED: mImsPhone null");
                     }
                     break;
                 case VoLteServiceState.HANDOVER_COMPLETED:
                     srvccState = Call.SrvccState.COMPLETED;
-                    if (mImsPhone != null) {
-                        mImsPhone.notifySrvccState(srvccState);
+                    if (imsPhone != null) {
+                        imsPhone.notifySrvccState(srvccState);
                     } else {
                         Rlog.d(LOG_TAG, "HANDOVER_COMPLETED: mImsPhone null");
                     }
@@ -1543,7 +1548,7 @@ public abstract class PhoneBase extends Handler implements Phone {
      * Subclasses of Phone probably want to replace this with a
      * version scoped to their packages
      */
-    protected void notifyNewRingingConnectionP(Connection cn) {
+    public void notifyNewRingingConnectionP(Connection cn) {
         if (!mIsVoiceCapable)
             return;
         AsyncResult ar = new AsyncResult(null, cn, null);
@@ -1703,22 +1708,63 @@ public abstract class PhoneBase extends Handler implements Phone {
         return mImsPhone;
     }
 
-    protected void updateImsPhone() {
-        Rlog.d(LOG_TAG, "updateImsPhone"
-                + " mImsServiceReady=" + mImsServiceReady);
+    @Override
+    public ImsPhone relinquishOwnershipOfImsPhone() {
+        synchronized (mImsLock) {
+            if (mImsPhone == null)
+                return null;
 
-        if (mImsServiceReady && (mImsPhone == null)) {
-            mImsPhone = PhoneFactory.makeImsPhone(mNotifier, this);
+            ImsPhone imsPhone = mImsPhone;
+            mImsPhone = null;
+
+            CallManager.getInstance().unregisterPhone(imsPhone);
+            imsPhone.unregisterForSilentRedial(this);
+
+            return imsPhone;
+        }
+    }
+
+    @Override
+    public void acquireOwnershipOfImsPhone(ImsPhone imsPhone) {
+        synchronized (mImsLock) {
+            if (imsPhone == null)
+                return;
+
+            if (mImsPhone != null) {
+                Rlog.e(LOG_TAG, "acquireOwnershipOfImsPhone: non-null mImsPhone." +
+                        " Shouldn't happen - but disposing");
+                mImsPhone.dispose();
+                mImsPhone.removeReferences();
+            }
+
+            mImsPhone = imsPhone;
+
+            mImsServiceReady = true;
+            mImsPhone.updateParentPhone(this);
             CallManager.getInstance().registerPhone(mImsPhone);
             mImsPhone.registerForSilentRedial(
                     this, EVENT_INITIATE_SILENT_REDIAL, null);
-        } else if (!mImsServiceReady && (mImsPhone != null)) {
-            CallManager.getInstance().unregisterPhone(mImsPhone);
-            mImsPhone.unregisterForSilentRedial(this);
+        }
+    }
 
-            mImsPhone.dispose();
-            mImsPhone.removeReferences();
-            mImsPhone = null;
+    protected void updateImsPhone() {
+        synchronized (mImsLock) {
+            Rlog.d(LOG_TAG, "updateImsPhone"
+                    + " mImsServiceReady=" + mImsServiceReady);
+
+            if (mImsServiceReady && (mImsPhone == null)) {
+                mImsPhone = PhoneFactory.makeImsPhone(mNotifier, this);
+                CallManager.getInstance().registerPhone(mImsPhone);
+                mImsPhone.registerForSilentRedial(
+                        this, EVENT_INITIATE_SILENT_REDIAL, null);
+            } else if (!mImsServiceReady && (mImsPhone != null)) {
+                CallManager.getInstance().unregisterPhone(mImsPhone);
+                mImsPhone.unregisterForSilentRedial(this);
+
+                mImsPhone.dispose();
+                mImsPhone.removeReferences();
+                mImsPhone = null;
+            }
         }
     }
 
@@ -1801,8 +1847,9 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     @Override
     public int getVoicePhoneServiceState() {
-        if (mImsPhone != null
-                && mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
+        ImsPhone imsPhone = mImsPhone;
+        if (imsPhone != null
+                && imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
             return ServiceState.STATE_IN_SERVICE;
         }
         return getServiceState().getState();

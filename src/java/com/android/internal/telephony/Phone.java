@@ -27,12 +27,13 @@ import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UsimServiceTable;
 
-import com.android.internal.telephony.PhoneConstants.*; // ???? 
+import com.android.internal.telephony.PhoneConstants.*; // ????
 
 import java.util.List;
 
@@ -1795,7 +1796,20 @@ public interface Phone {
      * Return the ImsPhone phone co-managed with this phone
      * @return an instance of an ImsPhone phone
      */
-    Phone getImsPhone();
+    public Phone getImsPhone();
+
+    /**
+     * Release the local instance of the ImsPhone and disconnect from
+     * the phone.
+     * @return the instance of the ImsPhone phone previously owned
+     */
+    public ImsPhone relinquishOwnershipOfImsPhone();
+
+    /**
+     * Take ownership and wire-up the input ImsPhone
+     * @param imsPhone ImsPhone to be used.
+     */
+    public void acquireOwnershipOfImsPhone(ImsPhone imsPhone);
 
     /**
      * Return the service state of mImsPhone if it is STATE_IN_SERVICE
