@@ -813,14 +813,6 @@ public final class DcTracker extends DcTrackerBase {
         IccRecords r = mIccRecords.get();
         boolean recordsLoaded = (r != null) ? r.getRecordsLoaded() : false;
 
-        //FIXME always attach
-        boolean psRestricted = mIsPsRestricted;
-        int phoneNum = TelephonyManager.getDefault().getPhoneCount();
-        if (phoneNum > 1) {
-            attachedState = true;
-            psRestricted = false;
-        }
-
         boolean allowed =
                     (attachedState || mAutoAttachOnCreation) &&
                     recordsLoaded &&
@@ -828,8 +820,7 @@ public final class DcTracker extends DcTrackerBase {
                      mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
                     internalDataEnabled &&
                     (!mPhone.getServiceState().getRoaming() || getDataOnRoamingEnabled()) &&
-                    //!mIsPsRestricted &&
-                    !psRestricted &&
+                    !mIsPsRestricted &&
                     desiredPowerState;
         if (!allowed && DBG) {
             String reason = "";
