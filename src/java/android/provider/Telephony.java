@@ -253,11 +253,6 @@ public final class Telephony {
         public static final String ERROR_CODE = "error_code";
 
         /**
-         * If the message is archived
-         */
-        public static final String ARCHIVED = "archived";
-
-        /**
          * The creator of a sent or imported message
          */
         public static final String CREATOR = "creator";
@@ -1686,11 +1681,6 @@ public final class Telephony {
         public static final String SUB_ID = "sub_id";
 
         /**
-         * If the message is archived
-         */
-        public static final String ARCHIVED = "archived";
-
-        /**
          * The creator of a sent or imported message
          */
         public static final String CREATOR = "creator";
@@ -1770,6 +1760,11 @@ public final class Telephony {
          * <P>Type: INTEGER</P>
          */
         public static final String HAS_ATTACHMENT = "has_attachment";
+
+        /**
+         * If the thread is archived
+         */
+        public static final String ARCHIVED = "archived";
     }
 
     /**
