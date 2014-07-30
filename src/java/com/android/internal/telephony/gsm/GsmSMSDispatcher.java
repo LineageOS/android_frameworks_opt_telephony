@@ -220,7 +220,8 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
             HashMap map =  getSmsTrackerMap(destinationAddress, scAddress,
                     message, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent,
-                    deliveryIntent, getFormat(), unsentPartCount, anyPartFailed, messageUri);
+                    deliveryIntent, getFormat(), unsentPartCount, anyPartFailed, messageUri,
+                    smsHeader);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendNewSubmitPdu(): getSubmitPdu() returned null");
@@ -265,6 +266,12 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
             intent.putExtra("pdu", pdu);
             intent.putExtra("smsc", (byte[]) map.get("smsc"));
             intent.putExtra("format", getFormat());
+            if (tracker.mSmsHeader != null && tracker.mSmsHeader.concatRef != null) {
+                SmsHeader.ConcatRef concatRef = tracker.mSmsHeader.concatRef;
+                intent.putExtra("concat.refNumber", concatRef.refNumber);
+                intent.putExtra("concat.seqNumber", concatRef.seqNumber);
+                intent.putExtra("concat.msgCount", concatRef.msgCount);
+            }
             intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
             Rlog.d(TAG, "Sending SMS by carrier app.");
             mContext.sendOrderedBroadcast(intent, android.Manifest.permission.RECEIVE_SMS,
