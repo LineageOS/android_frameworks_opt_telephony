@@ -19,6 +19,8 @@ package com.android.internal.telephony.dataconnection;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 
+import java.util.Locale;
+
 /**
  * This class represents a apn setting for create PDP link
  */
@@ -71,7 +73,10 @@ public class ApnSetting {
         this.user = user;
         this.password = password;
         this.authType = authType;
-        this.types = types;
+        this.types = new String[types.length];
+        for (int i = 0; i < types.length; i++) {
+            this.types[i] = types[i].toLowerCase(Locale.ROOT);
+        }
         this.protocol = protocol;
         this.roamingProtocol = roamingProtocol;
         this.carrierEnabled = carrierEnabled;
