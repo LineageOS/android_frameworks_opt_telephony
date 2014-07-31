@@ -1042,6 +1042,8 @@ public abstract class SMSDispatcher extends Handler {
         public final PackageInfo mAppInfo;
         public final String mDestAddress;
 
+        public final SmsHeader mSmsHeader;
+
         private long mTimestamp = System.currentTimeMillis();
         public Uri mMessageUri; // Uri of persisted message if we wrote one
 
@@ -1051,7 +1053,8 @@ public abstract class SMSDispatcher extends Handler {
 
         private SmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
                 PendingIntent deliveryIntent, PackageInfo appInfo, String destAddr, String format,
-                AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri) {
+                AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
+                SmsHeader smsHeader) {
             mData = data;
             mSentIntent = sentIntent;
             mDeliveryIntent = deliveryIntent;
@@ -1064,6 +1067,7 @@ public abstract class SMSDispatcher extends Handler {
             mUnsentPartCount = unsentPartCount;
             mAnyPartFailed = anyPartFailed;
             mMessageUri = messageUri;
+            mSmsHeader = smsHeader;
         }
 
         /**
@@ -1242,7 +1246,7 @@ public abstract class SMSDispatcher extends Handler {
 
     protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
             PendingIntent deliveryIntent, String format, AtomicInteger unsentPartCount,
-            AtomicBoolean anyPartFailed, Uri messageUri) {
+            AtomicBoolean anyPartFailed, Uri messageUri, SmsHeader smsHeader) {
         // Get calling app package name via UID from Binder call
         PackageManager pm = mContext.getPackageManager();
         String[] packageNames = pm.getPackagesForUid(Binder.getCallingUid());
@@ -1261,13 +1265,13 @@ public abstract class SMSDispatcher extends Handler {
         // and before displaying the number to the user if confirmation is required.
         String destAddr = PhoneNumberUtils.extractNetworkPortion((String) data.get("destAddr"));
         return new SmsTracker(data, sentIntent, deliveryIntent, appInfo, destAddr, format,
-                unsentPartCount, anyPartFailed, messageUri);
+                unsentPartCount, anyPartFailed, messageUri, smsHeader);
     }
 
     protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
             PendingIntent deliveryIntent, String format, Uri messageUri) {
         return getSmsTracker(data, sentIntent, deliveryIntent, format, null/*unsentPartCount*/,
-                null/*anyPartFailed*/, messageUri);
+                null/*anyPartFailed*/, messageUri, null/*smsHeader*/);
     }
 
     protected HashMap<String, Object> getSmsTrackerMap(String destAddr, String scAddr,
