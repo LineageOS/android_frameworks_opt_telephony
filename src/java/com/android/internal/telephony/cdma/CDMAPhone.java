@@ -1106,6 +1106,10 @@ public class CDMAPhone extends PhoneBase {
         }
     }
 
+    public void notifyEcbmTimerReset(Boolean flag) {
+        mEcmTimerResetRegistrants.notifyResult(flag);
+    }
+
     /**
      * Registration point for Ecm timer reset
      * @param h handler to notify
