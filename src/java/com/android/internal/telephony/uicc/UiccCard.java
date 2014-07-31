@@ -89,7 +89,9 @@ public class UiccCard {
     private static final int EVENT_CARD_ADDED = 14;
     private static final int EVENT_OPEN_LOGICAL_CHANNEL_DONE = 15;
     private static final int EVENT_CLOSE_LOGICAL_CHANNEL_DONE = 16;
-    private static final int EVENT_TRANSMIT_APDU_DONE = 17;
+    private static final int EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE = 17;
+    private static final int EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE = 18;
+    private static final int EVENT_SIM_IO_DONE = 19;
 
     int mSlotId;
 
@@ -343,7 +345,9 @@ public class UiccCard {
                     break;
                 case EVENT_OPEN_LOGICAL_CHANNEL_DONE:
                 case EVENT_CLOSE_LOGICAL_CHANNEL_DONE:
-                case EVENT_TRANSMIT_APDU_DONE:
+                case EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE:
+                case EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE:
+                case EVENT_SIM_IO_DONE:
                     AsyncResult ar = (AsyncResult)msg.obj;
                     if (ar.exception != null) {
                        if (DBG)
@@ -451,7 +455,25 @@ public class UiccCard {
     public void iccTransmitApduLogicalChannel(int channel, int cla, int command,
             int p1, int p2, int p3, String data, Message response) {
         mCi.iccTransmitApduLogicalChannel(channel, cla, command, p1, p2, p3,
-                data, mHandler.obtainMessage(EVENT_TRANSMIT_APDU_DONE, response));
+                data, mHandler.obtainMessage(EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE, response));
+    }
+
+    /**
+     * Exposes {@link CommandsInterface.iccTransmitApduBasicChannel}
+     */
+    public void iccTransmitApduBasicChannel(int cla, int command,
+            int p1, int p2, int p3, String data, Message response) {
+        mCi.iccTransmitApduBasicChannel(cla, command, p1, p2, p3,
+                data, mHandler.obtainMessage(EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE, response));
+    }
+
+    /**
+     * Exposes {@link CommandsInterface.iccIO}
+     */
+    public void iccExchangeSimIO(int fileID, int command, int p1, int p2, int p3,
+            String pathID, Message response) {
+        mCi.iccIO(command, fileID, pathID, p1, p2, p3, null, null,
+                mHandler.obtainMessage(EVENT_SIM_IO_DONE, response));
     }
 
     /**
