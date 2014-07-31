@@ -1067,6 +1067,12 @@ public final class Telephony {
              *   <li><em>"pdu"</em> - (byte[]) The PDU to send.</li>
              *   <li><em>"smsc"</em> - (byte[]) The service center address (for GSM PDU only).</li>
              *   <li><em>"format"</em> - (String) The format of the PDU. Either 3gpp or 3gpp2. </li>
+             *   <li><em>"concat.refNumber"</em> - (int) If the SMS is part of a multi-part SMS, the
+             *   ref number used in the SMS header.</li>
+             *   <li><em>"concat.seqNumber"</em> - (int) If the SMS is part of a multi-part SMS, the
+             *   sequence number of this SMS.</li>
+             *   <li><em>"concat.msgCount"</em> - (int) If the SMS is part of a multi-part SMS, the
+             *   total number of SMSes in the multi-part SMS.</li>
              * </ul>
              *
              * <p>If a BroadcastReceiver is trying to send the message,

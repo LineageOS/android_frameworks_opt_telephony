@@ -183,8 +183,8 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
         HashMap map = getSmsTrackerMap(destinationAddress, scAddress,
                 message, submitPdu);
-        SmsTracker tracker = getSmsTracker(map, sentIntent,
-                deliveryIntent, getFormat(), unsentPartCount, anyPartFailed, messageUri);
+        SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent,
+                getFormat(), unsentPartCount, anyPartFailed, messageUri, smsHeader);
         sendSubmitPdu(tracker);
     }
 
@@ -224,6 +224,12 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
             intent.setPackage(getCarrierAppPackageName(intent));
             intent.putExtra("pdu", pdu);
             intent.putExtra("format", getFormat());
+            if (tracker.mSmsHeader != null && tracker.mSmsHeader.concatRef != null) {
+                SmsHeader.ConcatRef concatRef = tracker.mSmsHeader.concatRef;
+                intent.putExtra("concat.refNumber", concatRef.refNumber);
+                intent.putExtra("concat.seqNumber", concatRef.seqNumber);
+                intent.putExtra("concat.msgCount", concatRef.msgCount);
+            }
             intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
             Rlog.d(TAG, "Sending SMS by carrier app.");
             mContext.sendOrderedBroadcast(intent, android.Manifest.permission.RECEIVE_SMS,
