@@ -912,6 +912,10 @@ public class IccSmsInterfaceManager {
     }
 
     private boolean isFailedOrDraft(ContentResolver resolver, Uri messageUri) {
+        // Clear the calling identity and query the database using the phone user id
+        // Otherwise the AppOps check in TelephonyProvider would complain about mismatch
+        // between the calling uid and the package uid
+        final long identity = Binder.clearCallingIdentity();
         Cursor cursor = null;
         try {
             cursor = resolver.query(
@@ -931,12 +935,17 @@ public class IccSmsInterfaceManager {
             if (cursor != null) {
                 cursor.close();
             }
+            Binder.restoreCallingIdentity(identity);
         }
         return false;
     }
 
     // Return an array including both the SMS text (0) and address (1)
     private String[] loadTextAndAddress(ContentResolver resolver, Uri messageUri) {
+        // Clear the calling identity and query the database using the phone user id
+        // Otherwise the AppOps check in TelephonyProvider would complain about mismatch
+        // between the calling uid and the package uid
+        final long identity = Binder.clearCallingIdentity();
         Cursor cursor = null;
         try {
             cursor = resolver.query(
@@ -957,6 +966,7 @@ public class IccSmsInterfaceManager {
             if (cursor != null) {
                 cursor.close();
             }
+            Binder.restoreCallingIdentity(identity);
         }
         return null;
     }
