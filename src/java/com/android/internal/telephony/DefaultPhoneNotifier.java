@@ -43,7 +43,8 @@ import java.util.List;
  * broadcast intents
  */
 public class DefaultPhoneNotifier implements PhoneNotifier {
-    static final String LOG_TAG = "DefaultPhoneNotifier";
+    private static final String LOG_TAG = "DefaultPhoneNotifier";
+    private static final boolean DBG = false; // STOPSHIP if true
 
     protected ITelephonyRegistry mRegistry;
 
@@ -101,7 +102,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
                 }
             }
         }
-        Rlog.d(LOG_TAG, "notifyCallStateToTelephonyRegistry, subId = " + sender.getSubId()
+        if (DBG) log("notifyCallStateToTelephonyRegistry, subId = " + sender.getSubId()
                 + " state = " + state);
         try {
             if (mRegistry != null) {
@@ -194,7 +195,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
             PhoneConstants.DataState state) {
         long subId = sender.getSubId();
         long dds = SubscriptionManager.getDefaultDataSubId();
-        Rlog.d(LOG_TAG, "subId = " + subId + ", DDS = " + dds);
+        if (DBG) log("subId = " + subId + ", DDS = " + dds);
 
         // TODO
         // use apnType as the key to which connection we're talking about.
@@ -494,5 +495,9 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     public interface IDataStateChangedCallback {
         void onDataStateChanged(long subId, String state, String reason, String apnName,
             String apnType, boolean unavailable);
+    }
+
+    private void log(String s) {
+        Rlog.d(LOG_TAG, s);
     }
 }
