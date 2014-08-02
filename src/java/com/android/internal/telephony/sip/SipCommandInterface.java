@@ -602,4 +602,8 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     @Override
     public void getHardwareConfig(Message result) {
     }
+
+    @Override
+    public void requestShutdown(Message result) {
+    }
 }

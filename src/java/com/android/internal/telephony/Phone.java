@@ -1821,4 +1821,14 @@ public interface Phone {
      * Override the service provider name and the operator name for the input ICCID.
      */
     public boolean setOperatorBrandOverride(String iccId, String brand);
+
+    /**
+     * Is Radio Present on the device and is it accessible
+     */
+    public boolean isRadioAvailable();
+
+    /**
+     * shutdown Radio gracefully
+     */
+    public void shutdownRadio();
 }

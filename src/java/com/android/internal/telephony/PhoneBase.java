@@ -1859,4 +1859,14 @@ public abstract class PhoneBase extends Handler implements Phone {
     public boolean setOperatorBrandOverride(String iccId, String brand) {
         return false;
     }
+
+    @Override
+    public boolean isRadioAvailable() {
+        return mCi.getRadioState().isAvailable();
+    }
+
+    @Override
+    public void shutdownRadio() {
+        getServiceStateTracker().requestShutdown();
+    }
 }

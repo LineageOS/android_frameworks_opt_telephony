@@ -1499,6 +1499,16 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
+    public void requestShutdown(Message result) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_SHUTDOWN, result);
+
+        if (RILJ_LOGD)
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
+    }
+
+    @Override
     public void
     setSuppServiceNotifications(boolean enable, Message result) {
         RILRequest rr
@@ -2499,6 +2509,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_ALLOW_DATA: ret = responseVoid(p); break;
             case RIL_REQUEST_GET_HARDWARE_CONFIG: ret = responseHardwareConfig(p); break;
             case RIL_REQUEST_SIM_AUTHENTICATION: ret =  responseICC_IOBase64(p); break;
+            case RIL_REQUEST_SHUTDOWN: ret = responseVoid(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -2515,6 +2526,14 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 }
                 return rr;
             }
+        }
+
+        if (rr.mRequest == RIL_REQUEST_SHUTDOWN) {
+            // Set RADIO_STATE to RADIO_UNAVAILABLE to continue shutdown process
+            // regardless of error code to continue shutdown procedure.
+            riljLog("Response to RIL_REQUEST_SHUTDOWN received. Error is " +
+                    error + " Setting Radio State to Unavailable regardless of error.");
+            setRadioState(RadioState.RADIO_UNAVAILABLE);
         }
 
         // Here and below fake RIL_UNSOL_RESPONSE_SIM_STATUS_CHANGED, see b/7255789.
@@ -3926,6 +3945,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_ALLOW_DATA: return "RIL_REQUEST_ALLOW_DATA";
             case RIL_REQUEST_GET_HARDWARE_CONFIG: return "GET_HARDWARE_CONFIG";
             case RIL_REQUEST_SIM_AUTHENTICATION: return "RIL_REQUEST_SIM_AUTHENTICATION";
+            case RIL_REQUEST_SHUTDOWN: return "RIL_REQUEST_SHUTDOWN";
             default: return "<unknown request>";
         }
     }

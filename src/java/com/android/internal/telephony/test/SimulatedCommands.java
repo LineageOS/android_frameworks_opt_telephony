@@ -1735,4 +1735,9 @@ public final class SimulatedCommands extends BaseCommands
     public void getHardwareConfig(Message result) {
         unimplemented(result);
     }
+
+    @Override
+    public void requestShutdown(Message result) {
+        setRadioState(RadioState.RADIO_UNAVAILABLE);
+    }
 }
