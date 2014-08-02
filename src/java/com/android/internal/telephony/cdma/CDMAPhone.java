@@ -318,10 +318,11 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public Call getRingingCall() {
+        ImsPhone imPhone = mImsPhone;
         if ( mCT.mRingingCall != null && mCT.mRingingCall.isRinging() ) {
             return mCT.mRingingCall;
-        } else if ( mImsPhone != null ) {
-            return mImsPhone.getRingingCall();
+        } else if ( imPhone != null ) {
+            return imPhone.getRingingCall();
         }
         return mCT.mRingingCall;
     }
@@ -391,14 +392,15 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public Connection
     dial (String dialString, int videoState) throws CallStateException {
-        if ( mImsPhone != null
-                && ((mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+        ImsPhone imsPhone = mImsPhone;
+        if ( imsPhone != null
+                && ((imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
                 && !PhoneNumberUtils.isEmergencyNumber(dialString))
                 || (PhoneNumberUtils.isEmergencyNumber(dialString)
                 && mContext.getResources().getBoolean(
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall))) ) {
             try {
-                return mImsPhone.dial(dialString, videoState);
+                return imsPhone.dial(dialString, videoState);
             } catch (CallStateException e) {
                 if (!ImsPhone.CS_FALLBACK.equals(e.getMessage())) {
                     CallStateException ce = new CallStateException(e.getMessage());
@@ -473,8 +475,9 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public void
     acceptCall(int videoState) throws CallStateException {
-        if ( mImsPhone != null && mImsPhone.getRingingCall().isRinging() ) {
-            mImsPhone.acceptCall(videoState);
+        ImsPhone imsPhone = mImsPhone;
+        if ( imsPhone != null && imsPhone.getRingingCall().isRinging() ) {
+            imsPhone.acceptCall(videoState);
         } else {
             mCT.acceptCall();
         }
@@ -1175,8 +1178,9 @@ public class CDMAPhone extends PhoneBase {
 
             case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:{
                 Rlog.d(LOG_TAG, "Event EVENT_RADIO_OFF_OR_NOT_AVAILABLE Received");
-                if (mImsPhone != null) {
-                    mImsPhone.getServiceState().setStateOff();
+                ImsPhone imsPhone = mImsPhone;
+                if (imsPhone != null) {
+                    imsPhone.getServiceState().setStateOff();
                 }
             }
             break;
@@ -1184,8 +1188,9 @@ public class CDMAPhone extends PhoneBase {
             case EVENT_RADIO_ON:{
                 Rlog.d(LOG_TAG, "Event EVENT_RADIO_ON Received");
                 handleCdmaSubscriptionSource(mCdmaSSM.getCdmaSubscriptionSource());
-                if (mImsPhone != null) {
-                    mImsPhone.getServiceState().setStateOutOfService();
+                ImsPhone imsPhone = mImsPhone;
+                if (imsPhone != null) {
+                    imsPhone.getServiceState().setStateOutOfService();
                 }
             }
             break;

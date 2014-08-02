@@ -216,16 +216,6 @@ abstract class ImsPhoneBase extends PhoneBase {
         super.notifyPreciseCallStateChangedP();
     }
 
-    void notifyNewRingingConnection(Connection c) {
-        Phone defaultPhone = CallManager.getInstance().getDefaultPhone();
-        if ( defaultPhone != null && defaultPhone.getPhoneType() ==
-                PhoneConstants.PHONE_TYPE_GSM ) {
-           ((GSMPhone) defaultPhone).notifyNewRingingConnection(c);
-        } else { // Should be CDMA - also go here by default
-            ((CDMAPhone) defaultPhone).notifyNewRingingConnection(c);
-        }
-    }
-
     void notifyDisconnect(Connection cn) {
         mDisconnectRegistrants.notifyResult(cn);
     }
