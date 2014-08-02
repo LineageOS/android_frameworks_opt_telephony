@@ -131,6 +131,12 @@ public class ImsPhone extends ImsPhoneBase {
         mPhoneId = mDefaultPhone.getPhoneId();
     }
 
+    public void updateParentPhone(PhoneBase parentPhone) {
+        // synchronization is managed at the PhoneBase scope (which calls this function)
+        mDefaultPhone = parentPhone;
+        mPhoneId = mDefaultPhone.getPhoneId();
+    }
+
     @Override
     public void dispose() {
         Rlog.d(LOG_TAG, "dispose");
@@ -410,6 +416,11 @@ public class ImsPhone extends ImsPhoneBase {
                backgroundCallState.isAlive() ||
                ringingCallState.isAlive());
     }
+
+    void notifyNewRingingConnection(Connection c) {
+        mDefaultPhone.notifyNewRingingConnectionP(c);
+    }
+
 
     @Override
     public Connection

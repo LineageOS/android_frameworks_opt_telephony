@@ -37,6 +37,7 @@ import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.gsm.GSMPhone;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.cdma.CDMALTEPhone;
 import com.android.internal.telephony.uicc.IccCardProxy;
@@ -226,6 +227,7 @@ public class PhoneProxy extends Handler implements Phone {
 
         String outgoingPhoneName = "Unknown";
         Phone oldPhone = mActivePhone;
+        ImsPhone imsPhone = null;
 
         if (oldPhone != null) {
             outgoingPhoneName = ((PhoneBase) oldPhone).getPhoneName();
@@ -234,7 +236,9 @@ public class PhoneProxy extends Handler implements Phone {
         logd("Switching Voice Phone : " + outgoingPhoneName + " >>> "
                 + (ServiceState.isGsm(newVoiceRadioTech) ? "GSM" : "CDMA"));
 
+
         if (oldPhone != null) {
+            imsPhone = oldPhone.relinquishOwnershipOfImsPhone();
             CallManager.getInstance().unregisterPhone(oldPhone);
             logd("Disposing old phone..");
             oldPhone.dispose();
@@ -259,6 +263,9 @@ public class PhoneProxy extends Handler implements Phone {
 
         if(mActivePhone != null) {
             CallManager.getInstance().registerPhone(mActivePhone);
+            if (imsPhone != null) {
+                mActivePhone.acquireOwnershipOfImsPhone(imsPhone);
+            }
         }
 
         oldPhone = null;
@@ -1330,6 +1337,12 @@ public class PhoneProxy extends Handler implements Phone {
     public Phone getImsPhone() {
         return null;
     }
+
+    @Override
+    public ImsPhone relinquishOwnershipOfImsPhone() { return null; }
+
+    @Override
+    public void acquireOwnershipOfImsPhone(ImsPhone imsPhone) { }
 
     @Override
     public int getVoicePhoneServiceState() {

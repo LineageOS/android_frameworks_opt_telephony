@@ -506,8 +506,9 @@ public class GSMPhone extends PhoneBase {
     @Override
     public void
     acceptCall(int videoState) throws CallStateException {
-        if ( mImsPhone != null && mImsPhone.getRingingCall().isRinging() ) {
-            mImsPhone.acceptCall(videoState);
+        ImsPhone imsPhone = mImsPhone;
+        if ( imsPhone != null && imsPhone.getRingingCall().isRinging() ) {
+            imsPhone.acceptCall(videoState);
         } else {
             mCT.acceptCall();
         }
@@ -568,10 +569,11 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public Call getRingingCall() {
+        ImsPhone imsPhone = mImsPhone;
         if ( mCT.mRingingCall != null && mCT.mRingingCall.isRinging() ) {
             return mCT.mRingingCall;
-        } else if ( mImsPhone != null ) {
-            return mImsPhone.getRingingCall();
+        } else if ( imsPhone != null ) {
+            return imsPhone.getRingingCall();
         }
         return mCT.mRingingCall;
     }
@@ -730,9 +732,10 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public boolean handleInCallMmiCommands(String dialString) throws CallStateException {
-        if (mImsPhone != null
-                && mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
-            return mImsPhone.handleInCallMmiCommands(dialString);
+        ImsPhone imsPhone = mImsPhone;
+        if (imsPhone != null
+                && imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
+            return imsPhone.handleInCallMmiCommands(dialString);
         }
 
         if (!isInCall()) {
@@ -792,14 +795,15 @@ public class GSMPhone extends PhoneBase {
     @Override
     public Connection
     dial (String dialString, UUSInfo uusInfo, int videoState) throws CallStateException {
-        if ( mImsPhone != null
-                && ((mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+        ImsPhone imsPhone = mImsPhone;
+        if ( imsPhone != null
+                && ((imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
                 && !PhoneNumberUtils.isEmergencyNumber(dialString))
                 || (PhoneNumberUtils.isEmergencyNumber(dialString)
                 && mContext.getResources().getBoolean(
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall))) ) {
             try {
-                return mImsPhone.dial(dialString, videoState);
+                return imsPhone.dial(dialString, videoState);
             } catch (CallStateException e) {
                 if (!ImsPhone.CS_FALLBACK.equals(e.getMessage())) {
                     CallStateException ce = new CallStateException(e.getMessage());
@@ -1083,9 +1087,10 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public void getCallForwardingOption(int commandInterfaceCFReason, Message onComplete) {
-        if ((mImsPhone != null)
-                && (mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
-            mImsPhone.getCallForwardingOption(commandInterfaceCFReason, onComplete);
+        ImsPhone imsPhone = mImsPhone;
+        if ((imsPhone != null)
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
+            imsPhone.getCallForwardingOption(commandInterfaceCFReason, onComplete);
             return;
         }
 
@@ -1107,9 +1112,10 @@ public class GSMPhone extends PhoneBase {
             String dialingNumber,
             int timerSeconds,
             Message onComplete) {
-        if ((mImsPhone != null)
-                && (mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
-            mImsPhone.setCallForwardingOption(commandInterfaceCFAction,
+        ImsPhone imsPhone = mImsPhone;
+        if ((imsPhone != null)
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
+            imsPhone.setCallForwardingOption(commandInterfaceCFAction,
                     commandInterfaceCFReason, dialingNumber, timerSeconds, onComplete);
             return;
         }
@@ -1148,9 +1154,10 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public void getCallWaiting(Message onComplete) {
-        if ((mImsPhone != null)
-                && (mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
-            mImsPhone.getCallWaiting(onComplete);
+        ImsPhone imsPhone = mImsPhone;
+        if ((imsPhone != null)
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
+            imsPhone.getCallWaiting(onComplete);
             return;
         }
 
@@ -1161,9 +1168,10 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public void setCallWaiting(boolean enable, Message onComplete) {
-        if ((mImsPhone != null)
-                && (mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
-            mImsPhone.setCallWaiting(enable, onComplete);
+        ImsPhone imsPhone = mImsPhone;
+        if ((imsPhone != null)
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
+            imsPhone.setCallWaiting(enable, onComplete);
             return;
         }
 
@@ -1342,11 +1350,13 @@ public class GSMPhone extends PhoneBase {
             }
             break;
 
-            case EVENT_RADIO_ON:
-                if (mImsPhone != null) {
-                    mImsPhone.getServiceState().setStateOutOfService();
+            case EVENT_RADIO_ON: {
+                ImsPhone imsPhone = mImsPhone;
+                if (imsPhone != null) {
+                    imsPhone.getServiceState().setStateOutOfService();
                 }
-            break;
+                break;
+            }
 
             case EVENT_REGISTERED_TO_NETWORK:
                 syncClirSetting();
@@ -1412,7 +1422,7 @@ public class GSMPhone extends PhoneBase {
                 }
             break;
 
-            case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:
+            case EVENT_RADIO_OFF_OR_NOT_AVAILABLE: {
                 // Some MMI requests (eg USSD) are not completed
                 // within the course of a CommandsInterface request
                 // If the radio shuts off or resets while one of these
@@ -1423,10 +1433,12 @@ public class GSMPhone extends PhoneBase {
                         mPendingMMIs.get(i).onUssdFinishedError();
                     }
                 }
-                if (mImsPhone != null) {
-                    mImsPhone.getServiceState().setStateOff();
+                ImsPhone imsPhone = mImsPhone;
+                if (imsPhone != null) {
+                    imsPhone.getServiceState().setStateOff();
                 }
-            break;
+                break;
+            }
 
             case EVENT_SSN:
                 ar = (AsyncResult)msg.obj;
