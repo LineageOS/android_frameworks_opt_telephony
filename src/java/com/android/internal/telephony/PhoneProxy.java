@@ -1335,7 +1335,7 @@ public class PhoneProxy extends Handler implements Phone {
 
     @Override
     public Phone getImsPhone() {
-        return null;
+        return mActivePhone.getImsPhone();
     }
 
     @Override
