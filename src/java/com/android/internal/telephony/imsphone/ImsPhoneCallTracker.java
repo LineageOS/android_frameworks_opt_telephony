@@ -178,6 +178,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     private PendingIntent createIncomingCallPendingIntent() {
         Intent intent = new Intent(ImsManager.ACTION_IMS_INCOMING_CALL);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         return PendingIntent.getBroadcast(mPhone.getContext(), 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT);
     }
