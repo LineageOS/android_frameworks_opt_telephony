@@ -796,15 +796,25 @@ public class GSMPhone extends PhoneBase {
     public Connection
     dial (String dialString, UUSInfo uusInfo, int videoState) throws CallStateException {
         ImsPhone imsPhone = mImsPhone;
-        if ( imsPhone != null
+
+        boolean imsUseEnabled = SystemProperties.getInt(
+                TelephonyProperties.PROPERTY_DBG_IMS_VOLTE_ENABLE,
+                TelephonyProperties.PROPERTY_DBG_IMS_VOLTE_ENABLE_DEAFULT) == 1;
+        if (!imsUseEnabled) {
+            Rlog.w(LOG_TAG, "IMS is disabled: forced to CS");
+        }
+
+        if (imsUseEnabled && imsPhone != null
                 && ((imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
                 && !PhoneNumberUtils.isEmergencyNumber(dialString))
                 || (PhoneNumberUtils.isEmergencyNumber(dialString)
                 && mContext.getResources().getBoolean(
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall))) ) {
             try {
+                if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Trying IMS PS call");
                 return imsPhone.dial(dialString, videoState);
             } catch (CallStateException e) {
+                if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "IMS PS call exception " + e);
                 if (!ImsPhone.CS_FALLBACK.equals(e.getMessage())) {
                     CallStateException ce = new CallStateException(e.getMessage());
                     ce.setStackTrace(e.getStackTrace());
@@ -813,6 +823,7 @@ public class GSMPhone extends PhoneBase {
             }
         }
 
+        if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Trying (non-IMS) CS call");
         return dialInternal(dialString, null, VideoCallProfile.VideoState.AUDIO_ONLY);
     }
 
