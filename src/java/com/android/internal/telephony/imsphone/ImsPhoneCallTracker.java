@@ -16,6 +16,11 @@
 
 package com.android.internal.telephony.imsphone;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -32,35 +37,28 @@ import android.preference.PreferenceManager;
 import android.telecomm.VideoCallProfile;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.ServiceState;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 
+import com.android.ims.ImsCall;
+import com.android.ims.ImsCallProfile;
+import com.android.ims.ImsConnectionStateListener;
+import com.android.ims.ImsEcbm;
+import com.android.ims.ImsException;
+import com.android.ims.ImsManager;
+import com.android.ims.ImsReasonInfo;
+import com.android.ims.ImsServiceClass;
+import com.android.ims.ImsUtInterface;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
-import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyProperties;
-
-import com.android.ims.ImsCall;
-import com.android.ims.ImsCallProfile;
-import com.android.ims.ImsConnectionStateListener;
-import com.android.ims.ImsException;
-import com.android.ims.ImsManager;
-import com.android.ims.ImsReasonInfo;
-import com.android.ims.ImsServiceClass;
-import com.android.ims.ImsUtInterface;
-
-
-import java.io.FileDescriptor;
-import java.io.PrintWriter;
-import java.util.List;
-import java.util.ArrayList;
 
 /**
  * {@hide}
@@ -156,6 +154,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     private Call.SrvccState mSrvccState = Call.SrvccState.NONE;
 
+    private boolean mIsInEmergencyCall = false;
+
+    private int pendingCallClirMode;
+    private int pendingCallVideoState;
+    private boolean pendingCallInEcm = false;
+
     //***** Events
 
 
@@ -190,6 +194,13 @@ public final class ImsPhoneCallTracker extends CallTracker {
             mServiceId = mImsManager.open(ImsServiceClass.MMTEL,
                     createIncomingCallPendingIntent(),
                     mImsConnectionStateListener);
+
+            // Get the ECBM interface and set IMSPhone's listener object for notifications
+            getEcbmInterface().setEcbmStateListener(mPhone.mImsEcbmStateListener);
+            if (mPhone.isInEcm()) {
+                // Call exit ECBM which will invoke onECBMExited
+                mPhone.exitEmergencyCallbackMode();
+            }
         } catch (ImsException e) {
             loge("getImsService: " + e);
             //Leave mImsManager as null, then CallStateException will be thrown when dialing
@@ -250,6 +261,10 @@ public final class ImsPhoneCallTracker extends CallTracker {
      */
     synchronized Connection
     dial(String dialString, int clirMode, int videoState) throws CallStateException {
+        boolean isPhoneInEcmMode = SystemProperties.getBoolean(
+                TelephonyProperties.PROPERTY_INECM_MODE, false);
+        boolean isEmergencyNumber = PhoneNumberUtils.isEmergencyNumber(dialString);
+
         if (DBG) log("dial clirMode=" + clirMode);
 
         // note that this triggers call state changed notif
@@ -261,6 +276,10 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
         if (!canDial()) {
             throw new CallStateException("cannot dial in current state");
+        }
+
+        if (isPhoneInEcmMode && isEmergencyNumber) {
+            handleEcmTimer(ImsPhone.CANCEL_ECM_TIMER);
         }
 
         boolean holdBeforeDial = false;
@@ -305,13 +324,38 @@ public final class ImsPhoneCallTracker extends CallTracker {
         addConnection(mPendingMO);
 
         if (!holdBeforeDial) {
-            dialInternal(mPendingMO, clirMode, videoState);
+            if ((!isPhoneInEcmMode) || (isPhoneInEcmMode && isEmergencyNumber)) {
+                dialInternal(mPendingMO, clirMode, videoState);
+            } else {
+                try {
+                    getEcbmInterface().exitEmergencyCallbackMode();
+                } catch (ImsException e) {
+                    e.printStackTrace();
+                    throw new CallStateException("service not available");
+                }
+                mPhone.setOnEcbModeExitResponse(this, EVENT_EXIT_ECM_RESPONSE_CDMA, null);
+                pendingCallClirMode = clirMode;
+                pendingCallVideoState = videoState;
+                pendingCallInEcm = true;
+            }
         }
 
         updatePhoneState();
         mPhone.notifyPreciseCallStateChanged();
 
         return mPendingMO;
+    }
+
+    private void handleEcmTimer(int action) {
+        mPhone.handleTimerInEmergencyCallbackMode(action);
+        switch (action) {
+            case ImsPhone.CANCEL_ECM_TIMER:
+                break;
+            case ImsPhone.RESTART_ECM_TIMER:
+                break;
+            default:
+                log("handleEcmTimer, unsupported action " + action);
+        }
     }
 
     private void dialInternal(ImsPhoneConnection conn, int clirMode, int videoState) {
@@ -1164,6 +1208,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
             case EVENT_DIAL_PENDINGMO:
                 dialInternal(mPendingMO, mClirMode, VideoCallProfile.VideoState.AUDIO_ONLY);
                 break;
+
+            case EVENT_EXIT_ECM_RESPONSE_CDMA:
+                // no matter the result, we still do the same here
+                if (pendingCallInEcm) {
+                    dialInternal(mPendingMO, pendingCallClirMode, pendingCallVideoState);
+                    pendingCallInEcm = false;
+                }
+                mPhone.unsetOnEcbModeExitResponse(this);
+                break;
         }
     }
 
@@ -1195,5 +1248,19 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     @Override
     protected void handlePollCalls(AsyncResult ar) {
+    }
+
+    /* package */
+    ImsEcbm getEcbmInterface() throws ImsException {
+        if (mImsManager == null) {
+            throw new ImsException("no ims manager", ImsReasonInfo.CODE_UNSPECIFIED);
+        }
+
+        ImsEcbm ecbm = mImsManager.getEcbmInterface(mServiceId);
+        return ecbm;
+    }
+
+    public boolean isInEmergencyCall() {
+        return mIsInEmergencyCall;
     }
 }
