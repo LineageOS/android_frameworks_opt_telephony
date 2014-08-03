@@ -182,9 +182,10 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     /** {@inheritDoc} */
     @Override
     protected void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
-            PendingIntent deliveryIntent, Uri messageUri, String callingPkg) {
+            PendingIntent deliveryIntent, Uri messageUri, String callingPkg,
+            int priority, boolean isExpectMore, int validityPeriod ) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
-                scAddr, destAddr, text, (deliveryIntent != null));
+                scAddr, destAddr, text, (deliveryIntent != null), validityPeriod);
         if (pdu != null) {
             if (messageUri == null) {
                 if (SmsApplication.shouldWriteMessageForPackage(callingPkg, mContext)) {
@@ -200,7 +201,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
             }
             HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                    messageUri, false);
+                    messageUri, isExpectMore, validityPeriod);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendText(): getSubmitPdu() returned null");
@@ -225,16 +226,17 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     protected void sendNewSubmitPdu(String destinationAddress, String scAddress,
             String message, SmsHeader smsHeader, int encoding,
             PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart,
+            int priority, boolean isExpectMore, int validityPeriod,
             AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(scAddress, destinationAddress,
                 message, deliveryIntent != null, SmsHeader.toByteArray(smsHeader),
-                encoding, smsHeader.languageTable, smsHeader.languageShiftTable);
+                encoding, smsHeader.languageTable, smsHeader.languageShiftTable, validityPeriod);
         if (pdu != null) {
             HashMap map =  getSmsTrackerMap(destinationAddress, scAddress,
                     message, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent,
                     deliveryIntent, getFormat(), unsentPartCount, anyPartFailed, messageUri,
-                    smsHeader, !lastPart);
+                    smsHeader, (!lastPart || isExpectMore), validityPeriod);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendNewSubmitPdu(): getSubmitPdu() returned null");

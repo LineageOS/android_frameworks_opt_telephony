@@ -161,6 +161,19 @@ public class UiccSmsController extends ISms.Stub {
         }
     }
 
+    public void sendTextWithOptionsUsingSubId(long subId, String callingPackage, String destAddr,
+            String scAddr, String parts, PendingIntent sentIntents,
+            PendingIntent deliveryIntents, int priority, boolean isExpectMore,
+            int validityPeriod) {
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+        if (iccSmsIntMgr != null ) {
+            iccSmsIntMgr.sendTextWithOptions(callingPackage, destAddr, scAddr, parts, sentIntents,
+                    deliveryIntents, priority, isExpectMore, validityPeriod);
+        } else {
+            Rlog.e(LOG_TAG,"sendTextWithOptions iccSmsIntMgr is null for" +
+                          " Subscription: " + subId);
+        }
+    }
     public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
             List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents) throws android.os.RemoteException {
@@ -178,6 +191,20 @@ public class UiccSmsController extends ISms.Stub {
                     deliveryIntents);
         } else {
             Rlog.e(LOG_TAG,"sendMultipartText iccSmsIntMgr is null for" +
+                          " Subscription: " + subId);
+        }
+    }
+
+    public void sendMultipartTextWithOptionsUsingSubId(long subId, String callingPackage,
+            String destAddr, String scAddr, List<String> parts, List<PendingIntent> sentIntents,
+            List<PendingIntent> deliveryIntents, int priority, boolean isExpectMore,
+            int validityPeriod) {
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+        if (iccSmsIntMgr != null ) {
+            iccSmsIntMgr.sendMultipartTextWithOptions(callingPackage, destAddr, scAddr, parts,
+                    sentIntents, deliveryIntents, priority, isExpectMore, validityPeriod);
+        } else {
+            Rlog.e(LOG_TAG,"sendMultipartTextWithOptions iccSmsIntMgr is null for" +
                           " Subscription: " + subId);
         }
     }
