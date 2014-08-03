@@ -130,6 +130,9 @@ public class GSMPhone extends PhoneBase {
     /** List of Registrants to receive Supplementary Service Notifications. */
     RegistrantList mSsnRegistrants = new RegistrantList();
 
+    // mEcmTimerResetRegistrants are informed after Ecm timer is canceled or re-started
+    private final RegistrantList mEcmTimerResetRegistrants = new RegistrantList();
+
     private String mImei;
     private String mImeiSv;
     private String mVmNumber;
@@ -1735,6 +1738,13 @@ public class GSMPhone extends PhoneBase {
     }
 
     @Override
+    public void exitEmergencyCallbackMode() {
+        if (mImsPhone != null) {
+            mImsPhone.exitEmergencyCallbackMode();
+        }
+    }
+
+    @Override
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("GSMPhone extends:");
         super.dump(fd, pw, args);
@@ -1807,8 +1817,28 @@ public class GSMPhone extends PhoneBase {
                 .setInternalDataEnabledFlag(enable);
     }
 
+    public void notifyEcbmTimerReset(Boolean flag) {
+        mEcmTimerResetRegistrants.notifyResult(flag);
+    }
+
+    /**
+     * Registration point for Ecm timer reset
+     *
+     * @param h handler to notify
+     * @param what User-defined message code
+     * @param obj placed in Message.obj
+     */
+    public void registerForEcmTimerReset(Handler h, int what, Object obj) {
+        mEcmTimerResetRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForEcmTimerReset(Handler h) {
+        mEcmTimerResetRegistrants.remove(h);
+    }
+
     public void resetSubSpecifics() {
     }
+
     protected void log(String s) {
         Rlog.d(LOG_TAG, "[GSMPhone] " + s);
     }
