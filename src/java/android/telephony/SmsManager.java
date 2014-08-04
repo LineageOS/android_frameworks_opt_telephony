@@ -1020,12 +1020,17 @@ public final class SmsManager {
      *
      * @param pdu the MMS message encoded in standard MMS PDU format
      * @param locationUrl the optional location url where message should be sent to
+     * @param configOverrides the carrier-specific messaging configuration values to override for
+     *  sending the message. See {@link android.telephony.MessagingConfigurationManager} for the
+     *  value names and types.
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully sent, or failed
      * @throws IllegalArgumentException if pdu is empty
      */
-    public void sendMultimediaMessage(byte[] pdu, String locationUrl, PendingIntent sentIntent) {
-        sendMultimediaMessage(getPreferredSmsSubscription(), pdu, locationUrl, sentIntent);
+    public void sendMultimediaMessage(byte[] pdu, String locationUrl, ContentValues configOverrides,
+            PendingIntent sentIntent) {
+        sendMultimediaMessage(getPreferredSmsSubscription(), pdu, locationUrl, configOverrides,
+                sentIntent);
     }
 
     /**
@@ -1034,12 +1039,15 @@ public final class SmsManager {
      * @param subId the SIM id
      * @param pdu the MMS message encoded in standard MMS PDU format
      * @param locationUrl the optional location url where message should be sent to
+     * @param configOverrides the carrier-specific messaging configuration values to override for
+     *  sending the message. See {@link android.telephony.MessagingConfigurationManager} for the
+     *  value names and types.
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully sent, or failed
      * @throws IllegalArgumentException if pdu is empty
      */
     public void sendMultimediaMessage(long subId, byte[] pdu, String locationUrl,
-            PendingIntent sentIntent) {
+            ContentValues configOverrides, PendingIntent sentIntent) {
         if (pdu == null || pdu.length == 0) {
             throw new IllegalArgumentException("Empty or zero length PDU");
         }
@@ -1049,7 +1057,7 @@ public final class SmsManager {
                 return;
             }
             iMms.sendMessage(subId, ActivityThread.currentPackageName(), pdu, locationUrl,
-                    sentIntent);
+                    configOverrides, sentIntent);
         } catch (RemoteException e) {
             // Ignore it
         }
@@ -1060,12 +1068,17 @@ public final class SmsManager {
      *
      * @param locationUrl the location URL of the MMS message to be downloaded, usually obtained
      *  from the MMS WAP push notification
+     * @param configOverrides the carrier-specific messaging configuration values to override for
+     *  downloading the message. See {@link android.telephony.MessagingConfigurationManager} for the
+     *  value names and types.
      * @param downloadedIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is downloaded, or the download is failed
      * @throws IllegalArgumentException if locationUrl is empty
      */
-    public void downloadMultimediaMessage(String locationUrl, PendingIntent downloadedIntent) {
-        downloadMultimediaMessage(getPreferredSmsSubscription(), locationUrl, downloadedIntent);
+    public void downloadMultimediaMessage(String locationUrl, ContentValues configOverrides,
+            PendingIntent downloadedIntent) {
+        downloadMultimediaMessage(getPreferredSmsSubscription(), locationUrl, configOverrides,
+                downloadedIntent);
     }
 
     /**
@@ -1074,12 +1087,15 @@ public final class SmsManager {
      * @param subId the SIM id
      * @param locationUrl the location URL of the MMS message to be downloaded, usually obtained
      *  from the MMS WAP push notification
+     * @param configOverrides the carrier-specific messaging configuration values to override for
+     *  downloading the message. See {@link android.telephony.MessagingConfigurationManager} for the
+     *  value names and types.
      * @param downloadedIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is downloaded, or the download is failed
      * @throws IllegalArgumentException if locationUrl is empty
      */
     public void downloadMultimediaMessage(long subId, String locationUrl,
-            PendingIntent downloadedIntent) {
+            ContentValues configOverrides, PendingIntent downloadedIntent) {
         if (TextUtils.isEmpty(locationUrl)) {
             throw new IllegalArgumentException("Empty MMS location URL");
         }
@@ -1089,7 +1105,7 @@ public final class SmsManager {
                 return;
             }
             iMms.downloadMessage(subId, ActivityThread.currentPackageName(), locationUrl,
-                    downloadedIntent);
+                    configOverrides, downloadedIntent);
         } catch (RemoteException e) {
             // Ignore it
         }
@@ -1520,12 +1536,17 @@ public final class SmsManager {
      * for sending a text message that has been stored as a draft.
      *
      * @param messageUri the URI of the stored message
+     * @param configOverrides the carrier-specific messaging configuration values to override for
+     *  sending the message. See {@link android.telephony.MessagingConfigurationManager} for the
+     *  value names and types.
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully sent, or failed
      * @throws IllegalArgumentException if messageUri is empty
      */
-    public void sendStoredMultimediaMessage(Uri messageUri, PendingIntent sentIntent) {
-        sendStoredMultimediaMessage(getPreferredSmsSubscription(), messageUri, sentIntent);
+    public void sendStoredMultimediaMessage(Uri messageUri, ContentValues configOverrides,
+            PendingIntent sentIntent) {
+        sendStoredMultimediaMessage(getPreferredSmsSubscription(), messageUri, configOverrides,
+                sentIntent);
     }
 
     /**
@@ -1536,11 +1557,15 @@ public final class SmsManager {
      *
      * @param subId the SIM id
      * @param messageUri the URI of the stored message
+     * @param configOverrides the carrier-specific messaging configuration values to override for
+     *  sending the message. See {@link android.telephony.MessagingConfigurationManager} for the
+     *  value names and types.
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully sent, or failed
      * @throws IllegalArgumentException if messageUri is empty
      */
-    public void sendStoredMultimediaMessage(long subId, Uri messageUri, PendingIntent sentIntent) {
+    public void sendStoredMultimediaMessage(long subId, Uri messageUri,
+            ContentValues configOverrides, PendingIntent sentIntent) {
         if (messageUri == null) {
             throw new IllegalArgumentException("Empty message URI");
         }
@@ -1548,7 +1573,7 @@ public final class SmsManager {
             IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
             if (iMms != null) {
                 iMms.sendStoredMessage(subId, ActivityThread.currentPackageName(), messageUri,
-                        sentIntent);
+                        configOverrides, sentIntent);
             }
         } catch (RemoteException ex) {
             // ignore it

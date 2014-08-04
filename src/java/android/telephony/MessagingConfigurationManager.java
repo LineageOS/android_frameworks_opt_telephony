@@ -18,7 +18,6 @@ package android.telephony;
 
 import com.android.internal.telephony.IMms;
 
-import android.app.ActivityThread;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 
@@ -28,9 +27,9 @@ import android.os.ServiceManager;
  * are provided for the convenience of SMS applications.
  *
  * All the configurations are loaded with pre-defined values at system startup. Developers
- * can override the value of a specific configuration at runtime by calling the set methods.
- * However, those changes are not persistent and will be discarded if the managing system
- * process restarts.
+ * can override the value of a specific configuration at runtime by passing the values through
+ * corresponding MMS sending or download methods. The overridden values are only effective
+ * for the specific sending or downloading request.
  */
 public class MessagingConfigurationManager {
     /** Singleton object constructed during class initialization. */
@@ -51,10 +50,23 @@ public class MessagingConfigurationManager {
      * @return the value of the configuration
      */
     public boolean getCarrierConfigBoolean(String name, boolean defaultValue) {
+        return getCarrierConfigBoolean(SmsManager.getPreferredSmsSubscription(), name,
+                defaultValue);
+    }
+
+    /**
+     * Get carrier-dependent messaging configuration value as a boolean
+     *
+     * @param subId the SIM id
+     * @param name the name of the configuration value
+     * @param defaultValue the default value to return if fail to find the value
+     * @return the value of the configuration
+     */
+    public boolean getCarrierConfigBoolean(long subId, String name, boolean defaultValue) {
         try {
             IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
             if (iMms != null) {
-                return iMms.getCarrierConfigBoolean(name, defaultValue);
+                return iMms.getCarrierConfigBoolean(subId, name, defaultValue);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -70,10 +82,22 @@ public class MessagingConfigurationManager {
      * @return the value of the configuration
      */
     public int getCarrierConfigInt(String name, int defaultValue) {
+        return getCarrierConfigInt(SmsManager.getPreferredSmsSubscription(), name, defaultValue);
+    }
+
+    /**
+     * Get carrier-dependent messaging configuration value as an int
+     *
+     * @param subId the SIM id
+     * @param name the name of the configuration value
+     * @param defaultValue the default value to return if fail to find the value
+     * @return the value of the configuration
+     */
+    public int getCarrierConfigInt(long subId, String name, int defaultValue) {
         try {
             IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
             if (iMms != null) {
-                return iMms.getCarrierConfigInt(name, defaultValue);
+                return iMms.getCarrierConfigInt(subId, name, defaultValue);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -89,70 +113,27 @@ public class MessagingConfigurationManager {
      * @return the value of the configuration
      */
     public String getCarrierConfigString(String name, String defaultValue) {
+        return getCarrierConfigString(SmsManager.getPreferredSmsSubscription(), name, defaultValue);
+    }
+
+    /**
+     * Get carrier-dependent messaging configuration value as a string
+     *
+     * @param subId the SIM id
+     * @param name the name of the configuration value
+     * @param defaultValue the default value to return if fail to find the value
+     * @return the value of the configuration
+     */
+    public String getCarrierConfigString(long subId, String name, String defaultValue) {
         try {
             IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
             if (iMms != null) {
-                return iMms.getCarrierConfigString(name, defaultValue);
+                return iMms.getCarrierConfigString(subId, name, defaultValue);
             }
         } catch (RemoteException ex) {
             // ignore it
         }
         return defaultValue;
-    }
-
-    /**
-     * Set carrier-dependent messaging configuration value as a boolean
-     *
-     * @param name the name of the configuration
-     * @param value the value of the configuration
-     */
-    public void setCarrierConfigBoolean(String name, boolean value) {
-        try {
-            IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
-            if (iMms != null) {
-                iMms.setCarrierConfigBoolean(ActivityThread.currentPackageName(), name, value);
-            }
-        } catch (RemoteException ex) {
-            // ignore it
-        }
-    }
-
-    /**
-     * Set carrier-dependent messaging configuration value as an int
-     *
-     * @param name the name of the configuration
-     * @param value the value of the configuration
-     */
-    public void setCarrierConfigInt(String name, int value) {
-        try {
-            IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
-            if (iMms != null) {
-                iMms.setCarrierConfigInt(ActivityThread.currentPackageName(), name, value);
-            }
-        } catch (RemoteException ex) {
-            // ignore it
-        }
-    }
-
-    /**
-     * Set carrier-dependent messaging configuration value as a String
-     *
-     * @param name the name of the configuration
-     * @param value the value of the configuration
-     * @throws java.lang.IllegalArgumentException if value is empty
-     */
-    public void setCarrierConfigString(String name, String value) {
-        if (value == null) {
-            throw new IllegalArgumentException("Empty value");
-        }
-        try {
-            IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
-            if (iMms != null) {
-                iMms.setCarrierConfigString(ActivityThread.currentPackageName(), name, value);
-            }
-        } catch (RemoteException ex) {
-            // ignore it
-        }
     }
 
     /**
