@@ -725,11 +725,11 @@ public class ImsPhone extends ImsPhoneBase {
         } else if (CB_FACILITY_BAICr.equals(facility)) {
             return ImsUtInterface.CB_BIC_WR;
         } else if (CB_FACILITY_BA_ALL.equals(facility)) {
-            return 0;
+            return ImsUtInterface.CB_BA_ALL;
         } else if (CB_FACILITY_BA_MO.equals(facility)) {
-            return 0;
+            return ImsUtInterface.CB_BA_MO;
         } else if (CB_FACILITY_BA_MT.equals(facility)) {
-            return 0;
+            return ImsUtInterface.CB_BA_MT;
         }
 
         return 0;
@@ -759,7 +759,7 @@ public class ImsPhone extends ImsPhoneBase {
         try {
             ImsUtInterface ut = mCT.getUtInterface();
             // password is not required with Ut interface
-            ut.updateCallBarring(getCBTypeFromFacility(facility), lockState, resp);
+            ut.updateCallBarring(getCBTypeFromFacility(facility), lockState, resp, null);
         } catch (ImsException e) {
             sendErrorResponse(onComplete, e);
         }
