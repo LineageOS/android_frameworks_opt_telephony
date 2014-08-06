@@ -416,11 +416,17 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             if (ar.exception == null) {
                 String cdmaSubscription[] = (String[])ar.result;
                 if (cdmaSubscription != null && cdmaSubscription.length >= 5) {
-                    mMdn = cdmaSubscription[0];
+                    if (null != cdmaSubscription[0]) {
+                        mMdn = cdmaSubscription[0];
+                    }
                     parseSidNid(cdmaSubscription[1], cdmaSubscription[2]);
 
-                    mMin = cdmaSubscription[3];
-                    mPrlVersion = cdmaSubscription[4];
+                    if (null != cdmaSubscription[3]) {
+                        mMin = cdmaSubscription[3];
+                    }
+                    if (null != cdmaSubscription[4]) {
+                        mPrlVersion = cdmaSubscription[4];
+                    }
                     if (DBG) log("GET_CDMA_SUBSCRIPTION: MDN=" + mMdn);
 
                     mIsMinInfoReady = true;
