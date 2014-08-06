@@ -1032,7 +1032,7 @@ public final class CdmaCallTracker extends CallTracker {
 
             case EVENT_EXIT_ECM_RESPONSE_CDMA:
                 // no matter the result, we still do the same here
-                if (mPendingCallInEcm) {
+                if ( mPendingCallInEcm ) {
                     mCi.dial(mPendingMO.getAddress(), mPendingCallClirMode, obtainCompleteMessage());
                     mPendingCallInEcm = false;
                 }

@@ -336,7 +336,6 @@ public interface Phone {
      * Unregisters for handover state notifications
      */
     void unregisterForHandoverStateChanged(Handler h);
-
     /**
      * Register for getting notifications for change in the Call State {@link Call.State}
      * This is called PreciseCallState because the call state is more precise than the
