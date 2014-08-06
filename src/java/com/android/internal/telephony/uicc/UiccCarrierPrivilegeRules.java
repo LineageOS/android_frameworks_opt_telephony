@@ -67,9 +67,9 @@ public class UiccCarrierPrivilegeRules extends Handler {
 
     private static final String AID = "A00000015141434C00";
     private static final int CLA = 0x80;
-    private static final int COMMAND = 0xB0;
-    private static final int P1 = 0x00;
-    private static final int P2 = 0x00;
+    private static final int COMMAND = 0xCA;
+    private static final int P1 = 0xFF;
+    private static final int P2 = 0x40;
     private static final int P3 = 0x00;
     private static final String DATA = "";
 
