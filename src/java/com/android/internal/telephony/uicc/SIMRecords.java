@@ -1491,7 +1491,11 @@ public class SIMRecords extends IccRecords {
     @Override
     public int getDisplayRule(String plmn) {
         int rule;
-        if (TextUtils.isEmpty(getServiceProviderName()) || mSpnDisplayCondition == -1) {
+
+        if (mParentApp.getUiccCard().getOperatorBrandOverride() != null) {
+        // If the operator has been overridden, treat it as the SPN file on the SIM did not exist.
+            rule = SPN_RULE_SHOW_PLMN;
+        } else if (TextUtils.isEmpty(getServiceProviderName()) || mSpnDisplayCondition == -1) {
             // No EF_SPN content was found on the SIM, or not yet loaded.  Just show ONS.
             rule = SPN_RULE_SHOW_PLMN;
         } else if (isOnMatchingPlmn(plmn)) {
