@@ -3392,6 +3392,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     dataCall.pcscf = pcscf.split(" ");
                 }
             }
+            if (version >= 11) {
+                dataCall.mtu = p.readInt();
+            }
         }
         return dataCall;
     }
