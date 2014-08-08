@@ -32,6 +32,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.telecomm.VideoCallProfile;
@@ -49,6 +50,8 @@ import com.android.ims.ImsManager;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsServiceClass;
 import com.android.ims.ImsUtInterface;
+import com.android.ims.internal.IImsVideoCallProvider;
+import com.android.ims.internal.ImsVideoCallProviderWrapper;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CallTracker;
@@ -97,6 +100,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
                             ImsPhoneCallTracker.this, mRingingCall);
                     addConnection(conn);
 
+                    IImsVideoCallProvider imsVideoCallProvider =
+                            imsCall.getCallSession().getVideoCallProvider();
+                    ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
+                            new ImsVideoCallProviderWrapper(imsVideoCallProvider);
+                    conn.setVideoCallProvider(imsVideoCallProviderWrapper);
+
                     if ((mForegroundCall.getState() != ImsPhoneCall.State.IDLE) ||
                             (mBackgroundCall.getState() != ImsPhoneCall.State.IDLE)) {
                         conn.update(imsCall, ImsPhoneCall.State.WAITING);
@@ -109,6 +118,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     mPhone.notifyPreciseCallStateChanged();
                 } catch (ImsException e) {
                     loge("onReceive : exception " + e);
+                } catch (RemoteException e) {
                 }
             }
         }
@@ -388,10 +398,17 @@ public final class ImsPhoneCallTracker extends CallTracker {
             ImsCall imsCall = mImsManager.makeCall(mServiceId, profile,
                     callees, mImsCallListener);
             conn.setImsCall(imsCall);
+
+            IImsVideoCallProvider imsVideoCallProvider =
+                    imsCall.getCallSession().getVideoCallProvider();
+            ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
+                    new ImsVideoCallProviderWrapper(imsVideoCallProvider);
+            conn.setVideoCallProvider(imsVideoCallProviderWrapper);
         } catch (ImsException e) {
             loge("dialInternal : " + e);
             conn.setDisconnectCause(DisconnectCause.ERROR_UNSPECIFIED);
             sendEmptyMessageDelayed(EVENT_HANGUP_PENDINGMO, TIMEOUT_HANGUP_PENDINGMO);
+        } catch (RemoteException e) {
         }
     }
 
