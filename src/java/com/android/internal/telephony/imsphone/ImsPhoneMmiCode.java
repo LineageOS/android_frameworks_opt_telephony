@@ -1056,8 +1056,11 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 return mContext.getText(com.android.internal.R.string.ClipMmi);
             } else if (mSc.equals(SC_CLIR)) {
                 return mContext.getText(com.android.internal.R.string.ClirMmi);
+            } else if (mSc.equals(SC_COLP)) {
+                return mContext.getText(com.android.internal.R.string.ColpMmi);
+            } else if (mSc.equals(SC_COLR)) {
+                return mContext.getText(com.android.internal.R.string.ColrMmi);
             }
-            //TODO: Addition of COLP and COLR strings to resources.
         }
 
         return "";
