@@ -29,6 +29,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 
 import com.android.ims.ImsException;
+import com.android.ims.ImsStreamMediaProfile;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
@@ -149,6 +150,11 @@ public class ImsPhoneConnection extends Connection {
             if (imsCallProfile != null) {
                 int callType = imsCall.getCallProfile().mCallType;
                 setVideoState(ImsCallProfile.getVideoStateFromCallType(callType));
+
+                ImsStreamMediaProfile mediaProfile = imsCallProfile.mMediaProfile;
+                if (mediaProfile != null) {
+                    setAudioQuality(getAudioQualityFromMediaProfile(mediaProfile));
+                }
             }
 
             // Determine if the current call have video capabilities.
@@ -212,6 +218,27 @@ public class ImsPhoneConnection extends Connection {
     equalsHandlesNulls (Object a, Object b) {
         return (a == null) ? (b == null) : a.equals (b);
     }
+
+    /**
+     * Determines the {@link ImsPhoneConnection} audio quality based on an
+     * {@link ImsStreamMediaProfile}.
+     *
+     * @param mediaProfile The media profile.
+     * @return The audio quality.
+     */
+    private int getAudioQualityFromMediaProfile(ImsStreamMediaProfile mediaProfile) {
+        int audioQuality;
+
+        // The Adaptive Multi-Rate Wideband codec is used for high definition audio calls.
+        if (mediaProfile.mAudioQuality == ImsStreamMediaProfile.AUDIO_QUALITY_AMR_WB) {
+            audioQuality = AUDIO_QUALITY_HIGH_DEFINITION;
+        } else {
+            audioQuality = AUDIO_QUALITY_STANDARD;
+        }
+
+        return audioQuality;
+    }
+
 
     @Override
     public String getOrigDialString(){
@@ -663,8 +690,8 @@ public class ImsPhoneConnection extends Connection {
             // No session in place -- no change
         }
 
-        // Check for a change in the call type / video state of the {@link ImsCall} and update the
-        // {@link ImsPhoneConnection} with this information.
+        // Check for a change in the call type / video state, or audio quality of the
+        // {@link ImsCall} and update the {@link ImsPhoneConnection} with this information.
         ImsCallProfile callProfile = imsCall.getCallProfile();
         if (callProfile != null) {
             int oldVideoState = getVideoState();
@@ -674,7 +701,19 @@ public class ImsPhoneConnection extends Connection {
                 setVideoState(newVideoState);
                 changed = true;
             }
+
+            ImsStreamMediaProfile mediaProfile = callProfile.mMediaProfile;
+            if (mediaProfile != null) {
+                int oldAudioQuality = getAudioQuality();
+                int newAudioQuality = getAudioQualityFromMediaProfile(mediaProfile);
+
+                if (oldAudioQuality != newAudioQuality) {
+                    setAudioQuality(newAudioQuality);
+                    changed = true;
+                }
+            }
         }
+
         return changed;
     }
 
