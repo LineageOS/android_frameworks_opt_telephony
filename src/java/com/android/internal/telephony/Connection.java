@@ -20,6 +20,7 @@ import android.telecomm.ConnectionService;
 import android.telephony.Rlog;
 import android.util.Log;
 
+import java.lang.Override;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -43,6 +44,7 @@ public abstract class Connection {
         public void onRemoteVideoCapabilityChanged(boolean capable);
         public void onVideoCallProviderChanged(
                 ConnectionService.VideoCallProvider videoCallProvider);
+        public void onAudioQualityChanged(int audioQuality);
     }
 
     /**
@@ -58,7 +60,12 @@ public abstract class Connection {
         @Override
         public void onVideoCallProviderChanged(
                 ConnectionService.VideoCallProvider videoCallProvider) {}
+        @Override
+        public void onAudioQualityChanged(int audioQuality) {}
     }
+
+    public static final int AUDIO_QUALITY_STANDARD = 1;
+    public static final int AUDIO_QUALITY_HIGH_DEFINITION = 2;
 
     //Caller Name Display
     protected String mCnapName;
@@ -73,6 +80,7 @@ public abstract class Connection {
     private int mVideoState;
     private boolean mLocalVideoCapable;
     private boolean mRemoteVideoCapable;
+    private int mAudioQuality;
     private ConnectionService.VideoCallProvider mVideoCallProvider;
 
     /* Instance Methods */
@@ -398,6 +406,15 @@ public abstract class Connection {
     }
 
     /**
+     * Returns the audio-quality for the connection.
+     *
+     * @return The audio quality for the connection.
+     */
+    public int getAudioQuality() {
+        return mAudioQuality;
+    }
+
+    /**
      * Sets the videoState for the current connection and reports the changes to all listeners.
      * Valid video states are defined in {@link VideoCallProfile}.
      *
@@ -431,6 +448,18 @@ public abstract class Connection {
         mRemoteVideoCapable = capable;
         for (Listener l : mListeners) {
             l.onRemoteVideoCapabilityChanged(mRemoteVideoCapable);
+        }
+    }
+
+    /**
+     * Set the audio quality for the connection.
+     *
+     * @param audioQuality The audio quality.
+     */
+    public void setAudioQuality(int audioQuality) {
+        mAudioQuality = audioQuality;
+        for (Listener l : mListeners) {
+            l.onAudioQualityChanged(mAudioQuality);
         }
     }
 
