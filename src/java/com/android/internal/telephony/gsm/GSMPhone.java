@@ -1364,13 +1364,9 @@ public class GSMPhone extends PhoneBase {
             }
             break;
 
-            case EVENT_RADIO_ON: {
-                ImsPhone imsPhone = mImsPhone;
-                if (imsPhone != null) {
-                    imsPhone.getServiceState().setStateOutOfService();
-                }
+            case EVENT_RADIO_ON:
+                // do-nothing
                 break;
-            }
 
             case EVENT_REGISTERED_TO_NETWORK:
                 syncClirSetting();
