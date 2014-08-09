@@ -1203,10 +1203,6 @@ public class CDMAPhone extends PhoneBase {
             case EVENT_RADIO_ON:{
                 Rlog.d(LOG_TAG, "Event EVENT_RADIO_ON Received");
                 handleCdmaSubscriptionSource(mCdmaSSM.getCdmaSubscriptionSource());
-                ImsPhone imsPhone = mImsPhone;
-                if (imsPhone != null) {
-                    imsPhone.getServiceState().setStateOutOfService();
-                }
             }
             break;
 
