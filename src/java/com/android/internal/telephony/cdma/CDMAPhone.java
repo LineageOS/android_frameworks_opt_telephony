@@ -337,6 +337,11 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public void conference() {
+        if (mImsPhone != null && mImsPhone.canConference()) {
+            log("conference() - delegated to IMS phone");
+            mImsPhone.conference();
+            return;
+        }
         // three way calls in CDMA will be handled by feature codes
         Rlog.e(LOG_TAG, "conference: not possible in CDMA");
     }
@@ -591,6 +596,9 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public boolean canConference() {
+        if (mImsPhone != null && mImsPhone.canConference()) {
+            return true;
+        }
         Rlog.e(LOG_TAG, "canConference: not possible in CDMA");
         return false;
     }
