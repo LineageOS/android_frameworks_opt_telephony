@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.app.Activity;
+import android.app.ActivityManagerNative;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
@@ -36,7 +37,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
 import android.os.PowerManager;
+import android.os.RemoteException;
 import android.os.SystemProperties;
+import android.os.UserHandle;
+import android.os.UserManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
@@ -45,6 +49,7 @@ import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
@@ -169,6 +174,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     protected CellBroadcastHandler mCellBroadcastHandler;
 
+    private UserManager mUserManager;
 
     /**
      * Create a new SMS broadcast helper.
@@ -195,6 +201,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, name);
         mWakeLock.acquire();    // wake lock released after we enter idle state
+        mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
 
         addState(mDefaultState);
         addState(mStartupState, mDefaultState);
@@ -736,7 +743,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         intent.putExtra("pdus", pdus);
         intent.putExtra("format", tracker.getFormat());
         dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                AppOpsManager.OP_RECEIVE_SMS, resultReceiver);
+                AppOpsManager.OP_RECEIVE_SMS, resultReceiver, UserHandle.OWNER);
         return true;
     }
 
@@ -747,13 +754,32 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param intent the intent to broadcast
      * @param permission receivers are required to have this permission
      * @param appOp app op that is being performed when dispatching to a receiver
+     * @param user user to deliver the intent to
      */
     protected void dispatchIntent(Intent intent, String permission, int appOp,
-            BroadcastReceiver resultReceiver) {
+            BroadcastReceiver resultReceiver, UserHandle user) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
-        mContext.sendOrderedBroadcast(intent, permission, appOp, resultReceiver,
-                getHandler(), Activity.RESULT_OK, null, null);
+        int[] users = null;
+        if (user.equals(UserHandle.ALL)) {
+            // Get a list of currently started users.
+            try {
+                users = ActivityManagerNative.getDefault().getRunningUserIds();
+            } catch (RemoteException re) {
+            }
+        }
+        if (users == null) {
+            users = new int[] {user.getIdentifier()};
+        }
+        // Deliver the broadcast only to those running users that are permitted
+        // by user policy.
+        for (int i = 0; i < users.length; i++) {
+            UserHandle targetUser = new UserHandle(users[i]);
+            if (!mUserManager.hasUserRestriction(UserManager.DISALLOW_SMS, targetUser)) {
+                mContext.sendOrderedBroadcastAsUser(intent, targetUser, permission, appOp,
+                        resultReceiver, getHandler(), Activity.RESULT_OK, null, null);
+            }
+        }
     }
 
     /**
@@ -781,6 +807,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
             // Direct the intent to only the default SMS app. If we can't find a default SMS app
             // then sent it to all broadcast receivers.
+            // We are deliberately delivering to the primary user's default SMS App.
             ComponentName componentName = SmsApplication.getDefaultSmsApplication(mContext, true);
             if (componentName != null) {
                 // Deliver SMS message only to this receiver.
@@ -922,7 +949,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                           }
                       }
                       dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                                     AppOpsManager.OP_RECEIVE_SMS, this);
+                                     AppOpsManager.OP_RECEIVE_SMS, this, UserHandle.OWNER);
                   } else {
                       loge("destport doesn't exist in the extras for SMS filter action.");
                   }
@@ -936,14 +963,17 @@ public abstract class InboundSmsHandler extends StateMachine {
                 // Now dispatch the notification only intent
                 intent.setAction(Intents.SMS_RECEIVED_ACTION);
                 intent.setComponent(null);
+                // All running users will be notified of the received sms.
                 dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                        AppOpsManager.OP_RECEIVE_SMS, this);
+                        AppOpsManager.OP_RECEIVE_SMS, this, UserHandle.ALL);
             } else if (action.equals(Intents.WAP_PUSH_DELIVER_ACTION)) {
                 // Now dispatch the notification only intent
                 intent.setAction(Intents.WAP_PUSH_RECEIVED_ACTION);
                 intent.setComponent(null);
+                // Only the primary user will receive notification of incoming mms.
+                // That app will do the actual downloading of the mms.
                 dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                        AppOpsManager.OP_RECEIVE_SMS, this);
+                        AppOpsManager.OP_RECEIVE_SMS, this, UserHandle.OWNER);
             } else {
                 // Now that the intents have been deleted we can clean up the PDU data.
                 if (!Intents.DATA_SMS_RECEIVED_ACTION.equals(action)

@@ -28,6 +28,7 @@ import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
+import android.os.UserManager;
 import android.provider.Telephony;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
@@ -47,6 +48,7 @@ import java.util.List;
 import static android.telephony.SmsManager.STATUS_ON_ICC_FREE;
 import static android.telephony.SmsManager.STATUS_ON_ICC_READ;
 import static android.telephony.SmsManager.STATUS_ON_ICC_UNREAD;
+
 import android.telephony.TelephonyManager;
 
 /**
@@ -76,6 +78,7 @@ public class IccSmsInterfaceManager {
     protected PhoneBase mPhone;
     final protected Context mContext;
     final protected AppOpsManager mAppOps;
+    final private UserManager mUserManager;
     protected SMSDispatcher mDispatcher;
 
     protected Handler mHandler = new Handler() {
@@ -124,6 +127,7 @@ public class IccSmsInterfaceManager {
         mPhone = phone;
         mContext = phone.getContext();
         mAppOps = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
+        mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
         mDispatcher = new ImsSMSDispatcher(phone,
                 phone.mSmsStorageMonitor, phone.mSmsUsageMonitor);
     }
