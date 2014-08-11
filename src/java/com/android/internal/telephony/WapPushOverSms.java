@@ -40,6 +40,7 @@ import android.database.sqlite.SqliteWrapper;
 import android.net.Uri;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.os.UserHandle;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.MessagingConfigurationManager;
@@ -286,7 +287,7 @@ public class WapPushOverSms implements ServiceConnection {
                         " " + componentName.getClassName());
             }
 
-            handler.dispatchIntent(intent, permission, appOp, receiver);
+            handler.dispatchIntent(intent, permission, appOp, receiver, UserHandle.OWNER);
             return Activity.RESULT_OK;
         } catch (ArrayIndexOutOfBoundsException aie) {
             // 0-byte WAP PDU or other unexpected WAP PDU contents can easily throw this;
