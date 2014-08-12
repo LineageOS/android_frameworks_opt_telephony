@@ -2713,41 +2713,6 @@ public final class Telephony {
          */
         public static final String SUB_ID = "sub_id";
 
-        /**
-         * The profile_id to which the APN saved in modem
-         * <p>Type: INTEGER</p>
-         *@hide
-         */
-        public static final String PROFILE_ID = "profile_id";
-
-        /**
-         * Is the apn setting to be set in modem
-         * <P>Type: INTEGER (boolean)</P>
-         *@hide
-         */
-        public static final String MODEM_COGNITIVE = "modem_cognitive";
-
-        /**
-         * The max connections of this apn
-         * <p>Type: INTEGER</p>
-         *@hide
-         */
-        public static final String MAX_CONNS = "max_conns";
-
-        /**
-         * The wait time for retry of the apn
-         * <p>Type: INTEGER</p>
-         *@hide
-         */
-        public static final String WAIT_TIME = "wait_time";
-
-        /**
-         * The time to limit max connection for the apn
-         * <p>Type: INTEGER</p>
-         *@hide
-         */
-        public static final String MAX_CONNS_TIME = "max_conns_time";
-
     }
 
     /**
