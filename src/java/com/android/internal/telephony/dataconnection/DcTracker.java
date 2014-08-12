@@ -1123,14 +1123,7 @@ public final class DcTracker extends DcTrackerBase {
                         Telephony.Carriers.ROAMING_PROTOCOL)),
                 cursor.getInt(cursor.getColumnIndexOrThrow(
                         Telephony.Carriers.CARRIER_ENABLED)) == 1,
-                cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.BEARER)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.PROFILE_ID)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(
-                        Telephony.Carriers.MODEM_COGNITIVE)) == 1,
-                cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.MAX_CONNS)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(
-                        Telephony.Carriers.WAIT_TIME)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.MAX_CONNS_TIME)));
+                cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.BEARER)));
         return apn;
     }
 
@@ -1208,12 +1201,8 @@ public final class DcTracker extends DcTrackerBase {
         ApnSetting apnSetting;
         DcAsyncChannel dcac;
 
+        int profileId = getApnProfileID(apnContext.getApnType());
         apnSetting = apnContext.getNextWaitingApn();
-        int profileId = apnSetting.profileId;
-        if (profileId == 0) {
-            profileId = getApnProfileID(apnContext.getApnType());
-        }
-
         if (apnSetting == null) {
             if (DBG) log("setupData: return for no apn found!");
             return false;
@@ -2143,7 +2132,7 @@ public final class DcTracker extends DcTrackerBase {
             String selection = "numeric = '" + operator + "'";
             // query only enabled apn.
             // carrier_enabled : 1 means enabled apn, 0 disabled apn.
-            // selection += " and carrier_enabled = 1";
+            selection += " and carrier_enabled = 1";
             if (DBG) log("createAllApnList: selection=" + selection);
 
             Cursor cursor = mPhone.getContext().getContentResolver().query(
@@ -2173,8 +2162,6 @@ public final class DcTracker extends DcTrackerBase {
             if (DBG) log("createAllApnList: mPreferredApn=" + mPreferredApn);
         }
         if (DBG) log("createAllApnList: X mAllApnSettings=" + mAllApnSettings);
-
-        setDataProfilesAsNeeded();
     }
 
     /** Return the DC AsyncChannel for the new data connection */

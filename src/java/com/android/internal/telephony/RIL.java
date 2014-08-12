@@ -64,7 +64,6 @@ import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DcFailCause;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
-import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.TelephonyDevController;
 import com.android.internal.telephony.HardwareConfig;
 
@@ -2484,7 +2483,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_GET_CELL_INFO_LIST: ret = responseCellInfoList(p); break;
             case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE: ret = responseVoid(p); break;
             case RIL_REQUEST_SET_INITIAL_ATTACH_APN: ret = responseVoid(p); break;
-            case RIL_REQUEST_SET_DATA_PROFILE: ret = responseVoid(p); break;
             case RIL_REQUEST_IMS_REGISTRATION_STATE: ret = responseInts(p); break;
             case RIL_REQUEST_IMS_SEND_SMS: ret =  responseSMS(p); break;
             case RIL_REQUEST_SIM_TRANSMIT_APDU_BASIC: ret =  responseICC_IO(p); break;
@@ -3889,7 +3887,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_GET_CELL_INFO_LIST: return "RIL_REQUEST_GET_CELL_INFO_LIST";
             case RIL_REQUEST_SET_UNSOL_CELL_INFO_LIST_RATE: return "RIL_REQUEST_SET_CELL_INFO_LIST_RATE";
             case RIL_REQUEST_SET_INITIAL_ATTACH_APN: return "RIL_REQUEST_SET_INITIAL_ATTACH_APN";
-            case RIL_REQUEST_SET_DATA_PROFILE: return "RIL_REQUEST_SET_DATA_PROFILE";
             case RIL_REQUEST_IMS_REGISTRATION_STATE: return "RIL_REQUEST_IMS_REGISTRATION_STATE";
             case RIL_REQUEST_IMS_SEND_SMS: return "RIL_REQUEST_IMS_SEND_SMS";
             case RIL_REQUEST_SIM_TRANSMIT_APDU_BASIC: return "RIL_REQUEST_SIM_TRANSMIT_APDU_BASIC";
@@ -4259,23 +4256,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
                 + ", apn:" + apn + ", protocol:" + protocol + ", authType:" + authType
                 + ", username:" + username + ", password:" + password);
-
-        send(rr);
-    }
-
-    public void setDataProfile(DataProfile[] dps, Message result) {
-        if (RILJ_LOGD) riljLog("Set RIL_REQUEST_SET_DATA_PROFILE");
-
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_SET_DATA_PROFILE, null);
-        DataProfile.toParcel(rr.mParcel, dps);
-
-        if (RILJ_LOGD) {
-            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
-                    + " with " + dps + " Data Profiles : ");
-            for (int i = 0; i < dps.length; i++) {
-                riljLog(dps[i].toString());
-            }
-        }
 
         send(rr);
     }

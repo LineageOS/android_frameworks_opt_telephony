@@ -27,7 +27,6 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
-import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.gsm.CallFailCause;
@@ -1666,10 +1665,6 @@ public final class SimulatedCommands extends BaseCommands
     @Override
     public void setInitialAttachApn(String apn, String protocol, int authType, String username,
             String password, Message result) {
-    }
-
-    @Override
-    public void setDataProfile(DataProfile[] dps, Message result) {
     }
 
     @Override
