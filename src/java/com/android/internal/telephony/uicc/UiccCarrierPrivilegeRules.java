@@ -365,7 +365,12 @@ public class UiccCarrierPrivilegeRules extends Handler {
         while (!arDos.isEmpty()) {
             TLV refArDo = new TLV(TAG_REF_AR_DO); //E2
             arDos = refArDo.parse(arDos, false);
-            accessRules.add(parseRefArdo(refArDo.value));
+            AccessRule accessRule = parseRefArdo(refArDo.value);
+            if (accessRule != null) {
+                accessRules.add(accessRule);
+            } else {
+              Rlog.e(LOG_TAG, "Skip unrecognized rule." + refArDo.value);
+            }
         }
         return accessRules;
     }
@@ -386,11 +391,19 @@ public class UiccCarrierPrivilegeRules extends Handler {
                 TLV refDo = new TLV(TAG_REF_DO); //E1
                 rule = refDo.parse(rule, false);
 
+                // Skip unrelated rules.
+                if (!refDo.value.startsWith(TAG_DEVICE_APP_ID_REF_DO)) {
+                    return null;
+                }
+
                 TLV deviceDo = new TLV(TAG_DEVICE_APP_ID_REF_DO); //C1
                 tmp = deviceDo.parse(refDo.value, false);
                 certificateHash = deviceDo.value;
 
                 if (!tmp.isEmpty()) {
+                  if (!tmp.startsWith(TAG_PKG_REF_DO)) {
+                      return null;
+                  }
                   TLV pkgDo = new TLV(TAG_PKG_REF_DO); //CA
                   pkgDo.parse(tmp, true);
                   packageName = new String(IccUtils.hexStringToBytes(pkgDo.value));
@@ -401,11 +414,16 @@ public class UiccCarrierPrivilegeRules extends Handler {
                 TLV arDo = new TLV(TAG_AR_DO); //E3
                 rule = arDo.parse(rule, false);
 
+                // Skip unrelated rules.
+                if (!arDo.value.startsWith(TAG_PERM_AR_DO)) {
+                    return null;
+                }
+
                 TLV permDo = new TLV(TAG_PERM_AR_DO); //DB
                 permDo.parse(arDo.value, true);
                 Rlog.e(LOG_TAG, permDo.value);
             } else  {
-                // TODO: Mayabe just throw away rules that are not parseable.
+                // Spec requires it must be either TAG_REF_DO or TAG_AR_DO.
                 throw new RuntimeException("Invalid Rule type");
             }
         }
