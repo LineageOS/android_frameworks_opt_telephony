@@ -401,9 +401,11 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
             IImsVideoCallProvider imsVideoCallProvider =
                     imsCall.getCallSession().getVideoCallProvider();
-            ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
-                    new ImsVideoCallProviderWrapper(imsVideoCallProvider);
-            conn.setVideoCallProvider(imsVideoCallProviderWrapper);
+            if (imsVideoCallProvider != null) {
+                ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
+                        new ImsVideoCallProviderWrapper(imsVideoCallProvider);
+                conn.setVideoCallProvider(imsVideoCallProviderWrapper);
+            }
         } catch (ImsException e) {
             loge("dialInternal : " + e);
             conn.setDisconnectCause(DisconnectCause.ERROR_UNSPECIFIED);
