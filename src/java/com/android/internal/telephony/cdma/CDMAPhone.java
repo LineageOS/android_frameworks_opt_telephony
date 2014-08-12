@@ -43,6 +43,7 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 
+import com.android.ims.ImsManager;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CallTracker;
@@ -72,6 +73,7 @@ import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -394,9 +396,10 @@ public class CDMAPhone extends PhoneBase {
     dial (String dialString, int videoState) throws CallStateException {
         ImsPhone imsPhone = mImsPhone;
 
-        boolean imsUseEnabled = SystemProperties.getInt(
-                TelephonyProperties.PROPERTY_DBG_IMS_VOLTE_ENABLE,
-                TelephonyProperties.PROPERTY_DBG_IMS_VOLTE_ENABLE_DEAFULT) == 1;
+        boolean imsUseEnabled = mContext.getSharedPreferences(
+                ImsManager.IMS_SHARED_PREFERENCES,
+                Context.MODE_WORLD_READABLE).getBoolean(ImsManager.KEY_IMS_ON, true);
+
         if (!imsUseEnabled) {
             Rlog.w(LOG_TAG, "IMS is disabled: forced to CS");
         }
