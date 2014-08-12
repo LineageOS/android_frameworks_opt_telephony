@@ -24,6 +24,7 @@ import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
+import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 
 /**
@@ -556,6 +557,10 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     @Override
     public void setInitialAttachApn(String apn, String protocol, int authType, String username,
             String password, Message result) {
+    }
+
+    @Override
+    public void setDataProfile(DataProfile[] dps, Message result) {
     }
 
     @Override
