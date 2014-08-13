@@ -35,7 +35,7 @@ import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
-import android.telecomm.VideoCallProfile;
+import android.telecomm.VideoProfile;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
@@ -104,7 +104,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                             imsCall.getCallSession().getVideoCallProvider();
                     ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
                             new ImsVideoCallProviderWrapper(imsVideoCallProvider);
-                    conn.setVideoCallProvider(imsVideoCallProviderWrapper);
+                    conn.setVideoProvider(imsVideoCallProviderWrapper);
 
                     if ((mForegroundCall.getState() != ImsPhoneCall.State.IDLE) ||
                             (mBackgroundCall.getState() != ImsPhoneCall.State.IDLE)) {
@@ -404,7 +404,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             if (imsVideoCallProvider != null) {
                 ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
                         new ImsVideoCallProviderWrapper(imsVideoCallProvider);
-                conn.setVideoCallProvider(imsVideoCallProviderWrapper);
+                conn.setVideoProvider(imsVideoCallProviderWrapper);
             }
         } catch (ImsException e) {
             loge("dialInternal : " + e);
@@ -1225,7 +1225,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 }
                 break;
             case EVENT_DIAL_PENDINGMO:
-                dialInternal(mPendingMO, mClirMode, VideoCallProfile.VideoState.AUDIO_ONLY);
+                dialInternal(mPendingMO, mClirMode, VideoProfile.VideoState.AUDIO_ONLY);
                 break;
 
             case EVENT_EXIT_ECM_RESPONSE_CDMA:
