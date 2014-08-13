@@ -231,7 +231,6 @@ public class CatService extends Handler implements AppInterface {
 
                 // re-Register for SIM ready event.
                 mIccRecords.registerForRecordsLoaded(sInstance, MSG_ID_ICC_RECORDS_LOADED, null);
-                mUiccApplication.registerForReady(sInstance, MSG_ID_SIM_READY, null);
                 CatLog.d(sInstance, "sr changed reinitialize and return current sInstance");
             } else {
                 CatLog.d(sInstance, "Return current sInstance");
