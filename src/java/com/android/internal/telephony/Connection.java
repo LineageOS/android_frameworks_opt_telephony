@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import android.telecomm.ConnectionService;
 import android.telephony.Rlog;
 import android.util.Log;
 
@@ -42,8 +41,8 @@ public abstract class Connection {
         public void onVideoStateChanged(int videoState);
         public void onLocalVideoCapabilityChanged(boolean capable);
         public void onRemoteVideoCapabilityChanged(boolean capable);
-        public void onVideoCallProviderChanged(
-                ConnectionService.VideoCallProvider videoCallProvider);
+        public void onVideoProviderChanged(
+                android.telecomm.Connection.VideoProvider videoProvider);
         public void onAudioQualityChanged(int audioQuality);
     }
 
@@ -58,8 +57,8 @@ public abstract class Connection {
         @Override
         public void onRemoteVideoCapabilityChanged(boolean capable) {}
         @Override
-        public void onVideoCallProviderChanged(
-                ConnectionService.VideoCallProvider videoCallProvider) {}
+        public void onVideoProviderChanged(
+                android.telecomm.Connection.VideoProvider videoProvider) {}
         @Override
         public void onAudioQualityChanged(int audioQuality) {}
     }
@@ -81,7 +80,7 @@ public abstract class Connection {
     private boolean mLocalVideoCapable;
     private boolean mRemoteVideoCapable;
     private int mAudioQuality;
-    private ConnectionService.VideoCallProvider mVideoCallProvider;
+    private android.telecomm.Connection.VideoProvider mVideoProvider;
 
     /* Instance Methods */
 
@@ -397,12 +396,12 @@ public abstract class Connection {
     }
 
     /**
-     * Returns the {@link ConnectionService.VideoCallProvider} for the connection.
+     * Returns the {@link android.telecomm.Connection.VideoProvider} for the connection.
      *
-     * @return The {@link ConnectionService.VideoCallProvider}.
+     * @return The {@link android.telecomm.Connection.VideoProvider}.
      */
-    public ConnectionService.VideoCallProvider getVideoCallProvider() {
-        return mVideoCallProvider;
+    public android.telecomm.Connection.VideoProvider getVideoProvider() {
+        return mVideoProvider;
     }
 
     /**
@@ -416,7 +415,7 @@ public abstract class Connection {
 
     /**
      * Sets the videoState for the current connection and reports the changes to all listeners.
-     * Valid video states are defined in {@link VideoCallProfile}.
+     * Valid video states are defined in {@link android.telecomm.VideoProfile}.
      *
      * @return The video state.
      */
@@ -464,14 +463,14 @@ public abstract class Connection {
     }
 
     /**
-     * Sets the {@link ConnectionService.VideoCallProvider} for the connection.
+     * Sets the {@link android.telecomm.Connection.VideoProvider} for the connection.
      *
-     * @param videoCallProvider The video call provider.
+     * @param videoProvider The video call provider.
      */
-    public void setVideoCallProvider(ConnectionService.VideoCallProvider videoCallProvider) {
-        mVideoCallProvider = videoCallProvider;
+    public void setVideoProvider(android.telecomm.Connection.VideoProvider videoProvider) {
+        mVideoProvider = videoProvider;
         for (Listener l : mListeners) {
-            l.onVideoCallProviderChanged(mVideoCallProvider);
+            l.onVideoProviderChanged(mVideoProvider);
         }
     }
 

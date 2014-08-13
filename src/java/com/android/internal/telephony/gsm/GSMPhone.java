@@ -29,7 +29,7 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Telephony;
-import android.telecomm.VideoCallProfile;
+import android.telecomm.VideoProfile;
 import android.telephony.CellLocation;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
@@ -829,7 +829,7 @@ public class GSMPhone extends PhoneBase {
         }
 
         if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Trying (non-IMS) CS call");
-        return dialInternal(dialString, null, VideoCallProfile.VideoState.AUDIO_ONLY);
+        return dialInternal(dialString, null, VideoProfile.VideoState.AUDIO_ONLY);
     }
 
     @Override

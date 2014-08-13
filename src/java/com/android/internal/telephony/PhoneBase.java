@@ -33,7 +33,7 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.telecomm.VideoCallProfile;
+import android.telecomm.VideoProfile;
 import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoCdma;
@@ -488,7 +488,7 @@ public abstract class PhoneBase extends Handler implements Phone {
                     String dialString = (String) ar.result;
                     if (TextUtils.isEmpty(dialString)) return;
                     try {
-                        dialInternal(dialString, null, VideoCallProfile.VideoState.AUDIO_ONLY);
+                        dialInternal(dialString, null, VideoProfile.VideoState.AUDIO_ONLY);
                     } catch (CallStateException e) {
                         Rlog.e(LOG_TAG, "silent redial failed: " + e);
                     }
