@@ -229,6 +229,12 @@ public class ImsPhone extends ImsPhoneBase {
 
     @Override
     public void
+    deflectCall(String number) throws CallStateException {
+        mCT.deflectCall(number);
+    }
+
+    @Override
+    public void
     rejectCall() throws CallStateException {
         mCT.rejectCall();
     }

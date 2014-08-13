@@ -2018,4 +2018,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     public void setLocalCallHold(int lchStatus) {
         mCi.setLocalCallHold(lchStatus);
     }
+
+    @Override
+    public void
+    deflectCall(String number) throws CallStateException {
+        throw new CallStateException("Unexpected deflectCall method call");
+    }
 }

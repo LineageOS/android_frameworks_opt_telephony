@@ -628,6 +628,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public void deflectCall(String number) throws CallStateException {
+        mActivePhone.deflectCall(number);
+    }
+
+    @Override
     public void rejectCall() throws CallStateException {
         mActivePhone.rejectCall();
     }
