@@ -677,6 +677,7 @@ public final class CdmaCallTracker extends CallTracker {
             if( mPendingCallInEcm) {
                 mPendingCallInEcm = false;
             }
+            checkAndEnableDataCallAfterEmergencyCallDropped();
         }
 
         if (newRinging != null) {
