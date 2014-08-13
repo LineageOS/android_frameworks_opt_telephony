@@ -677,6 +677,14 @@ public interface Phone {
     void acceptCall(int videoState) throws CallStateException;
 
     /**
+     * Deflects a ringing or waiting IMS call.
+     *
+     * @param number The number to deflect to.
+     * @exception CallStateException when no IMS call is ringing or waiting
+     */
+    void deflectCall(String number) throws CallStateException;
+
+    /**
      * Reject (ignore) a ringing call. In GSM, this means UDUB
      * (User Determined User Busy). Reject occurs asynchronously,
      * and final notification occurs via

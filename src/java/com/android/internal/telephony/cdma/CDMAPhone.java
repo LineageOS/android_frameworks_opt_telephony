@@ -520,6 +520,17 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public void
+    deflectCall(String number) throws CallStateException {
+        ImsPhone imsPhone = mImsPhone;
+        if ( imsPhone != null && imsPhone.getRingingCall().isRinging() ) {
+            imsPhone.deflectCall(number);
+        } else {
+            throw new CallStateException("Deflect call NOT supported in CDMA!");
+        }
+    }
+
+    @Override
+    public void
     rejectCall() throws CallStateException {
         mCT.rejectCall();
     }

@@ -477,6 +477,26 @@ public final class ImsPhoneCallTracker extends CallTracker {
     }
 
     void
+    deflectCall (String number) throws CallStateException {
+        if (DBG) log("deflectCall");
+
+        if (mRingingCall.getState().isRinging()) {
+            try {
+                ImsCall imsCall = mRingingCall.getImsCall();
+                if (imsCall != null) {
+                    imsCall.deflect(number);
+                } else {
+                    throw new CallStateException("no valid ims call to deflect");
+                }
+            } catch (ImsException e) {
+                throw new CallStateException("cannot deflect call");
+            }
+        } else {
+            throw new CallStateException("phone not ringing");
+        }
+    }
+
+    void
     rejectCall () throws CallStateException {
         if (DBG) log("rejectCall");
 
