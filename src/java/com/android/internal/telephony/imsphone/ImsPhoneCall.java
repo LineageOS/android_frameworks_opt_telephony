@@ -275,7 +275,9 @@ public class ImsPhoneCall extends Call {
     /* package */ ImsPhoneConnection
     getHandoverConnection() {
         ImsPhoneConnection conn = (ImsPhoneConnection) getEarliestConnection();
-        conn.setMultiparty(isMultiparty());
+        if (conn != null) {
+            conn.setMultiparty(isMultiparty());
+        }
         return conn;
     }
 
