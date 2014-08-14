@@ -1240,6 +1240,13 @@ public class GSMPhone extends PhoneBase {
     }
 
     @Override
+    public void setUiTTYMode(int uiTtyMode, Message onComplete) {
+       if (mImsPhone != null) {
+           mImsPhone.setUiTTYMode(uiTtyMode, onComplete);
+       }
+    }
+
+    @Override
     public void setMute(boolean muted) {
         mCT.setMute(muted);
     }
