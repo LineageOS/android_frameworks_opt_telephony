@@ -102,9 +102,11 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
                     IImsVideoCallProvider imsVideoCallProvider =
                             imsCall.getCallSession().getVideoCallProvider();
-                    ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
-                            new ImsVideoCallProviderWrapper(imsVideoCallProvider);
-                    conn.setVideoProvider(imsVideoCallProviderWrapper);
+                    if (imsVideoCallProvider != null) {
+                        ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
+                                new ImsVideoCallProviderWrapper(imsVideoCallProvider);
+                        conn.setVideoProvider(imsVideoCallProviderWrapper);
+                    }
 
                     if ((mForegroundCall.getState() != ImsPhoneCall.State.IDLE) ||
                             (mBackgroundCall.getState() != ImsPhoneCall.State.IDLE)) {
