@@ -339,6 +339,13 @@ public class CDMAPhone extends PhoneBase {
     }
 
     @Override
+    public void setUiTTYMode(int uiTtyMode, Message onComplete) {
+       if (mImsPhone != null) {
+           mImsPhone.setUiTTYMode(uiTtyMode, onComplete);
+       }
+    }
+
+    @Override
     public void setMute(boolean muted) {
         mCT.setMute(muted);
     }

@@ -555,6 +555,11 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public void setUiTTYMode(int uiTtyMode, Message onComplete) {
+        mCT.setUiTTYMode(uiTtyMode, onComplete);
+    }
+
+    @Override
     public boolean getMute() {
         return mCT.getMute();
     }
