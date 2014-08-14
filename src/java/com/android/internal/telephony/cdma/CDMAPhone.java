@@ -930,7 +930,7 @@ public class CDMAPhone extends PhoneBase {
         // So get the count from preferences.
         if (voicemailCount == 0) {
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-            voicemailCount = sp.getInt(VM_COUNT_CDMA, 0);
+            voicemailCount = sp.getInt(VM_COUNT_CDMA + getPhoneId(), 0);
         }
         return voicemailCount;
     }
