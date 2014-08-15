@@ -24,6 +24,7 @@ import android.net.RouteInfo;
 import android.os.SystemProperties;
 import android.telephony.Rlog;
 
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.dataconnection.DcFailCause;
 
 import java.net.Inet4Address;
@@ -48,6 +49,7 @@ public class DataCallResponse {
     public String[] gateways = new String[0];
     public int suggestedRetryTime = -1;
     public String [] pcscf = new String[0];
+    public int mtu = PhoneConstants.UNSET_MTU;
 
     /**
      * Class returned by onSetupConnectionCompleted.
@@ -82,8 +84,9 @@ public class DataCallResponse {
            .append(" cid=").append(cid)
            .append(" active=").append(active)
            .append(" type=").append(type)
-           .append("' ifname='").append(ifname);
-        sb.append("' addresses=[");
+           .append(" ifname=").append(ifname)
+           .append(" mtu=").append(mtu)
+           .append(" addresses=[");
         for (String addr : addresses) {
             sb.append(addr);
             sb.append(",");
@@ -221,6 +224,10 @@ public class DataCallResponse {
                     // Allow 0.0.0.0 or :: as a gateway; this indicates a point-to-point interface.
                     linkProperties.addRoute(new RouteInfo(ia));
                 }
+
+                // set interface MTU
+                // this may clobber the setting read from the APN db, but that's ok
+                linkProperties.setMtu(mtu);
 
                 result = SetupResult.SUCCESS;
             } catch (UnknownHostException e) {
