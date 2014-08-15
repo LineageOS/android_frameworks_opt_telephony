@@ -347,6 +347,8 @@ public final class DataConnection extends StateMachine {
         // copy HTTP proxy as it is not part DataCallResponse.
         result.newLp.setHttpProxy(mLinkProperties.getHttpProxy());
 
+        checkSetMtu(mApnSetting, result.newLp);
+
         if (DBG && (! result.oldLp.equals(result.newLp))) {
             log("updateLinkProperty old LP=" + result.oldLp);
             log("updateLinkProperty new LP=" + result.newLp);
@@ -359,6 +361,35 @@ public final class DataConnection extends StateMachine {
         }
 
         return result;
+    }
+
+    /**
+     * Read the MTU value from link properties where it can be set from network. In case
+     * not set by the network, set it again using the mtu szie value defined in the APN
+     * database for the connected APN
+     */
+    private void checkSetMtu(ApnSetting apn, LinkProperties lp) {
+        if (lp == null) return;
+
+        if (apn == null || lp == null) return;
+
+        if (lp.getMtu() != PhoneConstants.UNSET_MTU) {
+            if (DBG) log("MTU set by call response to: " + lp.getMtu());
+            return;
+        }
+
+        if (apn != null && apn.mtu != PhoneConstants.UNSET_MTU) {
+            lp.setMtu(apn.mtu);
+            if (DBG) log("MTU set by APN to: " + apn.mtu);
+            return;
+        }
+
+        int mtu = mPhone.getContext().getResources().getInteger(
+                com.android.internal.R.integer.config_mobile_mtu);
+        if (mtu != PhoneConstants.UNSET_MTU) {
+            lp.setMtu(mtu);
+            if (DBG) log("MTU set by config resource to: " + mtu);
+        }
     }
 
     //***** Constructor (NOTE: uses dcc.getHandler() as its Handler)
@@ -479,6 +510,7 @@ public final class DataConnection extends StateMachine {
             response.suggestedRetryTime =
                     mDcTesterFailBringUpAll.getDcFailBringUp().mSuggestedRetryTime;
             response.pcscf = new String[0];
+            response.mtu = PhoneConstants.UNSET_MTU;
 
             Message msg = obtainMessage(EVENT_SETUP_DATA_CONNECTION_DONE, cp);
             AsyncResult.forMessage(msg, response, null);
