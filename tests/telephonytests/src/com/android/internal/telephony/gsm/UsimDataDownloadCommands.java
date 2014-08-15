@@ -646,6 +646,10 @@ class UsimDataDownloadCommands extends BaseCommands {
     }
 
     @Override
+    public void setDataProfile(DataProfile[] dps, Message result) {
+    }
+
+    @Override
     public void getIMSIForApp(String aid, Message result) {
     }
 

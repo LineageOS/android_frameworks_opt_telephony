@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
+import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccCardStatus;
 
@@ -1726,6 +1727,16 @@ public interface CommandsInterface {
      */
     public void setInitialAttachApn(String apn, String protocol, int authType, String username,
             String password, Message result);
+
+    /**
+     * Set data profiles in modem
+     *
+     * @param dps
+     *            Array of the data profiles set to modem
+     * @param result
+     *            callback message contains the information of SUCCESS/FAILURE
+     */
+    public void setDataProfile(DataProfile[] dps, Message result);
 
     /**
      * Notifiy that we are testing an emergency call
