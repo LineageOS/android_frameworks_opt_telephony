@@ -51,8 +51,10 @@ import com.android.internal.telephony.SmsBroadcastUndelivered;
 import com.android.internal.telephony.Subscription;
 import com.android.internal.telephony.gsm.GsmSMSDispatcher;
 import com.android.internal.telephony.gsm.SmsMessage;
+import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.IsimUiccRecords;
+import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
@@ -261,25 +263,23 @@ public class CDMALTEPhone extends CDMAPhone {
             return;
         }
 
-        UiccCardApplication newUiccApplication = getUiccCardApplication();
+        // Update IsimRecords
+        UiccCardApplication newUiccApplication =
+                mUiccController.getUiccCardApplication(UiccController.APP_FAM_IMS);
+        IsimUiccRecords newIsimUiccRecords = null;
 
-        UiccCardApplication app = mUiccApplication.get();
-        if (app != newUiccApplication) {
-            if (app != null) {
-                log("Removing stale icc objects.");
-                if (mIccRecords.get() != null) {
-                    unregisterForRuimRecordEvents();
-                }
-                mIccRecords.set(null);
-                mUiccApplication.set(null);
-            }
-            if (newUiccApplication != null) {
-                log("New Uicc application found");
-                mUiccApplication.set(newUiccApplication);
-                mIccRecords.set(newUiccApplication.getIccRecords());
-                registerForRuimRecordEvents();
-            }
+        if (newUiccApplication != null) {
+            newIsimUiccRecords = (IsimUiccRecords) newUiccApplication.getIccRecords();
         }
+        mIsimUiccRecords = newIsimUiccRecords;
+
+        // Update UsimRecords
+        newUiccApplication = mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
+        SIMRecords newSimRecords = null;
+        if (newUiccApplication != null) {
+            newSimRecords = (SIMRecords) newUiccApplication.getIccRecords();
+        }
+        mSimRecords = newSimRecords;
 
         super.onUpdateIccAvailability();
     }
@@ -374,11 +374,6 @@ public class CDMALTEPhone extends CDMAPhone {
     }
 
     @Override
-    protected UiccCardApplication getUiccCardApplication() {
-            return  mUiccController.getUiccCardApplication(mPhoneId, UiccController.APP_FAM_3GPP2);
-    }
-
-    @Override
     public void setSystemProperty(String property, String value) {
         if(getUnitTestMode()) {
             return;
@@ -412,18 +407,25 @@ public class CDMALTEPhone extends CDMAPhone {
      */
     public String getOperatorNumeric() {
         String operatorNumeric = null;
-
+        IccRecords curIccRecords = null;
         if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
             operatorNumeric = SystemProperties.get("ro.cdma.home.operator.numeric");
-        } else if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_RUIM_SIM
-                && mIccRecords != null && mIccRecords.get() != null) {
-            operatorNumeric = mIccRecords.get().getOperatorNumeric();
-        } else {
+        } else if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_RUIM_SIM) {
+            curIccRecords = mSimRecords;
+            if (curIccRecords != null) {
+                operatorNumeric = curIccRecords.getOperatorNumeric();
+            } else {
+                curIccRecords = mIccRecords.get();
+                if (curIccRecords != null && (curIccRecords instanceof RuimRecords)) {
+                    RuimRecords csim = (RuimRecords) curIccRecords;
+                    operatorNumeric = csim.getRUIMOperatorNumeric();
+                }
+            }
+        }
+        if (operatorNumeric == null) {
             Rlog.e(LOG_TAG, "getOperatorNumeric: Cannot retrieve operatorNumeric:"
                     + " mCdmaSubscriptionSource = " + mCdmaSubscriptionSource + " mIccRecords = "
-                    + ((mIccRecords != null) && (mIccRecords.get() != null)
-                        ? mIccRecords.get().getRecordsLoaded()
-                        : null));
+                    + ((curIccRecords != null) ? curIccRecords.getRecordsLoaded() : null));
         }
 
         Rlog.d(LOG_TAG, "getOperatorNumeric: mCdmaSubscriptionSource = " + mCdmaSubscriptionSource
