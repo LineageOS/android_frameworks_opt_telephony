@@ -277,9 +277,18 @@ public class PhoneSubInfo {
             Rlog.e(LOG_TAG, "getIccSimChallengeResponse() no app with specified type -- " +
                     appType);
             return null;
+        } else {
+            Rlog.e(LOG_TAG, "getIccSimChallengeResponse() found app " + uiccApp.getAid()
+                    + "specified type -- " + appType);
         }
 
         int authContext = uiccApp.getAuthContext();
+
+        if (data.length() < 32) {
+            /* must use EAP_SIM context */
+            Rlog.e(LOG_TAG, "data is too small to use EAP_AKA, using EAP_SIM instead");
+            authContext = UiccCardApplication.AUTH_CONTEXT_EAP_SIM;
+        }
 
         if(authContext == UiccCardApplication.AUTH_CONTEXT_UNDEFINED) {
             Rlog.e(LOG_TAG, "getIccSimChallengeResponse() authContext undefined for app type " +

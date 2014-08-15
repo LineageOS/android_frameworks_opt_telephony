@@ -602,7 +602,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
         if (DBG) log("getIccSimChallengeResponse: return auth_rsp");
 
-        return IccUtils.bytesToHexString(auth_rsp.payload);
+        return android.util.Base64.encodeToString(auth_rsp.payload, android.util.Base64.NO_WRAP);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
