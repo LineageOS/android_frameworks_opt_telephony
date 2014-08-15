@@ -803,7 +803,8 @@ public class GSMPhone extends PhoneBase {
 
         boolean imsUseEnabled = mContext.getSharedPreferences(
                 ImsManager.IMS_SHARED_PREFERENCES,
-                Context.MODE_WORLD_READABLE).getBoolean(ImsManager.KEY_IMS_ON, true);
+                Context.MODE_WORLD_READABLE).getBoolean(ImsManager.KEY_IMS_ON,
+                ImsManager.IMS_DEFAULT_SETTING);
 
         if (!imsUseEnabled) {
             Rlog.w(LOG_TAG, "IMS is disabled: forced to CS");
