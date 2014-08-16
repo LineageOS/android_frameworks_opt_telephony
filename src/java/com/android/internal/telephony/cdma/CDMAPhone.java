@@ -400,6 +400,7 @@ public class CDMAPhone extends PhoneBase {
                 ImsManager.IMS_SHARED_PREFERENCES,
                 Context.MODE_WORLD_READABLE).getBoolean(ImsManager.KEY_IMS_ON,
                 ImsManager.IMS_DEFAULT_SETTING);
+        imsUseEnabled = false;
 
         if (!imsUseEnabled) {
             Rlog.w(LOG_TAG, "IMS is disabled: forced to CS");
