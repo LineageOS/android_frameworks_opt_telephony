@@ -1130,7 +1130,8 @@ public final class DcTracker extends DcTrackerBase {
                 cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.MAX_CONNS)),
                 cursor.getInt(cursor.getColumnIndexOrThrow(
                         Telephony.Carriers.WAIT_TIME)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.MAX_CONNS_TIME)));
+                cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.MAX_CONNS_TIME)),
+                cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.MTU)));
         return apn;
     }
 

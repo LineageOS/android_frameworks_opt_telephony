@@ -247,6 +247,12 @@ public final class Telephony {
         public static final String SUB_ID = "sub_id";
 
         /**
+         * The MTU size of the mobile interface to which the APN connected
+         * @hide
+         */
+        public static final String MTU = "mtu";
+
+        /**
          * Error code associated with sending or receiving this message
          * <P>Type: INTEGER</P>
          */
@@ -2748,6 +2754,12 @@ public final class Telephony {
          */
         public static final String MAX_CONNS_TIME = "max_conns_time";
 
+        /**
+         * The MTU size of the mobile interface to  which the APN connected
+         * <p>Type: INTEGER </p>
+         * @hide
+         */
+        public static final String MTU = "mtu";
     }
 
     /**
