@@ -349,11 +349,14 @@ public final class DataConnection extends StateMachine {
 
         checkSetMtu(mApnSetting, result.newLp);
 
+        mLinkProperties = result.newLp;
+
+        updateTcpBufferSizes(mRilRat);
+
         if (DBG && (! result.oldLp.equals(result.newLp))) {
             log("updateLinkProperty old LP=" + result.oldLp);
             log("updateLinkProperty new LP=" + result.newLp);
         }
-        mLinkProperties = result.newLp;
 
         if (result.newLp.equals(result.oldLp) == false &&
                 mNetworkAgent != null) {
@@ -798,6 +801,53 @@ public final class DataConnection extends StateMachine {
         return true;
     }
 
+    private static final String TCP_BUFFER_SIZES_GPRS = "4092,8760,48000,4096,8760,48000";
+    private static final String TCP_BUFFER_SIZES_EDGE = "4093,26280,70800,4096,16384,70800";
+    private static final String TCP_BUFFER_SIZES_UMTS = "58254,349525,1048576,58254,349525,1048576";
+    private static final String TCP_BUFFER_SIZES_EVDO = "4094,87380,262144,4096,16384,262144";
+    private static final String TCP_BUFFER_SIZES_HSDPA= "61167,367002,1101005,8738,52429,262114";
+    private static final String TCP_BUFFER_SIZES_HSPA = "40778,244668,734003,16777,100663,301990";
+    private static final String TCP_BUFFER_SIZES_LTE  =
+            "524288,1048576,2097152,262144,524288,1048576";
+    private static final String TCP_BUFFER_SIZES_HSPAP= "122334,734003,2202010,32040,192239,576717";
+
+    private void updateTcpBufferSizes(int rilRat) {
+        String sizes = null;
+        switch (rilRat) {
+            case ServiceState.RIL_RADIO_TECHNOLOGY_GPRS:
+                sizes = TCP_BUFFER_SIZES_GPRS;
+                break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_EDGE:
+                sizes = TCP_BUFFER_SIZES_EDGE;
+                break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_UMTS:
+                sizes = TCP_BUFFER_SIZES_UMTS;
+                break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_0:
+            case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A:
+            case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_B:
+                sizes = TCP_BUFFER_SIZES_EVDO;
+                break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_HSDPA:
+                sizes = TCP_BUFFER_SIZES_HSDPA;
+                break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_HSPA:
+            case ServiceState.RIL_RADIO_TECHNOLOGY_HSUPA:
+                sizes = TCP_BUFFER_SIZES_HSPA;
+                break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_LTE:
+                sizes = TCP_BUFFER_SIZES_LTE;
+                break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_HSPAP:
+                sizes = TCP_BUFFER_SIZES_HSPAP;
+                break;
+            default:
+                // Leave empty - this will let ConnectivityService use the system default.
+                break;
+        }
+        mLinkProperties.setTcpBufferSizes(sizes);
+    }
+
     private NetworkCapabilities makeNetworkCapabilities() {
         NetworkCapabilities result = new NetworkCapabilities();
         result.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
@@ -856,21 +906,21 @@ public final class DataConnection extends StateMachine {
         int up = 14;
         int down = 14;
         switch (mRilRat) {
-            case TelephonyManager.NETWORK_TYPE_GPRS: up = 80; down = 80; break;
-            case TelephonyManager.NETWORK_TYPE_EDGE: up = 59; down = 236; break;
-            case TelephonyManager.NETWORK_TYPE_UMTS: up = 384; down = 384; break;
-            case TelephonyManager.NETWORK_TYPE_CDMA: up = 14; down = 14; break;
-            case TelephonyManager.NETWORK_TYPE_EVDO_0: up = 153; down = 2457; break;
-            case TelephonyManager.NETWORK_TYPE_EVDO_A: up = 1843; down = 3174; break;
-            case TelephonyManager.NETWORK_TYPE_1xRTT: up = 100; down = 100; break;
-            case TelephonyManager.NETWORK_TYPE_HSDPA: up = 2048; down = 14336; break;
-            case TelephonyManager.NETWORK_TYPE_HSUPA: up = 5898; down = 14336; break;
-            case TelephonyManager.NETWORK_TYPE_HSPA: up = 5898; down = 14336; break;
-            case TelephonyManager.NETWORK_TYPE_IDEN: up = 14; down = 14; break;
-            case TelephonyManager.NETWORK_TYPE_EVDO_B: up = 1843; down = 5017; break;
-            case TelephonyManager.NETWORK_TYPE_LTE: up = 51200; down = 102400; break;
-            case TelephonyManager.NETWORK_TYPE_EHRPD: up = 153; down = 2516; break;
-            case TelephonyManager.NETWORK_TYPE_HSPAP: up = 11264; down = 43008; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_GPRS: up = 80; down = 80; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_EDGE: up = 59; down = 236; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_UMTS: up = 384; down = 384; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_IS95A: // fall through
+            case ServiceState.RIL_RADIO_TECHNOLOGY_IS95B: up = 14; down = 14; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_0: up = 153; down = 2457; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A: up = 1843; down = 3174; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT: up = 100; down = 100; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_HSDPA: up = 2048; down = 14336; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_HSUPA: up = 5898; down = 14336; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_HSPA: up = 5898; down = 14336; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_B: up = 1843; down = 5017; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_LTE: up = 51200; down = 102400; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD: up = 153; down = 2516; break;
+            case ServiceState.RIL_RADIO_TECHNOLOGY_HSPAP: up = 11264; down = 43008; break;
             default:
         }
         result.setLinkUpstreamBandwidthKbps(up);
@@ -1108,6 +1158,9 @@ public final class DataConnection extends StateMachine {
                     AsyncResult ar = (AsyncResult)msg.obj;
                     Pair<Integer, Integer> drsRatPair = (Pair<Integer, Integer>)ar.result;
                     mDataRegState = drsRatPair.first;
+                    if (mRilRat != drsRatPair.second) {
+                        updateTcpBufferSizes(drsRatPair.second);
+                    }
                     mRilRat = drsRatPair.second;
                     if (DBG) {
                         log("DcDefaultState: EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED"
@@ -1121,6 +1174,7 @@ public final class DataConnection extends StateMachine {
                     if (mNetworkAgent != null) {
                         mNetworkAgent.sendNetworkCapabilities(makeNetworkCapabilities());
                         mNetworkAgent.sendNetworkInfo(mNetworkInfo);
+                        mNetworkAgent.sendLinkProperties(mLinkProperties);
                     }
                     break;
 
@@ -1620,6 +1674,7 @@ public final class DataConnection extends StateMachine {
             mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.CONNECTED,
                     mNetworkInfo.getReason(), null);
             mNetworkInfo.setExtraInfo(mApnSetting.apn);
+            updateTcpBufferSizes(mRilRat);
             mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
                     "DcNetworkAgent", mNetworkInfo, makeNetworkCapabilities(), mLinkProperties,
                     50);
