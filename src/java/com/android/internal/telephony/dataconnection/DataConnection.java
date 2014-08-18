@@ -56,6 +56,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import java.net.InetAddress;
@@ -813,37 +814,62 @@ public final class DataConnection extends StateMachine {
 
     private void updateTcpBufferSizes(int rilRat) {
         String sizes = null;
-        switch (rilRat) {
-            case ServiceState.RIL_RADIO_TECHNOLOGY_GPRS:
-                sizes = TCP_BUFFER_SIZES_GPRS;
+        String ratName = ServiceState.rilRadioTechnologyToString(rilRat).toLowerCase(Locale.ROOT);
+        // ServiceState gives slightly different names for EVDO tech ("evdo-rev.0" for ex)
+        // - patch it up:
+        if (rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_0 ||
+                rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A ||
+                rilRat == ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_B) {
+            ratName = "evdo";
+        }
+
+        // in the form: "ratname:rmem_min,rmem_def,rmem_max,wmem_min,wmem_def,wmem_max"
+        String[] configOverride = mPhone.getContext().getResources().getStringArray(
+                com.android.internal.R.array.config_mobile_tcp_buffers);
+        for (int i = 0; i < configOverride.length; i++) {
+            String[] split = configOverride[i].split(":");
+            if (ratName.equals(split[0]) && split.length == 2) {
+                sizes = split[1];
                 break;
-            case ServiceState.RIL_RADIO_TECHNOLOGY_EDGE:
-                sizes = TCP_BUFFER_SIZES_EDGE;
-                break;
-            case ServiceState.RIL_RADIO_TECHNOLOGY_UMTS:
-                sizes = TCP_BUFFER_SIZES_UMTS;
-                break;
-            case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_0:
-            case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A:
-            case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_B:
-                sizes = TCP_BUFFER_SIZES_EVDO;
-                break;
-            case ServiceState.RIL_RADIO_TECHNOLOGY_HSDPA:
-                sizes = TCP_BUFFER_SIZES_HSDPA;
-                break;
-            case ServiceState.RIL_RADIO_TECHNOLOGY_HSPA:
-            case ServiceState.RIL_RADIO_TECHNOLOGY_HSUPA:
-                sizes = TCP_BUFFER_SIZES_HSPA;
-                break;
-            case ServiceState.RIL_RADIO_TECHNOLOGY_LTE:
-                sizes = TCP_BUFFER_SIZES_LTE;
-                break;
-            case ServiceState.RIL_RADIO_TECHNOLOGY_HSPAP:
-                sizes = TCP_BUFFER_SIZES_HSPAP;
-                break;
-            default:
-                // Leave empty - this will let ConnectivityService use the system default.
-                break;
+            }
+        }
+
+        if (sizes == null) {
+            // no override - use telephony defaults
+            // doing it this way allows device or carrier to just override the types they
+            // care about and inherit the defaults for the others.
+            switch (rilRat) {
+                case ServiceState.RIL_RADIO_TECHNOLOGY_GPRS:
+                    sizes = TCP_BUFFER_SIZES_GPRS;
+                    break;
+                case ServiceState.RIL_RADIO_TECHNOLOGY_EDGE:
+                    sizes = TCP_BUFFER_SIZES_EDGE;
+                    break;
+                case ServiceState.RIL_RADIO_TECHNOLOGY_UMTS:
+                    sizes = TCP_BUFFER_SIZES_UMTS;
+                    break;
+                case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_0:
+                case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A:
+                case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_B:
+                    sizes = TCP_BUFFER_SIZES_EVDO;
+                    break;
+                case ServiceState.RIL_RADIO_TECHNOLOGY_HSDPA:
+                    sizes = TCP_BUFFER_SIZES_HSDPA;
+                    break;
+                case ServiceState.RIL_RADIO_TECHNOLOGY_HSPA:
+                case ServiceState.RIL_RADIO_TECHNOLOGY_HSUPA:
+                    sizes = TCP_BUFFER_SIZES_HSPA;
+                    break;
+                case ServiceState.RIL_RADIO_TECHNOLOGY_LTE:
+                    sizes = TCP_BUFFER_SIZES_LTE;
+                    break;
+                case ServiceState.RIL_RADIO_TECHNOLOGY_HSPAP:
+                    sizes = TCP_BUFFER_SIZES_HSPAP;
+                    break;
+                default:
+                    // Leave empty - this will let ConnectivityService use the system default.
+                    break;
+            }
         }
         mLinkProperties.setTcpBufferSizes(sizes);
     }
