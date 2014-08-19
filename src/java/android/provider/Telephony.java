@@ -240,11 +240,11 @@ public final class Telephony {
         public static final String LOCKED = "locked";
 
         /**
-         * The sub_id to which the message belongs to
+         * The phone id to which the message belongs to
          * <p>Type: INTEGER (long) </p>
          * @hide
          */
-        public static final String SUB_ID = "sub_id";
+        public static final String PHONE_ID = "phone_id";
 
         /**
          * The MTU size of the mobile interface to which the APN connected
@@ -439,7 +439,8 @@ public final class Telephony {
             ContentValues values = new ContentValues(8);
             Rlog.v(TAG,"Telephony addMessageToUri sub id: " + subId);
 
-            values.put(SUB_ID, subId);
+            int phoneId = SubscriptionManager.getPhoneId(subId);
+            values.put(PHONE_ID, phoneId);
             values.put(ADDRESS, address);
             if (date != null) {
                 values.put(DATE, date);
@@ -1724,11 +1725,11 @@ public final class Telephony {
         public static final String LOCKED = "locked";
 
         /**
-         * The sub id to which message belongs to
+         * The phone id to which message belongs to
          * <p>Type: INTEGER</p>
          * @hide
          */
-        public static final String SUB_ID = "sub_id";
+        public static final String PHONE_ID = "phone_id";
 
         /**
          * The identity of the sender of a sent message. It is
@@ -2565,11 +2566,11 @@ public final class Telephony {
             public static final String LAST_TRY = "last_try";
 
             /**
-             * The sub_id to which the pending message belongs to
+             * The phone id to which the pending message belongs to
              * <p>Type: INTEGER (long) </p>
              * @hide
              */
-            public static final String SUB_ID = "pending_sub_id";
+            public static final String PHONE_ID = "pending_phone_id";
         }
 
         /**

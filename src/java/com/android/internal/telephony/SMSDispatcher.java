@@ -46,6 +46,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.Html;
 import android.text.Spanned;
@@ -1414,7 +1415,8 @@ public abstract class SMSDispatcher extends Handler {
     protected Uri writeOutboxMessage(long subId, String address, String text,
             boolean requireDeliveryReport, String creator) {
         final ContentValues values = new ContentValues(8);
-        values.put(Telephony.Sms.SUB_ID, subId);
+        int phoneId = SubscriptionManager.getPhoneId(subId);
+        values.put(Telephony.Sms.PHONE_ID, phoneId);
         values.put(Telephony.Sms.ADDRESS, address);
         values.put(Telephony.Sms.BODY, text);
         values.put(Telephony.Sms.DATE, System.currentTimeMillis()); // milliseconds
@@ -1441,7 +1443,8 @@ public abstract class SMSDispatcher extends Handler {
 
     protected void moveToOutbox(long subId, Uri messageUri, String creator) {
         final ContentValues values = new ContentValues(4);
-        values.put(Telephony.Sms.SUB_ID, subId);
+        int phoneId = SubscriptionManager.getPhoneId(subId);
+        values.put(Telephony.Sms.PHONE_ID, phoneId);
         if (!TextUtils.isEmpty(creator)) {
             // Reset creator/sender
             values.put(Telephony.Sms.CREATOR, creator);
