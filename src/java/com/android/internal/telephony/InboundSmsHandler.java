@@ -257,8 +257,16 @@ public abstract class InboundSmsHandler extends StateMachine {
                     break;
                 }
                 default: {
-                    String errorText = "processMessage: unhandled message type " + msg.what;
+                    String errorText = "processMessage: unhandled message type " + msg.what +
+                        " currState=" + getCurrentState().getName();
                     if (Build.IS_DEBUGGABLE) {
+                        loge("---- Dumping InboundSmsHandler ----");
+                        loge("Total records=" + getLogRecCount());
+                        for (int i = Math.max(getLogRecSize() - 20, 0); i < getLogRecSize(); i++) {
+                            loge("Rec[%d]: %s\n" + i + getLogRec(i).toString());
+                        }
+                        loge("---- Dumped InboundSmsHandler ----");
+
                         throw new RuntimeException(errorText);
                     } else {
                         loge(errorText);
@@ -277,6 +285,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     class StartupState extends State {
         @Override
         public boolean processMessage(Message msg) {
+            log("StartupState.processMessage:" + msg.what);
             switch (msg.what) {
                 case EVENT_NEW_SMS:
                 case EVENT_INJECT_SMS:
@@ -317,6 +326,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
         @Override
         public boolean processMessage(Message msg) {
+            log("IdleState.processMessage:" + msg.what);
             if (DBG) log("Idle state processing message type " + msg.what);
             switch (msg.what) {
                 case EVENT_NEW_SMS:
@@ -370,6 +380,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
         @Override
         public boolean processMessage(Message msg) {
+            log("DeliveringState.processMessage:" + msg.what);
             switch (msg.what) {
                 case EVENT_NEW_SMS:
                     // handle new SMS from RIL
@@ -423,6 +434,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     class WaitingState extends State {
         @Override
         public boolean processMessage(Message msg) {
+            log("WaitingState.processMessage:" + msg.what);
             switch (msg.what) {
                 case EVENT_BROADCAST_SMS:
                     // defer until the current broadcast completes
