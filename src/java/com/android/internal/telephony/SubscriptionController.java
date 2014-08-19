@@ -815,7 +815,7 @@ public class SubscriptionController extends ISub.Stub {
         if (VDBG) logd("[getPhoneId]+ subId:" + subId);
         if (subId <= 0) {
             // FIXME Do not auto map subId to phoneId
-            // May be we shoud add dummy/default subId's during
+            // May be we shoud add dummy subId's during
             // initialization of subscription controller ??
             if (subId == -1) {
                 logd("[getPhoneId]- subId == -1 return =" + 0);
@@ -828,8 +828,9 @@ public class SubscriptionController extends ISub.Stub {
 
         int size = mSimInfo.size();
 
-        if (size == 0) {
-            if (VDBG) logd("[getPhoneId]- returning defaultPhoneId=" + mDefaultPhoneId);
+        if (size == 0 || subId == SubscriptionManager.DEFAULT_SUB_ID) {
+            if (VDBG) logd("[getPhoneId]- subId == DEFAULT_SUB_ID returning defaultPhoneId=" +
+                    mDefaultPhoneId);
             return mDefaultPhoneId;
         }
 
