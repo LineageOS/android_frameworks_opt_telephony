@@ -330,6 +330,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
                    } else {
                       Rlog.e(LOG_TAG, "Invalid response: payload=" + response.payload +
                               " sw1=" + response.sw1 + " sw2=" + response.sw2);
+                      mState.set(STATE_ERROR);
                    }
               } else {
                   Rlog.e(LOG_TAG, "Error reading value from SIM.");
