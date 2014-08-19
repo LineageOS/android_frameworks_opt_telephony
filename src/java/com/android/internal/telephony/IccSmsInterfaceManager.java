@@ -995,7 +995,11 @@ public class IccSmsInterfaceManager {
     }
 
     private void enforceCarrierPrivilege() {
-        if (UiccController.getInstance().getUiccCard().getCarrierPrivilegeStatusForCurrentTransaction(
+        UiccController controller = UiccController.getInstance();
+        if (controller == null || controller.getUiccCard() == null) {
+            throw new SecurityException("No Carrier Privilege: No UICC");
+        }
+        if (controller.getUiccCard().getCarrierPrivilegeStatusForCurrentTransaction(
                 mContext.getPackageManager()) !=
                     TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
             throw new SecurityException("No Carrier Privilege.");
