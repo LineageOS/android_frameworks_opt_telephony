@@ -2512,12 +2512,14 @@ public final class DcTracker extends DcTrackerBase {
         ApnSetting apn = new ApnSetting(DctConstants.APN_DEFAULT_ID, operator, null, null,
                 null, null, null, null, null, null, null,
                 RILConstants.SETUP_DATA_AUTH_PAP_CHAP, defaultApnTypes,
-                PROPERTY_CDMA_IPPROTOCOL, PROPERTY_CDMA_ROAMING_IPPROTOCOL, true, 0);
+                PROPERTY_CDMA_IPPROTOCOL, PROPERTY_CDMA_ROAMING_IPPROTOCOL, true, 0,
+                0, false, 0, 0, 0);
         mAllApnSettings.add(apn);
         apn = new ApnSetting(DctConstants.APN_DUN_ID, operator, null, null,
                 null, null, null, null, null, null, null,
                 RILConstants.SETUP_DATA_AUTH_PAP_CHAP, dunApnTypes,
-                PROPERTY_CDMA_IPPROTOCOL, PROPERTY_CDMA_ROAMING_IPPROTOCOL, true, 0);
+                PROPERTY_CDMA_IPPROTOCOL, PROPERTY_CDMA_ROAMING_IPPROTOCOL, true, 0,
+                0, false, 0, 0, 0);
         mAllApnSettings.add(apn);
     }
 
