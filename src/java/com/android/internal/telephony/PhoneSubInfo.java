@@ -71,6 +71,14 @@ public class PhoneSubInfo {
     }
 
     /**
+     * Retrieves the IMEI.
+     */
+    public String getImei() {
+        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+        return mPhone.getImei();
+    }
+
+    /**
      * Retrieves the software version number for the device, e.g., IMEI/SV
      * for GSM phones.
      */
