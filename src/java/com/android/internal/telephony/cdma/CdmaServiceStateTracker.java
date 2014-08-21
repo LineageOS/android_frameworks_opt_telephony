@@ -534,7 +534,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
             // If it's on and available and we want it off gracefully
             powerOffRadioSafely(dcTracker);
-        } // Otherwise, we're in the desired state
+        } else if (mDeviceShuttingDown && mCi.getRadioState().isAvailable()) {
+            mCi.requestShutdown(null);
+        }
     }
 
     @Override

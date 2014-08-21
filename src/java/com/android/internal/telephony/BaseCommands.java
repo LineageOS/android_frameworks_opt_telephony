@@ -773,4 +773,8 @@ public abstract class BaseCommands implements CommandsInterface {
 
     public void setDataAllowed(boolean allowed, Message response) {
     }
+
+    @Override
+    public void requestShutdown(Message result) {
+    }
 }
