@@ -1353,4 +1353,14 @@ public class PhoneProxy extends Handler implements Phone {
     public boolean setOperatorBrandOverride(String iccId, String brand) {
         return mActivePhone.setOperatorBrandOverride(iccId, brand);
     }
+
+    @Override
+    public boolean isRadioAvailable() {
+        return mCommandsInterface.getRadioState().isAvailable();
+    }
+
+    @Override
+    public void shutdownRadio() {
+        mActivePhone.shutdownRadio();
+    }
 }

@@ -507,6 +507,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     protected void setPowerStateToDesired() {
 
         if (DBG) {
+            log("mDeviceShuttingDown = " + mDeviceShuttingDown);
             log("mDesiredPowerState = " + mDesiredPowerState);
             log("getRadioState = " + mCi.getRadioState());
             log("mPowerOffDelayNeed = " + mPowerOffDelayNeed);
@@ -548,6 +549,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 DcTrackerBase dcTracker = mPhone.mDcTracker;
                 powerOffRadioSafely(dcTracker);
             }
+        } else if (mDeviceShuttingDown && mCi.getRadioState().isAvailable()) {
+            mCi.requestShutdown(null);
         }
     }
 

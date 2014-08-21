@@ -210,6 +210,8 @@ public abstract class ServiceStateTracker extends Handler {
     protected PendingIntent mRadioOffIntent = null;
     protected static final String ACTION_RADIO_OFF = "android.intent.action.ACTION_RADIO_OFF";
     protected boolean mPowerOffDelayNeed = true;
+    protected boolean mDeviceShuttingDown = false;
+
 
     protected ServiceStateTracker(PhoneBase phoneBase, CommandsInterface ci, CellInfo cellInfo) {
         mPhoneBase = phoneBase;
@@ -224,6 +226,13 @@ public abstract class ServiceStateTracker extends Handler {
 
         mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
             ServiceState.rilRadioTechnologyToString(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN));
+    }
+
+    void requestShutdown() {
+        if (mDeviceShuttingDown == true) return;
+        mDeviceShuttingDown = true;
+        mDesiredPowerState = false;
+        setPowerStateToDesired();
     }
 
     public void dispose() {

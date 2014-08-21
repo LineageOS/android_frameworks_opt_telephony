@@ -1882,4 +1882,11 @@ public interface CommandsInterface {
      */
     // FIXME We may need to pass AID and slotid also
     public void setDataAllowed(boolean allowed, Message result);
+
+    /**
+     * Inform RIL that the device is shutting down
+     *
+     * @param result Callback message contains the information of SUCCESS/FAILURE
+     */
+    public void requestShutdown(Message result);
 }
