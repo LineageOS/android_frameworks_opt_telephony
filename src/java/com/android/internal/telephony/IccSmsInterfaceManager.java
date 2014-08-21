@@ -32,6 +32,7 @@ import android.os.UserManager;
 import android.provider.Telephony;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
+import android.telephony.SmsMessage;
 import android.util.Log;
 
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
@@ -478,6 +479,35 @@ public class IccSmsInterfaceManager {
                 callingPackage) != AppOpsManager.MODE_ALLOWED) {
             return;
         }
+
+        if (parts.size() > 1 && parts.size() < 10 && !SmsMessage.hasEmsSupport()) {
+            for (int i = 0; i < parts.size(); i++) {
+                // If EMS is not supported, we have to break down EMS into single segment SMS
+                // and add page info " x/y".
+                String singlePart = parts.get(i);
+                if (SmsMessage.shouldAppendPageNumberAsPrefix()) {
+                    singlePart = String.valueOf(i + 1) + '/' + parts.size() + ' ' + singlePart;
+                } else {
+                    singlePart = singlePart.concat(' ' + String.valueOf(i + 1) + '/' + parts.size());
+                }
+
+                PendingIntent singleSentIntent = null;
+                if (sentIntents != null && sentIntents.size() > i) {
+                    singleSentIntent = sentIntents.get(i);
+                }
+
+                PendingIntent singleDeliveryIntent = null;
+                if (deliveryIntents != null && deliveryIntents.size() > i) {
+                    singleDeliveryIntent = deliveryIntents.get(i);
+                }
+
+                mDispatcher.sendText(destAddr, scAddr, singlePart,
+                        singleSentIntent, singleDeliveryIntent,
+                        null/*messageUri*/, callingPackage);
+            }
+            return;
+        }
+
         mDispatcher.sendMultipartText(destAddr, scAddr, (ArrayList<String>) parts,
                 (ArrayList<PendingIntent>) sentIntents, (ArrayList<PendingIntent>) deliveryIntents,
                 null/*messageUri*/, callingPackage);
@@ -905,6 +935,34 @@ public class IccSmsInterfaceManager {
             returnUnspecifiedFailure(sentIntents);
             return;
         }
+
+        if (parts.size() > 1 && parts.size() < 10 && !SmsMessage.hasEmsSupport()) {
+            for (int i = 0; i < parts.size(); i++) {
+                // If EMS is not supported, we have to break down EMS into single segment SMS
+                // and add page info " x/y".
+                String singlePart = parts.get(i);
+                if (SmsMessage.shouldAppendPageNumberAsPrefix()) {
+                    singlePart = String.valueOf(i + 1) + '/' + parts.size() + ' ' + singlePart;
+                } else {
+                    singlePart = singlePart.concat(' ' + String.valueOf(i + 1) + '/' + parts.size());
+                }
+
+                PendingIntent singleSentIntent = null;
+                if (sentIntents != null && sentIntents.size() > i) {
+                    singleSentIntent = sentIntents.get(i);
+                }
+
+                PendingIntent singleDeliveryIntent = null;
+                if (deliveryIntents != null && deliveryIntents.size() > i) {
+                    singleDeliveryIntent = deliveryIntents.get(i);
+                }
+
+                mDispatcher.sendText(textAndAddress[1], scAddress, singlePart,
+                        singleSentIntent, singleDeliveryIntent, messageUri, callingPkg);
+            }
+            return;
+        }
+
         mDispatcher.sendMultipartText(
                 textAndAddress[1], // destAddress
                 scAddress,

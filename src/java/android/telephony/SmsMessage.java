@@ -18,6 +18,7 @@ package android.telephony;
 
 import android.os.Parcel;
 import android.telephony.Rlog;
+import android.content.res.Resources;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
@@ -347,6 +348,15 @@ public class SmsMessage {
         } else {
             if (ted.msgCount > 1) {
                 limit = SmsConstants.MAX_USER_DATA_BYTES_WITH_HEADER;
+                // If EMS is not supported, break down EMS into single segment SMS
+                // and add page info " x/y".
+                // In the case of UCS2 encoding, we need 8 bytes for this,
+                // but we only have 6 bytes from UDH, so truncate the limit for
+                // each segment by 2 bytes (1 char).
+                // Make sure total number of segments is less than 10.
+                if (!hasEmsSupport() && ted.msgCount < 10) {
+                    limit -= 2;
+                }
             } else {
                 limit = SmsConstants.MAX_USER_DATA_BYTES;
             }
@@ -741,5 +751,83 @@ public class SmsMessage {
     private static boolean isCdmaVoice() {
         int activePhone = TelephonyManager.getDefault().getCurrentPhoneType();
         return (PHONE_TYPE_CDMA == activePhone);
+    }
+
+    /**
+     * Decide if the carrier supports long SMS.
+     * {@hide}
+     */
+    public static boolean hasEmsSupport() {
+        if (!isNoEmsSupportConfigListExisted()) {
+            return true;
+        }
+
+        String simOperator = TelephonyManager.getDefault().getSimOperator();
+        for (NoEmsSupportConfig currentConfig : mNoEmsSupportConfigList) {
+            if (simOperator.startsWith(currentConfig.mOperatorNumber)) {
+                return false;
+            }
+         }
+        return true;
+    }
+
+    /**
+     * Check where to add " x/y" in each SMS segment, begin or end.
+     * {@hide}
+     */
+    public static boolean shouldAppendPageNumberAsPrefix() {
+        if (!isNoEmsSupportConfigListExisted()) {
+            return false;
+        }
+
+        String simOperator = TelephonyManager.getDefault().getSimOperator();
+        for (NoEmsSupportConfig currentConfig : mNoEmsSupportConfigList) {
+            if (simOperator.startsWith(currentConfig.mOperatorNumber)) {
+                return currentConfig.mIsPrefix;
+            }
+        }
+        return false;
+    }
+
+    private static class NoEmsSupportConfig {
+        String mOperatorNumber;
+        boolean mIsPrefix;
+
+        public NoEmsSupportConfig(String[] config) {
+            mOperatorNumber = config[0];
+            mIsPrefix = "prefix".equals(config[1]);
+        }
+
+        @Override
+        public String toString() {
+            return "NoEmsSupportConfig { mOperatorNumber = " + mOperatorNumber
+                    + ", mIsPrefix = " + mIsPrefix + " }";
+        }
+    }
+
+    private static NoEmsSupportConfig[] mNoEmsSupportConfigList = null;
+    private static boolean mIsNoEmsSupportConfigListLoaded = false;
+
+    private static boolean isNoEmsSupportConfigListExisted() {
+        if (!mIsNoEmsSupportConfigListLoaded) {
+            Resources r = Resources.getSystem();
+            if (r != null) {
+                String[] listArray = r.getStringArray(
+                        com.android.internal.R.array.no_ems_support_sim_operators);
+                if ((listArray != null) && (listArray.length > 0)) {
+                    mNoEmsSupportConfigList = new NoEmsSupportConfig[listArray.length];
+                    for (int i=0; i<listArray.length; i++) {
+                        mNoEmsSupportConfigList[i] = new NoEmsSupportConfig(listArray[i].split(";"));
+                    }
+                }
+                mIsNoEmsSupportConfigListLoaded = true;
+            }
+        }
+
+        if (mNoEmsSupportConfigList != null && mNoEmsSupportConfigList.length != 0) {
+            return true;
+        }
+
+        return false;
     }
 }
