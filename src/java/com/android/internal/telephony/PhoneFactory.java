@@ -16,11 +16,12 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_DEFAULT_SUBSCRIPTION;
+
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.LocalServerSocket;
-import android.os.Looper;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
@@ -34,12 +35,10 @@ import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.imsphone.ImsPhone;
+import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.sip.SipPhone;
 import com.android.internal.telephony.sip.SipPhoneFactory;
 import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.imsphone.ImsPhoneFactory;
-
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_DEFAULT_SUBSCRIPTION;
 
 /**
  * {@hide}
@@ -51,19 +50,21 @@ public class PhoneFactory {
 
     //***** Class Variables
 
+    // lock sLockProxyPhones protects both sProxyPhones and sProxyPhone
+    final static Object sLockProxyPhones = new Object();
     static private Phone[] sProxyPhones = null;
+    static private Phone sProxyPhone = null;
+
     static private CommandsInterface[] sCommandsInterfaces = null;
 
     static private ProxyController mProxyController;
     static private UiccController mUiccController;
 
-    static private Phone sProxyPhone = null;
     static private CommandsInterface sCommandsInterface = null;
     static private SubInfoRecordUpdater sSubInfoRecordUpdater = null;
 
     static private boolean sMadeDefaults = false;
     static private PhoneNotifier sPhoneNotifier;
-    static private Looper sLooper;
     static private Context sContext;
 
     //***** Class Methods
@@ -77,15 +78,9 @@ public class PhoneFactory {
      * instances
      */
     public static void makeDefaultPhone(Context context) {
-        synchronized(Phone.class) {
+        synchronized (sLockProxyPhones) {
             if (!sMadeDefaults) {
-                sLooper = Looper.myLooper();
                 sContext = context;
-
-                if (sLooper == null) {
-                    throw new RuntimeException(
-                        "PhoneFactory.makeDefaultPhone must be called from Looper thread");
-                }
 
                 // create the telephony device controller.
                 TelephonyDevController.create();
@@ -223,40 +218,39 @@ public class PhoneFactory {
     }
 
     public static Phone getDefaultPhone() {
-        if (sLooper != Looper.myLooper()) {
-            throw new RuntimeException(
-                "PhoneFactory.getDefaultPhone must be called from Looper thread");
+        synchronized (sLockProxyPhones) {
+            if (!sMadeDefaults) {
+                throw new IllegalStateException("Default phones haven't been made yet!");
+            }
+            return sProxyPhone;
         }
-
-        if (!sMadeDefaults) {
-            throw new IllegalStateException("Default phones haven't been made yet!");
-        }
-       return sProxyPhone;
     }
 
     public static Phone getPhone(int phoneId) {
-        if (sLooper != Looper.myLooper()) {
-            throw new RuntimeException(
-                "PhoneFactory.getPhone must be called from Looper thread");
+        Phone phone;
+        synchronized (sLockProxyPhones) {
+            if (!sMadeDefaults) {
+                throw new IllegalStateException("Default phones haven't been made yet!");
+                // CAF_MSIM FIXME need to introduce default phone id ?
+            } else if (phoneId == PhoneConstants.DEFAULT_SUBSCRIPTION) {
+                Rlog.d(LOG_TAG, "getPhone: phoneId == DEFAULT_SUBSCRIPTION");
+                phone = sProxyPhone;
+            } else {
+                Rlog.d(LOG_TAG, "getPhone: phoneId != DEFAULT_SUBSCRIPTION");
+                phone = (phoneId >= 0 && phoneId < sProxyPhones.length ? sProxyPhones[phoneId] : null);
+            }
+            Rlog.d(LOG_TAG, "getPhone:- phone=" + phone);
+            return phone;
         }
-        if (!sMadeDefaults) {
-            throw new IllegalStateException("Default phones haven't been made yet!");
-        // CAF_MSIM FIXME need to introduce default phone id ?
-        } else if (phoneId == PhoneConstants.DEFAULT_SUBSCRIPTION) {
-            return sProxyPhone;
-        }
-        return sProxyPhones[phoneId];
     }
 
-    public static Phone [] getPhones() {
-        if (sLooper != Looper.myLooper()) {
-            throw new RuntimeException(
-                "PhoneFactory.getPhone must be called from Looper thread");
+    public static Phone[] getPhones() {
+        synchronized (sLockProxyPhones) {
+            if (!sMadeDefaults) {
+                throw new IllegalStateException("Default phones haven't been made yet!");
+            }
+            return sProxyPhones;
         }
-        if (!sMadeDefaults) {
-            throw new IllegalStateException("Default phones haven't been made yet!");
-        }
-        return sProxyPhones;
     }
 
     public static Phone getCdmaPhone() {
@@ -303,11 +297,13 @@ public class PhoneFactory {
         SystemProperties.set(PROPERTY_DEFAULT_SUBSCRIPTION, Integer.toString(subId));
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
 
-        // Set the default phone in base class
-        if (phoneId >= 0 && phoneId < sProxyPhones.length) {
-            sProxyPhone = sProxyPhones[phoneId];
-            sCommandsInterface = sCommandsInterfaces[phoneId];
-            sMadeDefaults = true;
+        synchronized (sLockProxyPhones) {
+            // Set the default phone in base class
+            if (phoneId >= 0 && phoneId < sProxyPhones.length) {
+                sProxyPhone = sProxyPhones[phoneId];
+                sCommandsInterface = sCommandsInterfaces[phoneId];
+                sMadeDefaults = true;
+            }
         }
 
         // Update MCC MNC device configuration information
