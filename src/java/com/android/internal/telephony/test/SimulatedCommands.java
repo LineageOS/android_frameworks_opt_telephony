@@ -1725,6 +1725,11 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     @Override
+    public void getAtr(Message response) {
+        unimplemented(response);
+    }
+
+    @Override
     public void nvReadItem(int itemID, Message response) {
         unimplemented(response);
     }
