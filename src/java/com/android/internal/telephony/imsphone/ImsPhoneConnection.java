@@ -141,9 +141,9 @@ public class ImsPhoneConnection extends Connection {
         if ((imsCall != null) && (imsCall.getCallProfile() != null)) {
             mAddress = imsCall.getCallProfile().getCallExtra(ImsCallProfile.EXTRA_OI);
             mCnapName = imsCall.getCallProfile().getCallExtra(ImsCallProfile.EXTRA_CNA);
-            mNumberPresentation = presentationFromOir(
+            mNumberPresentation = ImsCallProfile.OIRToPresentation(
                     imsCall.getCallProfile().getCallExtraInt(ImsCallProfile.EXTRA_OIR));
-            mCnapNamePresentation = presentationFromOir(
+            mCnapNamePresentation = ImsCallProfile.OIRToPresentation(
                     imsCall.getCallProfile().getCallExtraInt(ImsCallProfile.EXTRA_CNAP));
 
             ImsCallProfile imsCallProfile = imsCall.getCallProfile();
@@ -720,17 +720,6 @@ public class ImsPhoneConnection extends Connection {
     @Override
     public int getPreciseDisconnectCause() {
         return 0;
-    }
-
-    private static int presentationFromOir(int oir) {
-        switch(oir) {
-            case ImsCallProfile.OIR_PRESENTATION_RESTRICTED:
-                return PhoneConstants.PRESENTATION_RESTRICTED;
-            case ImsCallProfile.OIR_PRESENTATION_NOT_RESTRICTED:
-                return PhoneConstants.PRESENTATION_ALLOWED;
-            default:
-                return PhoneConstants.PRESENTATION_UNKNOWN;
-        }
     }
 }
 
