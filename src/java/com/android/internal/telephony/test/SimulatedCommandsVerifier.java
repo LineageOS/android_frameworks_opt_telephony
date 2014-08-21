@@ -1350,4 +1350,14 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     public void getModemActivityInfo(Message result) {
 
     }
+
+    @Override
+    public void iccOpenLogicalChannel(String AID, byte p2, Message response) {
+
+    }
+
+    @Override
+    public void getAtr(Message response) {
+
+    }
 }

@@ -1798,6 +1798,16 @@ public interface CommandsInterface {
     public void iccOpenLogicalChannel(String AID, Message response);
 
     /**
+     * Open a logical channel to the SIM.
+     *
+     * @param p2 P2 parameter
+     * @param AID application id.
+     * @param response Callback message. response.obj will be an int [1]
+                element [0] set to the id of the logical channel.
+     */
+    public void iccOpenLogicalChannel(String AID, byte p2, Message response);
+
+    /**
      * Close a previously opened logical channel to the SIM.
      *
      * Input parameters equivalent to TS 27.007 AT+CCHC command.
@@ -1844,6 +1854,13 @@ public interface CommandsInterface {
      */
     public void iccTransmitApduBasicChannel(int cla, int instruction, int p1, int p2,
             int p3, String data, Message response);
+
+    /**
+     * Get ATR (Answer To Reset; as per ISO/IEC 7816-4) from SIM card
+     *
+     * @param response Callback message
+     */
+    public void getAtr(Message response);
 
     /**
      * Read one of the NV items defined in {@link RadioNVItems} / {@code ril_nv_items.h}.

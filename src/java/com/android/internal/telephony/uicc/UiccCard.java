@@ -97,6 +97,7 @@ public class UiccCard {
     private static final int EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE = 18;
     private static final int EVENT_SIM_IO_DONE = 19;
     private static final int EVENT_CARRIER_PRIVILIGES_LOADED = 20;
+    private static final int EVENT_SIM_GET_ATR_DONE = 21;
 
     private static final LocalLog mLocalLog = new LocalLog(100);
 
@@ -387,6 +388,7 @@ public class UiccCard {
                 case EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE:
                 case EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE:
                 case EVENT_SIM_IO_DONE:
+                case EVENT_SIM_GET_ATR_DONE:
                     AsyncResult ar = (AsyncResult)msg.obj;
                     if (ar.exception != null) {
                         loglocal("Exception: " + ar.exception);
@@ -586,6 +588,13 @@ public class UiccCard {
                 mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE, response));
     }
 
+    public void iccOpenLogicalChannel(String AID, byte p2, Message response) {
+        loglocal("Open Logical Channel: " + AID + " , " + p2 + " by pid:" + Binder.getCallingPid()
+                + " uid:" + Binder.getCallingUid());
+        mCi.iccOpenLogicalChannel(AID,
+                p2, mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE, response));
+    }
+
     /**
      * Exposes {@link CommandsInterface.iccCloseLogicalChannel}
      */
@@ -620,6 +629,13 @@ public class UiccCard {
             String pathID, Message response) {
         mCi.iccIO(command, fileID, pathID, p1, p2, p3, null, null,
                 mHandler.obtainMessage(EVENT_SIM_IO_DONE, response));
+    }
+
+    /**
+     * Exposes {@link CommandsInterface.getAtr}
+     */
+    public void getAtr(Message response) {
+        mCi.getAtr(mHandler.obtainMessage(EVENT_SIM_GET_ATR_DONE, response));
     }
 
     /**
