@@ -585,8 +585,8 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public String getImei() {
-        Rlog.e(LOG_TAG, "IMEI is not available in CDMA");
-        return null;
+        Rlog.e(LOG_TAG, "getImei() called for CDMAPhone");
+        return mImei;
     }
 
     @Override
