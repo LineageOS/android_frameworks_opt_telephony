@@ -44,6 +44,7 @@ public class CommandException extends RuntimeException {
         ILLEGAL_SIM_OR_ME,
         MISSING_RESOURCE,
         NO_SUCH_ELEMENT,
+        INVALID_PARAMETER,
         SUBSCRIPTION_NOT_SUPPORTED,
         DIAL_MODIFIED_TO_USSD,
         DIAL_MODIFIED_TO_SS,
@@ -104,6 +105,8 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.MISSING_RESOURCE);
             case RILConstants.NO_SUCH_ELEMENT:
                 return new CommandException(Error.NO_SUCH_ELEMENT);
+            case RILConstants.INVALID_PARAMETER:
+                 return new CommandException(Error.INVALID_PARAMETER);
             case RILConstants.SUBSCRIPTION_NOT_SUPPORTED:
                 return new CommandException(Error.SUBSCRIPTION_NOT_SUPPORTED);
             case RILConstants.DIAL_MODIFIED_TO_USSD:

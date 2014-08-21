@@ -907,4 +907,21 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void setLocalCallHold(boolean lchStatus) {
     }
+
+    @Override
+    public void iccOpenLogicalChannel(String AID, Message response) {}
+
+    @Override
+    public void iccCloseLogicalChannel(int channel, Message response) {}
+
+    @Override
+    public void iccTransmitApduLogicalChannel(int channel, int cla, int instruction,
+                                              int p1, int p2, int p3, String data,
+                                              Message response) {}
+    @Override
+    public void iccTransmitApduBasicChannel(int cla, int instruction, int p1, int p2,
+                                            int p3, String data, Message response) {}
+
+    @Override
+    public void getAtr(Message response) {}
 }
