@@ -43,6 +43,7 @@ import android.telephony.ServiceState;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsCallProfile;
+import com.android.ims.ImsConfig;
 import com.android.ims.ImsConnectionStateListener;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsException;
@@ -70,6 +71,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
     static final String LOG_TAG = "ImsPhoneCallTracker";
 
     private static final boolean DBG = true;
+
+    private boolean mIsVolteEnabled = false;
+    private boolean mIsVtEnabled = false;
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -1171,6 +1175,31 @@ public final class ImsPhoneCallTracker extends CallTracker {
             if (DBG) log("onImsSuspended");
             mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
         }
+
+        @Override
+        public void onFeatureCapabilityChanged(int serviceClass,
+                int[] enabledFeatures, int[] disabledFeatures) {
+            if (serviceClass == ImsServiceClass.MMTEL) {
+                if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE] ==
+                        ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE) {
+                    mIsVolteEnabled = true;
+                }
+                if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE] ==
+                        ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE) {
+                    mIsVtEnabled = true;
+                }
+                if (disabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE] ==
+                        ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE) {
+                    mIsVolteEnabled = false;
+                }
+                if (disabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE] ==
+                        ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE) {
+                    mIsVtEnabled = false;
+                }
+            }
+            if (DBG) log("onFeatureCapabilityChanged, mIsVolteEnabled = " +  mIsVolteEnabled
+                    + " mIsVtEnabled = " + mIsVtEnabled);
+        }
     };
 
     /* package */
@@ -1283,5 +1312,13 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     public boolean isInEmergencyCall() {
         return mIsInEmergencyCall;
+    }
+
+    public boolean isVolteEnabled() {
+        return mIsVolteEnabled;
+    }
+
+    public boolean isVtEnabled() {
+        return mIsVtEnabled;
     }
 }

@@ -1223,4 +1223,12 @@ public class ImsPhone extends ImsPhoneBase {
     public void unsetOnEcbModeExitResponse(Handler h) {
         mEcmExitRespRegistrant.clear();
     }
+
+    public boolean isVolteEnabled() {
+        return mCT.isVolteEnabled();
+    }
+
+    public boolean isVtEnabled() {
+        return mCT.isVtEnabled();
+    }
 }
