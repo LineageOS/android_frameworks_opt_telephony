@@ -234,6 +234,7 @@ public abstract class DcTrackerBase extends Handler {
     protected int mCidActive;
 
     // When false we will not auto attach and manually attaching is required.
+    protected boolean mAutoAttachOnCreationConfig = false;
     protected boolean mAutoAttachOnCreation = false;
 
     // State of screen
