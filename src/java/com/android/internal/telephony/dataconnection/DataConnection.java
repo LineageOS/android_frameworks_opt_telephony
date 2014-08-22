@@ -119,14 +119,16 @@ public final class DataConnection extends StateMachine {
         int mInitialMaxRetry;
         int mProfileId;
         int mRilRat;
+        boolean mRetryWhenSSChange;
         Message mOnCompletedMsg;
 
         ConnectionParams(ApnContext apnContext, int initialMaxRetry, int profileId,
-                int rilRadioTechnology, Message onCompletedMsg) {
+                int rilRadioTechnology, boolean retryWhenSSChange, Message onCompletedMsg) {
             mApnContext = apnContext;
             mInitialMaxRetry = initialMaxRetry;
             mProfileId = profileId;
             mRilRat = rilRadioTechnology;
+            mRetryWhenSSChange = retryWhenSSChange;
             mOnCompletedMsg = onCompletedMsg;
         }
 
@@ -1390,6 +1392,11 @@ public final class DataConnection extends StateMachine {
                                     + " rat=" + rat + " ignoring");
                         }
                     } else {
+                        // have to retry connecting since no attach event will come
+                        if (mConnectionParams.mRetryWhenSSChange) {
+                            retVal = NOT_HANDLED;
+                            break;
+                        }
                         // We've lost the connection and we're retrying but DRS or RAT changed
                         // so we may never succeed, might as well give up.
                         mInactiveState.setEnterNotificationParams(DcFailCause.LOST_CONNECTION);
