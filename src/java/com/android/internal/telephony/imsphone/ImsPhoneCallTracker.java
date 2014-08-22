@@ -723,7 +723,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 log("(backgnd) hangup waiting or background");
             }
         } else {
-            throw new RuntimeException ("ImsPhoneCall " + call +
+            throw new CallStateException ("ImsPhoneCall " + call +
                     "does not belong to ImsPhoneCallTracker " + this);
         }
 
