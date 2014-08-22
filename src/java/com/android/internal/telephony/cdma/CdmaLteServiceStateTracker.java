@@ -658,6 +658,18 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     }
 
     @Override
+    protected void updatePhoneObject() {
+        int voiceRat = mSS.getRilVoiceRadioTechnology();
+        // For CDMA-LTE phone don't update phone to GSM.
+        // If there is a  real need to switch to LTE, then it will be done via
+        // RIL_UNSOL_VOICE_RADIO_TECH_CHANGED from RIL.
+        if (voiceRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+            voiceRat = ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT;
+        }
+        mPhoneBase.updatePhoneObject(voiceRat);
+    }
+
+    @Override
     protected void log(String s) {
         Rlog.d(LOG_TAG, "[CdmaLteSST] " + s);
     }
