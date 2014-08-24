@@ -659,26 +659,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
         ImsCall imscall = mForegroundCall.getImsCall();
         if (imscall != null) {
-            imscall.sendDtmf(convertDtmf(c));
+            imscall.sendDtmf(c);
         }
-    }
-
-    private int convertDtmf(char c) {
-        int code = c - '0';
-        if ((code < 0) || (code > 9)) {
-            switch (c) {
-                case '*': return 10;
-                case '#': return 11;
-                case 'A': return 12;
-                case 'B': return 13;
-                case 'C': return 14;
-                case 'D': return 15;
-                default:
-                    throw new IllegalArgumentException(
-                            "invalid DTMF char: " + (int) c);
-            }
-        }
-        return code;
     }
 
     //***** Called from ImsPhoneConnection
