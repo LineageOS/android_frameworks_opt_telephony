@@ -946,7 +946,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 }
                 mPendingMO = null;
             }
-            onCallTerminated(imsCall, reasonInfo);
         }
 
         @Override
@@ -954,9 +953,19 @@ public final class ImsPhoneCallTracker extends CallTracker {
             if (DBG) log("onCallTerminated reasonCode=" + reasonInfo.getCode());
 
             ImsPhoneCall.State oldState = mForegroundCall.getState();
+            int cause = getDisconnectCauseFromReasonInfo(reasonInfo);
+            ImsPhoneConnection conn = findConnection(imsCall);
+            if (DBG) log("cause = " + cause + " conn = " + conn);
 
-            processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED,
-                    getDisconnectCauseFromReasonInfo(reasonInfo));
+            if (conn.isIncoming() && conn.getConnectTime() == 0) {
+                // Missed or rejected call
+                if (cause == DisconnectCause.LOCAL) {
+                    cause = DisconnectCause.INCOMING_REJECTED;
+               } else {
+                    cause = DisconnectCause.INCOMING_MISSED;
+               }
+            }
+            processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
 
             if (reasonInfo.getCode() == ImsReasonInfo.CODE_USER_TERMINATED) {
                 if ((oldState == ImsPhoneCall.State.DISCONNECTING)
