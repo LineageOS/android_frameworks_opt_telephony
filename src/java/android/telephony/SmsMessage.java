@@ -19,6 +19,7 @@ package android.telephony;
 import android.os.Parcel;
 import android.telephony.Rlog;
 import android.content.res.Resources;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
@@ -763,8 +764,13 @@ public class SmsMessage {
         }
 
         String simOperator = TelephonyManager.getDefault().getSimOperator();
+        String gid = TelephonyManager.getDefault().getGroupIdLevel1();
+
         for (NoEmsSupportConfig currentConfig : mNoEmsSupportConfigList) {
-            if (simOperator.startsWith(currentConfig.mOperatorNumber)) {
+            if (simOperator.startsWith(currentConfig.mOperatorNumber) &&
+                (TextUtils.isEmpty(currentConfig.mGid1) ||
+                (!TextUtils.isEmpty(currentConfig.mGid1)
+                && currentConfig.mGid1.equalsIgnoreCase(gid)))) {
                 return false;
             }
          }
@@ -781,8 +787,12 @@ public class SmsMessage {
         }
 
         String simOperator = TelephonyManager.getDefault().getSimOperator();
+        String gid = TelephonyManager.getDefault().getGroupIdLevel1();
         for (NoEmsSupportConfig currentConfig : mNoEmsSupportConfigList) {
-            if (simOperator.startsWith(currentConfig.mOperatorNumber)) {
+            if (simOperator.startsWith(currentConfig.mOperatorNumber) &&
+                (TextUtils.isEmpty(currentConfig.mGid1) ||
+                (!TextUtils.isEmpty(currentConfig.mGid1)
+                && currentConfig.mGid1.equalsIgnoreCase(gid)))) {
                 return currentConfig.mIsPrefix;
             }
         }
@@ -791,17 +801,19 @@ public class SmsMessage {
 
     private static class NoEmsSupportConfig {
         String mOperatorNumber;
+        String mGid1;
         boolean mIsPrefix;
 
         public NoEmsSupportConfig(String[] config) {
             mOperatorNumber = config[0];
             mIsPrefix = "prefix".equals(config[1]);
+            mGid1 = config.length > 2 ? config[2] : null;
         }
 
         @Override
         public String toString() {
             return "NoEmsSupportConfig { mOperatorNumber = " + mOperatorNumber
-                    + ", mIsPrefix = " + mIsPrefix + " }";
+                    + ", mIsPrefix = " + mIsPrefix + ", mGid1 = " + mGid1 + " }";
         }
     }
 
