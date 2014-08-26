@@ -905,26 +905,26 @@ public final class SmsManager {
     /**
      * Send an MMS message
      *
-     * @param pdu the MMS message encoded in standard MMS PDU format
+     * @param contentUri the content Uri from which the message pdu will be read
      * @param locationUrl the optional location url where message should be sent to
      * @param configOverrides the carrier-specific messaging configuration values to override for
      *  sending the message.
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully sent, or failed
-     * @throws IllegalArgumentException if pdu is empty
+     * @throws IllegalArgumentException if contentUri is empty
      */
-    public void sendMultimediaMessage(byte[] pdu, String locationUrl, ContentValues configOverrides,
-            PendingIntent sentIntent) {
-        if (pdu == null || pdu.length == 0) {
-            throw new IllegalArgumentException("Empty or zero length PDU");
+    public void sendMultimediaMessage(Uri contentUri, String locationUrl,
+            ContentValues configOverrides, PendingIntent sentIntent) {
+        if (contentUri == null) {
+            throw new IllegalArgumentException("Uri contentUri null");
         }
         try {
             final IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
             if (iMms == null) {
                 return;
             }
-            iMms.sendMessage(getSubId(), ActivityThread.currentPackageName(), pdu, locationUrl,
-                    configOverrides, sentIntent);
+            iMms.sendMessage(getSubId(), ActivityThread.currentPackageName(), contentUri,
+                    locationUrl, configOverrides, sentIntent);
         } catch (RemoteException e) {
             // Ignore it
         }
@@ -935,16 +935,20 @@ public final class SmsManager {
      *
      * @param locationUrl the location URL of the MMS message to be downloaded, usually obtained
      *  from the MMS WAP push notification
+     * @param contentUri the content uri to which the downloaded pdu will be written
      * @param configOverrides the carrier-specific messaging configuration values to override for
      *  downloading the message.
      * @param downloadedIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is downloaded, or the download is failed
-     * @throws IllegalArgumentException if locationUrl is empty
+     * @throws IllegalArgumentException if locationUrl or contentUri is empty
      */
-    public void downloadMultimediaMessage(String locationUrl, ContentValues configOverrides,
-            PendingIntent downloadedIntent) {
+    public void downloadMultimediaMessage(String locationUrl, Uri contentUri,
+            ContentValues configOverrides, PendingIntent downloadedIntent) {
         if (TextUtils.isEmpty(locationUrl)) {
             throw new IllegalArgumentException("Empty MMS location URL");
+        }
+        if (contentUri == null) {
+            throw new IllegalArgumentException("Uri contentUri null");
         }
         try {
             final IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
@@ -952,7 +956,7 @@ public final class SmsManager {
                 return;
             }
             iMms.downloadMessage(getSubId(), ActivityThread.currentPackageName(), locationUrl,
-                    configOverrides, downloadedIntent);
+                    contentUri, configOverrides, downloadedIntent);
         } catch (RemoteException e) {
             // Ignore it
         }
@@ -963,6 +967,7 @@ public final class SmsManager {
     public static final int MMS_ERROR_INVALID_APN = 2;
     public static final int MMS_ERROR_UNABLE_CONNECT_MMS = 3;
     public static final int MMS_ERROR_HTTP_FAILURE = 4;
+    public static final int MMS_ERROR_IO_ERROR = 5;
 
     // Intent extra name for result data
     public static final String MMS_EXTRA_DATA = "data";
@@ -1052,7 +1057,7 @@ public final class SmsManager {
      *
      * Only default SMS apps can import MMS
      *
-     * @param pdu the PDU of the message to import
+     * @param contentUri the content uri from which to read the PDU of the message to import
      * @param messageId the optional message id. Use null if not specifying
      * @param timestampSecs the optional message timestamp. Use -1 if not specifying
      * @param seen if the message is seen
@@ -1060,16 +1065,16 @@ public final class SmsManager {
      * @return the message URI, null if failed
      * @throws IllegalArgumentException if pdu is empty
      */
-    public Uri importMultimediaMessage(byte[] pdu, String messageId, long timestampSecs,
+    public Uri importMultimediaMessage(Uri contentUri, String messageId, long timestampSecs,
             boolean seen, boolean read) {
-        if (pdu == null || pdu.length == 0) {
-            throw new IllegalArgumentException("Empty or zero length PDU");
+        if (contentUri == null) {
+            throw new IllegalArgumentException("Uri contentUri null");
         }
         try {
             IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
             if (iMms != null) {
                 return iMms.importMultimediaMessage(ActivityThread.currentPackageName(),
-                        pdu, messageId, timestampSecs, seen, read);
+                        contentUri, messageId, timestampSecs, seen, read);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1198,18 +1203,19 @@ public final class SmsManager {
      *
      * Only default SMS apps can add MMS draft
      *
-     * @param pdu the PDU data of the draft MMS
+     * @param contentUri the content uri from which to read the PDU data of the draft MMS
      * @return the URI of the stored draft message
      * @throws IllegalArgumentException if pdu is empty
      */
-    public Uri addMultimediaMessageDraft(byte[] pdu) {
-        if (pdu == null || pdu.length == 0) {
-            throw new IllegalArgumentException("Empty or zero length PDU");
+    public Uri addMultimediaMessageDraft(Uri contentUri) {
+        if (contentUri == null) {
+            throw new IllegalArgumentException("Uri contentUri null");
         }
         try {
             IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
             if (iMms != null) {
-                return iMms.addMultimediaMessageDraft(ActivityThread.currentPackageName(), pdu);
+                return iMms.addMultimediaMessageDraft(ActivityThread.currentPackageName(),
+                        contentUri);
             }
         } catch (RemoteException ex) {
             // ignore it
