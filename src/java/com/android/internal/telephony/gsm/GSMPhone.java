@@ -523,7 +523,11 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public boolean canConference() {
-        return mCT.canConference();
+        boolean canImsConference = false;
+        if (mImsPhone != null) {
+            canImsConference = mImsPhone.canConference();
+        }
+        return mCT.canConference() || canImsConference;
     }
 
     public boolean canDial() {
@@ -532,6 +536,11 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public void conference() {
+        if (mImsPhone != null && mImsPhone.canConference()) {
+            log("conference() - delegated to IMS phone");
+            mImsPhone.conference();
+            return;
+        }
         mCT.conference();
     }
 
