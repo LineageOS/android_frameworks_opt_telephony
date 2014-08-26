@@ -28,6 +28,7 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.UserInfo;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
@@ -772,25 +773,40 @@ public abstract class InboundSmsHandler extends StateMachine {
             BroadcastReceiver resultReceiver, UserHandle user) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
-        int[] users = null;
         if (user.equals(UserHandle.ALL)) {
             // Get a list of currently started users.
+            int[] users = null;
             try {
                 users = ActivityManagerNative.getDefault().getRunningUserIds();
             } catch (RemoteException re) {
             }
-        }
-        if (users == null) {
-            users = new int[] {user.getIdentifier()};
-        }
-        // Deliver the broadcast only to those running users that are permitted
-        // by user policy.
-        for (int i = 0; i < users.length; i++) {
-            UserHandle targetUser = new UserHandle(users[i]);
-            if (!mUserManager.hasUserRestriction(UserManager.DISALLOW_SMS, targetUser)) {
-                mContext.sendOrderedBroadcastAsUser(intent, targetUser, permission, appOp,
-                        resultReceiver, getHandler(), Activity.RESULT_OK, null, null);
+            if (users == null) {
+                users = new int[] {user.getIdentifier()};
             }
+            // Deliver the broadcast only to those running users that are permitted
+            // by user policy.
+            for (int i = users.length - 1; i >= 0; i--) {
+                UserHandle targetUser = new UserHandle(users[i]);
+                if (users[i] != UserHandle.USER_OWNER) {
+                    // Is the user not allowed to use SMS?
+                    if (mUserManager.hasUserRestriction(UserManager.DISALLOW_SMS, targetUser)) {
+                        continue;
+                    }
+                    // Skip unknown users and managed profiles as well
+                    UserInfo info = mUserManager.getUserInfo(users[i]);
+                    if (info == null || info.isManagedProfile()) {
+                        continue;
+                    }
+                }
+                // Only pass in the resultReceiver when the USER_OWNER is processed.
+                mContext.sendOrderedBroadcastAsUser(intent, targetUser, permission, appOp,
+                        users[i] == UserHandle.USER_OWNER ? resultReceiver : null,
+                        getHandler(), Activity.RESULT_OK, null, null);
+            }
+        } else {
+            mContext.sendOrderedBroadcastAsUser(intent, user, permission, appOp,
+                    resultReceiver,
+                    getHandler(), Activity.RESULT_OK, null, null);
         }
     }
 
