@@ -63,6 +63,8 @@ import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
 import android.view.WindowManager;
+import android.util.Log;
+import android.util.SparseArray;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CDMALTEPhone;
@@ -79,6 +81,7 @@ import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.IccUtils;
@@ -190,6 +193,30 @@ public final class DcTracker extends DcTrackerBase {
 
     /* IWLAN and WWAN co-exist flag */
     private boolean mWwanIwlanCoexistFlag = false;
+    private long mSubId;
+
+
+    private BroadcastReceiver defaultDdsBroadcastReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            mSubId = mPhone.getSubId();
+            log("got ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED, new DDS = "
+                    + intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                            SubscriptionManager.INVALID_SUB_ID));
+            updateSubIdAndCapability();
+
+            if (mSubId == SubscriptionController.getInstance().getDefaultDataSubId()) {
+                log("Dct is default-DDS now, process any pending MMS requests");
+            }
+        }
+    };
+
+    private BroadcastReceiver subInfoBroadcastReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            mSubId = mPhone.getSubId();
+            log("got ACTION_SUBINFO_RECORD_UPDATED, mySubId = " + mSubId);
+            updateSubIdAndCapability();
+        }
+    };
 
     private CdmaApnProfileTracker mOmhApt;
 
@@ -244,11 +271,11 @@ public final class DcTracker extends DcTrackerBase {
         mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_XCAP);
         mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
         mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
-        mNetworkFilter.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        //Dont add INTERNET capability, only defaultDataSubscription provides INTERNET.
 
         mNetworkFactory = new TelephonyNetworkFactory(this.getLooper(), p.getContext(),
-                "TelephonyNetworkFactory", mNetworkFilter);
-        mNetworkFactory.setScoreFilter(50);
+                "TelephonyNetworkFactory", mNetworkFilter, mPhone);
+        mNetworkFactory.setScoreFilter(-1);
         mNetworkFactoryMessenger = new Messenger(mNetworkFactory);
         cm.registerNetworkFactory(mNetworkFactoryMessenger, "Telephony");
 
@@ -257,6 +284,20 @@ public final class DcTracker extends DcTrackerBase {
         addEmergencyApnSetting();
 
         mProvisionActionName = "com.android.internal.telephony.PROVISION" + p.getPhoneId();
+        mPhone.getContext().registerReceiver(subInfoBroadcastReceiver,
+                new IntentFilter(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED));
+
+        mPhone.getContext().registerReceiver(defaultDdsBroadcastReceiver,
+                new IntentFilter(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED));
+
+    }
+
+    private void processPendingNetworkRequests(NetworkRequest n) {
+        ((TelephonyNetworkFactory)mNetworkFactory).processPendingNetworkRequests(n);
+    }
+
+    private void updateSubIdAndCapability() {
+        ((TelephonyNetworkFactory)mNetworkFactory).updateNetworkCapability(mSubId);
     }
 
     protected void registerForAllEvents() {
@@ -311,6 +352,10 @@ public final class DcTracker extends DcTrackerBase {
         ConnectivityManager cm = (ConnectivityManager)mPhone.getContext().getSystemService(
                 Context.CONNECTIVITY_SERVICE);
         cm.unregisterNetworkFactory(mNetworkFactoryMessenger);
+
+        mPhone.getContext().unregisterReceiver(defaultDdsBroadcastReceiver);
+        mPhone.getContext().unregisterReceiver(subInfoBroadcastReceiver);
+
         mNetworkFactoryMessenger = null;
 
         cleanUpAllConnections(true, null);
@@ -353,23 +398,184 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private class TelephonyNetworkFactory extends NetworkFactory {
-        public TelephonyNetworkFactory(Looper l, Context c, String TAG, NetworkCapabilities nc) {
+        private PhoneBase mPhone;
+        private NetworkCapabilities mNetworkCapabilities;
+
+        //Thread safety not required as long as list operation are done by single thread.
+        private SparseArray<NetworkRequest> mDdsRequests = new SparseArray<NetworkRequest>();
+
+        public TelephonyNetworkFactory(Looper l, Context c, String TAG,
+                NetworkCapabilities nc, PhoneBase phone) {
             super(l, c, TAG, nc);
+            mPhone = phone;
+            mNetworkCapabilities = nc;
+        }
+
+        public void processPendingNetworkRequests(NetworkRequest n) {
+            for (int i = 0; i < mDdsRequests.size(); i++) {
+                NetworkRequest nr = mDdsRequests.valueAt(i);
+                if (nr.equals(n)) {
+                    log("Found pending request in ddsRequest list = " + nr);
+                    ApnContext apnContext = apnContextForNetworkRequest(nr);
+                    if (apnContext != null) {
+                        log("Activating APN=" + apnContext);
+                        apnContext.incRefCount();
+                    }
+                }
+            }
+        }
+
+        private void registerOnDemandDdsCallback() {
+            SubscriptionController subController = SubscriptionController.getInstance();
+
+            subController.registerForOnDemandDdsLockNotification(mPhone.getSubId(),
+                    new SubscriptionController.OnDemandDdsLockNotifier() {
+                        public void notifyOnDemandDdsLockGranted(NetworkRequest n) {
+                            log("Got the tempDds lock for the request = " + n);
+                            processPendingNetworkRequests(n);
+                        }
+                    });
+        }
+
+        public void updateNetworkCapability(long subId) {
+            log("update networkCapabilites for subId = " + subId);
+
+            mNetworkCapabilities.setNetworkSpecifier(""+subId);
+            if (subId == SubscriptionController.getInstance().getDefaultDataSubId()) {
+                log("INTERNET capability is with subId = " + subId);
+                //Only defaultDataSub provides INTERNET.
+                mNetworkCapabilities.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+            } else {
+                log("INTERNET capability is removed from subId = " + subId);
+                mNetworkCapabilities.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+            }
+            setScoreFilter(50);
+            registerOnDemandDdsCallback();
+
+            log("Ready to handle network requests");
+        }
+
+        private long getSubIdFromNetworkRequest(NetworkRequest networkRequest) {
+            String requestedSpecifierStr = networkRequest.networkCapabilities
+                .getNetworkSpecifier();
+            long requestedSpecifier = SubscriptionManager.INVALID_SUB_ID;
+
+            try {
+                requestedSpecifier = (requestedSpecifierStr != null)? Long.parseLong(
+                        requestedSpecifierStr) : SubscriptionManager.INVALID_SUB_ID;
+            } catch (NumberFormatException e){
+                //nop
+            }
+
+            return requestedSpecifier;
         }
 
         @Override
         protected void needNetworkFor(NetworkRequest networkRequest, int score) {
             // figure out the apn type and enable it
             if (DBG) log("Cellular needs Network for " + networkRequest);
-            ApnContext apnContext = apnContextForNetworkRequest(networkRequest);
-            if (apnContext != null) apnContext.incRefCount();
+            SubscriptionController subController = SubscriptionController.getInstance();
+            log("subController = " + subController);
+
+            long currentDds = subController.getDefaultDataSubId();
+            long subId = mPhone.getSubId();
+            long requestedSpecifier = getSubIdFromNetworkRequest(networkRequest);
+
+            log("CurrentDds = " + currentDds);
+            log("mySubId = " + subId);
+            log("Requested networkSpecifier = " + requestedSpecifier);
+            log("my networkSpecifier = " + mNetworkCapabilities.getNetworkSpecifier());
+
+            if (subId < 0) {
+                log("Can't handle any network request now, subId not ready.");
+                return;
+            }
+
+            if ((requestedSpecifier != SubscriptionManager.INVALID_SUB_ID)
+                    && (currentDds != requestedSpecifier)) {
+                log("This request would result in DDS switch");
+                log("Requested DDS switch to subId = " + requestedSpecifier);
+
+                //Queue this request and initiate temp DDS switch.
+                //Once the DDS switch is done we will revist the pending requests.
+                mDdsRequests.put(networkRequest.requestId, networkRequest);
+                requestOnDemandDataSubscriptionLock(networkRequest);
+
+                return;
+            } else {
+                if(isNetworkRequestForInternet(networkRequest)) {
+                    log("Activating internet request on subId = " + subId);
+                    ApnContext apnContext = apnContextForNetworkRequest(networkRequest);
+                    if (apnContext != null) {
+                        log("Activating APN=" + apnContext);
+                        apnContext.incRefCount();
+                    }
+                } else {
+                    if(isValidRequest(networkRequest)) {
+                        //non-default APN requests for this subscription.
+                        mDdsRequests.put(networkRequest.requestId, networkRequest);
+                        requestOnDemandDataSubscriptionLock(networkRequest);
+                    } else {
+                        log("Bogus request req = " + networkRequest);
+                    }
+                }
+            }
+        }
+
+        private boolean isValidRequest(NetworkRequest n) {
+            int[] types = n.networkCapabilities.getCapabilities();
+            return (types.length > 0);
+        }
+
+        private boolean isNetworkRequestForInternet(NetworkRequest n) {
+            boolean flag = n.networkCapabilities.hasCapability
+                (NetworkCapabilities.NET_CAPABILITY_INTERNET);
+            log("Is the request for Internet = " + flag);
+            return flag;
+        }
+
+        private void requestOnDemandDataSubscriptionLock(NetworkRequest n) {
+            if(!isNetworkRequestForInternet(n)) {
+                //Request tempDDS lock only for non-default PDP requests
+                SubscriptionController subController = SubscriptionController.getInstance();
+                log("requestOnDemandDataSubscriptionLock for request = " + n);
+                subController.startOnDemandDataSubscriptionRequest(n);
+            }
+        }
+
+        private void removeRequestFromList(SparseArray<NetworkRequest> list, NetworkRequest n) {
+            NetworkRequest nr = list.get(n.requestId);
+            if (nr != null) {
+                log("Removing request = " + nr);
+                list.remove(n.requestId);
+                ApnContext apnContext = apnContextForNetworkRequest(n);
+                if (apnContext != null) {
+                    log("Deactivating APN=" + apnContext);
+                    apnContext.decRefCount();
+                }
+            }
+        }
+
+        private void removeRequestIfFound(NetworkRequest n) {
+            log("Release the request from dds queue, if found");
+            removeRequestFromList(mDdsRequests, n);
+
+            if(!isNetworkRequestForInternet(n)) {
+                SubscriptionController subController = SubscriptionController.getInstance();
+                subController.stopOnDemandDataSubscriptionRequest(n);
+            }
         }
 
         @Override
         protected void releaseNetworkFor(NetworkRequest networkRequest) {
             if (DBG) log("Cellular releasing Network for " + networkRequest);
-            ApnContext apnContext = apnContextForNetworkRequest(networkRequest);
-            if (apnContext != null) apnContext.decRefCount();
+            removeRequestIfFound(networkRequest);
+        }
+
+        @Override
+        protected void log(String s) {
+            Log.d("TelephonyNetworkFactory" + mPhone.getSubId(), s);
         }
     }
 
@@ -841,7 +1047,7 @@ public final class DcTracker extends DcTrackerBase {
         if ((apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DEFAULT)
                     || apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IA))
                 && (mPhone.getServiceState().getRilDataRadioTechnology()
-                == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN)
+                    == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN)
                 && (!mWwanIwlanCoexistFlag)) {
             log("Default data call activation not allowed in iwlan.");
             return false;
@@ -2849,11 +3055,6 @@ public final class DcTracker extends DcTrackerBase {
             return;
         }
 
-        if (!isActiveDataSubscription()) {
-            loge("Ignore msgs since phone is not the current DDS");
-            return;
-        }
-
         switch (msg.what) {
             case DctConstants.EVENT_RECORDS_LOADED:
                 onRecordsLoaded();
@@ -3071,27 +3272,21 @@ public final class DcTracker extends DcTrackerBase {
     // setAsCurrentDataConnectionTracker
     public void update() {
         log("update sub = " + mPhone.getSubId());
-        if (isActiveDataSubscription()) {
-            log("update(): Active DDS, register for all events now!");
-            registerForAllEvents();
-            onUpdateIcc();
+        log("update(): Active DDS, register for all events now!");
+        registerForAllEvents();
+        onUpdateIcc();
 
-            mUserDataEnabled = Settings.Global.getInt(mPhone.getContext().getContentResolver(),
-                    Settings.Global.MOBILE_DATA + mPhone.getPhoneId(), 1) == 1;
+        mUserDataEnabled = Settings.Global.getInt(mPhone.getContext().getContentResolver(),
+                Settings.Global.MOBILE_DATA + mPhone.getPhoneId(), 1) == 1;
 
-            if (mPhone instanceof CDMALTEPhone) {
-                ((CDMALTEPhone)mPhone).updateCurrentCarrierInProvider();
-                supplyMessenger();
-            } else if (mPhone instanceof GSMPhone) {
-                ((GSMPhone)mPhone).updateCurrentCarrierInProvider();
-                supplyMessenger();
-            } else {
-                log("Phone object is not MultiSim. This should not hit!!!!");
-            }
-
+        if (mPhone instanceof CDMALTEPhone) {
+            ((CDMALTEPhone)mPhone).updateCurrentCarrierInProvider();
+            supplyMessenger();
+        } else if (mPhone instanceof GSMPhone) {
+            ((GSMPhone)mPhone).updateCurrentCarrierInProvider();
+            supplyMessenger();
         } else {
-            unregisterForAllEvents();
-            log("update(): NOT the active DDS, unregister for all events!");
+            log("Phone object is not MultiSim. This should not hit!!!!");
         }
     }
 
@@ -3101,9 +3296,7 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     public void updateRecords() {
-        if (isActiveDataSubscription()) {
-            onUpdateIcc();
-        }
+        onUpdateIcc();
     }
 
     public void cleanUpAllConnections(String cause, Message disconnectAllCompleteMsg) {

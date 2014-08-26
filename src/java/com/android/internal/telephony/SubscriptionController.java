@@ -22,9 +22,12 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.ServiceManager;
 import android.os.UserHandle;
+import android.os.Messenger;
 import android.telephony.Rlog;
 import android.util.Log;
 import android.net.Uri;
+import android.net.NetworkRequest;
+import android.net.NetworkCapabilities;
 import android.database.Cursor;
 import android.content.Intent;
 import android.provider.BaseColumns;
@@ -33,9 +36,13 @@ import android.provider.Settings.SettingNotFoundException;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 
+import com.android.internal.util.AsyncChannel;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.uicc.SpnOverride;
 
+import com.android.internal.telephony.dataconnection.DctController;
+import com.android.internal.telephony.dataconnection.DdsScheduler;
+import com.android.internal.telephony.dataconnection.DdsSchedulerAc;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubInfoRecord;
 import android.telephony.TelephonyManager;
@@ -43,6 +50,7 @@ import android.text.format.Time;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.lang.NumberFormatException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -152,6 +160,15 @@ public class SubscriptionController extends ISub.Stub {
         }
     };
 
+    private static final int EVENT_SET_DEFAULT_DATA_DONE = 1;
+    private DataConnectionHandler mDataConnectionHandler;
+    private  DctController mDctController;
+
+    private HashMap<Long, OnDemandDdsLockNotifier> mOnDemandDdsLockNotificationRegistrants =
+        new HashMap<Long, OnDemandDdsLockNotifier>();
+
+    private DdsScheduler mScheduler;
+    private DdsSchedulerAc mSchedulerAc;
 
     public static SubscriptionController init(Phone phone) {
         synchronized (SubscriptionController.class) {
@@ -185,6 +202,7 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private SubscriptionController(Context c) {
+        logd("SubscriptionController init by Context");
         mContext = c;
         mCM = CallManager.getInstance();
 
@@ -193,6 +211,41 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         logdl("[SubscriptionController] init by Context");
+        mDataConnectionHandler = new DataConnectionHandler();
+
+        mScheduler = DdsScheduler.makeDdsScheduler();
+        mScheduler.start();
+
+        mSchedulerAc = new DdsSchedulerAc();
+        mSchedulerAc.connect(mContext, mDataConnectionHandler, mScheduler.getHandler());
+
+    }
+
+    public long getSubIdFromNetworkRequest(NetworkRequest n) {
+        long subId;
+        if (n == null) {
+            return getDefaultDataSubId();
+        }
+
+        String str = n.networkCapabilities.getNetworkSpecifier();
+        try {
+            subId = Long.parseLong(str);
+        } catch(NumberFormatException e) {
+            loge("Exception e = " + e);
+            subId = getDefaultDataSubId();
+        }
+
+        return subId;
+    }
+
+    public void startOnDemandDataSubscriptionRequest(NetworkRequest n) {
+        logd("startOnDemandDataSubscriptionRequest = " + n);
+        mSchedulerAc.allocateDds(n);
+    }
+
+    public void stopOnDemandDataSubscriptionRequest(NetworkRequest n) {
+        logd("stopOnDemandDataSubscriptionRequest = " + n);
+        mSchedulerAc.freeDds(n);
     }
 
     private boolean isSubInfoReady() {
@@ -1181,13 +1234,27 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public void setDefaultDataSubId(long subId) {
-        if (subId == SubscriptionManager.DEFAULT_SUB_ID) {
-            throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
-        }
         logdl("[setDefaultDataSubId] subId=" + subId);
 
+        if (mDctController == null) {
+            mDctController = DctController.getInstance();
+            mDctController.registerForDefaultDataSwitchInfo(mDataConnectionHandler,
+                    EVENT_SET_DEFAULT_DATA_DONE, null);
+        }
+        mDctController.setDefaultDataSubId(subId);
+
+    }
+
+    public long getCurrentDds() {
+        return mScheduler.getCurrentDds();
+    }
+
+
+    private void updateDataSubId(long subId) {
+        logd(" updateDataSubId,  subId=" + subId);
         Settings.Global.putLong(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
+        mScheduler.updateCurrentDds(null);
         broadcastDefaultDataSubIdChanged(subId);
 
         // FIXME is this still needed?
@@ -1288,6 +1355,21 @@ public class SubscriptionController extends ISub.Stub {
         }
         logdl("[shouldDefaultBeCleared] return true not active subId=" + subId);
         return true;
+    }
+
+    private class DataConnectionHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case EVENT_SET_DEFAULT_DATA_DONE:{
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    Long subId = (Long)ar.result;
+                    logd("EVENT_SET_DEFAULT_DATA_DONE subId:" + subId);
+                    updateDataSubId(subId);
+                    break;
+                }
+            }
+        }
     }
 
     /* This should return long and not long [] since each phone has
@@ -1563,5 +1645,32 @@ public class SubscriptionController extends ISub.Stub {
         Settings.Global.putInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_PROMPT, value);
         logd("setVoicePromptOption to " + enabled);
+    }
+
+    @Override
+    public long getOnDemandDataSubId() {
+        return getCurrentDds();
+    }
+
+    public void registerForOnDemandDdsLockNotification(long clientSubId,
+            OnDemandDdsLockNotifier callback) {
+        logd("registerForOnDemandDdsLockNotification for client=" + clientSubId);
+        mOnDemandDdsLockNotificationRegistrants.put(clientSubId, callback);
+
+    }
+
+    /* {@hide} */
+    public void notifyOnDemandDataSubIdChanged(NetworkRequest n) {
+        OnDemandDdsLockNotifier notifier = mOnDemandDdsLockNotificationRegistrants.get(
+                getSubIdFromNetworkRequest(n));
+        if (notifier != null) {
+            notifier.notifyOnDemandDdsLockGranted(n);
+        } else {
+            logd("No registrants for OnDemandDdsLockGranted event");
+        }
+    }
+
+    public interface OnDemandDdsLockNotifier {
+        public void notifyOnDemandDdsLockGranted(NetworkRequest n);
     }
 }
