@@ -21,12 +21,17 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Message;
 import android.os.AsyncResult;
+import android.os.Looper;
 import android.os.SystemProperties;
+import android.os.Messenger;
+import android.provider.Settings;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.SubscriptionManager;
+import android.net.NetworkRequest;
 
 import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.Phone;
@@ -59,6 +64,7 @@ public class DctController extends Handler {
     private static final int EVENT_PHONE2_RADIO_OFF = 6;
     private static final int EVENT_PHONE3_RADIO_OFF = 7;
     private static final int EVENT_PHONE4_RADIO_OFF = 8;
+    private static final int EVENT_START_DDS_SWITCH = 9;
 
     private static final int PHONE_NONE = -1;
 
@@ -67,7 +73,8 @@ public class DctController extends Handler {
     private static final int EVENT_ALL_DATA_DISCONNECTED = 1;
     private static final int EVENT_SET_DATA_ALLOW_DONE = 2;
 
-    private RegistrantList mNotifyDataSwitchInfo = new RegistrantList();
+    private RegistrantList mNotifyDefaultDataSwitchInfo = new RegistrantList();
+    private RegistrantList mNotifyOnDemandDataSwitchInfo = new RegistrantList();
     private SubscriptionController mSubController = SubscriptionController.getInstance();
 
     private Phone mActivePhone;
@@ -83,8 +90,13 @@ public class DctController extends Handler {
     private BroadcastReceiver mDataStateReceiver;
     private Context mContext;
 
+    private AsyncChannel mDdsSwitchPropService;
+
     private int mCurrentDataPhone = PHONE_NONE;
     private int mRequestedDataPhone = PHONE_NONE;
+
+    private DdsSwitchSerializerHandler mDdsSwitchSerializer;
+    private boolean mIsDdsSwitchCompleted = true;
 
     private Handler mRspHander = new Handler() {
         public void handleMessage(Message msg){
@@ -211,14 +223,15 @@ public class DctController extends Handler {
        return sDctController;
     }
 
-    public static DctController makeDctController(PhoneProxy[] phones) {
+    public static DctController makeDctController(PhoneProxy[] phones, Looper looper) {
         if (sDctController == null) {
-            sDctController = new DctController(phones);
+            sDctController = new DctController(phones, looper);
         }
         return sDctController;
     }
 
-    private DctController(PhoneProxy[] phones) {
+    private DctController(PhoneProxy[] phones, Looper looper) {
+        super(looper);
         if (phones == null || phones.length == 0) {
             if (phones == null) {
                 loge("DctController(phones): UNEXPECTED phones=null, ignore");
@@ -269,6 +282,12 @@ public class DctController extends Handler {
 
         mDataStateReceiver = new DataStateReceiver();
         Intent intent = mContext.registerReceiver(mDataStateReceiver, filter);
+
+        HandlerThread t = new HandlerThread("DdsSwitchSerializer");
+        t.start();
+
+        mDdsSwitchSerializer = new DdsSwitchSerializerHandler(t.getLooper());
+
     }
 
     private IccCardConstants.State getIccCardState(int phoneId) {
@@ -434,56 +453,233 @@ public class DctController extends Handler {
         Log.e(LOG_TAG, "[DctController] " + s);
     }
 
+    private class SwitchInfo {
+        public int mPhoneId;
+        public NetworkRequest mNetworkRequest;
+        public boolean mIsDefaultDataSwitchRequested;
 
-    public void setDataSubId(long subId) {
-        //FIXME This should rework
-        //FIXME Need to have a StateMachine logic to handle this api considering various clients
-        Rlog.d(LOG_TAG, "setDataAllowed subId :" + subId);
-        int phoneId = mSubController.getPhoneId(subId);
-        int prefPhoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
-        Phone phone = mPhones[prefPhoneId].getActivePhone();
-        DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
-        dcTracker.setDataAllowed(false, null);
-        mPhones[prefPhoneId].registerForAllDataDisconnected(
-                this, EVENT_ALL_DATA_DISCONNECTED, new Integer(phoneId));
+        public SwitchInfo(int phoneId, NetworkRequest n, boolean flag) {
+            mPhoneId = phoneId;
+            mNetworkRequest = n;
+            mIsDefaultDataSwitchRequested = flag;
+        }
 
-    }
-
-    public void registerForDataSwitchInfo(Handler h, int what, Object obj) {
-        //FIXME This should rework
-        Registrant r = new Registrant (h, what, obj);
-        synchronized (mNotifyDataSwitchInfo) {
-            mNotifyDataSwitchInfo.add(r);
+        public SwitchInfo(int phoneId,boolean flag) {
+            mPhoneId = phoneId;
+            mNetworkRequest = null;
+            mIsDefaultDataSwitchRequested = flag;
+        }
+        public String toString() {
+            return "SwitchInfo[phoneId = " + mPhoneId
+                + ", NetworkRequest =" +mNetworkRequest
+                + ", isDefaultSwitchRequested = " + mIsDefaultDataSwitchRequested;
         }
     }
 
+    public void setDefaultDataSubId(long subId) {
+        Rlog.d(LOG_TAG, "setDataAllowed subId :" + subId);
+        int phoneId = mSubController.getPhoneId(subId);
+        int prefPhoneId = mSubController.getPhoneId(mSubController.getCurrentDds());
+        if (prefPhoneId < 0 || prefPhoneId >= mPhoneNum) {
+            // If Current dds subId is invalid set the received subId as curretn DDS
+            // and return from here.
+            // DcSwitchState will take care of sending allowData on latet dds subId
+            // once it receives valid data registration state
+            logd(" setDefaultDataSubId,  subId = " + subId + " phoneId  " + prefPhoneId);
+            Settings.Global.putLong(mContext.getContentResolver(),
+                    Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
+            return;
+        }
+
+        Phone phone = mPhones[prefPhoneId].getActivePhone();
+        DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
+        dcTracker.setDataAllowed(false, null);
+        SwitchInfo s = new SwitchInfo(new Integer(phoneId), true);
+        mPhones[prefPhoneId].registerForAllDataDisconnected(
+                this, EVENT_ALL_DATA_DISCONNECTED, s);
+    }
+
+    public void setOnDemandDataSubId(NetworkRequest n) {
+        Rlog.d(LOG_TAG, "setDataAllowed for :" + n);
+        mDdsSwitchSerializer.sendMessage(mDdsSwitchSerializer
+                .obtainMessage(EVENT_START_DDS_SWITCH, n));
+    }
+
+    public void registerForDefaultDataSwitchInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        synchronized (mNotifyDefaultDataSwitchInfo) {
+            mNotifyDefaultDataSwitchInfo.add(r);
+        }
+    }
+
+    public void registerForOnDemandDataSwitchInfo(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        synchronized (mNotifyOnDemandDataSwitchInfo) {
+            mNotifyOnDemandDataSwitchInfo.add(r);
+        }
+    }
+
+    public void registerDdsSwitchPropService(Messenger messenger) {
+        logd("Got messenger from DDS switch service, messenger = " + messenger);
+        AsyncChannel ac = new AsyncChannel();
+        ac.connect(mContext, sDctController, messenger);
+    }
+
     @Override
-    public void handleMessage (Message msg) {
-        //FIXME This should rework
-            AsyncResult ar = (AsyncResult)msg.obj;
+        public void handleMessage (Message msg) {
             Rlog.d(LOG_TAG, "handleMessage msg=" + msg);
 
             switch (msg.what) {
-                case EVENT_ALL_DATA_DISCONNECTED:
-                    Integer phoneId = (Integer)ar.userObj;
+                case EVENT_ALL_DATA_DISCONNECTED: {
+                    AsyncResult ar = (AsyncResult)msg.obj;
+                    SwitchInfo s = (SwitchInfo)ar.userObj;
+                    Integer phoneId = s.mPhoneId;
                     int prefPhoneId = mSubController.getPhoneId(
-                            mSubController.getDefaultDataSubId());
-                    Rlog.d(LOG_TAG, "EVENT_ALL_DATA_DISCONNECTED phoneId :" + phoneId);
+                             mSubController.getCurrentDds());
+                    Rlog.d(LOG_TAG, "EVENT_ALL_DATA_DISCONNECTED switchInfo :" + s);
                     mPhones[prefPhoneId].unregisterForAllDataDisconnected(this);
-                    Message alllowedDataDone = Message.obtain(this, EVENT_SET_DATA_ALLOW_DONE,
-                            new Integer(phoneId));
+                    Message allowedDataDone = Message.obtain(this,
+                            EVENT_SET_DATA_ALLOW_DONE, s);
                     Phone phone = mPhones[phoneId].getActivePhone();
-                    DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
-                    dcTracker.setDataAllowed(true, alllowedDataDone);
-                    break;
 
-                case EVENT_SET_DATA_ALLOW_DONE:
-                    phoneId = (Integer)ar.userObj;
+                    if (mDdsSwitchPropService != null) {
+
+                        logd("Request OemHookDDS service for DDS switch");
+                        mDdsSwitchPropService.sendMessageSynchronously(1, phoneId,
+                                mPhoneNum);
+                        logd("OemHookDDS service finished");
+                    }
+
+                    DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
+                    dcTracker.setDataAllowed(true, allowedDataDone);
+
+                   break;
+                }
+
+                case EVENT_SET_DATA_ALLOW_DONE: {
+                    AsyncResult ar = (AsyncResult)msg.obj;
+                    SwitchInfo s = (SwitchInfo)ar.userObj;
+                    Integer phoneId = s.mPhoneId;
                     long[] subId = mSubController.getSubId(phoneId);
-                    Rlog.d(LOG_TAG, "EVENT_SET_DATA_ALLOWED_DONE  phoneId :" + subId[0]);
-                    mNotifyDataSwitchInfo.notifyRegistrants(new AsyncResult(null, subId[0], null));
-                    mPhones[phoneId].updateDataConnectionTracker();
+                    Rlog.d(LOG_TAG, "EVENT_SET_DATA_ALLOWED_DONE  phoneId :" + subId[0]
+                            + ", switchInfo = " + s);
+
+                    if(ar.exception != null) {
+                        Rlog.d(LOG_TAG, "Retry, switchInfo = " + s);
+                        Message allowedDataDone = Message.obtain(this,
+                                EVENT_SET_DATA_ALLOW_DONE, s);
+                        Phone phone = mPhones[phoneId].getActivePhone();
+                        DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
+                        dcTracker.setDataAllowed(true, allowedDataDone);
+                        break;
+                    }
+                    mDdsSwitchSerializer.unLock();
+
+                    if (s.mIsDefaultDataSwitchRequested) {
+                        mNotifyDefaultDataSwitchInfo.notifyRegistrants(
+                                new AsyncResult(null, subId[0], null));
+                    } else {
+                        mNotifyOnDemandDataSwitchInfo.notifyRegistrants(
+                                new AsyncResult(null, s.mNetworkRequest, null));
+                    }
                     break;
+                }
+                case AsyncChannel.CMD_CHANNEL_HALF_CONNECTED: {
+                    if(msg.arg1 == AsyncChannel.STATUS_SUCCESSFUL) {
+                        logd("HALF_CONNECTED: Connection successful with DDS switch"
+                                + " service");
+                        mDdsSwitchPropService = (AsyncChannel) msg.obj;
+                    } else {
+                        logd("HALF_CONNECTED: Connection failed with"
+                                +" DDS switch service, err = " + msg.arg1);
+                    }
+                       break;
+                }
+
+                case AsyncChannel.CMD_CHANNEL_DISCONNECTED: {
+                    logd("Connection disconnected with DDS switch service");
+                    mDdsSwitchPropService = null;
+                    break;
+                }
+        }
+    }
+
+    class DdsSwitchSerializerHandler extends Handler {
+        final static String TAG = "DdsSwitchSerializer";
+
+        public DdsSwitchSerializerHandler(Looper looper) {
+            super(looper);
+        }
+
+        public void unLock() {
+            Rlog.d(TAG, "unLock the DdsSwitchSerializer");
+            synchronized(this) {
+                mIsDdsSwitchCompleted = true;
+                Rlog.d(TAG, "unLocked the DdsSwitchSerializer");
+                notifyAll();
             }
+
+        }
+
+        public boolean isLocked() {
+            synchronized(this) {
+                Rlog.d(TAG, "isLocked = " + !mIsDdsSwitchCompleted);
+                return !mIsDdsSwitchCompleted;
+            }
+
+        }
+
+        @Override
+        public void handleMessage (Message msg) {
+            switch(msg.what) {
+                case EVENT_START_DDS_SWITCH: {
+                    Rlog.d(TAG, "EVENT_START_DDS_SWITCH");
+
+                    try {
+                        synchronized(this) {
+                            while(!mIsDdsSwitchCompleted) {
+                                Rlog.d(TAG, "DDS switch in progress, wait");
+                                wait();
+                            }
+
+                            Rlog.d(TAG, "Locked!");
+                            mIsDdsSwitchCompleted = false;
+                        }
+                    } catch (Exception e) {
+                        Rlog.d(TAG, "Exception while serializing the DDS"
+                                + " switch request , e=" + e);
+                        return;
+                    }
+
+                    NetworkRequest n = (NetworkRequest)msg.obj;
+
+                    Rlog.d(TAG, "start the DDS switch for req " + n);
+                    long subId = mSubController.getSubIdFromNetworkRequest(n);
+
+                    if(subId == mSubController.getCurrentDds()) {
+                        Rlog.d(TAG, "No change in DDS, respond back");
+                        mIsDdsSwitchCompleted = true;
+                        mNotifyOnDemandDataSwitchInfo.notifyRegistrants(
+                                new AsyncResult(null, n, null));
+                        return;
+                    }
+                    int phoneId = mSubController.getPhoneId(subId);
+                    int prefPhoneId = mSubController.getPhoneId(
+                            mSubController.getCurrentDds());
+                    Phone phone = mPhones[prefPhoneId].getActivePhone();
+                    DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
+                    dcTracker.setDataAllowed(false, null);
+                    SwitchInfo s = new SwitchInfo(new Integer(phoneId), n, false);
+                    mPhones[prefPhoneId].registerForAllDataDisconnected(
+                            sDctController, EVENT_ALL_DATA_DISCONNECTED, s);
+
+
+                    break;
+                }
+            }
+        }
+    }
+    public boolean isDctControllerLocked() {
+        return mDdsSwitchSerializer.isLocked();
     }
 }
