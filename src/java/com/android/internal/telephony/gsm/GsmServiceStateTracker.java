@@ -1863,6 +1863,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         if (DBG) log("setNotification: put notification " + title + " / " +details);
         mNotification.tickerText = title;
+        mNotification.color = context.getResources().getColor(
+                com.android.internal.R.color.system_notification_accent_color);
         mNotification.setLatestEventInfo(context, title, details,
                 mNotification.contentIntent);
 
