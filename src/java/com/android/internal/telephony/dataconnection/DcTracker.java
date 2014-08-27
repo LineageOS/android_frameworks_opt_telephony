@@ -1880,6 +1880,9 @@ public class DcTracker extends Handler {
         if (dcac != null) {
             cancelReconnectAlarm(apnContext);
         }
+
+        setupDataForSinglePdnArbitration(apnContext.getReason());
+
         str = "cleanUpConnection: X tearDown=" + tearDown + " reason=" + apnContext.getReason();
         if (DBG) log(str + " apnContext=" + apnContext + " dcac=" + apnContext.getDcAc());
         apnContext.requestLog(str);
@@ -1942,6 +1945,23 @@ public class DcTracker extends Handler {
         ApnSetting matched = fetchDunApn();
         log("hasMatchedTetherApnSetting: APN=" + matched);
         return matched != null;
+    }
+
+    protected void setupDataForSinglePdnArbitration(String reason) {
+        // In single pdn case, if a higher priority call which was scheduled for retry gets
+        // cleaned up due to say apn disabled, we need to try setup data on connectable apns
+        // as there won't be any EVENT_DISCONNECT_DONE call back.
+        if(DBG) {
+            log("setupDataForSinglePdn: reason = " + reason
+                    + " isDisconnected = " + isDisconnected());
+        }
+        if (isOnlySingleDcAllowed(mPhone.getServiceState().getRilDataRadioTechnology())
+                && isDisconnected()
+                && !Phone.REASON_SINGLE_PDN_ARBITRATION.equals(reason)
+                && !Phone.REASON_RADIO_TURNED_OFF.equals(reason)) {
+            sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA,
+                    Phone.REASON_SINGLE_PDN_ARBITRATION));
+        }
     }
 
     /**
@@ -3242,9 +3262,11 @@ public class DcTracker extends Handler {
             }
             apnContext.setApnSetting(null);
             apnContext.setDataConnectionAc(null);
-            if (isOnlySingleDcAllowed(mPhone.getServiceState().getRilDataRadioTechnology())) {
+            if (isOnlySingleDcAllowed(mPhone.getServiceState().getRilDataRadioTechnology())
+                    && !Phone.REASON_RADIO_TURNED_OFF.equals(apnContext.getReason())) {
                 if(DBG) log("onDisconnectDone: isOnlySigneDcAllowed true so setup single apn");
-                setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION);
+                sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA,
+                        Phone.REASON_SINGLE_PDN_ARBITRATION));
             } else {
                 if(DBG) log("onDisconnectDone: not retrying");
             }
