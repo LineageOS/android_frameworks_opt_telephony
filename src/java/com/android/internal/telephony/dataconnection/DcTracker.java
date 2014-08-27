@@ -1397,9 +1397,27 @@ public final class DcTracker extends DcTrackerBase {
         if (dcac != null) {
             cancelReconnectAlarm(apnContext);
         }
+
+        setupDataForSinglePdnArbitration(apnContext.getReason());
+
         if (DBG) {
             log("cleanUpConnection: X tearDown=" + tearDown + " reason=" + apnContext.getReason() +
                     " apnContext=" + apnContext + " dcac=" + apnContext.getDcAc());
+        }
+    }
+
+    protected void setupDataForSinglePdnArbitration(String reason) {
+        // In single pdn case, if a higher priority call which was scheduled for retry gets
+        // cleaned up due to say apn disabled, we need to try setup data on connectable apns
+        // as there won't be any EVENT_DISCONNECT_DONE call back.
+        if(DBG) {
+            log("setupDataForSinglePdn: reason = " + reason
+                    + " isDisconnected = " + isDisconnected());
+        }
+        if (isOnlySingleDcAllowed(mPhone.getServiceState().getRilDataRadioTechnology())
+                && isDisconnected()
+                && !Phone.REASON_SINGLE_PDN_ARBITRATION.equals(reason)) {
+            setupDataOnConnectableApns(Phone.REASON_SINGLE_PDN_ARBITRATION);
         }
     }
 
