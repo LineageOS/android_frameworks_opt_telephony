@@ -365,6 +365,12 @@ abstract class ImsPhoneBase extends PhoneBase {
     }
 
     @Override
+    public void setCallForwardingUncondTimerOption(int startHour, int startMinute,
+            int endHour, int endMinute, int commandInterfaceCFAction,
+            int commandInterfaceCFReason, String dialingNumber, Message onComplete) {
+    }
+
+    @Override
     public void getOutgoingCallerIdDisplay(Message onComplete) {
         // FIXME: what to reply?
         AsyncResult.forMessage(onComplete, null, null);

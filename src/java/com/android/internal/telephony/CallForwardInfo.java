@@ -30,6 +30,10 @@ public class CallForwardInfo {
     public int             toa;         /* "type" from TS 27.007 7.11 */
     public String          number;      /* "number" from TS 27.007 7.11 */
     public int             timeSeconds; /* for CF no reply only */
+    public int             startHour;
+    public int             startMinute;
+    public int             endHour;
+    public int             endMinute;
 
     @Override
     public String toString() {
@@ -37,7 +41,9 @@ public class CallForwardInfo {
             + " reason: " + reason
             + " serviceClass: " + serviceClass
             + " \"" + PhoneNumberUtils.stringFromStringAndTOA(number, toa) + "\" "
-            + timeSeconds + " seconds";
+            + timeSeconds + " seconds" + " startHour:" + startHour
+            + " startMinute: " + startMinute + " endHour: " + endHour
+            + " endMinute: " + endMinute ;
 
     }
 }

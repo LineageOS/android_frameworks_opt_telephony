@@ -491,8 +491,12 @@ public class ImsPhone extends ImsPhoneBase {
             return null;
         }
 
-        // Only look at the Network portion for mmi
-        String networkPortion = PhoneNumberUtils.extractNetworkPortionAlt(newDialString);
+        String networkPortion = newDialString;
+        if (!ImsPhoneMmiCode.isScMatchesSuppServType(newDialString)) {
+            // Only look at the Network portion for mmi
+            networkPortion = PhoneNumberUtils.extractNetworkPortionAlt(newDialString);
+        }
+
         ImsPhoneMmiCode mmi =
                 ImsPhoneMmiCode.newFromDialString(networkPortion, this);
         if (DBG) Rlog.d(LOG_TAG,
@@ -696,6 +700,38 @@ public class ImsPhone extends ImsPhoneBase {
             sendErrorResponse(onComplete);
         }
     }
+
+    @Override
+    public void setCallForwardingUncondTimerOption(int startHour, int startMinute,
+            int endHour, int endMinute, int commandInterfaceCFAction,
+            int commandInterfaceCFReason, String dialingNumber, Message onComplete) {
+        if (DBG) Rlog.d(LOG_TAG, "setCallForwardingUncondTimerOption action="
+                + commandInterfaceCFAction + ", reason=" + commandInterfaceCFReason
+                + ", startHour=" + startHour + ", startMinute=" + startMinute
+                + ", endHour=" + endHour + ", endMinute=" + endMinute);
+        if ((isValidCommandInterfaceCFAction(commandInterfaceCFAction)) &&
+                (isValidCommandInterfaceCFReason(commandInterfaceCFReason))) {
+            Message resp;
+            Cf cf = new Cf(dialingNumber,
+                    (commandInterfaceCFReason == CF_REASON_UNCONDITIONAL ? true : false),
+                    onComplete);
+            resp = obtainMessage(EVENT_SET_CALL_FORWARD_TIMER_DONE,
+                    isCfEnable(commandInterfaceCFAction) ? 1 : 0, 0, cf);
+
+            try {
+                ImsUtInterface ut = mCT.getUtInterface();
+                ut.updateCallForwardUncondTimer(startHour, startMinute, endHour,
+                        endMinute, getActionFromCFAction(commandInterfaceCFAction),
+                        getConditionFromCFReason(commandInterfaceCFReason),
+                        dialingNumber, resp);
+             } catch (ImsException e) {
+                sendErrorResponse(onComplete, e);
+             }
+        } else if (onComplete != null) {
+            sendErrorResponse(onComplete);
+        }
+    }
+
 
     @Override
     public void getCallWaiting(Message onComplete) {
@@ -988,6 +1024,10 @@ public class ImsPhone extends ImsPhoneBase {
         cfInfo.toa = info.mToA;
         cfInfo.number = info.mNumber;
         cfInfo.timeSeconds = info.mTimeSeconds;
+        cfInfo.startHour = info.mStartHour;
+        cfInfo.startMinute = info.mStartMinute;
+        cfInfo.endHour = info.mEndHour;
+        cfInfo.endMinute = info.mEndMinute;
         return cfInfo;
     }
 
@@ -1083,6 +1123,11 @@ public class ImsPhone extends ImsPhoneBase {
                     cfInfos = handleCfQueryResult((ImsCallForwardInfo[])ar.result);
                 }
                 sendResponse((Message) ar.userObj, cfInfos, ar.exception);
+                break;
+
+             case EVENT_SET_CALL_FORWARD_TIMER_DONE:
+                Cf cft = (Cf) ar.userObj;
+                sendResponse(cft.mOnComplete, null, ar.exception);
                 break;
 
              case EVENT_GET_CALL_BARRING_DONE:
