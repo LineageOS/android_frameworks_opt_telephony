@@ -52,10 +52,7 @@ public class ImsPhoneConnection extends Connection {
     private ImsPhoneCall mParent;
     private ImsCall mImsCall;
 
-    private String mAddress;     // MAY BE NULL!!!
-    private String mDialString;          // outgoing calls only
     private String mPostDialString;      // outgoing calls only
-    private boolean mIsIncoming;
     private boolean mDisconnected;
 
     /*
@@ -67,25 +64,12 @@ public class ImsPhoneConnection extends Connection {
      * These time/timespan values are based on System.currentTimeMillis(),
      * i.e., "wall clock" time.
      */
-    private long mCreateTime;
-    private long mConnectTime;
     private long mDisconnectTime;
-
-    /*
-     * These time/timespan values are based on SystemClock.elapsedRealTime(),
-     * i.e., time since boot.  They are appropriate for comparison and
-     * calculating deltas.
-     */
-    private long mConnectTimeReal;
-    private long mDuration;
-    private long mHoldingStartTime;  // The time when the Connection last transitioned
-                            // into HOLDING
 
     private int mNextPostDialChar;       // index into postDialString
 
     private int mCause = DisconnectCause.NOT_DISCONNECTED;
     private PostDialState mPostDialState = PostDialState.NOT_STARTED;
-    private int mNumberPresentation = PhoneConstants.PRESENTATION_ALLOWED;
     private UUSInfo mUusInfo;
 
     private boolean mIsMultiparty = false;
@@ -246,44 +230,13 @@ public class ImsPhoneConnection extends Connection {
     }
 
     @Override
-    public String getAddress() {
-        return mAddress;
-    }
-
-    @Override
     public ImsPhoneCall getCall() {
         return mParent;
     }
 
     @Override
-    public long getCreateTime() {
-        return mCreateTime;
-    }
-
-    @Override
-    public long getConnectTime() {
-        return mConnectTime;
-    }
-
-    @Override
-    public long getConnectTimeReal() {
-        return mConnectTimeReal;
-    }
-
-    @Override
     public long getDisconnectTime() {
         return mDisconnectTime;
-    }
-
-    @Override
-    public long getDurationMillis() {
-        if (mConnectTimeReal == 0) {
-            return 0;
-        } else if (mDuration == 0) {
-            return SystemClock.elapsedRealtime() - mConnectTimeReal;
-        } else {
-            return mDuration;
-        }
     }
 
     @Override
@@ -312,11 +265,6 @@ public class ImsPhoneConnection extends Connection {
 
     public ImsPhoneCallTracker getOwner () {
         return mOwner;
-    }
-
-    @Override
-    public boolean isIncoming() {
-        return mIsIncoming;
     }
 
     @Override

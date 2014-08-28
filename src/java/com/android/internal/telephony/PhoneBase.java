@@ -29,6 +29,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
@@ -241,6 +242,9 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     protected final RegistrantList mPreciseCallStateRegistrants
             = new RegistrantList();
+
+    protected final RegistrantList mHandoverRegistrants
+             = new RegistrantList();
 
     protected final RegistrantList mNewRingingConnectionRegistrants
             = new RegistrantList();
@@ -605,6 +609,46 @@ public abstract class PhoneBase extends Handler implements Phone {
         mPreciseCallStateRegistrants.notifyRegistrants(ar);
 
         mNotifier.notifyPreciseCallState(this);
+    }
+
+    @Override
+    public void registerForHandoverStateChanged(Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+        mHandoverRegistrants.addUnique(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForHandoverStateChanged(Handler h) {
+        mHandoverRegistrants.remove(h);
+    }
+
+    /**
+     * Subclasses of Phone probably want to replace this with a
+     * version scoped to their packages
+     */
+    public void notifyHandoverStateChanged(Connection cn) {
+       AsyncResult ar = new AsyncResult(null, cn, null);
+       mHandoverRegistrants.notifyRegistrants(ar);
+    }
+
+    public void migrateFrom(PhoneBase from) {
+        migrate(mHandoverRegistrants, from.mHandoverRegistrants);
+        migrate(mPreciseCallStateRegistrants, from.mPreciseCallStateRegistrants);
+        migrate(mNewRingingConnectionRegistrants, from.mNewRingingConnectionRegistrants);
+        migrate(mIncomingRingRegistrants, from.mIncomingRingRegistrants);
+        migrate(mDisconnectRegistrants, from.mDisconnectRegistrants);
+        migrate(mServiceStateRegistrants, from.mServiceStateRegistrants);
+        migrate(mMmiCompleteRegistrants, from.mMmiCompleteRegistrants);
+        migrate(mMmiRegistrants, from.mMmiRegistrants);
+        migrate(mUnknownConnectionRegistrants, from.mUnknownConnectionRegistrants);
+        migrate(mSuppServiceFailedRegistrants, from.mSuppServiceFailedRegistrants);
+    }
+
+    public void migrate(RegistrantList to, RegistrantList from) {
+        from.removeCleared();
+        for (int i = 0, n = from.size(); i < n; i++) {
+            to.add((Registrant) from.get(i));
+        }
     }
 
     // Inherited documentation suffices.

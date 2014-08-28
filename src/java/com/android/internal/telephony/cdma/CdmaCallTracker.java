@@ -33,6 +33,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.DriverCall;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyProperties;
 
@@ -196,8 +197,8 @@ public final class CdmaCallTracker extends CallTracker {
                 this, mForegroundCall);
         mHangupPendingMO = false;
 
-        if (mPendingMO.mAddress == null || mPendingMO.mAddress.length() == 0
-            || mPendingMO.mAddress.indexOf(PhoneNumberUtils.WILD) >= 0) {
+        if ( mPendingMO.getAddress() == null || mPendingMO.getAddress().length() == 0
+                || mPendingMO.getAddress().indexOf(PhoneNumberUtils.WILD) >= 0 ) {
             // Phone number is invalid
             mPendingMO.mCause = DisconnectCause.INVALID_NUMBER;
 
@@ -213,7 +214,7 @@ public final class CdmaCallTracker extends CallTracker {
 
             // In Ecm mode, if another emergency call is dialed, Ecm mode will not exit.
             if(!isPhoneInEcmMode || (isPhoneInEcmMode && isEmergencyCall)) {
-                mCi.dial(mPendingMO.mAddress, clirMode, obtainCompleteMessage());
+                mCi.dial(mPendingMO.getAddress(), clirMode, obtainCompleteMessage());
             } else {
                 mPhone.exitEmergencyCallbackMode();
                 mPhone.setOnEcbModeExitResponse(this,EVENT_EXIT_ECM_RESPONSE_CDMA, null);
@@ -243,7 +244,7 @@ public final class CdmaCallTracker extends CallTracker {
             // Attach the new connection to foregroundCall
             mPendingMO = new CdmaConnection(mPhone.getContext(),
                                 checkForTestEmergencyNumber(dialString), this, mForegroundCall);
-            mCi.sendCDMAFeatureCode(mPendingMO.mAddress,
+            mCi.sendCDMAFeatureCode(mPendingMO.getAddress(),
                 obtainMessage(EVENT_THREE_WAY_DIAL_L2_RESULT_CDMA));
             return mPendingMO;
         }
@@ -532,10 +533,20 @@ public final class CdmaCallTracker extends CallTracker {
                     if (Phone.DEBUG_PHONE) {
                         log("pendingMo=" + mPendingMO + ", dc=" + dc);
                     }
-                    // find if the MT call is a new ring or unknown connection
-                    newRinging = checkMtFindNewRinging(dc,i);
-                    if (newRinging == null) {
-                        unknownConnectionAppeared = true;
+                    mConnections[i] = new CdmaConnection(mPhone.getContext(), dc, this, i);
+
+                    if (mHandoverConnection != null) {
+                        // Single Radio Voice Call Continuity (SRVCC) completed
+                        mPhone.migrateFrom((PhoneBase) mPhone.getImsPhone());
+                        mConnections[i].migrateFrom(mHandoverConnection);
+                        mPhone.notifyHandoverStateChanged(mConnections[i]);
+                        mHandoverConnection = null;
+                    } else {
+                        // find if the MT call is a new ring or unknown connection
+                        newRinging = checkMtFindNewRinging(dc,i);
+                        if (newRinging == null) {
+                            unknownConnectionAppeared = true;
+                        }
                     }
                     checkAndEnableDataCallAfterEmergencyCallDropped();
                 }
@@ -985,12 +996,12 @@ public final class CdmaCallTracker extends CallTracker {
             break;
 
             case EVENT_EXIT_ECM_RESPONSE_CDMA:
-               //no matter the result, we still do the same here
-               if (mPendingCallInEcm) {
-                   mCi.dial(mPendingMO.mAddress, mPendingCallClirMode, obtainCompleteMessage());
-                   mPendingCallInEcm = false;
-               }
-               mPhone.unsetOnEcbModeExitResponse(this);
+                // no matter the result, we still do the same here
+                if (mPendingCallInEcm) {
+                    mCi.dial(mPendingMO.getAddress(), mPendingCallClirMode, obtainCompleteMessage());
+                    mPendingCallInEcm = false;
+                }
+                mPhone.unsetOnEcbModeExitResponse(this);
             break;
 
             case EVENT_CALL_WAITING_INFO_CDMA:
@@ -1066,7 +1077,6 @@ public final class CdmaCallTracker extends CallTracker {
 
         Connection newRinging = null;
 
-        mConnections[i] = new CdmaConnection(mPhone.getContext(), dc, this, i);
         // it's a ringing call
         if (mConnections[i].getCall() == mRingingCall) {
             newRinging = mConnections[i];
