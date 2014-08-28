@@ -1467,7 +1467,7 @@ public abstract class SMSDispatcher extends Handler {
             return null;
         }
 
-        List<String> carrierPackages = card.getCarrierPackageNamesForBroadcastIntent(
+        List<String> carrierPackages = card.getCarrierPackageNamesForIntent(
             mContext.getPackageManager(), intent);
         return (carrierPackages != null && carrierPackages.size() == 1) ?
                 carrierPackages.get(0) : null;

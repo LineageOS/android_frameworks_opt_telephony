@@ -522,12 +522,12 @@ public class UiccCard {
     }
 
     /**
-     * Exposes {@link UiccCarrierPrivilegeRules.getCarrierPackageNamesForBroadcastIntent}.
+     * Exposes {@link UiccCarrierPrivilegeRules.getCarrierPackageNamesForIntent}.
      */
-    public List<String> getCarrierPackageNamesForBroadcastIntent(
+    public List<String> getCarrierPackageNamesForIntent(
             PackageManager packageManager, Intent intent) {
         return mCarrierPrivilegeRules == null ? null :
-            mCarrierPrivilegeRules.getCarrierPackageNamesForBroadcastIntent(
+            mCarrierPrivilegeRules.getCarrierPackageNamesForIntent(
                     packageManager, intent);
     }
 
