@@ -19,6 +19,7 @@ package com.android.internal.telephony.imsphone;
 import android.content.Context;
 import android.content.res.Resources;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.PhoneNumberUtils;
@@ -28,6 +29,7 @@ import android.telephony.Rlog;
 
 import com.android.ims.ImsException;
 import com.android.ims.ImsReasonInfo;
+import com.android.ims.ImsSsInfo;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CommandException;
@@ -140,6 +142,23 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     //***** Calling Line Presentation Constants
     private static final int NUM_PRESENTATION_ALLOWED     = 0;
     private static final int NUM_PRESENTATION_RESTRICTED  = 1;
+
+    //***** Supplementary Service Query Bundle Keys
+    // Used by IMS Service layer to put supp. serv. query
+    // responses into the ssInfo Bundle.
+    public static final String UT_BUNDLE_KEY_CLIR = "queryClir";
+    public static final String UT_BUNDLE_KEY_SSINFO = "imsSsInfo";
+
+    //***** Calling Line Identity Restriction Constants
+    // The 'm' parameter from TS 27.007 7.7
+    private static final int CLIR_NOT_PROVISIONED                    = 0;
+    private static final int CLIR_PROVISIONED_PERMANENT              = 1;
+    private static final int CLIR_PRESENTATION_RESTRICTED_TEMPORARY  = 3;
+    private static final int CLIR_PRESENTATION_ALLOWED_TEMPORARY     = 4;
+    // The 'n' parameter from TS 27.007 7.7
+    private static final int CLIR_DEFAULT     = 0;
+    private static final int CLIR_INVOCATION  = 1;
+    private static final int CLIR_SUPPRESSION = 2;
 
     //***** Instance Variables
 
@@ -835,7 +854,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 } else if (isInterrogate()) {
                     try {
                         mPhone.mCT.getUtInterface()
-                            .queryCOLR(obtainMessage(EVENT_QUERY_COMPLETE, this));
+                            .queryCOLR(obtainMessage(EVENT_SUPP_SVC_QUERY_COMPLETE, this));
                     } catch (ImsException e) {
                         Rlog.d(LOG_TAG, "Could not get UT handle for queryCOLR.");
                     }
@@ -1009,6 +1028,11 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             case EVENT_SUPP_SVC_QUERY_COMPLETE:
                 ar = (AsyncResult) (msg.obj);
                 onSuppSvcQueryComplete(ar);
+                break;
+
+            case EVENT_GET_CLIR_COMPLETE:
+                ar = (AsyncResult) (msg.obj);
+                onQueryClirComplete(ar);
                 break;
 
             default:
@@ -1293,6 +1317,138 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 }
             } else {
                 sb.append(getErrorMessage(ar));
+            }
+        } else {
+            mState = State.FAILED;
+            ImsSsInfo ssInfo = null;
+            if (ar.result instanceof Bundle) {
+                Rlog.d(LOG_TAG, "Received CLIP/COLP/COLR Response.");
+                // Response for CLIP, COLP and COLR queries.
+                Bundle ssInfoResp = (Bundle) ar.result;
+                ssInfo = (ImsSsInfo) ssInfoResp.getParcelable(UT_BUNDLE_KEY_SSINFO);
+                if (ssInfo != null) {
+                    Rlog.d(LOG_TAG, "ImsSsInfo mStatus = " + ssInfo.mStatus);
+                    if (ssInfo.mStatus == ImsSsInfo.DISABLED) {
+                        sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
+                        mState = State.COMPLETE;
+                    } else if (ssInfo.mStatus == ImsSsInfo.ENABLED) {
+                        sb.append(mContext.getText(com.android.internal.R.string.serviceEnabled));
+                        mState = State.COMPLETE;
+                    } else {
+                        sb.append(mContext.getText(com.android.internal.R.string.mmiError));
+                    }
+                } else {
+                    sb.append(mContext.getText(com.android.internal.R.string.mmiError));
+                }
+
+            } else {
+                Rlog.d(LOG_TAG, "Received Call Barring Response.");
+                // Response for Call Barring queries.
+                int[] cbInfos = (int[]) ar.result;
+                // Check if ImsPhone has received call barring
+                // enabled for service class voice.
+                if (cbInfos[0] == 1) {
+                    sb.append(mContext.getText(com.android.internal.R.string.serviceEnabled));
+                    mState = State.COMPLETE;
+                } else {
+                    sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
+                    mState = State.COMPLETE;
+                }
+            }
+
+        }
+
+        mMessage = sb;
+        mPhone.onMMIDone(this);
+    }
+
+    private void onQueryClirComplete(AsyncResult ar) {
+        StringBuilder sb = new StringBuilder(getScString());
+        sb.append("\n");
+        mState = State.FAILED;
+
+        if (ar.exception != null) {
+
+            if (ar.exception instanceof ImsException) {
+                ImsException error = (ImsException) ar.exception;
+                if (error.getMessage() != null) {
+                    sb.append(error.getMessage());
+                } else {
+                    sb.append(getErrorMessage(ar));
+                }
+            }
+        } else {
+            Bundle ssInfo = (Bundle) ar.result;
+            int[] clirInfo = ssInfo.getIntArray(UT_BUNDLE_KEY_CLIR);
+            // clirInfo[0] = The 'n' parameter from TS 27.007 7.7
+            // clirInfo[1] = The 'm' parameter from TS 27.007 7.7
+            Rlog.d(LOG_TAG, "CLIR param n=" + clirInfo[0]
+                    + " m=" + clirInfo[1]);
+
+            // 'm' parameter.
+            switch (clirInfo[1]) {
+                case CLIR_NOT_PROVISIONED:
+                    sb.append(mContext.getText(
+                            com.android.internal.R.string.serviceNotProvisioned));
+                    mState = State.COMPLETE;
+                    break;
+                case CLIR_PROVISIONED_PERMANENT:
+                    sb.append(mContext.getText(
+                            com.android.internal.R.string.CLIRPermanent));
+                    mState = State.COMPLETE;
+                    break;
+                case CLIR_PRESENTATION_RESTRICTED_TEMPORARY:
+                    // 'n' parameter.
+                    switch (clirInfo[0]) {
+                        case CLIR_DEFAULT:
+                            sb.append(mContext.getText(
+                                    com.android.internal.R.string.CLIRDefaultOnNextCallOn));
+                            mState = State.COMPLETE;
+                            break;
+                        case CLIR_INVOCATION:
+                            sb.append(mContext.getText(
+                                    com.android.internal.R.string.CLIRDefaultOnNextCallOn));
+                            mState = State.COMPLETE;
+                            break;
+                        case CLIR_SUPPRESSION:
+                            sb.append(mContext.getText(
+                                    com.android.internal.R.string.CLIRDefaultOnNextCallOff));
+                            mState = State.COMPLETE;
+                            break;
+                        default:
+                            sb.append(mContext.getText(
+                                    com.android.internal.R.string.mmiError));
+                            mState = State.FAILED;
+                    }
+                    break;
+                case CLIR_PRESENTATION_ALLOWED_TEMPORARY:
+                    // 'n' parameter.
+                    switch (clirInfo[0]) {
+                        case CLIR_DEFAULT:
+                            sb.append(mContext.getText(
+                                    com.android.internal.R.string.CLIRDefaultOffNextCallOff));
+                            mState = State.COMPLETE;
+                            break;
+                        case CLIR_INVOCATION:
+                            sb.append(mContext.getText(
+                                    com.android.internal.R.string.CLIRDefaultOffNextCallOn));
+                            mState = State.COMPLETE;
+                            break;
+                        case CLIR_SUPPRESSION:
+                            sb.append(mContext.getText(
+                                    com.android.internal.R.string.CLIRDefaultOffNextCallOff));
+                            mState = State.COMPLETE;
+                            break;
+                        default:
+                            sb.append(mContext.getText(
+                                    com.android.internal.R.string.mmiError));
+                            mState = State.FAILED;
+                    }
+                    break;
+                default:
+                    sb.append(mContext.getText(
+                            com.android.internal.R.string.mmiError));
+                    mState = State.FAILED;
             }
         }
 
