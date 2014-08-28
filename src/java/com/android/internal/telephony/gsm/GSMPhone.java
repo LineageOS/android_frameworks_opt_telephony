@@ -61,6 +61,7 @@ import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
 import com.android.internal.telephony.MmiCode;
@@ -1190,6 +1191,41 @@ public class GSMPhone extends PhoneBase {
                     dialingNumber,
                     timerSeconds,
                     resp);
+        }
+    }
+
+    @Override
+    public void setCallForwardingUncondTimerOption(int startHour, int startMinute,
+            int endHour, int endMinute, int commandInterfaceCFAction,
+            int commandInterfaceCFReason, String dialingNumber, Message onComplete) {
+
+        ImsPhone imsPhone = mImsPhone;
+        if (imsPhone != null) {
+            imsPhone.setCallForwardingUncondTimerOption(startHour, startMinute, endHour,
+                    endMinute, commandInterfaceCFAction, commandInterfaceCFReason,
+                    dialingNumber, onComplete);
+        } else {
+            if (onComplete != null) {
+                AsyncResult.forMessage(onComplete, null,
+                        new CommandException(CommandException.Error.GENERIC_FAILURE));
+                onComplete.sendToTarget();
+           }
+        }
+    }
+
+    @Override
+    public void getCallForwardingUncondTimerOption(int commandInterfaceCFReason,
+            Message onComplete) {
+
+        ImsPhone imsPhone = mImsPhone;
+        if (imsPhone != null) {
+            imsPhone.getCallForwardingOption(commandInterfaceCFReason, onComplete);
+        } else {
+            if (onComplete != null) {
+                AsyncResult.forMessage(onComplete, null,
+                        new CommandException(CommandException.Error.GENERIC_FAILURE));
+                onComplete.sendToTarget();
+            }
         }
     }
 

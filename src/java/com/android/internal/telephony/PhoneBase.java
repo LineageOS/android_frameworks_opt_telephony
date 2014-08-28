@@ -156,7 +156,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_INITIATE_SILENT_REDIAL         = 32;
     protected static final int EVENT_UNSOL_OEM_HOOK_RAW             = 33;
     protected static final int EVENT_SS                             = 34;
-    protected static final int EVENT_LAST                           = EVENT_SS;
+    protected static final int EVENT_SET_CALL_FORWARD_TIMER_DONE    = 35;
+    protected static final int EVENT_GET_CALL_FORWARD_TIMER_DONE    = 36;
+    protected static final int EVENT_LAST                   = EVENT_GET_CALL_FORWARD_TIMER_DONE;
 
 
     // Key used to read/write current CLIR setting
@@ -1193,6 +1195,20 @@ public abstract class PhoneBase extends Handler implements Phone {
     public boolean getCallForwardingIndicator() {
         IccRecords r = mIccRecords.get();
         return (r != null) ? r.getVoiceCallForwardingFlag() : false;
+    }
+
+    @Override
+    public void setCallForwardingUncondTimerOption(int startHour, int startMinute,
+            int endHour, int endMinute, int commandInterfaceCFReason,
+            int commandInterfaceCFAction, String dialingNumber,
+            Message onComplete) {
+        Rlog.e(LOG_TAG, "setCallForwardingUncondTimerOption error ");
+    }
+
+    @Override
+    public void getCallForwardingUncondTimerOption(int commandInterfaceCFReason,
+            Message onComplete) {
+        Rlog.e(LOG_TAG, "getCallForwardingUncondTimerOption error ");
     }
 
     /**

@@ -999,6 +999,39 @@ public class CDMAPhone extends PhoneBase {
     }
 
     @Override
+    public void getCallForwardingUncondTimerOption(int commandInterfaceCFReason,
+            Message onComplete) {
+        ImsPhone imsPhone = mImsPhone;
+        if (imsPhone != null) {
+            imsPhone.getCallForwardingOption(commandInterfaceCFReason, onComplete);
+        } else {
+            if (onComplete != null) {
+                AsyncResult.forMessage(onComplete, null,
+                        new CommandException(CommandException.Error.GENERIC_FAILURE));
+                onComplete.sendToTarget();
+            }
+        }
+    }
+
+    @Override
+    public void setCallForwardingUncondTimerOption(int startHour, int startMinute,
+            int endHour, int endMinute, int commandInterfaceCFAction,
+            int commandInterfaceCFReason, String dialingNumber, Message onComplete) {
+        ImsPhone imsPhone = mImsPhone;
+        if (imsPhone != null) {
+            imsPhone.setCallForwardingUncondTimerOption(startHour, startMinute, endHour,
+                    endMinute, commandInterfaceCFAction, commandInterfaceCFReason,
+                    dialingNumber, onComplete);
+        } else {
+            if (onComplete != null) {
+                AsyncResult.forMessage(onComplete, null,
+                        new CommandException(CommandException.Error.GENERIC_FAILURE));
+                onComplete.sendToTarget();
+           }
+        }
+    }
+
+    @Override
     public void
     getOutgoingCallerIdDisplay(Message onComplete) {
         Rlog.e(LOG_TAG, "getOutgoingCallerIdDisplay: not possible in CDMA");

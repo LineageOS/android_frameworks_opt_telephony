@@ -797,11 +797,28 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public void getCallForwardingUncondTimerOption(int commandInterfaceCFReason,
+            Message onComplete) {
+        mActivePhone.getCallForwardingUncondTimerOption(commandInterfaceCFReason,
+                onComplete);
+    }
+
+    @Override
     public void setCallForwardingOption(int commandInterfaceCFReason,
             int commandInterfaceCFAction, String dialingNumber,
             int timerSeconds, Message onComplete) {
         mActivePhone.setCallForwardingOption(commandInterfaceCFReason,
             commandInterfaceCFAction, dialingNumber, timerSeconds, onComplete);
+    }
+
+    @Override
+    public void setCallForwardingUncondTimerOption(int startHour, int startMinute,
+             int endHour, int endMinute, int commandInterfaceCFReason,
+            int commandInterfaceCFAction, String dialingNumber,
+            Message onComplete) {
+        mActivePhone.setCallForwardingUncondTimerOption(startHour, startMinute,
+            endHour, endMinute, commandInterfaceCFReason,
+            commandInterfaceCFAction, dialingNumber, onComplete);
     }
 
     @Override

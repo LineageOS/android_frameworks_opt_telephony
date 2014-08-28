@@ -1007,6 +1007,20 @@ public interface Phone {
                                   Message onComplete);
 
     /**
+     * getCallForwardingUncondTimerOptions
+     * gets a call forwarding option. The return value of
+     * ((AsyncResult)onComplete.obj) is an array of CallForwardInfo.
+     *
+     * @param commandInterfaceCFReason is one of the valid call forwarding
+     *        CF_REASONS, as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param onComplete a callback message when the action is completed.
+     *        @see com.android.internal.telephony.CallForwardInfo for details.
+     */
+    void getCallForwardingUncondTimerOption(int commandInterfaceCFReason,
+                                  Message onComplete);
+
+    /**
      * setCallForwardingOptions
      * sets a call forwarding option.
      *
@@ -1025,6 +1039,30 @@ public interface Phone {
                                  int commandInterfaceCFAction,
                                  String dialingNumber,
                                  int timerSeconds,
+                                 Message onComplete);
+
+    /**
+     * setCallForwardingUncondTimerOptions
+     * sets a call forwarding unconditional Timer option.
+     *
+     * @param startHour indicates starting hour
+     * @param startMinute indicates starting minute
+     * @param endHour indicates ending hour
+     * @param endMinute indicates ending minute
+     * @param commandInterfaceCFReason is one of the valid call forwarding
+     *        CF_REASONS, as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param commandInterfaceCFAction is one of the valid call forwarding
+     *        CF_ACTIONS, as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param dialingNumber is the target phone number to forward calls to
+     * @param onComplete a callback message when the action is completed.
+     */
+    void setCallForwardingUncondTimerOption(int startHour, int startMinute,
+                                 int endHour, int endMinute,
+                                 int commandInterfaceCFReason,
+                                 int commandInterfaceCFAction,
+                                 String dialingNumber,
                                  Message onComplete);
 
     /**
