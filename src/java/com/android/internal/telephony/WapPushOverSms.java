@@ -199,7 +199,12 @@ public class WapPushOverSms implements ServiceConnection {
 
             if (SmsManager.getDefault().getAutoPersisting()) {
                 // Store the wap push data in telephony
-                writeInboxMessage(intentData);
+                long [] subIds = SubscriptionManager.getSubId(phoneId);
+                // FIXME (tomtaylor) - when we've updated SubscriptionManager, change
+                // SubscriptionManager.DEFAULT_SUB_ID to SubscriptionManager.getDefaultSmsSubId()
+                long subId = (subIds != null) && (subIds.length > 0) ? subIds[0] :
+                    SmsManager.getDefault().getPreferredSmsSubscription();
+                writeInboxMessage(subId, intentData);
             }
 
             /**
@@ -297,7 +302,7 @@ public class WapPushOverSms implements ServiceConnection {
         }
     }
 
-    private void writeInboxMessage(byte[] pushData) {
+    private void writeInboxMessage(long subId, byte[] pushData) {
         final GenericPdu pdu = new PduParser(pushData).parse();
         if (pdu == null) {
             Rlog.e(TAG, "Invalid PUSH PDU");
@@ -342,7 +347,7 @@ public class WapPushOverSms implements ServiceConnection {
                 case MESSAGE_TYPE_NOTIFICATION_IND: {
                     final NotificationInd nInd = (NotificationInd) pdu;
 
-                    if (MessagingConfigurationManager.getDefault().getCarrierConfigBoolean(
+                    if (MessagingConfigurationManager.getDefault().getCarrierConfigBoolean(subId,
                             MessagingConfigurationManager.CONF_APPEND_TRANSACTION_ID, false)) {
                         final byte [] contentLocation = nInd.getContentLocation();
                         if ('=' == contentLocation[contentLocation.length - 1]) {
