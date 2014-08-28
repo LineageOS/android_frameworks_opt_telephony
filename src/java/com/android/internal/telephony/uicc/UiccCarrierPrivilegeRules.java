@@ -269,15 +269,20 @@ public class UiccCarrierPrivilegeRules extends Handler {
      * Returns the package name of the carrier app that should handle the input intent.
      *
      * @param packageManager PackageManager for getting receivers.
-     * @param intent Intent that will be broadcast.
+     * @param intent Intent that will be sent.
      * @return list of carrier app package names that can handle the intent.
      *         Returns null if there is an error and an empty list if there
      *         are no matching packages.
      */
-    public List<String> getCarrierPackageNamesForBroadcastIntent(
+    public List<String> getCarrierPackageNamesForIntent(
             PackageManager packageManager, Intent intent) {
         List<String> packages = new ArrayList<String>();
-        List<ResolveInfo> receivers = packageManager.queryBroadcastReceivers(intent, 0);
+        List<ResolveInfo> receivers = new ArrayList<ResolveInfo>();
+        receivers.addAll(packageManager.queryBroadcastReceivers(intent, 0));
+        receivers.addAll(packageManager.queryIntentContentProviders(intent, 0));
+        receivers.addAll(packageManager.queryIntentActivities(intent, 0));
+        receivers.addAll(packageManager.queryIntentServices(intent, 0));
+
         for (ResolveInfo resolveInfo : receivers) {
             if (resolveInfo.activityInfo == null) {
                 continue;

@@ -743,7 +743,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         List<String> carrierPackages = null;
         UiccCard card = UiccController.getInstance().getUiccCard();
         if (card != null) {
-            carrierPackages = card.getCarrierPackageNamesForBroadcastIntent(
+            carrierPackages = card.getCarrierPackageNamesForIntent(
                     mContext.getPackageManager(), intent);
         }
         if (carrierPackages != null && carrierPackages.size() == 1) {
