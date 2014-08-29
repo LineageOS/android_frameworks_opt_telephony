@@ -38,6 +38,7 @@ import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.DriverCall;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
@@ -201,8 +202,8 @@ public final class GsmCallTracker extends CallTracker {
                 this, mForegroundCall);
         mHangupPendingMO = false;
 
-        if (mPendingMO.mAddress == null || mPendingMO.mAddress.length() == 0
-            || mPendingMO.mAddress.indexOf(PhoneNumberUtils.WILD) >= 0
+        if ( mPendingMO.getAddress() == null || mPendingMO.getAddress().length() == 0
+                || mPendingMO.getAddress().indexOf(PhoneNumberUtils.WILD) >= 0
         ) {
             // Phone number is invalid
             mPendingMO.mCause = DisconnectCause.INVALID_NUMBER;
@@ -214,7 +215,7 @@ public final class GsmCallTracker extends CallTracker {
             // Always unmute when initiating a new call
             setMute(false);
 
-            mCi.dial(mPendingMO.mAddress, clirMode, uusInfo, obtainCompleteMessage());
+            mCi.dial(mPendingMO.getAddress(), clirMode, uusInfo, obtainCompleteMessage());
         }
 
         updatePhoneState();
@@ -486,7 +487,9 @@ public final class GsmCallTracker extends CallTracker {
                         newRinging = mConnections[i];
                     } else if (mHandoverConnection != null) {
                         // Single Radio Voice Call Continuity (SRVCC) completed
+                        mPhone.migrateFrom((PhoneBase) mPhone.getImsPhone());
                         mConnections[i].migrateFrom(mHandoverConnection);
+                        mPhone.notifyHandoverStateChanged(mConnections[i]);
                         mHandoverConnection = null;
                     } else {
                         // Something strange happened: a call appeared

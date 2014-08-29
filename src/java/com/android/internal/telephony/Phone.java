@@ -315,6 +315,16 @@ public interface Phone {
     void unregisterForUnknownConnection(Handler h);
 
     /**
+     * Notifies when a Handover happens due to SRVCC or Silent Redial
+     */
+    void registerForHandoverStateChanged(Handler h, int what, Object obj);
+
+    /**
+     * Unregisters for handover state notifications
+     */
+    void unregisterForHandoverStateChanged(Handler h);
+
+    /**
      * Register for getting notifications for change in the Call State {@link Call.State}
      * This is called PreciseCallState because the call state is more precise than the
      * {@link PhoneConstants.State} which can be obtained using the {@link PhoneStateListener}
@@ -330,7 +340,6 @@ public interface Phone {
      * Extraneous calls are tolerated silently.
      */
     void unregisterForPreciseCallStateChanged(Handler h);
-
 
     /**
      * Notifies when a new ringing or waiting connection has appeared.<p>
