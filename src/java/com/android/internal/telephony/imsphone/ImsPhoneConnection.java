@@ -618,50 +618,51 @@ public class ImsPhoneConnection extends Connection {
 
         changed = mParent.update(this, imsCall, state);
 
-        // Check for a change in the video capabilities for the call and update the
-        // {@link ImsPhoneConnection} with this information.
-        try {
-            // Get the current local VT capabilities (i.e. even if currentCallType above is
-            // audio-only, the local capability could support bi-directional video).
-            ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
-            if (localCallProfile != null) {
-                int localCallTypeCapability = localCallProfile.mCallType;
-                boolean newLocalVideoCapable = localCallTypeCapability
-                        == ImsCallProfile.CALL_TYPE_VT;
+        if (imsCall != null) {
+            // Check for a change in the video capabilities for the call and update the
+            // {@link ImsPhoneConnection} with this information.
+            try {
+                // Get the current local VT capabilities (i.e. even if currentCallType above is
+                // audio-only, the local capability could support bi-directional video).
+                ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
+                if (localCallProfile != null) {
+                    int localCallTypeCapability = localCallProfile.mCallType;
+                    boolean newLocalVideoCapable = localCallTypeCapability
+                            == ImsCallProfile.CALL_TYPE_VT;
 
-                if (isLocalVideoCapable() != newLocalVideoCapable) {
-                    setLocalVideoCapable(newLocalVideoCapable);
+                    if (isLocalVideoCapable() != newLocalVideoCapable) {
+                        setLocalVideoCapable(newLocalVideoCapable);
+                        changed = true;
+                    }
+                }
+            } catch (ImsException e) {
+                // No session in place -- no change
+            }
+
+            // Check for a change in the call type / video state, or audio quality of the
+            // {@link ImsCall} and update the {@link ImsPhoneConnection} with this information.
+            ImsCallProfile callProfile = imsCall.getCallProfile();
+            if (callProfile != null) {
+                int oldVideoState = getVideoState();
+                int newVideoState = ImsCallProfile.getVideoStateFromCallType(callProfile.mCallType);
+
+                if (oldVideoState != newVideoState) {
+                    setVideoState(newVideoState);
                     changed = true;
                 }
-            }
-        } catch (ImsException e) {
-            // No session in place -- no change
-        }
 
-        // Check for a change in the call type / video state, or audio quality of the
-        // {@link ImsCall} and update the {@link ImsPhoneConnection} with this information.
-        ImsCallProfile callProfile = imsCall.getCallProfile();
-        if (callProfile != null) {
-            int oldVideoState = getVideoState();
-            int newVideoState = ImsCallProfile.getVideoStateFromCallType(callProfile.mCallType);
+                ImsStreamMediaProfile mediaProfile = callProfile.mMediaProfile;
+                if (mediaProfile != null) {
+                    int oldAudioQuality = getAudioQuality();
+                    int newAudioQuality = getAudioQualityFromMediaProfile(mediaProfile);
 
-            if (oldVideoState != newVideoState) {
-                setVideoState(newVideoState);
-                changed = true;
-            }
-
-            ImsStreamMediaProfile mediaProfile = callProfile.mMediaProfile;
-            if (mediaProfile != null) {
-                int oldAudioQuality = getAudioQuality();
-                int newAudioQuality = getAudioQualityFromMediaProfile(mediaProfile);
-
-                if (oldAudioQuality != newAudioQuality) {
-                    setAudioQuality(newAudioQuality);
-                    changed = true;
+                    if (oldAudioQuality != newAudioQuality) {
+                        setAudioQuality(newAudioQuality);
+                        changed = true;
+                    }
                 }
             }
         }
-
         return changed;
     }
 
