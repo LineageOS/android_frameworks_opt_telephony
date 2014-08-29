@@ -68,6 +68,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -640,19 +641,26 @@ public abstract class DcTrackerBase extends Handler {
         Context c = mPhone.getContext();
         String apnData = Settings.Global.getString(c.getContentResolver(),
                 Settings.Global.TETHER_DUN_APN);
-        ApnSetting dunSetting = ApnSetting.fromString(apnData);
-        if (dunSetting != null) {
+        List<ApnSetting> dunSettings = ApnSetting.arrayFromString(apnData);
+        for (ApnSetting dunSetting : dunSettings) {
             IccRecords r = mIccRecords.get();
             String operator = (r != null) ? r.getOperatorNumeric() : "";
             if (dunSetting.numeric.equals(operator)) {
-                if (VDBG) log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
-                return dunSetting;
+                if (dunSetting.hasMvnoParams()) {
+                    if (r != null && mvnoMatches(r, dunSetting.mvnoType, dunSetting.mvnoMatchData)) {
+                        if (VDBG) log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
+                        return dunSetting;
+                    }
+                } else {
+                    if (VDBG) log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
+                    return dunSetting;
+                }
             }
         }
 
         apnData = c.getResources().getString(R.string.config_tether_apndata);
-        dunSetting = ApnSetting.fromString(apnData);
-        if (VDBG) log("fetchDunApn: config_tether_apndata dunSetting=" + dunSetting);
+        ApnSetting dunSetting = ApnSetting.fromString(apnData);
+        if (VDBG) log("fetchDunApn: config_tether_apndata dunSetting=" + dunSettings);
         return dunSetting;
     }
 
@@ -750,6 +758,7 @@ public abstract class DcTrackerBase extends Handler {
     public abstract void setDataAllowed(boolean enable, Message response);
     public abstract String[] getPcscfAddress(String apnType);
     public abstract void setImsRegistrationState(boolean registered);
+    protected abstract boolean mvnoMatches(IccRecords r, String mvno_type, String mvno_match_data);
 
     @Override
     public void handleMessage(Message msg) {
