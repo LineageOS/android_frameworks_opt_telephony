@@ -495,7 +495,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     isTwoDigitShortCode(Context context, String dialString) {
         Rlog.d(LOG_TAG, "isTwoDigitShortCode");
 
-        if (dialString == null || dialString.length() != 2) return false;
+        if (dialString == null || dialString.length() > 2) return false;
 
         if (sTwoDigitNumberPattern == null) {
             sTwoDigitNumberPattern = context.getResources().getStringArray(
