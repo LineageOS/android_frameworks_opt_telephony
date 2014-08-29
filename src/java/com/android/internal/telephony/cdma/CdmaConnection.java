@@ -49,8 +49,6 @@ public class CdmaConnection extends Connection {
     CdmaCall mParent;
 
 
-    String mAddress;             // MAY BE NULL!!!
-    String mDialString;          // outgoing calls only
     String mPostDialString;      // outgoing calls only
     boolean mIsIncoming;
     boolean mDisconnected;
@@ -60,27 +58,13 @@ public class CdmaConnection extends Connection {
      * These time/timespan values are based on System.currentTimeMillis(),
      * i.e., "wall clock" time.
      */
-    long mCreateTime;
-    long mConnectTime;
     long mDisconnectTime;
-
-    /*
-     * These time/timespan values are based on SystemClock.elapsedRealTime(),
-     * i.e., time since boot.  They are appropriate for comparison and
-     * calculating deltas.
-     */
-    long mConnectTimeReal;
-    long mDuration;
-    long mHoldingStartTime;  // The time when the Connection last transitioned
-                            // into HOLDING
 
     int mNextPostDialChar;       // index into postDialString
 
     int mCause = DisconnectCause.NOT_DISCONNECTED;
     PostDialState mPostDialState = PostDialState.NOT_STARTED;
-    int mNumberPresentation = PhoneConstants.PRESENTATION_ALLOWED;
     int mPreciseCause = 0;
-
 
     Handler mHandler;
 
@@ -231,49 +215,13 @@ public class CdmaConnection extends Connection {
     }
 
     @Override
-    public String getAddress() {
-        return mAddress;
-    }
-
-    @Override
     public CdmaCall getCall() {
         return mParent;
     }
 
     @Override
-    public long getCreateTime() {
-        return mCreateTime;
-    }
-
-    @Override
-    public long getConnectTime() {
-        return mConnectTime;
-    }
-
-    @Override
-    public long getConnectTimeReal() {
-        return mConnectTimeReal;
-    }
-
-    @Override
     public long getDisconnectTime() {
         return mDisconnectTime;
-    }
-
-    @Override
-    public long getDurationMillis() {
-        if (mConnectTimeReal == 0) {
-            return 0;
-        } else if (mDuration == 0) {
-            return SystemClock.elapsedRealtime() - mConnectTimeReal;
-        } else {
-            return mDuration;
-        }
-    }
-
-    @Override
-    public long getHoldingStartTime() {
-        return mHoldingStartTime;
     }
 
     @Override
@@ -289,11 +237,6 @@ public class CdmaConnection extends Connection {
     @Override
     public int getDisconnectCause() {
         return mCause;
-    }
-
-    @Override
-    public boolean isIncoming() {
-        return mIsIncoming;
     }
 
     @Override

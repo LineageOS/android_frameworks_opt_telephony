@@ -418,6 +418,16 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public void registerForHandoverStateChanged(Handler h, int what, Object obj) {
+        mActivePhone.registerForHandoverStateChanged(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForHandoverStateChanged(Handler h) {
+        mActivePhone.unregisterForHandoverStateChanged(h);
+    }
+
+    @Override
     public void registerForPreciseCallStateChanged(Handler h, int what, Object obj) {
         mActivePhone.registerForPreciseCallStateChanged(h, what, obj);
     }

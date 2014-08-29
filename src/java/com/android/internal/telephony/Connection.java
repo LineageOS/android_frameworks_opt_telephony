@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.os.SystemClock;
 import android.telephony.Rlog;
 import android.util.Log;
 
@@ -69,9 +70,28 @@ public abstract class Connection {
     //Caller Name Display
     protected String mCnapName;
     protected int mCnapNamePresentation  = PhoneConstants.PRESENTATION_ALLOWED;
-
+    protected String mAddress;     // MAY BE NULL!!!
+    protected String mDialString;          // outgoing calls only
+    protected int mNumberPresentation = PhoneConstants.PRESENTATION_ALLOWED;
+    protected boolean mIsIncoming;
+    /*
+     * These time/timespan values are based on System.currentTimeMillis(),
+     * i.e., "wall clock" time.
+     */
+    protected long mCreateTime;
+    protected long mConnectTime;
+    /*
+     * These time/timespan values are based on SystemClock.elapsedRealTime(),
+     * i.e., time since boot.  They are appropriate for comparison and
+     * calculating deltas.
+     */
+    protected long mConnectTimeReal;
+    protected long mDuration;
+    protected long mHoldingStartTime;  // The time when the Connection last transitioned
+                            // into HOLDING
+    protected Connection mOrigConnection;
     private List<PostDialListener> mPostDialListeners = new ArrayList<>();
-    private final Set<Listener> mListeners = new CopyOnWriteArraySet<>();
+    public Set<Listener> mListeners = new CopyOnWriteArraySet<>();
 
     private static String LOG_TAG = "Connection";
 
@@ -91,7 +111,9 @@ public abstract class Connection {
      * @return address or null if unavailable
      */
 
-    public abstract String getAddress();
+    public String getAddress() {
+        return mAddress;
+    }
 
     /**
      * Gets CNAP name associated with connection.
@@ -129,7 +151,9 @@ public abstract class Connection {
      * Effectively, when an incoming call starts ringing or an
      * outgoing call starts dialing
      */
-    public abstract long getCreateTime();
+    public long getCreateTime() {
+        return mCreateTime;
+    }
 
     /**
      * Connection connect time in currentTimeMillis() format.
@@ -137,7 +161,9 @@ public abstract class Connection {
      * For incoming calls: Begins at (INCOMING|WAITING) -> ACTIVE transition.
      * Returns 0 before then.
      */
-    public abstract long getConnectTime();
+    public long getConnectTime() {
+        return mConnectTime;
+    }
 
     /**
      * Connection connect time in elapsedRealtime() format.
@@ -145,7 +171,9 @@ public abstract class Connection {
      * For incoming calls: Begins at (INCOMING|WAITING) -> ACTIVE transition.
      * Returns 0 before then.
      */
-    public abstract long getConnectTimeReal();
+    public long getConnectTimeReal() {
+        return mConnectTimeReal;
+    }
 
     /**
      * Disconnect time in currentTimeMillis() format.
@@ -160,14 +188,24 @@ public abstract class Connection {
      * If the call is still connected, then returns the elapsed
      * time since connect.
      */
-    public abstract long getDurationMillis();
+    public long getDurationMillis() {
+        if (mConnectTimeReal == 0) {
+            return 0;
+        } else if (mDuration == 0) {
+            return SystemClock.elapsedRealtime() - mConnectTimeReal;
+        } else {
+            return mDuration;
+        }
+    }
 
     /**
      * The time when this Connection last transitioned into HOLDING
      * in elapsedRealtime() format.
      * Returns 0, if it has never made a transition into HOLDING.
      */
-    public abstract long getHoldingStartTime();
+    public long getHoldingStartTime() {
+        return mHoldingStartTime;
+    }
 
     /**
      * If this connection is HOLDING, return the number of milliseconds
@@ -189,7 +227,9 @@ public abstract class Connection {
      * ("MT" or mobile terminated; another party called this terminal)
      * or false if this call originated here (MO or mobile originated).
      */
-    public abstract boolean isIncoming();
+    public boolean isIncoming() {
+        return mIsIncoming;
+    }
 
     /**
      * If this Connection is connected, then it is associated with
@@ -341,7 +381,9 @@ public abstract class Connection {
      * Returns the original Connection instance associated with
      * this Connection
      */
-    public abstract Connection getOrigConnection();
+    public Connection getOrigConnection() {
+        return mOrigConnection;
+    }
 
     /**
      * Returns whether the original ImsPhoneConnection was a member
@@ -349,6 +391,22 @@ public abstract class Connection {
      * @return valid only when getOrigConnection() is not null
      */
     public abstract boolean isMultiparty();
+
+    public void migrateFrom(Connection c) {
+        if (c == null) return;
+        mListeners = c.mListeners;
+        mAddress = c.getAddress();
+        mNumberPresentation = c.getNumberPresentation();
+        mDialString = c.getOrigDialString();
+        mCnapName = c.getCnapName();
+        mCnapNamePresentation = c.getCnapNamePresentation();
+        mIsIncoming = c.isIncoming();
+        mCreateTime = c.getCreateTime();
+        mConnectTime = c.getConnectTime();
+        mConnectTimeReal = c.getConnectTimeReal();
+        mHoldingStartTime = c.getHoldingStartTime();
+        mOrigConnection = c.getOrigConnection();
+    }
 
     /**
      * Assign a listener to be notified of state changes.

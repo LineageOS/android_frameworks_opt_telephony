@@ -46,10 +46,7 @@ public class GsmConnection extends Connection {
     GsmCallTracker mOwner;
     GsmCall mParent;
 
-    String mAddress;     // MAY BE NULL!!!
-    String mDialString;          // outgoing calls only
     String mPostDialString;      // outgoing calls only
-    boolean mIsIncoming;
     boolean mDisconnected;
 
     int mIndex;          // index in GsmCallTracker.connections[], -1 if unassigned
@@ -59,25 +56,12 @@ public class GsmConnection extends Connection {
      * These time/timespan values are based on System.currentTimeMillis(),
      * i.e., "wall clock" time.
      */
-    long mCreateTime;
-    long mConnectTime;
     long mDisconnectTime;
-
-    /*
-     * These time/timespan values are based on SystemClock.elapsedRealTime(),
-     * i.e., time since boot.  They are appropriate for comparison and
-     * calculating deltas.
-     */
-    long mConnectTimeReal;
-    long mDuration;
-    long mHoldingStartTime;  // The time when the Connection last transitioned
-                            // into HOLDING
 
     int mNextPostDialChar;       // index into postDialString
 
     int mCause = DisconnectCause.NOT_DISCONNECTED;
     PostDialState mPostDialState = PostDialState.NOT_STARTED;
-    int mNumberPresentation = PhoneConstants.PRESENTATION_ALLOWED;
     UUSInfo mUusInfo;
     int mPreciseCause = 0;
 
@@ -201,49 +185,13 @@ public class GsmConnection extends Connection {
     }
 
     @Override
-    public String getAddress() {
-        return mAddress;
-    }
-
-    @Override
     public GsmCall getCall() {
         return mParent;
     }
 
     @Override
-    public long getCreateTime() {
-        return mCreateTime;
-    }
-
-    @Override
-    public long getConnectTime() {
-        return mConnectTime;
-    }
-
-    @Override
-    public long getConnectTimeReal() {
-        return mConnectTimeReal;
-    }
-
-    @Override
     public long getDisconnectTime() {
         return mDisconnectTime;
-    }
-
-    @Override
-    public long getDurationMillis() {
-        if (mConnectTimeReal == 0) {
-            return 0;
-        } else if (mDuration == 0) {
-            return SystemClock.elapsedRealtime() - mConnectTimeReal;
-        } else {
-            return mDuration;
-        }
-    }
-
-    @Override
-    public long getHoldingStartTime() {
-        return mHoldingStartTime;
     }
 
     @Override
@@ -259,11 +207,6 @@ public class GsmConnection extends Connection {
     @Override
     public int getDisconnectCause() {
         return mCause;
-    }
-
-    @Override
-    public boolean isIncoming() {
-        return mIsIncoming;
     }
 
     @Override
@@ -798,31 +741,15 @@ public class GsmConnection extends Connection {
         return mPreciseCause;
     }
 
-    /* package */ void
-    migrateFrom(Connection c) {
+    @Override
+    public void migrateFrom(Connection c) {
         if (c == null) return;
 
-        this.mAddress = c.getAddress();
-        this.mNumberPresentation = c.getNumberPresentation();
-
-        this.mDialString = c.getOrigDialString();
-
-        this.mCnapName = c.getCnapName();
-        this.mCnapNamePresentation = c.getCnapNamePresentation();
-
-        this.mIsIncoming = c.isIncoming();
-
-        this.mCreateTime = c.getCreateTime();
-        this.mConnectTime = c.getConnectTime();
-        this.mConnectTimeReal = c.getConnectTimeReal();
-
-        this.mHoldingStartTime = c.getHoldingStartTime();
+        super.migrateFrom(c);
 
         this.mUusInfo = c.getUUSInfo();
 
         this.setUserData(c.getUserData());
-
-        this.mOrigConnection = c;
     }
 
     @Override
