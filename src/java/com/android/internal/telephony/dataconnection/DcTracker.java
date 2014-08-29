@@ -1075,22 +1075,23 @@ public final class DcTracker extends DcTrackerBase {
         return true;
     }
 
-    private boolean mvnoMatches(IccRecords r, String mvno_type, String mvno_match_data) {
-        if (mvno_type.equalsIgnoreCase("spn")) {
+    @Override
+    protected boolean mvnoMatches(IccRecords r, String mvnoType, String mvnoMatchData) {
+        if (mvnoType.equalsIgnoreCase("spn")) {
             if ((r.getServiceProviderName() != null) &&
-                    r.getServiceProviderName().equalsIgnoreCase(mvno_match_data)) {
+                    r.getServiceProviderName().equalsIgnoreCase(mvnoMatchData)) {
                 return true;
             }
-        } else if (mvno_type.equalsIgnoreCase("imsi")) {
+        } else if (mvnoType.equalsIgnoreCase("imsi")) {
             String imsiSIM = r.getIMSI();
-            if ((imsiSIM != null) && imsiMatches(mvno_match_data, imsiSIM)) {
+            if ((imsiSIM != null) && imsiMatches(mvnoMatchData, imsiSIM)) {
                 return true;
             }
-        } else if (mvno_type.equalsIgnoreCase("gid")) {
+        } else if (mvnoType.equalsIgnoreCase("gid")) {
             String gid1 = r.getGid1();
-            int mvno_match_data_length = mvno_match_data.length();
+            int mvno_match_data_length = mvnoMatchData.length();
             if ((gid1 != null) && (gid1.length() >= mvno_match_data_length) &&
-                    gid1.substring(0, mvno_match_data_length).equalsIgnoreCase(mvno_match_data)) {
+                    gid1.substring(0, mvno_match_data_length).equalsIgnoreCase(mvnoMatchData)) {
                 return true;
             }
         }
@@ -1133,44 +1134,35 @@ public final class DcTracker extends DcTrackerBase {
                 cursor.getInt(cursor.getColumnIndexOrThrow(
                         Telephony.Carriers.WAIT_TIME)),
                 cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.MAX_CONNS_TIME)),
-                cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.MTU)));
+                cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.MTU)),
+                cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.MVNO_TYPE)),
+                cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.MVNO_MATCH_DATA)));
         return apn;
     }
 
     private ArrayList<ApnSetting> createApnList(Cursor cursor) {
-        ArrayList<ApnSetting> result = new ArrayList<ApnSetting>();
+        ArrayList<ApnSetting> mnoApns = new ArrayList<ApnSetting>();
+        ArrayList<ApnSetting> mvnoApns = new ArrayList<ApnSetting>();
         IccRecords r = mIccRecords.get();
 
         if (cursor.moveToFirst()) {
-            String mvnoType = null;
-            String mvnoMatchData = null;
             do {
-                String cursorMvnoType = cursor.getString(
-                        cursor.getColumnIndexOrThrow(Telephony.Carriers.MVNO_TYPE));
-                String cursorMvnoMatchData = cursor.getString(
-                        cursor.getColumnIndexOrThrow(Telephony.Carriers.MVNO_MATCH_DATA));
-                if (mvnoType != null) {
-                    if (mvnoType.equals(cursorMvnoType) &&
-                            mvnoMatchData.equals(cursorMvnoMatchData)) {
-                        result.add(makeApnSetting(cursor));
+                ApnSetting apn = makeApnSetting(cursor);
+                if (apn == null) {
+                    continue;
+                }
+
+                if (apn.hasMvnoParams()) {
+                    if (r != null && mvnoMatches(r, apn.mvnoType, apn.mvnoMatchData)) {
+                        mvnoApns.add(apn);
                     }
                 } else {
-                    // no mvno match yet
-                    if (mvnoMatches(r, cursorMvnoType, cursorMvnoMatchData)) {
-                        // first match - toss out non-mvno data
-                        result.clear();
-                        mvnoType = cursorMvnoType;
-                        mvnoMatchData = cursorMvnoMatchData;
-                        result.add(makeApnSetting(cursor));
-                    } else {
-                        // add only non-mvno data
-                        if (cursorMvnoType.equals("")) {
-                            result.add(makeApnSetting(cursor));
-                        }
-                    }
+                    mnoApns.add(apn);
                 }
             } while (cursor.moveToNext());
         }
+
+        ArrayList<ApnSetting> result = mvnoApns.isEmpty() ? mnoApns : mvnoApns;
         if (DBG) log("createApnList: X result=" + result);
         return result;
     }
