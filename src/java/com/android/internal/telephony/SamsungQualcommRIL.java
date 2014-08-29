@@ -67,8 +67,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     public static final long SEND_SMS_TIMEOUT_IN_MS = 30000;
     private boolean oldRilState = needsOldRilFeature("exynos4RadioState");
     private boolean googleEditionSS = needsOldRilFeature("googleEditionSS");
-    private boolean driverCall = needsOldRilFeature("newDriverCall");
-    private boolean driverCallU = needsOldRilFeature("newDriverCallU");
+    private boolean disableSamsungDriverCall = needsOldRilFeature("disableSamsungDriverCall");
     private boolean dialCode = needsOldRilFeature("newDialCode");
     private boolean samsungEmergency = needsOldRilFeature("samsungEMSReq");
     public SamsungQualcommRIL(Context context, int networkMode,
@@ -271,7 +270,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     @Override
     protected Object
     responseCallList(Parcel p) {
-        samsungDriverCall = driverCallU || (driverCall && !isGSM) || mRilVersion < 7 ? false : true;
+        samsungDriverCall = !disableSamsungDriverCall;
         return super.responseCallList(p);
     }
 
