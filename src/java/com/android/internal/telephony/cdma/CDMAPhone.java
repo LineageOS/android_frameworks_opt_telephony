@@ -285,8 +285,21 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public ServiceState getServiceState() {
-        return mSST.mSS;
+        if (mSST == null || mSST.mSS.getState() != ServiceState.STATE_IN_SERVICE) {
+            if (mImsPhone != null &&
+                    mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
+                return mImsPhone.getServiceState();
+            }
+        }
+
+        if (mSST != null) {
+            return mSST.mSS;
+        } else {
+            // avoid potential NPE in EmergencyCallHelper during Phone switch
+            return new ServiceState();
+        }
     }
+
 
     @Override
     public CallTracker getCallTracker() {
