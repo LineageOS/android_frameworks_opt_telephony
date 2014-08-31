@@ -296,6 +296,11 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
             dc.isVoice = (0 == voiceSettings) ? false : true;
             if(driverCallU || (driverCall && !isGSM) || mRilVersion < 7 ? false : true)
                  p.readInt();
+            if(needsOldRilFeature("newSamsungDriverCall")) {
+                 p.readInt();
+                 p.readInt();
+                 p.readString();
+            }
             dc.isVoicePrivacy = (0 != p.readInt());
             dc.number = p.readString();
             int np = p.readInt();
