@@ -3615,6 +3615,12 @@ public class RIL extends BaseCommands implements CommandsInterface {
             dc.isVoice = (0 == voiceSettings) ? false : true;
             if(samsungDriverCall)
                  p.readInt();
+            boolean samsungShitHax = true;
+            if(samsungShitHax) {
+                 p.readInt();
+                 p.readInt();
+                 p.readString();
+            }
             dc.isVoicePrivacy = (0 != p.readInt());
             dc.number = p.readString();
             int np = p.readInt();
