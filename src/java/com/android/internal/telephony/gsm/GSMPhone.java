@@ -933,7 +933,9 @@ public class GSMPhone extends PhoneBase {
     @Override
     public void
     startDtmf(char c) {
-        if (!PhoneNumberUtils.is12Key(c)) {
+        // in DSDA, char 'D' is used as DTMF char for playing supervisory tone for G/W.
+        // A, B, C & D are also supported as DTMF digits for G/W.
+        if (!(PhoneNumberUtils.is12Key(c) || (c >= 'A' && c <= 'D'))) {
             Rlog.e(LOG_TAG,
                 "startDtmf called with invalid character '" + c + "'");
         } else {
