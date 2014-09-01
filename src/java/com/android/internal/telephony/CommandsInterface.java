@@ -1948,4 +1948,9 @@ public interface CommandsInterface {
      */
     void registerForWwanIwlanCoexistence(Handler h, int what, Object obj);
     void unregisterForWwanIwlanCoexistence(Handler h);
+    /**
+     * Request to update the current local call hold state.
+     * @param lchStatus, true if call is in lch state
+     */
+    public void setLocalCallHold(int lchStatus);
 }
