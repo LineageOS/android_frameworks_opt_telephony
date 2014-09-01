@@ -50,7 +50,6 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsBroadcastUndelivered;
-import com.android.internal.telephony.Subscription;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.gsm.GsmSMSDispatcher;
 import com.android.internal.telephony.gsm.SmsMessage;
@@ -71,8 +70,6 @@ import java.io.PrintWriter;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
-import static com.android.internal.telephony.PhoneConstants.EVENT_SUBSCRIPTION_ACTIVATED;
-import static com.android.internal.telephony.PhoneConstants.EVENT_SUBSCRIPTION_DEACTIVATED;
 
 public class CDMALTEPhone extends CDMAPhone {
     static final String LOG_LTE_TAG = "CDMALTEPhone";
@@ -103,24 +100,6 @@ public class CDMALTEPhone extends CDMAPhone {
     // Constructors
     public CDMALTEPhone(Context context, CommandsInterface ci, PhoneNotifier notifier) {
         super(context, ci, notifier, false);
-    }
-
-    @Override
-    public void handleMessage (Message msg) {
-        switch (msg.what) {
-            case EVENT_SUBSCRIPTION_ACTIVATED:
-                log("EVENT_SUBSCRIPTION_ACTIVATED");
-                onSubscriptionActivated();
-                break;
-
-            case EVENT_SUBSCRIPTION_DEACTIVATED:
-                log("EVENT_SUBSCRIPTION_DEACTIVATED");
-                onSubscriptionDeactivated();
-                break;
-
-            default:
-                super.handleMessage(msg);
-        }
     }
 
     @Override
@@ -329,29 +308,6 @@ public class CDMALTEPhone extends CDMAPhone {
         setProperties();
     }
 
-    private void onSubscriptionActivated() {
-//        mSubscriptionData = SubscriptionManager.getCurrentSubscription(mSubscription);
-
-        log("SUBSCRIPTION ACTIVATED : slotId : " + mSubscriptionData.slotId
-                + " appid : " + mSubscriptionData.m3gpp2Index
-                + " subId : " + mSubscriptionData.subId
-                + " subStatus : " + mSubscriptionData.subStatus);
-
-        // Make sure properties are set for proper subscription.
-        setProperties();
-
-        onUpdateIccAvailability();
-        mSST.sendMessage(mSST.obtainMessage(ServiceStateTracker.EVENT_ICC_CHANGED));
-        ((CdmaLteServiceStateTracker)mSST).updateCdmaSubscription();
-        ((DcTracker)mDcTracker).updateRecords();
-    }
-
-    private void onSubscriptionDeactivated() {
-        log("SUBSCRIPTION DEACTIVATED");
-        // resetSubSpecifics
-        mSubscriptionData = null;
-    }
-
     // Set the properties per subscription
     private void setProperties() {
         //Change the system property
@@ -385,14 +341,14 @@ public class CDMALTEPhone extends CDMAPhone {
         if(getUnitTestMode()) {
             return;
         }
-        TelephonyManager.setTelephonyProperty(property, getSubId(), value);
+        TelephonyManager.setTelephonyProperty(mPhoneId, property, value);
     }
 
     public String getSystemProperty(String property, String defValue) {
         if(getUnitTestMode()) {
             return null;
         }
-        return TelephonyManager.getTelephonyProperty(property, getSubId(), defValue);
+        return TelephonyManager.getTelephonyProperty(mPhoneId, property, defValue);
     }
 
     public void updateDataConnectionTracker() {

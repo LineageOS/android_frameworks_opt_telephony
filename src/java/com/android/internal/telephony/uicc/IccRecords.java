@@ -71,6 +71,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected String mIccId;
     protected String mMsisdn = null;  // My mobile number
     protected String mMsisdnTag = null;
+    protected String mNewMsisdn = null;
+    protected String mNewMsisdnTag = null;
     protected String mVoiceMailNum = null;
     protected String mVoiceMailTag = null;
     protected String mNewVoiceMailNum = null;
@@ -775,6 +777,12 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     public UsimServiceTable getUsimServiceTable() {
         return null;
+    }
+
+    protected void setSystemProperty(String key, String val) {
+        TelephonyManager.getDefault().setTelephonyProperty(mParentApp.getPhoneId(), key, val);
+
+        log("[key, value]=" + key + ", " +  val);
     }
 
     /**

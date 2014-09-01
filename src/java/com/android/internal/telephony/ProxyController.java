@@ -71,8 +71,6 @@ public class ProxyController {
     //UiccSmsController to use proper IccSmsInterfaceManager object
     private UiccSmsController mUiccSmsController;
 
-  //  private SubscriptionManager mSubscriptionManager;
-
     //***** Class Methods
     public static ProxyController getInstance(Context context, Phone[] phoneProxy,
             UiccController uiccController, CommandsInterface[] ci) {
@@ -102,26 +100,8 @@ public class ProxyController {
         mUiccPhoneBookController = new UiccPhoneBookController(mProxyPhones);
         mPhoneSubInfoController = new PhoneSubInfoController(mProxyPhones);
         mUiccSmsController = new UiccSmsController(mProxyPhones);
-       // mSubscriptionManager = SubscriptionManager.getInstance(context, uiccController, ci);
 
         logd("Constructor - Exit");
-    }
-
-    public void updateDataConnectionTracker(int sub) {
-        ((PhoneProxy) mProxyPhones[sub]).updateDataConnectionTracker();
-    }
-
-    public void enableDataConnectivity(int sub) {
-        ((PhoneProxy) mProxyPhones[sub]).setInternalDataEnabled(true);
-    }
-
-    public void disableDataConnectivity(int sub,
-            Message dataCleanedUpMsg) {
-        ((PhoneProxy) mProxyPhones[sub]).setInternalDataEnabled(false, dataCleanedUpMsg);
-    }
-
-    public void updateCurrentCarrierInProvider(int sub) {
-        ((PhoneProxy) mProxyPhones[sub]).updateCurrentCarrierInProvider();
     }
 
     public void registerForAllDataDisconnected(long subId, Handler h, int what, Object obj) {

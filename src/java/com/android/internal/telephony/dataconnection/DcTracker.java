@@ -55,7 +55,6 @@ import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.telephony.CellLocation;
-import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.cdma.CdmaCellLocation;
@@ -96,7 +95,6 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.HashMap;
 import java.util.Objects;
 import java.lang.StringBuilder;
 
@@ -149,6 +147,8 @@ public final class DcTracker extends DcTrackerBase {
 
     static final Uri PREFERAPN_NO_UPDATE_URI =
                         Uri.parse("content://telephony/carriers/preferapn_no_update");
+    static final Uri PREFERAPN_NO_UPDATE_URI_USING_SUBID =
+                        Uri.parse("content://telephony/carriers/preferapn_no_update/subId/");
     static final String APN_ID = "apn_id";
 
     /**
@@ -1207,6 +1207,8 @@ public final class DcTracker extends DcTrackerBase {
     private void setupDataOnConnectableApns(String reason) {
         if (DBG) log("setupDataOnConnectableApns: " + reason);
 
+        if (DBG) log("mPhone.getSubId=" + mPhone.getSubId() + " defaultDataSub="
+                + SubscriptionManager.getDefaultDataSubId());
         for (ApnContext apnContext : mPrioritySortedApnContexts) {
             if (DBG) log("setupDataOnConnectableApns: apnContext " + apnContext);
             if (apnContext.getState() == DctConstants.State.FAILED) {
@@ -1789,9 +1791,10 @@ public final class DcTracker extends DcTrackerBase {
         if (isCleanupNeeded) {
             cleanUpAllConnections(!isDisconnected, reason);
         }
-        // If the state is already connected don't setup data now.
-        if (isDisconnected) {
+        if (isDisconnected &&
+                (mPhone.getSubId() == SubscriptionManager.getDefaultDataSubId())) {
             setupDataOnConnectableApns(reason);
+            setupDataOnConnectableApns(Phone.REASON_APN_CHANGED);
         }
     }
 
@@ -2213,21 +2216,27 @@ public final class DcTracker extends DcTrackerBase {
     protected void onRoamingOff() {
         if (DBG) log("onRoamingOff");
 
-        if (mUserDataEnabled == false) return;
+        if (!mUserDataEnabled) return;
 
-        if (getDataOnRoamingEnabled() == false) {
+        if (!getDataOnRoamingEnabled()) {
+            if (DBG) log("onRoamingOff: setup data off roaming");
             notifyOffApnsOfAvailability(Phone.REASON_ROAMING_OFF);
-            setupDataOnConnectableApns(Phone.REASON_ROAMING_OFF);
+            if (mPhone.getSubId() == SubscriptionManager.getDefaultDataSubId()) {
+                setupDataOnConnectableApns(Phone.REASON_ROAMING_OFF);
+            }
         } else {
+            if (DBG) log("onRoamingOff: tear down data off roaming");
             notifyDataConnection(Phone.REASON_ROAMING_OFF);
         }
     }
 
     @Override
     protected void onRoamingOn() {
-        if (mUserDataEnabled == false) return;
+        if (DBG) log("onRoamingOn");
+        if (!mUserDataEnabled) return;
 
-        if (getDataOnRoamingEnabled()) {
+        if (getDataOnRoamingEnabled() &&
+                (mPhone.getSubId() == SubscriptionManager.getDefaultDataSubId())) {
             if (DBG) log("onRoamingOn: setup data on roaming");
             setupDataOnConnectableApns(Phone.REASON_ROAMING_ON);
             notifyDataConnection(Phone.REASON_ROAMING_ON);
@@ -2686,8 +2695,10 @@ public final class DcTracker extends DcTrackerBase {
                 resetPollStats();
             }
         }
-        // reset reconnect timer
-        setupDataOnConnectableApns(Phone.REASON_VOICE_CALL_ENDED);
+        if (mPhone.getSubId() == SubscriptionManager.getDefaultDataSubId()) {
+            // reset reconnect timer
+            setupDataOnConnectableApns(Phone.REASON_VOICE_CALL_ENDED);
+        }
     }
 
     @Override
@@ -3115,15 +3126,17 @@ public final class DcTracker extends DcTrackerBase {
             return;
         }
 
+        String subId = Long.toString(mPhone.getSubId());
+        Uri uri = Uri.withAppendedPath(PREFERAPN_NO_UPDATE_URI_USING_SUBID, subId);
         log("setPreferredApn: delete");
         ContentResolver resolver = mPhone.getContext().getContentResolver();
-        resolver.delete(PREFERAPN_NO_UPDATE_URI, null, null);
+        resolver.delete(uri, null, null);
 
         if (pos >= 0) {
             log("setPreferredApn: insert");
             ContentValues values = new ContentValues();
             values.put(APN_ID, pos);
-            resolver.insert(PREFERAPN_NO_UPDATE_URI, values);
+            resolver.insert(uri, values);
         }
     }
 
@@ -3133,8 +3146,10 @@ public final class DcTracker extends DcTrackerBase {
             return null;
         }
 
+        String subId = Long.toString(mPhone.getSubId());
+        Uri uri = Uri.withAppendedPath(PREFERAPN_NO_UPDATE_URI_USING_SUBID, subId);
         Cursor cursor = mPhone.getContext().getContentResolver().query(
-                PREFERAPN_NO_UPDATE_URI, new String[] { "_id", "name", "apn" },
+                uri, new String[] { "_id", "name", "apn" },
                 null, null, Telephony.Carriers.DEFAULT_SORT_ORDER);
 
         if (cursor != null) {
@@ -3178,7 +3193,16 @@ public final class DcTracker extends DcTrackerBase {
 
         switch (msg.what) {
             case DctConstants.EVENT_RECORDS_LOADED:
-                onRecordsLoaded();
+                // FIXME: Endless loop, maybe wait until SM broadcasts it SUBINFO_RECORD_UPDATED intent.
+                if (mPhone.getSubId() < 0) {
+                    log("Got EVENT_RECORDS_LOADED but subId has not been updated from dummy " +
+                            "values, reposting message with 500ms delay");
+                    Message m = obtainMessage(msg.what);
+                    m.copyFrom(msg);
+                    sendMessageDelayed(m, 500);
+                } else {
+                    onRecordsLoaded();
+                }
                 break;
 
             case DctConstants.EVENT_DATA_CONNECTION_DETACHED:
@@ -3186,7 +3210,11 @@ public final class DcTracker extends DcTrackerBase {
                 break;
 
             case DctConstants.EVENT_DATA_CONNECTION_ATTACHED:
-                onDataConnectionAttached();
+                if (mPhone.getSubId() == SubscriptionManager.getDefaultDataSubId()) {
+                    onDataConnectionAttached();
+                } else if (DBG) {
+                    log("Got EVENT_DATA_CONNECTION_ATTACHED but this tracker is not the default");
+                }
                 break;
 
             case DctConstants.EVENT_DO_RECOVERY:
@@ -3466,6 +3494,7 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     protected void onSetInternalDataEnabled(boolean enabled, Message onCompleteMsg) {
+        if (DBG) log("onSetInternalDataEnabled: enabled=" + enabled);
         boolean sendOnComplete = true;
 
         synchronized (mDataEnabledLock) {
@@ -3488,8 +3517,7 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     public boolean setInternalDataEnabledFlag(boolean enable) {
-        if (DBG)
-            log("setInternalDataEnabledFlag(" + enable + ")");
+        if (DBG) log("setInternalDataEnabledFlag(" + enable + ")");
 
         if (mInternalDataEnabled != enable) {
             mInternalDataEnabled = enable;
@@ -3503,8 +3531,7 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     public boolean setInternalDataEnabled(boolean enable, Message onCompleteMsg) {
-        if (DBG)
-            log("setInternalDataEnabled(" + enable + ")");
+        if (DBG) log("setInternalDataEnabled(" + enable + ")");
 
         Message msg = obtainMessage(DctConstants.EVENT_SET_INTERNAL_DATA_ENABLE, onCompleteMsg);
         msg.arg1 = (enable ? DctConstants.ENABLED : DctConstants.DISABLED);
@@ -3514,12 +3541,15 @@ public final class DcTracker extends DcTrackerBase {
 
     /** Returns true if this is current DDS. */
     protected boolean isActiveDataSubscription() {
-        // FIXME This should have code like
-        // return (mPhone.getSubId() == SubscriptionManager.getDefaultDataSubId());
+        //FIXME data should only be enabled if this subscription is the default data sub
+        //boolean isActive = mPhone.getSubId() == SubscriptionManager.getDefaultDataSubId();
+        //if (DBG) log("isActiveDataSubscription: " + isActive);
+        //return isActive;
         return true;
     }
 
     public void setDataAllowed(boolean enable, Message response) {
+         if (DBG) log("setDataAllowed: enable=" + enable);
          mIsCleanupRequired = !enable;
          mPhone.mCi.setDataAllowed(enable, response);
          mInternalDataEnabled = enable;

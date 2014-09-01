@@ -298,8 +298,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             break;
 
         case EVENT_RUIM_READY:
-            int networkType = PhoneFactory.calculatePreferredNetworkType(mPhone.getContext(),
-                    mPhone.getPhoneId());
+            int networkType = PhoneFactory.calculatePreferredNetworkType(
+                    mPhone.getContext(), mPhone.getPhoneId());
             mCi.setPreferredNetworkType(networkType, null);
 
             if (DBG) log("Receive EVENT_RUIM_READY");

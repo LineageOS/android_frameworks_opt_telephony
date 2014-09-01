@@ -69,7 +69,11 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     public String getDeviceSvn() {
-        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(getFirstPhoneSubId());
+        return getDeviceSvnUsingSubId(getFirstPhoneSubId());
+    }
+
+    public String getDeviceSvnUsingSubId(long subId) {
+        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(subId);
         if (phoneSubInfoProxy != null) {
             return phoneSubInfoProxy.getDeviceSvn();
         } else {
