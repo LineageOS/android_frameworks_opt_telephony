@@ -663,12 +663,13 @@ public abstract class DcTrackerBase extends Handler {
             return null;
         }
         int bearer = -1;
+        ApnSetting retDunSetting = null;
         Context c = mPhone.getContext();
         String apnData = Settings.Global.getString(c.getContentResolver(),
                 Settings.Global.TETHER_DUN_APN);
         List<ApnSetting> dunSettings = ApnSetting.arrayFromString(apnData);
+        IccRecords r = mIccRecords.get();
         for (ApnSetting dunSetting : dunSettings) {
-            IccRecords r = mIccRecords.get();
             String operator = (r != null) ? r.getOperatorNumeric() : "";
             if (dunSetting.bearer != 0) {
                 if (bearer == -1) bearer = mPhone.getServiceState().getRilDataRadioTechnology();
@@ -690,10 +691,29 @@ public abstract class DcTrackerBase extends Handler {
             }
         }
 
-        apnData = c.getResources().getString(R.string.config_tether_apndata);
-        ApnSetting dunSetting = ApnSetting.fromString(apnData);
-        if (VDBG) log("fetchDunApn: config_tether_apndata dunSetting=" + dunSettings);
-        return dunSetting;
+        String[] apnArrayData = c.getResources().getStringArray(R.array.config_tether_apndata);
+        for (String apn : apnArrayData) {
+            ApnSetting dunSetting = ApnSetting.fromString(apn);
+            if (dunSetting != null) {
+                if (dunSetting.bearer != 0) {
+                    if (bearer == -1) bearer = mPhone.getServiceState().getRilDataRadioTechnology();
+                    if (dunSetting.bearer != bearer) continue;
+                }
+                if (dunSetting.hasMvnoParams()) {
+                    if (r != null &&
+                            mvnoMatches(r, dunSetting.mvnoType, dunSetting.mvnoMatchData)) {
+                        if (VDBG) log("fetchDunApn: config_tether_apndata mvno dunSetting="
+                                + dunSetting);
+                        return dunSetting;
+                    }
+                } else {
+                    retDunSetting = dunSetting;
+                }
+            }
+        }
+
+        if (VDBG) log("fetchDunApn: config_tether_apndata dunSetting=" + retDunSetting);
+        return retDunSetting;
     }
 
     public String[] getActiveApnTypes() {
