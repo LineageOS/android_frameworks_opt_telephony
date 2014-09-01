@@ -325,13 +325,13 @@ public class UiccSmsController extends ISms.Stub {
 
     @Override
     public void updateSmsSendStatus(int messageRef, boolean success) {
-        getIccSmsInterfaceManager(getDefaultSmsSubId())
+        getIccSmsInterfaceManager(SubscriptionManager.getDefaultSmsSubId())
             .updateSmsSendStatus(messageRef, success);
     }
 
     @Override
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
-        injectSmsPduForSubscriber(getDefaultSmsSubId(), pdu, format, receivedIntent);
+        injectSmsPdu(SubscriptionManager.getDefaultSmsSubId(), pdu, format, receivedIntent);
     }
 
     // FIXME: Add injectSmsPduForSubscriber to ISms.aidl
@@ -367,6 +367,19 @@ public class UiccSmsController extends ISms.Stub {
 
     private long getDefaultSmsSubId() {
         return  SubscriptionController.getInstance().getDefaultSmsSubId();
+    }
+
+    /**
+       Gets User preferred SMS subscription */
+    public long getPreferredSmsSubscription() {
+        return  SubscriptionManager.getDefaultSmsSubId();
+    }
+
+    /**
+     * Get SMS prompt property,  enabled or not
+     **/
+    public boolean isSMSPromptEnabled() {
+        return PhoneFactory.isSMSPromptEnabled();
     }
 
     @Override

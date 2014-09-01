@@ -1248,6 +1248,14 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone.unregisterForT53AudioControlInfo(h);
     }
 
+    public void registerForRadioOffOrNotAvailable(Handler h, int what, Object obj) {
+        mActivePhone.registerForRadioOffOrNotAvailable( h, what, obj);
+    }
+
+    public void unregisterForRadioOffOrNotAvailable(Handler h) {
+        mActivePhone.unregisterForRadioOffOrNotAvailable(h);
+    }
+
     @Override
     public void setOnEcbModeExitResponse(Handler h, int what, Object obj){
         mActivePhone.setOnEcbModeExitResponse(h,what,obj);

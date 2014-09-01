@@ -68,8 +68,6 @@ public class DctController extends Handler {
     private static final int EVENT_PHONE4_RADIO_OFF = 8;
     private static final int EVENT_START_DDS_SWITCH = 9;
 
-    private static final int PHONE_NONE = -1;
-
     private static DctController sDctController;
 
     private static final int EVENT_ALL_DATA_DISCONNECTED = 1;
@@ -97,8 +95,8 @@ public class DctController extends Handler {
 
     private AsyncChannel mDdsSwitchPropService;
 
-    private int mCurrentDataPhone = PHONE_NONE;
-    private int mRequestedDataPhone = PHONE_NONE;
+    private int mCurrentDataPhone = SubscriptionManager.INVALID_PHONE_ID;
+    private int mRequestedDataPhone = SubscriptionManager.INVALID_PHONE_ID;
 
     private DdsSwitchSerializerHandler mDdsSwitchSerializer;
     private boolean mIsDdsSwitchCompleted = true;
@@ -116,10 +114,10 @@ public class DctController extends Handler {
                 case EVENT_PHONE4_DETACH:
                     logd("EVENT_PHONE" + msg.what +
                             "_DETACH: mRequestedDataPhone=" + mRequestedDataPhone);
-                    mCurrentDataPhone = PHONE_NONE;
-                    if (mRequestedDataPhone != PHONE_NONE) {
+                    mCurrentDataPhone = SubscriptionManager.INVALID_PHONE_ID;
+                    if (isValidPhoneId(mRequestedDataPhone)) {
                         mCurrentDataPhone = mRequestedDataPhone;
-                        mRequestedDataPhone = PHONE_NONE;
+                        mRequestedDataPhone = SubscriptionManager.INVALID_PHONE_ID;
 
                         Iterator<String> itrType = mApnTypes.iterator();
                         while (itrType.hasNext()) {
@@ -150,8 +148,10 @@ public class DctController extends Handler {
             logd("[DataStateChanged]:" + "state=" + state + ",reason=" + reason
                       + ",apnName=" + apnName + ",apnType=" + apnType + ",from subId=" + subId);
             int phoneId = SubscriptionManager.getPhoneId(subId);
-            mDcSwitchState[phoneId].notifyDataConnection(phoneId, state, reason,
-                    apnName, apnType, unavailable);
+            if (isValidPhoneId(phoneId)) {
+                mDcSwitchState[phoneId].notifyDataConnection(phoneId, state, reason,
+                        apnName, apnType, unavailable);
+            }
         }
     };
 
@@ -257,8 +257,8 @@ public class DctController extends Handler {
     public synchronized int enableApnType(long subId, String type) {
         int phoneId = SubscriptionManager.getPhoneId(subId);
 
-        if (phoneId == PHONE_NONE || !isValidphoneId(phoneId)) {
-            logw("enableApnType(): with PHONE_NONE or Invalid PHONE ID");
+        if (!isValidPhoneId(phoneId)) {
+            logw("enableApnType(): with Invalid Phone Id");
             return PhoneConstants.APN_REQUEST_FAILED;
         }
 
@@ -292,15 +292,16 @@ public class DctController extends Handler {
 
         if (phoneId == mCurrentDataPhone &&
                !mDcSwitchAsyncChannel[mCurrentDataPhone].isIdleOrDeactingSync()) {
-           mRequestedDataPhone = PHONE_NONE;
+           mRequestedDataPhone = SubscriptionManager.INVALID_PHONE_ID;
            logd("enableApnType(): mRequestedDataPhone equals request PHONE ID.");
            return mDcSwitchAsyncChannel[phoneId].connectSync(type);
         } else {
-            // Only can switch data when mCurrentDataPhone is PHONE_NONE,
-            // it is set to PHONE_NONE only as receiving EVENT_PHONEX_DETACH
-            if (mCurrentDataPhone == PHONE_NONE) {
+            // Only can switch data when mCurrentDataPhone is SubscriptionManager.INVALID_PHONE_ID,
+            // it is set to SubscriptionManager.INVALID_PHONE_ID only as receiving
+            // EVENT_PHONEX_DETACH
+            if (!isValidPhoneId(mCurrentDataPhone)) {
                 mCurrentDataPhone = phoneId;
-                mRequestedDataPhone = PHONE_NONE;
+                mRequestedDataPhone = SubscriptionManager.INVALID_PHONE_ID;
                 logd("enableApnType(): current PHONE is NONE or IDLE, mCurrentDataPhone=" +
                         mCurrentDataPhone);
                 return mDcSwitchAsyncChannel[phoneId].connectSync(type);
@@ -333,8 +334,8 @@ public class DctController extends Handler {
 
         int phoneId = SubscriptionManager.getPhoneId(subId);
 
-        if (phoneId == PHONE_NONE || !isValidphoneId(phoneId)) {
-            logw("disableApnType(): with PHONE_NONE or Invalid PHONE ID");
+        if (!isValidPhoneId(phoneId)) {
+            logw("disableApnType(): with Invalid Phone Id");
             return PhoneConstants.APN_REQUEST_FAILED;
         }
         logd("disableApnType():type=" + type + ",phoneId=" + phoneId +
@@ -343,8 +344,8 @@ public class DctController extends Handler {
     }
 
     public boolean isDataConnectivityPossible(String type, int phoneId) {
-        if (phoneId == PHONE_NONE || !isValidphoneId(phoneId)) {
-            logw("isDataConnectivityPossible(): with PHONE_NONE or Invalid PHONE ID");
+        if (!isValidPhoneId(phoneId)) {
+            logw("isDataConnectivityPossible(): with Invalid Phone Id");
             return false;
         } else {
             return mPhones[phoneId].isDataConnectivityPossible(type);
@@ -352,15 +353,14 @@ public class DctController extends Handler {
     }
 
     public boolean isIdleOrDeacting(int phoneId) {
-        if (mDcSwitchAsyncChannel[phoneId].isIdleOrDeactingSync()) {
-            return true;
-        } else {
-            return false;
+        if (isValidPhoneId(phoneId)) {
+            return mDcSwitchAsyncChannel[phoneId].isIdleOrDeactingSync();
         }
+        return false;
     }
 
-    private boolean isValidphoneId(int phoneId) {
-        return phoneId >= 0 && phoneId < mPhoneNum;
+    private boolean isValidPhoneId(int phoneId) {
+        return SubscriptionManager.isValidPhoneId(phoneId) && phoneId >= 0 && phoneId < mPhoneNum;
     }
 
     private boolean isValidApnType(String apnType) {
@@ -379,8 +379,8 @@ public class DctController extends Handler {
         }
     }
 
-    private int getDataConnectionFromSetting(){
-        long subId = mSubController.getDefaultDataSubId();
+    private int getDefaultDataPhoneId(){
+        long subId = SubscriptionManager.getDefaultDataSubId();
         int phoneId = SubscriptionManager.getPhoneId(subId);
         return phoneId;
     }

@@ -1103,5 +1103,4 @@ public final class RuimRecords extends IccRecords {
         pw.println(" mHomeNetworkId=" + mHomeNetworkId);
         pw.flush();
     }
-
 }

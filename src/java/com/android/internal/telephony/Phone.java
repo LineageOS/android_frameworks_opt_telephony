@@ -1798,6 +1798,22 @@ public interface Phone {
     void unregisterForT53AudioControlInfo(Handler h);
 
     /**
+     * Register for radio off or not available
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForRadioOffOrNotAvailable(Handler h, int what, Object obj);
+
+    /**
+     * Unregisters for radio off or not available
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForRadioOffOrNotAvailable(Handler h);
+
+    /**
      * registers for exit emergency call back mode request response
      *
      * @param h Handler that receives the notification message.

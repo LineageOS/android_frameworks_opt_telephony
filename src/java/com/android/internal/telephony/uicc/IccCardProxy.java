@@ -45,7 +45,6 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.IccCardConstants.State;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.Subscription;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
@@ -105,7 +104,6 @@ public class IccCardProxy extends Handler implements IccCard {
 
     // FIXME Rename mCardIndex to mSlotId.
     private Integer mCardIndex = null;
-    private Subscription mSubscriptionData = null;
 
     private final Object mLock = new Object();
     private Context mContext;
@@ -408,15 +406,12 @@ public class IccCardProxy extends Handler implements IccCard {
     }
 
     private void onSubscriptionActivated() {
-        //mSubscriptionData = SubscriptionManager.getCurrentSubscription(mCardIndex);
-
         updateIccAvailability();
         updateStateProperty();
     }
 
     private void onSubscriptionDeactivated() {
         resetProperties();
-        mSubscriptionData = null;
         updateIccAvailability();
         updateStateProperty();
     }
@@ -942,8 +937,14 @@ public class IccCardProxy extends Handler implements IccCard {
     }
 
     private void setSystemProperty(String property, int slotId, String value) {
-        long[] subId = SubscriptionController.getInstance().getSubId(slotId);
-        TelephonyManager.setTelephonyProperty(property, subId[0], value);
+        // FIXME: Add SubscriptionController.getPhoneIdUsingSlotId
+        long[] subId = SubscriptionController.getInstance().getSubIdUsingSlotId(slotId);
+        if (subId != null && subId.length > 0) {
+            int phoneId = SubscriptionController.getInstance().getPhoneId(subId[0]);
+            TelephonyManager.setTelephonyProperty(phoneId, property, value);
+        } else {
+            loge("setSystemProperty: subId is null or subId.length == 0");
+        }
     }
 
     private void log(String s) {

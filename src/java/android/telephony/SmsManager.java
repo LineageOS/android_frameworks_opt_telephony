@@ -846,7 +846,7 @@ public final class SmsManager {
      *
      * {@hide}
      */
-    public ArrayList<SmsMessage> getAllMessagesFromIcc() {
+    public static ArrayList<SmsMessage> getAllMessagesFromIcc() {
         List<SmsRawData> records = null;
 
         try {
@@ -1037,7 +1037,7 @@ public final class SmsManager {
      *
      * @hide
      */
-    public boolean isImsSmsSupported() {
+    boolean isImsSmsSupported() {
         boolean boSupported = false;
         try {
             ISms iccISms = getISmsService();
@@ -1062,7 +1062,7 @@ public final class SmsManager {
      *
      * @hide
      */
-    public String getImsSmsFormat() {
+    String getImsSmsFormat() {
         String format = com.android.internal.telephony.SmsConstants.FORMAT_UNKNOWN;
         try {
             ISms iccISms = getISmsService();
@@ -1073,16 +1073,6 @@ public final class SmsManager {
             // ignore it
         }
         return format;
-    }
-
-    /**
-     * Get the default sms subId
-     *
-     * @return the default sms subId
-     * @hide
-     */
-    public static long getDefaultSmsSubId() {
-        return SubscriptionManager.getDefaultSmsSubId();
     }
 
     /**
@@ -1121,6 +1111,16 @@ public final class SmsManager {
             //ignore it
         }
         return ret;
+    }
+
+    /**
+     * Get default sms subId
+     *
+     * @return the default SubId
+     * @hide
+     */
+    public static long getDefaultSmsSubId() {
+        return SubscriptionManager.getDefaultSmsSubId();
     }
 
     /**
