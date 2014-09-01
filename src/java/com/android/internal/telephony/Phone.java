@@ -1918,4 +1918,9 @@ public interface Phone {
      * shutdown Radio gracefully
      */
     public void shutdownRadio();
+
+    /** Request to update the current local call hold state.
+     * @param lchStatus, true if call is in lch state
+     */
+    public void setLocalCallHold(int lchStatus);
 }

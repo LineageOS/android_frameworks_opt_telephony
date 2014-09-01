@@ -1940,6 +1940,12 @@ public interface CommandsInterface {
 
     /**
      * @hide
+     * CM-specific: Ask the RIL about the presence of back-compat flags
+     */
+    public boolean needsOldRilFeature(String feature);
+
+    /**
+     * @hide
      * Register/unregister for WWAN and IWLAN coexistence
      * notification.
      *
@@ -1951,8 +1957,8 @@ public interface CommandsInterface {
     void unregisterForWwanIwlanCoexistence(Handler h);
 
     /**
-     * @hide
-     * CM-specific: Ask the RIL about the presence of back-compat flags
+     * Request to update the current local call hold state.
+     * @param lchStatus, true if call is in lch state
      */
-    public boolean needsOldRilFeature(String feature);
+    public void setLocalCallHold(int lchStatus);
 }

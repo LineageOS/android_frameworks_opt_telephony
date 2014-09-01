@@ -110,6 +110,10 @@ public final class CallManager {
 
     private boolean mSpeedUpAudioForMtCall = false;
 
+    // Holds the current active SUB, all actions would be
+    // taken on this sub.
+    private static long mActiveSub = SubscriptionManager.INVALID_SUB_ID;
+
     // state registrants
     protected final RegistrantList mPreciseCallStateRegistrants
     = new RegistrantList();
@@ -175,6 +179,9 @@ public final class CallManager {
     = new RegistrantList();
 
     protected final RegistrantList mPostDialCharacterRegistrants
+    = new RegistrantList();
+
+    protected final RegistrantList mActiveSubChangeRegistrants
     = new RegistrantList();
 
     private CallManager() {
@@ -1646,6 +1653,20 @@ public final class CallManager {
      */
     public void unregisterForSubscriptionInfoReady(Handler h){
         mSubscriptionInfoReadyRegistrants.remove(h);
+    }
+
+    public void registerForSubscriptionChange(Handler h, int what, Object obj) {
+        mActiveSubChangeRegistrants.addUnique(h, what, obj);
+    }
+
+    public void unregisterForSubscriptionChange(Handler h) {
+        mActiveSubChangeRegistrants.remove(h);
+    }
+
+    public void setActiveSubscription(long subscription) {
+        Rlog.d(LOG_TAG, "setActiveSubscription existing:" + mActiveSub + "new = " + subscription);
+        mActiveSub = subscription;
+        mActiveSubChangeRegistrants.notifyRegistrants(new AsyncResult (null, mActiveSub, null));
     }
 
     /**

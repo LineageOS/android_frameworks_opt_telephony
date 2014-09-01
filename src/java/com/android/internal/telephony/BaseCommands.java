@@ -886,4 +886,7 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void getAtr(Message response) {}
+
+    public void setLocalCallHold(int lchStatus) {
+    }
 }
