@@ -77,7 +77,6 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
-import com.android.internal.telephony.Subscription;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.cdma.CDMAPhone;
@@ -959,11 +958,6 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public int getPhoneId() {
         return mDefaultPhone.getPhoneId();
-    }
-
-    @Override
-    public Subscription getSubscriptionInfo() {
-        return mDefaultPhone.getSubscriptionInfo();
     }
 
     private IccRecords getIccRecords() {

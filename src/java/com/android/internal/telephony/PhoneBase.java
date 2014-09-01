@@ -43,6 +43,7 @@ import android.telephony.VoLteServiceState;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 
 import com.android.ims.ImsManager;
@@ -65,8 +66,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static com.android.internal.telephony.PhoneConstants.DEFAULT_SUBSCRIPTION;
 
 /**
  * (<em>Not for SDK use</em>)
@@ -152,7 +151,8 @@ public abstract class PhoneBase extends Handler implements Phone {
     // Single Radio Voice Call Continuity
     protected static final int EVENT_SRVCC_STATE_CHANGED            = 31;
     protected static final int EVENT_INITIATE_SILENT_REDIAL         = 32;
-    protected static final int EVENT_LAST                           = EVENT_INITIATE_SILENT_REDIAL;
+    protected static final int EVENT_RADIO_NOT_AVAILABLE            = 33;
+    protected static final int EVENT_LAST                           = EVENT_RADIO_NOT_AVAILABLE;
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";
@@ -193,8 +193,6 @@ public abstract class PhoneBase extends Handler implements Phone {
     private final String mActionDetached;
     private final String mActionAttached;
 
-    // Holds the subscription information
-    protected Subscription mSubscriptionData = null;
     protected int mPhoneId;
 
     private final Object mImsLock = new Object();
@@ -270,6 +268,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected final RegistrantList mSuppServiceFailedRegistrants
             = new RegistrantList();
 
+    protected final RegistrantList mRadioOffOrNotAvailableRegistrants
+            = new RegistrantList();
+
     protected final RegistrantList mSimRecordsLoadedRegistrants
             = new RegistrantList();
 
@@ -312,7 +313,7 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     protected PhoneBase(String name, PhoneNotifier notifier, Context context, CommandsInterface ci,
             boolean unitTestMode) {
-        this(name, notifier, context, ci, unitTestMode, DEFAULT_SUBSCRIPTION);
+        this(name, notifier, context, ci, unitTestMode, SubscriptionManager.DEFAULT_PHONE_ID);
     }
 
     /**
@@ -1563,6 +1564,16 @@ public abstract class PhoneBase extends Handler implements Phone {
      }
 
     @Override
+    public void registerForRadioOffOrNotAvailable(Handler h, int what, Object obj) {
+        mRadioOffOrNotAvailableRegistrants.addUnique(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForRadioOffOrNotAvailable(Handler h) {
+        mRadioOffOrNotAvailableRegistrants.remove(h);
+    }
+
+    @Override
     public String[] getActiveApnTypes() {
         return mDcTracker.getActiveApnTypes();
     }
@@ -1875,8 +1886,7 @@ public abstract class PhoneBase extends Handler implements Phone {
      * Returns the subscription id.
      */
     public long getSubId() {
-        long [] subId = SubscriptionController.getInstance().getSubId(mPhoneId);
-        return subId[0];
+        return SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhoneId);
     }
 
     /**
@@ -1884,11 +1894,6 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     public int getPhoneId() {
         return mPhoneId;
-    }
-
-    //Gets Subscription information in the Phone Object
-    public Subscription getSubscriptionInfo() {
-        return mSubscriptionData;
     }
 
     /**

@@ -50,7 +50,7 @@ public class MessagingConfigurationManager {
      * @return the value of the configuration
      */
     public boolean getCarrierConfigBoolean(String name, boolean defaultValue) {
-        return getCarrierConfigBoolean(SmsManager.getPreferredSmsSubscription(), name,
+        return getCarrierConfigBoolean(SmsManager.getDefaultSmsSubId(), name,
                 defaultValue);
     }
 
@@ -82,7 +82,7 @@ public class MessagingConfigurationManager {
      * @return the value of the configuration
      */
     public int getCarrierConfigInt(String name, int defaultValue) {
-        return getCarrierConfigInt(SmsManager.getPreferredSmsSubscription(), name, defaultValue);
+        return getCarrierConfigInt(SmsManager.getDefaultSmsSubId(), name, defaultValue);
     }
 
     /**
@@ -113,7 +113,7 @@ public class MessagingConfigurationManager {
      * @return the value of the configuration
      */
     public String getCarrierConfigString(String name, String defaultValue) {
-        return getCarrierConfigString(SmsManager.getPreferredSmsSubscription(), name, defaultValue);
+        return getCarrierConfigString(SmsManager.getDefaultSmsSubId(), name, defaultValue);
     }
 
     /**

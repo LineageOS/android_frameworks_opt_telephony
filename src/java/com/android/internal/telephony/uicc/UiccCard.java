@@ -93,7 +93,7 @@ public class UiccCard {
     private static final int EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE = 18;
     private static final int EVENT_SIM_IO_DONE = 19;
 
-    int mSlotId;
+    private int mSlotId;
 
     public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics) {
         if (DBG) log("Creating");
@@ -492,6 +492,10 @@ public class UiccCard {
             }
         }
         return count;
+    }
+
+    public int getSlotId() {
+        return mSlotId;
     }
 
     /**

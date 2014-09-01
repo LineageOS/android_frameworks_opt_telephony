@@ -92,8 +92,8 @@ public final class SmsManager {
     public void sendTextMessage(
             String destinationAddress, String scAddress, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        sendTextMessage(getPreferredSmsSubscription(), destinationAddress, scAddress, text,
-           sentIntent, deliveryIntent);
+        sendTextMessage(getDefaultSmsSubId(), destinationAddress, scAddress,
+                text, sentIntent, deliveryIntent);
     }
 
     /**
@@ -260,8 +260,8 @@ public final class SmsManager {
     public void sendMultipartTextMessage(
             String destinationAddress, String scAddress, ArrayList<String> parts,
             ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
-        sendMultipartTextMessage(getPreferredSmsSubscription(), destinationAddress, scAddress, parts, sentIntents,
-            deliveryIntents);
+        sendMultipartTextMessage(getDefaultSmsSubId(), destinationAddress,
+                scAddress, parts, sentIntents, deliveryIntents);
     }
 
     /**
@@ -364,7 +364,7 @@ public final class SmsManager {
     public void sendDataMessage(
             String destinationAddress, String scAddress, short destinationPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        sendDataMessage(getPreferredSmsSubscription(),
+        sendDataMessage(getDefaultSmsSubId(),
             destinationAddress, scAddress, destinationPort,
             data, sentIntent, deliveryIntent);
     }
@@ -463,7 +463,7 @@ public final class SmsManager {
      * {@hide}
      */
     public boolean copyMessageToIcc(byte[] smsc, byte[] pdu,int status) {
-        return copyMessageToIcc(getPreferredSmsSubscription(), smsc, pdu, status);
+        return copyMessageToIcc(getDefaultSmsSubId(), smsc, pdu, status);
     }
 
     /**
@@ -514,7 +514,7 @@ public final class SmsManager {
      */
     public boolean
     deleteMessageFromIcc(int messageIndex) {
-        return deleteMessageFromIcc(getPreferredSmsSubscription(), messageIndex);
+        return deleteMessageFromIcc(getDefaultSmsSubId(), messageIndex);
     }
 
     /**
@@ -562,7 +562,8 @@ public final class SmsManager {
      * {@hide}
      */
     public boolean updateMessageOnIcc(int messageIndex, int newStatus, byte[] pdu) {
-        return updateMessageOnIcc(getPreferredSmsSubscription(), messageIndex, newStatus, pdu);
+        return updateMessageOnIcc(getDefaultSmsSubId(), messageIndex,
+                newStatus, pdu);
     }
 
     /**
@@ -607,7 +608,7 @@ public final class SmsManager {
      * {@hide}
      */
     public static ArrayList<SmsMessage> getAllMessagesFromIcc() {
-        return getAllMessagesFromIcc(getPreferredSmsSubscription());
+        return getAllMessagesFromIcc(getDefaultSmsSubId());
     }
 
     /**
@@ -653,7 +654,7 @@ public final class SmsManager {
      * {@hide}
      */
     public boolean enableCellBroadcast(int messageIdentifier) {
-        return enableCellBroadcast(getPreferredSmsSubscription(), messageIdentifier);
+        return enableCellBroadcast(getDefaultSmsSubId(), messageIdentifier);
     }
 
     /**
@@ -706,7 +707,7 @@ public final class SmsManager {
      * {@hide}
      */
     public boolean disableCellBroadcast(int messageIdentifier) {
-        return disableCellBroadcast(getPreferredSmsSubscription(), messageIdentifier);
+        return disableCellBroadcast(getDefaultSmsSubId(), messageIdentifier);
     }
 
     /**
@@ -761,7 +762,7 @@ public final class SmsManager {
      * {@hide}
      */
     public boolean enableCellBroadcastRange(int startMessageId, int endMessageId) {
-        return enableCellBroadcastRange(getPreferredSmsSubscription(), startMessageId,
+        return enableCellBroadcastRange(getDefaultSmsSubId(), startMessageId,
                 endMessageId);
     }
 
@@ -822,7 +823,7 @@ public final class SmsManager {
      * {@hide}
      */
     public boolean disableCellBroadcastRange(int startMessageId, int endMessageId) {
-        return disableCellBroadcastRange(getPreferredSmsSubscription(), startMessageId,
+        return disableCellBroadcastRange(getDefaultSmsSubId(), startMessageId,
                 endMessageId);
     }
 
@@ -900,7 +901,7 @@ public final class SmsManager {
      * @hide
      */
     boolean isImsSmsSupported() {
-        return isImsSmsSupported(getPreferredSmsSubscription());
+        return isImsSmsSupported(getDefaultSmsSubId());
     }
 
     /** @hide */
@@ -930,7 +931,7 @@ public final class SmsManager {
      * @hide
      */
     String getImsSmsFormat() {
-        return getImsSmsFormat(getPreferredSmsSubscription());
+        return getImsSmsFormat(getDefaultSmsSubId());
     }
 
     /** @hide */
@@ -948,21 +949,13 @@ public final class SmsManager {
     }
 
     /**
-     * Get the preferred sms subId
+     * Get default sms subId
      *
-     * @return the preferred subId
+     * @return the default SubId
      * @hide
      */
-    public static long getPreferredSmsSubscription() {
-        ISms iccISms = null;
-        try {
-            iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
-            return (long) iccISms.getPreferredSmsSubscription();
-        } catch (RemoteException ex) {
-            return DEFAULT_SUB;
-        } catch (NullPointerException ex) {
-            return DEFAULT_SUB;
-        }
+    public static long getDefaultSmsSubId() {
+        return SubscriptionManager.getDefaultSmsSubId();
     }
 
     /**
@@ -1029,8 +1022,8 @@ public final class SmsManager {
      */
     public void sendMultimediaMessage(byte[] pdu, String locationUrl, ContentValues configOverrides,
             PendingIntent sentIntent) {
-        sendMultimediaMessage(getPreferredSmsSubscription(), pdu, locationUrl, configOverrides,
-                sentIntent);
+        sendMultimediaMessage(getDefaultSmsSubId(), pdu, locationUrl,
+                configOverrides, sentIntent);
     }
 
     /**
@@ -1077,8 +1070,8 @@ public final class SmsManager {
      */
     public void downloadMultimediaMessage(String locationUrl, ContentValues configOverrides,
             PendingIntent downloadedIntent) {
-        downloadMultimediaMessage(getPreferredSmsSubscription(), locationUrl, configOverrides,
-                downloadedIntent);
+        downloadMultimediaMessage(getDefaultSmsSubId(), locationUrl,
+                configOverrides, downloadedIntent);
     }
 
     /**
@@ -1398,8 +1391,8 @@ public final class SmsManager {
      */
     public void sendStoredTextMessage(Uri messageUri, String scAddress, PendingIntent sentIntent,
             PendingIntent deliveryIntent) {
-        sendStoredTextMessage(getPreferredSmsSubscription(), messageUri, scAddress, sentIntent,
-                deliveryIntent);
+        sendStoredTextMessage(getDefaultSmsSubId(), messageUri, scAddress,
+                sentIntent, deliveryIntent);
     }
 
     /**
@@ -1477,8 +1470,8 @@ public final class SmsManager {
      */
     public void sendStoredMultipartTextMessage(Uri messageUri, String scAddress,
             ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
-        sendStoredMultipartTextMessage(getPreferredSmsSubscription(), messageUri, scAddress,
-                sentIntents, deliveryIntents);
+        sendStoredMultipartTextMessage(getDefaultSmsSubId(), messageUri,
+                scAddress, sentIntents, deliveryIntents);
     }
 
     /**
@@ -1545,8 +1538,8 @@ public final class SmsManager {
      */
     public void sendStoredMultimediaMessage(Uri messageUri, ContentValues configOverrides,
             PendingIntent sentIntent) {
-        sendStoredMultimediaMessage(getPreferredSmsSubscription(), messageUri, configOverrides,
-                sentIntent);
+        sendStoredMultimediaMessage(getDefaultSmsSubId(), messageUri,
+                configOverrides, sentIntent);
     }
 
     /**

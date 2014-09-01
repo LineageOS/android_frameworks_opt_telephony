@@ -34,6 +34,7 @@ import com.android.internal.telephony.cdma.CDMALTEPhone;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.gsm.GSMPhone;
+import com.android.internal.telephony.SubInfoRecordUpdater;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.sip.SipPhone;
@@ -52,8 +53,8 @@ public class PhoneFactory {
 
     // lock sLockProxyPhones protects both sProxyPhones and sProxyPhone
     final static Object sLockProxyPhones = new Object();
-    static private Phone[] sProxyPhones = null;
-    static private Phone sProxyPhone = null;
+    static private PhoneProxy[] sProxyPhones = null;
+    static private PhoneProxy sProxyPhone = null;
 
     static private CommandsInterface[] sCommandsInterfaces = null;
 
@@ -174,9 +175,11 @@ public class PhoneFactory {
                 mProxyController = ProxyController.getInstance(context, sProxyPhones,
                         mUiccController, sCommandsInterfaces);
 
-                // Set the default phone in base class
-                sProxyPhone = sProxyPhones[PhoneConstants.DEFAULT_SUBSCRIPTION];
-                sCommandsInterface = sCommandsInterfaces[PhoneConstants.DEFAULT_SUBSCRIPTION];
+                // Set the default phone in base class.
+                // FIXME: This is a first best guess at what the defaults will be. It
+                // FIXME: needs to be done in a more controlled manner in the future.
+                sProxyPhone = sProxyPhones[0];
+                sCommandsInterface = sCommandsInterfaces[0];
 
                 // Ensure that we have a default SMS app. Requesting the app with
                 // updateIfNeeded set to true is enough to configure a default SMS app.
@@ -196,6 +199,7 @@ public class PhoneFactory {
                 Rlog.i(LOG_TAG, "Creating SubInfoRecordUpdater ");
                 sSubInfoRecordUpdater = new SubInfoRecordUpdater(context,
                         sProxyPhones, sCommandsInterfaces);
+                SubscriptionController.getInstance().updatePhonesAvailability(sProxyPhones);
             }
         }
     }
@@ -232,12 +236,14 @@ public class PhoneFactory {
             if (!sMadeDefaults) {
                 throw new IllegalStateException("Default phones haven't been made yet!");
                 // CAF_MSIM FIXME need to introduce default phone id ?
-            } else if (phoneId == PhoneConstants.DEFAULT_SUBSCRIPTION) {
-                Rlog.d(LOG_TAG, "getPhone: phoneId == DEFAULT_SUBSCRIPTION");
+            } else if (phoneId == SubscriptionManager.DEFAULT_PHONE_ID) {
+                Rlog.d(LOG_TAG, "getPhone: phoneId == DEFAULT_PHONE_ID");
                 phone = sProxyPhone;
             } else {
-                Rlog.d(LOG_TAG, "getPhone: phoneId != DEFAULT_SUBSCRIPTION");
-                phone = (phoneId >= 0 && phoneId < sProxyPhones.length ? sProxyPhones[phoneId] : null);
+                Rlog.d(LOG_TAG, "getPhone: phoneId != DEFAULT_PHONE_ID");
+                phone = (((phoneId >= 0)
+                                && (phoneId < TelephonyManager.getDefault().getPhoneCount()))
+                        ? sProxyPhones[phoneId] : null);
             }
             Rlog.d(LOG_TAG, "getPhone:- phone=" + phone);
             return phone;
@@ -254,6 +260,9 @@ public class PhoneFactory {
     }
 
     public static Phone getCdmaPhone() {
+        if (!sMadeDefaults) {
+            throw new IllegalStateException("Default phones haven't been made yet!");
+        }
         Phone phone;
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
             switch (TelephonyManager.getLteOnCdmaModeStatic()) {
@@ -327,13 +336,21 @@ public class PhoneFactory {
      * @return the preferred network mode that should be set.
      */
     // TODO: Fix when we "properly" have TelephonyDevController/SubscriptionController ..
-    public static int calculatePreferredNetworkType(Context context) {
+    public static int calculatePreferredNetworkType(Context context, int phoneId) {
         int preferredNetworkType = RILConstants.PREFERRED_NETWORK_MODE;
         if (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE) {
             preferredNetworkType = Phone.NT_MODE_GLOBAL;
         }
-        int networkType = Settings.Global.getInt(context.getContentResolver(),
-                Settings.Global.PREFERRED_NETWORK_MODE, preferredNetworkType);
+        int networkType = preferredNetworkType;
+        try {
+            networkType = TelephonyManager.getIntAtIndex(
+                    context.getContentResolver(),
+                    Settings.Global.PREFERRED_NETWORK_MODE, phoneId);
+        } catch (SettingNotFoundException snfe) {
+            Rlog.e(LOG_TAG, "Settings Exception Reading Value At Index for"
+                    + " Settings.Global.PREFERRED_NETWORK_MODE");
+        }
+        Rlog.d(LOG_TAG, "calculatePreferredNetworkType: phoneId = " + phoneId);
         return networkType;
     }
 
@@ -344,7 +361,8 @@ public class PhoneFactory {
 
     /* Gets User preferred Voice subscription setting*/
     public static int getVoiceSubscription() {
-        int subId = 0;
+        //FIXME Should be long
+        int subId = (int) SubscriptionManager.INVALID_SUB_ID;
 
         try {
             subId = Settings.Global.getInt(sContext.getContentResolver(),
@@ -353,6 +371,7 @@ public class PhoneFactory {
             Rlog.e(LOG_TAG, "Settings Exception Reading Dual Sim Voice Call Values");
         }
 
+        // FIXME can this be removed? We should not set defaults
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
         // Set subscription to 0 if current subscription is invalid.
         // Ex: multisim.config property is TSTS and subscription is 2.
@@ -417,7 +436,7 @@ public class PhoneFactory {
 
     /* Gets User preferred Data subscription setting*/
     public static long getDataSubscription() {
-        long subId = 1;
+        long subId = SubscriptionManager.INVALID_SUB_ID;
 
         try {
             subId = Settings.Global.getLong(sContext.getContentResolver(),
@@ -426,9 +445,10 @@ public class PhoneFactory {
             Rlog.e(LOG_TAG, "Settings Exception Reading Dual Sim Data Call Values");
         }
 
+        // FIXME can this be removed? We should not set defaults
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
         if (phoneId < 0 || phoneId >= TelephonyManager.getDefault().getPhoneCount()) {
-            subId = 1;
+            subId = 0;
             Rlog.i(LOG_TAG, "Subscription is invalid..." + subId + " Set to 0");
             setDataSubscription(subId);
         }
@@ -438,7 +458,8 @@ public class PhoneFactory {
 
     /* Gets User preferred SMS subscription setting*/
     public static int getSMSSubscription() {
-        int subId = 0;
+        //FIXME Should be long
+        int subId = (int) SubscriptionManager.INVALID_SUB_ID;
         try {
             subId = Settings.Global.getInt(sContext.getContentResolver(),
                     Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION);
@@ -446,6 +467,7 @@ public class PhoneFactory {
             Rlog.e(LOG_TAG, "Settings Exception Reading Dual Sim SMS Values");
         }
 
+        // FIXME can this be removed? We should not set defaults
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
         if (phoneId < 0 || phoneId >= TelephonyManager.getDefault().getPhoneCount()) {
             Rlog.i(LOG_TAG, "Subscription is invalid..." + subId + " Set to 0");
@@ -456,12 +478,14 @@ public class PhoneFactory {
         return subId;
     }
 
+    //FIXME can this be removed, it is only called in getVoiceSubscription
     static public void setVoiceSubscription(int subId) {
         Settings.Global.putInt(sContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION, subId);
         Rlog.d(LOG_TAG, "setVoiceSubscription : " + subId);
     }
 
+    //FIXME can this be removed, it is only called in getDataSubscription
     static public void setDataSubscription(long subId) {
         boolean enabled;
 
@@ -484,6 +508,7 @@ public class PhoneFactory {
         Rlog.d(LOG_TAG, "set data_roaming: " + enabled);
     }
 
+    //FIXME can this be removed, it is only called in getSMSSubscription
     static public void setSMSSubscription(int subId) {
         Settings.Global.putInt(sContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION, subId);
