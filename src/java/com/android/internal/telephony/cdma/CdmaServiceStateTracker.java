@@ -295,7 +295,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             break;
 
         case EVENT_RUIM_READY:
-            int networkType = PhoneFactory.calculatePreferredNetworkType(mPhone.getContext());
+            int networkType = PhoneFactory.calculatePreferredNetworkType(mPhone.getContext(),
+                    mPhone.getPhoneId());
             mCi.setPreferredNetworkType(networkType, null);
 
             if (mPhone.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {

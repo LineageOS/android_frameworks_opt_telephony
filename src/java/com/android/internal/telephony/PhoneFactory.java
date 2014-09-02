@@ -360,6 +360,10 @@ public class PhoneFactory {
         sContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
+    public static int calculatePreferredNetworkType(Context context) {
+        return calculatePreferredNetworkType(context, getDefaultPhoneId());
+    }
+
     /**
      * Returns the preferred network type that should be set in the modem.
      *
@@ -367,13 +371,20 @@ public class PhoneFactory {
      * @return the preferred network mode that should be set.
      */
     // TODO: Fix when we "properly" have TelephonyDevController/SubscriptionController ..
-    public static int calculatePreferredNetworkType(Context context) {
+    public static int calculatePreferredNetworkType(Context context, int phoneId) {
+        int networkType;
         int preferredNetworkType = RILConstants.PREFERRED_NETWORK_MODE;
-        if (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE) {
+        if (TelephonyManager.getLteOnCdmaModeStatic(phoneId) == PhoneConstants.LTE_ON_CDMA_TRUE) {
             preferredNetworkType = Phone.NT_MODE_GLOBAL;
         }
-        int networkType = Settings.Global.getInt(context.getContentResolver(),
-                Settings.Global.PREFERRED_NETWORK_MODE, preferredNetworkType);
+         try {
+            networkType = TelephonyManager.getIntAtIndex(context.getContentResolver(),
+                    Settings.Global.PREFERRED_NETWORK_MODE, phoneId);
+            } catch (SettingNotFoundException snfe) {
+                Rlog.e(LOG_TAG, "Settings Exception Reading Value At Index " + phoneId +
+                        " for Settings.Global.PREFERRED_NETWORK_MODE");
+                networkType = preferredNetworkType;
+            }
         return networkType;
     }
 
@@ -542,5 +553,17 @@ public class PhoneFactory {
      */
     public static ImsPhone makeImsPhone(PhoneNotifier phoneNotifier, Phone defaultPhone) {
         return ImsPhoneFactory.makePhone(sContext, phoneNotifier, defaultPhone);
+    }
+
+    private static boolean isValidphoneId(int phoneId) {
+        return (phoneId >= 0) && (phoneId < TelephonyManager.getDefault().getPhoneCount());
+    }
+
+    private static int getDefaultPhoneId() {
+        int phoneId = SubscriptionController.getInstance().getPhoneId(getDefaultSubscription());
+        if (!isValidphoneId(phoneId)) {
+            phoneId = 0;
+        }
+        return phoneId;
     }
 }

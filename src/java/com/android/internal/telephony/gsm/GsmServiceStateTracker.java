@@ -301,7 +301,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
             case EVENT_SIM_READY:
                 // Set the network type, in case the radio does not restore it.
-                int networkType = PhoneFactory.calculatePreferredNetworkType(mPhone.getContext());
+                int networkType = PhoneFactory.calculatePreferredNetworkType(mPhone.getContext(),
+                        mPhone.getPhoneId());
                 mCi.setPreferredNetworkType(networkType, null);
 
                 boolean skipRestoringSelection = mPhone.getContext().getResources().getBoolean(
