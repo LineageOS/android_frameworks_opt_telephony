@@ -290,6 +290,13 @@ public class GSMPhone extends PhoneBase {
     @Override
     public ServiceState
     getServiceState() {
+        if (mSST == null || mSST.mSS.getState() != ServiceState.STATE_IN_SERVICE) {
+            if (mImsPhone != null &&
+                    mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
+                return mImsPhone.getServiceState();
+            }
+        }
+
         if (mSST != null) {
             return mSST.mSS;
         } else {
