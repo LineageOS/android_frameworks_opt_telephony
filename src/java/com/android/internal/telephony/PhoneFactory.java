@@ -52,8 +52,8 @@ public class PhoneFactory {
 
     // lock sLockProxyPhones protects both sProxyPhones and sProxyPhone
     final static Object sLockProxyPhones = new Object();
-    static private Phone[] sProxyPhones = null;
-    static private Phone sProxyPhone = null;
+    static private PhoneProxy[] sProxyPhones = null;
+    static private PhoneProxy sProxyPhone = null;
 
     static private CommandsInterface[] sCommandsInterfaces = null;
 
@@ -174,9 +174,11 @@ public class PhoneFactory {
                 mProxyController = ProxyController.getInstance(context, sProxyPhones,
                         mUiccController, sCommandsInterfaces);
 
-                // Set the default phone in base class
-                sProxyPhone = sProxyPhones[PhoneConstants.DEFAULT_SUBSCRIPTION];
-                sCommandsInterface = sCommandsInterfaces[PhoneConstants.DEFAULT_SUBSCRIPTION];
+                // Set the default phone in base class.
+                // FIXME: This is a first best guess at what the defaults will be. It
+                // FIXME: needs to be done in a more controlled manner in the future.
+                sProxyPhone = sProxyPhones[0];
+                sCommandsInterface = sCommandsInterfaces[0];
 
                 // Ensure that we have a default SMS app. Requesting the app with
                 // updateIfNeeded set to true is enough to configure a default SMS app.
@@ -196,6 +198,7 @@ public class PhoneFactory {
                 Rlog.i(LOG_TAG, "Creating SubInfoRecordUpdater ");
                 sSubInfoRecordUpdater = new SubInfoRecordUpdater(context,
                         sProxyPhones, sCommandsInterfaces);
+                SubscriptionController.getInstance().updatePhonesAvailability(sProxyPhones);
             }
         }
     }
@@ -232,12 +235,14 @@ public class PhoneFactory {
             if (!sMadeDefaults) {
                 throw new IllegalStateException("Default phones haven't been made yet!");
                 // CAF_MSIM FIXME need to introduce default phone id ?
-            } else if (phoneId == PhoneConstants.DEFAULT_SUBSCRIPTION) {
-                Rlog.d(LOG_TAG, "getPhone: phoneId == DEFAULT_SUBSCRIPTION");
+            } else if (phoneId == SubscriptionManager.DEFAULT_PHONE_ID) {
+                Rlog.d(LOG_TAG, "getPhone: phoneId == DEFAULT_PHONE_ID");
                 phone = sProxyPhone;
             } else {
-                Rlog.d(LOG_TAG, "getPhone: phoneId != DEFAULT_SUBSCRIPTION");
-                phone = (phoneId >= 0 && phoneId < sProxyPhones.length ? sProxyPhones[phoneId] : null);
+                Rlog.d(LOG_TAG, "getPhone: phoneId != DEFAULT_PHONE_ID");
+                phone = (((phoneId >= 0)
+                                && (phoneId < TelephonyManager.getDefault().getPhoneCount()))
+                        ? sProxyPhones[phoneId] : null);
             }
             Rlog.d(LOG_TAG, "getPhone:- phone=" + phone);
             return phone;
@@ -254,6 +259,9 @@ public class PhoneFactory {
     }
 
     public static Phone getCdmaPhone() {
+        if (!sMadeDefaults) {
+            throw new IllegalStateException("Default phones haven't been made yet!");
+        }
         Phone phone;
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
             switch (TelephonyManager.getLteOnCdmaModeStatic()) {
