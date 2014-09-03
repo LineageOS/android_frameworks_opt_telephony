@@ -347,7 +347,8 @@ public class WapPushOverSms implements ServiceConnection {
                 case MESSAGE_TYPE_NOTIFICATION_IND: {
                     final NotificationInd nInd = (NotificationInd) pdu;
 
-                    Bundle configs = SmsManager.getSmsManagerForSubId(subId).getCarrierConfigValues();
+                    Bundle configs = SmsManager.getSmsManagerUsingSubId(subId)
+                            .getCarrierConfigValues();
                     if (configs != null && configs.getBoolean(
                         SmsManager.MMS_CONFIG_APPEND_TRANSACTION_ID, false)) {
                         final byte [] contentLocation = nInd.getContentLocation();
