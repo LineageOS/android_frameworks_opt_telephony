@@ -460,7 +460,7 @@ public final class SmsManager {
      * @param subId a SMS subscription id, typically accessed using SubscriptionManager
      * @return the instance of the SmsManager associated with subId
      */
-    public static SmsManager getSmsManagerForSubId(long subId) {
+    public static SmsManager getSmsManagerUsingSubId(long subId) {
         // TODO(shri): Add javadoc link once SubscriptionManager is made public api
         synchronized(sLockObject) {
             SmsManager smsManager = sSubInstances.get(subId);
