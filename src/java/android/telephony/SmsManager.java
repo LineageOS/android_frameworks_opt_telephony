@@ -457,10 +457,11 @@ public final class SmsManager {
     /**
      * Get the the instance of the SmsManager associated with a particular subId
      *
-     * @param subId a SMS subscription id, typically accessed using {@link SubscriptionManager}
+     * @param subId a SMS subscription id, typically accessed using SubscriptionManager
      * @return the instance of the SmsManager associated with subId
      */
     public static SmsManager getSmsManagerForSubId(long subId) {
+        // TODO(shri): Add javadoc link once SubscriptionManager is made public api
         synchronized(sLockObject) {
             SmsManager smsManager = sSubInstances.get(subId);
             if (smsManager == null) {
@@ -476,14 +477,15 @@ public final class SmsManager {
     }
 
     /**
-     * Get the associated subId. If the instance was returned by {@link getDefault()}, then this
+     * Get the associated subId. If the instance was returned by {@link #getDefault()}, then this
      * method may return different values at different points in time (if the user changes the
-     * default subId). It will return {@link SubscriptionManager.INVALID_SUB_ID} if the default
+     * default subId). It will return SubscriptionManager.INVALID_SUB_ID if the default
      * subId cannot be determined.
      *
      * @return associated subId
      */
     public long getSubId() {
+        // TODO(shri): Add javadoc link once SubscriptionManager is made public api
         if (mSubId == DEFAULT_SUB_ID) {
             return getDefaultSmsSubId();
         }
