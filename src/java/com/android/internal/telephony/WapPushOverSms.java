@@ -38,12 +38,12 @@ import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SqliteWrapper;
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
-import android.telephony.MessagingConfigurationManager;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.Rlog;
@@ -203,7 +203,7 @@ public class WapPushOverSms implements ServiceConnection {
                 // FIXME (tomtaylor) - when we've updated SubscriptionManager, change
                 // SubscriptionManager.DEFAULT_SUB_ID to SubscriptionManager.getDefaultSmsSubId()
                 long subId = (subIds != null) && (subIds.length > 0) ? subIds[0] :
-                    SmsManager.getDefault().getPreferredSmsSubscription();
+                    SmsManager.getDefaultSmsSubId();
                 writeInboxMessage(subId, intentData);
             }
 
@@ -347,8 +347,9 @@ public class WapPushOverSms implements ServiceConnection {
                 case MESSAGE_TYPE_NOTIFICATION_IND: {
                     final NotificationInd nInd = (NotificationInd) pdu;
 
-                    if (MessagingConfigurationManager.getDefault().getCarrierConfigBoolean(subId,
-                            MessagingConfigurationManager.CONF_APPEND_TRANSACTION_ID, false)) {
+                    Bundle configs = SmsManager.getSmsManagerForSubId(subId).getCarrierConfigValues();
+                    if (configs != null && configs.getBoolean(
+                        SmsManager.MMS_CONFIG_APPEND_TRANSACTION_ID, false)) {
                         final byte [] contentLocation = nInd.getContentLocation();
                         if ('=' == contentLocation[contentLocation.length - 1]) {
                             byte [] transactionId = nInd.getTransactionId();
