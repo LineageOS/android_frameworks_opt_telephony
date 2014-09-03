@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a1b2928_800e7e32",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-09-03T12:04:55Z",
+      "side": 1,
+      "message": "I know it\u0027s unrelated, but I have to comment on this line here, WTF? \"mRilVersion \u003e 7 ? false : true\"\n\nWhat\u0027s wrong with \"mRilVersion \u003c\u003d 7\" ?",
+      "revId": "02a0b5e1e7e266299b09a7f406220cf6df4b66eb",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
