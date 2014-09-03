@@ -461,7 +461,8 @@ public final class SmsManager {
      *   {@link android.telephony.SubscriptionManager}
      * @return the instance of the SmsManager associated with subId
      */
-    public static SmsManager getSmsManagerForSubId(long subId) {
+    public static SmsManager getSmsManagerUsingSubId(long subId) {
+        // TODO(shri): Add javadoc link once SubscriptionManager is made public api
         synchronized(sLockObject) {
             SmsManager smsManager = sSubInstances.get(subId);
             if (smsManager == null) {
