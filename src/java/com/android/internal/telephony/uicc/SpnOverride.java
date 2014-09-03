@@ -38,16 +38,16 @@ public class SpnOverride {
     static final String LOG_TAG = "SpnOverride";
     static final String PARTNER_SPN_OVERRIDE_PATH ="etc/spn-conf.xml";
 
-    SpnOverride () {
+    public SpnOverride () {
         mCarrierSpnMap = new HashMap<String, String>();
         loadSpnOverrides();
     }
 
-    boolean containsCarrier(String carrier) {
+    public boolean containsCarrier(String carrier) {
         return mCarrierSpnMap.containsKey(carrier);
     }
 
-    String getSpn(String carrier) {
+    public String getSpn(String carrier) {
         return mCarrierSpnMap.get(carrier);
     }
 
@@ -84,6 +84,7 @@ public class SpnOverride {
 
                 mCarrierSpnMap.put(numeric, data);
             }
+            spnReader.close();
         } catch (XmlPullParserException e) {
             Rlog.w(LOG_TAG, "Exception in spn-conf parser " + e);
         } catch (IOException e) {
