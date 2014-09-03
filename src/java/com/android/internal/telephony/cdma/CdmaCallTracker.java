@@ -585,7 +585,7 @@ public final class CdmaCallTracker extends CallTracker {
                 mConnections[i] = null;
             } else if (conn != null && dc != null) { /* implicit conn.compareTo(dc) */
                 // Call collision case
-                if (conn.mIsIncoming != dc.isMT) {
+                if (conn.isIncoming() != dc.isMT) {
                     if (dc.isMT == true){
                         // Mt call takes precedence than Mo,drops Mo
                         mDroppedDuringPoll.add(conn);
