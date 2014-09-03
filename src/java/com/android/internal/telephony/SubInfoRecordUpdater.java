@@ -21,17 +21,13 @@ import android.app.ActivityManagerNative;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.ContentResolver;
-import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.Message;
-import android.os.SystemProperties;
 import android.os.UserHandle;
-import android.provider.Settings;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubInfoRecord;
@@ -40,10 +36,8 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCardConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.TelephonyIntents;
-import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccUtils;
@@ -60,8 +54,6 @@ public class SubInfoRecordUpdater extends Handler {
     private static final int EVENT_OFFSET = 8;
     private static final int EVENT_QUERY_ICCID_DONE = 1;
     private static final String ICCID_STRING_FOR_NO_SIM = "";
-    private static final int ICCID_WAIT_TIMER = 90;
-
     /**
      *  int[] sInsertSimState maintains all slots' SIM inserted status currently,
      *  it may contain 4 kinds of values:
@@ -87,7 +79,6 @@ public class SubInfoRecordUpdater extends Handler {
 
     private static Phone[] sPhone;
     private static Context sContext = null;
-    private static CommandsInterface[] sCi;
     private static IccFileHandler[] sFh = new IccFileHandler[PROJECT_SIM_NUM];
     private static String sIccId[] = new String[PROJECT_SIM_NUM];
     private static int[] sInsertSimState = new int[PROJECT_SIM_NUM];
@@ -100,7 +91,6 @@ public class SubInfoRecordUpdater extends Handler {
 
         sContext = context;
         sPhone = phoneProxy;
-        sCi = ci;
         IntentFilter intentFilter = new IntentFilter(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         sContext.registerReceiver(sReceiver, intentFilter);
     }
@@ -110,6 +100,7 @@ public class SubInfoRecordUpdater extends Handler {
     }
 
     private final BroadcastReceiver sReceiver = new  BroadcastReceiver() {
+        @Override
         public void onReceive(Context context, Intent intent) {
             logd("[Receiver]+");
             String action = intent.getAction();
@@ -152,10 +143,10 @@ public class SubInfoRecordUpdater extends Handler {
                         }
 
                         SubInfoRecord subInfo =
-                                SubscriptionManager.getSubInfoUsingSubId(sContext, subId);
+                                SubscriptionManager.getSubInfoUsingSubId(subId);
 
                         if (subInfo != null
-                                && subInfo.mNameSource != SubscriptionManager.USER_INPUT) {
+                                && subInfo.mNameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
                             SpnOverride mSpnOverride = new SpnOverride();
                             String nameToSet;
                             String CarrierName =
@@ -208,7 +199,7 @@ public class SubInfoRecordUpdater extends Handler {
     }
 
     public static void setDisplayNameForNewSub(String newSubName, int subId, int newNameSource) {
-        SubInfoRecord subInfo = SubscriptionManager.getSubInfoUsingSubId(sContext, subId);
+        SubInfoRecord subInfo = SubscriptionManager.getSubInfoUsingSubId(subId);
         if (subInfo != null) {
             // overwrite SIM display name if it is not assigned by user
             int oldNameSource = subInfo.mNameSource;
@@ -217,10 +208,10 @@ public class SubInfoRecordUpdater extends Handler {
                     + oldSubName + ", oldNameSource = " + oldNameSource + ", newSubName = "
                     + newSubName + ", newNameSource = " + newNameSource);
             if (oldSubName == null ||
-                (oldNameSource == SubscriptionManager.DEFAULT_SOURCE && newSubName != null) ||
-                (oldNameSource == SubscriptionManager.SIM_SOURCE && newSubName != null
+                (oldNameSource == SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE && newSubName != null) ||
+                (oldNameSource == SubscriptionManager.NAME_SOURCE_SIM_SOURCE && newSubName != null
                         && !newSubName.equals(oldSubName))) {
-                SubscriptionManager.setDisplayName(sContext, newSubName,
+                SubscriptionManager.setDisplayName(newSubName,
                         subInfo.mSubId, newNameSource);
             }
         } else {
@@ -228,6 +219,7 @@ public class SubInfoRecordUpdater extends Handler {
         }
     }
 
+    @Override
     public void handleMessage(Message msg) {
         AsyncResult ar = (AsyncResult)msg.obj;
         int msgNum = msg.what;
@@ -363,11 +355,11 @@ public class SubInfoRecordUpdater extends Handler {
                 if (sInsertSimState[i] > 0) {
                     //some special SIMs may have the same IccIds, add suffix to distinguish them
                     //FIXME: addSubInfoRecord can return an error.
-                    SubscriptionManager.addSubInfoRecord(sContext, sIccId[i]
+                    SubscriptionManager.addSubInfoRecord(sIccId[i]
                             + Integer.toString(sInsertSimState[i]), i);
                     logd("SUB" + (i + 1) + " has invalid IccId");
                 } else /*if (sInsertSimState[i] != SIM_NOT_INSERT)*/ {
-                    SubscriptionManager.addSubInfoRecord(sContext, sIccId[i], i);
+                    SubscriptionManager.addSubInfoRecord(sIccId[i], i);
                 }
                 if (isNewSim(sIccId[i], oldIccId)) {
                     nNewCardCount++;
@@ -398,7 +390,7 @@ public class SubInfoRecordUpdater extends Handler {
             logd("sInsertSimState[" + i + "] = " + sInsertSimState[i]);
         }
 
-        List<SubInfoRecord> subInfos = SubscriptionManager.getActivatedSubInfoList(sContext);
+        List<SubInfoRecord> subInfos = SubscriptionManager.getActiveSubInfoList();
         int nSubCount = (subInfos == null) ? 0 : subInfos.size();
         logd("nSubCount = " + nSubCount);
         for (int i=0; i<nSubCount; i++) {

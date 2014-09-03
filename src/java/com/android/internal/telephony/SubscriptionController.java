@@ -16,33 +16,23 @@
 
 package com.android.internal.telephony;
 
-import android.Manifest;
-import android.app.AppOpsManager;
-import android.app.PendingIntent;
-import android.content.ContentUris;
 import android.content.Context;
 import android.os.AsyncResult;
-import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
 import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.telephony.Rlog;
 import android.util.Log;
-import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.database.Cursor;
 import android.content.Intent;
 import android.provider.BaseColumns;
 import android.provider.Settings;
-import android.provider.Telephony;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 
 import com.android.internal.telephony.ISub;
-import com.android.internal.telephony.dataconnection.DctController;
-import com.android.internal.telephony.uicc.IccConstants;
-import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.SpnOverride;
 
 import android.telephony.SubscriptionManager;
@@ -50,10 +40,8 @@ import android.telephony.SubInfoRecord;
 import android.telephony.TelephonyManager;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Set;
 /**
@@ -247,7 +235,6 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Query SubInfoRecord(s) from subinfo database
-     * @param context Context provided by caller
      * @param selection A filter declaring which rows to return
      * @param queryKey query key content
      * @return Array list of queried result from database
@@ -290,7 +277,6 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Get the SubInfoRecord according to an index
-     * @param context Context provided by caller
      * @param subId The unique SubInfoRecord index in database
      * @return SubInfoRecord, maybe null
      */
@@ -327,7 +313,6 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Get the SubInfoRecord according to an IccId
-     * @param context Context provided by caller
      * @param iccId the IccId of SIM card
      * @return SubInfoRecord, maybe null
      */
@@ -370,7 +355,6 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Get the SubInfoRecord according to slotId
-     * @param context Context provided by caller
      * @param slotId the slot which the SIM is inserted
      * @return SubInfoRecord, maybe null
      */
@@ -381,7 +365,6 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Get all the SubInfoRecord(s) in subinfo database
-     * @param context Context provided by caller
      * @return Array list of all SubInfoRecords in database, include thsoe that were inserted before
      */
     @Override
@@ -402,11 +385,10 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Get the SubInfoRecord(s) of the currently inserted SIM(s)
-     * @param context Context provided by caller
      * @return Array list of currently inserted SubInfoRecord(s)
      */
     @Override
-    public List<SubInfoRecord> getActivatedSubInfoList() {
+    public List<SubInfoRecord> getActiveSubInfoList() {
         logd("[getActivatedSubInfoList]+");
         enforceSubscriptionPermission();
 
@@ -435,7 +417,7 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public int getActivatedSubInfoCount() {
         logd("[getActivatedSubInfoCount]+");
-        List<SubInfoRecord> records = getActivatedSubInfoList();
+        List<SubInfoRecord> records = getActiveSubInfoList();
         if (records == null) {
             logd("[getActivatedSubInfoCount] records null");
             return 0;
@@ -446,7 +428,6 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Get the SUB count of all SUB(s) in subinfo database
-     * @param context Context provided by caller
      * @return all SIM count in database, include what was inserted before
      */
     @Override
@@ -474,7 +455,6 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Add a new SubInfoRecord to subinfo database if needed
-     * @param context Context provided by caller
      * @param iccId the IccId of the SIM card
      * @param slotId the slot which the SIM is inserted
      * @return the URL of the newly created row or the updated row
@@ -534,7 +514,7 @@ public class SubscriptionController extends ISub.Stub {
                     value.put(SubscriptionManager.SIM_ID, slotId);
                 }
 
-                if (nameSource != SubscriptionManager.USER_INPUT) {
+                if (nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
                     value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
                 }
 
@@ -607,7 +587,6 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Set SIM color by simInfo index
-     * @param context Context provided by caller
      * @param color the color of the SIM
      * @param subId the unique SubInfoRecord index in database
      * @return the number of records updated
@@ -637,7 +616,6 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Set display name by simInfo index
-     * @param context Context provided by caller
      * @param displayName the display name of SIM card
      * @param subId the unique SubInfoRecord index in database
      * @return the number of records updated
@@ -649,15 +627,16 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Set display name by simInfo index with name source
-     * @param context Context provided by caller
      * @param displayName the display name of SIM card
      * @param subId the unique SubInfoRecord index in database
-     * @param nameSource, 0: DEFAULT_SOURCE, 1: SIM_SOURCE, 2: USER_INPUT
+     * @param nameSource 0: NAME_SOURCE_DEFAULT_SOURCE, 1: NAME_SOURCE_SIM_SOURCE,
+     *                   2: NAME_SOURCE_USER_INPUT, -1 NAME_SOURCE_UNDEFINED
      * @return the number of records updated
      */
     @Override
     public int setDisplayNameUsingSrc(String displayName, long subId, long nameSource) {
-        logd("[setDisplayName]+  displayName:" + displayName + " subId:" + subId + " nameSource:" + nameSource);
+        logd("[setDisplayName]+  displayName:" + displayName + " subId:" + subId
+                + " nameSource:" + nameSource);
         enforceSubscriptionPermission();
 
         validateSubId(subId);
@@ -669,7 +648,7 @@ public class SubscriptionController extends ISub.Stub {
         }
         ContentValues value = new ContentValues(1);
         value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
-        if (nameSource >= SubscriptionManager.DEFAULT_SOURCE) {
+        if (nameSource >= SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE) {
             logd("Set nameSource=" + nameSource);
             value.put(SubscriptionManager.NAME_SOURCE, nameSource);
         }
@@ -685,7 +664,6 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Set phone number by subId
-     * @param context Context provided by caller
      * @param number the phone number of the SIM
      * @param subId the unique SubInfoRecord index in database
      * @return the number of records updated
@@ -737,7 +715,6 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Set number display format. 0: none, 1: the first four digits, 2: the last four digits
-     * @param context Context provided by caller
      * @param format the display format of phone number
      * @param subId the unique SubInfoRecord index in database
      * @return the number of records updated
@@ -766,7 +743,6 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Set data roaming by simInfo index
-     * @param context Context provided by caller
      * @param roaming 0:Don't allow data when roaming, 1:Allow data when roaming
      * @param subId the unique SubInfoRecord index in database
      * @return the number of records updated
@@ -793,6 +769,7 @@ public class SubscriptionController extends ISub.Stub {
         return result;
     }
 
+    @Override
     public int getSlotId(long subId) {
         if (subId == SubscriptionManager.DEFAULT_SUB_ID) {
             subId = getDefaultSubId();
@@ -829,6 +806,7 @@ public class SubscriptionController extends ISub.Stub {
      * Return the subId for specified slot Id.
      * @deprecated
      */
+    @Override
     @Deprecated
     public long[] getSubId(int slotId) {
         if (slotId == SubscriptionManager.DEFAULT_SLOT_ID) {
@@ -883,6 +861,7 @@ public class SubscriptionController extends ISub.Stub {
         return subIdArr;
     }
 
+    @Override
     public int getPhoneId(long subId) {
         if (subId == SubscriptionManager.DEFAULT_SUB_ID) {
             logd("[getPhoneId]- default subId");
@@ -928,6 +907,7 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * @return the number of records cleared
      */
+    @Override
     public int clearSubInfo() {
         enforceSubscriptionPermission();
         logd("[clearSubInfo]+");
@@ -977,6 +957,7 @@ public class SubscriptionController extends ISub.Stub {
         Rlog.e(LOG_TAG, "[SubController]" + msg);
     }
 
+    @Override
     @Deprecated
     public long getDefaultSubId() {
         //FIXME To remove this api, All clients should be using getDefaultVoiceSubId
@@ -984,6 +965,7 @@ public class SubscriptionController extends ISub.Stub {
         return mDefaultVoiceSubId;
     }
 
+    @Override
     public void setDefaultSmsSubId(long subId) {
         if (subId == SubscriptionManager.DEFAULT_SUB_ID) {
             throw new RuntimeException("setDefaultSmsSubId called with DEFAULT_SUB_ID");
@@ -1002,6 +984,7 @@ public class SubscriptionController extends ISub.Stub {
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
+    @Override
     public long getDefaultSmsSubId() {
         long subId = Settings.Global.getLong(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION,
@@ -1010,6 +993,7 @@ public class SubscriptionController extends ISub.Stub {
         return subId;
     }
 
+    @Override
     public void setDefaultVoiceSubId(long subId) {
         if (subId == SubscriptionManager.DEFAULT_SUB_ID) {
             throw new RuntimeException("setDefaultVoiceSubId called with DEFAULT_SUB_ID");
@@ -1028,6 +1012,7 @@ public class SubscriptionController extends ISub.Stub {
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
+    @Override
     public long getDefaultVoiceSubId() {
         long subId = Settings.Global.getLong(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
@@ -1036,6 +1021,7 @@ public class SubscriptionController extends ISub.Stub {
         return subId;
     }
 
+    @Override
     public long getDefaultDataSubId() {
         long subId = Settings.Global.getLong(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION,
@@ -1044,6 +1030,7 @@ public class SubscriptionController extends ISub.Stub {
         return subId;
     }
 
+    @Override
     public void setDefaultDataSubId(long subId) {
         if (subId == SubscriptionManager.DEFAULT_SUB_ID) {
             throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
@@ -1108,8 +1095,9 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
+    @Override
     public void clearDefaultsForInactiveSubIds() {
-        final List<SubInfoRecord> records = getActivatedSubInfoList();
+        final List<SubInfoRecord> records = getActiveSubInfoList();
         logd("[clearDefaultsForInactiveSubIds] records: " + records);
         if (shouldDefaultBeCleared(records, getDefaultDataSubId())) {
             logd("[clearDefaultsForInactiveSubIds]: clearing default data sub id");
@@ -1221,6 +1209,7 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * @return the list of subId's that are activated, is never null but the length maybe 0.
      */
+    @Override
     public long[] getActivatedSubIdList() {
         Set<Entry<Integer, Long>> simInfoSet = mSimInfo.entrySet();
         logd("getActivatedSubIdList: simInfoSet=" + simInfoSet);

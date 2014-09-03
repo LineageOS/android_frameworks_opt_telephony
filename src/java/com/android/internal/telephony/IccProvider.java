@@ -25,6 +25,7 @@ import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.telephony.SubInfoRecord;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -115,13 +116,21 @@ public class IccProvider extends ContentProvider {
     }
 
     private Cursor loadAllSimContacts(int efType) {
-        long[] subIdList = SubscriptionManager.getActivatedSubIdList();
-        Cursor [] result = new Cursor[subIdList.length];
+        Cursor [] result;
+        List<SubInfoRecord> subInfoList = SubscriptionManager.getActiveSubInfoList();
 
-        int i = 0;
-        for (long subId : subIdList) {
-            result[i++] = loadFromEf(efType, subId);
-            Rlog.i(TAG,"loadAllSimContacts: subId=" + subId);
+        if ((subInfoList == null) || (subInfoList.size() == 0)) {
+            result = new Cursor[0];
+        } else {
+            int subIdCount = subInfoList.size();
+            result = new Cursor[subIdCount];
+            long subId;
+
+            for (int i = 0; i < subIdCount; i++) {
+                subId = subInfoList.get(i).mSubId;
+                result[i] = loadFromEf(efType, subId);
+                Rlog.i(TAG,"ADN Records loaded for Subscription ::" + subId);
+            }
         }
 
         return new MergeCursor(result);
