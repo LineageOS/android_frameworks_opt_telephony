@@ -389,22 +389,22 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public List<SubInfoRecord> getActiveSubInfoList() {
-        logd("[getActivatedSubInfoList]+");
+        logd("[getActiveSubInfoList]+");
         enforceSubscriptionPermission();
 
         List<SubInfoRecord> subList = null;
 
         if (!isSubInfoReady()) {
-            logd("[getActivatedSubInfoList] Sub Controller not ready");
+            logd("[getActiveSubInfoList] Sub Controller not ready");
             return subList;
         }
 
         subList = getSubInfo(SubscriptionManager.SIM_ID
                 + "!=" + SubscriptionManager.INVALID_SLOT_ID, null);
         if (subList != null) {
-            logd("[getActivatedSubInfoList]- " + subList.size() + " infos return");
+            logd("[getActiveSubInfoList]- " + subList.size() + " infos return");
         } else {
-            logd("[getActivatedSubInfoList]- no info return");
+            logd("[getActiveSubInfoList]- no info return");
         }
 
         return subList;
@@ -415,14 +415,14 @@ public class SubscriptionController extends ISub.Stub {
      * @return active SIM count
      */
     @Override
-    public int getActivatedSubInfoCount() {
-        logd("[getActivatedSubInfoCount]+");
+    public int getActiveSubInfoCount() {
+        logd("[getActiveSubInfoCount]+");
         List<SubInfoRecord> records = getActiveSubInfoList();
         if (records == null) {
-            logd("[getActivatedSubInfoCount] records null");
+            logd("[getActiveSubInfoCount] records null");
             return 0;
         }
-        logd("[getActivatedSubInfoCount]- count: " + records.size());
+        logd("[getActiveSubInfoCount]- count: " + records.size());
         return records.size();
     }
 
@@ -1207,12 +1207,12 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
-     * @return the list of subId's that are activated, is never null but the length maybe 0.
+     * @return the list of subId's that are active, is never null but the length maybe 0.
      */
     @Override
-    public long[] getActivatedSubIdList() {
+    public long[] getActiveSubIdList() {
         Set<Entry<Integer, Long>> simInfoSet = mSimInfo.entrySet();
-        logd("getActivatedSubIdList: simInfoSet=" + simInfoSet);
+        logd("getActiveSubIdList: simInfoSet=" + simInfoSet);
 
         long[] subIdArr = new long[simInfoSet.size()];
         int i = 0;
@@ -1222,7 +1222,7 @@ public class SubscriptionController extends ISub.Stub {
             i++;
         }
 
-        logd("getActivatedSubIdList: X subIdArr.length=" + subIdArr.length);
+        logd("getActiveSubIdList: X subIdArr.length=" + subIdArr.length);
         return subIdArr;
     }
 
