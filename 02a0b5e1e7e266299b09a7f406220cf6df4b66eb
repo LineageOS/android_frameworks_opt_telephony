@@ -34,6 +34,23 @@
       "revId": "02a0b5e1e7e266299b09a7f406220cf6df4b66eb",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a1b2928_c0acf6ef",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 303,
+      "author": {
+        "id": 444
+      },
+      "writtenOn": "2014-09-03T14:42:42Z",
+      "side": 1,
+      "message": "Seems like this block is not needed for me. After removing it, I can hang up calls fine, and it\u0027s not stuck on \"Dialing\" anymore. Matt, can you test it too?",
+      "revId": "02a0b5e1e7e266299b09a7f406220cf6df4b66eb",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
