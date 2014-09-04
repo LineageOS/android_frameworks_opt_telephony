@@ -169,6 +169,16 @@ public abstract class Connection {
     public abstract long getCreateTime();
 
     /**
+     * Set Connection create time in currentTimeMillis() format.
+     * This API may be used to change create time of the
+     * Connection for scenarios like IMS Volte SRVCC where
+     * create time is transferred from PS Connection to CS.
+     */
+    public void setCreateTime(long timeInMillis) {
+        Rlog.e(LOG_TAG, "setCreateTime() not implemented");
+    }
+
+    /**
      * Connection connect time in currentTimeMillis() format.
      * For outgoing calls: Begins at (DIALING|ALERTING) -> ACTIVE transition.
      * For incoming calls: Begins at (INCOMING|WAITING) -> ACTIVE transition.

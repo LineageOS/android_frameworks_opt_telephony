@@ -32,8 +32,23 @@ public class CallModify {
     // Keep this error codes in sync with error codes defined in
     // imsIF.proto file.
     public static int E_SUCCESS = 0;
+    public static int E_RADIO_NOT_AVAILABLE = 1;
+    public static int E_GENERIC_FAILURE = 2;
+    public static int E_REQUEST_NOT_SUPPORTED = 6;
     public static int E_CANCELLED = 7;
     public static int E_UNUSED = 16;
+    public static int E_INVALID_PARAMETER = 27;
+    public static int E_REJECTED_BY_REMOTE = 28;
+    public static int E_IMS_DEREGISTERED = 29;
+
+    private static final String ERR_RADIO_NOT_AVAILABLE = "E_RADIO_NOT_AVAILABLE";
+    private static final String ERR_GENERIC_FAILURE = "E_GENERIC_FAILURE";
+    private static final String ERR_REQUEST_NOT_SUPPORTED = "E_REQUEST_NOT_SUPPORTED";
+    private static final String ERR_CANCELLED = "E_CANCELLED";
+    private static final String ERR_UNUSED = "E_UNUSED";
+    private static final String ERR_INVALID_PARAMETER = "E_INVALID_PARAMETER";
+    private static final String ERR_REJECTED_BY_REMOTE = "E_REJECTED_BY_REMOTE";
+    private static final String ERR_IMS_DEREGISTERED = "E_IMS_DEREGISTERED";
 
     public int call_index;
 
@@ -43,6 +58,12 @@ public class CallModify {
 
     public CallModify() {
         this(new CallDetails(), 0);
+    }
+
+    public CallModify(CallModify callmodify) {
+        setCallDetails(callmodify.call_details);
+        call_index = callmodify.call_index;
+        error = callmodify.error;
     }
 
     public CallModify(CallDetails callDetails, int callIndex) {
@@ -74,5 +95,28 @@ public class CallModify {
         return (" " + call_index
                 + " " + call_details
                 + " " + error);
+    }
+
+    /**
+     * @return error ID
+     */
+    public int convertErrorTypeToInt(String errorType) {
+        if (ERR_REJECTED_BY_REMOTE.equalsIgnoreCase(errorType)) {
+            return E_REJECTED_BY_REMOTE;
+        } else if (ERR_INVALID_PARAMETER.equalsIgnoreCase(errorType)) {
+            return E_INVALID_PARAMETER;
+        } else if (ERR_CANCELLED.equalsIgnoreCase(errorType)) {
+            return E_CANCELLED;
+        } else if (ERR_UNUSED.equalsIgnoreCase(errorType)) {
+            return E_UNUSED;
+        } else if (ERR_RADIO_NOT_AVAILABLE.equalsIgnoreCase(errorType)) {
+            return E_RADIO_NOT_AVAILABLE;
+        } else if (ERR_REQUEST_NOT_SUPPORTED.equalsIgnoreCase(errorType)) {
+            return E_REQUEST_NOT_SUPPORTED;
+        } else if (ERR_IMS_DEREGISTERED.equalsIgnoreCase(errorType)) {
+            return E_IMS_DEREGISTERED;
+        } else {
+            return E_GENERIC_FAILURE;
+        }
     }
 }

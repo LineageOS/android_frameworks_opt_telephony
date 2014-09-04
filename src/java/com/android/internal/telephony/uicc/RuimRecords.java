@@ -86,6 +86,10 @@ public final class RuimRecords extends IccRecords {
                 + " mHomeNetworkId=" + mHomeNetworkId;
     }
 
+    //Constants
+    //MNC length in case of CSIM/RUIM IMSI is 2 as per spec C.S0065 section 5.2.2
+    private static final int CSIM_IMSI_MNC_LENGTH = 2;
+
     // ***** Event Constants
     private static final int EVENT_GET_IMSI_DONE = 3;
     private static final int EVENT_GET_DEVICE_IDENTITY_DONE = 4;
@@ -259,7 +263,7 @@ public final class RuimRecords extends IccRecords {
         // have a valid value in ef[ad]
 
         int mcc = Integer.parseInt(mImsi.substring(0,3));
-        return mImsi.substring(0, 3 + MccTable.smallestDigitsMccForMnc(mcc));
+        return mImsi.substring(0, 3 + CSIM_IMSI_MNC_LENGTH);
     }
 
     // Refer to ETSI TS 102.221
