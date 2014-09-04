@@ -191,12 +191,26 @@ public class CatService extends Handler implements AppInterface {
             }
         }
 
-        if (ci == null || ca == null || ir == null || context == null || fh == null
-                || ic == null) {
-            return null;
-        }
+        synchronized (sInstanceLock) {
+            if (sInstance == null) {
+                if (ci == null || ca == null || ir == null || context == null || fh == null
+                        || ic == null) {
+                    return null;
+                }
 
-        return new CatService(ci, ca, ir, context, fh, ic, slotId);
+                sInstance = new CatService(ci, ca, ir, context, fh, ic, slotId);
+            } else if ((ir != null) && (mIccRecords != ir)) {
+                if (mIccRecords != null) {
+                    mIccRecords.unregisterForRecordsLoaded(sInstance);
+                }
+
+                mIccRecords = ir;
+                mUiccApplication = ca;
+
+                mIccRecords.registerForRecordsLoaded(sInstance, MSG_ID_ICC_RECORDS_LOADED, null);
+            }
+            return sInstance;
+        }
     }
 
     public void dispose() {
