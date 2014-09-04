@@ -82,6 +82,10 @@ public final class SmsManager {
      */
     public static final String MMS_CONFIG_MMS_ENABLED = "enabledMMS";
     /**
+     * Whether group MMS is enabled for the current carrier (boolean type)
+     */
+    public static final String MMS_CONFIG_GROUP_MMS_ENABLED = "enableGroupMms";
+    /**
      * If this is enabled, M-NotifyResp.ind should be sent to the WAP Push content location
      * instead of the default MMSC (boolean type)
      */
