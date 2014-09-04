@@ -910,7 +910,7 @@ public final class SmsManager {
      * @throws IllegalArgumentException if contentUri is empty
      */
     public void sendMultimediaMessage(Uri contentUri, String locationUrl,
-            ContentValues configOverrides, PendingIntent sentIntent) {
+            Bundle configOverrides, PendingIntent sentIntent) {
         if (contentUri == null) {
             throw new IllegalArgumentException("Uri contentUri null");
         }
@@ -939,7 +939,7 @@ public final class SmsManager {
      * @throws IllegalArgumentException if locationUrl or contentUri is empty
      */
     public void downloadMultimediaMessage(String locationUrl, Uri contentUri,
-            ContentValues configOverrides, PendingIntent downloadedIntent) {
+            Bundle configOverrides, PendingIntent downloadedIntent) {
         if (TextUtils.isEmpty(locationUrl)) {
             throw new IllegalArgumentException("Empty MMS location URL");
         }
@@ -966,7 +966,7 @@ public final class SmsManager {
     public static final int MMS_ERROR_IO_ERROR = 5;
 
     // Intent extra name for result data
-    public static final String MMS_EXTRA_DATA = "data";
+    public static final String EXTRA_MMS_DATA = "android.telephony.extra.MMS_DATA";
 
     /**
      * Update the status of a pending (send-by-IP) MMS message handled by the carrier app.
@@ -1027,6 +1027,7 @@ public final class SmsManager {
      * @param seen if the message is seen
      * @param read if the message is read
      * @return the message URI, null if failed
+     * @hide
      */
     public Uri importTextMessage(String address, int type, String text, long timestampMillis,
             boolean seen, boolean read) {
@@ -1042,9 +1043,9 @@ public final class SmsManager {
         return null;
     }
 
-    /** Represents the received SMS message for importing */
+    /** Represents the received SMS message for importing {@hide} */
     public static final int SMS_TYPE_INCOMING = 0;
-    /** Represents the sent SMS message for importing */
+    /** Represents the sent SMS message for importing {@hide} */
     public static final int SMS_TYPE_OUTGOING = 1;
 
     /**
@@ -1060,6 +1061,7 @@ public final class SmsManager {
      * @param read if the message is read
      * @return the message URI, null if failed
      * @throws IllegalArgumentException if pdu is empty
+     * {@hide}
      */
     public Uri importMultimediaMessage(Uri contentUri, String messageId, long timestampSecs,
             boolean seen, boolean read) {
@@ -1086,6 +1088,7 @@ public final class SmsManager {
      * @param messageUri the URI of the stored message
      * @return true if deletion is successful, false otherwise
      * @throws IllegalArgumentException if messageUri is empty
+     * {@hide}
      */
     public boolean deleteStoredMessage(Uri messageUri) {
         if (messageUri == null) {
@@ -1109,6 +1112,7 @@ public final class SmsManager {
      *
      * @param conversationId the ID of the message conversation
      * @return true if deletion is successful, false otherwise
+     * {@hide}
      */
     public boolean deleteStoredConversation(long conversationId) {
         try {
@@ -1131,6 +1135,7 @@ public final class SmsManager {
      * @param statusValues a list of status properties in key-value pairs to update
      * @return true if update is successful, false otherwise
      * @throws IllegalArgumentException if messageUri is empty
+     * {@hide}
      */
     public boolean updateStoredMessageStatus(Uri messageUri, ContentValues statusValues) {
         if (messageUri == null) {
@@ -1148,9 +1153,9 @@ public final class SmsManager {
         return false;
     }
 
-    /** Message status property: whether the message has been seen. 1 means seen, 0 not*/
+    /** Message status property: whether the message has been seen. 1 means seen, 0 not {@hide} */
     public static final String MESSAGE_STATUS_SEEN = "seen";
-    /** Message status property: whether the message has been read. 1 means read, 0 not*/
+    /** Message status property: whether the message has been read. 1 means read, 0 not {@hide} */
     public static final String MESSAGE_STATUS_READ = "read";
 
     /**
@@ -1159,6 +1164,7 @@ public final class SmsManager {
      * @param conversationId the ID of the message conversation
      * @param archived true to archive the conversation, false to unarchive
      * @return true if update is successful, false otherwise
+     * {@hide}
      */
     public boolean archiveStoredConversation(long conversationId, boolean archived) {
         try {
@@ -1181,6 +1187,7 @@ public final class SmsManager {
      * @param address the destination address of message
      * @param text the body of the message to send
      * @return the URI of the stored draft message
+     * {@hide}
      */
     public Uri addTextMessageDraft(String address, String text) {
         try {
@@ -1202,6 +1209,7 @@ public final class SmsManager {
      * @param contentUri the content uri from which to read the PDU data of the draft MMS
      * @return the URI of the stored draft message
      * @throws IllegalArgumentException if pdu is empty
+     * {@hide}
      */
     public Uri addMultimediaMessageDraft(Uri contentUri) {
         if (contentUri == null) {
@@ -1244,6 +1252,7 @@ public final class SmsManager {
      *  raw pdu of the status report is in the extended data ("pdu").
      *
      * @throws IllegalArgumentException if messageUri is empty
+     * {@hide}
      */
     public void sendStoredTextMessage(Uri messageUri, String scAddress, PendingIntent sentIntent,
             PendingIntent deliveryIntent) {
@@ -1290,6 +1299,7 @@ public final class SmsManager {
      *   extended data ("pdu").
      *
      * @throws IllegalArgumentException if messageUri is empty
+     * {@hide}
      */
     public void sendStoredMultipartTextMessage(Uri messageUri, String scAddress,
             ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
@@ -1317,8 +1327,9 @@ public final class SmsManager {
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully sent, or failed
      * @throws IllegalArgumentException if messageUri is empty
+     * {@hide}
      */
-    public void sendStoredMultimediaMessage(Uri messageUri, ContentValues configOverrides,
+    public void sendStoredMultimediaMessage(Uri messageUri, Bundle configOverrides,
             PendingIntent sentIntent) {
         if (messageUri == null) {
             throw new IllegalArgumentException("Empty message URI");
@@ -1344,6 +1355,7 @@ public final class SmsManager {
      * This flag can only be changed by default SMS apps
      *
      * @param enabled Whether to enable message auto persisting
+     * {@hide}
      */
     public void setAutoPersisting(boolean enabled) {
         try {
@@ -1364,6 +1376,7 @@ public final class SmsManager {
      * automatically
      *
      * @return the current value of the auto persist flag
+     * {@hide}
      */
     public boolean getAutoPersisting() {
         try {
