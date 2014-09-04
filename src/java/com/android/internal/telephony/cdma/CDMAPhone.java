@@ -59,6 +59,7 @@ import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
@@ -221,6 +222,8 @@ public class CDMAPhone extends PhoneBase {
                 log("init: set 'gsm.sim.operator.numeric' to operator='" + operatorNumeric + "'");
                 log("update icc_operator_numeric=" + operatorNumeric);
                 setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
+
+                SubscriptionController.getInstance().setMccMnc(operatorNumeric, getSubId());
             }
             setIsoCountryProperty(operatorNumeric);
         }

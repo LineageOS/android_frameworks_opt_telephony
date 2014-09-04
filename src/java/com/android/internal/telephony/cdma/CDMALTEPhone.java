@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (C) 2011 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.CommandsInterface;
+
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.dataconnection.DcTracker;
@@ -48,6 +49,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsBroadcastUndelivered;
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.gsm.GsmSMSDispatcher;
 import com.android.internal.telephony.gsm.SmsMessage;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -318,6 +320,8 @@ public class CDMALTEPhone extends CDMAPhone {
         log("update icc_operator_numeric=" + operatorNumeric);
         if (!TextUtils.isEmpty(operatorNumeric)) {
             setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
+
+            SubscriptionController.getInstance().setMccMnc(operatorNumeric, getSubId());
             // Sets iso country property by retrieving from build-time system property
             setIsoCountryProperty(operatorNumeric);
             // Updates MCC MNC device configuration information

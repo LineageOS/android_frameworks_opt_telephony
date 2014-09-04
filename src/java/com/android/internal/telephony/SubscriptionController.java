@@ -20,6 +20,7 @@ import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.telephony.Rlog;
@@ -226,9 +227,14 @@ public class SubscriptionController extends ISub.Stub {
                 info.mSimIconRes[RES_TYPE_BACKGROUND_DARK] = sSimBackgroundDarkRes[info.mColor];
                 info.mSimIconRes[RES_TYPE_BACKGROUND_LIGHT] = sSimBackgroundLightRes[info.mColor];
             }
-            logd("[getSubInfoRecord] SubId:" + info.mSubId + " iccid:" + info.mIccId + " slotId:"
-                    + info.mSlotId + " displayName:" + info.mDisplayName + " color:"
-                    + info.mColor);
+            info.mMcc = cursor.getInt(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.MCC));
+            info.mMnc = cursor.getInt(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.MNC));
+
+            logd("[getSubInfoRecord] SubId:" + info.mSubId + " iccid:" + info.mIccId + " slotId:" +
+                    info.mSlotId + " displayName:" + info.mDisplayName + " color:" + info.mColor +
+                    " mcc/mnc:" + info.mMcc + "/" + info.mMnc);
 
             return info;
     }
@@ -768,6 +774,34 @@ public class SubscriptionController extends ISub.Stub {
 
         return result;
     }
+
+    /**
+     * Set MCC/MNC by subscription ID
+     * @param mccMnc MCC/MNC associated with the subscription
+     * @param subId the unique SubInfoRecord index in database
+     * @return the number of records updated
+     */
+    public int setMccMnc(String mccMnc, long subId) {
+        int mcc = 0;
+        int mnc = 0;
+        try {
+            mcc = Integer.parseInt(mccMnc.substring(0,3));
+            mnc = Integer.parseInt(mccMnc.substring(3));
+        } catch (NumberFormatException e) {
+            logd("[setMccMnc] - couldn't parse mcc/mnc: " + mccMnc);
+        }
+        logd("[setMccMnc]+ mcc/mnc:" + mcc + "/" + mnc + " subId:" + subId);
+        ContentValues value = new ContentValues(2);
+        value.put(SubscriptionManager.MCC, mcc);
+        value.put(SubscriptionManager.MNC, mnc);
+
+        int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
+                BaseColumns._ID + "=" + Long.toString(subId), null);
+        broadcastSimInfoContentChanged(subId, SubscriptionManager.MCC, mcc, null);
+
+        return result;
+    }
+
 
     @Override
     public int getSlotId(long subId) {
