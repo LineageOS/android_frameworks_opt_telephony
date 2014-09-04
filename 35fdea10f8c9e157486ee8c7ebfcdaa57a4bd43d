@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a1b2928_03ef18e9",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 3671
+      },
+      "writtenOn": "2014-09-04T05:17:40Z",
+      "side": 1,
+      "message": "i think this needs a separate prop\n\nsome devices may want it but not the stuff below",
+      "revId": "35fdea10f8c9e157486ee8c7ebfcdaa57a4bd43d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
