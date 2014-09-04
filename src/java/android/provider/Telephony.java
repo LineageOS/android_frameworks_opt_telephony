@@ -259,7 +259,9 @@ public final class Telephony {
         public static final String ERROR_CODE = "error_code";
 
         /**
-         * The creator of a sent or imported message
+         * The identity of the sender of a sent message. It is
+         * usually the package name of the app which sends the message.
+         * <p>Type: TEXT</p>
          */
         public static final String CREATOR = "creator";
     }
@@ -1694,7 +1696,9 @@ public final class Telephony {
         public static final String SUB_ID = "sub_id";
 
         /**
-         * The creator of a sent or imported message
+         * The identity of the sender of a sent message. It is
+         * usually the package name of the app which sends the message.
+         * <p>Type: TEXT</p>
          */
         public static final String CREATOR = "creator";
     }
@@ -1776,6 +1780,7 @@ public final class Telephony {
 
         /**
          * If the thread is archived
+         * <P>Type: INTEGER (boolean)</P>
          */
         public static final String ARCHIVED = "archived";
     }
