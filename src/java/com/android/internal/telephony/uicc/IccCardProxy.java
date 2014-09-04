@@ -55,6 +55,8 @@ import com.android.internal.telephony.uicc.RuimRecords;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_APN_RUIM_OPERATOR_NUMERIC;
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_APN_SIM_OPERATOR_NUMERIC;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
@@ -303,6 +305,15 @@ public class IccCardProxy extends Handler implements IccCard {
                     if (operator != null) {
                         log("update icc_operator_numeric=" + operator);
                         setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, slotId, operator);
+                        if (mCurrentAppType == UiccController.APP_FAM_3GPP) {
+                            setSystemProperty(PROPERTY_APN_SIM_OPERATOR_NUMERIC,
+                                     slotId, operator);
+                            log("update sim_operator_numeric=" + operator);
+                        } else if (mCurrentAppType == UiccController.APP_FAM_3GPP2) {
+                            setSystemProperty(PROPERTY_APN_RUIM_OPERATOR_NUMERIC,
+                                     slotId, operator);
+                            log("update ruim_operator_numeric=" + operator);
+                        }
                         String countryCode = operator.substring(0,3);
                         if (countryCode != null) {
                             setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, slotId,
