@@ -47,6 +47,7 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
 import com.android.internal.telephony.cat.CatService;
+import com.android.internal.telephony.cat.CatServiceFactory;
 import com.android.internal.telephony.cdma.CDMALTEPhone;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
@@ -116,7 +117,7 @@ public class UiccCard {
     public void dispose() {
         synchronized (mLock) {
             if (DBG) log("Disposing card");
-            if (mCatService != null) mCatService.dispose();
+            if (mCatService != null) CatServiceFactory.disposeCatService(mSlotId);
             for (UiccCardApplication app : mUiccApplications) {
                 if (app != null) {
                     app.dispose();
@@ -198,9 +199,7 @@ public class UiccCard {
         if (mUiccApplications.length > 0 && mUiccApplications[0] != null) {
             // Initialize or Reinitialize CatService
             if (mCatService == null) {
-                mCatService = CatService.getInstance(mCi, mContext, this, mSlotId);
-            } else {
-                ((CatService)mCatService).update(mCi, mContext, this);
+                mCatService = CatServiceFactory.makeCatService(mCi, mContext, this, mSlotId);
             }
         } else {
             if (mCatService != null) {
