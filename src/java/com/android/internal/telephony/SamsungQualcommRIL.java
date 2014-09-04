@@ -63,7 +63,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
 
     private Object mSMSLock = new Object();
     private boolean mIsSendingSMS = false;
-    private boolean isGSM = false;
+    protected boolean isGSM = false;
     public static final long SEND_SMS_TIMEOUT_IN_MS = 30000;
     private boolean oldRilState = needsOldRilFeature("exynos4RadioState");
     private boolean googleEditionSS = needsOldRilFeature("googleEditionSS");
