@@ -255,20 +255,6 @@ public class PhoneProxy extends Handler implements Phone {
                 + (ServiceState.isGsm(newVoiceRadioTech) ? "GSM" : "CDMA"));
 
 
-        if (oldPhone != null) {
-            imsPhone = oldPhone.relinquishOwnershipOfImsPhone();
-            CallManager.getInstance().unregisterPhone(oldPhone);
-            logd("Disposing old phone..");
-            oldPhone.dispose();
-        }
-
-        // Give the garbage collector a hint to start the garbage collection
-        // asap NOTE this has been disabled since radio technology change could
-        // happen during e.g. a multimedia playing and could slow the system.
-        // Tests needs to be done to see the effects of the GC call here when
-        // system is busy.
-        // System.gc();
-
         if (ServiceState.isCdma(newVoiceRadioTech)) {
             mActivePhone = PhoneFactory.getCdmaPhone(mPhoneId);
         } else if (ServiceState.isGsm(newVoiceRadioTech)) {
@@ -276,7 +262,7 @@ public class PhoneProxy extends Handler implements Phone {
         }
 
         if (oldPhone != null) {
-            oldPhone.removeReferences();
+            imsPhone = oldPhone.relinquishOwnershipOfImsPhone();
         }
 
         if(mActivePhone != null) {
@@ -286,6 +272,15 @@ public class PhoneProxy extends Handler implements Phone {
             }
         }
 
+        if (oldPhone != null) {
+            CallManager.getInstance().unregisterPhone(oldPhone);
+            logd("Disposing old phone..");
+            oldPhone.dispose();
+            // Potential GC issues: however, callers may have references to old
+            // phone on which they perform hierarchical funcs: phone.getA().getB()
+            // HENCE: do not delete references.
+            //oldPhone.removeReferences();
+        }
         oldPhone = null;
     }
 

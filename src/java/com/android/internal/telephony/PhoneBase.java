@@ -1795,7 +1795,10 @@ public abstract class PhoneBase extends Handler implements Phone {
                 Rlog.e(LOG_TAG, "acquireOwnershipOfImsPhone: non-null mImsPhone." +
                         " Shouldn't happen - but disposing");
                 mImsPhone.dispose();
-                mImsPhone.removeReferences();
+                // Potential GC issue if someone keeps a reference to ImsPhone.
+                // However: this change will make sure that such a reference does
+                // not access functions through NULL pointer.
+                //mImsPhone.removeReferences();
             }
 
             mImsPhone = imsPhone;
@@ -1823,7 +1826,10 @@ public abstract class PhoneBase extends Handler implements Phone {
                 mImsPhone.unregisterForSilentRedial(this);
 
                 mImsPhone.dispose();
-                mImsPhone.removeReferences();
+                // Potential GC issue if someone keeps a reference to ImsPhone.
+                // However: this change will make sure that such a reference does
+                // not access functions through NULL pointer.
+                //mImsPhone.removeReferences();
                 mImsPhone = null;
             }
         }
