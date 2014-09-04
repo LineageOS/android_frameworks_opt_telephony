@@ -117,7 +117,7 @@ public class IccProvider extends ContentProvider {
 
     private Cursor loadAllSimContacts(int efType) {
         Cursor [] result;
-        List<SubInfoRecord> subInfoList = SubscriptionManager.getActivatedSubInfoList(null);
+        List<SubInfoRecord> subInfoList = SubscriptionManager.getActiveSubInfoList();
 
         if ((subInfoList == null) || (subInfoList.size() == 0)) {
             result = new Cursor[0];

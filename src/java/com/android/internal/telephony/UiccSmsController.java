@@ -278,13 +278,13 @@ public class UiccSmsController extends ISms.Stub {
 
     @Override
     public void updateSmsSendStatus(int messageRef, boolean success) {
-        getIccSmsInterfaceManager(SubscriptionManager.getPreferredSmsSubId())
+        getIccSmsInterfaceManager(SubscriptionManager.getDefaultSmsSubId())
             .updateSmsSendStatus(messageRef, success);
     }
 
     @Override
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
-        injectSmsPdu(SubscriptionManager.getPreferredSmsSubId(), pdu, format, receivedIntent);
+        injectSmsPdu(SubscriptionManager.getDefaultSmsSubId(), pdu, format, receivedIntent);
     }
 
     // FIXME: Add injectSmsPdu to ISms.aidl
@@ -314,7 +314,7 @@ public class UiccSmsController extends ISms.Stub {
     /**
        Gets User preferred SMS subscription */
     public long getPreferredSmsSubscription() {
-        return  PhoneFactory.getDefaultSubscription();
+        return  SubscriptionManager.getDefaultSmsSubId();
     }
 
     /**

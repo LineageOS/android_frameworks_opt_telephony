@@ -43,6 +43,7 @@ import android.telephony.VoLteServiceState;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 
 import com.android.ims.ImsManager;
@@ -65,8 +66,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static com.android.internal.telephony.PhoneConstants.DEFAULT_SUBSCRIPTION;
 
 /**
  * (<em>Not for SDK use</em>)
@@ -312,7 +311,7 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     protected PhoneBase(String name, PhoneNotifier notifier, Context context, CommandsInterface ci,
             boolean unitTestMode) {
-        this(name, notifier, context, ci, unitTestMode, DEFAULT_SUBSCRIPTION);
+        this(name, notifier, context, ci, unitTestMode, SubscriptionManager.DEFAULT_PHONE_ID);
     }
 
     /**
