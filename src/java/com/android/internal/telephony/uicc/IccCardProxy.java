@@ -17,6 +17,7 @@
 package com.android.internal.telephony.uicc;
 
 import static android.Manifest.permission.READ_PHONE_STATE;
+
 import android.app.ActivityManagerNative;
 import android.content.Context;
 import android.content.Intent;
@@ -277,6 +278,7 @@ public class IccCardProxy extends Handler implements IccCard {
                             log("update mccmnc=" + operator + " config for default subscription.");
                             MccTable.updateMccMncConfiguration(mContext, operator, false);
                         }
+                        SubscriptionController.getInstance().setMccMnc(operator, subId[0]);
                     } else {
                         loge("EVENT_RECORDS_LOADED Operator name is null");
                     }
