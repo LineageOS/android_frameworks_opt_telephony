@@ -50,7 +50,6 @@ public class CdmaConnection extends Connection {
 
 
     String mPostDialString;      // outgoing calls only
-    boolean mIsIncoming;
     boolean mDisconnected;
     int mIndex;          // index in CdmaCallTracker.connections[], -1 if unassigned
 
