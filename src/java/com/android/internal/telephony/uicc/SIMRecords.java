@@ -1492,7 +1492,7 @@ public class SIMRecords extends IccRecords {
     public int getDisplayRule(String plmn) {
         int rule;
 
-        if (mParentApp.getUiccCard() != null &&
+        if (mParentApp != null && mParentApp.getUiccCard() != null &&
             mParentApp.getUiccCard().getOperatorBrandOverride() != null) {
         // If the operator has been overridden, treat it as the SPN file on the SIM did not exist.
             rule = SPN_RULE_SHOW_PLMN;
