@@ -373,11 +373,6 @@ public class IccProvider extends ContentProvider {
         String[] emails = null;
         String newTag = values.getAsString("newTag");
         String newNumber = values.getAsString("newNumber");
-        /*As part of 3GPP 51.011, number field is mandatory while storing in the
-          SIM for both ADN and FDN */
-        if (TextUtils.isEmpty(number)) {
-            return 0;
-        }
         String[] newEmails = null;
         // TODO(): Update for email.
         boolean success = updateIccRecordInEf(efType, tag, number,
