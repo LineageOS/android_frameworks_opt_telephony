@@ -177,15 +177,24 @@ public class UiccCarrierPrivilegeRules extends Handler {
     private UiccCard mUiccCard;  // Parent
     private AtomicInteger mState;
     private List<AccessRule> mAccessRules;
+    private Message mLoadedCallback;
 
-    public UiccCarrierPrivilegeRules(UiccCard uiccCard) {
+    public UiccCarrierPrivilegeRules(UiccCard uiccCard, Message loadedCallback) {
         Rlog.d(LOG_TAG, "Creating UiccCarrierPrivilegeRules");
         mUiccCard = uiccCard;
         mState = new AtomicInteger(STATE_LOADING);
+        mLoadedCallback = loadedCallback;
 
         // Start loading the rules.
         mUiccCard.iccOpenLogicalChannel(AID,
             obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE, null));
+    }
+
+    /**
+     * Returns true if the carrier privilege rules have finished loading.
+     */
+    public boolean areCarrierPriviligeRulesLoaded() {
+        return mState.get() != STATE_LOADING;
     }
 
     /**
@@ -315,7 +324,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
                       obtainMessage(EVENT_TRANSMIT_LOGICAL_CHANNEL_DONE, new Integer(channelId)));
               } else {
                   Rlog.e(LOG_TAG, "Error opening channel");
-                  mState.set(STATE_ERROR);
+                  updateState(STATE_ERROR);
               }
               break;
 
@@ -327,19 +336,19 @@ public class UiccCarrierPrivilegeRules extends Handler {
                   if (response.payload != null && response.sw1 == 0x90 && response.sw2 == 0x00) {
                       try {
                           mAccessRules = parseRules(IccUtils.bytesToHexString(response.payload));
-                          mState.set(STATE_LOADED);
+                          updateState(STATE_LOADED);
                       } catch (IllegalArgumentException ex) {
                           Rlog.e(LOG_TAG, "Error parsing rules: " + ex);
-                          mState.set(STATE_ERROR);
+                          updateState(STATE_ERROR);
                       }
                    } else {
                       Rlog.e(LOG_TAG, "Invalid response: payload=" + response.payload +
                               " sw1=" + response.sw1 + " sw2=" + response.sw2);
-                      mState.set(STATE_ERROR);
+                      updateState(STATE_ERROR);
                    }
               } else {
                   Rlog.e(LOG_TAG, "Error reading value from SIM.");
-                  mState.set(STATE_ERROR);
+                  updateState(STATE_ERROR);
               }
 
               int channelId = (Integer) ar.userObj;
@@ -462,5 +471,15 @@ public class UiccCarrierPrivilegeRules extends Handler {
 
         Rlog.e(LOG_TAG, "Cannot compute cert hash");
         return null;
+    }
+
+    /*
+     * Updates the state and notifies the UiccCard that the rules have finished loading.
+     */
+    private void updateState(int newState) {
+        mState.set(newState);
+        if (mLoadedCallback != null) {
+            mLoadedCallback.sendToTarget();
+        }
     }
 }

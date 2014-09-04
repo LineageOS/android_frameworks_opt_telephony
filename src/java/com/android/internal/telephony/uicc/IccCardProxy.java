@@ -94,6 +94,7 @@ public class IccCardProxy extends Handler implements IccCard {
     private static final int EVENT_ICC_RECORD_EVENTS = 500;
     private static final int EVENT_SUBSCRIPTION_ACTIVATED = 501;
     private static final int EVENT_SUBSCRIPTION_DEACTIVATED = 502;
+    private static final int EVENT_CARRIER_PRIVILIGES_LOADED = 503;
 
     // FIXME Rename mCardIndex to mSlotId.
     private Integer mCardIndex = null;
@@ -117,6 +118,8 @@ public class IccCardProxy extends Handler implements IccCard {
                                         // ACTION_SIM_STATE_CHANGED intents
     private boolean mInitialized = false;
     private State mExternalState = State.UNKNOWN;
+
+    private int mRecordsToLoad;  // number of pending load requests
 
     public IccCardProxy(Context context, CommandsInterface ci) {
         log("Creating");
@@ -276,7 +279,7 @@ public class IccCardProxy extends Handler implements IccCard {
                         loge("EVENT_RECORDS_LOADED Operator name is null");
                     }
                 }
-                broadcastIccStateChangedIntent(IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
+                onRecordsLoaded();
                 break;
             case EVENT_IMSI_READY:
                 broadcastIccStateChangedIntent(IccCardConstants.INTENT_VALUE_ICC_IMSI, null);
@@ -310,6 +313,11 @@ public class IccCardProxy extends Handler implements IccCard {
                 }
                 break;
 
+            case EVENT_CARRIER_PRIVILIGES_LOADED:
+                log("EVENT_CARRIER_PRIVILEGES_LOADED");
+                onRecordsLoaded();
+                break;
+
             default:
                 loge("Unhandled message with number: " + msg.what);
                 break;
@@ -327,6 +335,14 @@ public class IccCardProxy extends Handler implements IccCard {
         updateStateProperty();
     }
 
+    private void onRecordsLoaded() {
+        synchronized (mLock) {
+            --mRecordsToLoad;
+            if (mRecordsToLoad == 0) {
+                broadcastIccStateChangedIntent(IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
+            }
+        }
+    }
 
     private void updateIccAvailability() {
         synchronized (mLock) {
@@ -344,6 +360,7 @@ public class IccCardProxy extends Handler implements IccCard {
 
             if (mIccRecords != newRecords || mUiccApplication != newApp || mUiccCard != newCard) {
                 if (DBG) log("Icc changed. Reregestering.");
+                mRecordsToLoad = 0;
                 unregisterUiccCardEvents();
                 mUiccCard = newCard;
                 mUiccApplication = newApp;
@@ -417,7 +434,14 @@ public class IccCardProxy extends Handler implements IccCard {
     }
 
     private void registerUiccCardEvents() {
-        if (mUiccCard != null) mUiccCard.registerForAbsent(this, EVENT_ICC_ABSENT, null);
+        mRecordsToLoad = (mUiccCard != null ? 1 : 0) +
+            (mIccRecords != null ? 1 : 0);
+
+        if (mUiccCard != null) {
+            mUiccCard.registerForAbsent(this, EVENT_ICC_ABSENT, null);
+            mUiccCard.registerForCarrierPrivilegeRulesLoaded(
+                    this, EVENT_CARRIER_PRIVILIGES_LOADED, null);
+        }
         if (mUiccApplication != null) {
             mUiccApplication.registerForReady(this, EVENT_APP_READY, null);
             mUiccApplication.registerForLocked(this, EVENT_ICC_LOCKED, null);
@@ -426,15 +450,13 @@ public class IccCardProxy extends Handler implements IccCard {
         if (mIccRecords != null) {
             mIccRecords.registerForImsiReady(this, EVENT_IMSI_READY, null);
             mIccRecords.registerForRecordsLoaded(this, EVENT_RECORDS_LOADED, null);
-        }
-
-        if (mIccRecords != null) {
             mIccRecords.registerForRecordsEvents(this, EVENT_ICC_RECORD_EVENTS, null);
         }
     }
 
     private void unregisterUiccCardEvents() {
         if (mUiccCard != null) mUiccCard.unregisterForAbsent(this);
+        if (mUiccCard != null) mUiccCard.unregisterForCarrierPrivilegeRulesLoaded(this);
         if (mUiccApplication != null) mUiccApplication.unregisterForReady(this);
         if (mUiccApplication != null) mUiccApplication.unregisterForLocked(this);
         if (mUiccApplication != null) mUiccApplication.unregisterForNetworkLocked(this);

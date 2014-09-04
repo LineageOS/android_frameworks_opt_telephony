@@ -84,6 +84,7 @@ public class UiccCard {
     private UiccCarrierPrivilegeRules mCarrierPrivilegeRules;
 
     private RegistrantList mAbsentRegistrants = new RegistrantList();
+    private RegistrantList mCarrierPrivilegeRegistrants = new RegistrantList();
 
     private static final int EVENT_CARD_REMOVED = 13;
     private static final int EVENT_CARD_ADDED = 14;
@@ -92,6 +93,7 @@ public class UiccCard {
     private static final int EVENT_TRANSMIT_APDU_LOGICAL_CHANNEL_DONE = 17;
     private static final int EVENT_TRANSMIT_APDU_BASIC_CHANNEL_DONE = 18;
     private static final int EVENT_SIM_IO_DONE = 19;
+    private static final int EVENT_CARRIER_PRIVILIGES_LOADED = 20;
 
     private int mSlotId;
 
@@ -163,7 +165,8 @@ public class UiccCard {
             // Reload the carrier privilege rules if necessary.
             log("Before privilege rules: " + mCarrierPrivilegeRules + " : " + mCardState);
             if (mCarrierPrivilegeRules == null && mCardState == CardState.CARDSTATE_PRESENT) {
-                mCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(this);
+                mCarrierPrivilegeRules = new UiccCarrierPrivilegeRules(this,
+                        mHandler.obtainMessage(EVENT_CARRIER_PRIVILIGES_LOADED));
             } else if (mCarrierPrivilegeRules != null && mCardState != CardState.CARDSTATE_PRESENT) {
                 mCarrierPrivilegeRules = null;
             }
@@ -272,6 +275,28 @@ public class UiccCard {
         }
     }
 
+    /**
+     * Notifies handler when carrier privilege rules are loaded.
+     */
+    public void registerForCarrierPrivilegeRulesLoaded(Handler h, int what, Object obj) {
+        synchronized (mLock) {
+            Registrant r = new Registrant (h, what, obj);
+
+            mCarrierPrivilegeRegistrants.add(r);
+
+            if (mCarrierPrivilegeRules == null ||
+                mCarrierPrivilegeRules.areCarrierPriviligeRulesLoaded()) {
+                r.notifyRegistrant();
+            }
+        }
+    }
+
+    public void unregisterForCarrierPrivilegeRulesLoaded(Handler h) {
+        synchronized (mLock) {
+            mCarrierPrivilegeRegistrants.remove(h);
+        }
+    }
+
     private void onIccSwap(boolean isAdded) {
 
         boolean isHotSwapSupported = mContext.getResources().getBoolean(
@@ -356,11 +381,20 @@ public class UiccCard {
                     AsyncResult.forMessage((Message)ar.userObj, ar.result, ar.exception);
                     ((Message)ar.userObj).sendToTarget();
                     break;
+                case EVENT_CARRIER_PRIVILIGES_LOADED:
+                    onCarrierPriviligesLoadedMessage();
+                    break;
                 default:
                     loge("Unknown Event " + msg.what);
             }
         }
     };
+
+    private void onCarrierPriviligesLoadedMessage() {
+        synchronized (mLock) {
+            mCarrierPrivilegeRegistrants.notifyRegistrants();
+        }
+    }
 
     public boolean isApplicationOnIcc(IccCardApplicationStatus.AppType type) {
         synchronized (mLock) {
@@ -594,6 +628,10 @@ public class UiccCard {
         for (int i = 0; i < mAbsentRegistrants.size(); i++) {
             pw.println("  mAbsentRegistrants[" + i + "]="
                     + ((Registrant)mAbsentRegistrants.get(i)).getHandler());
+        }
+        for (int i = 0; i < mCarrierPrivilegeRegistrants.size(); i++) {
+            pw.println("  mCarrierPrivilegeRegistrants[" + i + "]="
+                    + ((Registrant)mCarrierPrivilegeRegistrants.get(i)).getHandler());
         }
         pw.println(" mCardState=" + mCardState);
         pw.println(" mUniversalPinState=" + mUniversalPinState);
