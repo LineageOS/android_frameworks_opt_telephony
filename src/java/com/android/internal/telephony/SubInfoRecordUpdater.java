@@ -146,7 +146,7 @@ public class SubInfoRecordUpdater extends Handler {
                                 SubscriptionManager.getSubInfoUsingSubId(subId);
 
                         if (subInfo != null
-                                && subInfo.mNameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
+                                && subInfo.nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
                             SpnOverride mSpnOverride = new SpnOverride();
                             String nameToSet;
                             String CarrierName =
@@ -202,9 +202,9 @@ public class SubInfoRecordUpdater extends Handler {
         SubInfoRecord subInfo = SubscriptionManager.getSubInfoUsingSubId(subId);
         if (subInfo != null) {
             // overwrite SIM display name if it is not assigned by user
-            int oldNameSource = subInfo.mNameSource;
-            String oldSubName = subInfo.mDisplayName;
-            logd("[setDisplayNameForNewSub] mSubInfoIdx = " + subInfo.mSubId + ", oldSimName = "
+            int oldNameSource = subInfo.nameSource;
+            String oldSubName = subInfo.displayName;
+            logd("[setDisplayNameForNewSub] mSubInfoIdx = " + subInfo.subId + ", oldSimName = "
                     + oldSubName + ", oldNameSource = " + oldNameSource + ", newSubName = "
                     + newSubName + ", newNameSource = " + newNameSource);
             if (oldSubName == null ||
@@ -212,7 +212,7 @@ public class SubInfoRecordUpdater extends Handler {
                 (oldNameSource == SubscriptionManager.NAME_SOURCE_SIM_SOURCE && newSubName != null
                         && !newSubName.equals(oldSubName))) {
                 SubscriptionManager.setDisplayName(newSubName,
-                        subInfo.mSubId, newNameSource);
+                        subInfo.subId, newNameSource);
             }
         } else {
             logd("SUB" + (subId + 1) + " SubInfo not created yet");
@@ -319,8 +319,8 @@ public class SubInfoRecordUpdater extends Handler {
             List<SubInfoRecord> oldSubInfo =
                     SubscriptionController.getInstance().getSubInfoUsingSlotIdWithCheck(i, false);
             if (oldSubInfo != null) {
-                oldIccId[i] = oldSubInfo.get(0).mIccId;
-                logd("oldSubId = " + oldSubInfo.get(0).mSubId);
+                oldIccId[i] = oldSubInfo.get(0).iccId;
+                logd("oldSubId = " + oldSubInfo.get(0).subId);
                 if (sInsertSimState[i] == SIM_NOT_CHANGE && !sIccId[i].equals(oldIccId[i])) {
                     sInsertSimState[i] = SIM_CHANGED;
                 }
@@ -329,7 +329,7 @@ public class SubInfoRecordUpdater extends Handler {
                     value.put(SubscriptionManager.SIM_ID, SubscriptionManager.INVALID_SLOT_ID);
                     contentResolver.update(SubscriptionManager.CONTENT_URI, value,
                             SubscriptionManager._ID + "="
-                            + Long.toString(oldSubInfo.get(0).mSubId), null);
+                            + Long.toString(oldSubInfo.get(0).subId), null);
                 }
             } else {
                 if (sInsertSimState[i] == SIM_NOT_CHANGE) {
@@ -396,13 +396,13 @@ public class SubInfoRecordUpdater extends Handler {
         for (int i=0; i<nSubCount; i++) {
             SubInfoRecord temp = subInfos.get(i);
 
-            String msisdn = TelephonyManager.getDefault().getLine1Number(temp.mSubId);
+            String msisdn = TelephonyManager.getDefault().getLine1Number(temp.subId);
 
             if (msisdn != null) {
                 ContentValues value = new ContentValues(1);
                 value.put(SubscriptionManager.NUMBER, msisdn);
                 contentResolver.update(SubscriptionManager.CONTENT_URI, value,
-                        SubscriptionManager._ID + "=" + Long.toString(temp.mSubId), null);
+                        SubscriptionManager._ID + "=" + Long.toString(temp.subId), null);
             }
         }
 
