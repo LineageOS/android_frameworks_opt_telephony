@@ -1612,6 +1612,11 @@ public class SIMRecords extends IccRecords {
     @Override
     public int getDisplayRule(String plmn) {
         int rule;
+        if (mContext.getResources().getBoolean(
+                com.android.internal.R.bool.def_telephony_spn_spec_enabled)) {
+            rule = SPN_RULE_SHOW_SPN;
+            return rule;
+        }
 
         if (mParentApp != null && mParentApp.getUiccCard() != null &&
             mParentApp.getUiccCard().getOperatorBrandOverride() != null) {
