@@ -59,6 +59,7 @@ import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.HbpcdUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -81,6 +82,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     // Min values used to by getOtasp()
     private static final String UNACTIVATED_MIN2_VALUE = "000000";
     private static final String UNACTIVATED_MIN_VALUE = "1111110111";
+
+    private static final int MS_PER_HOUR = 60 * 60 * 1000;
 
     // Current Otasp value
     int mCurrentOtaspMode = OTASP_UNINITIALIZED;
@@ -137,6 +140,11 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     private boolean mIsEriTextLoaded = false;
     protected boolean mIsSubscriptionFromRuim = false;
     private CdmaSubscriptionSourceManager mCdmaSSM;
+
+    protected static final String INVALID_MCC = "000";
+    protected static final String DEFAULT_MNC = "00";
+
+    protected HbpcdUtils mHbpcdUtils = null;
 
     /* Used only for debugging purposes. */
     private String mRegistrationDeniedReason;
@@ -201,6 +209,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             Settings.Global.getUriFor(Settings.Global.AUTO_TIME_ZONE), true,
             mAutoTimeZoneObserver);
         setSignalStrengthDefaultValues();
+
+        mHbpcdUtils = new HbpcdUtils(phone.getContext());
     }
 
     @Override
@@ -1093,11 +1103,19 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             String prevOperatorNumeric =
                     SystemProperties.get(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, "");
             operatorNumeric = mSS.getOperatorNumeric();
+
+            // try to fix the invalid Operator Numeric
+            if (isInvalidOperatorNumeric(operatorNumeric)) {
+                int sid = mSS.getSystemId();
+                operatorNumeric = fixUnknownMcc(operatorNumeric, sid);
+            }
+
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, operatorNumeric);
             updateCarrierMccMncConfiguration(operatorNumeric,
                     prevOperatorNumeric, mPhone.getContext());
-            if (operatorNumeric == null) {
-                if (DBG) log("operatorNumeric is null");
+
+            if (isInvalidOperatorNumeric(operatorNumeric)) {
+                if (DBG) log("operatorNumeric "+ operatorNumeric +"is invalid");
                 mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
                 mGotCountryCode = false;
             } else {
@@ -1115,6 +1133,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
                         isoCountryCode);
                 mGotCountryCode = true;
+
+                setOperatorIdd(operatorNumeric);
 
                 if (shouldFixTimeZoneNow(mPhone, operatorNumeric, prevOperatorNumeric,
                         mNeedFixZone)) {
@@ -1156,6 +1176,56 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         // TODO: Add CdmaCellIdenity updating, see CdmaLteServiceStateTracker.
     }
 
+    protected boolean isInvalidOperatorNumeric(String operatorNumeric) {
+        return operatorNumeric == null || operatorNumeric.length() < 5 ||
+                    operatorNumeric.startsWith(INVALID_MCC);
+    }
+
+    protected String fixUnknownMcc(String operatorNumeric, int sid) {
+        if (sid <= 0) {
+            // no cdma information is available, do nothing
+            return operatorNumeric;
+        }
+
+        // resolve the mcc from sid;
+        // if mSavedTimeZone is null, TimeZone would get the default timeZone,
+        // and the fixTimeZone couldn't help, because it depends on operator Numeric;
+        // if the sid is conflict and timezone is unavailable, the mcc may be not right.
+        boolean isNitzTimeZone = false;
+        int timeZone = 0;
+        TimeZone tzone = null;
+        if (mSavedTimeZone != null) {
+             timeZone =
+                     TimeZone.getTimeZone(mSavedTimeZone).getRawOffset()/MS_PER_HOUR;
+             isNitzTimeZone = true;
+        } else {
+             tzone = getNitzTimeZone(mZoneOffset, mZoneDst, mZoneTime);
+             if (tzone != null)
+                     timeZone = tzone.getRawOffset()/MS_PER_HOUR;
+        }
+
+        int mcc = mHbpcdUtils.getMcc(sid,
+                timeZone, (mZoneDst ? 1 : 0), isNitzTimeZone);
+        if (mcc > 0) {
+            operatorNumeric = Integer.toString(mcc) + DEFAULT_MNC;
+        }
+        return operatorNumeric;
+    }
+
+    protected void setOperatorIdd(String operatorNumeric) {
+        // Retrieve the current country information
+        // with the MCC got from opeatorNumeric.
+        String idd = mHbpcdUtils.getIddByMcc(
+                Integer.parseInt(operatorNumeric.substring(0,3)));
+        if (idd != null && !idd.isEmpty()) {
+            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_IDP_STRING,
+                     idd);
+        } else {
+            // use default "+", since we don't know the current IDP
+            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_IDP_STRING, "+");
+        }
+    }
+
     /**
      * Returns a TimeZone object based only on parameters from the NITZ string.
      */
@@ -1172,7 +1242,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     private TimeZone findTimeZone(int offset, boolean dst, long when) {
         int rawOffset = offset;
         if (dst) {
-            rawOffset -= 3600000;
+            rawOffset -= MS_PER_HOUR;
         }
         String[] zones = TimeZone.getAvailableIDs(rawOffset);
         TimeZone guess = null;

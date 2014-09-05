@@ -436,11 +436,16 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             String prevOperatorNumeric =
                     SystemProperties.get(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, "");
             operatorNumeric = mSS.getOperatorNumeric();
+            // try to fix the invalid Operator Numeric
+            if (isInvalidOperatorNumeric(operatorNumeric)) {
+                int sid = mSS.getSystemId();
+                operatorNumeric = fixUnknownMcc(operatorNumeric, sid);
+            }
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, operatorNumeric);
             updateCarrierMccMncConfiguration(operatorNumeric,
                     prevOperatorNumeric, mPhone.getContext());
 
-            if (operatorNumeric == null) {
+            if (isInvalidOperatorNumeric(operatorNumeric)) {
                 if (DBG) log("operatorNumeric is null");
                 mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
                 mGotCountryCode = false;
@@ -459,6 +464,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
                         isoCountryCode);
                 mGotCountryCode = true;
+
+                setOperatorIdd(operatorNumeric);
 
                 if (shouldFixTimeZoneNow(mPhone, operatorNumeric, prevOperatorNumeric,
                         mNeedFixZone)) {
