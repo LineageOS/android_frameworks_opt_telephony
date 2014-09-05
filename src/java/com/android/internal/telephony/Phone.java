@@ -1834,9 +1834,9 @@ public interface Phone {
     int getVoicePhoneServiceState();
 
     /**
-     * Override the service provider name and the operator name for the input ICCID.
+     * Override the service provider name and the operator name for the current ICCID.
      */
-    public boolean setOperatorBrandOverride(String iccId, String brand);
+    public boolean setOperatorBrandOverride(String brand);
 
     /**
      * Is Radio Present on the device and is it accessible

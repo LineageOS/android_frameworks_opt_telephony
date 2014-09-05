@@ -1763,7 +1763,7 @@ public class GSMPhone extends PhoneBase {
     }
 
     @Override
-    public boolean setOperatorBrandOverride(String iccId, String brand) {
+    public boolean setOperatorBrandOverride(String brand) {
         if (mUiccController == null) {
             return false;
         }
@@ -1773,7 +1773,7 @@ public class GSMPhone extends PhoneBase {
             return false;
         }
 
-        boolean status = card.setOperatorBrandOverride(iccId, brand);
+        boolean status = card.setOperatorBrandOverride(brand);
 
         // Refresh.
         if (status) {
