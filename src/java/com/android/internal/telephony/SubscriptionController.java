@@ -693,7 +693,7 @@ public class SubscriptionController extends ISub.Stub {
         logd("[setDisplayNumber]- number:" + number + " set");
 
         Phone phone = sProxyPhones[phoneId];
-        String alphaTag = TelephonyManager.getDefault().getLine1AlphaTag(subId);
+        String alphaTag = TelephonyManager.getDefault().getLine1AlphaTagForSubscriber(subId);
 
         synchronized(mLock) {
             mSuccess = false;
