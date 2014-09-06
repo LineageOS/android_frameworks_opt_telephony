@@ -1917,7 +1917,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
-    public boolean setOperatorBrandOverride(String iccId, String brand) {
+    public boolean setOperatorBrandOverride(String brand) {
         return false;
     }
 

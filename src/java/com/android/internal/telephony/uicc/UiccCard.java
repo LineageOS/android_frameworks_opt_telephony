@@ -569,11 +569,12 @@ public class UiccCard {
                     packageManager, intent);
     }
 
-    public boolean setOperatorBrandOverride(String iccId, String brand) {
-        log("setOperatorBrandOverride: " + iccId + " : " + brand);
+    public boolean setOperatorBrandOverride(String brand) {
+        log("setOperatorBrandOverride: " + brand);
         log("current iccId: " + getIccId());
 
-        if (iccId.isEmpty() || !TextUtils.isDigitsOnly(iccId)) {
+        String iccId = getIccId();
+        if (TextUtils.isEmpty(iccId)) {
             return false;
         }
 
@@ -590,8 +591,8 @@ public class UiccCard {
 
     public String getOperatorBrandOverride() {
         String iccId = getIccId();
-        if (iccId == null) {
-          return null;
+        if (TextUtils.isEmpty(iccId)) {
+            return null;
         }
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
         return sp.getString(OPERATOR_BRAND_OVERRIDE_PREFIX + iccId, null);
