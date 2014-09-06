@@ -957,13 +957,13 @@ public final class ImsPhoneCallTracker extends CallTracker {
             ImsPhoneConnection conn = findConnection(imsCall);
             if (DBG) log("cause = " + cause + " conn = " + conn);
 
-            if (conn.isIncoming() && conn.getConnectTime() == 0) {
+            if (conn != null && conn.isIncoming() && conn.getConnectTime() == 0) {
                 // Missed or rejected call
                 if (cause == DisconnectCause.LOCAL) {
                     cause = DisconnectCause.INCOMING_REJECTED;
-               } else {
+                } else {
                     cause = DisconnectCause.INCOMING_MISSED;
-               }
+                }
             }
             processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
 
