@@ -26,6 +26,7 @@ import android.net.sip.SipManager;
 import android.net.sip.SipProfile;
 import android.net.sip.SipSession;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Message;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
@@ -1053,5 +1054,13 @@ public class SipPhone extends SipPhoneBase {
         private void log(String s) {
             Rlog.d(SACA_TAG, s);
         }
+    }
+
+    @Override
+    public Connection dial(String dialString, int videoState, Bundle extras)
+            throws CallStateException {
+        // NOTE: Add implementation if call extras are needed to be
+        //       passed through SIP phone.
+        return null;
     }
 }

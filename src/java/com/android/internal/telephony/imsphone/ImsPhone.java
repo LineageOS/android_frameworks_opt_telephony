@@ -20,6 +20,7 @@ import android.app.ActivityManagerNative;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
@@ -28,7 +29,6 @@ import android.os.RegistrantList;
 import android.os.PowerManager.WakeLock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
-
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.Rlog;
@@ -52,7 +52,6 @@ import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BAICr
 import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BA_ALL;
 import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BA_MO;
 import static com.android.internal.telephony.CommandsInterface.CB_FACILITY_BA_MT;
-
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_DISABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ERASURE;
@@ -469,14 +468,19 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone.notifyNewRingingConnectionP(c);
     }
 
+    @Override
+    public Connection
+    dial(String dialString, int videoState, Bundle extras) throws CallStateException {
+        return dialInternal(dialString, videoState, extras);
+    }
 
     @Override
     public Connection
     dial(String dialString, int videoState) throws CallStateException {
-        return dialInternal(dialString, videoState);
+        return dialInternal(dialString, videoState, null);
     }
 
-    protected Connection dialInternal(String dialString, int videoState)
+    protected Connection dialInternal(String dialString, int videoState, Bundle extras)
             throws CallStateException {
         boolean isConferenceUri = false;
         boolean isSkipSchemaParsing = false;
@@ -509,9 +513,9 @@ public class ImsPhone extends ImsPhoneBase {
                 "dialing w/ mmi '" + mmi + "'...");
 
         if (mmi == null) {
-            return mCT.dial(dialString, videoState);
+            return mCT.dial(dialString, videoState, extras);
         } else if (mmi.isTemporaryModeCLIR()) {
-            return mCT.dial(mmi.getDialingNumber(), mmi.getCLIRMode(), videoState);
+            return mCT.dial(mmi.getDialingNumber(), mmi.getCLIRMode(), videoState, extras);
         } else if (!mmi.isSupportedOverImsPhone()) {
             // If the mmi is not supported by IMS service,
             // try to initiate dialing with default phone

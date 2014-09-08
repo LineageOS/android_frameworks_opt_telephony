@@ -18,6 +18,7 @@ package com.android.internal.telephony.imsphone;
 
 import android.content.Context;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -36,7 +37,6 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
-
 import com.android.ims.ImsCall;
 import com.android.ims.ImsCallProfile;
 
@@ -55,6 +55,8 @@ public class ImsPhoneConnection extends Connection {
 
     private String mPostDialString;      // outgoing calls only
     private boolean mDisconnected;
+
+    private Bundle mCallExtras = null;
 
     /*
     int mIndex;          // index in ImsPhoneCallTracker.connections[], -1 if unassigned
@@ -172,7 +174,8 @@ public class ImsPhoneConnection extends Connection {
 
     /** This is an MO call, created when dialing */
     /*package*/
-    ImsPhoneConnection(Context context, String dialString, ImsPhoneCallTracker ct, ImsPhoneCall parent) {
+    ImsPhoneConnection(Context context, String dialString, ImsPhoneCallTracker ct,
+            ImsPhoneCall parent, Bundle extras) {
         createWakeLock(context);
         acquireWakeLock();
         boolean isConferenceUri = false;
@@ -204,6 +207,10 @@ public class ImsPhoneConnection extends Connection {
         mCnapNamePresentation = PhoneConstants.PRESENTATION_ALLOWED;
         mNumberPresentation = PhoneConstants.PRESENTATION_ALLOWED;
         mCreateTime = System.currentTimeMillis();
+
+        if (extras != null) {
+            mCallExtras = extras;
+        }
 
         mParent = parent;
         parent.attachFake(this, ImsPhoneCall.State.DIALING);
@@ -683,6 +690,10 @@ public class ImsPhoneConnection extends Connection {
     @Override
     public int getPreciseDisconnectCause() {
         return 0;
+    }
+
+    public Bundle getCallExtras() {
+        return mCallExtras;
     }
 }
 

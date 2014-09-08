@@ -24,6 +24,7 @@ import android.content.SharedPreferences;
 import android.database.SQLException;
 import android.net.Uri;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
@@ -416,6 +417,12 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public Connection
     dial (String dialString, int videoState) throws CallStateException {
+        return (dial(dialString, videoState, null));
+    }
+
+    @Override
+    public Connection
+    dial (String dialString, int videoState, Bundle extras) throws CallStateException {
         ImsPhone imsPhone = mImsPhone;
 
         boolean imsUseEnabled =
@@ -433,7 +440,7 @@ public class CDMAPhone extends PhoneBase {
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall))) ) {
             try {
                 if (DBG) Rlog.d(LOG_TAG, "Trying IMS PS call");
-                return imsPhone.dial(dialString, videoState);
+                return imsPhone.dial(dialString, videoState, extras);
             } catch (CallStateException e) {
                 if (DBG) Rlog.d(LOG_TAG, "IMS PS call exception " + e);
                 if (!ImsPhone.CS_FALLBACK.equals(e.getMessage())) {
@@ -456,6 +463,12 @@ public class CDMAPhone extends PhoneBase {
         // Need to make sure dialString gets parsed properly
         String newDialString = PhoneNumberUtils.stripSeparators(dialString);
         return mCT.dial(newDialString);
+    }
+
+    Connection
+    dial(String dialString, UUSInfo uusInfo, int videoState, Bundle extras)
+            throws CallStateException {
+        return dial(dialString, uusInfo, videoState, null);
     }
 
     @Override
@@ -1891,4 +1904,5 @@ public class CDMAPhone extends PhoneBase {
         }
         return status;
     }
+
 }
