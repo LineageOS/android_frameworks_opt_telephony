@@ -46,12 +46,12 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
     public boolean
     updateAdnRecordsInEfBySearch (int efid, String oldTag, String oldPhoneNumber,
             String newTag, String newPhoneNumber, String pin2) throws android.os.RemoteException {
-        return updateAdnRecordsInEfBySearchUsingSubId(getDefaultSubscription(), efid, oldTag,
+        return updateAdnRecordsInEfBySearchForSubscriber(getDefaultSubscription(), efid, oldTag,
                 oldPhoneNumber, newTag, newPhoneNumber, pin2);
     }
 
     public boolean
-    updateAdnRecordsInEfBySearchUsingSubId(long subId, int efid, String oldTag,
+    updateAdnRecordsInEfBySearchForSubscriber(long subId, int efid, String oldTag,
             String oldPhoneNumber, String newTag, String newPhoneNumber,
             String pin2) throws android.os.RemoteException {
         IccPhoneBookInterfaceManagerProxy iccPbkIntMgrProxy =
@@ -69,12 +69,12 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
     public boolean
     updateAdnRecordsInEfByIndex(int efid, String newTag,
             String newPhoneNumber, int index, String pin2) throws android.os.RemoteException {
-        return updateAdnRecordsInEfByIndexUsingSubId(getDefaultSubscription(), efid, newTag,
+        return updateAdnRecordsInEfByIndexForSubscriber(getDefaultSubscription(), efid, newTag,
                 newPhoneNumber, index, pin2);
     }
 
     public boolean
-    updateAdnRecordsInEfByIndexUsingSubId(long subId, int efid, String newTag,
+    updateAdnRecordsInEfByIndexForSubscriber(long subId, int efid, String newTag,
             String newPhoneNumber, int index, String pin2) throws android.os.RemoteException {
         IccPhoneBookInterfaceManagerProxy iccPbkIntMgrProxy =
                              getIccPhoneBookInterfaceManagerProxy(subId);
@@ -89,11 +89,11 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
     }
 
     public int[] getAdnRecordsSize(int efid) throws android.os.RemoteException {
-        return getAdnRecordsSizeUsingSubId(getDefaultSubscription(), efid);
+        return getAdnRecordsSizeForSubscriber(getDefaultSubscription(), efid);
     }
 
     public int[]
-    getAdnRecordsSizeUsingSubId(long subId, int efid) throws android.os.RemoteException {
+    getAdnRecordsSizeForSubscriber(long subId, int efid) throws android.os.RemoteException {
         IccPhoneBookInterfaceManagerProxy iccPbkIntMgrProxy =
                              getIccPhoneBookInterfaceManagerProxy(subId);
         if (iccPbkIntMgrProxy != null) {
@@ -106,10 +106,10 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
     }
 
     public List<AdnRecord> getAdnRecordsInEf(int efid) throws android.os.RemoteException {
-        return getAdnRecordsInEfUsingSubId(getDefaultSubscription(), efid);
+        return getAdnRecordsInEfForSubscriber(getDefaultSubscription(), efid);
     }
 
-    public List<AdnRecord> getAdnRecordsInEfUsingSubId(long subId, int efid)
+    public List<AdnRecord> getAdnRecordsInEfForSubscriber(long subId, int efid)
            throws android.os.RemoteException {
         IccPhoneBookInterfaceManagerProxy iccPbkIntMgrProxy =
                              getIccPhoneBookInterfaceManagerProxy(subId);

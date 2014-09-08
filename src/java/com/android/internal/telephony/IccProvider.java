@@ -394,7 +394,7 @@ public class IccProvider extends ContentProvider {
             IIccPhoneBook iccIpb = IIccPhoneBook.Stub.asInterface(
                     ServiceManager.getService("simphonebook"));
             if (iccIpb != null) {
-                adnRecords = iccIpb.getAdnRecordsInEfUsingSubId(subId, efType);
+                adnRecords = iccIpb.getAdnRecordsInEfForSubscriber(subId, efType);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -435,7 +435,7 @@ public class IccProvider extends ContentProvider {
             IIccPhoneBook iccIpb = IIccPhoneBook.Stub.asInterface(
                     ServiceManager.getService("simphonebook"));
             if (iccIpb != null) {
-                success = iccIpb.updateAdnRecordsInEfBySearchUsingSubId(subId, efType,
+                success = iccIpb.updateAdnRecordsInEfBySearchForSubscriber(subId, efType,
                         "", "", name, number, pin2);
             }
         } catch (RemoteException ex) {
@@ -461,7 +461,7 @@ public class IccProvider extends ContentProvider {
             IIccPhoneBook iccIpb = IIccPhoneBook.Stub.asInterface(
                     ServiceManager.getService("simphonebook"));
             if (iccIpb != null) {
-                success = iccIpb.updateAdnRecordsInEfBySearchUsingSubId(subId, efType, oldName,
+                success = iccIpb.updateAdnRecordsInEfBySearchForSubscriber(subId, efType, oldName,
                         oldNumber, newName, newNumber, pin2);
             }
         } catch (RemoteException ex) {
@@ -486,7 +486,7 @@ public class IccProvider extends ContentProvider {
             IIccPhoneBook iccIpb = IIccPhoneBook.Stub.asInterface(
                     ServiceManager.getService("simphonebook"));
             if (iccIpb != null) {
-                success = iccIpb.updateAdnRecordsInEfBySearchUsingSubId(subId, efType,
+                success = iccIpb.updateAdnRecordsInEfBySearchForSubscriber(subId, efType,
                           name, number, "", "", pin2);
             }
         } catch (RemoteException ex) {

@@ -64,7 +64,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
         try {
             if (mRegistry != null) {
-                  mRegistry.notifyCallStateUsingSubId(subId,
+                  mRegistry.notifyCallStateForSubscriber(subId,
                         convertCallState(sender.getState()), incomingNumber);
             }
         } catch (RemoteException ex) {
@@ -125,7 +125,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
         try {
             if (mRegistry != null) {
-                mRegistry.notifyServiceStateUsingSubId(subId, ss);
+                mRegistry.notifyServiceStateForSubscriber(subId, ss);
             }
         } catch (RemoteException ex) {
             // system process is dead
@@ -139,7 +139,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
                 + " ss=" + sender.getSignalStrength() + " sender=" + sender);
         try {
             if (mRegistry != null) {
-                mRegistry.notifySignalStrengthUsingSubId(subId, sender.getSignalStrength());
+                mRegistry.notifySignalStrengthForSubscriber(subId, sender.getSignalStrength());
             }
         } catch (RemoteException ex) {
             // system process is dead
@@ -151,7 +151,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         long subId = sender.getSubId();
         try {
             if (mRegistry != null) {
-                mRegistry.notifyMessageWaitingChangedUsingSubId(subId,
+                mRegistry.notifyMessageWaitingChangedForSubscriber(subId,
                         sender.getMessageWaitingIndicator());
             }
         } catch (RemoteException ex) {
@@ -164,7 +164,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         long subId = sender.getSubId();
         try {
             if (mRegistry != null) {
-                mRegistry.notifyCallForwardingChangedUsingSubId(subId,
+                mRegistry.notifyCallForwardingChangedForSubscriber(subId,
                         sender.getCallForwardingIndicator());
             }
         } catch (RemoteException ex) {
@@ -177,7 +177,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         long subId = sender.getSubId();
         try {
             if (mRegistry != null) {
-                mRegistry.notifyDataActivityUsingSubId(subId,
+                mRegistry.notifyDataActivityForSubscriber(subId,
                         convertDataActivityState(sender.getDataActivityState()));
             }
         } catch (RemoteException ex) {
@@ -214,7 +214,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
         try {
             if (mRegistry != null) {
-                mRegistry.notifyDataConnectionUsingSubId(subId,
+                mRegistry.notifyDataConnectionForSubscriber(subId,
                     convertDataState(state),
                     sender.isDataConnectivityPossible(apnType), reason,
                     sender.getActiveApnHost(apnType),
@@ -235,7 +235,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         long subId = sender.getSubId();
         try {
             if (mRegistry != null) {
-                mRegistry.notifyDataConnectionFailedUsingSubId(subId, reason, apnType);
+                mRegistry.notifyDataConnectionFailedForSubscriber(subId, reason, apnType);
             }
         } catch (RemoteException ex) {
             // system process is dead
@@ -249,7 +249,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         sender.getCellLocation().fillInNotifierBundle(data);
         try {
             if (mRegistry != null) {
-                mRegistry.notifyCellLocationUsingSubId(subId, data);
+                mRegistry.notifyCellLocationForSubscriber(subId, data);
             }
         } catch (RemoteException ex) {
             // system process is dead
@@ -261,7 +261,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         long subId = sender.getSubId();
         try {
             if (mRegistry != null) {
-                mRegistry.notifyCellInfoUsingSubId(subId, cellInfo);
+                mRegistry.notifyCellInfoForSubscriber(subId, cellInfo);
             }
         } catch (RemoteException ex) {
 
