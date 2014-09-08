@@ -72,9 +72,11 @@ public class DctController extends Handler {
 
     private static final int EVENT_ALL_DATA_DISCONNECTED = 1;
     private static final int EVENT_SET_DATA_ALLOW_DONE = 2;
+    private static final int EVENT_DELAYED_RETRY = 3;
 
     private RegistrantList mNotifyDefaultDataSwitchInfo = new RegistrantList();
     private RegistrantList mNotifyOnDemandDataSwitchInfo = new RegistrantList();
+    private RegistrantList mNotifyOnDemandPsAttach = new RegistrantList();
     private SubscriptionController mSubController = SubscriptionController.getInstance();
 
     private Phone mActivePhone;
@@ -97,6 +99,9 @@ public class DctController extends Handler {
 
     private DdsSwitchSerializerHandler mDdsSwitchSerializer;
     private boolean mIsDdsSwitchCompleted = true;
+
+    private final int MAX_RETRY_FOR_ATTACH = 6;
+    private final int ATTACH_RETRY_DELAY = 1000 * 10;
 
     private Handler mRspHander = new Handler() {
         public void handleMessage(Message msg){
@@ -454,14 +459,18 @@ public class DctController extends Handler {
     }
 
     private class SwitchInfo {
+        private int mRetryCount = 0;
+
         public int mPhoneId;
         public NetworkRequest mNetworkRequest;
         public boolean mIsDefaultDataSwitchRequested;
+        public boolean mIsOnDemandPsAttachRequested;
 
-        public SwitchInfo(int phoneId, NetworkRequest n, boolean flag) {
+        public SwitchInfo(int phoneId, NetworkRequest n, boolean flag, boolean isAttachReq) {
             mPhoneId = phoneId;
             mNetworkRequest = n;
             mIsDefaultDataSwitchRequested = flag;
+            mIsOnDemandPsAttachRequested = isAttachReq;
         }
 
         public SwitchInfo(int phoneId,boolean flag) {
@@ -469,10 +478,22 @@ public class DctController extends Handler {
             mNetworkRequest = null;
             mIsDefaultDataSwitchRequested = flag;
         }
+
+        public void incRetryCount() {
+            mRetryCount++;
+
+        }
+
+        public boolean isRetryPossible() {
+            return (mRetryCount < MAX_RETRY_FOR_ATTACH);
+        }
+
         public String toString() {
             return "SwitchInfo[phoneId = " + mPhoneId
-                + ", NetworkRequest =" +mNetworkRequest
-                + ", isDefaultSwitchRequested = " + mIsDefaultDataSwitchRequested;
+                + ", NetworkRequest =" + mNetworkRequest
+                + ", isDefaultSwitchRequested = " + mIsDefaultDataSwitchRequested
+                + ", isOnDemandPsAttachRequested = " + mIsOnDemandPsAttachRequested
+                + ", RetryCount = " + mRetryCount;
         }
     }
 
@@ -499,6 +520,36 @@ public class DctController extends Handler {
                 this, EVENT_ALL_DATA_DISCONNECTED, s);
     }
 
+    public void doPsAttach(NetworkRequest n) {
+        Rlog.d(LOG_TAG, "doPsAttach for :" + n);
+
+        long subId = mSubController.getSubIdFromNetworkRequest(n);
+
+        int phoneId = mSubController.getPhoneId(subId);
+        Phone phone = mPhones[phoneId].getActivePhone();
+        DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
+
+        //request only PS ATTACH on requested subscription.
+        //No DdsSerealization lock required.
+        SwitchInfo s = new SwitchInfo(new Integer(phoneId), n, false, true);
+
+        Message psAttachDone = Message.obtain(this,
+                EVENT_SET_DATA_ALLOW_DONE, s);
+
+        dcTracker.setDataAllowed(true, psAttachDone);
+    }
+
+    public void doPsDetach(NetworkRequest n) {
+        Rlog.d(LOG_TAG, "doPsDetach for sub:" + mSubController.getCurrentDds());
+
+        int phoneId = mSubController.getPhoneId(
+                mSubController.getCurrentDds());
+
+        Phone phone = mPhones[phoneId].getActivePhone();
+        DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
+        dcTracker.setDataAllowed(false, null);
+    }
+
     public void setOnDemandDataSubId(NetworkRequest n) {
         Rlog.d(LOG_TAG, "setDataAllowed for :" + n);
         mDdsSwitchSerializer.sendMessage(mDdsSwitchSerializer
@@ -516,6 +567,13 @@ public class DctController extends Handler {
         Registrant r = new Registrant (h, what, obj);
         synchronized (mNotifyOnDemandDataSwitchInfo) {
             mNotifyOnDemandDataSwitchInfo.add(r);
+        }
+    }
+
+    public void registerForOnDemandPsAttach(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        synchronized (mNotifyOnDemandPsAttach) {
+            mNotifyOnDemandPsAttach.add(r);
         }
     }
 
@@ -556,31 +614,60 @@ public class DctController extends Handler {
                    break;
                 }
 
+                case EVENT_DELAYED_RETRY: {
+                    Rlog.d(LOG_TAG, "EVENT_DELAYED_RETRY");
+                    SwitchInfo s = (SwitchInfo)msg.obj;
+                    Rlog.d(LOG_TAG, " Retry, switchInfo = " + s);
+
+                    Integer phoneId = s.mPhoneId;
+                    long[] subId = mSubController.getSubId(phoneId);
+
+                    Message psAttachDone = Message.obtain(this,
+                            EVENT_SET_DATA_ALLOW_DONE, s);
+                    Phone phone = mPhones[phoneId].getActivePhone();
+                    DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
+                    dcTracker.setDataAllowed(true, psAttachDone);
+                    break;
+                }
+
                 case EVENT_SET_DATA_ALLOW_DONE: {
                     AsyncResult ar = (AsyncResult)msg.obj;
                     SwitchInfo s = (SwitchInfo)ar.userObj;
+
+                    Exception errorEx = null;
+
                     Integer phoneId = s.mPhoneId;
                     long[] subId = mSubController.getSubId(phoneId);
                     Rlog.d(LOG_TAG, "EVENT_SET_DATA_ALLOWED_DONE  phoneId :" + subId[0]
                             + ", switchInfo = " + s);
 
                     if(ar.exception != null) {
-                        Rlog.d(LOG_TAG, "Retry, switchInfo = " + s);
-                        Message allowedDataDone = Message.obtain(this,
-                                EVENT_SET_DATA_ALLOW_DONE, s);
-                        Phone phone = mPhones[phoneId].getActivePhone();
-                        DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
-                        dcTracker.setDataAllowed(true, allowedDataDone);
-                        break;
+                        Rlog.d(LOG_TAG, "Failed, switchInfo = " + s
+                                + " attempt delayed retry");
+                        s.incRetryCount();
+                        if ( s.isRetryPossible()) {
+                            sendMessageDelayed(obtainMessage(EVENT_DELAYED_RETRY, s),
+                                    ATTACH_RETRY_DELAY);
+                            return;
+                        } else {
+                            Rlog.d(LOG_TAG, "Already did max retries, notify failure");
+                            errorEx = new RuntimeException("PS ATTACH failed");
+                       }
+                    } else {
+                        Rlog.d(LOG_TAG, "PS ATTACH success = " + s);
                     }
+
                     mDdsSwitchSerializer.unLock();
 
                     if (s.mIsDefaultDataSwitchRequested) {
                         mNotifyDefaultDataSwitchInfo.notifyRegistrants(
-                                new AsyncResult(null, subId[0], null));
+                                new AsyncResult(null, subId[0], errorEx));
+                    }else if (s.mIsOnDemandPsAttachRequested) {
+                        mNotifyOnDemandPsAttach.notifyRegistrants(
+                                new AsyncResult(null, s.mNetworkRequest, errorEx));
                     } else {
                         mNotifyOnDemandDataSwitchInfo.notifyRegistrants(
-                                new AsyncResult(null, s.mNetworkRequest, null));
+                                new AsyncResult(null, s.mNetworkRequest, errorEx));
                     }
                     break;
                 }
@@ -669,7 +756,7 @@ public class DctController extends Handler {
                     Phone phone = mPhones[prefPhoneId].getActivePhone();
                     DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
                     dcTracker.setDataAllowed(false, null);
-                    SwitchInfo s = new SwitchInfo(new Integer(phoneId), n, false);
+                    SwitchInfo s = new SwitchInfo(new Integer(phoneId), n, false, false);
                     mPhones[prefPhoneId].registerForAllDataDisconnected(
                             sDctController, EVENT_ALL_DATA_DISCONNECTED, s);
 
