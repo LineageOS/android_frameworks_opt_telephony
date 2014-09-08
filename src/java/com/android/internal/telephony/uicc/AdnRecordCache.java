@@ -19,6 +19,8 @@ package com.android.internal.telephony.uicc;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.text.TextUtils;
+import android.util.Log;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.gsm.UsimPhoneBookManager;
@@ -34,6 +36,8 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
     private IccFileHandler mFh;
     private UsimPhoneBookManager mUsimPhoneBookManager;
+
+    private int mAdncountofIcc = 0;
 
     // Indexed by EF ID
     SparseArray<ArrayList<AdnRecord>> mAdnLikeFiles
@@ -51,6 +55,9 @@ public final class AdnRecordCache extends Handler implements IccConstants {
     static final int EVENT_LOAD_ALL_ADN_LIKE_DONE = 1;
     static final int EVENT_UPDATE_ADN_DONE = 2;
 
+    // *****USIM TAG Constants
+    private static final int USIM_EFANR_TAG   = 0xC4;
+    private static final int USIM_EFEMAIL_TAG = 0xCA;
     //***** Constructor
 
 
@@ -184,12 +191,19 @@ public final class AdnRecordCache extends Handler implements IccConstants {
             return;
         }
 
-        ArrayList<AdnRecord>  oldAdnList;
-
-        if (efid == EF_PBR) {
-            oldAdnList = mUsimPhoneBookManager.loadEfFilesFromUsim();
-        } else {
-            oldAdnList = getRecordsIfLoaded(efid);
+        ArrayList<AdnRecord> oldAdnList = null;
+        try {
+            if (efid == EF_PBR) {
+                oldAdnList = mUsimPhoneBookManager.loadEfFilesFromUsim();
+            } else {
+                oldAdnList = getRecordsIfLoaded(efid);
+            }
+        } catch (NullPointerException e) {
+            // NullPointerException will be thrown occasionally when we call this method just
+            // during phone changed to airplane mode.
+            // Some Object used in this method will be reset, so we add protect code here to avoid
+            // phone force close.
+            oldAdnList = null;
         }
 
         if (oldAdnList == null) {
@@ -199,13 +213,44 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
         int index = -1;
         int count = 1;
-        for (Iterator<AdnRecord> it = oldAdnList.iterator(); it.hasNext(); ) {
-            if (oldAdn.isEqual(it.next())) {
+        int prePbrIndex = -2;
+        int anrNum = 0;
+        int emailNum = 0;
+        for (Iterator<AdnRecord> it = oldAdnList.iterator(); it.hasNext();) {
+            AdnRecord nextAdnRecord = it.next();
+            boolean isEmailOrAnrIsFull = false;
+            if (efid == EF_PBR) {
+                // There may more than one PBR files in the USIM card, if the current PBR file can
+                // not save the new AdnRecord which contain anr or email, try save it into next PBR
+                // file.
+                int pbrIndex = mUsimPhoneBookManager.getPbrIndexBy(count - 1);
+                if (pbrIndex != prePbrIndex) {
+                    // For a specific pbrIndex, the anrNum and emailNum is fixed.
+                    anrNum = mUsimPhoneBookManager.getEmptyAnrNumPbrIndex(pbrIndex);
+                    emailNum = mUsimPhoneBookManager.getEmptyEmailNum_Pbrindex(pbrIndex);
+                    prePbrIndex = pbrIndex;
+                    Log.d("AdnRecordCache", "updateAdnBySearch, pbrIndex: " + pbrIndex +
+                            " anrNum:" + anrNum + " emailNum:" + emailNum);
+                }
+                if ((anrNum == 0 &&
+                        (oldAdn.getAdditionalNumbers() == null &&
+                         newAdn.getAdditionalNumbers() != null)) ||
+                    (emailNum == 0 &&
+                        (oldAdn.getEmails() == null &&
+                         newAdn.getEmails() != null))) {
+                    isEmailOrAnrIsFull = true;
+                }
+            }
+
+            if (!isEmailOrAnrIsFull && oldAdn.isEqual(nextAdnRecord)) {
                 index = count;
                 break;
             }
             count++;
         }
+
+        Log.d("AdnRecordCache", "updateAdnBySearch, update oldADN:" + oldAdn.toString() +
+                ", newAdn:" + newAdn.toString() + ",index :" + index);
 
         if (index == -1) {
             sendErrorResponse(response, "Adn record don't exist for " + oldAdn);
@@ -214,13 +259,15 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
         if (efid == EF_PBR) {
             AdnRecord foundAdn = oldAdnList.get(index-1);
-            efid = foundAdn.mEfid;
-            extensionEF = foundAdn.mExtRecord;
-            index = foundAdn.mRecordNumber;
-
-            newAdn.mEfid = efid;
-            newAdn.mExtRecord = extensionEF;
-            newAdn.mRecordNumber = index;
+            newAdn.mEfid = foundAdn.mEfid;
+            newAdn.mExtRecord = foundAdn.mExtRecord;
+            newAdn.mRecordNumber = foundAdn.mRecordNumber;
+            // make sure the sequence is same with foundAdn
+            oldAdn.setAdditionalNumbers(foundAdn.getAdditionalNumbers());
+            oldAdn.setEmails(foundAdn.getEmails());
+            newAdn.updateAnrEmailArray(oldAdn,
+                    mUsimPhoneBookManager.getEmailFilesCountEachAdn(),
+                    mUsimPhoneBookManager.getAnrFilesCountEachAdn());
         }
 
         Message pendingResponse = mUserWriteResponse.get(efid);
@@ -230,11 +277,14 @@ public final class AdnRecordCache extends Handler implements IccConstants {
             return;
         }
 
-        mUserWriteResponse.put(efid, response);
-
-        new AdnRecordLoader(mFh).updateEF(newAdn, efid, extensionEF,
-                index, pin2,
-                obtainMessage(EVENT_UPDATE_ADN_DONE, efid, index, newAdn));
+        if (efid == EF_PBR) {
+            updateEmailAndAnr(efid, oldAdn, newAdn, index, pin2, response);
+        } else {
+            mUserWriteResponse.put(efid, response);
+            new AdnRecordLoader(mFh).updateEF(newAdn, efid, extensionEF,
+                    index, pin2,
+                    obtainMessage(EVENT_UPDATE_ADN_DONE, efid, index, newAdn));
+        }
     }
 
 
@@ -338,6 +388,9 @@ public final class AdnRecordCache extends Handler implements IccConstants {
                     mAdnLikeFiles.put(efid, (ArrayList<AdnRecord>) ar.result);
                 }
                 notifyWaiters(waiters, ar);
+                if (mAdnLikeFiles.get(EF_ADN) != null) {
+                    setAdnCount(mAdnLikeFiles.get(EF_ADN).size());
+                }
                 break;
             case EVENT_UPDATE_ADN_DONE:
                 ar = (AsyncResult)msg.obj;
@@ -346,8 +399,12 @@ public final class AdnRecordCache extends Handler implements IccConstants {
                 AdnRecord adn = (AdnRecord) (ar.userObj);
 
                 if (ar.exception == null) {
-                    mAdnLikeFiles.get(efid).set(index - 1, adn);
-                    mUsimPhoneBookManager.invalidateCache();
+                    if (mAdnLikeFiles.get(efid) != null) {
+                        mAdnLikeFiles.get(efid).set(index - 1, adn);
+                    }
+                    if (efid == EF_PBR) {
+                        mUsimPhoneBookManager.loadEfFilesFromUsim().set(index - 1, adn);
+                    }
                 }
 
                 Message response = mUserWriteResponse.get(efid);
@@ -364,5 +421,193 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
     }
 
+    private void updateEmailAndAnr(int efid, AdnRecord oldAdn, AdnRecord newAdn, int index,
+            String pin2, Message response) {
+        int extensionEF;
+        extensionEF = extensionEfForEf(newAdn.mEfid);
+        boolean success = false;
+        success = updateUsimRecord(oldAdn, newAdn, index, USIM_EFEMAIL_TAG);
 
+        if (success) {
+            success = updateUsimRecord(oldAdn, newAdn, index, USIM_EFANR_TAG);
+        } else {
+            sendErrorResponse(response, "update email failed");
+            return;
+        }
+        if (success) {
+            mUserWriteResponse.put(efid, response);
+            new AdnRecordLoader(mFh).updateEF(newAdn, newAdn.mEfid, extensionEF,
+                    newAdn.mRecordNumber, pin2,
+                    obtainMessage(EVENT_UPDATE_ADN_DONE, efid, index, newAdn));
+        } else {
+            sendErrorResponse(response, "update anr failed");
+            return;
+        }
+    }
+
+    private boolean updateAnrEmailFile(String oldRecord,
+                String newRecord, int index, int tag, int efidIndex) {
+        boolean success = true;
+        try {
+            switch (tag) {
+                case USIM_EFEMAIL_TAG:
+                    success = mUsimPhoneBookManager
+                            .updateEmailFile(index, oldRecord, newRecord, efidIndex);
+                    break;
+                case USIM_EFANR_TAG:
+                    success = mUsimPhoneBookManager
+                            .updateAnrFile(index, oldRecord, newRecord, efidIndex);
+                    break;
+                default:
+                    success = false;
+            }
+        } catch (RuntimeException e) {
+            success = false;
+            Log.e("AdnRecordCache", "update usim record failed", e);
+        }
+
+        return success;
+    }
+
+    private boolean updateUsimRecord(AdnRecord oldAdn, AdnRecord newAdn, int index, int tag) {
+        String[] oldRecords = null;
+        String[] newRecords = null;
+        String oldRecord = null;
+        String newRecord = null;
+        boolean success = true;
+        // currently we only support one email records
+        switch (tag) {
+            case USIM_EFEMAIL_TAG:
+                oldRecords = oldAdn.getEmails();
+                newRecords = newAdn.getEmails();
+                break;
+            case USIM_EFANR_TAG:
+                oldRecords = oldAdn.getAdditionalNumbers();
+                newRecords = newAdn.getAdditionalNumbers();
+                break;
+            default:
+                return false;
+        }
+
+        if (null == oldRecords && null == newRecords) {
+            // UI send empty string, no need to update
+            Log.e("AdnRecordCache", "Both old and new EMAIL/ANR are null");
+            return true;
+        }
+
+        // insert scenario
+        if (null == oldRecords && null != newRecords) {
+            for (int i = 0; i < newRecords.length; i++) {
+                if (!TextUtils.isEmpty(newRecords[i])) {
+                    success &= updateAnrEmailFile(null, newRecords[i], index, tag, i);
+                }
+            }
+        // delete scenario
+        } else if (null != oldRecords && null == newRecords) {
+            for (int i = 0; i < oldRecords.length; i++) {
+                if (!TextUtils.isEmpty(oldRecords[i])) {
+                    success &= updateAnrEmailFile(oldRecords[i], null, index, tag, i);
+                }
+            }
+        // update scenario
+        } else {
+            int maxLen = (oldRecords.length > newRecords.length) ?
+                            oldRecords.length : newRecords.length;
+            for (int i = 0; i < maxLen; i++) {
+                oldRecord = (i >= oldRecords.length) ? null : oldRecords[i];
+                newRecord = (i >= newRecords.length) ? null : newRecords[i];
+
+                if ((TextUtils.isEmpty(oldRecord) && TextUtils.isEmpty(newRecord)) ||
+                    (oldRecord != null && newRecord != null && oldRecord.equals(newRecord))) {
+                    continue;
+                } else {
+                    success &= updateAnrEmailFile(oldRecord, newRecord, index, tag, i);
+                }
+            }
+        }
+
+        return success;
+    }
+
+    public void updateUsimAdnByIndex(int efid, AdnRecord newAdn, int recordIndex, String pin2,
+            Message response) {
+
+        int extensionEF;
+        extensionEF = extensionEfForEf(efid);
+        if (extensionEF < 0) {
+            sendErrorResponse(response, "EF is not known ADN-like EF:" + efid);
+            return;
+        }
+
+        ArrayList<AdnRecord> oldAdnList = null;
+        try {
+            if (efid == EF_PBR) {
+                oldAdnList = mUsimPhoneBookManager.loadEfFilesFromUsim();
+            } else {
+                oldAdnList = getRecordsIfLoaded(efid);
+            }
+        } catch (NullPointerException e) {
+            // NullPointerException will be thrown occasionally when we call this method just
+            // during phone changed to airplane mode.
+            // Some Object used in this method will be reset, so we add protect code here to avoid
+            // phone force close.
+            oldAdnList = null;
+        }
+
+        if (oldAdnList == null) {
+            sendErrorResponse(response, "Adn list not exist for EF:" + efid);
+            return;
+        }
+
+        int index = recordIndex;
+
+        if (efid == EF_PBR) {
+            AdnRecord foundAdn = oldAdnList.get(index - 1);
+            newAdn.mEfid = foundAdn.mEfid;
+            newAdn.mExtRecord = foundAdn.mExtRecord;
+            newAdn.mRecordNumber = foundAdn.mRecordNumber;
+        }
+
+        Message pendingResponse = mUserWriteResponse.get(efid);
+
+        if (pendingResponse != null) {
+            sendErrorResponse(response, "Have pending update for EF:" + efid);
+            return;
+        }
+
+        if (efid == EF_PBR) {
+            updateEmailAndAnr(efid, oldAdnList.get(index - 1), newAdn, index, pin2, response);
+        } else {
+            mUserWriteResponse.put(efid, response);
+            new AdnRecordLoader(mFh).updateEF(newAdn, efid, extensionEF, index, pin2,
+                    obtainMessage(EVENT_UPDATE_ADN_DONE, efid, index, newAdn));
+        }
+    }
+
+    public int getAnrCount() {
+        return mUsimPhoneBookManager.getAnrCount();
+    }
+
+    public int getEmailCount() {
+        return mUsimPhoneBookManager.getEmailCount();
+    }
+    public int getSpareAnrCount() {
+        return mUsimPhoneBookManager.getSpareAnrCount();
+    }
+
+    public int getSpareEmailCount() {
+        return mUsimPhoneBookManager.getSpareEmailCount();
+    }
+
+    public int getAdnCount() {
+        return mAdncountofIcc;
+    }
+
+    public void setAdnCount(int count) {
+        mAdncountofIcc = count;
+    }
+
+    public int getUsimAdnCount() {
+        return mUsimPhoneBookManager.getUsimAdnCount();
+    }
 }

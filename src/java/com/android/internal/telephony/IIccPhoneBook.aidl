@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentValues;
+
 import com.android.internal.telephony.uicc.AdnRecord;
 
 
@@ -103,6 +105,22 @@ interface IIccPhoneBook {
             String oldTag, String oldPhoneNumber,
             String newTag, String newPhoneNumber,
             String pin2);
+
+    /**
+     * Replace oldAdn with newAdn in ADN-like record in EF
+     *
+     * getAdnRecordsInEf must be called at least once before this function,
+     * otherwise an error will be returned
+     *
+     * @param subId user preferred subId
+     * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
+     * @param values including ADN,EMAIL,ANR to be updated
+     * @param pin2 required to update EF_FDN, otherwise must be null
+     * @return true for success
+     */
+    boolean updateAdnRecordsWithContentValuesInEfBySearchUsingSubId(int subId,
+            int efid, in ContentValues values, String pin2);
+
     /**
      * Update an ADN-like EF record by record index
      *
@@ -165,4 +183,78 @@ interface IIccPhoneBook {
      */
     int[] getAdnRecordsSizeForSubscriber(int subId, int efid);
 
+    /**
+     * Get the adn count of sim card
+     *
+     * @return the adn count of sim card
+     */
+    int getAdnCount();
+
+    /**
+     * Get the adn count of sim card
+     *
+     * @param subId user preferred subId
+     * @return the adn count of sim card
+     */
+    int getAdnCountUsingSubId(int subId);
+
+    /**
+     * Get the anr count of sim card
+     *
+     * @return the anr count of sim card
+     */
+    int getAnrCount();
+
+    /**
+     * Get the anr count of sim card
+     *
+     * @param subId user preferred subId
+     * @return the anr count of sim card
+     */
+    int getAnrCountUsingSubId(int subId);
+
+    /**
+     * Get the email count of sim card
+     *
+     * @return the email count of sim card
+     */
+    int getEmailCount();
+
+    /**
+     * Get the email count of sim card
+     *
+     * @param subId user preferred subId
+     * @return the email count of sim card
+     */
+    int getEmailCountUsingSubId(int subId);
+
+    /**
+     * Get the spare anr count of sim card
+     *
+     * @return the spare anr count of sim card
+     */
+    int getSpareAnrCount();
+
+    /**
+     * Get the spare anr count of sim card
+     *
+     * @param subId user preferred subId
+     * @return the spare anr count of sim card
+     */
+    int getSpareAnrCountUsingSubId(int subId);
+
+    /**
+     * Get the spare email count of sim card
+     *
+     * @return the spare email count of sim card
+     */
+    int getSpareEmailCount();
+
+    /**
+     * Get the spare email count of sim card
+     *
+     * @param subId user preferred subId
+     * @return the spare email count of sim card
+     */
+    int getSpareEmailCountUsingSubId(int subId);
 }
