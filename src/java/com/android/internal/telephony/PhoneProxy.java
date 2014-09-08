@@ -24,6 +24,7 @@ import android.content.Intent;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
@@ -1439,5 +1440,11 @@ public class PhoneProxy extends Handler implements Phone {
     @Override
     public void setLocalCallHold(int lchStatus) {
         mActivePhone.setLocalCallHold(lchStatus);
+    }
+
+    @Override
+    public Connection dial(String dialString, int videoState, Bundle extras)
+            throws CallStateException {
+        return mActivePhone.dial(dialString, videoState, extras);
     }
 }

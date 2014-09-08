@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.content.Context;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.CellInfo;
@@ -32,7 +33,6 @@ import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UsimServiceTable;
-
 import com.android.internal.telephony.PhoneConstants.*; // ????
 
 import java.util.List;
@@ -832,6 +832,25 @@ public interface Phone {
      * handled asynchronously.
      */
     Connection dial(String dialString, int videoState) throws CallStateException;
+
+    /**
+     * Initiate a new voice connection. This happens asynchronously, so you
+     * cannot assume the audio path is connected (or a call index has been
+     * assigned) until PhoneStateChanged notification has occurred.
+     *
+     * @param dialString The dial string.
+     * @param videoState The desired video state for the connection.
+     * @param extras Additional (meta) call information.
+     *        OEMs can pass call extras (additional call info) Bundle
+     *        in the following format:
+     *        1) All values in the Bundle must be of type String
+     *        2) Keys for the values are defined in ImsCallProfile.java
+     * @exception CallStateException if a new outgoing call is not currently
+     *                possible because no more call slots exist or a call exists
+     *                that is dialing, alerting, ringing, or waiting. Other
+     *                errors are handled asynchronously.
+     */
+    Connection dial(String dialString, int videoState, Bundle extras) throws CallStateException;
 
     /**
      * Initiate a new voice connection with supplementary User to User

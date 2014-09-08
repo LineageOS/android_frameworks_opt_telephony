@@ -25,6 +25,7 @@ import android.content.SharedPreferences;
 import android.database.SQLException;
 import android.net.Uri;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
@@ -819,13 +820,25 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public Connection
+    dial(String dialString, int videoState, Bundle extras) throws CallStateException {
+        return dial(dialString, null, videoState, extras);
+    }
+
+    @Override
+    public Connection
     dial(String dialString, int videoState) throws CallStateException {
-        return dial(dialString, null, videoState);
+        return dial(dialString, null, videoState, null);
     }
 
     @Override
     public Connection
     dial (String dialString, UUSInfo uusInfo, int videoState) throws CallStateException {
+        return dial(dialString, uusInfo, videoState, null);
+    }
+
+    public Connection
+    dial (String dialString, UUSInfo uusInfo, int videoState, Bundle extras)
+            throws CallStateException {
         ImsPhone imsPhone = mImsPhone;
 
         boolean imsUseEnabled =
@@ -843,7 +856,7 @@ public class GSMPhone extends PhoneBase {
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall))) ) {
             try {
                 if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Trying IMS PS call");
-                return imsPhone.dial(dialString, videoState);
+                return imsPhone.dial(dialString, videoState, extras);
             } catch (CallStateException e) {
                 if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "IMS PS call exception " + e);
                 if (!ImsPhone.CS_FALLBACK.equals(e.getMessage())) {

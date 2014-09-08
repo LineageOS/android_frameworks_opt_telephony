@@ -28,6 +28,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
@@ -274,16 +275,21 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     Connection
     dial(String dialString, int videoState) throws CallStateException {
+        return dial(dialString, videoState, null);
+    }
+
+    Connection
+    dial(String dialString, int videoState, Bundle extras) throws CallStateException {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
         int oirMode = sp.getInt(PhoneBase.CLIR_KEY, CommandsInterface.CLIR_DEFAULT);
-        return dial(dialString, oirMode, videoState);
+        return dial(dialString, oirMode, videoState, extras);
     }
 
     /**
      * oirMode is one of the CLIR_ constants
      */
     synchronized Connection
-    dial(String dialString, int clirMode, int videoState) throws CallStateException {
+    dial(String dialString, int clirMode, int videoState, Bundle extras) throws CallStateException {
         boolean isPhoneInEcmMode = SystemProperties.getBoolean(
                 TelephonyProperties.PROPERTY_INECM_MODE, false);
         boolean isEmergencyNumber = PhoneNumberUtils.isEmergencyNumber(dialString);
@@ -342,13 +348,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
             }
 
             mPendingMO = new ImsPhoneConnection(mPhone.getContext(),
-                    checkForTestEmergencyNumber(dialString), this, mForegroundCall);
+                    checkForTestEmergencyNumber(dialString), this,
+                    mForegroundCall, extras);
         }
         addConnection(mPendingMO);
 
         if (!holdBeforeDial) {
             if ((!isPhoneInEcmMode) || (isPhoneInEcmMode && isEmergencyNumber)) {
-                dialInternal(mPendingMO, clirMode, videoState);
+                dialInternal(mPendingMO, clirMode, videoState, extras);
             } else {
                 try {
                     getEcbmInterface().exitEmergencyCallbackMode();
@@ -381,7 +388,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    private void dialInternal(ImsPhoneConnection conn, int clirMode, int videoState) {
+    private void
+    dialInternal(ImsPhoneConnection conn, int clirMode, int videoState, Bundle extras) {
         if (conn == null) {
             return;
         }
@@ -418,6 +426,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
             profile.setCallExtraInt(ImsCallProfile.EXTRA_OIR, clirMode);
             profile.setCallExtraBoolean(TelephonyProperties.EXTRAS_IS_CONFERENCE_URI,
                     isConferenceUri);
+
+            if (extras != null) {
+                // Pack the OEM-specific call extras.
+                profile.mCallExtras.putBundle(ImsCallProfile.EXTRA_OEM_EXTRAS, extras);
+                log("Packing OEM extras bundle in call profile.");
+            } else {
+                log("No dial extras packed in call profile.");
+            }
 
             ImsCall imsCall = mImsManager.makeCall(mServiceId, profile,
                     callees, mImsCallListener);
@@ -1333,13 +1349,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 }
                 break;
             case EVENT_DIAL_PENDINGMO:
-                dialInternal(mPendingMO, mClirMode, VideoProfile.VideoState.AUDIO_ONLY);
+                dialInternal(mPendingMO, mClirMode,
+                        VideoProfile.VideoState.AUDIO_ONLY, mPendingMO.getCallExtras());
                 break;
 
             case EVENT_EXIT_ECM_RESPONSE_CDMA:
                 // no matter the result, we still do the same here
                 if (pendingCallInEcm) {
-                    dialInternal(mPendingMO, pendingCallClirMode, pendingCallVideoState);
+                    dialInternal(mPendingMO, pendingCallClirMode,
+                            pendingCallVideoState, mPendingMO.getCallExtras());
                     pendingCallInEcm = false;
                 }
                 mPhone.unsetOnEcbModeExitResponse(this);
