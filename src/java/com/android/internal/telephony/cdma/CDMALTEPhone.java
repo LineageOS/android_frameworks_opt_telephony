@@ -320,8 +320,6 @@ public class CDMALTEPhone extends CDMAPhone {
         mCarrierOtaSpNumSchema = SystemProperties.get(
                 TelephonyProperties.PROPERTY_OTASP_NUM_SCHEMA,"");
 
-        // Notify voicemails.
-        notifier.notifyMessageWaitingChanged(this);
         setProperties();
     }
 
