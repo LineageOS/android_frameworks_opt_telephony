@@ -32,27 +32,35 @@ package com.android.internal.telephony.dataconnection;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.AsyncChannel;
 
+import android.telephony.Rlog;
+
 import android.net.NetworkRequest;
 import android.os.Message;
 
 public class DdsSchedulerAc extends AsyncChannel {
+
+    private final String TAG = "DdsSchedulerAc";
 
     private DdsScheduler mScheduler;
     public static final int BASE = Protocol.BASE_DDS_SCHEDULER;
     public static final int REQ_DDS_ALLOCATION = BASE + 0;
     public static final int REQ_DDS_FREE = BASE + 1;
     public static final int EVENT_ON_DEMAND_DDS_SWITCH_DONE = BASE + 2;
+    public static final int EVENT_ON_DEMAND_PS_ATTACH_DONE = BASE + 3;
+    public static final int EVENT_MODEM_DATA_CAPABILITY_UPDATE = BASE + 4;
+    public static final int EVENT_ADD_REQUEST = BASE + 5;
+    public static final int EVENT_REMOVE_REQUEST = BASE + 6;
 
     public DdsSchedulerAc() {
     }
 
     public void allocateDds(NetworkRequest req) {
-        DdsScheduler.addRequest(req);
-        sendMessage(REQ_DDS_ALLOCATION, req);
+        Rlog.d(TAG, "EVENT_ADD_REQUEST = " + req);
+        sendMessage(EVENT_ADD_REQUEST, req);
     }
 
     public void freeDds(NetworkRequest req) {
-        DdsScheduler.removeRequest(req);
-        sendMessage(REQ_DDS_FREE, req);
+        Rlog.d(TAG, "EVENT_REMOVE_REQUEST = " + req);
+        sendMessage(EVENT_REMOVE_REQUEST, req);
     }
 }
