@@ -102,7 +102,13 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
         int mEfid;
         int mRecordNum, mRecordSize, mCountRecords;
         boolean mLoadAll;
+        String mPath;
 
+        // Variables used to load part records
+        boolean mLoadPart;
+        ArrayList<Integer> mRecordNums;
+        int mCountLoadrecords;
+        int mCount;
         Message mOnLoaded;
 
         ArrayList<byte[]> results;
@@ -112,13 +118,58 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
             mRecordNum = recordNum;
             mOnLoaded = onLoaded;
             mLoadAll = false;
+            mLoadPart = false;
+            mPath = null;
+        }
+
+        LoadLinearFixedContext(int efid, int recordNum, String path, Message onLoaded) {
+            mEfid = efid;
+            mRecordNum = recordNum;
+            mOnLoaded = onLoaded;
+            mLoadAll = false;
+            mLoadPart = false;
+            mPath = path;
+        }
+
+        LoadLinearFixedContext(int efid, String path, Message onLoaded) {
+            mEfid = efid;
+            mRecordNum = 1;
+            mLoadAll = true;
+            mLoadPart = false;
+            mOnLoaded = onLoaded;
+            mPath = path;
         }
 
         LoadLinearFixedContext(int efid, Message onLoaded) {
             mEfid = efid;
             mRecordNum = 1;
             mLoadAll = true;
+            mLoadPart = false;
             mOnLoaded = onLoaded;
+        }
+        LoadLinearFixedContext(int efid, ArrayList<Integer> recordNums, String path,
+                Message onLoaded) {
+            mEfid = efid;
+            mRecordNum = recordNums.get(0);
+            mLoadAll = false;
+            mLoadPart = true;
+            mRecordNums = new ArrayList<Integer>();
+            mRecordNums.addAll(recordNums);
+            mCount = 0;
+            mCountLoadrecords = recordNums.size();
+            mOnLoaded = onLoaded;
+            mPath = path;
+        }
+
+        private void initLCResults(int size) {
+            this.results = new ArrayList<byte[]>(size);
+            byte[] data = new byte[this.mRecordSize];
+            for (int i = 0; i < this.mRecordSize; i++) {
+                data[i] = (byte) 0xff;
+            }
+            for (int i = 0; i < size; i++) {
+                this.results.add(data);
+            }
         }
     }
 
@@ -207,6 +258,24 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
 
         mCi.iccIOForApp(COMMAND_GET_RESPONSE, fileid, getEFPath(fileid),
                         0, 0, GET_RESPONSE_EF_SIZE_BYTES, null, null, mAid, response);
+    }
+
+    /**
+     * Load several records from a SIM Linear Fixed EF
+     *
+     * @param fileid EF id
+     * @param onLoaded
+     *
+     * ((AsyncResult)(onLoaded.obj)).result is an ArrayList<byte[]>
+     *
+     */
+    public void loadEFLinearFixedPart(int fileid,
+            ArrayList<Integer> recordNums, Message onLoaded) {
+        Message response = obtainMessage(EVENT_GET_RECORD_SIZE_DONE, new LoadLinearFixedContext(
+                fileid, recordNums, getEFPath(fileid), onLoaded));
+
+        mCi.iccIOForApp(COMMAND_GET_RESPONSE, fileid, getEFPath(fileid), 0, 0,
+                GET_RESPONSE_EF_SIZE_BYTES, null, null, mAid, response);
     }
 
     /**
@@ -348,6 +417,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
         int size;
         int fileid;
         int recordSize[];
+        String path = null;
 
         try {
             switch (msg.what) {
@@ -407,6 +477,8 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
 
                  if (lc.mLoadAll) {
                      lc.results = new ArrayList<byte[]>(lc.mCountRecords);
+                 } else if (lc.mLoadPart) {
+                     lc.initLCResults(lc.mCountRecords);
                  }
 
                  mCi.iccIOForApp(COMMAND_READ_RECORD, lc.mEfid, getEFPath(lc.mEfid),
@@ -457,9 +529,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                     break;
                 }
 
-                if (!lc.mLoadAll) {
-                    sendResult(response, result.payload, null);
-                } else {
+                if (lc.mLoadAll) {
                     lc.results.add(result.payload);
 
                     lc.mRecordNum++;
@@ -473,6 +543,27 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
                                     lc.mRecordSize, null, null, mAid,
                                     obtainMessage(EVENT_READ_RECORD_DONE, lc));
                     }
+                } else if (lc.mLoadPart) {
+                    lc.results.set(lc.mRecordNum - 1, result.payload);
+                    lc.mCount++;
+                    if (lc.mCount < lc.mCountLoadrecords) {
+                        lc.mRecordNum = lc.mRecordNums.get(lc.mCount);
+                        if (lc.mRecordNum <= lc.mCountRecords) {
+                            if (path == null) {
+                                path = getEFPath(lc.mEfid);
+                            }
+                            mCi.iccIOForApp(COMMAND_READ_RECORD, lc.mEfid, path, lc.mRecordNum,
+                                    READ_RECORD_MODE_ABSOLUTE, lc.mRecordSize, null, null, mAid,
+                                    obtainMessage(EVENT_READ_RECORD_DONE, lc));
+                        } else {
+                            sendResult(response, lc.results, null);
+                        }
+                    } else {
+                        sendResult(response, lc.results, null);
+                    }
+                }
+            else{
+                sendResult(response, result.payload, null);
                 }
 
             break;

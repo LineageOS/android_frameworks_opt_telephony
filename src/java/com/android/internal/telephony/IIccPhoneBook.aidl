@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentValues;
+
 import com.android.internal.telephony.uicc.AdnRecord;
 
 
@@ -104,6 +106,23 @@ interface IIccPhoneBook {
             String newTag, String newPhoneNumber,
             String pin2);
     /**
+     * Replace oldAdn with newAdn in ADN-like record in EF
+     *
+     * getAdnRecordsInEf must be called at least once before this function,
+     * otherwise an error will be returned
+     *
+     * @param efid must be one among EF_ADN, EF_FDN, and EF_SDN
+     * @param values to be updated
+     * @param pin2 required to update EF_FDN, otherwise must be null
+     * @return true for success
+     */
+    boolean updateAdnRecordsWithContentValuesInEfBySearch(int efid,
+            in ContentValues values, String pin2);
+
+    boolean updateAdnRecordsWithContentValuesInEfBySearchUsingSubId(long subId,
+            int efid, in ContentValues values, String pin2);
+
+    /**
      * Update an ADN-like EF record by record index
      *
      * This is useful for iteration the whole ADN file, such as write the whole
@@ -165,4 +184,43 @@ interface IIccPhoneBook {
      */
     int[] getAdnRecordsSizeForSubscriber(long subId, int efid);
 
+    /**
+     * Get the adn count of sim card
+     *
+     * @return the adn count of sim card
+     */
+    int getAdnCount();
+    int getAdnCountUsingSubId(long subId);
+
+    /**
+     * Get the anr count of sim card
+     *
+     * @return the anr count of sim card
+     */
+    int getAnrCount();
+    int getAnrCountUsingSubId(long subId);
+
+    /**
+     * Get the email count of sim card
+     *
+     * @return the email count of sim card
+     */
+    int getEmailCount();
+    int getEmailCountUsingSubId(long subId);
+
+    /**
+     * Get the spare anr count of sim card
+     *
+     * @return the spare anr count of sim card
+     */
+    int getSpareAnrCount();
+    int getSpareAnrCountUsingSubId(long subId);
+
+    /**
+     * Get the spare email count of sim card
+     *
+     * @return the spare email count of sim card
+     */
+    int getSpareEmailCount();
+    int getSpareEmailCountUsingSubId(long subId);
 }

@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentValues;
+import android.os.RemoteException;
 import android.os.ServiceManager;
 import com.android.internal.telephony.uicc.AdnRecord;
 
@@ -49,6 +51,12 @@ public class IccPhoneBookInterfaceManagerProxy {
                 efid, oldTag, oldPhoneNumber, newTag, newPhoneNumber, pin2);
     }
 
+    public boolean updateAdnRecordsWithContentValuesInEfBySearch(int efid, ContentValues values,
+            String pin2) throws android.os.RemoteException {
+        return mIccPhoneBookInterfaceManager.updateAdnRecordsWithContentValuesInEfBySearch(efid,
+                values, pin2);
+    }
+
     public boolean
     updateAdnRecordsInEfByIndex(int efid, String newTag,
             String newPhoneNumber, int index, String pin2) {
@@ -62,5 +70,25 @@ public class IccPhoneBookInterfaceManagerProxy {
 
     public List<AdnRecord> getAdnRecordsInEf(int efid) {
         return mIccPhoneBookInterfaceManager.getAdnRecordsInEf(efid);
+    }
+
+    public int getAdnCount() {
+        return mIccPhoneBookInterfaceManager.getAdnCount();
+    }
+
+    public int getAnrCount() {
+        return mIccPhoneBookInterfaceManager.getAnrCount();
+    }
+
+    public int getEmailCount() {
+        return mIccPhoneBookInterfaceManager.getEmailCount();
+    }
+
+    public int getSpareAnrCount() {
+        return mIccPhoneBookInterfaceManager.getSpareAnrCount();
+    }
+
+    public int getSpareEmailCount() {
+        return mIccPhoneBookInterfaceManager.getSpareEmailCount();
     }
 }
