@@ -1880,15 +1880,7 @@ public abstract class PhoneBase extends Handler implements Phone {
      * Returns the subscription id.
      */
     public long getSubId() {
-        long subId;
-
-        long [] subIds = SubscriptionController.getInstance().getSubId(mPhoneId);
-        if (subIds == null) {
-            subId = SubscriptionManager.INVALID_SUB_ID;
-        } else {
-            subId = subIds[0];
-        }
-        return subId;
+        return SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhoneId);
     }
 
     /**
