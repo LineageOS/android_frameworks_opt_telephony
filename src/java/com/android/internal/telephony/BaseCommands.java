@@ -279,7 +279,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnNewGsmSms(Handler h) {
-        mGsmSmsRegistrant.clear();
+        if (mGsmSmsRegistrant != null && mGsmSmsRegistrant.getHandler() == h) {
+            mGsmSmsRegistrant.clear();
+            mGsmSmsRegistrant = null;
+        }
     }
 
     @Override
@@ -289,7 +292,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnNewCdmaSms(Handler h) {
-        mCdmaSmsRegistrant.clear();
+        if (mCdmaSmsRegistrant != null && mCdmaSmsRegistrant.getHandler() == h) {
+            mCdmaSmsRegistrant.clear();
+            mCdmaSmsRegistrant = null;
+        }
     }
 
     @Override
@@ -299,7 +305,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnNewGsmBroadcastSms(Handler h) {
-        mGsmBroadcastSmsRegistrant.clear();
+        if (mGsmBroadcastSmsRegistrant != null && mGsmBroadcastSmsRegistrant.getHandler() == h) {
+            mGsmBroadcastSmsRegistrant.clear();
+            mGsmBroadcastSmsRegistrant = null;
+        }
     }
 
     @Override
@@ -309,7 +318,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnSmsOnSim(Handler h) {
-        mSmsOnSimRegistrant.clear();
+        if (mSmsOnSimRegistrant != null && mSmsOnSimRegistrant.getHandler() == h) {
+            mSmsOnSimRegistrant.clear();
+            mSmsOnSimRegistrant = null;
+        }
     }
 
     @Override
@@ -319,7 +331,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnSmsStatus(Handler h) {
-        mSmsStatusRegistrant.clear();
+        if (mSmsStatusRegistrant != null && mSmsStatusRegistrant.getHandler() == h) {
+            mSmsStatusRegistrant.clear();
+            mSmsStatusRegistrant = null;
+        }
     }
 
     @Override
@@ -329,7 +344,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnSignalStrengthUpdate(Handler h) {
-        mSignalStrengthRegistrant.clear();
+        if (mSignalStrengthRegistrant != null && mSignalStrengthRegistrant.getHandler() == h) {
+            mSignalStrengthRegistrant.clear();
+            mSignalStrengthRegistrant = null;
+        }
     }
 
     @Override
@@ -339,7 +357,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnNITZTime(Handler h) {
-        mNITZTimeRegistrant.clear();
+        if (mNITZTimeRegistrant != null && mNITZTimeRegistrant.getHandler() == h) {
+            mNITZTimeRegistrant.clear();
+            mNITZTimeRegistrant = null;
+        }
     }
 
     @Override
@@ -349,7 +370,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnUSSD(Handler h) {
-        mUSSDRegistrant.clear();
+        if (mUSSDRegistrant != null && mUSSDRegistrant.getHandler() == h) {
+            mUSSDRegistrant.clear();
+            mUSSDRegistrant = null;
+        }
     }
 
     @Override
@@ -359,7 +383,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnSuppServiceNotification(Handler h) {
-        mSsnRegistrant.clear();
+        if (mSsnRegistrant != null && mSsnRegistrant.getHandler() == h) {
+            mSsnRegistrant.clear();
+            mSsnRegistrant = null;
+        }
     }
 
     @Override
@@ -369,7 +396,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnCatSessionEnd(Handler h) {
-        mCatSessionEndRegistrant.clear();
+        if (mCatSessionEndRegistrant != null && mCatSessionEndRegistrant.getHandler() == h) {
+            mCatSessionEndRegistrant.clear();
+            mCatSessionEndRegistrant = null;
+        }
     }
 
     @Override
@@ -379,7 +409,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnCatProactiveCmd(Handler h) {
-        mCatProCmdRegistrant.clear();
+        if (mCatProCmdRegistrant != null && mCatProCmdRegistrant.getHandler() == h) {
+            mCatProCmdRegistrant.clear();
+            mCatProCmdRegistrant = null;
+        }
     }
 
     @Override
@@ -389,7 +422,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnCatEvent(Handler h) {
-        mCatEventRegistrant.clear();
+        if (mCatEventRegistrant != null && mCatEventRegistrant.getHandler() == h) {
+            mCatEventRegistrant.clear();
+            mCatEventRegistrant = null;
+        }
     }
 
     @Override
@@ -399,7 +435,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnCatCallSetUp(Handler h) {
-        mCatCallSetUpRegistrant.clear();
+        if (mCatCallSetUpRegistrant != null && mCatCallSetUpRegistrant.getHandler() == h) {
+            mCatCallSetUpRegistrant.clear();
+            mCatCallSetUpRegistrant = null;
+        }
     }
 
     @Override
@@ -409,7 +448,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnIccSmsFull(Handler h) {
-        mIccSmsFullRegistrant.clear();
+        if (mIccSmsFullRegistrant != null && mIccSmsFullRegistrant.getHandler() == h) {
+            mIccSmsFullRegistrant.clear();
+            mIccSmsFullRegistrant = null;
+        }
     }
 
     @Override
@@ -443,7 +485,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnCallRing(Handler h) {
-        mRingRegistrant.clear();
+        if (mRingRegistrant != null && mRingRegistrant.getHandler() == h) {
+            mRingRegistrant.clear();
+            mRingRegistrant = null;
+        }
     }
 
     @Override
@@ -475,7 +520,10 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnRestrictedStateChanged(Handler h) {
-        mRestrictedStateRegistrant.clear();
+        if (mRestrictedStateRegistrant != null && mRestrictedStateRegistrant.getHandler() != h) {
+            mRestrictedStateRegistrant.clear();
+            mRestrictedStateRegistrant = null;
+        }
     }
 
     @Override
@@ -511,7 +559,10 @@ public abstract class BaseCommands implements CommandsInterface {
     }
 
     public void unSetOnUnsolOemHookRaw(Handler h) {
-        mUnsolOemHookRawRegistrant.clear();
+        if (mUnsolOemHookRawRegistrant != null && mUnsolOemHookRawRegistrant.getHandler() == h) {
+            mUnsolOemHookRawRegistrant.clear();
+            mUnsolOemHookRawRegistrant = null;
+        }
     }
 
     @Override
