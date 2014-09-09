@@ -1204,14 +1204,14 @@ public final class DcTracker extends DcTrackerBase {
         DcAsyncChannel dcac;
 
         apnSetting = apnContext.getNextWaitingApn();
-        int profileId = apnSetting.profileId;
-        if (profileId == 0) {
-            profileId = getApnProfileID(apnContext.getApnType());
-        }
-
         if (apnSetting == null) {
             if (DBG) log("setupData: return for no apn found!");
             return false;
+        }
+
+        int profileId = apnSetting.profileId;
+        if (profileId == 0) {
+            profileId = getApnProfileID(apnContext.getApnType());
         }
 
         dcac = checkForCompatibleConnectedApnContext(apnContext);
