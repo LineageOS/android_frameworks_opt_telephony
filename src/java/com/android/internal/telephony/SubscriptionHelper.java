@@ -125,6 +125,10 @@ class SubscriptionHelper extends Handler {
         mSubStatus[slotId] = subStatus;
         boolean set3GPPDone = false, set3GPP2Done = false;
         UiccCard uiccCard = UiccController.getInstance().getUiccCard(slotId);
+        if (uiccCard == null) {
+            logd("setUiccSubscription: slotId:" + slotId + " card info not available");
+            return;
+        }
 
         //Activate/Deactivate first 3GPP and 3GPP2 app in the sim, if available
         for (int i = 0; i < uiccCard.getNumApplications(); i++) {
