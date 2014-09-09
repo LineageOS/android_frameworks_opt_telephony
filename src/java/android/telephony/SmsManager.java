@@ -465,7 +465,7 @@ public final class SmsManager {
      *
      * {@hide}
      */
-    public static SmsManager getSmsManagerUsingSubId(long subId) {
+    public static SmsManager getSmsManagerForSubscriber(long subId) {
         // TODO(shri): Add javadoc link once SubscriptionManager is made public api
         synchronized(sLockObject) {
             SmsManager smsManager = sSubInstances.get(subId);

@@ -148,68 +148,68 @@ public class PhoneSubInfoProxy extends IPhoneSubInfo.Stub {
     }
 
     @Override
-    public String getDeviceIdUsingSubId(long subId) throws RemoteException {
-        // FIXME: getDeviceIdUsingSubId
+    public String getDeviceIdForSubscriber(long subId) throws RemoteException {
+        // FIXME: getDeviceIdForSubscriber
         return null;
     }
 
     @Override
-    public String getImeiUsingSubId(long subId) throws RemoteException {
-        // FIXME: getImeiUsingSubId
+    public String getImeiForSubscriber(long subId) throws RemoteException {
+        // FIXME: getImeiForSubscriber
         return null;
     }
 
     @Override
-    public String getSubscriberIdUsingSubId(long subId) throws RemoteException {
-        // FIXME: getSubscriberIdUsingSubId
+    public String getSubscriberIdForSubscriber(long subId) throws RemoteException {
+        // FIXME: getSubscriberIdForSubscriber
         return null;
     }
 
     @Override
-    public String getGroupIdLevel1UsingSubId(long subId) throws RemoteException {
-        // FIXME: getGroupIdLevel1UsingSubId
+    public String getGroupIdLevel1ForSubscriber(long subId) throws RemoteException {
+        // FIXME: getGroupIdLevel1ForSubscriber
         return null;
     }
 
     @Override
-    public String getIccSerialNumberUsingSubId(long subId) throws RemoteException {
-        // FIXME: getIccSerialNumberUsingSubId
+    public String getIccSerialNumberForSubscriber(long subId) throws RemoteException {
+        // FIXME: getIccSerialNumberForSubscriber
         return null;
     }
 
     @Override
-    public String getLine1NumberUsingSubId(long subId) throws RemoteException {
-        // FIXME: getLine1NumberUsingSubId
+    public String getLine1NumberForSubscriber(long subId) throws RemoteException {
+        // FIXME: getLine1NumberForSubscriber
         return null;
     }
 
     @Override
-    public String getLine1AlphaTagUsingSubId(long subId) throws RemoteException {
-        // FIXME: getLine1AlphaTagUsingSubId
+    public String getLine1AlphaTagForSubscriber(long subId) throws RemoteException {
+        // FIXME: getLine1AlphaTagForSubscriber
         return null;
     }
 
     @Override
-    public String getMsisdnUsingSubId(long subId) throws RemoteException {
-        // FIXME: getMsisdnUsingSubId
+    public String getMsisdnForSubscriber(long subId) throws RemoteException {
+        // FIXME: getMsisdnForSubscriber
         return null;
     }
 
     @Override
-    public String getVoiceMailNumberUsingSubId(long subId) throws RemoteException {
-        // FIXME: getVoiceMailNumberUsingSubId
+    public String getVoiceMailNumberForSubscriber(long subId) throws RemoteException {
+        // FIXME: getVoiceMailNumberForSubscriber
         return null;
     }
 
     @Override
-    public String getCompleteVoiceMailNumberUsingSubId(long subId) throws RemoteException {
-        // FIXME: getCompleteVoiceMailNumberUsingSubId
+    public String getCompleteVoiceMailNumberForSubscriber(long subId) throws RemoteException {
+        // FIXME: getCompleteVoiceMailNumberForSubscriber
         return null;
     }
 
     @Override
-    public String getVoiceMailAlphaTagUsingSubId(long subId) throws RemoteException {
-        // FIXME: getVoiceMailAlphaTagUsingSubId
+    public String getVoiceMailAlphaTagForSubscriber(long subId) throws RemoteException {
+        // FIXME: getVoiceMailAlphaTagForSubscriber
         return null;
     }
 
