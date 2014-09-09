@@ -143,11 +143,16 @@ public class DctController extends Handler {
 
                     long subId = intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY, PhoneConstants.SUB1);
                     int phoneId = SubscriptionManager.getPhoneId(subId);
-                    logd("DataStateReceiver phoneId= " + phoneId);
+                    logd("DataStateReceiver: phoneId= " + phoneId);
 
-                    // for the case of network out of service when bootup
-                    if (subId == -1 || subId == -2) {
-                        logd("Network out of service and return");
+                    // for the case of network out of service when bootup (ignore dummy values too)
+                    if (!SubscriptionManager.isValidSubId(subId) || (subId < 0)) {
+                        // FIXME: Maybe add SM.isRealSubId(subId)??
+                        logd("DataStateReceiver: ignore invalid subId=" + subId);
+                        return;
+                    }
+                    if (!SubscriptionManager.isValidPhoneId(phoneId)) {
+                        logd("DataStateReceiver: ignore invalid phoneId=" + phoneId);
                         return;
                     }
 
@@ -157,31 +162,35 @@ public class DctController extends Handler {
                         switch (state) {
                             case ServiceState.STATE_POWER_OFF:
                                 mServicePowerOffFlag[phoneId] = true;
-                                logd("Recv STATE_POWER_OFF Intent from phoneId=" + phoneId);
+                                logd("DataStateReceiver: STATE_POWER_OFF Intent from phoneId="
+                                        + phoneId);
                                 break;
                             case ServiceState.STATE_IN_SERVICE:
                                 mServicePowerOffFlag[phoneId] = false;
-                                logd("Recv STATE_IN_SERVICE Intent from phoneId=" + phoneId);
+                                logd("DataStateReceiver: STATE_IN_SERVICE Intent from phoneId="
+                                        + phoneId);
                                 break;
                             case ServiceState.STATE_OUT_OF_SERVICE:
-                                logd("Recv STATE_OUT_OF_SERVICE Intent from phoneId=" + phoneId);
+                                logd("DataStateReceiver: STATE_OUT_OF_SERVICE Intent from phoneId="
+                                        + phoneId);
                                 if (mServicePowerOffFlag[phoneId]) {
                                     mServicePowerOffFlag[phoneId] = false;
                                 }
                                 break;
                             case ServiceState.STATE_EMERGENCY_ONLY:
-                                logd("Recv STATE_EMERGENCY_ONLY Intent from phoneId=" + phoneId);
+                                logd("DataStateReceiver: STATE_EMERGENCY_ONLY Intent from phoneId="
+                                        + phoneId);
                                 break;
                             default:
-                                logd("Recv SERVICE_STATE_CHANGED invalid state");
+                                logd("DataStateReceiver: SERVICE_STATE_CHANGED invalid state");
                                 break;
                         }
 
                         if (prevPowerOff && mServicePowerOffFlag[phoneId] == false &&
                                 mCurrentDataPhone == PHONE_NONE &&
                                 phoneId == getDataConnectionFromSetting()) {
-                            logd("Current Phone is none and default Phone is " +
-                                    phoneId + ", then enableApnType()");
+                            logd("DataStateReceiver: Current Phone is none and default phoneId="
+                                    + phoneId + ", then enableApnType()");
                             enableApnType(subId, PhoneConstants.APN_TYPE_DEFAULT);
                         }
                     }
@@ -210,7 +219,15 @@ public class DctController extends Handler {
     }
 
     private DctController(PhoneProxy[] phones) {
-        mPhoneNum = TelephonyManager.getDefault().getPhoneCount();
+        if (phones == null || phones.length == 0) {
+            if (phones == null) {
+                loge("DctController(phones): UNEXPECTED phones=null, ignore");
+            } else {
+                loge("DctController(phones): UNEXPECTED phones.length=0, ignore");
+            }
+            return;
+        }
+        mPhoneNum = phones.length;
         mServicePowerOffFlag = new boolean[mPhoneNum];
         mPhones = phones;
 
@@ -232,9 +249,9 @@ public class DctController extends Handler {
                 mDcSwitchStateHandler[i], mDcSwitchState[i].getHandler());
 
             if (status == AsyncChannel.STATUS_SUCCESSFUL) {
-                logd("Connect success: " + i);
+                logd("DctController(phones): Connect success: " + i);
             } else {
-                loge("Could not connect to " + i);
+                loge("DctController(phones): Could not connect to " + i);
             }
 
             mDcSwitchState[i].registerForIdle(mRspHander, EVENT_PHONE1_DETACH + i, null);
