@@ -58,7 +58,7 @@ import java.util.Set;
  * Finally, any getters which perform the mapping between subscriptions, slots and phones will
  * return the corresponding INVALID_XXX_ID if the parameter is INVALID_XXX_ID. All other getters
  * will fail and return the appropriate error value. Ie calling getSlotId(INVALID_SUB_ID) will
- * return INVALID_SLOT_ID and calling getSubInfoUsingSubId(INVALID_SUB_ID) will return null.
+ * return INVALID_SLOT_ID and calling getSubInfoForSubscriber(INVALID_SUB_ID) will return null.
  *
  */
 public class SubscriptionController extends ISub.Stub {
@@ -287,15 +287,15 @@ public class SubscriptionController extends ISub.Stub {
      * @return SubInfoRecord, maybe null
      */
     @Override
-    public SubInfoRecord getSubInfoUsingSubId(long subId) {
-        logd("[getSubInfoUsingSubIdx]+ subId:" + subId);
+    public SubInfoRecord getSubInfoForSubscriber(long subId) {
+        logd("[getSubInfoForSubscriberx]+ subId:" + subId);
         enforceSubscriptionPermission();
 
         if (subId == SubscriptionManager.DEFAULT_SUB_ID) {
             subId = getDefaultSubId();
         }
         if (!SubscriptionManager.isValidSubId(subId) || !isSubInfoReady()) {
-            logd("[getSubInfoUsingSubIdx]- invalid subId or not ready");
+            logd("[getSubInfoForSubscriberx]- invalid subId or not ready");
             return null;
         }
         Cursor cursor = mContext.getContentResolver().query(SubscriptionManager.CONTENT_URI,
@@ -303,7 +303,7 @@ public class SubscriptionController extends ISub.Stub {
         try {
             if (cursor != null) {
                 if (cursor.moveToFirst()) {
-                    logd("[getSubInfoUsingSubIdx]- Info detail:");
+                    logd("[getSubInfoForSubscriberx]- Info detail:");
                     return getSubInfoRecord(cursor);
                 }
             }
@@ -312,7 +312,7 @@ public class SubscriptionController extends ISub.Stub {
                 cursor.close();
             }
         }
-        logd("[getSubInfoUsingSubIdx]- null info return");
+        logd("[getSubInfoForSubscriber]- null info return");
 
         return null;
     }

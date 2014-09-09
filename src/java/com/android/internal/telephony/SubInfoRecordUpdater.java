@@ -143,7 +143,7 @@ public class SubInfoRecordUpdater extends Handler {
                         }
 
                         SubInfoRecord subInfo =
-                                SubscriptionManager.getSubInfoUsingSubId(subId);
+                                SubscriptionManager.getSubInfoForSubscriber(subId);
 
                         if (subInfo != null
                                 && subInfo.nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
@@ -199,7 +199,7 @@ public class SubInfoRecordUpdater extends Handler {
     }
 
     public static void setDisplayNameForNewSub(String newSubName, int subId, int newNameSource) {
-        SubInfoRecord subInfo = SubscriptionManager.getSubInfoUsingSubId(subId);
+        SubInfoRecord subInfo = SubscriptionManager.getSubInfoForSubscriber(subId);
         if (subInfo != null) {
             // overwrite SIM display name if it is not assigned by user
             int oldNameSource = subInfo.nameSource;
