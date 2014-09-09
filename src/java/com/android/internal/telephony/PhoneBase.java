@@ -2024,4 +2024,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     deflectCall(String number) throws CallStateException {
         throw new CallStateException("Unexpected deflectCall method call");
     }
+
+    @Override
+    public void addParticipant(String dialString) throws CallStateException {
+        throw new CallStateException("addParticipant is not supported in this phone "
+                + this);
+    }
 }

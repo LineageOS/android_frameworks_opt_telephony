@@ -704,6 +704,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public void addParticipant(String dialString) throws CallStateException {
+        mActivePhone.addParticipant(dialString);
+    }
+
+    @Override
     public boolean handlePinMmi(String dialString) {
         return mActivePhone.handlePinMmi(dialString);
     }
