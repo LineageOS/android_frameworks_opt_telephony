@@ -40,6 +40,7 @@ import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.SmsNumberUtils;
 import com.android.internal.util.HexDump;
 
 import java.util.ArrayList;
@@ -355,6 +356,7 @@ public class IccSmsInterfaceManager {
                 callingPackage) != AppOpsManager.MODE_ALLOWED) {
             return;
         }
+        destAddr = filterDestAddress(destAddr);
         mDispatcher.sendData(destAddr, scAddr, destPort, data, sentIntent, deliveryIntent);
     }
 
@@ -397,6 +399,7 @@ public class IccSmsInterfaceManager {
                 callingPackage) != AppOpsManager.MODE_ALLOWED) {
             return;
         }
+        destAddr = filterDestAddress(destAddr);
         mDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
                 null/*messageUri*/, callingPackage);
     }
@@ -904,6 +907,7 @@ public class IccSmsInterfaceManager {
             returnUnspecifiedFailure(sentIntent);
             return;
         }
+        textAndAddress[1] = filterDestAddress(textAndAddress[1]);
         mDispatcher.sendText(textAndAddress[1], scAddress, textAndAddress[0],
                 sentIntent, deliveryIntent, messageUri, callingPkg);
     }
@@ -963,6 +967,7 @@ public class IccSmsInterfaceManager {
             return;
         }
 
+        textAndAddress[1] = filterDestAddress(textAndAddress[1]);
         mDispatcher.sendMultipartText(
                 textAndAddress[1], // destAddress
                 scAddress,
@@ -1063,4 +1068,11 @@ public class IccSmsInterfaceManager {
             throw new SecurityException("No Carrier Privilege.");
         }
     }
+
+    private String filterDestAddress(String destAddr) {
+        String result  = null;
+        result = SmsNumberUtils.filterDestAddr(mContext, destAddr);
+        return result != null ? result : destAddr;
+    }
+
 }
