@@ -906,6 +906,27 @@ public class GSMPhone extends PhoneBase {
     }
 
     @Override
+    public void addParticipant(String dialString) throws CallStateException {
+        ImsPhone imsPhone = mImsPhone;
+        boolean imsUseEnabled =
+                ImsManager.isEnhanced4gLteModeSettingEnabledByPlatform(mContext) &&
+                ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext);
+
+        if (imsUseEnabled && imsPhone != null
+                && imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+                ) {
+            try {
+                if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Trying to add participant in IMS call");
+                imsPhone.addParticipant(dialString);
+            } catch (CallStateException e) {
+                if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "IMS PS call exception " + e);
+            }
+        } else {
+            Rlog.e(LOG_TAG, "IMS is disabled so unable to add participant with IMS call");
+        }
+    }
+
+    @Override
     public boolean handlePinMmi(String dialString) {
         GsmMmiCode mmi = GsmMmiCode.newFromDialString(dialString, this, mUiccApplication.get());
 

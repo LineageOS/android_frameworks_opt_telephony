@@ -530,6 +530,11 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public void addParticipant(String dialString) throws CallStateException {
+        mCT.addParticipant(dialString);
+    }
+
+    @Override
     public void
     sendDtmf(char c) {
         if (!PhoneNumberUtils.is12Key(c)) {
