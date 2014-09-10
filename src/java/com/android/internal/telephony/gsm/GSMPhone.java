@@ -928,6 +928,28 @@ public class GSMPhone extends PhoneBase {
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
             number = sp.getString(VM_NUMBER + getPhoneId(), null);
         }
+
+        if (TextUtils.isEmpty(number)) {
+            String[] listArray = getContext().getResources()
+                .getStringArray(com.android.internal.R.array.config_default_vm_number);
+            if (listArray != null && listArray.length > 0) {
+                for (int i=0; i<listArray.length; i++) {
+                    if (!TextUtils.isEmpty(listArray[i])) {
+                        String[] defaultVMNumberArray = listArray[i].split(";");
+                        if (defaultVMNumberArray != null && defaultVMNumberArray.length > 0) {
+                            if (defaultVMNumberArray.length == 1) {
+                                number = defaultVMNumberArray[0];
+                            } else if (defaultVMNumberArray.length == 2 &&
+                                    !TextUtils.isEmpty(defaultVMNumberArray[1]) &&
+                                    defaultVMNumberArray[1].equalsIgnoreCase(getGroupIdLevel1())) {
+                                number = defaultVMNumberArray[0];
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
         return number;
     }
 
