@@ -413,8 +413,8 @@ public class DctController extends Handler {
     }
 
     private int getDataConnectionFromSetting(){
-        long [] subId = SubscriptionManager.getSubId(PhoneConstants.SIM_ID_1);
-        int phoneId = SubscriptionManager.getPhoneId(subId[0]);
+        long subId = mSubController.getDefaultDataSubId();
+        int phoneId = SubscriptionManager.getPhoneId(subId);
         return phoneId;
     }
 
