@@ -827,7 +827,7 @@ public class SubscriptionController extends ISub.Stub {
 
             if (subId == sub)
             {
-                logd("[getSlotId]- return ="+sim);
+                if (VDBG) logv("[getSlotId]- return = " + sim);
                 return sim;
             }
         }
@@ -898,7 +898,7 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public int getPhoneId(long subId) {
         if (subId == SubscriptionManager.DEFAULT_SUB_ID) {
-            logd("[getPhoneId]- default subId");
+            if (VDBG) logv("[getPhoneId]- default subId");
             subId = getDefaultSubId();
         }
 
@@ -928,7 +928,7 @@ public class SubscriptionController extends ISub.Stub {
             long sub = entry.getValue();
 
             if (subId == sub) {
-                logd("[getPhoneId]- return ="+sim);
+                if (VDBG) logv("[getPhoneId]- return = " + sim);
                 return sim;
             }
         }
@@ -983,6 +983,10 @@ public class SubscriptionController extends ISub.Stub {
         return simResource;
     }
 
+    private void logv(String msg) {
+        Rlog.v(LOG_TAG, "[SubController]" + msg);
+    }
+
     private void logd(String msg) {
         Rlog.d(LOG_TAG, "[SubController]" + msg);
     }
@@ -995,7 +999,7 @@ public class SubscriptionController extends ISub.Stub {
     @Deprecated
     public long getDefaultSubId() {
         //FIXME To remove this api, All clients should be using getDefaultVoiceSubId
-        logd("getDefaultSubId, value = " + mDefaultVoiceSubId);
+        if (VDBG) logv("getDefaultSubId, value = " + mDefaultVoiceSubId);
         return mDefaultVoiceSubId;
     }
 
