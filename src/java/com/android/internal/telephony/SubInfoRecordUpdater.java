@@ -132,7 +132,7 @@ public class SubInfoRecordUpdater extends Handler {
                             SubscriptionManager.INVALID_SUB_ID);
 
                     if (SubscriptionManager.isValidSubId(subId)) {
-                        String msisdn = TelephonyManager.getDefault().getLine1Number(subId);
+                        String msisdn = TelephonyManager.getDefault().getLine1NumberForSubscriber(subId);
                         ContentResolver contentResolver = sContext.getContentResolver();
 
                         if (msisdn != null) {
@@ -396,7 +396,7 @@ public class SubInfoRecordUpdater extends Handler {
         for (int i=0; i<nSubCount; i++) {
             SubInfoRecord temp = subInfos.get(i);
 
-            String msisdn = TelephonyManager.getDefault().getLine1Number(temp.subId);
+            String msisdn = TelephonyManager.getDefault().getLine1NumberForSubscriber(temp.subId);
 
             if (msisdn != null) {
                 ContentValues value = new ContentValues(1);
