@@ -20,6 +20,7 @@ import android.app.AlarmManager;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.database.ContentObserver;
 import android.os.AsyncResult;
 import android.os.Build;
@@ -586,6 +587,14 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         int[] subIds = SubscriptionManager.getSubId(mPhone.getPhoneId());
         if (subIds != null && subIds.length > 0) {
             subId = subIds[0];
+        }
+
+        int combinedRegState = getCombinedRegState();
+        if (combinedRegState == ServiceState.STATE_OUT_OF_SERVICE) {
+            plmn = Resources.getSystem().getText(com.android.internal.
+                    R.string.lockscreen_carrier_default).toString();
+            if (DBG) log("updateSpnDisplay: radio is on but out " +
+                    "of service, set plmn='" + plmn + "'");
         }
 
         if (mSubId != subId || !TextUtils.equals(plmn, mCurPlmn)) {

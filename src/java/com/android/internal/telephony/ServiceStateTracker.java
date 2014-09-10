@@ -1142,4 +1142,21 @@ public abstract class ServiceStateTracker extends Handler {
     protected final boolean isNonRoamingInCdmaNetwork(BaseBundle b, String network) {
         return isInNetwork(b, network, CarrierConfigManager.KEY_CDMA_NONROAMING_NETWORKS_STRING_ARRAY);
     }
+
+    /**
+     * Consider dataRegState if voiceRegState is OOS to determine SPN to be
+     * displayed
+     */
+    protected int getCombinedRegState() {
+        int regState = mSS.getVoiceRegState();
+        int dataRegState = mSS.getDataRegState();
+
+        if ((regState == ServiceState.STATE_OUT_OF_SERVICE)
+                && (dataRegState == ServiceState.STATE_IN_SERVICE)) {
+            log("getCombinedRegState: return STATE_IN_SERVICE as Data is in service");
+            regState = dataRegState;
+        }
+
+        return regState;
+    }
 }

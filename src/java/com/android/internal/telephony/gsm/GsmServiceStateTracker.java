@@ -590,8 +590,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         String plmn = null;
         boolean showPlmn = false;
         int rule = (iccRecords != null) ? iccRecords.getDisplayRule(mSS.getOperatorNumeric()) : 0;
-        if (mSS.getVoiceRegState() == ServiceState.STATE_OUT_OF_SERVICE
-                || mSS.getVoiceRegState() == ServiceState.STATE_EMERGENCY_ONLY) {
+        int combinedRegState = getCombinedRegState();
+        if (combinedRegState == ServiceState.STATE_OUT_OF_SERVICE
+                || combinedRegState == ServiceState.STATE_EMERGENCY_ONLY) {
             showPlmn = true;
             if (mEmergencyOnly) {
                 // No service but emergency call allowed
@@ -604,7 +605,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             }
             if (DBG) log("updateSpnDisplay: radio is on but out " +
                     "of service, set plmn='" + plmn + "'");
-        } else if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
+        } else if (combinedRegState == ServiceState.STATE_IN_SERVICE) {
             // In either home or roaming service
             plmn = mSS.getOperatorAlphaLong();
             showPlmn = !TextUtils.isEmpty(plmn) &&
