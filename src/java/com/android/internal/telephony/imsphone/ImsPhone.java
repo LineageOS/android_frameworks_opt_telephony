@@ -926,21 +926,19 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
-    public ImsPhoneConnection getHandoverConnection() {
-        // handover for single foreground call
-        ImsPhoneConnection conn = getForegroundCall().getHandoverConnection();
-
-        // handover for single background call
-        if (conn == null) {
-            conn = getBackgroundCall().getHandoverConnection();
+    public ArrayList<Connection> getHandoverConnection() {
+        ArrayList<Connection> connList = new ArrayList<Connection>();
+        // Add all foreground call connections
+        connList.addAll(getForegroundCall().mConnections);
+        // Add all background call connections
+        connList.addAll(getBackgroundCall().mConnections);
+        // Add all background call connections
+        connList.addAll(getRingingCall().mConnections);
+        if (connList.size() > 0) {
+            return connList;
+        } else {
+            return null;
         }
-
-        // handover for single ringing call
-        if (conn == null) {
-            conn = getRingingCall().getHandoverConnection();
-        }
-
-        return conn;
     }
 
     public void notifySrvccState(Call.SrvccState state) {

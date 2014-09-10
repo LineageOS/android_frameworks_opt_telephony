@@ -569,12 +569,12 @@ public final class CdmaCallTracker extends CallTracker {
                     }
                     mConnections[i] = new CdmaConnection(mPhone.getContext(), dc, this, i);
 
-                    if (mHandoverConnection != null) {
+                    if (getHoConnection(dc) != null ) {
                         // Single Radio Voice Call Continuity (SRVCC) completed
-                        mPhone.migrateFrom((PhoneBase) mPhone.getImsPhone());
-                        mConnections[i].migrateFrom(mHandoverConnection);
+                        Connection hoConnection = getHoConnection(dc);
+                        mConnections[i].migrateFrom(hoConnection);
+                        mHandoverConnections.remove(hoConnection);
                         mPhone.notifyHandoverStateChanged(mConnections[i]);
-                        mHandoverConnection = null;
                     } else {
                         // find if the MT call is a new ring or unknown connection
                         newRinging = checkMtFindNewRinging(dc,i);
