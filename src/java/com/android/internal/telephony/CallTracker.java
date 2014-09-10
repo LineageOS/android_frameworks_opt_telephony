@@ -25,6 +25,7 @@ import com.android.internal.telephony.CommandException;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 
 
 /**
@@ -41,7 +42,7 @@ public abstract class CallTracker extends Handler {
     protected int mPendingOperations;
     protected boolean mNeedsPoll;
     protected Message mLastRelevantPoll;
-    protected Connection mHandoverConnection;
+    protected ArrayList<Connection> mHandoverConnections = new ArrayList<Connection>();
 
     public CommandsInterface mCi;
 
@@ -93,11 +94,20 @@ public abstract class CallTracker extends Handler {
 
     protected abstract void handlePollCalls(AsyncResult ar);
 
-    protected void notifySrvccState(Call.SrvccState state, Connection c) {
+    protected Connection getHoConnection(DriverCall dc) {
+        for (Connection hoConn : mHandoverConnections) {
+            if (hoConn.getState() == Call.stateFromDCState(dc.state)) {
+                return hoConn;
+            }
+        }
+        return null;
+    }
+
+    protected void notifySrvccState(Call.SrvccState state, ArrayList<Connection> c) {
         if (state == Call.SrvccState.STARTED) {
-            mHandoverConnection = c;
-        } else if (state != Call.SrvccState.COMPLETED) {
-            mHandoverConnection = null;
+            mHandoverConnections.addAll(c);
+        } else if (state == Call.SrvccState.COMPLETED) {
+            mHandoverConnections.clear();
         }
     }
 

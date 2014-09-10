@@ -1226,6 +1226,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
         return ut;
     }
 
+    private void transferHandoverConnections(ImsPhoneCall call) {
+        if (mHandoverCall.mConnections == null ) {
+            mHandoverCall.mConnections = call.mConnections;
+        } else { // Multi-call SRVCC
+            mHandoverCall.mConnections.addAll(call.mConnections);
+        }
+        call.mConnections.clear();
+    }
+
     /* package */
     void notifySrvccState(Call.SrvccState state) {
         if (DBG) log("notifySrvccState state=" + state);
@@ -1233,11 +1242,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
         mSrvccState = state;
 
         if (mSrvccState == Call.SrvccState.COMPLETED) {
-            if (mForegroundCall.getConnections().size() > 0) {
-                mHandoverCall.switchWith(mForegroundCall);
-            } else if (mBackgroundCall.getConnections().size() > 0) {
-                mHandoverCall.switchWith(mBackgroundCall);
-            }
+            transferHandoverConnections(mForegroundCall);
+            transferHandoverConnections(mBackgroundCall);
 
             // release wake lock hold
             ImsPhoneConnection con = mHandoverCall.getHandoverConnection();
