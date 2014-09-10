@@ -118,7 +118,7 @@ public class ApnProfileOmh extends ApnSetting {
         super(0, "", null, PROFILE_TYPE, null, null, null, null, null,
                 null, null, RILConstants.SETUP_DATA_AUTH_PAP_CHAP,
                 new String[0], "IP", "IP", true, 0, profileId, false, 0,
-                0, 0, 0);
+                0, 0, 0, "", "");
         this.mPriority = priority;
     }
 
