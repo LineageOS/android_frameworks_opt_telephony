@@ -906,14 +906,36 @@ public class CDMAPhone extends PhoneBase {
     public String getVoiceMailNumber() {
         String number = null;
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-        // TODO: The default value of voicemail number should be read from a system property
-
-        // Read platform settings for dynamic voicemail number
-        if (getContext().getResources().getBoolean(com.android.internal
-                .R.bool.config_telephony_use_own_number_for_voicemail)) {
-            number = sp.getString(VM_NUMBER_CDMA + getPhoneId(), getLine1Number());
-        } else {
-            number = sp.getString(VM_NUMBER_CDMA + getPhoneId(), "*86");
+        number = sp.getString(VM_NUMBER_CDMA + getPhoneId(), null);
+        if (TextUtils.isEmpty(number)) {
+            String[] listArray = getContext().getResources()
+                .getStringArray(com.android.internal.R.array.config_default_vm_number);
+            if (listArray != null && listArray.length > 0) {
+                for (int i=0; i<listArray.length; i++) {
+                    if (!TextUtils.isEmpty(listArray[i])) {
+                        String[] defaultVMNumberArray = listArray[i].split(";");
+                        if (defaultVMNumberArray != null && defaultVMNumberArray.length > 0) {
+                            if (defaultVMNumberArray.length == 1) {
+                                number = defaultVMNumberArray[0];
+                            } else if (defaultVMNumberArray.length == 2 &&
+                                    !TextUtils.isEmpty(defaultVMNumberArray[1]) &&
+                                    defaultVMNumberArray[1].equalsIgnoreCase(getGroupIdLevel1())) {
+                                number = defaultVMNumberArray[0];
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (TextUtils.isEmpty(number)) {
+            // Read platform settings for dynamic voicemail number
+            if (getContext().getResources().getBoolean(com.android.internal
+                    .R.bool.config_telephony_use_own_number_for_voicemail)) {
+                number = getLine1Number();
+            } else {
+                number = "*86";
+            }
         }
         return number;
     }
