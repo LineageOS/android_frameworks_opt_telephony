@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a1b2928_c613635b",
+        "filename": "src/java/android/telephony/MSimSmsManager.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 825,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-09-10T08:49:26Z",
+      "side": 1,
+      "message": "This comment probably should be shuffled back up to the end of the previous function.",
+      "revId": "374762b37c54c7cb58381b2b85f56d5ee986eefb",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a1b2928_66aa4fd6",
+        "filename": "src/java/com/android/internal/telephony/uicc/IccRecords.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-09-10T08:49:26Z",
+      "side": 1,
+      "message": "I don\u0027t think this variable is used.",
+      "revId": "374762b37c54c7cb58381b2b85f56d5ee986eefb",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
