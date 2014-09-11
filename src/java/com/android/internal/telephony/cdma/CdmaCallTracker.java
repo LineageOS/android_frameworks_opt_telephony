@@ -88,6 +88,7 @@ public final class CdmaCallTracker extends CallTracker {
 
     private boolean mIsEcmTimerCanceled = false;
 
+    private int m3WayCallFlashDelay = 0;
 //    boolean needsPoll;
 
 
@@ -244,8 +245,15 @@ public final class CdmaCallTracker extends CallTracker {
             // Attach the new connection to foregroundCall
             mPendingMO = new CdmaConnection(mPhone.getContext(),
                                 checkForTestEmergencyNumber(dialString), this, mForegroundCall);
-            mCi.sendCDMAFeatureCode(mPendingMO.getAddress(),
-                obtainMessage(EVENT_THREE_WAY_DIAL_L2_RESULT_CDMA));
+            // Some network need a empty flash before sending the normal one
+            m3WayCallFlashDelay = mPhone.getContext().getResources()
+                    .getInteger(com.android.internal.R.integer.config_cdma_3waycall_flash_delay);
+            if (m3WayCallFlashDelay > 0) {
+                mCi.sendCDMAFeatureCode("", obtainMessage(EVENT_THREE_WAY_DIAL_BLANK_FLASH));
+            } else {
+                mCi.sendCDMAFeatureCode(mPendingMO.getAddress(),
+                        obtainMessage(EVENT_THREE_WAY_DIAL_L2_RESULT_CDMA));
+            }
             return mPendingMO;
         }
         return null;
@@ -1018,6 +1026,24 @@ public final class CdmaCallTracker extends CallTracker {
                     // Assume 3 way call is connected
                     mPendingMO.onConnectedInOrOut();
                     mPendingMO = null;
+                }
+            break;
+
+            case EVENT_THREE_WAY_DIAL_BLANK_FLASH:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception == null) {
+                    postDelayed(
+                            new Runnable() {
+                                public void run() {
+                                    if (mPendingMO != null) {
+                                        mCi.sendCDMAFeatureCode(mPendingMO.getAddress(),
+                                                obtainMessage(EVENT_THREE_WAY_DIAL_L2_RESULT_CDMA));
+                                    }
+                                }
+                            }, m3WayCallFlashDelay);
+                } else {
+                    mPendingMO = null;
+                    Rlog.w(LOG_TAG, "exception happened on Blank Flash for 3-way call");
                 }
             break;
 
