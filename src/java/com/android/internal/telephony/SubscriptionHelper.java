@@ -51,9 +51,12 @@ class SubscriptionHelper extends Handler {
 
     private Context mContext;
     private CommandsInterface[] mCi;
-    private int[] pendingSubStatus;
+    private int[] mSubStatus;
 
     private static final int EVENT_SET_UICC_SUBSCRIPTION_DONE = 1;
+
+    public static final int SUB_SIM_NOT_INSERTED = -99;
+    public static final int SUB_INIT_STATE = -1;
 
     public static SubscriptionHelper init(Context c, CommandsInterface[] ci) {
         synchronized (SubscriptionHelper.class) {
@@ -78,7 +81,10 @@ class SubscriptionHelper extends Handler {
         mContext = c;
         mCi = ci;
         int numPhones = TelephonyManager.getDefault().getPhoneCount();
-        pendingSubStatus = new int[numPhones];
+        mSubStatus = new int[numPhones];
+        for (int i=0; i< numPhones; i++ ) {
+            mSubStatus[i] = SUB_INIT_STATE;
+        }
 
         logd("SubscriptionHelper init by Context");
     }
@@ -95,8 +101,28 @@ class SubscriptionHelper extends Handler {
         }
     }
 
+    public void updateSimState(int slotId, int simStatus) {
+        SubscriptionController subCtrlr = SubscriptionController.getInstance();
+        mSubStatus[slotId] = simStatus;
+        if (mSubStatus[slotId] == SUB_SIM_NOT_INSERTED) {
+            if (isAllSubsAvailable()) {
+                logd("Received all sim info, now update user preferred subs");
+                subCtrlr.updateUserPrefs();
+            }
+            return;
+        }
+        long[] subId = subCtrlr.getSubId(slotId);
+        int subState = subCtrlr.getSubState(subId[0]);
+
+        logd("setUicc for [" + slotId + "] = " + subState + "subId = " + subId[0]);
+
+        // If sim card present in the slot, get the stored sub status and
+        // perform the activation/deactivation of subscription
+        setUiccSubscription(slotId, subState);
+    }
+
     public void setUiccSubscription(int slotId, int subStatus) {
-        pendingSubStatus[slotId] = subStatus;
+        mSubStatus[slotId] = subStatus;
         boolean set3GPPDone = false, set3GPP2Done = false;
         UiccCard uiccCard = UiccController.getInstance().getUiccCard(slotId);
 
@@ -138,10 +164,29 @@ class SubscriptionHelper extends Handler {
             long[] subId = subCtrlr.getSubIdUsingSlotId(slotId);
             int subStatus = subCtrlr.getSubState(subId[0]);
 
-            if (pendingSubStatus[slotId] != subStatus) {
-                subCtrlr.setSubState(subId[0], pendingSubStatus[slotId]);
+            if (mSubStatus[slotId] != subStatus) {
+                subCtrlr.setSubState(subId[0], mSubStatus[slotId]);
             }
         }
+
+        // After activating all subs, updated the user preferred sub values
+        if (isAllSubsAvailable()) {
+            logd("Received all subs, now update user preferred subs");
+            subCtrlr.updateUserPrefs();
+        }
+
+    }
+
+    private boolean isAllSubsAvailable() {
+        boolean allSubsAvailable = true;
+        int numPhones = TelephonyManager.getDefault().getPhoneCount();
+
+        for (int i=0; i < numPhones; i++) {
+            if (mSubStatus[i] == SUB_INIT_STATE) {
+                allSubsAvailable = false;
+            }
+        }
+        return allSubsAvailable;
     }
 
     private static void logd(String message) {

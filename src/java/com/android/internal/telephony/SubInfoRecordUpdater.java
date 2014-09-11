@@ -349,7 +349,6 @@ public class SubInfoRecordUpdater extends Handler {
     }
 
     synchronized public void updateSimInfoByIccId() {
-        boolean[] sendSetUicc = new boolean[PROJECT_SIM_NUM];
         logd("[updateSimInfoByIccId]+ Start");
         sNeedUpdate = false;
 
@@ -459,20 +458,7 @@ public class SubInfoRecordUpdater extends Handler {
                 sInsertSimState[i] = SIM_REPOSITION;
             }
             logd("sInsertSimState[" + i + "] = " + sInsertSimState[i]);
-            if (sInsertSimState[i] != SIM_NOT_INSERT) {
-                long[] subId = SubscriptionController.getInstance().getSubId(i);
-
-                int subStatus = SubscriptionController.getInstance().getSubState(subId[0]);
-                logd("setUicc for [" + i + "] = " + subStatus + "subId = " + subId[0]);
-                // send SetUicc request for Activation/De-Activation
-                if (subStatus == SubscriptionManager.ACTIVE) {
-                    SubscriptionHelper.getInstance().
-                            setUiccSubscription(i, SubscriptionManager.ACTIVE);
-                } else {
-                    SubscriptionHelper.getInstance().
-                            setUiccSubscription(i, SubscriptionManager.INACTIVE);
-                }
-            }
+            SubscriptionHelper.getInstance().updateSimState(i, sInsertSimState[i]);
         }
 
         List<SubInfoRecord> subInfos = SubscriptionManager.getActiveSubInfoList();

@@ -1469,10 +1469,16 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    private void updateUserPrefs() {
-        List<SubInfoRecord> subInfoList = getActivatedSubInfoList();
+    public void updateUserPrefs() {
+        List<SubInfoRecord> subInfoList = getActiveSubInfoList();
         int mActCount = 0;
         SubInfoRecord mNextActivatedSub = null;
+
+        if (subInfoList == null) {
+            logd("updateUserPrefs: subscription are not avaiable ");
+            return;
+        }
+
         //Get num of activated Subs and next available activated sub info.
         for (SubInfoRecord subInfo : subInfoList) {
             if (getSubState(subInfo.subId) == SubscriptionManager.ACTIVE) {
