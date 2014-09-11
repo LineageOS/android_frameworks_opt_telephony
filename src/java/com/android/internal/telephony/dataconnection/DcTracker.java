@@ -1294,9 +1294,7 @@ public final class DcTracker extends DcTrackerBase {
         createAllApnList();
         setInitialAttachApn();
         cleanUpAllConnections(!isDisconnected, Phone.REASON_APN_CHANGED);
-        if (isDisconnected) {
-            setupDataOnConnectableApns(Phone.REASON_APN_CHANGED);
-        }
+        setupDataOnConnectableApns(Phone.REASON_APN_CHANGED);
     }
 
     /**
