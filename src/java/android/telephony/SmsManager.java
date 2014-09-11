@@ -537,6 +537,80 @@ public final class SmsManager {
     }
 
     /**
+     * Send a multi-part text based SMS.  The callee should have already
+     * divided the message into correctly sized parts by calling
+     * <code>divideMessage</code>.
+     *
+     * <p class="note"><strong>Note:</strong> Using this method requires that your app has the
+     * {@link android.Manifest.permission#SEND_SMS} permission.</p>
+     *
+     * <p class="note"><strong>Note:</strong> Beginning with Android 4.4 (API level 19), if
+     * <em>and only if</em> an app is not selected as the default SMS app, the system automatically
+     * writes messages sent using this method to the SMS Provider (the default SMS app is always
+     * responsible for writing its sent messages to the SMS Provider). For information about
+     * how to behave as the default SMS app, see {@link android.provider.Telephony}.</p>
+     *
+     * @param destinationAddress the address to send the message to
+     * @param scAddress is the service center address or null to use
+     *   the current default SMSC
+     * @param parts an <code>ArrayList</code> of strings that, in order,
+     *   comprise the original message
+     * @param sentIntents if not null, an <code>ArrayList</code> of
+     *   <code>PendingIntent</code>s (one for each message part) that is
+     *   broadcast when the corresponding message part has been sent.
+     *   The result code will be <code>Activity.RESULT_OK</code> for success,
+     *   or one of these errors:<br>
+     *   <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
+     *   <code>RESULT_ERROR_RADIO_OFF</code><br>
+     *   <code>RESULT_ERROR_NULL_PDU</code><br>
+     *   For <code>RESULT_ERROR_GENERIC_FAILURE</code> each sentIntent may include
+     *   the extra "errorCode" containing a radio technology specific value,
+     *   generally only useful for troubleshooting.<br>
+     *   The per-application based SMS control checks sentIntent. If sentIntent
+     *   is NULL the caller will be checked against all unknown applications,
+     *   which cause smaller number of SMS to be sent in checking period.
+     * @param deliveryIntents if not null, an <code>ArrayList</code> of
+     *   <code>PendingIntent</code>s (one for each message part) that is
+     *   broadcast when the corresponding message part has been delivered
+     *   to the recipient.  The raw pdu of the status report is in the
+     *   extended data ("pdu").
+     *
+     * @throws IllegalArgumentException if destinationAddress or data are empty
+     */
+    /** @hide */
+    public void sendMultipartTextMessage(long subId,
+            String destinationAddress, String scAddress, ArrayList<String> parts,
+            ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
+        if (TextUtils.isEmpty(destinationAddress)) {
+            throw new IllegalArgumentException("Invalid destinationAddress");
+        }
+        if (parts == null || parts.size() < 1) {
+            throw new IllegalArgumentException("Invalid message body");
+        }
+
+        if (parts.size() > 1) {
+            try {
+                ISms iccISms = getISmsServiceOrThrow();
+                iccISms.sendMultipartTextUsingSubId(subId, ActivityThread.currentPackageName(),
+                        destinationAddress, scAddress, parts,
+                        sentIntents, deliveryIntents);
+            } catch (RemoteException ex) {
+                // ignore it
+            }
+        } else {
+            PendingIntent sentIntent = null;
+            PendingIntent deliveryIntent = null;
+            if (sentIntents != null && sentIntents.size() > 0) {
+                sentIntent = sentIntents.get(0);
+            }
+            if (deliveryIntents != null && deliveryIntents.size() > 0) {
+                deliveryIntent = deliveryIntents.get(0);
+            }
+            sendTextMessage(destinationAddress, scAddress, parts.get(0),
+                    sentIntent, deliveryIntent);
+        }
+    }
+    /**
      * Send a multi-part text based SMS with messaging options. The callee should have already
      * divided the message into correctly sized parts by calling
      * <code>divideMessage</code>.
