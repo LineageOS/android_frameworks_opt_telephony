@@ -2974,6 +2974,7 @@ public final class DcTracker extends DcTrackerBase {
 
             case DctConstants.EVENT_GET_WWAN_IWLAN_COEXISTENCE_DONE:
                 onWwanIwlanCoexistenceDone((AsyncResult)msg.obj);
+                break;
 
             case DctConstants.EVENT_MODEM_DATA_PROFILE_READY:
                 onModemApnProfileReady();
