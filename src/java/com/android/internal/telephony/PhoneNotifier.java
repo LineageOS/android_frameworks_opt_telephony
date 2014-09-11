@@ -61,4 +61,6 @@ public interface PhoneNotifier {
     public void notifyDataConnectionRealTimeInfo(Phone sender, DataConnectionRealTimeInfo dcRtInfo);
 
     public void notifyVoLteServiceStateChanged(Phone sender, VoLteServiceState lteState);
+
+    public void notifyOemHookRawEventForSubscriber(long subId, byte[] rawData);
 }
