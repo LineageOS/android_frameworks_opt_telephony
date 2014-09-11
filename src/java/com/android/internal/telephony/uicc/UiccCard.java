@@ -598,7 +598,7 @@ public class UiccCard {
         return sp.getString(OPERATOR_BRAND_OVERRIDE_PREFIX + iccId, null);
     }
 
-    private String getIccId() {
+    public String getIccId() {
         // ICCID should be same across all the apps.
         for (UiccCardApplication app : mUiccApplications) {
             if (app != null) {
