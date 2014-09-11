@@ -1294,8 +1294,8 @@ public final class DcTracker extends DcTrackerBase {
         createAllApnList();
         setInitialAttachApn();
         cleanUpAllConnections(!isDisconnected, Phone.REASON_APN_CHANGED);
-        if (isDisconnected &&
-                (mPhone.getSubId() == SubscriptionManager.getDefaultDataSubId())) {
+        // FIXME: See bug 17426028 maybe no conditional is needed.
+        if (mPhone.getSubId() == SubscriptionManager.getDefaultDataSubId()) {
             setupDataOnConnectableApns(Phone.REASON_APN_CHANGED);
         }
     }
