@@ -668,6 +668,37 @@ public final class SmsManager {
     }
 
     /**
+     * Enable reception of cell broadcast (SMS-CB) messages with the given
+     * message identifier. Note that if two different clients enable the same
+     * message identifier, they must both disable it for the device to stop
+     * receiving those messages. All received messages will be broadcast in an
+     * intent with the action "android.provider.Telephony.SMS_CB_RECEIVED".
+     * Note: This call is blocking, callers may want to avoid calling it from
+     * the main thread of an application.
+     *
+     * @param messageIdentifier Message identifier as specified in TS 23.041 (3GPP)
+     * or C.R1001-G (3GPP2)
+     * @return true if successful, false otherwise
+     * @see #disableCellBroadcast(int)
+     *
+     * {@hide}
+     */
+    public boolean enableCellBroadcast(long subId, int messageIdentifier) {
+        boolean success = false;
+
+        try {
+            ISms iccISms = getISmsService();
+            if (iccISms != null) {
+                success = iccISms.enableCellBroadcastUsingSubId(subId, messageIdentifier);
+            }
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+
+        return success;
+    }
+
+    /**
      * Disable reception of cell broadcast (SMS-CB) messages with the given
      * message identifier. Note that if two different clients enable the same
      * message identifier, they must both disable it for the device to stop
@@ -690,6 +721,37 @@ public final class SmsManager {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
                 success = iccISms.disableCellBroadcast(messageIdentifier);
+            }
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+
+        return success;
+    }
+
+    /**
+     * Disable reception of cell broadcast (SMS-CB) messages with the given
+     * message identifier. Note that if two different clients enable the same
+     * message identifier, they must both disable it for the device to stop
+     * receiving those messages.
+     * Note: This call is blocking, callers may want to avoid calling it from
+     * the main thread of an application.
+     *
+     * @param messageIdentifier Message identifier as specified in TS 23.041 (3GPP)
+     * or C.R1001-G (3GPP2)
+     * @return true if successful, false otherwise
+     *
+     * @see #enableCellBroadcast(int)
+     *
+     * {@hide}
+     */
+    public boolean disableCellBroadcast(long subId, int messageIdentifier) {
+        boolean success = false;
+
+        try {
+            ISms iccISms = getISmsService();
+            if (iccISms != null) {
+                success = iccISms.disableCellBroadcastUsingSubId(subId, messageIdentifier);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -736,6 +798,44 @@ public final class SmsManager {
     }
 
     /**
+     * Enable reception of cell broadcast (SMS-CB) messages with the given
+     * message identifier range. Note that if two different clients enable the same
+     * message identifier, they must both disable it for the device to stop
+     * receiving those messages. All received messages will be broadcast in an
+     * intent with the action "android.provider.Telephony.SMS_CB_RECEIVED".
+     * Note: This call is blocking, callers may want to avoid calling it from
+     * the main thread of an application.
+     *
+     * @param startMessageId first message identifier as specified in TS 23.041 (3GPP)
+     * or C.R1001-G (3GPP2)
+     * @param endMessageId last message identifier as specified in TS 23.041 (3GPP)
+     * or C.R1001-G (3GPP2)
+     * @return true if successful, false otherwise
+     * @see #disableCellBroadcastRange(int, int)
+     *
+     * @throws IllegalArgumentException if endMessageId < startMessageId
+     * {@hide}
+     */
+    public boolean enableCellBroadcastRange(long subId, int startMessageId, int endMessageId) {
+        boolean success = false;
+
+        if (endMessageId < startMessageId) {
+            throw new IllegalArgumentException("endMessageId < startMessageId");
+        }
+        try {
+            ISms iccISms = getISmsService();
+            if (iccISms != null) {
+                success = iccISms.enableCellBroadcastRangeUsingSubId(subId, startMessageId
+                        ,endMessageId);
+            }
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+
+        return success;
+    }
+
+    /**
      * Disable reception of cell broadcast (SMS-CB) messages with the given
      * message identifier range. Note that if two different clients enable the same
      * message identifier, they must both disable it for the device to stop
@@ -771,6 +871,44 @@ public final class SmsManager {
 
         return success;
     }
+
+    /**
+     * Disable reception of cell broadcast (SMS-CB) messages with the given
+     * message identifier range. Note that if two different clients enable the same
+     * message identifier, they must both disable it for the device to stop
+     * receiving those messages.
+     * Note: This call is blocking, callers may want to avoid calling it from
+     * the main thread of an application.
+     *
+     * @param startMessageId first message identifier as specified in TS 23.041 (3GPP)
+     * or C.R1001-G (3GPP2)
+     * @param endMessageId last message identifier as specified in TS 23.041 (3GPP)
+     * or C.R1001-G (3GPP2)
+     * @return true if successful, false otherwise
+     *
+     * @see #enableCellBroadcastRange(int, int)
+     *
+     * @throws IllegalArgumentException if endMessageId < startMessageId
+     * {@hide}
+     */
+    public boolean disableCellBroadcastRange(long subId, int startMessageId, int endMessageId) {
+        boolean success = false;
+
+        if (endMessageId < startMessageId) {
+            throw new IllegalArgumentException("endMessageId < startMessageId");
+        }
+        try {
+            ISms iccISms = getISmsService();
+            if (iccISms != null) {
+                success = iccISms.disableCellBroadcastRangeUsingSubId(subId, startMessageId, endMessageId);
+            }
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+
+        return success;
+    }
+
 
     /**
      * Create a list of <code>SmsMessage</code>s from a list of RawSmsData
