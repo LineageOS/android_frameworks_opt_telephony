@@ -33,6 +33,7 @@ import com.android.ims.ImsSsInfo;
 import com.android.ims.ImsUtInterface;
 import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccRecords;
 
@@ -694,13 +695,15 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
     /** Process a MMI code or short code...anything that isn't a dialing number */
     void
-    processCode () {
+    processCode () throws CallStateException {
         try {
             if (isShortCode()) {
                 Rlog.d(LOG_TAG, "isShortCode");
 
                 // These just get treated as USSD.
-                sendUssd(mDialingNumber);
+                Rlog.d(LOG_TAG, "Sending short code '"
+                       + mDialingNumber + "' over CS pipe.");
+                throw new CallStateException(ImsPhone.CS_FALLBACK);
             } else if (isServiceCodeCallForwarding(mSc)) {
                 Rlog.d(LOG_TAG, "is CF");
                 // service group is not supported
@@ -897,7 +900,9 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     throw new RuntimeException ("Invalid or Unsupported MMI Code");
                 }
             } else if (mPoundString != null) {
-                sendUssd(mPoundString);
+                Rlog.d(LOG_TAG, "Sending pound string '"
+                       + mDialingNumber + "' over CS pipe.");
+                throw new CallStateException(ImsPhone.CS_FALLBACK);
             } else {
                 throw new RuntimeException ("Invalid or Unsupported MMI Code");
             }
