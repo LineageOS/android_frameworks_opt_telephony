@@ -2279,9 +2279,11 @@ public final class Telephony {
              * The intent will have the following extra values:</p>
              *
              * <ul>
-             *   <li><em>"pdu"</em> - (byte[]) The PDU to send.</li>
-             *   <li><em>"url"</em> - (String) The optional url to send this MMS PDU.
-             *   If this is not specified, PDU should be sent to the default MMSC url.</li>
+             *   <li><em>{@link #EXTRA_MMS_CONTENT_URI}</em> - (Uri) The content provider of the
+             *     PDU to send.</li>
+             *   <li><em>{@link #EXTRA_MMS_LOCATION_URL}</em> - (String) The optional url to send
+             *     this MMS PDU. If this is not specified, PDU should be sent to the default MMSC
+             *     url.</li>
              * </ul>
              *
              * <p>If a BroadcastReceiver is trying to send the message,
@@ -2314,7 +2316,10 @@ public final class Telephony {
              * The intent will have the following extra values:</p>
              *
              * <ul>
-             *   <li><em>"url"</em> - (String) The message URL to be downloaded.</li>
+             *   <li><em>{@link #EXTRA_MMS_CONTENT_URI}</em> - (Uri) The content provider of the
+             *     PDU to be downloaded.</li>
+             *   <li><em>{@link #EXTRA_MMS_LOCATION_URL}</em> - (String) The message URL to be
+             *     downloaded.</li>
              * </ul>
              *
              * <p>If a BroadcastReceiver is trying to download the message,
@@ -2344,6 +2349,21 @@ public final class Telephony {
              * An extra field which stores the URI of deleted contents.
              */
             public static final String DELETED_CONTENTS = "deleted_contents";
+
+            /**
+             * The content provider of the PDU to be sent/downloaded passed as an extra for
+             * {@link #MMS_DOWNLOAD_ACTION} and {@link #MMS_SEND_ACTION}.
+             */
+            public static final String EXTRA_MMS_CONTENT_URI =
+                    "android.provider.Telephony.extra.MMS_CONTENT_URI";
+
+            /**
+             * The message URL to be downloaded passed as an extra for {@link #MMS_DOWNLOAD_ACTION}.
+             * It is also the URL to send an MMS to passed as an extra for
+             * {@link #MMS_SEND_ACTION}.
+             */
+            public static final String EXTRA_MMS_LOCATION_URL =
+                    "android.provider.Telephony.extra.MMS_LOCATION_URL";
         }
     }
 
