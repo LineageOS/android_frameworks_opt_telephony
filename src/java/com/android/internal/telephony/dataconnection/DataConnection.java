@@ -906,8 +906,10 @@ public final class DataConnection extends StateMachine {
                         break;
                     }
                     case PhoneConstants.APN_TYPE_DUN: {
-                        // TODO - secure?
-                        result.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
+                        ApnSetting securedDunApn = mDct.fetchDunApn();
+                        if (securedDunApn == null || securedDunApn.equals(mApnSetting)) {
+                            result.addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
+                        }
                         break;
                     }
                     case PhoneConstants.APN_TYPE_FOTA: {
