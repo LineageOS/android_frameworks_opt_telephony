@@ -49,6 +49,9 @@ public class GsmConnection extends Connection {
     String mPostDialString;      // outgoing calls only
     boolean mDisconnected;
 
+    boolean mNumberConverted = false;
+    String mConvertedNumber;
+
     int mIndex;          // index in GsmCallTracker.connections[], -1 if unassigned
                         // The GSM index is 1 + this
 
@@ -416,7 +419,9 @@ public class GsmConnection extends Connection {
         if (mOrigConnection != null) {
             if (Phone.DEBUG_PHONE) log("update: mOrigConnection is not null");
         } else {
-            if (!equalsHandlesNulls(mAddress, dc.number)) {
+            log(" mNumberConverted " + mNumberConverted);
+            if (!equalsHandlesNulls(mAddress, dc.number) && (!mNumberConverted
+                    || !equalsHandlesNulls(mConvertedNumber, dc.number))) {
                 if (Phone.DEBUG_PHONE) log("update: phone # changed!");
                 mAddress = dc.number;
                 changed = true;
@@ -764,5 +769,11 @@ public class GsmConnection extends Connection {
         }
 
         return false;
+    }
+    public void setConverted(String oriNumber) {
+        mNumberConverted = true;
+        mConvertedNumber = mAddress;
+        mAddress = oriNumber;
+        mDialString = oriNumber;
     }
 }
