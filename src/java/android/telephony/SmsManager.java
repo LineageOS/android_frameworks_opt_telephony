@@ -19,10 +19,13 @@ package android.telephony;
 import android.app.ActivityThread;
 import android.app.PendingIntent;
 import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.provider.Telephony;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.Log;
@@ -906,9 +909,12 @@ public final class SmsManager {
     /** Failed because FDN is enabled. {@hide} */
     static public final int RESULT_ERROR_FDN_CHECK_FAILURE  = 6;
 
+    static private final String PHONE_PACKAGE_NAME = "com.android.phone";
+
     /**
      * Send an MMS message
      *
+     * @param context application context
      * @param contentUri the content Uri from which the message pdu will be read
      * @param locationUrl the optional location url where message should be sent to
      * @param configOverrides the carrier-specific messaging configuration values to override for
@@ -917,7 +923,7 @@ public final class SmsManager {
      *  broadcast when the message is successfully sent, or failed
      * @throws IllegalArgumentException if contentUri is empty
      */
-    public void sendMultimediaMessage(Uri contentUri, String locationUrl,
+    public void sendMultimediaMessage(Context context, Uri contentUri, String locationUrl,
             Bundle configOverrides, PendingIntent sentIntent) {
         if (contentUri == null) {
             throw new IllegalArgumentException("Uri contentUri null");
@@ -927,6 +933,11 @@ public final class SmsManager {
             if (iMms == null) {
                 return;
             }
+            context.grantUriPermission(PHONE_PACKAGE_NAME, contentUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            grantCarrierPackageUriPermission(context, contentUri,
+                    Telephony.Mms.Intents.MMS_SEND_ACTION, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
             iMms.sendMessage(getSubId(), ActivityThread.currentPackageName(), contentUri,
                     locationUrl, configOverrides, sentIntent);
         } catch (RemoteException e) {
@@ -934,9 +945,22 @@ public final class SmsManager {
         }
     }
 
+    private void grantCarrierPackageUriPermission(Context context, Uri contentUri, String action,
+            int permission) {
+        Intent intent = new Intent(action);
+        TelephonyManager telephonyManager =
+            (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        List<String> carrierPackages = telephonyManager.getCarrierPackageNamesForIntent(
+                intent);
+        if (carrierPackages != null && carrierPackages.size() == 1) {
+            context.grantUriPermission(carrierPackages.get(0), contentUri, permission);
+        }
+    }
+
     /**
      * Download an MMS message from carrier by a given location URL
      *
+     * @param context application context
      * @param locationUrl the location URL of the MMS message to be downloaded, usually obtained
      *  from the MMS WAP push notification
      * @param contentUri the content uri to which the downloaded pdu will be written
@@ -946,7 +970,7 @@ public final class SmsManager {
      *  broadcast when the message is downloaded, or the download is failed
      * @throws IllegalArgumentException if locationUrl or contentUri is empty
      */
-    public void downloadMultimediaMessage(String locationUrl, Uri contentUri,
+    public void downloadMultimediaMessage(Context context, String locationUrl, Uri contentUri,
             Bundle configOverrides, PendingIntent downloadedIntent) {
         if (TextUtils.isEmpty(locationUrl)) {
             throw new IllegalArgumentException("Empty MMS location URL");
@@ -959,6 +983,13 @@ public final class SmsManager {
             if (iMms == null) {
                 return;
             }
+            context.grantUriPermission(PHONE_PACKAGE_NAME, contentUri,
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+
+            grantCarrierPackageUriPermission(context, contentUri,
+                    Telephony.Mms.Intents.MMS_DOWNLOAD_ACTION,
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+
             iMms.downloadMessage(getSubId(), ActivityThread.currentPackageName(), locationUrl,
                     contentUri, configOverrides, downloadedIntent);
         } catch (RemoteException e) {
@@ -972,54 +1003,74 @@ public final class SmsManager {
     public static final int MMS_ERROR_UNABLE_CONNECT_MMS = 3;
     public static final int MMS_ERROR_HTTP_FAILURE = 4;
     public static final int MMS_ERROR_IO_ERROR = 5;
+    public static final int MMS_ERROR_RETRY = 6;
 
     // Intent extra name for result data
     public static final String EXTRA_MMS_DATA = "android.telephony.extra.MMS_DATA";
 
     /**
      * Update the status of a pending (send-by-IP) MMS message handled by the carrier app.
-     * If the carrier app fails to send this message, it would be resent via carrier network.
+     * If the carrier app fails to send this message, it may be resent via carrier network
+     * depending on the status code.
      *
      * The caller should have carrier privileges.
      * @see android.telephony.TelephonyManager.hasCarrierPrivileges
      *
+     * @param context application context
      * @param messageRef the reference number of the MMS message.
-     * @param success True if and only if the message was sent successfully. If its value is
-     *  false, this message should be resent via carrier network
+     * @param pdu non-empty (contains the SendConf PDU) if the message was sent successfully,
+     *   otherwise, this param should be null.
+     * @param status send status. It can be Activity.RESULT_OK or one of the MMS error codes.
+     *   If status is Activity.RESULT_OK, the MMS was sent successfully.
+     *   If status is MMS_ERROR_RETRY, this message would be resent via carrier
+     *   network. The message will not be resent for other MMS error statuses.
+     * @param contentUri the URI of the sent message
      */
-    public void updateMmsSendStatus(int messageRef, boolean success) {
+    public void updateMmsSendStatus(Context context, int messageRef, byte[] pdu, int status,
+            Uri contentUri) {
         try {
             IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
             if (iMms == null) {
                 return;
             }
-            iMms.updateMmsSendStatus(messageRef, success);
+            iMms.updateMmsSendStatus(messageRef, pdu, status);
         } catch (RemoteException ex) {
             // ignore it
+        }
+        if (contentUri != null) {
+            context.revokeUriPermission(contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
         }
     }
 
     /**
      * Update the status of a pending (download-by-IP) MMS message handled by the carrier app.
-     * If the carrier app fails to download this message, it would be re-downloaded via carrier
-     * network.
+     * If the carrier app fails to download this message, it may be re-downloaded via carrier
+     * network depending on the status code.
      *
      * The caller should have carrier privileges.
      * @see android.telephony.TelephonyManager.hasCarrierPrivileges
      *
+     * @param context application context
      * @param messageRef the reference number of the MMS message.
-     * @param pdu non-empty if downloaded successfully, otherwise, it is empty and the message
-     *  will be downloaded via carrier network
+     * @param status download status.  It can be Activity.RESULT_OK or one of the MMS error codes.
+     *   If status is Activity.RESULT_OK, the MMS was downloaded successfully.
+     *   If status is MMS_ERROR_RETRY, this message would be re-downloaded via carrier
+     *   network. The message will not be re-downloaded for other MMS error statuses.
+     * @param contentUri the URI of the downloaded message
      */
-    public void updateMmsDownloadStatus(int messageRef, byte[] pdu) {
+    public void updateMmsDownloadStatus(Context context, int messageRef, int status,
+            Uri contentUri) {
         try {
             IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
             if (iMms == null) {
                 return;
             }
-            iMms.updateMmsDownloadStatus(messageRef, pdu);
+            iMms.updateMmsDownloadStatus(messageRef, status);
         } catch (RemoteException ex) {
             // ignore it
+        }
+        if (contentUri != null) {
+            context.revokeUriPermission(contentUri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         }
     }
 
