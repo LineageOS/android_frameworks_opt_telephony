@@ -36,14 +36,14 @@ public abstract class Connection {
 
     /**
      * Listener interface for events related to the connection which should be reported to the
-     * {@link android.telecomm.Connection}.
+     * {@link android.telecom.Connection}.
      */
     public interface Listener {
         public void onVideoStateChanged(int videoState);
         public void onLocalVideoCapabilityChanged(boolean capable);
         public void onRemoteVideoCapabilityChanged(boolean capable);
         public void onVideoProviderChanged(
-                android.telecomm.Connection.VideoProvider videoProvider);
+                android.telecom.Connection.VideoProvider videoProvider);
         public void onAudioQualityChanged(int audioQuality);
     }
 
@@ -59,7 +59,7 @@ public abstract class Connection {
         public void onRemoteVideoCapabilityChanged(boolean capable) {}
         @Override
         public void onVideoProviderChanged(
-                android.telecomm.Connection.VideoProvider videoProvider) {}
+                android.telecom.Connection.VideoProvider videoProvider) {}
         @Override
         public void onAudioQualityChanged(int audioQuality) {}
     }
@@ -100,7 +100,7 @@ public abstract class Connection {
     private boolean mLocalVideoCapable;
     private boolean mRemoteVideoCapable;
     private int mAudioQuality;
-    private android.telecomm.Connection.VideoProvider mVideoProvider;
+    private android.telecom.Connection.VideoProvider mVideoProvider;
 
     /* Instance Methods */
 
@@ -454,11 +454,11 @@ public abstract class Connection {
     }
 
     /**
-     * Returns the {@link android.telecomm.Connection.VideoProvider} for the connection.
+     * Returns the {@link android.telecom.Connection.VideoProvider} for the connection.
      *
-     * @return The {@link android.telecomm.Connection.VideoProvider}.
+     * @return The {@link android.telecom.Connection.VideoProvider}.
      */
-    public android.telecomm.Connection.VideoProvider getVideoProvider() {
+    public android.telecom.Connection.VideoProvider getVideoProvider() {
         return mVideoProvider;
     }
 
@@ -473,7 +473,7 @@ public abstract class Connection {
 
     /**
      * Sets the videoState for the current connection and reports the changes to all listeners.
-     * Valid video states are defined in {@link android.telecomm.VideoProfile}.
+     * Valid video states are defined in {@link android.telecom.VideoProfile}.
      *
      * @return The video state.
      */
@@ -521,11 +521,11 @@ public abstract class Connection {
     }
 
     /**
-     * Sets the {@link android.telecomm.Connection.VideoProvider} for the connection.
+     * Sets the {@link android.telecom.Connection.VideoProvider} for the connection.
      *
      * @param videoProvider The video call provider.
      */
-    public void setVideoProvider(android.telecomm.Connection.VideoProvider videoProvider) {
+    public void setVideoProvider(android.telecom.Connection.VideoProvider videoProvider) {
         mVideoProvider = videoProvider;
         for (Listener l : mListeners) {
             l.onVideoProviderChanged(mVideoProvider);
