@@ -1215,6 +1215,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
             } else if (mBackgroundCall.getConnections().size() > 0) {
                 mHandoverCall.switchWith(mBackgroundCall);
             }
+
+            // release wake lock hold
+            ImsPhoneConnection con = mHandoverCall.getHandoverConnection();
+            if (con != null) {
+                con.releaseWakeLock();
+            }
         }
     }
 

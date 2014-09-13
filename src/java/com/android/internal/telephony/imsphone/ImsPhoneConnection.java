@@ -544,7 +544,7 @@ public class ImsPhoneConnection extends Connection {
         mPartialWakeLock.acquire();
     }
 
-    private void
+    void
     releaseWakeLock() {
         synchronized(mPartialWakeLock) {
             if (mPartialWakeLock.isHeld()) {
