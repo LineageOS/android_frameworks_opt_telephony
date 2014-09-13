@@ -20,15 +20,13 @@ import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.sip.SipPhone;
 
 import android.content.Context;
-import android.media.AudioManager;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.Registrant;
-import android.telecomm.VideoProfile;
+import android.telecom.VideoProfile;
 import android.telephony.PhoneNumberUtils;
-import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
