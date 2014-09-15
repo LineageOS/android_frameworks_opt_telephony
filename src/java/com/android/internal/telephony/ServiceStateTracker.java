@@ -731,7 +731,7 @@ public abstract class ServiceStateTracker extends Handler {
     }
 
     public String getSystemProperty(String property, String defValue) {
-        return TelephonyManager.getTelephonyProperty(property, mPhoneBase.getSubId(), defValue);
+        return TelephonyManager.getTelephonyProperty(mPhoneBase.getPhoneId(), property, defValue);
     }
 
     /**

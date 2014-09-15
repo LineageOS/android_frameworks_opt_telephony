@@ -95,7 +95,7 @@ public class UiccCard {
     private static final int EVENT_SIM_IO_DONE = 19;
     private static final int EVENT_CARRIER_PRIVILIGES_LOADED = 20;
 
-    int mSlotId;
+    private int mSlotId;
 
     public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics) {
         if (DBG) log("Creating");
@@ -526,6 +526,10 @@ public class UiccCard {
             }
         }
         return count;
+    }
+
+    public int getSlotId() {
+        return mSlotId;
     }
 
     /**
