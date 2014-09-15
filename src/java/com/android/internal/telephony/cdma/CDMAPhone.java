@@ -39,6 +39,7 @@ import android.telephony.CellLocation;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.text.TextUtils;
 import android.telephony.Rlog;
@@ -425,7 +426,10 @@ public class CDMAPhone extends PhoneBase {
             Rlog.w(LOG_TAG, "IMS is disabled: forced to CS");
         }
 
-        if (imsUseEnabled && imsPhone != null
+        int numPhones = TelephonyManager.getDefault().getPhoneCount();
+
+        // Allow ECall through IMSPhone only on single SIM deices
+        if ((numPhones == 1) && imsUseEnabled && imsPhone != null
                 && ((imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
                 && !PhoneNumberUtils.isEmergencyNumber(dialString))
                 || (PhoneNumberUtils.isEmergencyNumber(dialString)
