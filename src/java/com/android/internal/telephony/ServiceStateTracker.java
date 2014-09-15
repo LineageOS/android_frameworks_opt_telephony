@@ -292,7 +292,10 @@ public abstract class ServiceStateTracker extends Handler {
     }
 
     protected void updatePhoneObject() {
-        mPhoneBase.updatePhoneObject(mSS.getRilVoiceRadioTechnology());
+        if (mPhoneBase.getContext().getResources().
+                getBoolean(com.android.internal.R.bool.config_switch_phone_on_voice_reg_state_change)) {
+            mPhoneBase.updatePhoneObject(mSS.getRilVoiceRadioTechnology());
+        }
     }
 
     /**
