@@ -240,9 +240,10 @@ public final class Telephony {
         public static final String LOCKED = "locked";
 
         /**
-         * The sub_id to which the message belongs to
+         * The sub_id to which the message belongs to. Its value will be
+         * {@link android.telephony.SubscriptionManager#INVALID_SUB_ID} if the sub id cannot be
+         * determined.
          * <p>Type: INTEGER (long) </p>
-         * @hide
          */
         public static final String SUB_ID = "sub_id";
 
