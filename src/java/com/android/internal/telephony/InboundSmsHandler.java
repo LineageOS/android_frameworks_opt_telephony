@@ -663,6 +663,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         int messageCount = tracker.getMessageCount();
         byte[][] pdus;
         int destPort = tracker.getDestPort();
+        String address = "";
 
         if (messageCount == 1) {
             // single-part message
@@ -672,7 +673,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             Cursor cursor = null;
             try {
                 // used by several query selection arguments
-                String address = tracker.getAddress();
+                address = tracker.getAddress();
                 String refNumber = Integer.toString(tracker.getReferenceNumber());
                 String count = Integer.toString(tracker.getMessageCount());
 
@@ -730,10 +731,16 @@ public abstract class InboundSmsHandler extends StateMachine {
                 if (!tracker.is3gpp2()) {
                     SmsMessage msg = SmsMessage.createFromPdu(pdu, SmsConstants.FORMAT_3GPP);
                     pdu = msg.getUserData();
+                    if (address == "") {
+                       address = msg.getOriginatingAddress();
+                    } else if(address == ""){
+                       address = tracker.getAddress();
+                    }
                 }
                 output.write(pdu, 0, pdu.length);
             }
-            int result = mWapPush.dispatchWapPdu(output.toByteArray(), resultReceiver, this);
+            int result = mWapPush.dispatchWapPdu(output.toByteArray(), resultReceiver,
+                    this, address);
             if (DBG) log("dispatchWapPdu() returned " + result);
             // result is Activity.RESULT_OK if an ordered broadcast was sent
             return (result == Activity.RESULT_OK);

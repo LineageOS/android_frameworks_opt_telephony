@@ -47,6 +47,7 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.Rlog;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.telephony.uicc.IccUtils;
@@ -107,11 +108,13 @@ public class WapPushOverSms implements ServiceConnection {
      * wap-230-wsp-20010705-a section 8 for details on the WAP PDU format.
      *
      * @param pdu The WAP PDU, made up of one or more SMS PDUs
+     * @param address The originating address
      * @return a result code from {@link android.provider.Telephony.Sms.Intents}, or
      *         {@link Activity#RESULT_OK} if the message has been broadcast
      *         to applications
      */
-    public int dispatchWapPdu(byte[] pdu, BroadcastReceiver receiver, InboundSmsHandler handler) {
+    public int dispatchWapPdu(byte[] pdu, BroadcastReceiver receiver, InboundSmsHandler handler,
+            String address) {
 
         if (DBG) Rlog.d(TAG, "Rx: " + IccUtils.bytesToHexString(pdu));
 
@@ -239,6 +242,9 @@ public class WapPushOverSms implements ServiceConnection {
                         intent.putExtra("data", intentData);
                         intent.putExtra("contentTypeParameters",
                                 pduDecoder.getContentParameters());
+                        if (!TextUtils.isEmpty(address)) {
+                            intent.putExtra("address", address);
+                        }
                         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId);
 
                         int procRet = wapPushMan.processMessage(wapAppId, contentType, intent);
@@ -280,6 +286,9 @@ public class WapPushOverSms implements ServiceConnection {
             intent.putExtra("header", header);
             intent.putExtra("data", intentData);
             intent.putExtra("contentTypeParameters", pduDecoder.getContentParameters());
+            if (!TextUtils.isEmpty(address)) {
+                intent.putExtra("address", address);
+            }
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId);
 
             // Direct the intent to only the default MMS app. If we can't find a default MMS app
