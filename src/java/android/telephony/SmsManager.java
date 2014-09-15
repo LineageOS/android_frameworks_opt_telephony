@@ -452,10 +452,11 @@ public final class SmsManager {
     }
 
     /**
-    * Get the default instance of the SmsManager
-    *
-    * @return the default instance of the SmsManager
-    */
+     * Get the SmsManager associated with the default subId. The instance will always be
+     * associated with the default subId, even if the default subId is changed.
+     *
+     * @return the SmsManager associated with the default subId
+     */
     public static SmsManager getDefault() {
         return sInstance;
     }
@@ -463,10 +464,9 @@ public final class SmsManager {
     /**
      * Get the the instance of the SmsManager associated with a particular subId
      *
-     * @param subId a SMS subscription id, typically accessed using SubscriptionManager
+     * @param subId a SMS subscription id, typically accessed using
+     *   {@link android.telephony.SubscriptionManager}
      * @return the instance of the SmsManager associated with subId
-     *
-     * {@hide}
      */
     public static SmsManager getSmsManagerForSubscriber(long subId) {
         // TODO(shri): Add javadoc link once SubscriptionManager is made public api
@@ -487,15 +487,12 @@ public final class SmsManager {
     /**
      * Get the associated subId. If the instance was returned by {@link #getDefault()}, then this
      * method may return different values at different points in time (if the user changes the
-     * default subId). It will return SubscriptionManager.INVALID_SUB_ID if the default
-     * subId cannot be determined.
+     * default subId). It will return {@link android.telephony.SubscriptionManager#INVALID_SUB_ID}
+     * if the default subId cannot be determined.
      *
      * @return associated subId
-     *
-     * {@hide}
      */
     public long getSubId() {
-        // TODO(shri): Add javadoc link once SubscriptionManager is made public api
         if (mSubId == DEFAULT_SUB_ID) {
             return getDefaultSmsSubId();
         }
@@ -851,15 +848,7 @@ public final class SmsManager {
      * @hide
      */
     public static long getDefaultSmsSubId() {
-        ISms iccISms = null;
-        try {
-            iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
-            return (long) iccISms.getPreferredSmsSubscription();
-        } catch (RemoteException ex) {
-            return DEFAULT_SUB_ID;
-        } catch (NullPointerException ex) {
-            return DEFAULT_SUB_ID;
-        }
+        return SubscriptionManager.getDefaultSmsSubId();
     }
 
     /**
