@@ -19,6 +19,7 @@ package com.android.internal.telephony.uicc;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
+
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
@@ -32,6 +33,7 @@ import android.telephony.Rlog;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.SmsConstants;
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.gsm.SimTlv;
 
 import java.io.FileDescriptor;
@@ -1362,6 +1364,8 @@ public class SIMRecords extends IccRecords {
                     operator + "'");
             log("update icc_operator_numeric=" + operator);
             setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
+            final SubscriptionController subController = SubscriptionController.getInstance();
+            subController.setMccMnc(operator, subController.getDefaultSmsSubId());
         } else {
             log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
         }
