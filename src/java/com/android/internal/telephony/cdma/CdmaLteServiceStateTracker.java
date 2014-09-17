@@ -86,6 +86,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             return;
         }
 
+        if (DBG) log("handleMessage: " + msg.what);
         switch (msg.what) {
         case EVENT_POLL_STATE_GPRS:
             if (DBG) log("handleMessage EVENT_POLL_STATE_GPRS");
@@ -95,12 +96,14 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         case EVENT_RUIM_RECORDS_LOADED:
             updatePhoneObject();
             RuimRecords ruim = (RuimRecords)mIccRecords;
-            if ((ruim != null) && ruim.isProvisioned()) {
-                mMdn = ruim.getMdn();
-                mMin = ruim.getMin();
-                parseSidNid(ruim.getSid(), ruim.getNid());
-                mPrlVersion = ruim.getPrlVersion();
-                mIsMinInfoReady = true;
+            if (ruim != null) {
+                if (ruim.isProvisioned()) {
+                    mMdn = ruim.getMdn();
+                    mMin = ruim.getMin();
+                    parseSidNid(ruim.getSid(), ruim.getNid());
+                    mPrlVersion = ruim.getPrlVersion();
+                    mIsMinInfoReady = true;
+                }
                 updateOtaspState();
             }
             // reload eri in case of IMSI changed
