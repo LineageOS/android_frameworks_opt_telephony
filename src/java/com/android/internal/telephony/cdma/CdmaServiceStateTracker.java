@@ -1744,6 +1744,10 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
      */
     int getOtasp() {
         int provisioningState;
+        // for ruim, min is null means require otasp.
+        if (mIsSubscriptionFromRuim && mMin == null) {
+            return OTASP_NEEDED;
+        }
         if (mMin == null || (mMin.length() < 6)) {
             if (DBG) log("getOtasp: bad mMin='" + mMin + "'");
             provisioningState = OTASP_UNKNOWN;
