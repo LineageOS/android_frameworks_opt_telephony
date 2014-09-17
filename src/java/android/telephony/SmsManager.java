@@ -248,7 +248,8 @@ public final class SmsManager {
 
         try {
             ISms iccISms = getISmsServiceOrThrow();
-            iccISms.sendText(ActivityThread.currentPackageName(), destinationAddress,
+            iccISms.sendTextForSubscriber(getSubId(), ActivityThread.currentPackageName(),
+                    destinationAddress,
                     scAddress, text, sentIntent, deliveryIntent);
         } catch (RemoteException ex) {
             // ignore it
@@ -380,7 +381,8 @@ public final class SmsManager {
         if (parts.size() > 1) {
             try {
                 ISms iccISms = getISmsServiceOrThrow();
-                iccISms.sendMultipartText(ActivityThread.currentPackageName(),
+                iccISms.sendMultipartTextForSubscriber(getSubId(),
+                        ActivityThread.currentPackageName(),
                         destinationAddress, scAddress, parts,
                         sentIntents, deliveryIntents);
             } catch (RemoteException ex) {
@@ -443,7 +445,7 @@ public final class SmsManager {
 
         try {
             ISms iccISms = getISmsServiceOrThrow();
-            iccISms.sendData(ActivityThread.currentPackageName(),
+            iccISms.sendDataForSubscriber(getSubId(), ActivityThread.currentPackageName(),
                     destinationAddress, scAddress, destinationPort & 0xFFFF,
                     data, sentIntent, deliveryIntent);
         } catch (RemoteException ex) {
@@ -538,7 +540,8 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.copyMessageToIccEf(ActivityThread.currentPackageName(),
+                success = iccISms.copyMessageToIccEfForSubscriber(getSubId(),
+                        ActivityThread.currentPackageName(),
                         status, pdu, smsc);
             }
         } catch (RemoteException ex) {
@@ -567,7 +570,8 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.updateMessageOnIccEf(ActivityThread.currentPackageName(),
+                success = iccISms.updateMessageOnIccEfForSubscriber(getSubId(),
+                        ActivityThread.currentPackageName(),
                         messageIndex, STATUS_ON_ICC_FREE, pdu);
             }
         } catch (RemoteException ex) {
@@ -597,7 +601,8 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.updateMessageOnIccEf(ActivityThread.currentPackageName(),
+                success = iccISms.updateMessageOnIccEfForSubscriber(getSubId(),
+                        ActivityThread.currentPackageName(),
                         messageIndex, newStatus, pdu);
             }
         } catch (RemoteException ex) {
@@ -622,7 +627,8 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                records = iccISms.getAllMessagesFromIccEf(ActivityThread.currentPackageName());
+                records = iccISms.getAllMessagesFromIccEfForSubscriber(getDefault().getSubId(),
+                        ActivityThread.currentPackageName());
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -653,7 +659,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.enableCellBroadcast(messageIdentifier);
+                success = iccISms.enableCellBroadcastForSubscriber(getSubId(), messageIdentifier);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -684,7 +690,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.disableCellBroadcast(messageIdentifier);
+                success = iccISms.disableCellBroadcastForSubscriber(getSubId(), messageIdentifier);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -721,7 +727,8 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.enableCellBroadcastRange(startMessageId, endMessageId);
+                success = iccISms.enableCellBroadcastRangeForSubscriber(getSubId(),
+                        startMessageId, endMessageId);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -758,7 +765,8 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.disableCellBroadcastRange(startMessageId, endMessageId);
+                success = iccISms.disableCellBroadcastRangeForSubscriber(getSubId(),
+                        startMessageId, endMessageId);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -808,7 +816,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                boSupported = iccISms.isImsSmsSupported();
+                boSupported = iccISms.isImsSmsSupportedForSubscriber(getSubId());
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -833,7 +841,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                format = iccISms.getImsSmsFormat();
+                format = iccISms.getImsSmsFormatForSubscriber(getSubId());
             }
         } catch (RemoteException ex) {
             // ignore it
