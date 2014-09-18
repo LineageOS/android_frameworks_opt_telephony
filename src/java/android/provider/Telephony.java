@@ -1690,9 +1690,10 @@ public final class Telephony {
         public static final String LOCKED = "locked";
 
         /**
-         * The sub id to which message belongs to
-         * <p>Type: INTEGER</p>
-         * @hide
+         * The sub_id to which the message belongs to. Its value will be
+         * {@link android.telephony.SubscriptionManager#INVALID_SUB_ID} if the sub id cannot be
+         * determined.
+         * <p>Type: INTEGER (long)</p>
          */
         public static final String SUB_ID = "sub_id";
 
@@ -2527,9 +2528,10 @@ public final class Telephony {
             public static final String LAST_TRY = "last_try";
 
             /**
-             * The sub_id to which the pending message belongs to
+             * The sub_id to which the message belongs to. Its value will be
+             * {@link android.telephony.SubscriptionManager#INVALID_SUB_ID} if the sub id cannot be
+             * determined.
              * <p>Type: INTEGER (long) </p>
-             * @hide
              */
             public static final String SUB_ID = "pending_sub_id";
         }
@@ -2742,7 +2744,6 @@ public final class Telephony {
         /**
          * The sub_id to which the APN belongs to
          * <p>Type: INTEGER (long) </p>
-         * @hide
          */
         public static final String SUB_ID = "sub_id";
 
