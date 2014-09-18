@@ -44,6 +44,7 @@ import android.os.SystemProperties;
 import android.telephony.Rlog;
 import android.util.EventLog;
 
+import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
 import com.android.internal.telephony.ProxyController;
 import android.telephony.SubscriptionManager;
@@ -323,6 +324,11 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         boolean hasRoamingOff = mSS.getRoaming() && !mNewSS.getRoaming();
 
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
+
+        if (mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
+            log("set service state as POWER_OFF");
+            mNewSS.setStateOff();
+        }
 
         boolean has4gHandoff =
                 mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE &&

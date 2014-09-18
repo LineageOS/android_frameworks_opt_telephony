@@ -980,6 +980,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         boolean needNotifyData = (mSS.getCssIndicator() != mNewSS.getCssIndicator());
 
+        if (mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
+            log("set service state as POWER_OFF");
+            mNewSS.setStateOff();
+        }
+
         // Add an event log when connection state changes
         if (hasVoiceRegStateChanged || hasDataRegStateChanged) {
             EventLog.writeEvent(EventLogTags.GSM_SERVICE_STATE_CHANGE,
