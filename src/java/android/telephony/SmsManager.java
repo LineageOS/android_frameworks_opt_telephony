@@ -1007,6 +1007,7 @@ public final class SmsManager {
     public static final int MMS_ERROR_HTTP_FAILURE = 4;
     public static final int MMS_ERROR_IO_ERROR = 5;
     public static final int MMS_ERROR_RETRY = 6;
+    public static final int MMS_ERROR_CONFIGURATION_ERROR = 7;
 
     // Intent extra name for result data
     public static final String EXTRA_MMS_DATA = "android.telephony.extra.MMS_DATA";
