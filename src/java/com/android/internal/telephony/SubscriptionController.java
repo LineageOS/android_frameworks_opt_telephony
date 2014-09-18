@@ -128,8 +128,8 @@ public class SubscriptionController extends ISub.Stub {
 
     //FIXME this does not allow for multiple subs in a slot
     private static HashMap<Integer, Long> mSimInfo = new HashMap<Integer, Long>();
-    private static long mDefaultVoiceSubId = SubscriptionManager.INVALID_SUB_ID;
-    private static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_ID;
+    private static long mDefaultVoiceSubId = SubscriptionManager.DEFAULT_SUB_ID;
+    private static int mDefaultPhoneId = 0;
 
     private static final int EVENT_WRITE_MSISDN_DONE = 1;
 
