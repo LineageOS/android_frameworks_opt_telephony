@@ -747,12 +747,12 @@ public abstract class ServiceStateTracker extends Handler {
                         > LAST_CELL_INFO_LIST_MAX_AGE_MS) {
                     Message msg = obtainMessage(EVENT_GET_CELL_INFO_LIST, result);
                     synchronized(result.lockObj) {
+                        result.list = null;
                         mCi.getCellInfoList(msg);
                         try {
-                            result.lockObj.wait();
+                            result.lockObj.wait(5000);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
-                            result.list = null;
                         }
                     }
                 } else {
@@ -767,15 +767,16 @@ public abstract class ServiceStateTracker extends Handler {
             if (DBG) log("SST.getAllCellInfo(): not implemented");
             result.list = null;
         }
-        if (DBG) {
+        synchronized(result.lockObj) {
             if (result.list != null) {
-                log("SST.getAllCellInfo(): X size=" + result.list.size()
+                if (DBG) log("SST.getAllCellInfo(): X size=" + result.list.size()
                         + " list=" + result.list);
+                return result.list;
             } else {
-                log("SST.getAllCellInfo(): X size=0 list=null");
+                if (DBG) log("SST.getAllCellInfo(): X size=0 list=null");
+                return null;
             }
         }
-        return result.list;
     }
 
     /**
