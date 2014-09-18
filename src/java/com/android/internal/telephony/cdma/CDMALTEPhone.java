@@ -266,7 +266,7 @@ public class CDMALTEPhone extends CDMAPhone {
 
         // Update IsimRecords
         UiccCardApplication newUiccApplication =
-                mUiccController.getUiccCardApplication(UiccController.APP_FAM_IMS);
+                mUiccController.getUiccCardApplication(mPhoneId, UiccController.APP_FAM_IMS);
         IsimUiccRecords newIsimUiccRecords = null;
 
         if (newUiccApplication != null) {
@@ -275,7 +275,8 @@ public class CDMALTEPhone extends CDMAPhone {
         mIsimUiccRecords = newIsimUiccRecords;
 
         // Update UsimRecords
-        newUiccApplication = mUiccController.getUiccCardApplication(UiccController.APP_FAM_3GPP);
+        newUiccApplication = mUiccController.getUiccCardApplication(mPhoneId,
+                UiccController.APP_FAM_3GPP);
         SIMRecords newSimRecords = null;
         if (newUiccApplication != null) {
             newSimRecords = (SIMRecords) newUiccApplication.getIccRecords();
