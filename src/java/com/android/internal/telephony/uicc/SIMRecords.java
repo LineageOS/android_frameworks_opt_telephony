@@ -29,6 +29,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsMessage;
 import android.text.TextUtils;
 import android.telephony.Rlog;
+import android.content.res.Resources;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.MccTable;
@@ -1063,6 +1064,7 @@ public class SIMRecords extends IccRecords {
                 isRecordLoadResponse = false;
                 ar = (AsyncResult)msg.obj;
 
+                if (DBG) log("EVENT_SET_MBDN_DONE ex:" + ar.exception);
                 if (ar.exception == null) {
                     mVoiceMailNum = mNewVoiceMailNum;
                     mVoiceMailTag = mNewVoiceMailTag;
@@ -1095,8 +1097,18 @@ public class SIMRecords extends IccRecords {
                                     onCphsCompleted));
                 } else {
                     if (ar.userObj != null) {
-                        AsyncResult.forMessage(((Message) ar.userObj)).exception
+                        Resources resource = Resources.getSystem();
+                        if (ar.exception != null && resource.getBoolean(com.android.internal.
+                                    R.bool.editable_voicemailnumber)) {
+                            // GSMPhone will store vm number on device
+                            // when IccVmNotSupportedException occurred
+                            AsyncResult.forMessage(((Message) ar.userObj)).exception
+                                = new IccVmNotSupportedException(
+                                        "Update SIM voice mailbox error");
+                        } else {
+                            AsyncResult.forMessage(((Message) ar.userObj)).exception
                                 = ar.exception;
+                        }
                         ((Message) ar.userObj).sendToTarget();
                     }
                 }
