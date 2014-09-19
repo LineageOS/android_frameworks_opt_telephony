@@ -60,12 +60,7 @@ public class DctController extends Handler {
     private static final int EVENT_PHONE3_RADIO_OFF = 7;
     private static final int EVENT_PHONE4_RADIO_OFF = 8;
 
-    private static final int PHONE_NONE = -1;
-
     private static DctController sDctController;
-
-    private static final int EVENT_ALL_DATA_DISCONNECTED = 1;
-    private static final int EVENT_SET_DATA_ALLOW_DONE = 2;
 
     private RegistrantList mNotifyDataSwitchInfo = new RegistrantList();
     private SubscriptionController mSubController = SubscriptionController.getInstance();
@@ -83,8 +78,8 @@ public class DctController extends Handler {
     private BroadcastReceiver mDataStateReceiver;
     private Context mContext;
 
-    private int mCurrentDataPhone = PHONE_NONE;
-    private int mRequestedDataPhone = PHONE_NONE;
+    private int mCurrentDataPhone = SubscriptionManager.INVALID_PHONE_ID;
+    private int mRequestedDataPhone = SubscriptionManager.INVALID_PHONE_ID;
 
     private Handler mRspHander = new Handler() {
         public void handleMessage(Message msg){
@@ -96,10 +91,10 @@ public class DctController extends Handler {
                 case EVENT_PHONE4_DETACH:
                     logd("EVENT_PHONE" + msg.what +
                             "_DETACH: mRequestedDataPhone=" + mRequestedDataPhone);
-                    mCurrentDataPhone = PHONE_NONE;
-                    if (mRequestedDataPhone != PHONE_NONE) {
+                    mCurrentDataPhone = SubscriptionManager.INVALID_PHONE_ID;
+                    if (isValidPhoneId(mRequestedDataPhone)) {
                         mCurrentDataPhone = mRequestedDataPhone;
-                        mRequestedDataPhone = PHONE_NONE;
+                        mRequestedDataPhone = SubscriptionManager.INVALID_PHONE_ID;
 
                         Iterator<String> itrType = mApnTypes.iterator();
                         while (itrType.hasNext()) {
@@ -130,8 +125,10 @@ public class DctController extends Handler {
             logd("[DataStateChanged]:" + "state=" + state + ",reason=" + reason
                       + ",apnName=" + apnName + ",apnType=" + apnType + ",from subId=" + subId);
             int phoneId = SubscriptionManager.getPhoneId(subId);
-            mDcSwitchState[phoneId].notifyDataConnection(phoneId, state, reason,
-                    apnName, apnType, unavailable);
+            if (isValidPhoneId(phoneId)) {
+                mDcSwitchState[phoneId].notifyDataConnection(phoneId, state, reason,
+                        apnName, apnType, unavailable);
+            }
         }
     };
 
@@ -141,7 +138,8 @@ public class DctController extends Handler {
                 if (intent.getAction().equals(TelephonyIntents.ACTION_SERVICE_STATE_CHANGED)) {
                     ServiceState ss = ServiceState.newFromBundle(intent.getExtras());
 
-                    long subId = intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY, PhoneConstants.SUB1);
+                    long subId = intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                            SubscriptionManager.getDefaultDataSubId());
                     int phoneId = SubscriptionManager.getPhoneId(subId);
                     logd("DataStateReceiver: phoneId= " + phoneId);
 
@@ -151,7 +149,8 @@ public class DctController extends Handler {
                         logd("DataStateReceiver: ignore invalid subId=" + subId);
                         return;
                     }
-                    if (!SubscriptionManager.isValidPhoneId(phoneId)) {
+
+                    if (!isValidPhoneId(phoneId)) {
                         logd("DataStateReceiver: ignore invalid phoneId=" + phoneId);
                         return;
                     }
@@ -187,10 +186,10 @@ public class DctController extends Handler {
                         }
 
                         if (prevPowerOff && mServicePowerOffFlag[phoneId] == false &&
-                                mCurrentDataPhone == PHONE_NONE &&
-                                phoneId == getDataConnectionFromSetting()) {
-                            logd("DataStateReceiver: Current Phone is none and default phoneId="
-                                    + phoneId + ", then enableApnType()");
+                                !isValidPhoneId(mCurrentDataPhone) &&
+                                phoneId == getDefaultDataPhoneId()) {
+                            logd("Current Phone is none and default Phone is " +
+                                    phoneId + ", then enableApnType()");
                             enableApnType(subId, PhoneConstants.APN_TYPE_DEFAULT);
                         }
                     }
@@ -290,8 +289,8 @@ public class DctController extends Handler {
     public synchronized int enableApnType(long subId, String type) {
         int phoneId = SubscriptionManager.getPhoneId(subId);
 
-        if (phoneId == PHONE_NONE || !isValidphoneId(phoneId)) {
-            logw("enableApnType(): with PHONE_NONE or Invalid PHONE ID");
+        if (!isValidPhoneId(phoneId)) {
+            logw("enableApnType(): with Invalid Phone Id");
             return PhoneConstants.APN_REQUEST_FAILED;
         }
 
@@ -325,15 +324,16 @@ public class DctController extends Handler {
 
         if (phoneId == mCurrentDataPhone &&
                !mDcSwitchAsyncChannel[mCurrentDataPhone].isIdleOrDeactingSync()) {
-           mRequestedDataPhone = PHONE_NONE;
+           mRequestedDataPhone = SubscriptionManager.INVALID_PHONE_ID;
            logd("enableApnType(): mRequestedDataPhone equals request PHONE ID.");
            return mDcSwitchAsyncChannel[phoneId].connectSync(type);
         } else {
-            // Only can switch data when mCurrentDataPhone is PHONE_NONE,
-            // it is set to PHONE_NONE only as receiving EVENT_PHONEX_DETACH
-            if (mCurrentDataPhone == PHONE_NONE) {
+            // Only can switch data when mCurrentDataPhone is SubscriptionManager.INVALID_PHONE_ID,
+            // it is set to SubscriptionManager.INVALID_PHONE_ID only as receiving
+            // EVENT_PHONEX_DETACH
+            if (!isValidPhoneId(mCurrentDataPhone)) {
                 mCurrentDataPhone = phoneId;
-                mRequestedDataPhone = PHONE_NONE;
+                mRequestedDataPhone = SubscriptionManager.INVALID_PHONE_ID;
                 logd("enableApnType(): current PHONE is NONE or IDLE, mCurrentDataPhone=" +
                         mCurrentDataPhone);
                 return mDcSwitchAsyncChannel[phoneId].connectSync(type);
@@ -366,8 +366,8 @@ public class DctController extends Handler {
 
         int phoneId = SubscriptionManager.getPhoneId(subId);
 
-        if (phoneId == PHONE_NONE || !isValidphoneId(phoneId)) {
-            logw("disableApnType(): with PHONE_NONE or Invalid PHONE ID");
+        if (!isValidPhoneId(phoneId)) {
+            logw("disableApnType(): with Invalid Phone Id");
             return PhoneConstants.APN_REQUEST_FAILED;
         }
         logd("disableApnType():type=" + type + ",phoneId=" + phoneId +
@@ -376,8 +376,8 @@ public class DctController extends Handler {
     }
 
     public boolean isDataConnectivityPossible(String type, int phoneId) {
-        if (phoneId == PHONE_NONE || !isValidphoneId(phoneId)) {
-            logw("isDataConnectivityPossible(): with PHONE_NONE or Invalid PHONE ID");
+        if (!isValidPhoneId(phoneId)) {
+            logw("isDataConnectivityPossible(): with Invalid Phone Id");
             return false;
         } else {
             return mPhones[phoneId].isDataConnectivityPossible(type);
@@ -385,15 +385,14 @@ public class DctController extends Handler {
     }
 
     public boolean isIdleOrDeacting(int phoneId) {
-        if (mDcSwitchAsyncChannel[phoneId].isIdleOrDeactingSync()) {
-            return true;
-        } else {
-            return false;
+        if (isValidPhoneId(phoneId)) {
+            return mDcSwitchAsyncChannel[phoneId].isIdleOrDeactingSync();
         }
+        return false;
     }
 
-    private boolean isValidphoneId(int phoneId) {
-        return phoneId >= 0 && phoneId <= mPhoneNum;
+    private boolean isValidPhoneId(int phoneId) {
+        return SubscriptionManager.isValidPhoneId(phoneId) && phoneId >= 0 && phoneId < mPhoneNum;
     }
 
     private boolean isValidApnType(String apnType) {
@@ -412,9 +411,9 @@ public class DctController extends Handler {
         }
     }
 
-    private int getDataConnectionFromSetting(){
-        long [] subId = SubscriptionManager.getSubId(PhoneConstants.SIM_ID_1);
-        int phoneId = SubscriptionManager.getPhoneId(subId[0]);
+    private int getDefaultDataPhoneId(){
+        long subId = SubscriptionManager.getDefaultDataSubId();
+        int phoneId = SubscriptionManager.getPhoneId(subId);
         return phoneId;
     }
 
@@ -434,56 +433,4 @@ public class DctController extends Handler {
         Log.e(LOG_TAG, "[DctController] " + s);
     }
 
-
-    public void setDataSubId(long subId) {
-        //FIXME This should rework
-        //FIXME Need to have a StateMachine logic to handle this api considering various clients
-        Rlog.d(LOG_TAG, "setDataAllowed subId :" + subId);
-        int phoneId = mSubController.getPhoneId(subId);
-        int prefPhoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
-        Phone phone = mPhones[prefPhoneId].getActivePhone();
-        DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
-        dcTracker.setDataAllowed(false, null);
-        mPhones[prefPhoneId].registerForAllDataDisconnected(
-                this, EVENT_ALL_DATA_DISCONNECTED, new Integer(phoneId));
-
-    }
-
-    public void registerForDataSwitchInfo(Handler h, int what, Object obj) {
-        //FIXME This should rework
-        Registrant r = new Registrant (h, what, obj);
-        synchronized (mNotifyDataSwitchInfo) {
-            mNotifyDataSwitchInfo.add(r);
-        }
-    }
-
-    @Override
-    public void handleMessage (Message msg) {
-        //FIXME This should rework
-            AsyncResult ar = (AsyncResult)msg.obj;
-            Rlog.d(LOG_TAG, "handleMessage msg=" + msg);
-
-            switch (msg.what) {
-                case EVENT_ALL_DATA_DISCONNECTED:
-                    Integer phoneId = (Integer)ar.userObj;
-                    int prefPhoneId = mSubController.getPhoneId(
-                            mSubController.getDefaultDataSubId());
-                    Rlog.d(LOG_TAG, "EVENT_ALL_DATA_DISCONNECTED phoneId :" + phoneId);
-                    mPhones[prefPhoneId].unregisterForAllDataDisconnected(this);
-                    Message alllowedDataDone = Message.obtain(this, EVENT_SET_DATA_ALLOW_DONE,
-                            new Integer(phoneId));
-                    Phone phone = mPhones[phoneId].getActivePhone();
-                    DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
-                    dcTracker.setDataAllowed(true, alllowedDataDone);
-                    break;
-
-                case EVENT_SET_DATA_ALLOW_DONE:
-                    phoneId = (Integer)ar.userObj;
-                    long[] subId = mSubController.getSubId(phoneId);
-                    Rlog.d(LOG_TAG, "EVENT_SET_DATA_ALLOWED_DONE  phoneId :" + subId[0]);
-                    mNotifyDataSwitchInfo.notifyRegistrants(new AsyncResult(null, subId[0], null));
-                    mPhones[phoneId].updateDataConnectionTracker();
-                    break;
-            }
-    }
 }
