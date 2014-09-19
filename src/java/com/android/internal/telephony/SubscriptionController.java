@@ -1248,7 +1248,6 @@ public class SubscriptionController extends ISub.Stub {
      * @return the list of subId's that are active, is never null but the length maybe 0.
      */
     @Override
->>>>>>> Temporary merge branch 2
     public long[] getActivatedSubIdList() {
         Set<Entry<Integer, Long>> simInfoSet = mSimInfo.entrySet();
         logd("getActiveSubIdList: simInfoSet=" + simInfoSet);
