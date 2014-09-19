@@ -51,6 +51,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * {@hide}
@@ -92,6 +93,8 @@ public final class GsmCallTracker extends CallTracker {
 
     Call.SrvccState mSrvccState = Call.SrvccState.NONE;
 
+    boolean mNumberConverted = false;
+    private final int VALID_COMPARE_LENGTH   = 3;
 
     //***** Events
 
@@ -176,6 +179,9 @@ public final class GsmCallTracker extends CallTracker {
             throw new CallStateException("cannot dial in current state");
         }
 
+        String origNumber = dialString;
+        dialString = convertNumberIfNecessary(dialString);
+
         // The new call must be assigned to the foreground call.
         // That call must be idle, so place anything that's
         // there on hold
@@ -216,6 +222,11 @@ public final class GsmCallTracker extends CallTracker {
             setMute(false);
 
             mCi.dial(mPendingMO.getAddress(), clirMode, uusInfo, obtainCompleteMessage());
+        }
+
+        if (mNumberConverted) {
+            mPendingMO.setConverted(origNumber);
+            mNumberConverted = false;
         }
 
         updatePhoneState();
@@ -937,6 +948,74 @@ public final class GsmCallTracker extends CallTracker {
                 handleRadioNotAvailable();
             break;
         }
+    }
+
+    // TODO: This conversion should be applicable to CDMA roaming as well.
+    private String convertNumberIfNecessary(String dialNumber) {
+        if (dialNumber == null) {
+            return dialNumber;
+        }
+        String[] convertMaps = mPhone.getContext().getResources().getStringArray(
+                com.android.internal.R.array.dial_string_replace);
+        log("convertNumberIfNecessary Roaming" + mPhone.getServiceState().getRoaming()
+            + " convertMaps.length " + convertMaps.length
+            + " dialNumber.length() " + dialNumber.length());
+
+        if (convertMaps.length < 1 || dialNumber.length() < VALID_COMPARE_LENGTH) {
+            return dialNumber;
+        }
+
+        String[] entry;
+        String[] tmpArray;
+        String outNumber = "";
+        for(String convertMap : convertMaps) {
+            entry = convertMap.split(":");
+            if (entry.length > 1) {
+                tmpArray = entry[1].split(",");
+                if (!entry[0].isEmpty() && dialNumber.equals(entry[0])) {
+                    log("convertNumberIfNecessary " + entry[0] + " , " + tmpArray[0] + " " + tmpArray[1]);
+                    if (!tmpArray[1].isEmpty()) {
+                        if (compareGid1(tmpArray[1])) {
+                            outNumber = tmpArray[0];
+                            mNumberConverted = true;
+                        }
+                    } else if (outNumber.isEmpty()) {
+                        outNumber = tmpArray[0];
+                        mNumberConverted = true;
+                    }
+                }
+            }
+        }
+
+        if (mNumberConverted) {
+            log("convertNumberIfNecessary: convert service number");
+            return outNumber;
+        }
+
+        return dialNumber;
+
+    }
+
+    private boolean compareGid1(String serviceGid1) {
+        String gid1 = mPhone.getGroupIdLevel1();
+        int gid_length = serviceGid1.length();
+        boolean ret = true;
+
+        if (serviceGid1 == null || serviceGid1.equals("")) {
+            log("compareGid1 serviceGid is empty, return " + ret);
+            return ret;
+        }
+
+
+        // Check if gid1 match service GID1
+        if (!((gid1 != null) && (gid1.length() >= gid_length) &&
+                gid1.substring(0, gid_length).equalsIgnoreCase(serviceGid1))) {
+            log(" gid1 " + gid1 + " serviceGid1 " + serviceGid1);
+            ret = false;
+        }
+
+        log("compareGid1 is " + (ret?"Same":"Different"));
+        return ret;
     }
 
     @Override
