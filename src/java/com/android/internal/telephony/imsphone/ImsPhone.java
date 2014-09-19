@@ -472,8 +472,13 @@ public class ImsPhone extends ImsPhoneBase {
 
     protected Connection dialInternal(String dialString, int videoState)
             throws CallStateException {
+        boolean isConferenceUri = extras.getBoolean(TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI,
+                false);
+        String newDialString = dialString;
         // Need to make sure dialString gets parsed properly
-        String newDialString = PhoneNumberUtils.stripSeparators(dialString);
+        if (!isConferenceUri) {
+            newDialString = PhoneNumberUtils.stripSeparators(dialString);
+        }
 
         // handle in-call MMI first if applicable
         if (handleInCallMmiCommands(newDialString)) {
