@@ -558,8 +558,8 @@ public class SubscriptionController extends ISub.Stub {
                                 + " slotId=" + slotId + " subId=" + subId
                                 + " defaultSubId=" + defaultSubId + " simCount=" + simCount);
 
-                        // Set the default sub if not set
-                        if (!SubscriptionManager.isValidSubId(defaultSubId)) {
+                        // Set the default sub if not set or if single sim device
+                        if (!SubscriptionManager.isValidSubId(defaultSubId) || simCount == 1) {
                             setDefaultSubId(subId);
                         }
                         // If single sim device, set this subscription as the default for everything
@@ -1110,7 +1110,8 @@ public class SubscriptionController extends ISub.Stub {
         logd("[setDefaultSubId] subId=" + subId);
         if (SubscriptionManager.isValidSubId(subId)) {
             int phoneId = getPhoneId(subId);
-            if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount()) {
+            if (phoneId >= 0 && (phoneId < TelephonyManager.getDefault().getPhoneCount()
+                    || TelephonyManager.getDefault().getSimCount() == 1)) {
                 mDefaultVoiceSubId = subId;
                 // Update MCC MNC device configuration information
                 String defaultMccMnc = TelephonyManager.getDefault().getSimOperator(phoneId);
