@@ -842,9 +842,9 @@ public final class SmsManager {
     }
 
     /**
-     * Get the default sms subId
+     * Get default sms subId
      *
-     * @return the default subId
+     * @return the default SubId
      * @hide
      */
     public static long getDefaultSmsSubId() {
