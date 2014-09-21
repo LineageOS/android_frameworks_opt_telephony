@@ -877,6 +877,20 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
         }
     }
 
+    @Override
+    public void
+    getDataRegistrationState (Message result) {
+        RILRequest rr
+                = RILRequest.obtain(RIL_REQUEST_DATA_REGISTRATION_STATE, result);
+
+        if (rr.mRequest > 30)
+            rr.mRequest = 16;
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
+    }
+
     static final int RIL_REQUEST_DIAL_EMERGENCY = 10016;
     public void
     dialEmergencyCall(String address, int clirMode, Message result) {
