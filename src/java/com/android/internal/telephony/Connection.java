@@ -93,6 +93,9 @@ public abstract class Connection {
     private List<PostDialListener> mPostDialListeners = new ArrayList<>();
     public Set<Listener> mListeners = new CopyOnWriteArraySet<>();
 
+    protected boolean mNumberConverted = false;
+    protected String mConvertedNumber;
+
     private static String LOG_TAG = "Connection";
 
     Object mUserData;
@@ -530,6 +533,13 @@ public abstract class Connection {
         for (Listener l : mListeners) {
             l.onVideoProviderChanged(mVideoProvider);
         }
+    }
+
+    public void setConverted(String oriNumber) {
+        mNumberConverted = true;
+        mConvertedNumber = mAddress;
+        mAddress = oriNumber;
+        mDialString = oriNumber;
     }
 
     /**
