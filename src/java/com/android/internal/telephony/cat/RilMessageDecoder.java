@@ -197,6 +197,7 @@ class RilMessageDecoder extends StateMachine {
     }
 
     public void dispose(int slotId) {
+        quitNow();
         mStateStart = null;
         mStateCmdParamsReady = null;
         mCmdParamsFactory.dispose();
