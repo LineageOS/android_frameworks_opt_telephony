@@ -876,6 +876,16 @@ public final class Telephony {
              * <ul>
              *   <li><em>"pdus"</em> - An Object[] of byte[]s containing the PDUs
              *   that make up the message.</li>
+             *   <li><em>"format"</em> - A String describing the format of the PDUs. It can
+             *   be either "3gpp" or "3gpp2".</li>
+             *   <li><em>"subscription"</em> - An optional long value of the subscription id which
+             *   received the message.</li>
+             *   <li><em>"slot"</em> - An optional int value of the SIM slot containing the
+             *   subscription.</li>
+             *   <li><em>"phone"</em> - An optional int value of the phone id associated with the
+             *   subscription.</li>
+             *   <li><em>"errorCode"</em> - An optional int error code associated with receiving
+             *   the message.</li>
              * </ul>
              *
              * <p>The extra values can be extracted using
@@ -984,6 +994,12 @@ public final class Telephony {
              *   <li><em>"contentTypeParameters" </em>
              *   -(HashMap&lt;String,String&gt;) Any parameters associated with the content type
              *   (decoded from the WSP Content-Type header)</li>
+             *   <li><em>"subscription"</em> - An optional long value of the subscription id which
+             *   received the message.</li>
+             *   <li><em>"slot"</em> - An optional int value of the SIM slot containing the
+             *   subscription.</li>
+             *   <li><em>"phone"</em> - An optional int value of the phone id associated with the
+             *   subscription.</li>
              * </ul>
              *
              * <p>If a BroadcastReceiver encounters an error while processing
