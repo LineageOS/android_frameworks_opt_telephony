@@ -54,8 +54,8 @@ import android.telephony.ServiceState;
 import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.DctConstants.State;
-import com.android.internal.telephony.DcParamObject;
 import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
@@ -629,6 +629,23 @@ public abstract class DcTrackerBase extends Handler {
         mPhone.notifyDataActivity();
     }
 
+    public void incApnRefCount(String name) {
+
+    }
+
+    public void decApnRefCount(String name) {
+
+    }
+
+    public boolean isApnSupported(String name) {
+        return false;
+    }
+
+    public int getApnPriority(String name) {
+        return -1;
+    }
+
+
     public boolean isApnTypeActive(String type) {
         // TODO: support simultaneous with List instead
         if (PhoneConstants.APN_TYPE_DUN.equals(type)) {
@@ -869,88 +886,82 @@ public abstract class DcTrackerBase extends Handler {
                 break;
             }
             case DctConstants.CMD_SET_USER_DATA_ENABLE: {
-                mUserDataEnabled = (msg.arg1 == DctConstants.ENABLED);
-                if (DBG) log("CMD_SET_USER_DATA_ENABLE mUserDataEnabled=" + mUserDataEnabled);
+                final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
+                if (DBG) log("CMD_SET_USER_DATA_ENABLE enabled=" + enabled);
+                onSetUserDataEnabled(enabled);
                 break;
             }
             case DctConstants.CMD_SET_DEPENDENCY_MET: {
-                if (getSubId() == ((DcParamObject)msg.obj).getSubId()) {
-                    boolean met = (msg.arg1 == DctConstants.ENABLED) ? true : false;
-                    if (DBG) log("CMD_SET_DEPENDENCY_MET met=" + met);
-                    Bundle bundle = msg.getData();
-                    if (bundle != null) {
-                        String apnType = (String)bundle.get(DctConstants.APN_TYPE_KEY);
-                        if (apnType != null) {
-                            onSetDependencyMet(apnType, met);
-                        }
+                boolean met = (msg.arg1 == DctConstants.ENABLED) ? true : false;
+                if (DBG) log("CMD_SET_DEPENDENCY_MET met=" + met);
+                Bundle bundle = msg.getData();
+                if (bundle != null) {
+                    String apnType = (String)bundle.get(DctConstants.APN_TYPE_KEY);
+                    if (apnType != null) {
+                        onSetDependencyMet(apnType, met);
                     }
                 }
                 break;
             }
             case DctConstants.CMD_SET_POLICY_DATA_ENABLE: {
-                if (getSubId() == ((DcParamObject)msg.obj).getSubId()) {
-                    final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
-                    onSetPolicyDataEnabled(enabled);
-                }
+                final boolean enabled = (msg.arg1 == DctConstants.ENABLED) ? true : false;
+                onSetPolicyDataEnabled(enabled);
                 break;
             }
             case DctConstants.CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: {
-                if (getSubId() == ((DcParamObject)msg.obj).getSubId()) {
-                    sEnableFailFastRefCounter += (msg.arg1 == DctConstants.ENABLED) ? 1 : -1;
-                    if (DBG) {
-                        log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: "
-                                + " sEnableFailFastRefCounter=" + sEnableFailFastRefCounter);
-                    }
-                    if (sEnableFailFastRefCounter < 0) {
-                        final String s = "CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: "
-                                + "sEnableFailFastRefCounter:" + sEnableFailFastRefCounter + " < 0";
-                        loge(s);
-                        sEnableFailFastRefCounter = 0;
-                    }
-                    final boolean enabled = sEnableFailFastRefCounter > 0;
-                    if (DBG) {
-                        log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: enabled=" + enabled
-                                + " sEnableFailFastRefCounter=" + sEnableFailFastRefCounter);
-                    }
-                    if (mFailFast != enabled) {
-                        mFailFast = enabled;
-                        mDataStallDetectionEnabled = !enabled;
-                        if (mDataStallDetectionEnabled
-                                && (getOverallState() == DctConstants.State.CONNECTED)
-                                && (!mInVoiceCall ||
-                                        mPhone.getServiceStateTracker()
-                                            .isConcurrentVoiceAndDataAllowed())) {
-                            if (DBG) log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: start data stall");
-                            stopDataStallAlarm();
-                            startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
-                        } else {
-                            if (DBG) log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: stop data stall");
-                            stopDataStallAlarm();
-                        }
+                sEnableFailFastRefCounter += (msg.arg1 == DctConstants.ENABLED) ? 1 : -1;
+                if (DBG) {
+                    log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: "
+                            + " sEnableFailFastRefCounter=" + sEnableFailFastRefCounter);
+                }
+                if (sEnableFailFastRefCounter < 0) {
+                    final String s = "CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: "
+                            + "sEnableFailFastRefCounter:" + sEnableFailFastRefCounter + " < 0";
+                    loge(s);
+                    sEnableFailFastRefCounter = 0;
+                }
+                final boolean enabled = sEnableFailFastRefCounter > 0;
+                if (DBG) {
+                    log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: enabled=" + enabled
+                            + " sEnableFailFastRefCounter=" + sEnableFailFastRefCounter);
+                }
+                if (mFailFast != enabled) {
+                    mFailFast = enabled;
+                    mDataStallDetectionEnabled = !enabled;
+                    if (mDataStallDetectionEnabled
+                            && (getOverallState() == DctConstants.State.CONNECTED)
+                            && (!mInVoiceCall ||
+                                    mPhone.getServiceStateTracker()
+                                        .isConcurrentVoiceAndDataAllowed())) {
+                        if (DBG) log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: start data stall");
+                        stopDataStallAlarm();
+                        startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
+                    } else {
+                        if (DBG) log("CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA: stop data stall");
+                        stopDataStallAlarm();
                     }
                 }
+
                 break;
             }
             case DctConstants.CMD_ENABLE_MOBILE_PROVISIONING: {
-                if (getSubId() == ((DcParamObject)msg.obj).getSubId()) {
-                    Bundle bundle = msg.getData();
-                    if (bundle != null) {
-                        try {
-                            mProvisioningUrl = (String)bundle.get(DctConstants.PROVISIONING_URL_KEY);
-                        } catch(ClassCastException e) {
-                            loge("CMD_ENABLE_MOBILE_PROVISIONING: provisioning url not a string" + e);
-                            mProvisioningUrl = null;
-                        }
-                    }
-                    if (TextUtils.isEmpty(mProvisioningUrl)) {
-                        loge("CMD_ENABLE_MOBILE_PROVISIONING: provisioning url is empty, ignoring");
-                        mIsProvisioning = false;
+                Bundle bundle = msg.getData();
+                if (bundle != null) {
+                    try {
+                        mProvisioningUrl = (String)bundle.get(DctConstants.PROVISIONING_URL_KEY);
+                    } catch(ClassCastException e) {
+                        loge("CMD_ENABLE_MOBILE_PROVISIONING: provisioning url not a string" + e);
                         mProvisioningUrl = null;
-                    } else {
-                        loge("CMD_ENABLE_MOBILE_PROVISIONING: provisioningUrl=" + mProvisioningUrl);
-                        mIsProvisioning = true;
-                        startProvisioningApnAlarm();
                     }
+                }
+                if (TextUtils.isEmpty(mProvisioningUrl)) {
+                    loge("CMD_ENABLE_MOBILE_PROVISIONING: provisioning url is empty, ignoring");
+                    mIsProvisioning = false;
+                    mProvisioningUrl = null;
+                } else {
+                    loge("CMD_ENABLE_MOBILE_PROVISIONING: provisioningUrl=" + mProvisioningUrl);
+                    mIsProvisioning = true;
+                    startProvisioningApnAlarm();
                 }
                 break;
             }
@@ -977,29 +988,27 @@ public abstract class DcTrackerBase extends Handler {
                 break;
             }
             case DctConstants.CMD_IS_PROVISIONING_APN: {
-                if (getSubId() == ((DcParamObject)msg.obj).getSubId()) {
-                    if (DBG) log("CMD_IS_PROVISIONING_APN");
-                    boolean isProvApn;
-                    try {
-                        String apnType = null;
-                        Bundle bundle = msg.getData();
-                        if (bundle != null) {
-                            apnType = (String)bundle.get(DctConstants.APN_TYPE_KEY);
-                        }
-                        if (TextUtils.isEmpty(apnType)) {
-                            loge("CMD_IS_PROVISIONING_APN: apnType is empty");
-                            isProvApn = false;
-                        } else {
-                            isProvApn = isProvisioningApn(apnType);
-                        }
-                    } catch (ClassCastException e) {
-                        loge("CMD_IS_PROVISIONING_APN: NO provisioning url ignoring");
-                        isProvApn = false;
+                if (DBG) log("CMD_IS_PROVISIONING_APN");
+                boolean isProvApn;
+                try {
+                    String apnType = null;
+                    Bundle bundle = msg.getData();
+                    if (bundle != null) {
+                        apnType = (String)bundle.get(DctConstants.APN_TYPE_KEY);
                     }
-                    if (DBG) log("CMD_IS_PROVISIONING_APN: ret=" + isProvApn);
-                    mReplyAc.replyToMessage(msg, DctConstants.CMD_IS_PROVISIONING_APN,
-                            isProvApn ? DctConstants.ENABLED : DctConstants.DISABLED);
+                    if (TextUtils.isEmpty(apnType)) {
+                        loge("CMD_IS_PROVISIONING_APN: apnType is empty");
+                        isProvApn = false;
+                    } else {
+                        isProvApn = isProvisioningApn(apnType);
+                    }
+                } catch (ClassCastException e) {
+                    loge("CMD_IS_PROVISIONING_APN: NO provisioning url ignoring");
+                    isProvApn = false;
                 }
+                if (DBG) log("CMD_IS_PROVISIONING_APN: ret=" + isProvApn);
+                mReplyAc.replyToMessage(msg, DctConstants.CMD_IS_PROVISIONING_APN,
+                        isProvApn ? DctConstants.ENABLED : DctConstants.DISABLED);
                 break;
             }
             case DctConstants.EVENT_ICC_CHANGED: {
@@ -1867,7 +1876,7 @@ public abstract class DcTrackerBase extends Handler {
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        pw.println("DataConnectionTrackerBase:");
+        pw.println("DcTrackerBase:");
         pw.println(" RADIO_TESTS=" + RADIO_TESTS);
         pw.println(" mInternalDataEnabled=" + mInternalDataEnabled);
         pw.println(" mUserDataEnabled=" + mUserDataEnabled);
