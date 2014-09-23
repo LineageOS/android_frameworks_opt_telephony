@@ -638,6 +638,7 @@ public abstract class DcTrackerBase extends Handler {
             log("fetchDunApn: net.tethering.noprovisioning=true ret: null");
             return null;
         }
+        int bearer = -1;
         Context c = mPhone.getContext();
         String apnData = Settings.Global.getString(c.getContentResolver(),
                 Settings.Global.TETHER_DUN_APN);
@@ -645,10 +646,17 @@ public abstract class DcTrackerBase extends Handler {
         for (ApnSetting dunSetting : dunSettings) {
             IccRecords r = mIccRecords.get();
             String operator = (r != null) ? r.getOperatorNumeric() : "";
+            if (dunSetting.bearer != 0) {
+                if (bearer == -1) bearer = mPhone.getServiceState().getRilDataRadioTechnology();
+                if (dunSetting.bearer != bearer) continue;
+            }
             if (dunSetting.numeric.equals(operator)) {
                 if (dunSetting.hasMvnoParams()) {
-                    if (r != null && mvnoMatches(r, dunSetting.mvnoType, dunSetting.mvnoMatchData)) {
-                        if (VDBG) log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
+                    if (r != null &&
+                            mvnoMatches(r, dunSetting.mvnoType, dunSetting.mvnoMatchData)) {
+                        if (VDBG) {
+                            log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
+                        }
                         return dunSetting;
                     }
                 } else {
