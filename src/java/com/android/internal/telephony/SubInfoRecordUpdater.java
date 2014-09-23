@@ -107,6 +107,8 @@ public class SubInfoRecordUpdater extends Handler {
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             sCardState[i] = CardState.CARDSTATE_ABSENT;
         }
+        IntentFilter intentFilter = new IntentFilter(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
+        sContext.registerReceiver(sReceiver, intentFilter);
     }
 
     private static int encodeEventId(int event, int slotId) {
@@ -128,16 +130,8 @@ public class SubInfoRecordUpdater extends Handler {
                 if (slotId == SubscriptionManager.INVALID_SLOT_ID) {
                     return;
                 }
-                if (IccCardConstants.INTENT_VALUE_ICC_READY.equals(simStatus)
-                        || IccCardConstants.INTENT_VALUE_ICC_LOCKED.equals(simStatus)) {
-                    if (sIccId[slotId] != null && sIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
-                        logd("SIM" + (slotId + 1) + " hot plug in");
-                        sIccId[slotId] = null;
-                        sNeedUpdate = true;
-                    }
-                    queryIccId(slotId);
-                } else if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(simStatus)) {
-                    queryIccId(slotId);
+
+                if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(simStatus)) {
                     if (sTelephonyMgr == null) {
                         sTelephonyMgr = TelephonyManager.from(sContext);
                     }
@@ -183,16 +177,6 @@ public class SubInfoRecordUpdater extends Handler {
                         }
                     } else {
                         logd("[Receiver] Invalid subId, could not update ContentResolver");
-                    }
-                } else if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(simStatus)) {
-                    if (sIccId[slotId] != null && !sIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
-                        logd("SIM" + (slotId + 1) + " hot plug out");
-                        sNeedUpdate = true;
-                    }
-                    sFh[slotId] = null;
-                    sIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
-                    if (isAllIccIdQueryDone() && sNeedUpdate) {
-                        updateSimInfoByIccId();
                     }
                 }
             }
@@ -575,6 +559,7 @@ public class SubInfoRecordUpdater extends Handler {
 
     public void dispose() {
         logd("[dispose]");
+        sContext.unregisterReceiver(sReceiver);
     }
 
     private static void logd(String message) {
