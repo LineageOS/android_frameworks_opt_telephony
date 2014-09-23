@@ -157,6 +157,18 @@ public class PduPart {
          return byteArray;
      }
 
+    /**
+     * @return The length of the data, if this object have data, else 0.
+     */
+     public int getDataLength() {
+         if(mPartData != null){
+             return mPartData.length;
+         } else {
+             return 0;
+         }
+     }
+
+
      /**
       * Set data uri. The data are stored as Uri.
       *
