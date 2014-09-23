@@ -70,47 +70,6 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         } catch (RemoteException ex) {
             // system process is dead
         }
-        notifyCallStateToTelephonyRegistry(sender);
-    }
-
-    /*
-     *  Suppose, some third party app e.g. FM app registers for a call state changed indication
-     *  through TelephonyManager/PhoneStateListener and an incoming call is received on sub1 or
-     *  sub2. Then ir-respective of sub1/sub2 FM app should be informed of call state
-     *  changed(onCallStateChanged()) indication so that FM app can be paused.
-     *  Hence send consolidated call state information to apps. (i.e. sub1 or sub2 active
-     *  call state,  in priority order RINGING > OFFHOOK > IDLE)
-     */
-    public void notifyCallStateToTelephonyRegistry(Phone sender) {
-        Call ringingCall = null;
-        CallManager cm = CallManager.getInstance();
-        PhoneConstants.State state = sender.getState();
-        String incomingNumber = "";
-        for (Phone phone : cm.getAllPhones()) {
-            if (phone.getState() == PhoneConstants.State.RINGING) {
-                ringingCall = phone.getRingingCall();
-                if (ringingCall != null && ringingCall.getEarliestConnection() != null) {
-                    incomingNumber = ringingCall.getEarliestConnection().getAddress();
-                }
-                sender = phone;
-                state = PhoneConstants.State.RINGING;
-                break;
-            } else if (phone.getState() == PhoneConstants.State.OFFHOOK) {
-                if (state == PhoneConstants.State.IDLE) {
-                    state = PhoneConstants.State.OFFHOOK;
-                    sender = phone;
-                }
-            }
-        }
-        if (DBG) log("notifyCallStateToTelephonyRegistry, subId = " + sender.getSubId()
-                + " state = " + state);
-        try {
-            if (mRegistry != null) {
-                mRegistry.notifyCallState(convertCallState(state), incomingNumber);
-            }
-        } catch (RemoteException ex) {
-            // system process is dead
-        }
     }
 
     @Override
