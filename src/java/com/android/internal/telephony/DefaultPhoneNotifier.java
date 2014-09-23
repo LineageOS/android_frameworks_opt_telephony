@@ -75,16 +75,18 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     @Override
     public void notifyServiceState(Phone sender) {
         ServiceState ss = sender.getServiceState();
+        int phoneId = sender.getPhoneId();
         long subId = sender.getSubId();
+
         Rlog.d(LOG_TAG, "nofityServiceState: mRegistry=" + mRegistry + " ss=" + ss
-                + " sender=" + sender);
+                + " sender=" + sender + " phondId=" + phoneId + " subId=" + subId);
         if (ss == null) {
             ss = new ServiceState();
             ss.setStateOutOfService();
         }
         try {
             if (mRegistry != null) {
-                mRegistry.notifyServiceStateForSubscriber(subId, ss);
+                mRegistry.notifyServiceStateForPhoneId(phoneId, subId, ss);
             }
         } catch (RemoteException ex) {
             // system process is dead
@@ -107,10 +109,12 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
 
     @Override
     public void notifyMessageWaitingChanged(Phone sender) {
+        int phoneId = sender.getPhoneId();
         long subId = sender.getSubId();
+
         try {
             if (mRegistry != null) {
-                mRegistry.notifyMessageWaitingChangedForSubscriber(subId,
+                mRegistry.notifyMessageWaitingChangedForPhoneId(phoneId, subId,
                         sender.getMessageWaitingIndicator());
             }
         } catch (RemoteException ex) {
