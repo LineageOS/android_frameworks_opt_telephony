@@ -248,8 +248,9 @@ public final class SmsManager {
 
         try {
             ISms iccISms = getISmsServiceOrThrow();
-            iccISms.sendText(ActivityThread.currentPackageName(), destinationAddress,
-                    scAddress, text, sentIntent, deliveryIntent);
+            // use sub based apis
+            iccISms.sendTextForSubscriber(mSubId, ActivityThread.currentPackageName(),
+                    destinationAddress, scAddress, text, sentIntent, deliveryIntent);
         } catch (RemoteException ex) {
             // ignore it
         }
@@ -382,7 +383,7 @@ public final class SmsManager {
         if (parts.size() > 1) {
             try {
                 ISms iccISms = getISmsServiceOrThrow();
-                iccISms.sendMultipartText(ActivityThread.currentPackageName(),
+                iccISms.sendMultipartTextForSubscriber(mSubId, ActivityThread.currentPackageName(),
                         destinationAddress, scAddress, parts,
                         sentIntents, deliveryIntents);
             } catch (RemoteException ex) {
