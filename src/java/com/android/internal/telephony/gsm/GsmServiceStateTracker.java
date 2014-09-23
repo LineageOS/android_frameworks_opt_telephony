@@ -1114,6 +1114,12 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                             "' iso-cc-idx=" + Arrays.binarySearch(GMT_COUNTRY_CODES, iso));
                     }
 
+                    if ("".equals(iso) && mNeedFixZoneAfterNitz) {
+                        // Country code not found.  This is likely a test network.
+                        // Get a TimeZone based only on the NITZ parameters (best guess).
+                        zone = getNitzTimeZone(mZoneOffset, mZoneDst, mZoneTime);
+                        if (DBG) log("pollStateDone: using NITZ TimeZone");
+                    } else
                     // "(mZoneOffset == 0) && (mZoneDst == false) &&
                     //  (Arrays.binarySearch(GMT_COUNTRY_CODES, iso) < 0)"
                     // means that we received a NITZ string telling
@@ -1144,11 +1150,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                             }
                         }
                         if (DBG) log("pollStateDone: using default TimeZone");
-                    } else if (iso.equals("")){
-                        // Country code not found.  This is likely a test network.
-                        // Get a TimeZone based only on the NITZ parameters (best guess).
-                        zone = getNitzTimeZone(mZoneOffset, mZoneDst, mZoneTime);
-                        if (DBG) log("pollStateDone: using NITZ TimeZone");
                     } else {
                         zone = TimeUtils.getTimeZone(mZoneOffset, mZoneDst, mZoneTime, iso);
                         if (DBG) log("pollStateDone: using getTimeZone(off, dst, time, iso)");
