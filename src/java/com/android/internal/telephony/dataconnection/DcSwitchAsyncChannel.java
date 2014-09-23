@@ -1,18 +1,18 @@
 /*
-* Copyright (C) 2011-2014 MediaTek Inc.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright (C) 2014 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.android.internal.telephony.dataconnection;
 
@@ -20,8 +20,9 @@ import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 import com.android.internal.telephony.PhoneConstants;
 
+import android.net.NetworkRequest;
 import android.os.Message;
-import android.util.Log;
+import android.telephony.Rlog;
 
 public class DcSwitchAsyncChannel extends AsyncChannel {
     private static final boolean DBG = true;
@@ -29,7 +30,7 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
     private static final String LOG_TAG = "DcSwitchAsyncChannel";
 
     private int tagId = 0;
-    private DcSwitchState mDcSwitchState;
+    private DcSwitchStateMachine mDcSwitchState;
 
     // ***** Event codes for driving the state machine
     private static final int BASE = Protocol.BASE_DATA_CONNECTION_TRACKER + 0x00002000;
@@ -37,22 +38,47 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
     static final int RSP_CONNECT = BASE + 1;
     static final int REQ_DISCONNECT = BASE + 2;
     static final int RSP_DISCONNECT = BASE + 3;
-    static final int REQ_IS_IDLE_STATE = BASE + 4;
-    static final int RSP_IS_IDLE_STATE = BASE + 5;
-    static final int REQ_IS_IDLE_OR_DEACTING_STATE = BASE + 6;
-    static final int RSP_IS_IDLE_OR_DEACTING_STATE = BASE + 7;
+    static final int REQ_DISCONNECT_ALL = BASE + 4;
+    static final int RSP_DISCONNECT_ALL = BASE + 5;
+    static final int REQ_IS_IDLE_STATE = BASE + 6;
+    static final int RSP_IS_IDLE_STATE = BASE + 7;
+    static final int REQ_IS_IDLE_OR_DETACHING_STATE = BASE + 8;
+    static final int RSP_IS_IDLE_OR_DETACHING_STATE = BASE + 9;
+    static final int EVENT_DATA_ATTACHED = BASE + 10;
+    static final int EVENT_DATA_DETACHED = BASE + 11;
 
-    private static final int CMD_TO_STRING_COUNT = RSP_IS_IDLE_OR_DEACTING_STATE - BASE + 1;
+    private static final int CMD_TO_STRING_COUNT = EVENT_DATA_DETACHED - BASE + 1;
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
         sCmdToString[REQ_CONNECT - BASE] = "REQ_CONNECT";
         sCmdToString[RSP_CONNECT - BASE] = "RSP_CONNECT";
         sCmdToString[REQ_DISCONNECT - BASE] = "REQ_DISCONNECT";
         sCmdToString[RSP_DISCONNECT - BASE] = "RSP_DISCONNECT";
+        sCmdToString[REQ_DISCONNECT_ALL - BASE] = "REQ_DISCONNECT_ALL";
+        sCmdToString[RSP_DISCONNECT_ALL - BASE] = "RSP_DISCONNECT_ALL";
         sCmdToString[REQ_IS_IDLE_STATE - BASE] = "REQ_IS_IDLE_STATE";
         sCmdToString[RSP_IS_IDLE_STATE - BASE] = "RSP_IS_IDLE_STATE";
-        sCmdToString[REQ_IS_IDLE_OR_DEACTING_STATE - BASE] = "REQ_IS_IDLE_OR_DEACTING_STATE";
-        sCmdToString[RSP_IS_IDLE_OR_DEACTING_STATE - BASE] = "RSP_IS_IDLE_OR_DEACTING_STATE";
+        sCmdToString[REQ_IS_IDLE_OR_DETACHING_STATE - BASE] = "REQ_IS_IDLE_OR_DETACHING_STATE";
+        sCmdToString[RSP_IS_IDLE_OR_DETACHING_STATE - BASE] = "RSP_IS_IDLE_OR_DETACHING_STATE";
+        sCmdToString[EVENT_DATA_ATTACHED - BASE] = "EVENT_DATA_ATTACHED";
+        sCmdToString[EVENT_DATA_DETACHED - BASE] = "EVENT_DATA_DETACHED";
+    }
+
+    public static class RequestInfo {
+        boolean executed;
+        NetworkRequest request;
+        int priority;
+
+        public RequestInfo(NetworkRequest request, int priority) {
+            this.request = request;
+            this.priority = priority;
+        }
+
+        @Override
+        public String toString() {
+            return "[ request=" + request + ", executed=" + executed +
+                ", priority=" + priority + "]";
+        }
     }
 
     protected static String cmdToString(int cmd) {
@@ -64,59 +90,70 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
         }
     }
 
-    public DcSwitchAsyncChannel(DcSwitchState dcSwitchState, int id) {
+    public DcSwitchAsyncChannel(DcSwitchStateMachine dcSwitchState, int id) {
         mDcSwitchState = dcSwitchState;
         tagId = id;
     }
 
-    public void reqConnect(String type) {
-        sendMessage(REQ_CONNECT, type);
-        if (DBG) log("reqConnect");
-    }
-
-    public int rspConnect(Message response) {
+    private int rspConnect(Message response) {
         int retVal = response.arg1;
         if (DBG) log("rspConnect=" + retVal);
         return retVal;
     }
 
-    public int connectSync(String type) {
-        Message response = sendMessageSynchronously(REQ_CONNECT, type);
+    public int connectSync(RequestInfo apnRequest) {
+        Message response = sendMessageSynchronously(REQ_CONNECT, apnRequest);
         if ((response != null) && (response.what == RSP_CONNECT)) {
             return rspConnect(response);
         } else {
-            log("rspConnect error response=" + response);
+            if (DBG) log("rspConnect error response=" + response);
             return PhoneConstants.APN_REQUEST_FAILED;
         }
     }
 
-    public void reqDisconnect(String type) {
-        sendMessage(REQ_DISCONNECT, type);
-        if (DBG) log("reqDisconnect");
-    }
-
-    public int rspDisconnect(Message response) {
+    private int rspDisconnect(Message response) {
         int retVal = response.arg1;
         if (DBG) log("rspDisconnect=" + retVal);
         return retVal;
     }
 
-    public int disconnectSync(String type) {
-        Message response = sendMessageSynchronously(REQ_DISCONNECT, type);
+    public int disconnectSync(RequestInfo apnRequest) {
+        Message response = sendMessageSynchronously(REQ_DISCONNECT, apnRequest);
         if ((response != null) && (response.what == RSP_DISCONNECT)) {
             return rspDisconnect(response);
         } else {
-            log("rspDisconnect error response=" + response);
+            if (DBG) log("rspDisconnect error response=" + response);
             return PhoneConstants.APN_REQUEST_FAILED;
         }
     }
 
-    public void reqIsIdle() {
-        sendMessage(REQ_IS_IDLE_STATE);
-        if (DBG) log("reqIsIdle");
+    private int rspDisconnectAll(Message response) {
+        int retVal = response.arg1;
+        if (DBG) log("rspDisconnectAll=" + retVal);
+        return retVal;
     }
 
-    public boolean rspIsIdle(Message response) {
+    public int disconnectAllSync() {
+        Message response = sendMessageSynchronously(REQ_DISCONNECT_ALL);
+        if ((response != null) && (response.what == RSP_DISCONNECT_ALL)) {
+            return rspDisconnectAll(response);
+        } else {
+            if (DBG) log("rspDisconnectAll error response=" + response);
+            return PhoneConstants.APN_REQUEST_FAILED;
+        }
+    }
+
+    public void notifyDataAttached() {
+        sendMessage(EVENT_DATA_ATTACHED);
+        if (DBG) log("notifyDataAttached");
+    }
+
+    public void notifyDataDetached() {
+        sendMessage(EVENT_DATA_DETACHED);
+        if (DBG) log("EVENT_DATA_DETACHED");
+    }
+
+    private boolean rspIsIdle(Message response) {
         boolean retVal = response.arg1 == 1;
         if (DBG) log("rspIsIdle=" + retVal);
         return retVal;
@@ -127,28 +164,28 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
         if ((response != null) && (response.what == RSP_IS_IDLE_STATE)) {
             return rspIsIdle(response);
         } else {
-            log("rspIsIndle error response=" + response);
+            if (DBG) log("rspIsIndle error response=" + response);
             return false;
         }
     }
 
-    public void reqIsIdleOrDeacting() {
-        sendMessage(REQ_IS_IDLE_OR_DEACTING_STATE);
-        if (DBG) log("reqIsIdleOrDeacting");
+    public void reqIsIdleOrDetaching() {
+        sendMessage(REQ_IS_IDLE_OR_DETACHING_STATE);
+        if (DBG) log("reqIsIdleOrDetaching");
     }
 
-    public boolean rspIsIdleOrDeacting(Message response) {
+    public boolean rspIsIdleOrDetaching(Message response) {
         boolean retVal = response.arg1 == 1;
-        if (DBG) log("rspIsIdleOrDeacting=" + retVal);
+        if (DBG) log("rspIsIdleOrDetaching=" + retVal);
         return retVal;
     }
 
-    public boolean isIdleOrDeactingSync() {
-        Message response = sendMessageSynchronously(REQ_IS_IDLE_OR_DEACTING_STATE);
-        if ((response != null) && (response.what == RSP_IS_IDLE_OR_DEACTING_STATE)) {
-            return rspIsIdleOrDeacting(response);
+    public boolean isIdleOrDetachingSync() {
+        Message response = sendMessageSynchronously(REQ_IS_IDLE_OR_DETACHING_STATE);
+        if ((response != null) && (response.what == RSP_IS_IDLE_OR_DETACHING_STATE)) {
+            return rspIsIdleOrDetaching(response);
         } else {
-            log("rspIsIndleOrDeacting error response=" + response);
+            if (DBG) log("rspIsIdleOrDetaching error response=" + response);
             return false;
         }
     }
@@ -159,6 +196,7 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
     }
 
     private void log(String s) {
-        Log.d(LOG_TAG, "[DcSwitchAsyncChannel-" + tagId + "]: " + s);
+        Rlog.d(LOG_TAG, "[DcSwitchAsyncChannel-" + tagId + "]: " + s);
     }
+
 }
