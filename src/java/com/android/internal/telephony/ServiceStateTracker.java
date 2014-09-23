@@ -596,6 +596,24 @@ public abstract class ServiceStateTracker extends Handler {
     public void powerOffRadioSafely(DcTrackerBase dcTracker) {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
+                // In some network, deactivate PDP connection cause releasing of RRC connection,
+                // which MM/IMSI detaching request needs. Without this detaching, network can
+                // not release the network resources previously attached.
+                // So we are avoiding data detaching on these networks.
+                String[] networkNotClearData = mPhoneBase.getContext().getResources()
+                        .getStringArray(com.android.internal.R.array.networks_not_clear_data);
+                String currentNetwork = mSS.getOperatorNumeric();
+                if ((networkNotClearData != null) && (currentNetwork != null)) {
+                    for (int i = 0; i < networkNotClearData.length; i++) {
+                        if (currentNetwork.equals(networkNotClearData[i])) {
+                            // Don't clear data connection for this carrier
+                            if (DBG)
+                                log("Not disconnecting data for " + currentNetwork);
+                            hangupAndPowerOff();
+                            return;
+                        }
+                    }
+                }
                 // To minimize race conditions we call cleanUpAllConnections on
                 // both if else paths instead of before this isDisconnected test.
                 if (dcTracker.isDisconnected()) {
