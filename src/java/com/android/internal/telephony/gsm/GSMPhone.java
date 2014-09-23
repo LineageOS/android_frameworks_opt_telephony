@@ -278,9 +278,10 @@ public class GSMPhone extends PhoneBase {
     public ServiceState
     getServiceState() {
         if (mSST == null || mSST.mSS.getState() != ServiceState.STATE_IN_SERVICE) {
-            if (mImsPhone != null &&
-                    mImsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
-                return mImsPhone.getServiceState();
+            if (mImsPhone != null) {
+                return ServiceState.mergeServiceStates(
+                        (mSST == null) ? new ServiceState() : mSST.mSS,
+                        mImsPhone.getServiceState());
             }
         }
 
