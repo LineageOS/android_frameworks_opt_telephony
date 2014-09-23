@@ -1353,7 +1353,7 @@ public class PduPersister {
                     // we have to ignore it in loadRecipients.
                     if (groupMmsEnabled) {
                         loadRecipients(PduHeaders.TO, recipients, addressMap, true);
-                        
+
                         // Also load any numbers in the CC field to address group messaging
                         // compatibility issues with devices that place numbers in this field
                         // for group messages.
@@ -1380,6 +1380,9 @@ public class PduPersister {
         // Figure out if this PDU is a text-only message
         boolean textOnly = true;
 
+        // Sum up the total message size
+        int messageSize = 0;
+
         // Get body if the PDU is a RetrieveConf or SendReq.
         if (pdu instanceof MultimediaMessagePdu) {
             body = ((MultimediaMessagePdu) pdu).getBody();
@@ -1395,6 +1398,7 @@ public class PduPersister {
                 }
                 for (int i = 0; i < partsNum; i++) {
                     PduPart part = body.getPart(i);
+                    messageSize += part.getDataLength();
                     persistPart(part, dummyId, preOpenedFiles);
 
                     // If we've got anything besides text/plain or SMIL part, then we've got
@@ -1410,6 +1414,11 @@ public class PduPersister {
         // Record whether this mms message is a simple plain text or not. This is a hint for the
         // UI.
         values.put(Mms.TEXT_ONLY, textOnly ? 1 : 0);
+        // The message-size might already have been inserted when parsing the
+        // PDU header. If not, then we insert the message size as well.
+        if (values.getAsInteger(Mms.MESSAGE_SIZE) == null) {
+            values.put(Mms.MESSAGE_SIZE, messageSize);
+        }
 
         Uri res = null;
         if (existingUri) {
