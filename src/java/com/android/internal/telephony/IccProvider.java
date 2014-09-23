@@ -75,6 +75,7 @@ public class IccProvider extends ContentProvider {
         URL_MATCHER.addURI("icc", "fdn/subId/#", FDN_SUB);
         URL_MATCHER.addURI("icc", "sdn", SDN);
         URL_MATCHER.addURI("icc", "sdn/subId/#", SDN_SUB);
+        URL_MATCHER.addURI("icc", "adn/adn_all", ADN_ALL);
     }
 
     private SubscriptionManager mSubscriptionManager;
