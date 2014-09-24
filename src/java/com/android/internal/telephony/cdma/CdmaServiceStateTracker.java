@@ -211,6 +211,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         setSignalStrengthDefaultValues();
 
         mHbpcdUtils = new HbpcdUtils(phone.getContext());
+
+        // Reset OTASP state in case previously set by another service
+        phone.notifyOtaspChanged(OTASP_UNINITIALIZED);
     }
 
     @Override
