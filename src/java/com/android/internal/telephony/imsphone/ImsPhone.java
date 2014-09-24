@@ -472,8 +472,11 @@ public class ImsPhone extends ImsPhoneBase {
 
     protected Connection dialInternal(String dialString, int videoState)
             throws CallStateException {
-        boolean isConferenceUri = extras.getBoolean(TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI,
-                false);
+        boolean isConferenceUri = false;
+        if (extras != null) {
+            isConferenceUri = extras.getBoolean(TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI,
+                    false);
+        }
         String newDialString = dialString;
         // Need to make sure dialString gets parsed properly
         if (!isConferenceUri) {
