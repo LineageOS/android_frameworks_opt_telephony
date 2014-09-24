@@ -386,8 +386,11 @@ public final class ImsPhoneCallTracker extends CallTracker {
             return;
         }
 
-        boolean isConferenceUri = extras.getBoolean(TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI,
-                false);
+        boolean isConferenceUri = false;
+        if (extras != null) {
+            isConferenceUri = extras.getBoolean(TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI,
+                    false);
+        }
         if (!isConferenceUri && (conn.getAddress()== null || conn.getAddress().length() == 0
                 || conn.getAddress().indexOf(PhoneNumberUtils.WILD) >= 0)) {
             // Phone number is invalid

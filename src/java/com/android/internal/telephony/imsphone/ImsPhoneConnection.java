@@ -175,8 +175,11 @@ public class ImsPhoneConnection extends Connection {
     ImsPhoneConnection(Context context, String dialString, ImsPhoneCallTracker ct, ImsPhoneCall parent) {
         createWakeLock(context);
         acquireWakeLock();
-        boolean isConferenceUri = extras.getBoolean(
-                TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, false);
+        boolean isConferenceUri = false;
+        if (extras != null) {
+            isConferenceUri = extras.getBoolean(
+                    TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, false);
+        }
 
         mOwner = ct;
         mHandler = new MyHandler(mOwner.getLooper());
