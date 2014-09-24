@@ -491,10 +491,6 @@ public class ImsPhone extends ImsPhoneBase {
             return null;
         }
 
-        if (mDefaultPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
-            return mCT.dial(dialString, videoState);
-        }
-
         // Only look at the Network portion for mmi
         String networkPortion = PhoneNumberUtils.extractNetworkPortionAlt(newDialString);
         ImsPhoneMmiCode mmi =
