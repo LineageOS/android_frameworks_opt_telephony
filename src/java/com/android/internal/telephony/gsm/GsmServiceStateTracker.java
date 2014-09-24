@@ -253,9 +253,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         Context context = phone.getContext();
         filter.addAction(ACTION_RADIO_OFF);
         context.registerReceiver(mIntentReceiver, filter);
-
-        // Gsm doesn't support OTASP so its not needed
-        phone.notifyOtaspChanged(OTASP_NOT_NEEDED);
     }
 
     @Override
@@ -415,6 +412,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
             case EVENT_SIM_RECORDS_LOADED:
                 log("EVENT_SIM_RECORDS_LOADED: what=" + msg.what);
+                // Gsm doesn't support OTASP so its not needed
+                mPhone.notifyOtaspChanged(OTASP_NOT_NEEDED);
 
                 updateSpnDisplay();
                 break;
