@@ -1050,10 +1050,16 @@ public class ImsPhone extends ImsPhoneBase {
     sendResponse(Message onComplete, Object result, Throwable e) {
         if (onComplete != null) {
             CommandException ex = null;
+            ImsException imsEx = null;
             if (e != null) {
-                ex = getCommandException(e);
+                if (e instanceof ImsException) {
+                    imsEx = (ImsException) e;
+                    AsyncResult.forMessage(onComplete, result, imsEx);
+                } else {
+                    ex = getCommandException(e);
+                    AsyncResult.forMessage(onComplete, result, ex);
+                }
             }
-            AsyncResult.forMessage(onComplete, result, ex);
             onComplete.sendToTarget();
         }
     }
