@@ -93,6 +93,8 @@ public final class DataConnection extends StateMachine {
     private static final String SECONDARY_DATA_RETRY_CONFIG =
             "max_retries=3, 5000, 5000, 5000";
 
+    private static final String NETWORK_TYPE = "MOBILE";
+
     // The data connection controller
     private DcController mDcController;
 
@@ -419,7 +421,7 @@ public final class DataConnection extends StateMachine {
         mDataRegState = mPhone.getServiceState().getDataRegState();
         int networkType = ss.getDataNetworkType();
         mNetworkInfo = new NetworkInfo(ConnectivityManager.TYPE_MOBILE,
-                networkType, "Cellular", TelephonyManager.getNetworkTypeName(networkType));
+                networkType, NETWORK_TYPE, TelephonyManager.getNetworkTypeName(networkType));
         mNetworkInfo.setRoaming(ss.getRoaming());
         mNetworkInfo.setIsAvailable(true);
 
