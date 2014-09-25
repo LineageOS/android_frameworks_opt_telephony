@@ -269,6 +269,7 @@ public final class SmsManager {
      *  the same time an SMS received from radio is acknowledged back.
      *
      *  @throws IllegalArgumentException if format is not one of 3gpp and 3gpp2.
+     *  {@hide}
      */
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
         if (!format.equals(SmsMessage.FORMAT_3GPP) && !format.equals(SmsMessage.FORMAT_3GPP2)) {
@@ -297,6 +298,7 @@ public final class SmsManager {
      * @param messageRef the reference number of the SMS message.
      * @param success True if and only if the message was sent successfully. If its value is
      *  false, this message should be resent via PSTN.
+     * {@hide}
      */
     public void updateSmsSendStatus(int messageRef, boolean success) {
         try {
@@ -1029,6 +1031,7 @@ public final class SmsManager {
      *   If status is MMS_ERROR_RETRY, this message would be resent via carrier
      *   network. The message will not be resent for other MMS error statuses.
      * @param contentUri the URI of the sent message
+     * {@hide}
      */
     public void updateMmsSendStatus(Context context, int messageRef, byte[] pdu, int status,
             Uri contentUri) {
@@ -1061,6 +1064,7 @@ public final class SmsManager {
      *   If status is MMS_ERROR_RETRY, this message would be re-downloaded via carrier
      *   network. The message will not be re-downloaded for other MMS error statuses.
      * @param contentUri the URI of the downloaded message
+     * {@hide}
      */
     public void updateMmsDownloadStatus(Context context, int messageRef, int status,
             Uri contentUri) {
