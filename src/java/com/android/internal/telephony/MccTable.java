@@ -29,7 +29,9 @@ import android.text.TextUtils;
 import android.util.Slog;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import libcore.icu.TimeZoneNames;
 
@@ -248,54 +250,75 @@ public final class MccTable
      */
     public static Locale getLocaleForLanguageCountry(Context context, String language,
             String country) {
-        String l = SystemProperties.get("persist.sys.language");
-        String c = SystemProperties.get("persist.sys.country");
-
-        if (null == language) {
+        if (language == null) {
             Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping no language");
             return null; // no match possible
         }
-        if (null == country) {
-            country = "";
+        if (country == null) {
+            country = ""; // The Locale constructor throws if passed null.
         }
+
+        // Note: persist.always.persist.locale actually means the opposite!
         boolean alwaysPersist = false;
         if (Build.IS_DEBUGGABLE) {
             alwaysPersist = SystemProperties.getBoolean("persist.always.persist.locale", false);
         }
-        if (alwaysPersist || ((null == l || 0 == l.length()) && (null == c || 0 == c.length()))) {
-            final Locale target = new Locale(language, country);
-            try {
-                // try to find a good match
-                String[] locales = context.getAssets().getLocales();
-                final int N = locales.length;
-                Locale bestMatch = null;
-                for(int i = 0; i < N; i++) {
-                    // only match full (lang + country) locales
-                    if (locales[i] != null && locales[i].length() >= 5) {
-                        final Locale locale = Locale.forLanguageTag(locales[i]);
+        String persistSysLanguage = SystemProperties.get("persist.sys.language", "");
+        String persistSysCountry = SystemProperties.get("persist.sys.country", "");
+        if (!(alwaysPersist || (persistSysLanguage.isEmpty() && persistSysCountry.isEmpty()))) {
+            Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping already persisted");
+            return null;
+        }
 
-                        if (locale.getLanguage().equals(target.getLanguage())) {
-                            if (locale.getCountry().equals(target.getCountry())) {
-                                bestMatch = locale;
-                                break;
-                            } else if (bestMatch == null) {
-                                bestMatch = locale;
-                            }
-                        }
+        // Find the best match we actually have a localization for.
+        // TODO: this should really follow the CLDR chain of parent locales!
+        final Locale target = new Locale(language, country);
+        try {
+            String[] localeArray = context.getAssets().getLocales();
+            List<String> locales = new ArrayList<>(Arrays.asList(localeArray));
+
+            // Even in developer mode, you don't want the pseudolocales.
+            locales.remove("ar-XB");
+            locales.remove("en-XA");
+
+            Locale firstMatch = null;
+            for (String locale : locales) {
+                final Locale l = Locale.forLanguageTag(locale.replace('_', '-'));
+
+                // Only consider locales with both language and country.
+                if (l == null || "und".equals(l.getLanguage()) ||
+                        l.getLanguage().isEmpty() || l.getCountry().isEmpty()) {
+                    continue;
+                }
+                if (l.getLanguage().equals(target.getLanguage())) {
+                    // If we got a perfect match, we're done.
+                    if (l.getCountry().equals(target.getCountry())) {
+                        Slog.d(LOG_TAG, "getLocaleForLanguageCountry: got perfect match: " +
+                               l.toLanguageTag());
+                        return l;
+                    }
+                    // Otherwise somewhat arbitrarily take the first locale for the language,
+                    // unless we get a perfect match later. Note that these come back in no
+                    // particular order, so there's no reason to think the first match is
+                    // a particularly good match.
+                    if (firstMatch == null) {
+                        firstMatch = l;
                     }
                 }
-                if (null != bestMatch) {
-                    Slog.d(LOG_TAG, "getLocaleForLanguageCountry: got match: " +
-                            bestMatch.toLanguageTag());
-                    return bestMatch;
-                } else {
-                    Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skip no match");
-                }
-            } catch (Exception e) {
-                Slog.d(LOG_TAG, "getLocaleForLanguageCountry: exception", e);
             }
-        } else {
-            Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping already persisted");
+
+            // We didn't find the exact locale, so return whichever locale we saw first where
+            // the language matched (if any).
+            if (firstMatch != null) {
+                Slog.d(LOG_TAG, "getLocaleForLanguageCountry: got a language-only match: " +
+                       firstMatch.toLanguageTag());
+                return firstMatch;
+            } else {
+                Slog.d(LOG_TAG, "getLocaleForLanguageCountry: no locales for language " +
+                       language);
+            }
+        } catch (Exception e) {
+            Slog.d(LOG_TAG, "getLocaleForLanguageCountry: exception", e);
         }
 
         return null;
