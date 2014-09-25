@@ -126,13 +126,13 @@ public class UiccSmsController extends ISms.Stub {
     public void sendDataWithOrigPort(String callingPackage, String destAddr, String scAddr,
             int destPort, int origPort, byte[] data, PendingIntent sentIntent,
             PendingIntent deliveryIntent) {
-         sendDataWithOrigPortUsingSubId(getDefaultSmsSubId(), callingPackage, destAddr,
+         sendDataWithOrigPortUsingSubscriber(getDefaultSmsSubId(), callingPackage, destAddr,
                  scAddr, destPort, origPort, data, sentIntent, deliveryIntent);
     }
 
-    public void sendDataWithOrigPortUsingSubId(long subId, String callingPackage, String destAddr,
-            String scAddr, int destPort, int origPort, byte[] data, PendingIntent sentIntent,
-            PendingIntent deliveryIntent) {
+    public void sendDataWithOrigPortUsingSubscriber(long subId, String callingPackage,
+            String destAddr, String scAddr, int destPort, int origPort, byte[] data,
+            PendingIntent sentIntent, PendingIntent deliveryIntent) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendDataWithOrigPort(callingPackage, destAddr, scAddr, destPort,
@@ -161,8 +161,8 @@ public class UiccSmsController extends ISms.Stub {
         }
     }
 
-    public void sendTextWithOptionsUsingSubId(long subId, String callingPackage, String destAddr,
-            String scAddr, String parts, PendingIntent sentIntents,
+    public void sendTextWithOptionsUsingSubscriber(long subId, String callingPackage,
+            String destAddr, String scAddr, String parts, PendingIntent sentIntents,
             PendingIntent deliveryIntents, int priority, boolean isExpectMore,
             int validityPeriod) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
@@ -195,7 +195,7 @@ public class UiccSmsController extends ISms.Stub {
         }
     }
 
-    public void sendMultipartTextWithOptionsUsingSubId(long subId, String callingPackage,
+    public void sendMultipartTextWithOptionsUsingSubscriber(long subId, String callingPackage,
             String destAddr, String scAddr, List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents, int priority, boolean isExpectMore,
             int validityPeriod) {
@@ -331,11 +331,12 @@ public class UiccSmsController extends ISms.Stub {
 
     @Override
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
-        injectSmsPdu(getDefaultSmsSubId(), pdu, format, receivedIntent);
+        injectSmsPduForSubscriber(getDefaultSmsSubId(), pdu, format, receivedIntent);
     }
 
-    // FIXME: Add injectSmsPdu to ISms.aidl
-    public void injectSmsPdu(long subId, byte[] pdu, String format, PendingIntent receivedIntent) {
+    // FIXME: Add injectSmsPduForSubscriber to ISms.aidl
+    public void injectSmsPduForSubscriber(long subId, byte[] pdu, String format,
+            PendingIntent receivedIntent) {
         getIccSmsInterfaceManager(subId).injectSmsPdu(pdu, format, receivedIntent);
     }
 

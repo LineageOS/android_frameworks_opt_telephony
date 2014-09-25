@@ -19,6 +19,7 @@ package android.telephony;
 import android.os.Parcel;
 import android.telephony.Rlog;
 import android.content.res.Resources;
+import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.GsmAlphabet;
@@ -253,6 +254,32 @@ public class SmsMessage {
 
         return wrappedMessage != null ? new SmsMessage(wrappedMessage) : null;
     }
+
+    /**
+     * Create an SmsMessage from an SMS EF record.
+     *
+     * @param index Index of SMS record. This should be index in ArrayList
+     *              returned by SmsManager.getAllMessagesFromSim + 1.
+     * @param data Record data.
+     * @param subId Subscription Id of the SMS
+     * @return An SmsMessage representing the record.
+     *
+     * @hide
+     */
+    public static SmsMessage createFromEfRecord(int index, byte[] data, long subId) {
+        SmsMessageBase wrappedMessage;
+
+        if (isCdmaVoice(subId)) {
+            wrappedMessage = com.android.internal.telephony.cdma.SmsMessage.createFromEfRecord(
+                    index, data);
+        } else {
+            wrappedMessage = com.android.internal.telephony.gsm.SmsMessage.createFromEfRecord(
+                    index, data);
+        }
+
+        return wrappedMessage != null ? new SmsMessage(wrappedMessage) : null;
+    }
+
 
     /**
      * Get the TP-Layer-Length for the given SMS-SUBMIT PDU Basically, the
@@ -745,12 +772,14 @@ public class SmsMessage {
      * @return true if Cdma format should be used for MO SMS, false otherwise.
      */
     private static boolean useCdmaFormatForMoSms() {
-        if (!SmsManager.getDefault().isImsSmsSupported()) {
+        SmsManager smsManager = SmsManager.getSmsManagerForSubscriber(
+                SubscriptionManager.getDefaultSmsSubId());
+        if (!smsManager.isImsSmsSupported()) {
             // use Voice technology to determine SMS format.
             return isCdmaVoice();
         }
         // IMS is registered with SMS support, check the SMS format supported
-        return (SmsConstants.FORMAT_3GPP2.equals(SmsManager.getDefault().getImsSmsFormat()));
+        return (SmsConstants.FORMAT_3GPP2.equals(smsManager.getImsSmsFormat()));
     }
 
     /**
@@ -760,6 +789,17 @@ public class SmsMessage {
      */
     private static boolean isCdmaVoice() {
         int activePhone = TelephonyManager.getDefault().getCurrentPhoneType();
+        return (PHONE_TYPE_CDMA == activePhone);
+    }
+
+    /**
+     * Determines whether or not to current phone type is cdma.
+     *
+     * @param subId Subscription Id of the SMS
+     * @return true if current phone type is cdma, false otherwise.
+     */
+    private static boolean isCdmaVoice(long subId) {
+        int activePhone = TelephonyManager.getDefault().getCurrentPhoneType(subId);
         return (PHONE_TYPE_CDMA == activePhone);
     }
 

@@ -250,7 +250,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsServiceOrThrow();
             // use sub based apis
-            iccISms.sendTextForSubscriber(mSubId, ActivityThread.currentPackageName(),
+            iccISms.sendTextForSubscriber(getSubId(), ActivityThread.currentPackageName(),
                     destinationAddress, scAddress, text, sentIntent, deliveryIntent);
         } catch (RemoteException ex) {
             // ignore it
@@ -258,71 +258,8 @@ public final class SmsManager {
     }
 
     /**
-     * Send a text based SMS with messaging options..
-     *
-     * <p class="note"><strong>Note:</strong> Using this method requires that your app has the
-     * {@link android.Manifest.permission#SEND_SMS} permission.</p>
-     *
-     * <p class="note"><strong>Note:</strong> Beginning with Android 4.4 (API level 19), if
-     * <em>and only if</em> an app is not selected as the default SMS app, the system automatically
-     * writes messages sent using this method to the SMS Provider (the default SMS app is always
-     * responsible for writing its sent messages to the SMS Provider). For information about
-     * how to behave as the default SMS app, see {@link android.provider.Telephony}.</p>
-     *
-     *
-     * @param destinationAddress the address to send the message to
-     * @param scAddress is the service center address or null to use
-     *  the current default SMSC
-     * @param text the body of the message to send
-     * @param sentIntent if not NULL this <code>PendingIntent</code> is
-     *  broadcast when the message is successfully sent, or failed.
-     *  The result code will be <code>Activity.RESULT_OK</code> for success,
-     *  or one of these errors:<br>
-     *  <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
-     *  <code>RESULT_ERROR_RADIO_OFF</code><br>
-     *  <code>RESULT_ERROR_NULL_PDU</code><br>
-     *  For <code>RESULT_ERROR_GENERIC_FAILURE</code> the sentIntent may include
-     *  the extra "errorCode" containing a radio technology specific value,
-     *  generally only useful for troubleshooting.<br>
-     *  The per-application based SMS control checks sentIntent. If sentIntent
-     *  is NULL the caller will be checked against all unknown applications,
-     *  which cause smaller number of SMS to be sent in checking period.
-     * @param deliveryIntent if not NULL this <code>PendingIntent</code> is
-     *  broadcast when the message is delivered to the recipient.  The
-     *  raw pdu of the status report is in the extended data ("pdu").
-     * @param priority Priority level of the message
-     *  Refer specification See 3GPP2 C.S0015-B, v2.0, table 4.5.9-1
-     *  ---------------------------------
-     *  PRIORITY      | Level of Priority
-     *  ---------------------------------
-     *      '00'      |     Normal
-     *      '01'      |     Interactive
-     *      '10'      |     Urgent
-     *      '11'      |     Emergency
-     *  ----------------------------------
-     *  Any Other values included Negative considered as Invalid Priority Indicator of the message.
-     * @param isExpectMore is a boolean to indicate the sending message is multi segmented or not.
-     * @param validityPeriod Validity Period of the message in mins.
-     *  Refer specification 3GPP TS 23.040 V6.8.1 section 9.2.3.12.1.
-     *  Validity Period(Minimum) -> 5 mins
-     *  Validity Period(Maximum) -> 635040 mins(i.e.63 weeks).
-     *  Any Other values included Negative considered as Invalid Validity Period of the message.
-     *
-     * @throws IllegalArgumentException if destinationAddress or text are empty
-     * {@hide}
-     */
-    public void sendTextMessage(
-            String destinationAddress, String scAddress, String text,
-            PendingIntent sentIntent, PendingIntent deliveryIntent, int priority,
-            boolean isExpectMore, int validityPeriod) {
-        sendTextMessage(getDefaultSmsSubId(), destinationAddress, scAddress, text,
-                sentIntent, deliveryIntent, priority, isExpectMore, validityPeriod);
-    }
-
-    /**
      * Send a text based SMS with messaging options.
      *
-     * @param subId on which the SMS has to be sent.
      * @param destinationAddress the address to send the message to
      * @param scAddress is the service center address or null to use
      *  the current default SMSC
@@ -364,8 +301,7 @@ public final class SmsManager {
      * @throws IllegalArgumentException if destinationAddress or text are empty
      * {@hide}
      */
-    public void sendTextMessage(
-            long subId, String destinationAddress, String scAddress, String text,
+    public void sendTextMessage(String destinationAddress, String scAddress, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent, int priority,
             boolean isExpectMore, int validityPeriod) {
         if (TextUtils.isEmpty(destinationAddress)) {
@@ -379,9 +315,9 @@ public final class SmsManager {
         try {
              ISms iccISms = getISmsServiceOrThrow();
             if (iccISms != null) {
-                iccISms.sendTextWithOptionsUsingSubId(subId, ActivityThread.currentPackageName(),
-                        destinationAddress, scAddress, text, sentIntent, deliveryIntent,
-                        priority, isExpectMore, validityPeriod);
+                iccISms.sendTextWithOptionsUsingSubscriber(getSubId(),
+                        ActivityThread.currentPackageName(), destinationAddress, scAddress, text,
+                        sentIntent, deliveryIntent, priority, isExpectMore, validityPeriod);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -415,7 +351,7 @@ public final class SmsManager {
         try {
             ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
-                iccISms.injectSmsPdu(pdu, format, receivedIntent);
+                iccISms.injectSmsPduForSubscriber(getSubId(), pdu, format, receivedIntent);
             }
         } catch (RemoteException ex) {
           // ignore it
@@ -517,8 +453,10 @@ public final class SmsManager {
         if (parts.size() > 1) {
             try {
                 ISms iccISms = getISmsServiceOrThrow();
-                iccISms.sendMultipartTextForSubscriber(mSubId, ActivityThread.currentPackageName(),
-                        destinationAddress, scAddress, parts,
+
+                iccISms.sendMultipartTextForSubscriber(getSubId(),
+                        ActivityThread.currentPackageName(), destinationAddress, scAddress, parts,
+
                         sentIntents, deliveryIntents);
             } catch (RemoteException ex) {
                 // ignore it
@@ -537,80 +475,6 @@ public final class SmsManager {
         }
     }
 
-    /**
-     * Send a multi-part text based SMS.  The callee should have already
-     * divided the message into correctly sized parts by calling
-     * <code>divideMessage</code>.
-     *
-     * <p class="note"><strong>Note:</strong> Using this method requires that your app has the
-     * {@link android.Manifest.permission#SEND_SMS} permission.</p>
-     *
-     * <p class="note"><strong>Note:</strong> Beginning with Android 4.4 (API level 19), if
-     * <em>and only if</em> an app is not selected as the default SMS app, the system automatically
-     * writes messages sent using this method to the SMS Provider (the default SMS app is always
-     * responsible for writing its sent messages to the SMS Provider). For information about
-     * how to behave as the default SMS app, see {@link android.provider.Telephony}.</p>
-     *
-     * @param destinationAddress the address to send the message to
-     * @param scAddress is the service center address or null to use
-     *   the current default SMSC
-     * @param parts an <code>ArrayList</code> of strings that, in order,
-     *   comprise the original message
-     * @param sentIntents if not null, an <code>ArrayList</code> of
-     *   <code>PendingIntent</code>s (one for each message part) that is
-     *   broadcast when the corresponding message part has been sent.
-     *   The result code will be <code>Activity.RESULT_OK</code> for success,
-     *   or one of these errors:<br>
-     *   <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
-     *   <code>RESULT_ERROR_RADIO_OFF</code><br>
-     *   <code>RESULT_ERROR_NULL_PDU</code><br>
-     *   For <code>RESULT_ERROR_GENERIC_FAILURE</code> each sentIntent may include
-     *   the extra "errorCode" containing a radio technology specific value,
-     *   generally only useful for troubleshooting.<br>
-     *   The per-application based SMS control checks sentIntent. If sentIntent
-     *   is NULL the caller will be checked against all unknown applications,
-     *   which cause smaller number of SMS to be sent in checking period.
-     * @param deliveryIntents if not null, an <code>ArrayList</code> of
-     *   <code>PendingIntent</code>s (one for each message part) that is
-     *   broadcast when the corresponding message part has been delivered
-     *   to the recipient.  The raw pdu of the status report is in the
-     *   extended data ("pdu").
-     *
-     * @throws IllegalArgumentException if destinationAddress or data are empty
-     */
-    /** @hide */
-    public void sendMultipartTextMessage(long subId,
-            String destinationAddress, String scAddress, ArrayList<String> parts,
-            ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
-        if (TextUtils.isEmpty(destinationAddress)) {
-            throw new IllegalArgumentException("Invalid destinationAddress");
-        }
-        if (parts == null || parts.size() < 1) {
-            throw new IllegalArgumentException("Invalid message body");
-        }
-
-        if (parts.size() > 1) {
-            try {
-                ISms iccISms = getISmsServiceOrThrow();
-                iccISms.sendMultipartTextForSubscriber(subId, ActivityThread.currentPackageName(),
-                        destinationAddress, scAddress, parts,
-                        sentIntents, deliveryIntents);
-            } catch (RemoteException ex) {
-                // ignore it
-            }
-        } else {
-            PendingIntent sentIntent = null;
-            PendingIntent deliveryIntent = null;
-            if (sentIntents != null && sentIntents.size() > 0) {
-                sentIntent = sentIntents.get(0);
-            }
-            if (deliveryIntents != null && deliveryIntents.size() > 0) {
-                deliveryIntent = deliveryIntents.get(0);
-            }
-            sendTextMessage(destinationAddress, scAddress, parts.get(0),
-                    sentIntent, deliveryIntent);
-        }
-    }
     /**
      * Send a multi-part text based SMS with messaging options. The callee should have already
      * divided the message into correctly sized parts by calling
@@ -672,65 +536,6 @@ public final class SmsManager {
      */
     public void sendMultipartTextMessage(
             String destinationAddress, String scAddress, ArrayList<String> parts,
-            ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents,
-            int priority, boolean isExpectMore, int validityPeriod) {
-        sendMultipartTextMessage(getDefaultSmsSubId(), destinationAddress, scAddress,
-                parts, sentIntents, deliveryIntents, priority, isExpectMore, validityPeriod);
-    }
-
-    /**
-     * Send a multi-part text based SMS with messaging options. The callee should have already
-     * divided the message into correctly sized parts by calling
-     * <code>divideMessage</code>.
-     *
-     * @param subId on which the SMS has to be sent.
-     * @param destinationAddress the address to send the message to
-     * @param scAddress is the service center address or null to use
-     *   the current default SMSC
-     * @param parts an <code>ArrayList</code> of strings that, in order,
-     *   comprise the original message
-     * @param sentIntents if not null, an <code>ArrayList</code> of
-     *   <code>PendingIntent</code>s (one for each message part) that is
-     *   broadcast when the corresponding message part has been sent.
-     *   The result code will be <code>Activity.RESULT_OK</code> for success,
-     *   or one of these errors:<br>
-     *   <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
-     *   <code>RESULT_ERROR_RADIO_OFF</code><br>
-     *   <code>RESULT_ERROR_NULL_PDU</code><br>
-     *   For <code>RESULT_ERROR_GENERIC_FAILURE</code> each sentIntent may include
-     *   the extra "errorCode" containing a radio technology specific value,
-     *   generally only useful for troubleshooting.<br>
-     *   The per-application based SMS control checks sentIntent. If sentIntent
-     *   is NULL the caller will be checked against all unknown applications,
-     *   which cause smaller number of SMS to be sent in checking period.
-     * @param deliveryIntents if not null, an <code>ArrayList</code> of
-     *   <code>PendingIntent</code>s (one for each message part) that is
-     *   broadcast when the corresponding message part has been delivered
-     *   to the recipient.  The raw pdu of the status report is in the
-     *   extended data ("pdu").
-     * @param priority Priority level of the message
-     *  Refer specification See 3GPP2 C.S0015-B, v2.0, table 4.5.9-1
-     *  ---------------------------------
-     *  PRIORITY      | Level of Priority
-     *  ---------------------------------
-     *      '00'      |     Normal
-     *      '01'      |     Interactive
-     *      '10'      |     Urgent
-     *      '11'      |     Emergency
-     *  ----------------------------------
-     *  Any Other values included Negative considered as Invalid Priority Indicator of the message.
-     * @param isExpectMore is a boolean to indicate the sending message is multi segmented or not.
-     * @param validityPeriod Validity Period of the message in mins.
-     *  Refer specification 3GPP TS 23.040 V6.8.1 section 9.2.3.12.1.
-     *  Validity Period(Minimum) -> 5 mins
-     *  Validity Period(Maximum) -> 635040 mins(i.e.63 weeks).
-     *  Any Other values included Negative considered as Invalid Validity Period of the message.
-     *
-     * @throws IllegalArgumentException if destinationAddress or data are empty
-     * {@hide}
-     */
-    public void sendMultipartTextMessage(
-            long subId, String destinationAddress, String scAddress, ArrayList<String> parts,
             ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents,
             int priority, boolean isExpectMore, int validityPeriod) {
         if (TextUtils.isEmpty(destinationAddress)) {
@@ -744,7 +549,7 @@ public final class SmsManager {
             try {
                  ISms iccISms = getISmsServiceOrThrow();
                 if (iccISms != null) {
-                    iccISms.sendMultipartTextWithOptionsUsingSubId(subId,
+                    iccISms.sendMultipartTextWithOptionsUsingSubscriber(getSubId(),
                             ActivityThread.currentPackageName(), destinationAddress, scAddress,
                             parts, sentIntents, deliveryIntents, priority, isExpectMore,
                             validityPeriod);
@@ -761,7 +566,7 @@ public final class SmsManager {
             if (deliveryIntents != null && deliveryIntents.size() > 0) {
                 deliveryIntent = deliveryIntents.get(0);
             }
-            sendTextMessage(subId, destinationAddress, scAddress, parts.get(0),
+            sendTextMessage(destinationAddress, scAddress, parts.get(0),
                     sentIntent, deliveryIntent, priority, isExpectMore, validityPeriod);
         }
     }
@@ -809,7 +614,7 @@ public final class SmsManager {
 
         try {
             ISms iccISms = getISmsServiceOrThrow();
-            iccISms.sendData(ActivityThread.currentPackageName(),
+            iccISms.sendDataForSubscriber(getSubId(), ActivityThread.currentPackageName(),
                     destinationAddress, scAddress, destinationPort & 0xFFFF,
                     data, sentIntent, deliveryIntent);
         } catch (RemoteException ex) {
@@ -853,42 +658,6 @@ public final class SmsManager {
             String destinationAddress, String scAddress, short destinationPort,
             short originatorPort, byte[] data, PendingIntent sentIntent,
             PendingIntent deliveryIntent) {
-        sendDataMessage(getDefaultSmsSubId(),
-            destinationAddress, scAddress, destinationPort, originatorPort,
-            data, sentIntent, deliveryIntent);
-    }
-
-   /**
-     * Send a data based SMS to a specific application port.
-     *
-     * @param destinationAddress the address to send the message to
-     * @param scAddress is the service center address or null to use
-     *  the current default SMSC
-     * @param destinationPort the port to deliver the message to
-     * @param originatorPort the port set by the sender
-     * @param data the body of the message to send
-     * @param sentIntent if not NULL this <code>PendingIntent</code> is
-     *  broadcast when the message is successfully sent, or failed.
-     *  The result code will be <code>Activity.RESULT_OK</code> for success,
-     *  or one of these errors:<br>
-     *  <code>RESULT_ERROR_GENERIC_FAILURE</code><br>
-     *  <code>RESULT_ERROR_RADIO_OFF</code><br>
-     *  <code>RESULT_ERROR_NULL_PDU</code><br>
-     *  For <code>RESULT_ERROR_GENERIC_FAILURE</code> the sentIntent may include
-     *  the extra "errorCode" containing a radio technology specific value,
-     *  generally only useful for troubleshooting.<br>
-     *  The per-application based SMS control checks sentIntent. If sentIntent
-     *  is NULL the caller will be checked against all unknown applications,
-     *  which cause smaller number of SMS to be sent in checking period.
-     * @param deliveryIntent if not NULL this <code>PendingIntent</code> is
-     *  broadcast when the message is delivered to the recipient.  The
-     *  raw pdu of the status report is in the extended data ("pdu").
-     * {@hide}
-     */
-    public void sendDataMessage(long subId,
-            String destinationAddress, String scAddress, short destinationPort,
-            short originatorPort, byte[] data, PendingIntent sentIntent,
-            PendingIntent deliveryIntent) {
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
@@ -899,7 +668,8 @@ public final class SmsManager {
         try {
             ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
-                iccISms.sendDataWithOrigPortUsingSubId(subId, ActivityThread.currentPackageName(),
+                iccISms.sendDataWithOrigPortUsingSubscriber(getSubId(),
+                        ActivityThread.currentPackageName(),
                         destinationAddress, scAddress, destinationPort & 0xFFFF,
                         originatorPort & 0xFFFF, data, sentIntent, deliveryIntent);
             }
@@ -998,8 +768,8 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.copyMessageToIccEf(ActivityThread.currentPackageName(),
-                        status, pdu, smsc);
+                success = iccISms.copyMessageToIccEfForSubscriber(getSubId(),
+                        ActivityThread.currentPackageName(), status, pdu, smsc);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1027,8 +797,8 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.updateMessageOnIccEf(ActivityThread.currentPackageName(),
-                        messageIndex, STATUS_ON_ICC_FREE, pdu);
+                success = iccISms.updateMessageOnIccEfForSubscriber(getSubId(),
+                        ActivityThread.currentPackageName(),messageIndex, STATUS_ON_ICC_FREE, pdu);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1057,8 +827,8 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.updateMessageOnIccEf(ActivityThread.currentPackageName(),
-                        messageIndex, newStatus, pdu);
+                success = iccISms.updateMessageOnIccEfForSubscriber(getSubId(),
+                        ActivityThread.currentPackageName(), messageIndex, newStatus, pdu);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1076,13 +846,14 @@ public final class SmsManager {
      *
      * {@hide}
      */
-    public static ArrayList<SmsMessage> getAllMessagesFromIcc() {
+    public ArrayList<SmsMessage> getAllMessagesFromIcc() {
         List<SmsRawData> records = null;
 
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                records = iccISms.getAllMessagesFromIccEf(ActivityThread.currentPackageName());
+                records = iccISms.getAllMessagesFromIccEfForSubscriber(getSubId(),
+                        ActivityThread.currentPackageName());
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1113,38 +884,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.enableCellBroadcast(messageIdentifier);
-            }
-        } catch (RemoteException ex) {
-            // ignore it
-        }
-
-        return success;
-    }
-
-    /**
-     * Enable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier. Note that if two different clients enable the same
-     * message identifier, they must both disable it for the device to stop
-     * receiving those messages. All received messages will be broadcast in an
-     * intent with the action "android.provider.Telephony.SMS_CB_RECEIVED".
-     * Note: This call is blocking, callers may want to avoid calling it from
-     * the main thread of an application.
-     *
-     * @param messageIdentifier Message identifier as specified in TS 23.041 (3GPP)
-     * or C.R1001-G (3GPP2)
-     * @return true if successful, false otherwise
-     * @see #disableCellBroadcast(int)
-     *
-     * {@hide}
-     */
-    public boolean enableCellBroadcast(long subId, int messageIdentifier) {
-        boolean success = false;
-
-        try {
-            ISms iccISms = getISmsService();
-            if (iccISms != null) {
-                success = iccISms.enableCellBroadcastForSubscriber(subId, messageIdentifier);
+                success = iccISms.enableCellBroadcastForSubscriber(getSubId(), messageIdentifier);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1175,38 +915,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.disableCellBroadcast(messageIdentifier);
-            }
-        } catch (RemoteException ex) {
-            // ignore it
-        }
-
-        return success;
-    }
-
-    /**
-     * Disable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier. Note that if two different clients enable the same
-     * message identifier, they must both disable it for the device to stop
-     * receiving those messages.
-     * Note: This call is blocking, callers may want to avoid calling it from
-     * the main thread of an application.
-     *
-     * @param messageIdentifier Message identifier as specified in TS 23.041 (3GPP)
-     * or C.R1001-G (3GPP2)
-     * @return true if successful, false otherwise
-     *
-     * @see #enableCellBroadcast(int)
-     *
-     * {@hide}
-     */
-    public boolean disableCellBroadcast(long subId, int messageIdentifier) {
-        boolean success = false;
-
-        try {
-            ISms iccISms = getISmsService();
-            if (iccISms != null) {
-                success = iccISms.disableCellBroadcastForSubscriber(subId, messageIdentifier);
+                success = iccISms.disableCellBroadcastForSubscriber(getSubId(), messageIdentifier);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1243,45 +952,8 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.enableCellBroadcastRange(startMessageId, endMessageId);
-            }
-        } catch (RemoteException ex) {
-            // ignore it
-        }
-
-        return success;
-    }
-
-    /**
-     * Enable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier range. Note that if two different clients enable the same
-     * message identifier, they must both disable it for the device to stop
-     * receiving those messages. All received messages will be broadcast in an
-     * intent with the action "android.provider.Telephony.SMS_CB_RECEIVED".
-     * Note: This call is blocking, callers may want to avoid calling it from
-     * the main thread of an application.
-     *
-     * @param startMessageId first message identifier as specified in TS 23.041 (3GPP)
-     * or C.R1001-G (3GPP2)
-     * @param endMessageId last message identifier as specified in TS 23.041 (3GPP)
-     * or C.R1001-G (3GPP2)
-     * @return true if successful, false otherwise
-     * @see #disableCellBroadcastRange(int, int)
-     *
-     * @throws IllegalArgumentException if endMessageId < startMessageId
-     * {@hide}
-     */
-    public boolean enableCellBroadcastRange(long subId, int startMessageId, int endMessageId) {
-        boolean success = false;
-
-        if (endMessageId < startMessageId) {
-            throw new IllegalArgumentException("endMessageId < startMessageId");
-        }
-        try {
-            ISms iccISms = getISmsService();
-            if (iccISms != null) {
-                success = iccISms.enableCellBroadcastRangeForSubscriber(subId, startMessageId
-                        ,endMessageId);
+                success = iccISms.enableCellBroadcastRangeForSubscriber(getSubId(),
+                        startMessageId, endMessageId);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1318,7 +990,8 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.disableCellBroadcastRange(startMessageId, endMessageId);
+                success = iccISms.disableCellBroadcastRangeForSubscriber(getSubId(),
+                        startMessageId, endMessageId);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1326,44 +999,6 @@ public final class SmsManager {
 
         return success;
     }
-
-    /**
-     * Disable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier range. Note that if two different clients enable the same
-     * message identifier, they must both disable it for the device to stop
-     * receiving those messages.
-     * Note: This call is blocking, callers may want to avoid calling it from
-     * the main thread of an application.
-     *
-     * @param startMessageId first message identifier as specified in TS 23.041 (3GPP)
-     * or C.R1001-G (3GPP2)
-     * @param endMessageId last message identifier as specified in TS 23.041 (3GPP)
-     * or C.R1001-G (3GPP2)
-     * @return true if successful, false otherwise
-     *
-     * @see #enableCellBroadcastRange(int, int)
-     *
-     * @throws IllegalArgumentException if endMessageId < startMessageId
-     * {@hide}
-     */
-    public boolean disableCellBroadcastRange(long subId, int startMessageId, int endMessageId) {
-        boolean success = false;
-
-        if (endMessageId < startMessageId) {
-            throw new IllegalArgumentException("endMessageId < startMessageId");
-        }
-        try {
-            ISms iccISms = getISmsService();
-            if (iccISms != null) {
-                success = iccISms.disableCellBroadcastRangeForSubscriber(subId, startMessageId, endMessageId);
-            }
-        } catch (RemoteException ex) {
-            // ignore it
-        }
-
-        return success;
-    }
-
 
     /**
      * Create a list of <code>SmsMessage</code>s from a list of RawSmsData
@@ -1373,7 +1008,7 @@ public final class SmsManager {
      *   <code>getAllMessagesFromIcc</code>
      * @return <code>ArrayList</code> of <code>SmsMessage</code> objects.
      */
-    private static ArrayList<SmsMessage> createMessageListFromRawRecords(List<SmsRawData> records) {
+    private ArrayList<SmsMessage> createMessageListFromRawRecords(List<SmsRawData> records) {
         ArrayList<SmsMessage> messages = new ArrayList<SmsMessage>();
         if (records != null) {
             int count = records.size();
@@ -1381,7 +1016,8 @@ public final class SmsManager {
                 SmsRawData data = records.get(i);
                 // List contains all records, including "free" records (null)
                 if (data != null) {
-                    SmsMessage sms = SmsMessage.createFromEfRecord(i+1, data.getBytes());
+                    SmsMessage sms = SmsMessage.createFromEfRecord(i+1, data.getBytes(),
+                            getSubId());
                     if (sms != null) {
                         messages.add(sms);
                     }
@@ -1406,7 +1042,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                boSupported = iccISms.isImsSmsSupported();
+                boSupported = iccISms.isImsSmsSupportedForSubscriber(getSubId());
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1431,7 +1067,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                format = iccISms.getImsSmsFormat();
+                format = iccISms.getImsSmsFormatForSubscriber(getSubId());
             }
         } catch (RemoteException ex) {
             // ignore it
