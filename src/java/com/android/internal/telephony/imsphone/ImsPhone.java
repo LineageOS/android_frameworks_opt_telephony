@@ -604,6 +604,8 @@ public class ImsPhone extends ImsPhoneBase {
             case CF_REASON_BUSY: return ImsUtInterface.CDIV_CF_BUSY;
             case CF_REASON_NO_REPLY: return ImsUtInterface.CDIV_CF_NO_REPLY;
             case CF_REASON_NOT_REACHABLE: return ImsUtInterface.CDIV_CF_NOT_REACHABLE;
+            case CF_REASON_ALL: return ImsUtInterface.CDIV_CF_ALL;
+            case CF_REASON_ALL_CONDITIONAL: return ImsUtInterface.CDIV_CF_ALL_CONDITIONAL;
             default:
                 break;
         }
@@ -617,6 +619,8 @@ public class ImsPhone extends ImsPhoneBase {
             case ImsUtInterface.CDIV_CF_BUSY: return CF_REASON_BUSY;
             case ImsUtInterface.CDIV_CF_NO_REPLY: return CF_REASON_NO_REPLY;
             case ImsUtInterface.CDIV_CF_NOT_REACHABLE: return CF_REASON_NOT_REACHABLE;
+            case ImsUtInterface.CDIV_CF_ALL: return CF_REASON_ALL;
+            case ImsUtInterface.CDIV_CF_ALL_CONDITIONAL: return CF_REASON_ALL_CONDITIONAL;
             default:
                 break;
         }
@@ -1036,10 +1040,18 @@ public class ImsPhone extends ImsPhoneBase {
     sendResponse(Message onComplete, Object result, Throwable e) {
         if (onComplete != null) {
             CommandException ex = null;
+            ImsException imsEx = null;
             if (e != null) {
-                ex = getCommandException(e);
+                if (e instanceof ImsException) {
+                    imsEx = (ImsException) e;
+                    AsyncResult.forMessage(onComplete, result, imsEx);
+                } else {
+                    ex = getCommandException(e);
+                    AsyncResult.forMessage(onComplete, result, ex);
+                }
+            } else {
+                AsyncResult.forMessage(onComplete, result, null);
             }
-            AsyncResult.forMessage(onComplete, result, ex);
             onComplete.sendToTarget();
         }
     }
