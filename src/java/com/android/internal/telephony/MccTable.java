@@ -314,6 +314,7 @@ public final class MccTable
         if (locale != null) {
             Configuration config = new Configuration();
             config.setLocale(locale);
+            config.userSetLocale = false;
             Slog.d(LOG_TAG, "setSystemLocale: updateLocale config=" + config);
             try {
                 ActivityManagerNative.getDefault().updateConfiguration(config);
