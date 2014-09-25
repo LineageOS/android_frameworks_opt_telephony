@@ -877,6 +877,7 @@ public final class Telephony {
              * It must also declare {@link android.Manifest.permission#BROADCAST_SMS} as a required
              * permission in the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">
              * {@code &lt;receiver>}</a> tag.
+             * {@hide}
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SMS_FILTER_ACTION =
@@ -1118,6 +1119,7 @@ public final class Telephony {
              * It must also declare {@link android.Manifest.permission#BROADCAST_SMS} as a required
              * permission in the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">
              * {@code &lt;receiver>}</a> tag.
+             * {@hide}
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SMS_SEND_ACTION =
@@ -2322,6 +2324,7 @@ public final class Telephony {
              * It must also declare {@link android.Manifest.permission#BROADCAST_WAP_PUSH} as a required
              * permission in the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">
              * {@code &lt;receiver>}</a> tag.
+             * {@hide}
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String MMS_SEND_ACTION =
@@ -2358,6 +2361,7 @@ public final class Telephony {
              * It must also declare {@link android.Manifest.permission#BROADCAST_WAP_PUSH} as a required
              * permission in the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">
              * {@code &lt;receiver>}</a> tag.
+             * {@hide}
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String MMS_DOWNLOAD_ACTION =
@@ -2371,6 +2375,7 @@ public final class Telephony {
             /**
              * The content provider of the PDU to be sent/downloaded passed as an extra for
              * {@link #MMS_DOWNLOAD_ACTION} and {@link #MMS_SEND_ACTION}.
+             * {@hide}
              */
             public static final String EXTRA_MMS_CONTENT_URI =
                     "android.provider.Telephony.extra.MMS_CONTENT_URI";
@@ -2379,6 +2384,7 @@ public final class Telephony {
              * The message URL to be downloaded passed as an extra for {@link #MMS_DOWNLOAD_ACTION}.
              * It is also the URL to send an MMS to passed as an extra for
              * {@link #MMS_SEND_ACTION}.
+             * {@hide}
              */
             public static final String EXTRA_MMS_LOCATION_URL =
                     "android.provider.Telephony.extra.MMS_LOCATION_URL";
