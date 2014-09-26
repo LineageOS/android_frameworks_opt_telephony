@@ -958,6 +958,19 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     DisconnectCause.NOT_DISCONNECTED);
         }
 
+        @Override
+        public void onCallUpdated(ImsCall imsCall) {
+            if (DBG) log("onCallUpdated");
+            if (imsCall == null) {
+                return;
+            }
+            ImsPhoneConnection conn = findConnection(imsCall);
+            if (conn != null) {
+                processCallStateChange(imsCall, conn.getCall().mState,
+                        DisconnectCause.NOT_DISCONNECTED);
+            }
+        }
+
         /**
          * onCallStartFailed will be invoked when:
          * case 1) Dialing fails
