@@ -424,9 +424,9 @@ public final class MccTable
 		sTable.add(new MccEntry(212,"mc",2));	//Monaco (Principality of)
 		sTable.add(new MccEntry(213,"ad",2));	//Andorra (Principality of)
 		sTable.add(new MccEntry(214,"es",2,"es"));	//Spain
-		sTable.add(new MccEntry(216,"hu",2));	//Hungary (Republic of)
+		sTable.add(new MccEntry(216,"hu",2,"hu"));	//Hungary (Republic of)
 		sTable.add(new MccEntry(218,"ba",2));	//Bosnia and Herzegovina
-		sTable.add(new MccEntry(219,"hr",2));	//Croatia (Republic of)
+		sTable.add(new MccEntry(219,"hr",2,"hr"));	//Croatia (Republic of)
 		sTable.add(new MccEntry(220,"rs",2));	//Serbia and Montenegro
 		sTable.add(new MccEntry(222,"it",2,"it"));	//Italy
 		sTable.add(new MccEntry(225,"va",2,"it"));	//Vatican City State
