@@ -26,6 +26,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.Rlog;
 import android.os.SystemProperties;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CallTracker;
@@ -172,6 +173,25 @@ public final class CdmaCallTracker extends CallTracker {
             throw new CallStateException("cannot dial in current state");
         }
 
+        String origNumber = dialString;
+        String operatorIsoContry = mPhone.getSystemProperty(
+                TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
+        String simIsoContry = mPhone.getSystemProperty(
+                TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY, "");
+        boolean internationalRoaming = !TextUtils.isEmpty(operatorIsoContry)
+                && !TextUtils.isEmpty(simIsoContry)
+                && !simIsoContry.equals(operatorIsoContry);
+        if (internationalRoaming) {
+            if ("us".equals(simIsoContry)) {
+                internationalRoaming = internationalRoaming && !"vi".equals(operatorIsoContry);
+            } else if ("vi".equals(simIsoContry)) {
+                internationalRoaming = internationalRoaming && !"us".equals(operatorIsoContry);
+            }
+        }
+        if (internationalRoaming) {
+            dialString = convertNumberIfNecessary(mPhone, dialString);
+        }
+
         String inEcm=SystemProperties.get(TelephonyProperties.PROPERTY_INECM_MODE, "false");
         boolean isPhoneInEcmMode = inEcm.equals("true");
         boolean isEmergencyCall =
@@ -222,6 +242,11 @@ public final class CdmaCallTracker extends CallTracker {
                 mPendingCallClirMode=clirMode;
                 mPendingCallInEcm=true;
             }
+        }
+
+        if (mNumberConverted) {
+            mPendingMO.setConverted(origNumber);
+            mNumberConverted = false;
         }
 
         updatePhoneState();
