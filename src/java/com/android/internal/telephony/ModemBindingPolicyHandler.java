@@ -39,6 +39,7 @@ import android.os.RegistrantList;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.CommandException;
@@ -249,6 +250,51 @@ public class ModemBindingPolicyHandler extends Handler {
             }
         }
     }
+
+    /*
+    * updatePrefNwTypeIfRequired: Method used to set pref network type if required.
+    *
+    * Description: If Network mode for a subid in simInfo table is valid and and is not
+    * equal to value in DB, then update the DB value and send request to RIL.
+    */
+    public void updatePrefNwTypeIfRequired(){
+        boolean updateRequired = false;
+        int[] nwModeinSubIdTable = new int[mNumPhones];
+        syncPreferredNwModeFromDB();
+        SubscriptionController subCtrlr = SubscriptionController.getInstance();
+        for (int i=0; i < mNumPhones; i++ ) {
+            long[] subIdList = subCtrlr.getSubId(i);
+            if (subIdList != null && subIdList[0] > 0) {
+                long subId = subIdList[0];
+                nwModeinSubIdTable[i] = subCtrlr.getNwMode(subId);
+                if (nwModeinSubIdTable[i] == SubscriptionManager.DEFAULT_NW_MODE){
+                    updateRequired = false;
+                    break;
+                }
+                if (nwModeinSubIdTable[i] != mPrefNwMode[i]) {
+                    updateRequired = true;
+                }
+            }
+        }
+
+        if (updateRequired) {
+            for (int i=0; i < mNumPhones; i++ ) {
+                logd("Updating Value in DB for slot[" + i + "] with " + nwModeinSubIdTable[i]);
+                TelephonyManager.putIntAtIndex( mContext.getContentResolver(),
+                        android.provider.Settings.Global.PREFERRED_NETWORK_MODE,
+                        i, nwModeinSubIdTable[i]);
+            }
+            if (FAILURE == updateStackBindingIfRequired(false)) {
+                //In case of Update Stack Binding not required or failure, send setPrefNwType to
+                //RIL immediately. In case of success after stack binding completed setPrefNwType
+                //request is anyways sent.
+                for (int i=0; i < mNumPhones; i++ ) {
+                    mCi[i].setPreferredNetworkType(nwModeinSubIdTable[i], null);
+                }
+            }
+       }
+    }
+
     private void handleModemRatCapsAvailable() {
         mModemRatCapabilitiesAvailable = true;
         //Initialization sequence: Need to send Bind request always, so override is true.

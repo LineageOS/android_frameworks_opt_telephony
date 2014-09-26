@@ -337,10 +337,13 @@ public class SubscriptionController extends ISub.Stub {
                     SubscriptionManager.MNC));
             info.mStatus = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.SUB_STATE));
+            info.mNwMode = cursor.getInt(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.NETWORK_MODE));
 
             logd("[getSubInfoRecord] SubId:" + info.subId + " iccid:" + info.iccId + " slotId:" +
                     info.slotId + " displayName:" + info.displayName + " color:" + info.color +
-                    " mcc/mnc:" + info.mcc + "/" + info.mnc + " subStatus: " + info.mStatus);
+                    " mcc/mnc:" + info.mcc + "/" + info.mnc + " subStatus: " + info.mStatus
+                    + " Nwmode: " + info.mNwMode);
 
             return info;
     }
@@ -1551,6 +1554,24 @@ public class SubscriptionController extends ISub.Stub {
 
         int slotId = getSlotId(subId);
         SubscriptionHelper.getInstance().setUiccSubscription(slotId, SubscriptionManager.INACTIVE);
+    }
+
+    public void setNwMode(long subId, int nwMode) {
+        logd("setNwMode, nwMode: " + nwMode + " subId: " + subId);
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.NETWORK_MODE, nwMode);
+        mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                value, BaseColumns._ID + "=" + Long.toString(subId), null);
+    }
+
+    public int getNwMode(long subId) {
+        SubInfoRecord subInfo = getSubInfoForSubscriber(subId);
+        if (subInfo != null)  {
+            return subInfo.mNwMode;
+        } else {
+            loge("getSubState: invalid subId = " + subId);
+            return SubscriptionManager.DEFAULT_NW_MODE;
+        }
     }
 
     @Override
