@@ -33,12 +33,17 @@ package com.android.internal.telephony;
 
 import android.telephony.Rlog;
 import android.content.Context;
+import android.database.ContentObserver;
+import android.provider.Settings;
+import android.provider.Settings.SettingNotFoundException;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.TelephonyManager;
+import android.telephony.SubscriptionManager;
 import android.util.Log;
 
+import com.android.internal.telephony.ModemBindingPolicyHandler;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UiccCard;
@@ -52,11 +57,25 @@ class SubscriptionHelper extends Handler {
     private Context mContext;
     private CommandsInterface[] mCi;
     private int[] mSubStatus;
+    private static int mNumPhones;
 
     private static final int EVENT_SET_UICC_SUBSCRIPTION_DONE = 1;
 
     public static final int SUB_SIM_NOT_INSERTED = -99;
     public static final int SUB_INIT_STATE = -1;
+    private static boolean mNwModeUpdated = false;
+
+    private final ContentObserver nwModeObserver =
+        new ContentObserver(new Handler()) {
+            @Override
+            public void onChange(boolean selfUpdate) {
+                logd("NwMode Observer onChange hit !!!");
+                if (!mNwModeUpdated) return;
+                //get nwMode from all slots in Db and update to subId table.
+                updateNwModesInSubIdTable(true);
+            }
+        };
+
 
     public static SubscriptionHelper init(Context c, CommandsInterface[] ci) {
         synchronized (SubscriptionHelper.class) {
@@ -80,13 +99,43 @@ class SubscriptionHelper extends Handler {
     private SubscriptionHelper(Context c, CommandsInterface[] ci) {
         mContext = c;
         mCi = ci;
-        int numPhones = TelephonyManager.getDefault().getPhoneCount();
-        mSubStatus = new int[numPhones];
-        for (int i=0; i< numPhones; i++ ) {
+        mNumPhones = TelephonyManager.getDefault().getPhoneCount();
+        mSubStatus = new int[mNumPhones];
+        for (int i=0; i < mNumPhones; i++ ) {
             mSubStatus[i] = SUB_INIT_STATE;
         }
+        mContext.getContentResolver().registerContentObserver(Settings.Global.getUriFor(
+                Settings.Global.PREFERRED_NETWORK_MODE), false, nwModeObserver);
+
 
         logd("SubscriptionHelper init by Context");
+    }
+
+    private void updateNwModesInSubIdTable(boolean override) {
+        SubscriptionController subCtrlr = SubscriptionController.getInstance();
+        for (int i=0; i < mNumPhones; i++ ) {
+            long[] subIdList = subCtrlr.getSubId(i);
+            if (subIdList != null && subIdList[0] > 0) {
+                int nwModeInDb;
+                try {
+                    nwModeInDb = TelephonyManager.getIntAtIndex(mContext.getContentResolver(),
+                            Settings.Global.PREFERRED_NETWORK_MODE, i);
+                } catch (SettingNotFoundException snfe) {
+                    loge("Settings Exception Reading Value At Index[" + i +
+                            "] Settings.Global.PREFERRED_NETWORK_MODE");
+                    nwModeInDb = RILConstants.PREFERRED_NETWORK_MODE;
+                }
+                int nwModeinSubIdTable = subCtrlr.getNwMode(subIdList[0]);
+                logd("updateNwModesInSubIdTable: nwModeinSubIdTable: " + nwModeinSubIdTable
+                        + ", nwModeInDb: " + nwModeInDb);
+
+                //store Db value to table only if value in table is default
+                //OR if override is set to True.
+                if (override || nwModeinSubIdTable == SubscriptionManager.DEFAULT_NW_MODE) {
+                    subCtrlr.setNwMode(subIdList[0], nwModeInDb);
+                }
+            }
+        }
     }
 
     @Override
@@ -101,24 +150,36 @@ class SubscriptionHelper extends Handler {
         }
     }
 
-    public void updateSimState(int slotId, int simStatus) {
+    public void updateSubActivation() {
         SubscriptionController subCtrlr = SubscriptionController.getInstance();
-        mSubStatus[slotId] = simStatus;
-        if (mSubStatus[slotId] == SUB_SIM_NOT_INSERTED) {
-            if (isAllSubsAvailable()) {
-                logd("Received all sim info, now update user preferred subs");
-                subCtrlr.updateUserPrefs();
+        for (int slotId = 0; slotId < mNumPhones; slotId++) {
+            if (mSubStatus[slotId] == SUB_SIM_NOT_INSERTED) {
+                if (isAllSubsAvailable()) {
+                    logd("Received all sim info, now update user preferred subs");
+                    subCtrlr.updateUserPrefs();
+                }
+                return;
             }
-            return;
+            long[] subId = subCtrlr.getSubId(slotId);
+            int subState = subCtrlr.getSubState(subId[0]);
+
+            logd("setUicc for [" + slotId + "] = " + subState + "subId = " + subId[0]);
+
+            // If sim card present in the slot, get the stored sub status and
+            // perform the activation/deactivation of subscription
+            setUiccSubscription(slotId, subState);
         }
-        long[] subId = subCtrlr.getSubId(slotId);
-        int subState = subCtrlr.getSubState(subId[0]);
+        //set DDS explicitly after setUicc is sent on stack ready.
+        subCtrlr.setDefaultDataSubId(subCtrlr.getDefaultDataSubId());
+    }
 
-        logd("setUicc for [" + slotId + "] = " + subState + "subId = " + subId[0]);
-
-        // If sim card present in the slot, get the stored sub status and
-        // perform the activation/deactivation of subscription
-        setUiccSubscription(slotId, subState);
+    public void updateSimState(int[] simStatus) {
+        for (int slotId = 0; slotId < mNumPhones; slotId++) {
+            mSubStatus[slotId] = simStatus[slotId];
+        }
+        updateNwModesInSubIdTable(false);
+        ModemBindingPolicyHandler.getInstance().updatePrefNwTypeIfRequired();
+        mNwModeUpdated = true;
     }
 
     public void setUiccSubscription(int slotId, int subStatus) {
@@ -183,9 +244,8 @@ class SubscriptionHelper extends Handler {
 
     private boolean isAllSubsAvailable() {
         boolean allSubsAvailable = true;
-        int numPhones = TelephonyManager.getDefault().getPhoneCount();
 
-        for (int i=0; i < numPhones; i++) {
+        for (int i=0; i < mNumPhones; i++) {
             if (mSubStatus[i] == SUB_INIT_STATE) {
                 allSubsAvailable = false;
             }
