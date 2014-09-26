@@ -1356,4 +1356,27 @@ public class SmsMessage extends SmsMessageBase {
         return messageClass == MessageClass.CLASS_2 &&
                 (mProtocolIdentifier == 0x7f || mProtocolIdentifier == 0x7c);
     }
+
+    public int getNumOfVoicemails() {
+        /*
+         * Order of priority if multiple indications are present is 1.UDH,
+         *      2.DCS, 3.CPHS.
+         * Voice mail count if voice mail present indication is
+         * received
+         *  1. UDH (or both UDH & DCS): mVoiceMailCount = 0 to 0xff. Ref[TS 23. 040]
+         *  2. DCS only: count is unknown mVoiceMailCount= -1
+         *  3. CPHS only: count is unknown mVoiceMailCount = 0xff. Ref[GSM-BTR-1-4700]
+         * Voice mail clear, mVoiceMailCount = 0.
+         */
+        if ((!mIsMwi) && isCphsMwiMessage()) {
+            if (mOriginatingAddress != null
+                    && ((GsmSmsAddress) mOriginatingAddress).isCphsVoiceMessageSet()) {
+                mVoiceMailCount = 0xff;
+            } else {
+                mVoiceMailCount = 0;
+            }
+            Rlog.v(LOG_TAG, "CPHS voice mail message");
+        }
+        return mVoiceMailCount;
+    }
 }
