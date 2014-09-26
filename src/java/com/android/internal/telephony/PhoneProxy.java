@@ -445,6 +445,17 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public void registerForVideoCapabilityChanged(
+            Handler h, int what, Object obj) {
+        mActivePhone.registerForVideoCapabilityChanged(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForVideoCapabilityChanged(Handler h) {
+        mActivePhone.unregisterForVideoCapabilityChanged(h);
+    }
+
+    @Override
     public void registerForIncomingRing(Handler h, int what, Object obj) {
         mActivePhone.registerForIncomingRing(h, what, obj);
     }
