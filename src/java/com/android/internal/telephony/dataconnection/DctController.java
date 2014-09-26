@@ -73,6 +73,7 @@ public class DctController extends Handler {
     private static final int EVENT_ALL_DATA_DISCONNECTED = 1;
     private static final int EVENT_SET_DATA_ALLOW_DONE = 2;
     private static final int EVENT_DELAYED_RETRY = 3;
+    private static final int EVENT_LEGACY_SET_DATA_SUBSCRIPTION = 4;
 
     private RegistrantList mNotifyDefaultDataSwitchInfo = new RegistrantList();
     private RegistrantList mNotifyOnDemandDataSwitchInfo = new RegistrantList();
@@ -497,9 +498,19 @@ public class DctController extends Handler {
         }
     }
 
+    private void doDetach(int phoneId) {
+        Phone phone = mPhones[phoneId].getActivePhone();
+        DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
+        dcTracker.setDataAllowed(false, null);
+        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+            //cleanup data from apss as there is no detach procedure for CDMA
+            dcTracker.cleanUpAllConnections("DDS switch");
+        }
+    }
     public void setDefaultDataSubId(long subId) {
-        Rlog.d(LOG_TAG, "setDataAllowed subId :" + subId);
+        Rlog.d(LOG_TAG, "setDefaultDataSubId subId :" + subId);
         int phoneId = mSubController.getPhoneId(subId);
+        SwitchInfo s = new SwitchInfo(new Integer(phoneId), true);
         int prefPhoneId = mSubController.getPhoneId(mSubController.getCurrentDds());
         if (prefPhoneId < 0 || prefPhoneId >= mPhoneNum) {
             // If Current dds subId is invalid set the received subId as curretn DDS
@@ -512,16 +523,29 @@ public class DctController extends Handler {
             return;
         }
 
-        Phone phone = mPhones[prefPhoneId].getActivePhone();
-        DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
-        dcTracker.setDataAllowed(false, null);
-        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
-            //cleanup data from apss as there is no detach procedure for CDMA
-            dcTracker.cleanUpAllConnections("DDS switch");
+        if (subId != mSubController.getDefaultDataSubId()) {
+            doDetach(prefPhoneId);
+        } else {
+            logd("setDefaultDataSubId for default DDS, skip PS detach on DDS subs");
+            sendMessage(obtainMessage(EVENT_LEGACY_SET_DATA_SUBSCRIPTION,
+                        new AsyncResult(s, null, null)));
+            return;
         }
-        SwitchInfo s = new SwitchInfo(new Integer(phoneId), true);
+
         mPhones[prefPhoneId].registerForAllDataDisconnected(
                 this, EVENT_ALL_DATA_DISCONNECTED, s);
+    }
+
+    private void informDefaultDdsToPropServ(int defDdsPhoneId) {
+        if (mDdsSwitchPropService != null) {
+            logd("Inform OemHookDDS service of current DDS = " + defDdsPhoneId);
+            mDdsSwitchPropService.sendMessageSynchronously(1, defDdsPhoneId,
+                    mPhoneNum);
+            logd("OemHookDDS service finished");
+        } else {
+            logd("OemHookDds service not ready yet");
+        }
+
     }
 
     public void doPsAttach(NetworkRequest n) {
@@ -540,6 +564,8 @@ public class DctController extends Handler {
         Message psAttachDone = Message.obtain(this,
                 EVENT_SET_DATA_ALLOW_DONE, s);
 
+        int defDdsPhoneId = getDataConnectionFromSetting();
+        informDefaultDdsToPropServ(defDdsPhoneId);
         dcTracker.setDataAllowed(true, psAttachDone);
     }
 
@@ -592,6 +618,8 @@ public class DctController extends Handler {
             Rlog.d(LOG_TAG, "handleMessage msg=" + msg);
 
             switch (msg.what) {
+                case EVENT_LEGACY_SET_DATA_SUBSCRIPTION:
+                    //intentional fall through, no break.
                 case EVENT_ALL_DATA_DISCONNECTED: {
                     AsyncResult ar = (AsyncResult)msg.obj;
                     SwitchInfo s = (SwitchInfo)ar.userObj;
@@ -604,13 +632,7 @@ public class DctController extends Handler {
                             EVENT_SET_DATA_ALLOW_DONE, s);
                     Phone phone = mPhones[phoneId].getActivePhone();
 
-                    if (mDdsSwitchPropService != null) {
-
-                        logd("Request OemHookDDS service for DDS switch");
-                        mDdsSwitchPropService.sendMessageSynchronously(1, phoneId,
-                                mPhoneNum);
-                        logd("OemHookDDS service finished");
-                    }
+                    informDefaultDdsToPropServ(phoneId);
 
                     DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
                     dcTracker.setDataAllowed(true, allowedDataDone);

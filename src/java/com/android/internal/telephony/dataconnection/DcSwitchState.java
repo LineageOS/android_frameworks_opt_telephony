@@ -21,6 +21,7 @@ import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
+import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneBase;
@@ -163,7 +164,11 @@ public class DcSwitchState extends StateMachine {
                     }
 
                     PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
-                    pb.mCi.setDataAllowed(true, null);
+                    long subId = pb.getSubId();
+                    SubscriptionController subscriptionController
+                        = SubscriptionController.getInstance();
+                    log("Setting default DDS on " + subId);
+                    subscriptionController.setDefaultDataSubId(subId);
 
                     int result = setupConnection(type);
                     if (msg.what == DcSwitchAsyncChannel.REQ_CONNECT) {
