@@ -32,7 +32,6 @@ package com.android.internal.telephony;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
-
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
@@ -44,6 +43,9 @@ import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.dataconnection.DctController;
 import com.android.internal.telephony.uicc.UiccController;
+
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 
 public class ProxyController {
     static final String LOG_TAG = "ProxyController";
@@ -59,7 +61,7 @@ public class ProxyController {
 
     private Context mContext;
 
-    private static DctController mDctController;
+    private DctController mDctController;
 
     //UiccPhoneBookController to use proper IccPhoneBookInterfaceManagerProxy object
     private UiccPhoneBookController mUiccPhoneBookController;
@@ -129,5 +131,13 @@ public class ProxyController {
 
     private void logd(String string) {
         Rlog.d(LOG_TAG, string);
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        try {
+            mDctController.dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
