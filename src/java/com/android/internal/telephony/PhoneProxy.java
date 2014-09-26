@@ -47,6 +47,8 @@ import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UsimServiceTable;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.List;
 
 public class PhoneProxy extends Handler implements Phone {
@@ -1493,5 +1495,31 @@ public class PhoneProxy extends Handler implements Phone {
     @Override
     public void notifyCallForwardingIndicator() {
         mActivePhone.notifyCallForwardingIndicator();
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        try {
+            ((PhoneBase)mActivePhone).dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            mPhoneSubInfoProxy.dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            mIccCardProxy.dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
     }
 }

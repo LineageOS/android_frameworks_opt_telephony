@@ -39,7 +39,11 @@ import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.sip.SipPhone;
 import com.android.internal.telephony.sip.SipPhoneFactory;
+import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.UiccController;
+
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 
 /**
  * {@hide}
@@ -565,5 +569,49 @@ public class PhoneFactory {
 
     public static SubInfoRecordUpdater getSubInfoRecordUpdater() {
         return sSubInfoRecordUpdater;
+    }
+
+    public static void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("PhoneFactory:");
+        PhoneProxy [] phones = (PhoneProxy[])PhoneFactory.getPhones();
+        int i = -1;
+        for(PhoneProxy phoneProxy : phones) {
+            PhoneBase phoneBase;
+            i += 1;
+
+            try {
+                phoneBase = (PhoneBase)phoneProxy.getActivePhone();
+                phoneBase.dump(fd, pw, args);
+            } catch (Exception e) {
+                pw.println("Telephony DebugService: Could not get Phone[" + i + "] e=" + e);
+                continue;
+            }
+
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
+
+            try {
+                ((IccCardProxy)phoneProxy.getIccCard()).dump(fd, pw, args);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
+        }
+
+        try {
+            mUiccController.dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            SubscriptionController.getInstance().dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
     }
 }

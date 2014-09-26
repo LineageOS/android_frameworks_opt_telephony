@@ -2074,6 +2074,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         pw.println(" mDataRoaming=" + mDataRoaming);
         pw.println(" mEmergencyOnly=" + mEmergencyOnly);
         pw.println(" mNeedFixZoneAfterNitz=" + mNeedFixZoneAfterNitz);
+        pw.flush();
         pw.println(" mZoneOffset=" + mZoneOffset);
         pw.println(" mZoneDst=" + mZoneDst);
         pw.println(" mZoneTime=" + mZoneTime);
@@ -2090,6 +2091,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         pw.println(" mCurShowSpn=" + mCurShowSpn);
         pw.println(" mCurPlmn=" + mCurPlmn);
         pw.println(" mCurShowPlmn=" + mCurShowPlmn);
+        pw.flush();
     }
 
 
