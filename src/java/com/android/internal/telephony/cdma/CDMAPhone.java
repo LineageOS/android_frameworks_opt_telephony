@@ -429,7 +429,7 @@ public class CDMAPhone extends PhoneBase {
             Rlog.w(LOG_TAG, "IMS is disabled: forced to CS");
         }
 
-        if (imsUseEnabled && imsPhone != null
+        if (imsUseEnabled && imsPhone != null && imsPhone.isVolteEnabled()
                 && ((imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
                 && !PhoneNumberUtils.isEmergencyNumber(dialString))
                 || (PhoneNumberUtils.isEmergencyNumber(dialString)
@@ -439,7 +439,8 @@ public class CDMAPhone extends PhoneBase {
                 if (DBG) Rlog.d(LOG_TAG, "Trying IMS PS call");
                 return imsPhone.dial(dialString, videoState, extras);
             } catch (CallStateException e) {
-                if (DBG) Rlog.d(LOG_TAG, "IMS PS call exception " + e);
+                if (DBG) Rlog.d(LOG_TAG, "IMS PS call exception " + e +
+                        "imsUseEnabled =" + imsUseEnabled + ", imsPhone =" + imsPhone);
                 if (!ImsPhone.CS_FALLBACK.equals(e.getMessage())) {
                     CallStateException ce = new CallStateException(e.getMessage());
                     ce.setStackTrace(e.getStackTrace());
