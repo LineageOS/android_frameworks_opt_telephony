@@ -576,6 +576,7 @@ public class IccCardProxy extends Handler implements IccCard {
             case READY: return IccCardConstants.INTENT_VALUE_ICC_READY;
             case NOT_READY: return IccCardConstants.INTENT_VALUE_ICC_NOT_READY;
             case PERM_DISABLED: return IccCardConstants.INTENT_VALUE_ICC_LOCKED;
+            case CARD_IO_ERROR: return IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR;
             default: return IccCardConstants.INTENT_VALUE_ICC_UNKNOWN;
         }
     }
