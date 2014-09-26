@@ -1276,6 +1276,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onFeatureCapabilityChanged(int serviceClass,
                 int[] enabledFeatures, int[] disabledFeatures) {
             if (serviceClass == ImsServiceClass.MMTEL) {
+                boolean tmpIsVtEnabled = mIsVtEnabled;
+
                 if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE] ==
                         ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE) {
                     mIsVolteEnabled = true;
@@ -1292,7 +1294,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
                         ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE) {
                     mIsVtEnabled = false;
                 }
+
+                if (tmpIsVtEnabled != mIsVtEnabled) {
+                    mPhone.notifyForVideoCapabilityChanged(mIsVtEnabled);
+                }
             }
+
             if (DBG) log("onFeatureCapabilityChanged, mIsVolteEnabled = " +  mIsVolteEnabled
                     + " mIsVtEnabled = " + mIsVtEnabled);
         }

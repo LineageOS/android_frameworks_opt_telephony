@@ -468,6 +468,10 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone.notifyNewRingingConnectionP(c);
     }
 
+    public void notifyForVideoCapabilityChanged(boolean isVideoCapable) {
+        mDefaultPhone.notifyForVideoCapabilityChanged(isVideoCapable);
+    }
+
     @Override
     public Connection
     dial(String dialString, int videoState, Bundle extras) throws CallStateException {

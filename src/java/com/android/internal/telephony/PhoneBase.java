@@ -305,6 +305,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected final RegistrantList mSimRecordsLoadedRegistrants
             = new RegistrantList();
 
+    protected final RegistrantList mVideoCapabilityChangedRegistrants
+            = new RegistrantList();
+
+
     protected Looper mLooper; /* to insure registrants are in correct thread*/
 
     protected final Context mContext;
@@ -730,6 +734,21 @@ public abstract class PhoneBase extends Handler implements Phone {
     @Override
     public void unregisterForNewRingingConnection(Handler h) {
         mNewRingingConnectionRegistrants.remove(h);
+    }
+
+    // Inherited documentation suffices.
+    @Override
+    public void registerForVideoCapabilityChanged(
+            Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+
+        mVideoCapabilityChangedRegistrants.addUnique(h, what, obj);
+    }
+
+    // Inherited documentation suffices.
+    @Override
+    public void unregisterForVideoCapabilityChanged(Handler h) {
+        mVideoCapabilityChangedRegistrants.remove(h);
     }
 
     // Inherited documentation suffices.
@@ -1679,6 +1698,15 @@ public abstract class PhoneBase extends Handler implements Phone {
             return;
         AsyncResult ar = new AsyncResult(null, cn, null);
         mNewRingingConnectionRegistrants.notifyRegistrants(ar);
+    }
+
+
+    /**
+     * Notify registrants if phone is video capable.
+     */
+    public void notifyForVideoCapabilityChanged(boolean isVideoCallCapable) {
+        AsyncResult ar = new AsyncResult(null, isVideoCallCapable, null);
+        mVideoCapabilityChangedRegistrants.notifyRegistrants(ar);
     }
 
     /**

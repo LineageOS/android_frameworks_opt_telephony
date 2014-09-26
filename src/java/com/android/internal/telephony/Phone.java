@@ -377,6 +377,22 @@ public interface Phone {
     void unregisterForNewRingingConnection(Handler h);
 
     /**
+     * Notifies when phone's video capabilities changes <p>
+     *
+     *  Messages received from this:
+     *  Message.obj will be an AsyncResult
+     *  AsyncResult.userObj = obj
+     *  AsyncResult.result = true if phone supports video calling <p>
+     */
+    public void registerForVideoCapabilityChanged(Handler h, int what, Object obj);
+
+    /**
+     * Unregisters for video capability changed notification.
+     * Extraneous calls are tolerated silently
+     */
+    public void unregisterForVideoCapabilityChanged(Handler h);
+
+    /**
      * Notifies when an incoming call rings.<p>
      *
      *  Messages received from this:
