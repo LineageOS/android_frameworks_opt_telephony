@@ -1875,6 +1875,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("CdmaServiceStateTracker extends:");
         super.dump(fd, pw, args);
+        pw.flush();
         pw.println(" mPhone=" + mPhone);
         pw.println(" mSS=" + mSS);
         pw.println(" mNewSS=" + mNewSS);
@@ -1887,6 +1888,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         pw.println(" mDefaultRoamingIndicator=" + mDefaultRoamingIndicator);
         pw.println(" mRegistrationState=" + mRegistrationState);
         pw.println(" mNeedFixZone=" + mNeedFixZone);
+        pw.flush();
         pw.println(" mZoneOffset=" + mZoneOffset);
         pw.println(" mZoneDst=" + mZoneDst);
         pw.println(" mZoneTime=" + mZoneTime);
@@ -1907,6 +1909,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         pw.println(" mCdmaSSM=" + mCdmaSSM);
         pw.println(" mRegistrationDeniedReason=" + mRegistrationDeniedReason);
         pw.println(" mCurrentCarrier=" + mCurrentCarrier);
+        pw.flush();
     }
 
     @Override
