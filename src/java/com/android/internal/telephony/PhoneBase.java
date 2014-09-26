@@ -2034,44 +2034,6 @@ public abstract class PhoneBase extends Handler implements Phone {
         return null;
     }
 
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        pw.println("PhoneBase:");
-        pw.println(" mCi=" + mCi);
-        pw.println(" mDnsCheckDisabled=" + mDnsCheckDisabled);
-        pw.println(" mDcTracker=" + mDcTracker);
-        pw.println(" mDoesRilSendMultipleCallRing=" + mDoesRilSendMultipleCallRing);
-        pw.println(" mCallRingContinueToken=" + mCallRingContinueToken);
-        pw.println(" mCallRingDelay=" + mCallRingDelay);
-        pw.println(" mIsTheCurrentActivePhone=" + mIsTheCurrentActivePhone);
-        pw.println(" mIsVoiceCapable=" + mIsVoiceCapable);
-        pw.println(" mIccRecords=" + mIccRecords.get());
-        pw.println(" mUiccApplication=" + mUiccApplication.get());
-        pw.println(" mSmsStorageMonitor=" + mSmsStorageMonitor);
-        pw.println(" mSmsUsageMonitor=" + mSmsUsageMonitor);
-        pw.flush();
-        pw.println(" mLooper=" + mLooper);
-        pw.println(" mContext=" + mContext);
-        pw.println(" mNotifier=" + mNotifier);
-        pw.println(" mSimulatedRadioControl=" + mSimulatedRadioControl);
-        pw.println(" mUnitTestMode=" + mUnitTestMode);
-        pw.println(" isDnsCheckDisabled()=" + isDnsCheckDisabled());
-        pw.println(" getUnitTestMode()=" + getUnitTestMode());
-        pw.println(" getState()=" + getState());
-        pw.println(" getIccSerialNumber()=" + getIccSerialNumber());
-        pw.println(" getIccRecordsLoaded()=" + getIccRecordsLoaded());
-        pw.println(" getMessageWaitingIndicator()=" + getMessageWaitingIndicator());
-        pw.println(" getCallForwardingIndicator()=" + getCallForwardingIndicator());
-        pw.println(" isInEmergencyCall()=" + isInEmergencyCall());
-        pw.flush();
-        pw.println(" isInEcm()=" + isInEcm());
-        pw.println(" getPhoneName()=" + getPhoneName());
-        pw.println(" getPhoneType()=" + getPhoneType());
-        pw.println(" getVoiceMessageCount()=" + getVoiceMessageCount());
-        pw.println(" getActiveApnTypes()=" + getActiveApnTypes());
-        pw.println(" isDataConnectivityPossible()=" + isDataConnectivityPossible());
-        pw.println(" needsOtaServiceProvisioning=" + needsOtaServiceProvisioning());
-    }
-
     /**
      * Returns the subscription id.
      */
@@ -2143,5 +2105,78 @@ public abstract class PhoneBase extends Handler implements Phone {
     public void addParticipant(String dialString) throws CallStateException {
         throw new CallStateException("addParticipant is not supported in this phone "
                 + this);
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("PhoneBase: subId=" + getSubId());
+        pw.println(" mPhoneId=" + mPhoneId);
+        pw.println(" mCi=" + mCi);
+        pw.println(" mDnsCheckDisabled=" + mDnsCheckDisabled);
+        pw.println(" mDcTracker=" + mDcTracker);
+        pw.println(" mDoesRilSendMultipleCallRing=" + mDoesRilSendMultipleCallRing);
+        pw.println(" mCallRingContinueToken=" + mCallRingContinueToken);
+        pw.println(" mCallRingDelay=" + mCallRingDelay);
+        pw.println(" mIsTheCurrentActivePhone=" + mIsTheCurrentActivePhone);
+        pw.println(" mIsVoiceCapable=" + mIsVoiceCapable);
+        pw.println(" mIccRecords=" + mIccRecords.get());
+        pw.println(" mUiccApplication=" + mUiccApplication.get());
+        pw.println(" mSmsStorageMonitor=" + mSmsStorageMonitor);
+        pw.println(" mSmsUsageMonitor=" + mSmsUsageMonitor);
+        pw.flush();
+        pw.println(" mLooper=" + mLooper);
+        pw.println(" mContext=" + mContext);
+        pw.println(" mNotifier=" + mNotifier);
+        pw.println(" mSimulatedRadioControl=" + mSimulatedRadioControl);
+        pw.println(" mUnitTestMode=" + mUnitTestMode);
+        pw.println(" isDnsCheckDisabled()=" + isDnsCheckDisabled());
+        pw.println(" getUnitTestMode()=" + getUnitTestMode());
+        pw.println(" getState()=" + getState());
+        pw.println(" getIccSerialNumber()=" + getIccSerialNumber());
+        pw.println(" getIccRecordsLoaded()=" + getIccRecordsLoaded());
+        pw.println(" getMessageWaitingIndicator()=" + getMessageWaitingIndicator());
+        pw.println(" getCallForwardingIndicator()=" + getCallForwardingIndicator());
+        pw.println(" isInEmergencyCall()=" + isInEmergencyCall());
+        pw.flush();
+        pw.println(" isInEcm()=" + isInEcm());
+        pw.println(" getPhoneName()=" + getPhoneName());
+        pw.println(" getPhoneType()=" + getPhoneType());
+        pw.println(" getVoiceMessageCount()=" + getVoiceMessageCount());
+        pw.println(" getActiveApnTypes()=" + getActiveApnTypes());
+        pw.println(" isDataConnectivityPossible()=" + isDataConnectivityPossible());
+        pw.println(" needsOtaServiceProvisioning=" + needsOtaServiceProvisioning());
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            mDcTracker.dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            getServiceStateTracker().dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            getCallTracker().dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            ((RIL)mCi).dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
     }
 }

@@ -47,8 +47,11 @@ import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.Reques
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.telephony.dataconnection.DdsScheduler;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map.Entry;
 
 public class DctController extends Handler {
     private static final String LOG_TAG = "DctController";
@@ -1081,5 +1084,28 @@ public class DctController extends Handler {
             }
         }
     }
->>>>>>> bda7613... [DS] Data supports DSDS
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("DctController:");
+        try {
+            for (DcSwitchStateMachine dssm : mDcSwitchState) {
+                dssm.dump(fd, pw, args);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            for (Entry<Integer, RequestInfo> entry : mRequestInfos.entrySet()) {
+                pw.println("mRequestInfos[" + entry.getKey() + "]=" + entry.getValue());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+        pw.flush();
+    }
 }
