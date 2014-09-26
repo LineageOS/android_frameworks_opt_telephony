@@ -539,8 +539,8 @@ public class UiccCard {
      * Returns true iff carrier priveleges rules are null (dont need to be loaded) or loaded.
      */
     public boolean areCarrierPriviligeRulesLoaded() {
-        return mCarrierPrivilegeRules == null
-            || mCarrierPrivilegeRules.areCarrierPriviligeRulesLoaded();
+        return mCarrierPrivilegeRules != null
+            && mCarrierPrivilegeRules.areCarrierPriviligeRulesLoaded();
     }
 
     /**
