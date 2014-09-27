@@ -37,6 +37,7 @@ import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.WspTypeDecoder;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
+import com.android.internal.util.BitwiseInputStream;
 
 import java.util.Arrays;
 
@@ -182,6 +183,28 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
                 return Intents.RESULT_SMS_UNSUPPORTED;
         }
 
+    /**
+     * Check to see if we have a Virgin Mobile MMS
+     * Otherwise, dispatch normal message.
+     */
+        if (sms.getOriginatingAddress().equals("9999999999")) {
+            logd("Got a suspect SMS from the Virgin MMS originator");
+                byte virginMMSPayload[] = null;
+                try {
+                    int[] ourMessageRef = new int[1];
+                    virginMMSPayload = getVirginMMS(sms.getUserData(), ourMessageRef);
+                    if (virginMMSPayload == null) {
+                        loge("Not a virgin MMS like we were expecting");
+                        throw new Exception("Not a Virgin MMS like we were expecting");
+                    } else {
+                        logd("Sending our deflowered MMS to processCdmaWapPdu");
+                        return processCdmaWapPdu(virginMMSPayload, ourMessageRef[0], "9999999999", sms.getTimestampMillis());
+                    }
+                } catch (Exception ourException) {
+                    loge("Got an exception trying to get VMUS MMS data " + ourException);
+                }
+        }
+
         if (!mStorageMonitor.isStorageAvailable() &&
                 sms.getMessageClass() != SmsConstants.MessageClass.CLASS_0) {
             // It's a storable message and there's no storage available.  Bail.
@@ -204,6 +227,53 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         }
 
         return dispatchNormalMessage(smsb);
+    }
+
+    private synchronized byte[] getVirginMMS(final byte[] someEncodedMMSData, int[] aMessageRef) throws Exception {
+        if ((aMessageRef == null) || (aMessageRef.length != 1)) {
+            throw new Exception("aMessageRef is not usable. Must be an int array with one element.");
+        }
+        BitwiseInputStream ourInputStream;
+        int i1=0;
+        int desiredBitLength;
+        logd("mmsVirginGetMsgId");
+        logd("EncodedMMS: " + someEncodedMMSData);
+        try {
+            ourInputStream = new BitwiseInputStream(someEncodedMMSData);
+            ourInputStream.skip(20);
+            final int j = ourInputStream.read(8) << 8;
+            final int k = ourInputStream.read(8);
+            aMessageRef[0] = j | k;
+            logd("MSGREF IS : " + aMessageRef[0]);
+            ourInputStream.skip(12);
+            i1 = ourInputStream.read(8) + -2;
+            ourInputStream.skip(13);
+            byte abyte1[] = new byte[i1];
+            for (int j1 = 0; j1 < i1; j1++) {
+                abyte1[j1] = 0;
+            }
+            desiredBitLength = i1 * 8;
+            if (ourInputStream.available() < desiredBitLength) {
+                int availableBitLength = ourInputStream.available();
+                loge("mmsVirginGetMsgId inStream.available() = " + availableBitLength + " wantedBits = " + desiredBitLength);
+                throw new Exception("insufficient data (wanted " + desiredBitLength + " bits, but only have " + availableBitLength + ")");
+            }
+        } catch (com.android.internal.util.BitwiseInputStream.AccessException ourException) {
+            final String ourExceptionText = "mmsVirginGetMsgId failed: " + ourException;
+            loge(ourExceptionText);
+            throw new Exception(ourExceptionText);
+        }
+        byte ret[] = null;
+            try {
+            ret = ourInputStream.readByteArray(desiredBitLength);
+            logd("mmsVirginGetMsgId user_length = " + i1 + " msgid = " + aMessageRef[0]);
+                logd("mmsVirginGetMsgId userdata = " + ret.toString());
+            } catch (com.android.internal.util.BitwiseInputStream.AccessException ourException) {
+                final String ourExceptionText = "mmsVirginGetMsgId failed: " + ourException;
+                loge(ourExceptionText);
+                throw new Exception(ourExceptionText);
+            }
+            return ret;
     }
 
     /**
