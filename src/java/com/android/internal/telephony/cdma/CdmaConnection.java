@@ -448,7 +448,9 @@ public class CdmaConnection extends Connection {
 
         if (Phone.DEBUG_PHONE) log("parent= " +mParent +", newParent= " + newParent);
 
-        if (!equalsHandlesNulls(mAddress, dc.number)) {
+        log(" mNumberConverted " + mNumberConverted);
+        if (!equalsHandlesNulls(mAddress, dc.number) && (!mNumberConverted
+                || !equalsHandlesNulls(mConvertedNumber, dc.number)))  {
             if (Phone.DEBUG_PHONE) log("update: phone # changed!");
             mAddress = dc.number;
             changed = true;
