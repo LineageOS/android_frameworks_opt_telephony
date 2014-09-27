@@ -262,7 +262,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     private void getImsService() {
         if (DBG) log("getImsService");
-        mImsManager = ImsManager.getInstance(mPhone.getContext(), mPhone.getSubId());
+        mImsManager = ImsManager.getInstance(mPhone.getContext(), mPhone.getPhoneId());
         try {
             mServiceId = mImsManager.open(ImsServiceClass.MMTEL,
                     createIncomingCallPendingIntent(),
