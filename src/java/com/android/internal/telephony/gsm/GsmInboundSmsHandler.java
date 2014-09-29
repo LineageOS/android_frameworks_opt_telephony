@@ -107,7 +107,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
 
         boolean handled = false;
         if (sms.isMWISetMessage()) {
-            mPhone.setVoiceMessageWaiting(1, -1);  // line 1: unknown number of msgs waiting
+            mPhone.setVoiceMessageWaiting(1, sms.getNumOfVoicemails());
             handled = sms.isMwiDontStore();
             if (DBG) log("Received voice mail indicator set SMS shouldStore=" + !handled);
         } else if (sms.isMWIClearMessage()) {
