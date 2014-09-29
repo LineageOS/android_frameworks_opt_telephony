@@ -122,8 +122,6 @@ public class IccCardProxy extends Handler implements IccCard {
     private boolean mInitialized = false;
     private State mExternalState = State.UNKNOWN;
 
-    private int mRecordsToLoad;  // number of pending load requests
-
     public IccCardProxy(Context context, CommandsInterface ci) {
         log("Creating");
         mContext = context;
@@ -283,7 +281,12 @@ public class IccCardProxy extends Handler implements IccCard {
                         loge("EVENT_RECORDS_LOADED Operator name is null");
                     }
                 }
-                onRecordsLoaded();
+                if (mUiccCard != null && !mUiccCard.areCarrierPriviligeRulesLoaded()) {
+                    mUiccCard.registerForCarrierPrivilegeRulesLoaded(
+                        this, EVENT_CARRIER_PRIVILIGES_LOADED, null);
+                } else {
+                    onRecordsLoaded();
+                }
                 break;
             case EVENT_IMSI_READY:
                 broadcastIccStateChangedIntent(IccCardConstants.INTENT_VALUE_ICC_IMSI, null);
@@ -319,6 +322,9 @@ public class IccCardProxy extends Handler implements IccCard {
 
             case EVENT_CARRIER_PRIVILIGES_LOADED:
                 log("EVENT_CARRIER_PRIVILEGES_LOADED");
+                if (mUiccCard != null) {
+                    mUiccCard.unregisterForCarrierPrivilegeRulesLoaded(this);
+                }
                 onRecordsLoaded();
                 break;
 
@@ -343,12 +349,7 @@ public class IccCardProxy extends Handler implements IccCard {
     }
 
     private void onRecordsLoaded() {
-        synchronized (mLock) {
-            --mRecordsToLoad;
-            if (mRecordsToLoad == 0) {
-                broadcastIccStateChangedIntent(IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
-            }
-        }
+        broadcastIccStateChangedIntent(IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
     }
 
     private void updateIccAvailability() {
@@ -367,7 +368,6 @@ public class IccCardProxy extends Handler implements IccCard {
 
             if (mIccRecords != newRecords || mUiccApplication != newApp || mUiccCard != newCard) {
                 if (DBG) log("Icc changed. Reregestering.");
-                mRecordsToLoad = 0;
                 unregisterUiccCardEvents();
                 mUiccCard = newCard;
                 mUiccApplication = newApp;
@@ -441,13 +441,8 @@ public class IccCardProxy extends Handler implements IccCard {
     }
 
     private void registerUiccCardEvents() {
-        mRecordsToLoad = (mUiccCard != null ? 1 : 0) +
-            (mIccRecords != null ? 1 : 0);
-
         if (mUiccCard != null) {
             mUiccCard.registerForAbsent(this, EVENT_ICC_ABSENT, null);
-            mUiccCard.registerForCarrierPrivilegeRulesLoaded(
-                    this, EVENT_CARRIER_PRIVILIGES_LOADED, null);
         }
         if (mUiccApplication != null) {
             mUiccApplication.registerForReady(this, EVENT_APP_READY, null);
@@ -463,7 +458,6 @@ public class IccCardProxy extends Handler implements IccCard {
 
     private void unregisterUiccCardEvents() {
         if (mUiccCard != null) mUiccCard.unregisterForAbsent(this);
-        if (mUiccCard != null) mUiccCard.unregisterForCarrierPrivilegeRulesLoaded(this);
         if (mUiccApplication != null) mUiccApplication.unregisterForReady(this);
         if (mUiccApplication != null) mUiccApplication.unregisterForLocked(this);
         if (mUiccApplication != null) mUiccApplication.unregisterForNetworkLocked(this);
