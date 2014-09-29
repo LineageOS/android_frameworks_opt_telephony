@@ -1521,6 +1521,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
             if (DBG) log("onFeatureCapabilityChanged: mImsFeatureEnabled=" +  mImsFeatureEnabled);
         }
+
+        @Override
+        public void onVoiceMessageCountChanged(int count) {
+            if (DBG) log("onVoiceMessageCountChanged :: count=" + count);
+            mPhone.mDefaultPhone.setVoiceMessageCount(count);
+        }
     };
 
     /* package */
