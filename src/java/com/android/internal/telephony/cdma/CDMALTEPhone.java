@@ -414,7 +414,7 @@ public class CDMALTEPhone extends CDMAPhone {
                 curIccRecords = mIccRecords.get();
                 if (curIccRecords != null && (curIccRecords instanceof RuimRecords)) {
                     RuimRecords csim = (RuimRecords) curIccRecords;
-                    operatorNumeric = csim.getRUIMOperatorNumeric();
+                    operatorNumeric = csim.getOperatorNumeric();
                 }
             }
         }
