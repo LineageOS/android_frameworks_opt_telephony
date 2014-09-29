@@ -40,6 +40,8 @@ import android.telephony.SubscriptionManager;
 import android.telephony.SubInfoRecord;
 import android.telephony.TelephonyManager;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.HashMap;
@@ -1265,4 +1267,35 @@ public class SubscriptionController extends ISub.Stub {
         return subIdArr;
     }
 
+    @Override
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("SubscriptionController:");
+        pw.println(" defaultDataSubId=" + getDefaultDataSubId());
+        pw.println(" defaultVoiceSubId=" + getDefaultVoiceSubId());
+        pw.println(" defaultSmsSubId=" + getDefaultSmsSubId());
+
+        pw.println(" defaultDataPhoneId=" + SubscriptionManager.getDefaultDataPhoneId());
+        pw.println(" defaultVoicePhoneId=" + SubscriptionManager.getDefaultVoicePhoneId());
+        pw.println(" defaultSmsPhoneId=" + SubscriptionManager.getDefaultSmsPhoneId());
+        pw.flush();
+
+        for (Entry<Integer, Long> entry : mSimInfo.entrySet()) {
+            pw.println(" mSimInfo[" + entry.getKey() + "]: subId=" + entry.getValue());
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        for (SubInfoRecord entry : getActiveSubInfoList()) {
+            pw.println(" ActiveSubInfoList:" + entry.toString());
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        for (SubInfoRecord entry : getAllSubInfoList()) {
+            pw.println(" AllSubInfoList:" + entry.toString());
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+        pw.flush();
+    }
 }
