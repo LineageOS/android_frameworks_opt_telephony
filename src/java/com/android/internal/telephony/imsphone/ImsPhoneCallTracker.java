@@ -1218,6 +1218,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
             if (DBG) log("onFeatureCapabilityChanged, mIsVolteEnabled = " +  mIsVolteEnabled
                     + " mIsVtEnabled = " + mIsVtEnabled);
         }
+
+        @Override
+        public void onVoiceMessageCountChanged(int count) {
+            if (DBG) log("onVoiceMessageCountChanged :: count=" + count);
+            mPhone.mDefaultPhone.setVoiceMessageCount(count);
+        }
     };
 
     /* package */
