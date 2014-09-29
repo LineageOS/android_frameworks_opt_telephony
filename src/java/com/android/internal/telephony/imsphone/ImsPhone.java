@@ -473,13 +473,16 @@ public class ImsPhone extends ImsPhoneBase {
     protected Connection dialInternal(String dialString, int videoState)
             throws CallStateException {
         boolean isConferenceUri = false;
+        boolean isSkipSchemaParsing = false;
         if (extras != null) {
             isConferenceUri = extras.getBoolean(TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI,
+                    false);
+            isSkipSchemaParsing = extras.getBoolean(TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING,
                     false);
         }
         String newDialString = dialString;
         // Need to make sure dialString gets parsed properly
-        if (!isConferenceUri) {
+        if (!isConferenceUri && !isSkipSchemaParsing) {
             newDialString = PhoneNumberUtils.stripSeparators(dialString);
         }
 

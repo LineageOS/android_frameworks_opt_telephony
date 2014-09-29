@@ -387,11 +387,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
 
         boolean isConferenceUri = false;
+        boolean isSkipSchemaParsing = false;
         if (extras != null) {
             isConferenceUri = extras.getBoolean(TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI,
                     false);
+            isSkipSchemaParsing = extras.getBoolean(TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING,
+                    false);
         }
-        if (!isConferenceUri && (conn.getAddress()== null || conn.getAddress().length() == 0
+        if (!isConferenceUri && !isSkipSchemaParsing && (conn.getAddress()== null
+                || conn.getAddress().length() == 0
                 || conn.getAddress().indexOf(PhoneNumberUtils.WILD) >= 0)) {
             // Phone number is invalid
             conn.setDisconnectCause(DisconnectCause.INVALID_NUMBER);

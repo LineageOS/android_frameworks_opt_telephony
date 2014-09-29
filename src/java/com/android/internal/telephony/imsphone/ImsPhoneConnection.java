@@ -176,9 +176,12 @@ public class ImsPhoneConnection extends Connection {
         createWakeLock(context);
         acquireWakeLock();
         boolean isConferenceUri = false;
+        boolean isSkipSchemaParsing = false;
         if (extras != null) {
             isConferenceUri = extras.getBoolean(
                     TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, false);
+            isSkipSchemaParsing = extras.getBoolean(
+                    TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING, false);
         }
 
         mOwner = ct;
@@ -186,7 +189,7 @@ public class ImsPhoneConnection extends Connection {
 
         mDialString = dialString;
 
-        if (isConferenceUri) {
+        if (isConferenceUri || isSkipSchemaParsing) {
             mAddress = dialString;
             mPostDialString = "";
         } else {
