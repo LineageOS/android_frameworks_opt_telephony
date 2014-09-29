@@ -258,7 +258,7 @@ public final class RuimRecords extends IccRecords {
      * Returns the 5 or 6 digit MCC/MNC of the operator that
      *  provided the RUIM card. Returns null of RUIM is not yet ready
      */
-    public String getRUIMOperatorNumeric() {
+    public String getOperatorNumeric() {
         if (mImsi == null) {
             return null;
         }
@@ -442,7 +442,7 @@ public final class RuimRecords extends IccRecords {
             }
 
             //Update MccTable with the retrieved IMSI
-            String operatorNumeric = getRUIMOperatorNumeric();
+            String operatorNumeric = getOperatorNumeric();
             if (operatorNumeric != null) {
                 if(operatorNumeric.length() <= 6){
                     MccTable.updateMccMncConfiguration(mContext, operatorNumeric, false);
@@ -700,7 +700,7 @@ public final class RuimRecords extends IccRecords {
 
         // Further records that can be inserted are Operator/OEM dependent
 
-        String operator = getRUIMOperatorNumeric();
+        String operator = getOperatorNumeric();
         if (!TextUtils.isEmpty(operator)) {
             log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
                     operator + "'");
