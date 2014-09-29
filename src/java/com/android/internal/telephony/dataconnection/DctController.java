@@ -420,9 +420,8 @@ public class DctController extends Handler {
     }
 
     private void onSettingsChange() {
-        long dataSubId = SubscriptionManager.INVALID_SUB_ID;
         //Sub Selection
-        dataSubId = mSubController.getDefaultDataSubId();
+        long dataSubId = mSubController.getDefaultDataSubId();
 
         int activePhoneId = -1;
         for (int i=0; i<mDcSwitchState.length; i++) {
@@ -433,6 +432,10 @@ public class DctController extends Handler {
         }
 
         long[] subIds = SubscriptionManager.getSubId(activePhoneId);
+        if (subIds ==  null || subIds.length == 0) {
+            loge("onSettingsChange, subIds null or length 0 for activePhoneId " + activePhoneId);
+            return;
+        }
         logd("onSettingsChange, data sub: " + dataSubId + ", active data sub: " + subIds[0]);
 
         if (subIds[0] != dataSubId) {
