@@ -1393,6 +1393,15 @@ public class CDMAPhone extends PhoneBase {
         super.setSystemProperty(property, value);
     }
 
+    // override for allowing access from other classes of this package
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getSystemProperty(String property, String defValue) {
+        return super.getSystemProperty(property, defValue);
+    }
+
     /**
      * Activate or deactivate cell broadcast SMS.
      *

@@ -237,6 +237,17 @@ public abstract class PhoneBase extends Handler implements Phone {
         SystemProperties.set(property, value);
     }
 
+    /**
+     * Set a system property, unless we're in unit test mode
+     */
+    // CAF_MSIM TODO this need to be replated with TelephonyManager API ?
+    public String getSystemProperty(String property, String defValue) {
+        if(getUnitTestMode()) {
+            return null;
+        }
+        return SystemProperties.get(property, defValue);
+    }
+
 
     protected final RegistrantList mPreciseCallStateRegistrants
             = new RegistrantList();

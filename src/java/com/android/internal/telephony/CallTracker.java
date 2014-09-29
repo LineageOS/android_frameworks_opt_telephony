@@ -45,6 +45,9 @@ public abstract class CallTracker extends Handler {
 
     public CommandsInterface mCi;
 
+    protected boolean mNumberConverted = false;
+    private final int VALID_COMPARE_LENGTH   = 3;
+
     //***** Events
 
     protected static final int EVENT_POLL_CALLS_RESULT             = 1;
@@ -169,6 +172,76 @@ public abstract class CallTracker extends Handler {
             }
         }
         return dialString;
+    }
+
+    protected String convertNumberIfNecessary(PhoneBase phoneBase, String dialNumber) {
+        if (dialNumber == null) {
+            return dialNumber;
+        }
+        String[] convertMaps = phoneBase.getContext().getResources().getStringArray(
+                com.android.internal.R.array.dial_string_replace);
+        log("convertNumberIfNecessary Roaming"
+            + " convertMaps.length " + convertMaps.length
+            + " dialNumber.length() " + dialNumber.length());
+
+        if (convertMaps.length < 1 || dialNumber.length() < VALID_COMPARE_LENGTH) {
+            return dialNumber;
+        }
+
+        String[] entry;
+        String[] tmpArray;
+        String outNumber = "";
+        for(String convertMap : convertMaps) {
+            log("convertNumberIfNecessary: " + convertMap);
+            entry = convertMap.split(":");
+            if (entry.length > 1) {
+                tmpArray = entry[1].split(",");
+                if (!TextUtils.isEmpty(entry[0]) && dialNumber.equals(entry[0])) {
+                    if (tmpArray.length >= 2 && !TextUtils.isEmpty(tmpArray[1])) {
+                        if (compareGid1(phoneBase, tmpArray[1])) {
+                            mNumberConverted = true;
+                        }
+                    } else if (outNumber.isEmpty()) {
+                        mNumberConverted = true;
+                    }
+                    if (mNumberConverted) {
+                        if(!TextUtils.isEmpty(tmpArray[0]) && tmpArray[0].endsWith("MDN")) {
+                            String prefix = tmpArray[0].substring(0, tmpArray[0].length() -3);
+                            outNumber = prefix + phoneBase.getLine1Number();
+                        } else {
+                            outNumber = tmpArray[0];
+                        }
+                    }
+                }
+            }
+        }
+
+        if (mNumberConverted) {
+            log("convertNumberIfNecessary: convert service number");
+            return outNumber;
+        }
+
+        return dialNumber;
+
+    }
+
+    private boolean compareGid1(PhoneBase phoneBase, String serviceGid1) {
+        String gid1 = phoneBase.getGroupIdLevel1();
+        int gid_length = serviceGid1.length();
+        boolean ret = true;
+
+        if (serviceGid1 == null || serviceGid1.equals("")) {
+            log("compareGid1 serviceGid is empty, return " + ret);
+            return ret;
+        }
+        // Check if gid1 match service GID1
+        if (!((gid1 != null) && (gid1.length() >= gid_length) &&
+                gid1.substring(0, gid_length).equalsIgnoreCase(serviceGid1))) {
+            log(" gid1 " + gid1 + " serviceGid1 " + serviceGid1);
+            ret = false;
+        }
+        log("compareGid1 is " + (ret?"Same":"Different"));
+        return ret;
     }
 
     //***** Overridden from Handler
