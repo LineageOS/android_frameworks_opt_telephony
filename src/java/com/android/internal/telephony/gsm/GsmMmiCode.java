@@ -32,7 +32,9 @@ import android.content.res.Resources;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.ResultReceiver;
+import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.text.BidiFormatter;
@@ -51,6 +53,7 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.internal.util.ArrayUtils;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -234,16 +237,20 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             ret.mPwd = makeEmptyNull(m.group(MATCH_GROUP_PWD_CONFIRM));
             ret.mDialingNumber = makeEmptyNull(m.group(MATCH_GROUP_DIALING_NUMBER));
             ret.mCallbackReceiver = wrappedCallback;
-            // According to TS 22.030 6.5.2 "Structure of the MMI",
-            // the dialing number should not ending with #.
-            // The dialing number ending # is treated as unique USSD,
-            // eg, *400#16 digit number# to recharge the prepaid card
-            // in India operator(Mumbai MTNL)
+
             if(ret.mDialingNumber != null &&
                     ret.mDialingNumber.endsWith("#") &&
                     dialString.endsWith("#")){
+                // According to TS 22.030 6.5.2 "Structure of the MMI",
+                // the dialing number should not ending with #.
+                // The dialing number ending # is treated as unique USSD,
+                // eg, *400#16 digit number# to recharge the prepaid card
+                // in India operator(Mumbai MTNL)
                 ret = new GsmMmiCode(phone, app);
                 ret.mPoundString = dialString;
+            } else if (ret.isFacToDial()) {
+                // This is a FAC (feature access code) to dial as a normal call.
+                ret = null;
             }
         } else if (dialString.endsWith("#")) {
             // TS 22.030 sec 6.5.3.2
@@ -793,6 +800,30 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         }
 
         return CommandsInterface.CLIR_DEFAULT;
+    }
+
+    /**
+     * Returns true if the Service Code is FAC to dial as a normal call.
+     *
+     * FAC stands for feature access code and it is special patterns of characters
+     * to invoke certain features.
+     */
+    private boolean isFacToDial() {
+        CarrierConfigManager configManager = (CarrierConfigManager)
+                mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = configManager.getConfigForSubId(mPhone.getSubId());
+        if (b != null) {
+            String[] dialFacList = b.getStringArray(CarrierConfigManager
+                    .KEY_FEATURE_ACCESS_CODES_STRING_ARRAY);
+            if (!ArrayUtils.isEmpty(dialFacList)) {
+                for (String fac : dialFacList) {
+                    if (fac.equals(mSc)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     boolean isActivate() {
