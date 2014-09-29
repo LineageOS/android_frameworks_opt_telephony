@@ -214,6 +214,11 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public void registerForRecordsEvents(Handler h, int what, Object obj) {
         Registrant r = new Registrant (h, what, obj);
         mRecordsEventsRegistrants.add(r);
+
+        /* Notify registrant of all the possible events. This is to make sure registrant is
+        notified even if event occurred in the past. */
+        r.notifyResult(EVENT_MWI);
+        r.notifyResult(EVENT_CFI);
     }
     public void unregisterForRecordsEvents(Handler h) {
         mRecordsEventsRegistrants.remove(h);
