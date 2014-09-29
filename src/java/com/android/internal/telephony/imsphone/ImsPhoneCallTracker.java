@@ -57,6 +57,7 @@ import com.android.ims.ImsServiceClass;
 import com.android.ims.ImsSuppServiceNotification;
 import com.android.ims.ImsUtInterface;
 import com.android.ims.internal.IImsVideoCallProvider;
+import com.android.ims.internal.ImsCallSession;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -364,14 +365,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
             }
 
             mPendingMO = new ImsPhoneConnection(mPhone.getContext(),
-                    checkForTestEmergencyNumber(dialString), this, mForegroundCall);
+            checkForTestEmergencyNumber(dialString), this, mForegroundCall, intentExtras);
             mPendingMO.setVideoState(videoState);
         }
         addConnection(mPendingMO);
 
         if (!holdBeforeDial) {
             if ((!isPhoneInEcmMode) || (isPhoneInEcmMode && isEmergencyNumber)) {
-                dialInternal(mPendingMO, clirMode, videoState);
+                dialInternal(mPendingMO, clirMode, videoState, intentExtras);
             } else {
                 try {
                     getEcbmInterface().exitEmergencyCallbackMode();
@@ -392,6 +393,26 @@ public final class ImsPhoneCallTracker extends CallTracker {
         return mPendingMO;
     }
 
+    public void
+    addParticipant(String dialString) throws CallStateException {
+        if (mForegroundCall != null) {
+            ImsCall imsCall = mForegroundCall.getImsCall();
+            if (imsCall == null) {
+                loge("addParticipant : No foreground ims call");
+            } else {
+                ImsCallSession imsCallSession = imsCall.getCallSession();
+                if (imsCallSession != null) {
+                    String[] callees = new String[] { dialString };
+                    imsCallSession.inviteParticipants(callees);
+                } else {
+                    loge("addParticipant : ImsCallSession does not exist");
+                }
+            }
+        } else {
+            loge("addParticipant : Foreground call does not exist");
+        }
+    }
+
     private void handleEcmTimer(int action) {
         mPhone.handleTimerInEmergencyCallbackMode(action);
         switch (action) {
@@ -404,13 +425,25 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    private void dialInternal(ImsPhoneConnection conn, int clirMode, int videoState) {
+    private void dialInternal(ImsPhoneConnection conn, int clirMode, int videoState,
+            Bundle intentExtras) {
         if (conn == null) {
             return;
         }
 
-        if (conn.getAddress()== null || conn.getAddress().length() == 0
-                || conn.getAddress().indexOf(PhoneNumberUtils.WILD) >= 0) {
+        boolean isConferenceUri = false;
+        boolean isSkipSchemaParsing = false;
+
+        if (intentExtras != null) {
+            isConferenceUri = intentExtras.getBoolean(
+                    TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, false);
+            isSkipSchemaParsing = intentExtras.getBoolean(
+                    TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING, false);
+        }
+
+        if (!isConferenceUri && !isSkipSchemaParsing && (conn.getAddress()== null
+                || conn.getAddress().length() == 0
+                || conn.getAddress().indexOf(PhoneNumberUtils.WILD) >= 0)) {
             // Phone number is invalid
             conn.setDisconnectCause(DisconnectCause.INVALID_NUMBER);
             sendEmptyMessageDelayed(EVENT_HANGUP_PENDINGMO, TIMEOUT_HANGUP_PENDINGMO);
@@ -430,6 +463,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
             ImsCallProfile profile = mImsManager.createCallProfile(mServiceId,
                     serviceType, callType);
             profile.setCallExtraInt(ImsCallProfile.EXTRA_OIR, clirMode);
+            profile.setCallExtraBoolean(TelephonyProperties.EXTRAS_IS_CONFERENCE_URI,
+                    isConferenceUri);
 
             ImsCall imsCall = mImsManager.makeCall(mServiceId, profile,
                     callees, mImsCallListener);
@@ -1665,14 +1700,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 }
                 break;
             case EVENT_DIAL_PENDINGMO:
-                dialInternal(mPendingMO, mClirMode, mPendingCallVideoState);
+                dialInternal(mPendingMO, mClirMode, mPendingCallVideoState,
+                        mPendingMO.getExtras());
                 break;
 
             case EVENT_EXIT_ECM_RESPONSE_CDMA:
                 // no matter the result, we still do the same here
                 if (pendingCallInEcm) {
                     dialInternal(mPendingMO, pendingCallClirMode,
-                            mPendingCallVideoState);
+                            mPendingCallVideoState, mPendingMO.getExtras());
                     pendingCallInEcm = false;
                 }
                 mPhone.unsetOnEcbModeExitResponse(this);

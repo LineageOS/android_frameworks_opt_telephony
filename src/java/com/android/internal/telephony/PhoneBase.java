@@ -2605,4 +2605,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     public void setLocalCallHold(boolean lchStatus) {
         mCi.setLocalCallHold(lchStatus);
     }
+
+    @Override
+    public void addParticipant(String dialString) throws CallStateException {
+        throw new CallStateException("addParticipant is not supported in this phone "
+                + this);
+    }
 }

@@ -38,6 +38,7 @@ import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
 
 import com.android.ims.ImsCall;
@@ -156,17 +157,31 @@ public class ImsPhoneConnection extends Connection {
     /** This is an MO call, created when dialing */
     /*package*/
     ImsPhoneConnection(Context context, String dialString, ImsPhoneCallTracker ct,
-            ImsPhoneCall parent) {
+            ImsPhoneCall parent, Bundle extras) {
         createWakeLock(context);
         acquireWakeLock();
+        boolean isConferenceUri = false;
+        boolean isSkipSchemaParsing = false;
+
+        if (extras != null) {
+            isConferenceUri = extras.getBoolean(
+                    TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, false);
+            isSkipSchemaParsing = extras.getBoolean(
+                    TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING, false);
+        }
 
         mOwner = ct;
         mHandler = new MyHandler(mOwner.getLooper());
 
         mDialString = dialString;
 
-        mAddress = PhoneNumberUtils.extractNetworkPortionAlt(dialString);
-        mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
+        if (isConferenceUri || isSkipSchemaParsing) {
+            mAddress = dialString;
+            mPostDialString = "";
+        } else {
+            mAddress = PhoneNumberUtils.extractNetworkPortionAlt(dialString);
+            mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
+        }
 
         //mIndex = -1;
 
