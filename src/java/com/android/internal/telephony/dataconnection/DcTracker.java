@@ -19,6 +19,7 @@ package com.android.internal.telephony.dataconnection;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -38,11 +39,13 @@ import android.net.ProxyInfo;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RegistrantList;
+import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
@@ -63,6 +66,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.PhoneConstants;
@@ -134,6 +138,9 @@ public final class DcTracker extends DcTrackerBase {
     /** Watches for changes to the APN db. */
     private ApnChangeObserver mApnObserver;
 
+    private final String mProvisionActionName;
+    private BroadcastReceiver mProvisionBroadcastReceiver;
+
     /** Used to send us NetworkRequests from ConnectivityService.  Remeber it so we can
      * unregister on dispose. */
     private Messenger mNetworkFactoryMessenger;
@@ -193,6 +200,8 @@ public final class DcTracker extends DcTrackerBase {
         // Add Emergency APN to APN setting list by default to support EPDN in sim absent cases
         initEmergencyApnSetting();
         addEmergencyApnSetting();
+
+        mProvisionActionName = "com.android.internal.telephony.PROVISION" + p.getPhoneId();
     }
 
     protected void registerForAllEvents() {
@@ -225,6 +234,11 @@ public final class DcTracker extends DcTrackerBase {
     @Override
     public void dispose() {
         if (DBG) log("GsmDCT.dispose");
+
+        if (mProvisionBroadcastReceiver != null) {
+            mPhone.getContext().unregisterReceiver(mProvisionBroadcastReceiver);
+            mProvisionBroadcastReceiver = null;
+        }
 
         ConnectivityManager cm = (ConnectivityManager)mPhone.getContext().getSystemService(
                 Context.CONNECTIVITY_SERVICE);
@@ -364,6 +378,48 @@ public final class DcTracker extends DcTrackerBase {
             loge("Request for unsupported mobile type: " + type);
         }
         return apnContext;
+    }
+
+    // Turn telephony radio on or off.
+    private void setRadio(boolean on) {
+        final ITelephony phone = ITelephony.Stub.asInterface(ServiceManager.checkService("phone"));
+        try {
+            phone.setRadio(on);
+        } catch (Exception e) {
+            // Ignore.
+        }
+    }
+
+    // Class to handle Intent dispatched with user selects the "Sign-in to network"
+    // notification.
+    private class ProvisionNotificationBroadcastReceiver extends BroadcastReceiver {
+        // Mobile provisioning URL.  Valid while provisioning notification is up.
+        // Set prior to notification being posted as URL contains ICCID which
+        // disappears when radio is off (which is the case when notification is up).
+        private final String mProvisionUrl;
+
+        public ProvisionNotificationBroadcastReceiver(String provisionUrl) {
+            mProvisionUrl = provisionUrl;
+        }
+
+        private void setEnableFailFastMobileData(int enabled) {
+            sendMessage(obtainMessage(DctConstants.CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA, enabled));
+        }
+
+        private void enableMobileProvisioning() {
+            final Message msg = obtainMessage(DctConstants.CMD_ENABLE_MOBILE_PROVISIONING);
+            msg.setData(Bundle.forPair(DctConstants.PROVISIONING_URL_KEY, mProvisionUrl));
+            sendMessage(msg);
+        }
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // This code is almost identical to the old
+            // ConnectivityService.handleMobileProvisioningAction code.
+            setRadio(true);
+            setEnableFailFastMobileData(DctConstants.ENABLED);
+            enableMobileProvisioning();
+        }
     }
 
     @Override
@@ -1807,7 +1863,15 @@ public final class DcTracker extends DcTrackerBase {
                 // A connection is setup
                 apnContext.setState(DctConstants.State.CONNECTED);
                 boolean isProvApn = apnContext.isProvisioningApn();
+                final ConnectivityManager cm = ConnectivityManager.from(mPhone.getContext());
+                if (mProvisionBroadcastReceiver != null) {
+                    mPhone.getContext().unregisterReceiver(mProvisionBroadcastReceiver);
+                    mProvisionBroadcastReceiver = null;
+                }
                 if ((!isProvApn) || mIsProvisioning) {
+                    // Hide any provisioning notification.
+                    cm.setProvisioningNotificationVisible(false, ConnectivityManager.TYPE_MOBILE,
+                            mProvisionActionName);
                     // Complete the connection normally notifying the world we're connected.
                     // We do this if this isn't a special provisioning apn or if we've been
                     // told its time to provision.
@@ -1823,6 +1887,19 @@ public final class DcTracker extends DcTrackerBase {
                                 + " mIsProvisioning:" + mIsProvisioning + " == false"
                                 + " && (isProvisioningApn:" + isProvApn + " == true");
                     }
+
+                    // While radio is up, grab provisioning URL.  The URL contains ICCID which
+                    // disappears when radio is off.
+                    mProvisionBroadcastReceiver = new ProvisionNotificationBroadcastReceiver(
+                            cm.getMobileProvisioningUrl());
+                    mPhone.getContext().registerReceiver(mProvisionBroadcastReceiver,
+                            new IntentFilter(mProvisionActionName));
+                    // Put up user notification that sign-in is required.
+                    cm.setProvisioningNotificationVisible(true, ConnectivityManager.TYPE_MOBILE,
+                            mProvisionActionName);
+                    // Turn off radio to save battery and avoid wasting carrier resources.
+                    // The network isn't usable and network validation will just fail anyhow.
+                    setRadio(false);
 
                     Intent intent = new Intent(
                             TelephonyIntents.ACTION_DATA_CONNECTION_CONNECTED_TO_PROVISIONING_APN);
