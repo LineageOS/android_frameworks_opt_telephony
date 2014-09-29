@@ -34,6 +34,7 @@ import android.telephony.Rlog;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 
@@ -100,6 +101,9 @@ public final class CallManager {
 
     // empty connection list
     private final ArrayList<Connection> mEmptyConnections = new ArrayList<Connection>();
+
+    // mapping of phones to registered handler instances used for callbacks from RIL
+    private final HashMap<Phone, CallManagerHandler> mHandlerMap = new HashMap<>();
 
     // default phone as the first phone registered, which is PhoneBase obj
     private Phone mDefaultPhone;
@@ -506,61 +510,84 @@ public final class CallManager {
     }
 
     private void registerForPhoneStates(Phone phone) {
+        // We need to keep a mapping of handler to Phone for proper unregistration.
+        // TODO: Clean up this solution as it is just a work around for each Phone instance
+        // using the same Handler to register with the RIL. When time permits, we should consider
+        // moving the handler (or the reference ot the handler) into the Phone object.
+        // See b/17414427.
+        CallManagerHandler handler = mHandlerMap.get(phone);
+        if (handler != null) {
+            Rlog.d(LOG_TAG, "This phone has already been registered.");
+            return;
+        }
+
+        // New registration, create a new handler instance and register the phone.
+        handler = new CallManagerHandler();
+        mHandlerMap.put(phone, handler);
+
         // for common events supported by all phones
-        phone.registerForPreciseCallStateChanged(mHandler, EVENT_PRECISE_CALL_STATE_CHANGED, null);
-        phone.registerForDisconnect(mHandler, EVENT_DISCONNECT, null);
-        phone.registerForNewRingingConnection(mHandler, EVENT_NEW_RINGING_CONNECTION, null);
-        phone.registerForUnknownConnection(mHandler, EVENT_UNKNOWN_CONNECTION, null);
-        phone.registerForIncomingRing(mHandler, EVENT_INCOMING_RING, null);
-        phone.registerForRingbackTone(mHandler, EVENT_RINGBACK_TONE, null);
-        phone.registerForInCallVoicePrivacyOn(mHandler, EVENT_IN_CALL_VOICE_PRIVACY_ON, null);
-        phone.registerForInCallVoicePrivacyOff(mHandler, EVENT_IN_CALL_VOICE_PRIVACY_OFF, null);
-        phone.registerForDisplayInfo(mHandler, EVENT_DISPLAY_INFO, null);
-        phone.registerForSignalInfo(mHandler, EVENT_SIGNAL_INFO, null);
-        phone.registerForResendIncallMute(mHandler, EVENT_RESEND_INCALL_MUTE, null);
-        phone.registerForMmiInitiate(mHandler, EVENT_MMI_INITIATE, null);
-        phone.registerForMmiComplete(mHandler, EVENT_MMI_COMPLETE, null);
-        phone.registerForSuppServiceFailed(mHandler, EVENT_SUPP_SERVICE_FAILED, null);
-        phone.registerForServiceStateChanged(mHandler, EVENT_SERVICE_STATE_CHANGED, null);
+        phone.registerForPreciseCallStateChanged(handler, EVENT_PRECISE_CALL_STATE_CHANGED, null);
+        phone.registerForDisconnect(handler, EVENT_DISCONNECT, null);
+        phone.registerForNewRingingConnection(handler, EVENT_NEW_RINGING_CONNECTION, null);
+        phone.registerForUnknownConnection(handler, EVENT_UNKNOWN_CONNECTION, null);
+        phone.registerForIncomingRing(handler, EVENT_INCOMING_RING, null);
+        phone.registerForRingbackTone(handler, EVENT_RINGBACK_TONE, null);
+        phone.registerForInCallVoicePrivacyOn(handler, EVENT_IN_CALL_VOICE_PRIVACY_ON, null);
+        phone.registerForInCallVoicePrivacyOff(handler, EVENT_IN_CALL_VOICE_PRIVACY_OFF, null);
+        phone.registerForDisplayInfo(handler, EVENT_DISPLAY_INFO, null);
+        phone.registerForSignalInfo(handler, EVENT_SIGNAL_INFO, null);
+        phone.registerForResendIncallMute(handler, EVENT_RESEND_INCALL_MUTE, null);
+        phone.registerForMmiInitiate(handler, EVENT_MMI_INITIATE, null);
+        phone.registerForMmiComplete(handler, EVENT_MMI_COMPLETE, null);
+        phone.registerForSuppServiceFailed(handler, EVENT_SUPP_SERVICE_FAILED, null);
+        phone.registerForServiceStateChanged(handler, EVENT_SERVICE_STATE_CHANGED, null);
 
         // for events supported only by GSM, CDMA and IMS phone
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM ||
                 phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA ||
                 phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
-            phone.setOnPostDialCharacter(mHandler, EVENT_POST_DIAL_CHARACTER, null);
+            phone.setOnPostDialCharacter(handler, EVENT_POST_DIAL_CHARACTER, null);
         }
 
         // for events supported only by CDMA phone
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA ){
-            phone.registerForCdmaOtaStatusChange(mHandler, EVENT_CDMA_OTA_STATUS_CHANGE, null);
-            phone.registerForSubscriptionInfoReady(mHandler, EVENT_SUBSCRIPTION_INFO_READY, null);
-            phone.registerForCallWaiting(mHandler, EVENT_CALL_WAITING, null);
-            phone.registerForEcmTimerReset(mHandler, EVENT_ECM_TIMER_RESET, null);
+            phone.registerForCdmaOtaStatusChange(handler, EVENT_CDMA_OTA_STATUS_CHANGE, null);
+            phone.registerForSubscriptionInfoReady(handler, EVENT_SUBSCRIPTION_INFO_READY, null);
+            phone.registerForCallWaiting(handler, EVENT_CALL_WAITING, null);
+            phone.registerForEcmTimerReset(handler, EVENT_ECM_TIMER_RESET, null);
         }
 
         // for events supported only by IMS phone
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
-            phone.registerForOnHoldTone(mHandler, EVENT_ONHOLD_TONE, null);
+            phone.registerForOnHoldTone(handler, EVENT_ONHOLD_TONE, null);
         }
     }
 
     private void unregisterForPhoneStates(Phone phone) {
+        // Make sure that we clean up our map of handlers to Phones.
+        CallManagerHandler handler = mHandlerMap.get(phone);
+        if (handler != null) {
+            Rlog.e(LOG_TAG, "Could not find Phone handler for unregistration");
+            return;
+        }
+        mHandlerMap.remove(phone);
+
         //  for common events supported by all phones
-        phone.unregisterForPreciseCallStateChanged(mHandler);
-        phone.unregisterForDisconnect(mHandler);
-        phone.unregisterForNewRingingConnection(mHandler);
-        phone.unregisterForUnknownConnection(mHandler);
-        phone.unregisterForIncomingRing(mHandler);
-        phone.unregisterForRingbackTone(mHandler);
-        phone.unregisterForInCallVoicePrivacyOn(mHandler);
-        phone.unregisterForInCallVoicePrivacyOff(mHandler);
-        phone.unregisterForDisplayInfo(mHandler);
-        phone.unregisterForSignalInfo(mHandler);
-        phone.unregisterForResendIncallMute(mHandler);
-        phone.unregisterForMmiInitiate(mHandler);
-        phone.unregisterForMmiComplete(mHandler);
-        phone.unregisterForSuppServiceFailed(mHandler);
-        phone.unregisterForServiceStateChanged(mHandler);
+        phone.unregisterForPreciseCallStateChanged(handler);
+        phone.unregisterForDisconnect(handler);
+        phone.unregisterForNewRingingConnection(handler);
+        phone.unregisterForUnknownConnection(handler);
+        phone.unregisterForIncomingRing(handler);
+        phone.unregisterForRingbackTone(handler);
+        phone.unregisterForInCallVoicePrivacyOn(handler);
+        phone.unregisterForInCallVoicePrivacyOff(handler);
+        phone.unregisterForDisplayInfo(handler);
+        phone.unregisterForSignalInfo(handler);
+        phone.unregisterForResendIncallMute(handler);
+        phone.unregisterForMmiInitiate(handler);
+        phone.unregisterForMmiComplete(handler);
+        phone.unregisterForSuppServiceFailed(handler);
+        phone.unregisterForServiceStateChanged(handler);
 
         // for events supported only by GSM, CDMA and IMS phone
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM ||
@@ -571,15 +598,15 @@ public final class CallManager {
 
         // for events supported only by CDMA phone
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA ){
-            phone.unregisterForCdmaOtaStatusChange(mHandler);
-            phone.unregisterForSubscriptionInfoReady(mHandler);
-            phone.unregisterForCallWaiting(mHandler);
-            phone.unregisterForEcmTimerReset(mHandler);
+            phone.unregisterForCdmaOtaStatusChange(handler);
+            phone.unregisterForSubscriptionInfoReady(handler);
+            phone.unregisterForCallWaiting(handler);
+            phone.unregisterForEcmTimerReset(handler);
         }
 
         // for events supported only by IMS phone
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
-            phone.unregisterForOnHoldTone(mHandler);
+            phone.unregisterForOnHoldTone(handler);
         }
     }
 
@@ -2116,8 +2143,7 @@ public final class CallManager {
         return false;
     }
 
-    private Handler mHandler = new Handler() {
-
+    private class CallManagerHandler extends Handler {
         @Override
         public void handleMessage(Message msg) {
 
