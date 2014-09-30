@@ -1680,8 +1680,8 @@ public class SubscriptionController extends ISub.Stub {
         List<SubInfoRecord> subInfoList = getAllSubInfoList();
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
         for (SubInfoRecord subInfo : subInfoList) {
-            if (subInfo.mSlotId == -1) {
-                sp.edit().remove(prefKey+subInfo.mSubId).commit();
+            if (subInfo.slotId == -1) {
+                sp.edit().remove(prefKey+subInfo.subId).commit();
             }
         }
     }
