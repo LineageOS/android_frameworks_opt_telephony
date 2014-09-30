@@ -1939,9 +1939,13 @@ public final class DataConnection extends StateMachine {
         }
 
         protected void unwanted() {
+            if (mNetworkAgent != this) {
+                log("unwanted found mNetworkAgent=" + mNetworkAgent +
+                        ", which isn't me.  Aborting unwanted");
+                return;
+            }
             // this can only happen if our exit has been called - we're already disconnected
             if (mApnContexts == null) return;
-
             for (ApnContext apnContext : mApnContexts) {
                 Message msg = mDct.obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, apnContext);
                 DisconnectParams dp = new DisconnectParams(apnContext, apnContext.getReason(), msg);
