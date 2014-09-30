@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import libcore.icu.ICU;
 import libcore.icu.TimeZoneNames;
 
 /**
@@ -40,48 +41,35 @@ import libcore.icu.TimeZoneNames;
  *
  * {@hide}
  */
-public final class MccTable
-{
+public final class MccTable {
     static final String LOG_TAG = "MccTable";
 
     static ArrayList<MccEntry> sTable;
 
-    static class MccEntry implements Comparable<MccEntry>
-    {
-        int mMcc;
-        String mIso;
-        int mSmallestDigitsMnc;
-        String mLanguage;
+    static class MccEntry implements Comparable<MccEntry> {
+        final int mMcc;
+        final String mIso;
+        final int mSmallestDigitsMnc;
 
         MccEntry(int mnc, String iso, int smallestDigitsMCC) {
-            this(mnc, iso, smallestDigitsMCC, null);
-        }
-
-        MccEntry(int mnc, String iso, int smallestDigitsMCC, String language) {
+            if (iso == null) {
+                throw new NullPointerException();
+            }
             mMcc = mnc;
             mIso = iso;
             mSmallestDigitsMnc = smallestDigitsMCC;
-            mLanguage = language;
         }
 
-
         @Override
-        public int compareTo(MccEntry o)
-        {
+        public int compareTo(MccEntry o) {
             return mMcc - o.mMcc;
         }
     }
 
-    private static MccEntry
-    entryForMcc(int mcc)
-    {
-        int index;
+    private static MccEntry entryForMcc(int mcc) {
+        MccEntry m = new MccEntry(mcc, "", 0);
 
-        MccEntry m;
-
-        m = new MccEntry(mcc, null, 0);
-
-        index = Collections.binarySearch(sTable, m);
+        int index = Collections.binarySearch(sTable, m);
 
         if (index < 0) {
             return null;
@@ -96,22 +84,14 @@ public final class MccTable
      * @return default TimeZone ID, or null if not specified
      */
     public static String defaultTimeZoneForMcc(int mcc) {
-        MccEntry entry;
-
-        entry = entryForMcc(mcc);
-        if (entry == null || entry.mIso == null) {
+        MccEntry entry = entryForMcc(mcc);
+        if (entry == null) {
             return null;
-        } else {
-            Locale locale;
-            if (entry.mLanguage == null) {
-                locale = new Locale(entry.mIso);
-            } else {
-                locale = new Locale(entry.mLanguage, entry.mIso);
-            }
-            String[] tz = TimeZoneNames.forLocale(locale);
-            if (tz.length == 0) return null;
-            return tz[0];
         }
+        Locale locale = new Locale("", entry.mIso);
+        String[] tz = TimeZoneNames.forLocale(locale);
+        if (tz.length == 0) return null;
+        return tz[0];
     }
 
     /**
@@ -119,12 +99,8 @@ public final class MccTable
      * an ISO two-character country code if available.
      * Returns "" if unavailable.
      */
-    public static String
-    countryCodeForMcc(int mcc)
-    {
-        MccEntry entry;
-
-        entry = entryForMcc(mcc);
+    public static String countryCodeForMcc(int mcc) {
+        MccEntry entry = entryForMcc(mcc);
 
         if (entry == null) {
             return "";
@@ -139,15 +115,18 @@ public final class MccTable
      * Returns null if unavailable.
      */
     public static String defaultLanguageForMcc(int mcc) {
-        MccEntry entry;
-
-        entry = entryForMcc(mcc);
-
+        MccEntry entry = entryForMcc(mcc);
         if (entry == null) {
+            Slog.d(LOG_TAG, "defaultLanguageForMcc(" + mcc + "): no country for mcc");
             return null;
-        } else {
-            return entry.mLanguage;
         }
+
+        // Ask CLDR for the language this country uses...
+        Locale likelyLocale = ICU.addLikelySubtags(new Locale("und", entry.mIso));
+        String likelyLanguage = likelyLocale.getLanguage();
+        Slog.d(LOG_TAG, "defaultLanguageForMcc(" + mcc + "): country " + entry.mIso + " uses " +
+               likelyLanguage);
+        return likelyLanguage;
     }
 
     /**
@@ -155,12 +134,8 @@ public final class MccTable
      * the smallest number of digits that M if available.
      * Returns 2 if unavailable.
      */
-    public static int
-    smallestDigitsMccForMnc(int mcc)
-    {
-        MccEntry entry;
-
-        entry = entryForMcc(mcc);
+    public static int smallestDigitsMccForMnc(int mcc) {
+        MccEntry entry = entryForMcc(mcc);
 
         if (entry == null) {
             return 2;
@@ -179,6 +154,15 @@ public final class MccTable
     public static void updateMccMncConfiguration(Context context, String mccmnc,
             boolean fromServiceState) {
         Slog.d(LOG_TAG, "updateMccMncConfiguration mccmnc='" + mccmnc + "' fromServiceState=" + fromServiceState);
+
+        if (Build.IS_DEBUGGABLE) {
+            String overrideMcc = SystemProperties.get("persist.sys.override_mcc");
+            if (overrideMcc != null) {
+                mccmnc = overrideMcc;
+                Slog.d(LOG_TAG, "updateMccMncConfiguration overriding mccmnc='" + mccmnc + "'");
+            }
+        }
+
         if (!TextUtils.isEmpty(mccmnc)) {
             int mcc, mnc;
 
@@ -194,7 +178,7 @@ public final class MccTable
                 mcc = Integer.parseInt(mccmnc.substring(0,3));
                 mnc = Integer.parseInt(mccmnc.substring(3));
             } catch (NumberFormatException e) {
-                Slog.e(LOG_TAG, "Error parsing IMSI");
+                Slog.e(LOG_TAG, "Error parsing IMSI: " + mccmnc);
                 return;
             }
 
@@ -248,7 +232,7 @@ public final class MccTable
      *
      * @return Locale or null if no appropriate value
      */
-    public static Locale getLocaleForLanguageCountry(Context context, String language,
+    private static Locale getLocaleForLanguageCountry(Context context, String language,
             String country) {
         if (language == null) {
             Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping no language");
@@ -258,16 +242,23 @@ public final class MccTable
             country = ""; // The Locale constructor throws if passed null.
         }
 
-        // Note: persist.always.persist.locale actually means the opposite!
-        boolean alwaysPersist = false;
+        // Check whether a developer is trying to test an arbitrary MCC.
+        boolean debuggingMccOverride = false;
         if (Build.IS_DEBUGGABLE) {
-            alwaysPersist = SystemProperties.getBoolean("persist.always.persist.locale", false);
+            String overrideMcc = SystemProperties.get("persist.sys.override_mcc", "");
+            if (!overrideMcc.isEmpty()) {
+                debuggingMccOverride = true;
+            }
         }
-        String persistSysLanguage = SystemProperties.get("persist.sys.language", "");
-        String persistSysCountry = SystemProperties.get("persist.sys.country", "");
-        if (!(alwaysPersist || (persistSysLanguage.isEmpty() && persistSysCountry.isEmpty()))) {
-            Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping already persisted");
-            return null;
+
+        // If this is a regular user and they already have a persisted locale, we're done.
+        if (!debuggingMccOverride) {
+            String persistSysLanguage = SystemProperties.get("persist.sys.language", "");
+            String persistSysCountry = SystemProperties.get("persist.sys.country", "");
+            if (!(persistSysLanguage.isEmpty() && persistSysCountry.isEmpty())) {
+                Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping already persisted");
+                return null;
+            }
         }
 
         // Find the best match we actually have a localization for.
@@ -414,31 +405,30 @@ public final class MccTable
          *    http://www.iso.org/iso/en/prods-services/iso3166ma/02iso-3166-code-lists/index.html
          *
          * This table has not been verified.
-         *
          */
 
 		sTable.add(new MccEntry(202,"gr",2));	//Greece
-		sTable.add(new MccEntry(204,"nl",2,"nl"));	//Netherlands (Kingdom of the)
+		sTable.add(new MccEntry(204,"nl",2));	//Netherlands (Kingdom of the)
 		sTable.add(new MccEntry(206,"be",2));	//Belgium
-		sTable.add(new MccEntry(208,"fr",2,"fr"));	//France
+		sTable.add(new MccEntry(208,"fr",2));	//France
 		sTable.add(new MccEntry(212,"mc",2));	//Monaco (Principality of)
 		sTable.add(new MccEntry(213,"ad",2));	//Andorra (Principality of)
-		sTable.add(new MccEntry(214,"es",2,"es"));	//Spain
-		sTable.add(new MccEntry(216,"hu",2,"hu"));	//Hungary (Republic of)
+		sTable.add(new MccEntry(214,"es",2));	//Spain
+		sTable.add(new MccEntry(216,"hu",2));	//Hungary (Republic of)
 		sTable.add(new MccEntry(218,"ba",2));	//Bosnia and Herzegovina
-		sTable.add(new MccEntry(219,"hr",2,"hr"));	//Croatia (Republic of)
+		sTable.add(new MccEntry(219,"hr",2));	//Croatia (Republic of)
 		sTable.add(new MccEntry(220,"rs",2));	//Serbia and Montenegro
-		sTable.add(new MccEntry(222,"it",2,"it"));	//Italy
-		sTable.add(new MccEntry(225,"va",2,"it"));	//Vatican City State
+		sTable.add(new MccEntry(222,"it",2));	//Italy
+		sTable.add(new MccEntry(225,"va",2));	//Vatican City State
 		sTable.add(new MccEntry(226,"ro",2));	//Romania
-		sTable.add(new MccEntry(228,"ch",2,"de"));	//Switzerland (Confederation of)
-		sTable.add(new MccEntry(230,"cz",2,"cs"));	//Czech Republic
+		sTable.add(new MccEntry(228,"ch",2));	//Switzerland (Confederation of)
+		sTable.add(new MccEntry(230,"cz",2));	//Czech Republic
 		sTable.add(new MccEntry(231,"sk",2));	//Slovak Republic
-		sTable.add(new MccEntry(232,"at",2,"de"));	//Austria
-		sTable.add(new MccEntry(234,"gb",2,"en"));	//United Kingdom of Great Britain and Northern Ireland
-		sTable.add(new MccEntry(235,"gb",2,"en"));	//United Kingdom of Great Britain and Northern Ireland
+		sTable.add(new MccEntry(232,"at",2));	//Austria
+		sTable.add(new MccEntry(234,"gb",2));	//United Kingdom of Great Britain and Northern Ireland
+		sTable.add(new MccEntry(235,"gb",2));	//United Kingdom of Great Britain and Northern Ireland
 		sTable.add(new MccEntry(238,"dk",2));	//Denmark
-		sTable.add(new MccEntry(240,"se",2,"sv"));	//Sweden
+		sTable.add(new MccEntry(240,"se",2));	//Sweden
 		sTable.add(new MccEntry(242,"no",2));	//Norway
 		sTable.add(new MccEntry(244,"fi",2));	//Finland
 		sTable.add(new MccEntry(246,"lt",2));	//Lithuania (Republic of)
@@ -449,11 +439,11 @@ public final class MccTable
 		sTable.add(new MccEntry(257,"by",2));	//Belarus (Republic of)
 		sTable.add(new MccEntry(259,"md",2));	//Moldova (Republic of)
 		sTable.add(new MccEntry(260,"pl",2));	//Poland (Republic of)
-		sTable.add(new MccEntry(262,"de",2,"de"));	//Germany (Federal Republic of)
+		sTable.add(new MccEntry(262,"de",2));	//Germany (Federal Republic of)
 		sTable.add(new MccEntry(266,"gi",2));	//Gibraltar
 		sTable.add(new MccEntry(268,"pt",2));	//Portugal
 		sTable.add(new MccEntry(270,"lu",2));	//Luxembourg
-		sTable.add(new MccEntry(272,"ie",2,"en"));	//Ireland
+		sTable.add(new MccEntry(272,"ie",2));	//Ireland
 		sTable.add(new MccEntry(274,"is",2));	//Iceland
 		sTable.add(new MccEntry(276,"al",2));	//Albania (Republic of)
 		sTable.add(new MccEntry(278,"mt",2));	//Malta
@@ -470,15 +460,15 @@ public final class MccTable
                 sTable.add(new MccEntry(294,"mk",2));   //The Former Yugoslav Republic of Macedonia
 		sTable.add(new MccEntry(295,"li",2));	//Liechtenstein (Principality of)
                 sTable.add(new MccEntry(297,"me",2));    //Montenegro (Republic of)
-		sTable.add(new MccEntry(302,"ca",3,"en"));	//Canada
+		sTable.add(new MccEntry(302,"ca",3));	//Canada
 		sTable.add(new MccEntry(308,"pm",2));	//Saint Pierre and Miquelon (Collectivit territoriale de la Rpublique franaise)
-		sTable.add(new MccEntry(310,"us",3,"en"));	//United States of America
-		sTable.add(new MccEntry(311,"us",3,"en"));	//United States of America
-		sTable.add(new MccEntry(312,"us",3,"en"));	//United States of America
-		sTable.add(new MccEntry(313,"us",3,"en"));	//United States of America
-		sTable.add(new MccEntry(314,"us",3,"en"));	//United States of America
-		sTable.add(new MccEntry(315,"us",3,"en"));	//United States of America
-		sTable.add(new MccEntry(316,"us",3,"en"));	//United States of America
+		sTable.add(new MccEntry(310,"us",3));	//United States of America
+		sTable.add(new MccEntry(311,"us",3));	//United States of America
+		sTable.add(new MccEntry(312,"us",3));	//United States of America
+		sTable.add(new MccEntry(313,"us",3));	//United States of America
+		sTable.add(new MccEntry(314,"us",3));	//United States of America
+		sTable.add(new MccEntry(315,"us",3));	//United States of America
+		sTable.add(new MccEntry(316,"us",3));	//United States of America
 		sTable.add(new MccEntry(330,"pr",2));	//Puerto Rico
 		sTable.add(new MccEntry(332,"vi",2));	//United States Virgin Islands
 		sTable.add(new MccEntry(334,"mx",3));	//Mexico
@@ -509,6 +499,7 @@ public final class MccTable
 		sTable.add(new MccEntry(402,"bt",2));	//Bhutan (Kingdom of)
 		sTable.add(new MccEntry(404,"in",2));	//India (Republic of)
 		sTable.add(new MccEntry(405,"in",2));	//India (Republic of)
+		sTable.add(new MccEntry(406,"in",2));	//India (Republic of)
 		sTable.add(new MccEntry(410,"pk",2));	//Pakistan (Islamic Republic of)
 		sTable.add(new MccEntry(412,"af",2));	//Afghanistan
 		sTable.add(new MccEntry(413,"lk",2));	//Sri Lanka (Democratic Socialist Republic of)
@@ -535,29 +526,29 @@ public final class MccTable
 		sTable.add(new MccEntry(436,"tj",2));	//Tajikistan (Republic of)
 		sTable.add(new MccEntry(437,"kg",2));	//Kyrgyz Republic
 		sTable.add(new MccEntry(438,"tm",2));	//Turkmenistan
-		sTable.add(new MccEntry(440,"jp",2,"ja"));	//Japan
-		sTable.add(new MccEntry(441,"jp",2,"ja"));	//Japan
-		sTable.add(new MccEntry(450,"kr",2,"ko"));	//Korea (Republic of)
+		sTable.add(new MccEntry(440,"jp",2));	//Japan
+		sTable.add(new MccEntry(441,"jp",2));	//Japan
+		sTable.add(new MccEntry(450,"kr",2));	//Korea (Republic of)
 		sTable.add(new MccEntry(452,"vn",2));	//Viet Nam (Socialist Republic of)
 		sTable.add(new MccEntry(454,"hk",2));	//"Hong Kong, China"
 		sTable.add(new MccEntry(455,"mo",2));	//"Macao, China"
 		sTable.add(new MccEntry(456,"kh",2));	//Cambodia (Kingdom of)
 		sTable.add(new MccEntry(457,"la",2));	//Lao People's Democratic Republic
-		sTable.add(new MccEntry(460,"cn",2,"zh"));	//China (People's Republic of)
-		sTable.add(new MccEntry(461,"cn",2,"zh"));	//China (People's Republic of)
+		sTable.add(new MccEntry(460,"cn",2));	//China (People's Republic of)
+		sTable.add(new MccEntry(461,"cn",2));	//China (People's Republic of)
 		sTable.add(new MccEntry(466,"tw",2));	//"Taiwan, China"
 		sTable.add(new MccEntry(467,"kp",2));	//Democratic People's Republic of Korea
 		sTable.add(new MccEntry(470,"bd",2));	//Bangladesh (People's Republic of)
 		sTable.add(new MccEntry(472,"mv",2));	//Maldives (Republic of)
 		sTable.add(new MccEntry(502,"my",2));	//Malaysia
-		sTable.add(new MccEntry(505,"au",2,"en"));	//Australia
+		sTable.add(new MccEntry(505,"au",2));	//Australia
 		sTable.add(new MccEntry(510,"id",2));	//Indonesia (Republic of)
 		sTable.add(new MccEntry(514,"tl",2));	//Democratic Republic of Timor-Leste
 		sTable.add(new MccEntry(515,"ph",2));	//Philippines (Republic of the)
 		sTable.add(new MccEntry(520,"th",2));	//Thailand
-		sTable.add(new MccEntry(525,"sg",2,"en"));	//Singapore (Republic of)
+		sTable.add(new MccEntry(525,"sg",2));	//Singapore (Republic of)
 		sTable.add(new MccEntry(528,"bn",2));	//Brunei Darussalam
-		sTable.add(new MccEntry(530,"nz",2, "en"));	//New Zealand
+		sTable.add(new MccEntry(530,"nz",2));	//New Zealand
 		sTable.add(new MccEntry(534,"mp",2));	//Northern Mariana Islands (Commonwealth of the)
 		sTable.add(new MccEntry(535,"gu",2));	//Guam
 		sTable.add(new MccEntry(536,"nr",2));	//Nauru (Republic of)
@@ -576,6 +567,8 @@ public final class MccTable
 		sTable.add(new MccEntry(550,"fm",2));	//Micronesia (Federated States of)
 		sTable.add(new MccEntry(551,"mh",2));	//Marshall Islands (Republic of the)
 		sTable.add(new MccEntry(552,"pw",2));	//Palau (Republic of)
+		sTable.add(new MccEntry(553,"tv",2));	//Tuvalu
+		sTable.add(new MccEntry(555,"nu",2));	//Niue
 		sTable.add(new MccEntry(602,"eg",2));	//Egypt (Arab Republic of)
 		sTable.add(new MccEntry(603,"dz",2));	//Algeria (People's Democratic Republic of)
 		sTable.add(new MccEntry(604,"ma",2));	//Morocco (Kingdom of)
@@ -586,7 +579,7 @@ public final class MccTable
 		sTable.add(new MccEntry(609,"mr",2));	//Mauritania (Islamic Republic of)
 		sTable.add(new MccEntry(610,"ml",2));	//Mali (Republic of)
 		sTable.add(new MccEntry(611,"gn",2));	//Guinea (Republic of)
-		sTable.add(new MccEntry(612,"ci",2));	//Cte d'Ivoire (Republic of)
+		sTable.add(new MccEntry(612,"ci",2));	//Côte d'Ivoire (Republic of)
 		sTable.add(new MccEntry(613,"bf",2));	//Burkina Faso
 		sTable.add(new MccEntry(614,"ne",2));	//Niger (Republic of the)
 		sTable.add(new MccEntry(615,"tg",2));	//Togolese Republic
@@ -628,8 +621,10 @@ public final class MccTable
 		sTable.add(new MccEntry(652,"bw",2));	//Botswana (Republic of)
 		sTable.add(new MccEntry(653,"sz",2));	//Swaziland (Kingdom of)
 		sTable.add(new MccEntry(654,"km",2));	//Comoros (Union of the)
-		sTable.add(new MccEntry(655,"za",2,"en"));	//South Africa (Republic of)
+		sTable.add(new MccEntry(655,"za",2));	//South Africa (Republic of)
 		sTable.add(new MccEntry(657,"er",2));	//Eritrea
+		sTable.add(new MccEntry(658,"sh",2));	//Saint Helena, Ascension and Tristan da Cunha
+		sTable.add(new MccEntry(659,"ss",2));	//South Sudan (Republic of)
 		sTable.add(new MccEntry(702,"bz",2));	//Belize
 		sTable.add(new MccEntry(704,"gt",2));	//Guatemala (Republic of)
 		sTable.add(new MccEntry(706,"sv",2));	//El Salvador (Republic of)
