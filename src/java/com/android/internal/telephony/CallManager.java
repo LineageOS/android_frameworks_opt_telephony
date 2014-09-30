@@ -27,6 +27,7 @@ import android.os.RegistrantList;
 import android.os.Registrant;
 import android.telecom.VideoProfile;
 import android.telephony.PhoneNumberUtils;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
