@@ -66,7 +66,7 @@ public class DctController extends Handler {
 
     private int mPhoneNum;
     private PhoneProxy[] mPhones;
-    private DcSwitchStateMachine[] mDcSwitchState;
+    private DcSwitchStateMachine[] mDcSwitchStateMachine;
     private DcSwitchAsyncChannel[] mDcSwitchAsyncChannel;
     private Handler[] mDcSwitchStateHandler;
     private HashMap<Integer, RequestInfo> mRequestInfos = new HashMap<Integer, RequestInfo>();
@@ -125,12 +125,15 @@ public class DctController extends Handler {
 
     public static DctController makeDctController(PhoneProxy[] phones) {
         if (sDctController == null) {
+            logd("makeDctController: new DctController phones.length=" + phones.length);
             sDctController = new DctController(phones);
         }
+        logd("makeDctController: X sDctController=" + sDctController);
         return sDctController;
     }
 
     private DctController(PhoneProxy[] phones) {
+        logd("DctController(): phones.length=" + phones.length);
         if (phones == null || phones.length == 0) {
             if (phones == null) {
                 loge("DctController(phones): UNEXPECTED phones=null, ignore");
@@ -142,7 +145,7 @@ public class DctController extends Handler {
         mPhoneNum = phones.length;
         mPhones = phones;
 
-        mDcSwitchState = new DcSwitchStateMachine[mPhoneNum];
+        mDcSwitchStateMachine = new DcSwitchStateMachine[mPhoneNum];
         mDcSwitchAsyncChannel = new DcSwitchAsyncChannel[mPhoneNum];
         mDcSwitchStateHandler = new Handler[mPhoneNum];
         mNetworkFactoryMessenger = new Messenger[mPhoneNum];
@@ -151,13 +154,14 @@ public class DctController extends Handler {
 
         for (int i = 0; i < mPhoneNum; ++i) {
             int phoneId = i;
-            mDcSwitchState[i] = new DcSwitchStateMachine(mPhones[i], "DcSwitchState-" + phoneId, phoneId);
-            mDcSwitchState[i].start();
-            mDcSwitchAsyncChannel[i] = new DcSwitchAsyncChannel(mDcSwitchState[i], phoneId);
+            mDcSwitchStateMachine[i] = new DcSwitchStateMachine(mPhones[i],
+                    "DcSwitchStateMachine-" + phoneId, phoneId);
+            mDcSwitchStateMachine[i].start();
+            mDcSwitchAsyncChannel[i] = new DcSwitchAsyncChannel(mDcSwitchStateMachine[i], phoneId);
             mDcSwitchStateHandler[i] = new Handler();
 
             int status = mDcSwitchAsyncChannel[i].fullyConnectSync(mPhones[i].getContext(),
-                mDcSwitchStateHandler[i], mDcSwitchState[i].getHandler());
+                mDcSwitchStateHandler[i], mDcSwitchStateMachine[i].getHandler());
 
             if (status == AsyncChannel.STATUS_SUCCESSFUL) {
                 logd("DctController(phones): Connect success: " + i);
@@ -308,7 +312,7 @@ public class DctController extends Handler {
         int phoneId = getTopPriorityRequestPhoneId();
         int activePhoneId = -1;
 
-        for (int i=0; i<mDcSwitchState.length; i++) {
+        for (int i=0; i<mDcSwitchStateMachine.length; i++) {
             if (!mDcSwitchAsyncChannel[i].isIdleSync()) {
                 activePhoneId = i;
                 break;
@@ -382,7 +386,7 @@ public class DctController extends Handler {
         long dataSubId = mSubController.getDefaultDataSubId();
 
         int activePhoneId = -1;
-        for (int i=0; i<mDcSwitchState.length; i++) {
+        for (int i=0; i<mDcSwitchStateMachine.length; i++) {
             if (!mDcSwitchAsyncChannel[i].isIdleSync()) {
                 activePhoneId = i;
                 break;
@@ -649,7 +653,7 @@ public class DctController extends Handler {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("DctController:");
         try {
-            for (DcSwitchStateMachine dssm : mDcSwitchState) {
+            for (DcSwitchStateMachine dssm : mDcSwitchStateMachine) {
                 dssm.dump(fd, pw, args);
             }
         } catch (Exception e) {
