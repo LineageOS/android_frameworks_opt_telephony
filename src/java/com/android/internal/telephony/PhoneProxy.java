@@ -192,14 +192,20 @@ public class PhoneProxy extends Handler implements Phone {
                     newVoiceRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT;
                 }
             } else {
-                if ((ServiceState.isCdma(newVoiceRadioTech) &&
-                        mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) ||
-                        (ServiceState.isGsm(newVoiceRadioTech) &&
-                                mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM)) {
+                boolean matchCdma = ServiceState.isCdma(newVoiceRadioTech) &&
+                        mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA;
+                boolean matchGsm = ServiceState.isGsm(newVoiceRadioTech) &&
+                        mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM;
+                if (matchCdma || matchGsm) {
                     // Nothing changed. Keep phone as it is.
                     logd("phoneObjectUpdater: No change ignore," +
                             " newVoiceRadioTech=" + newVoiceRadioTech +
                             " mActivePhone=" + mActivePhone.getPhoneName());
+                    return;
+                }
+                if (!matchCdma && !matchGsm) {
+                    loge("phoneObjectUpdater: newVoiceRadioTech=" + newVoiceRadioTech +
+                        " doesn't match either CDMA or GSM - error! No phone change");
                     return;
                 }
             }
@@ -267,6 +273,10 @@ public class PhoneProxy extends Handler implements Phone {
             mActivePhone = PhoneFactory.getCdmaPhone(mPhoneId);
         } else if (ServiceState.isGsm(newVoiceRadioTech)) {
             mActivePhone = PhoneFactory.getGsmPhone(mPhoneId);
+        } else {
+            loge("deleteAndCreatePhone: newVoiceRadioTech=" + newVoiceRadioTech +
+                " is not CDMA or GSM (error) - aborting!");
+            return;
         }
 
         if (oldPhone != null) {

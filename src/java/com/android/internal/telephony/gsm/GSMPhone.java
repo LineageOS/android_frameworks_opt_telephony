@@ -1603,6 +1603,17 @@ public class GSMPhone extends PhoneBase {
         AsyncResult ar;
         Message onComplete;
 
+        // messages to be handled whether or not the phone is being destroyed
+        // should only include messages which are being re-directed and do not use
+        // resources of the phone being destroyed
+        switch (msg.what) {
+            // handle the select network completion callbacks.
+            case EVENT_SET_NETWORK_MANUAL_COMPLETE:
+            case EVENT_SET_NETWORK_AUTOMATIC_COMPLETE:
+                super.handleMessage(msg);
+                return;
+        }
+
         if (!mIsTheCurrentActivePhone) {
             Rlog.e(LOG_TAG, "Received message " + msg +
                     "[" + msg.what + "] while being destroyed. Ignoring.");
