@@ -51,6 +51,8 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.List;
 
+import com.android.internal.telephony.dataconnection.DctController;
+
 public class PhoneProxy extends Handler implements Phone {
     public final static Object lockForRadioTechnologyChange = new Object();
 
@@ -242,6 +244,8 @@ public class PhoneProxy extends Handler implements Phone {
         intent.putExtra(PhoneConstants.PHONE_NAME_KEY, mActivePhone.getPhoneName());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhoneId);
         ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
+
+        DctController.getInstance().updatePhoneObject(this);
 
     }
 
