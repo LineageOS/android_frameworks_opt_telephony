@@ -152,7 +152,8 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_SRVCC_STATE_CHANGED            = 31;
     protected static final int EVENT_INITIATE_SILENT_REDIAL         = 32;
     protected static final int EVENT_RADIO_NOT_AVAILABLE            = 33;
-    protected static final int EVENT_LAST                           = EVENT_RADIO_NOT_AVAILABLE;
+    protected static final int EVENT_UNSOL_OEM_HOOK_RAW             = 34;
+    protected static final int EVENT_LAST                           = EVENT_UNSOL_OEM_HOOK_RAW;
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";
@@ -403,6 +404,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         mContext.registerReceiver(mImsIntentReceiver, filter);
 
         mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
+        mCi.setOnUnsolOemHookRaw(this, EVENT_UNSOL_OEM_HOOK_RAW, null);
     }
 
     @Override
@@ -418,6 +420,7 @@ public abstract class PhoneBase extends Handler implements Phone {
             mSmsUsageMonitor.dispose();
             mUiccController.unregisterForIccChanged(this);
             mCi.unregisterForSrvccStateChanged(this);
+            mCi.unSetOnUnsolOemHookRaw(this);
 
             if (mTelephonyTester != null) {
                 mTelephonyTester.dispose();
@@ -517,6 +520,18 @@ public abstract class PhoneBase extends Handler implements Phone {
                     handleSrvccStateChanged((int[]) ar.result);
                 } else {
                     Rlog.e(LOG_TAG, "Srvcc exception: " + ar.exception);
+                }
+                break;
+
+            case EVENT_UNSOL_OEM_HOOK_RAW:
+                ar = (AsyncResult)msg.obj;
+                if (ar.exception == null) {
+                    byte[] data = (byte[])ar.result;
+                    Rlog.d(LOG_TAG, "EVENT_UNSOL_OEM_HOOK_RAW data="
+                            + IccUtils.bytesToHexString(data));
+                    mNotifier.notifyOemHookRawEventForSubscriber(getSubId(), data);
+                } else {
+                    Rlog.e(LOG_TAG, "OEM hook raw exception: " + ar.exception);
                 }
                 break;
 

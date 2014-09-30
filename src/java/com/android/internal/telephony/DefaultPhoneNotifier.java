@@ -299,6 +299,15 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
         }
     }
 
+    @Override
+    public void notifyOemHookRawEventForSubscriber(long subId, byte[] rawData) {
+        try {
+            mRegistry.notifyOemHookRawEventForSubscriber(subId, rawData);
+        } catch (RemoteException ex) {
+            // system process is dead
+        }
+    }
+
     /**
      * Convert the {@link PhoneConstants.State} enum into the TelephonyManager.CALL_STATE_*
      * constants for the public API.
