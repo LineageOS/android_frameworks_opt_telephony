@@ -501,6 +501,19 @@ public abstract class PhoneBase extends Handler implements Phone {
     public void handleMessage(Message msg) {
         AsyncResult ar;
 
+        // messages to be handled whether or not the phone is being destroyed
+        // should only include messages which are being re-directed and do not use
+        // resources of the phone being destroyed
+        // Note: make sure to add code in GSMPhone/CDMAPhone to re-direct here before
+        // they check if phone destroyed.
+        switch (msg.what) {
+            // handle the select network completion callbacks.
+            case EVENT_SET_NETWORK_MANUAL_COMPLETE:
+            case EVENT_SET_NETWORK_AUTOMATIC_COMPLETE:
+                handleSetSelectNetwork((AsyncResult) msg.obj);
+                return;
+        }
+
         if (!mIsTheCurrentActivePhone) {
             Rlog.e(LOG_TAG, "Received message " + msg +
                     "[" + msg.what + "] while being destroyed. Ignoring.");
@@ -532,12 +545,6 @@ public abstract class PhoneBase extends Handler implements Phone {
 
             case EVENT_ICC_CHANGED:
                 onUpdateIccAvailability();
-                break;
-
-            // handle the select network completion callbacks.
-            case EVENT_SET_NETWORK_MANUAL_COMPLETE:
-            case EVENT_SET_NETWORK_AUTOMATIC_COMPLETE:
-                handleSetSelectNetwork((AsyncResult) msg.obj);
                 break;
 
             case EVENT_INITIATE_SILENT_REDIAL:
