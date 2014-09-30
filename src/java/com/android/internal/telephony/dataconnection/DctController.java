@@ -130,6 +130,30 @@ public class DctController extends Handler {
         return false;
     }
 
+    public void updatePhoneObject(PhoneProxy phone) {
+        if(phone == null) {
+            loge("updatePhoneObject phone = null");
+            return;
+        }
+        PhoneBase phoneBase = (PhoneBase)phone.getActivePhone();
+        if(phoneBase == null) {
+            loge("updatePhoneObject phoneBase = null");
+            return;
+        }
+
+        phoneBase.getServiceStateTracker().registerForDataConnectionAttached(mRspHandler,
+                   EVENT_DATA_ATTACHED, null);
+        phoneBase.getServiceStateTracker().registerForDataConnectionDetached(mRspHandler,
+                   EVENT_DATA_DETACHED, null);
+
+        for(int i = 0; i < mPhoneNum; i++) {
+            if((mPhones[i] == phone) && (mNetworkFactory != null) && (mNetworkFactory[i] != null)){
+                logd("updatePhoneObject for phone i=" + i);
+                ((DctController.TelephonyNetworkFactory)mNetworkFactory[i]).setPhone(phoneBase);
+                break;
+            }
+        }
+    }
 
     private Handler mRspHandler = new Handler() {
         @Override
@@ -1016,6 +1040,11 @@ public class DctController extends Handler {
     private class TelephonyNetworkFactory extends NetworkFactory {
         private final SparseArray<NetworkRequest> mPendingReq = new SparseArray<NetworkRequest>();
         private Phone mPhone;
+
+        public void setPhone(Phone phone) {
+            log("NetworkCapabilities: setPhone=" + phone);
+            mPhone = phone;
+        }
 
         public TelephonyNetworkFactory(Looper l, Context c, String TAG, Phone phone,
                 NetworkCapabilities nc) {
