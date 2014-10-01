@@ -1519,15 +1519,10 @@ public class GSMPhone extends PhoneBase {
                 // within the course of a CommandsInterface request
                 // If the radio shuts off or resets while one of these
                 // is pending, we need to clean up.
-
                 for (int i = mPendingMMIs.size() - 1; i >= 0; i--) {
                     if (mPendingMMIs.get(i).isPendingUSSD()) {
                         mPendingMMIs.get(i).onUssdFinishedError();
                     }
-                }
-                ImsPhone imsPhone = mImsPhone;
-                if (imsPhone != null) {
-                    imsPhone.getServiceState().setStateOff();
                 }
                 break;
             }

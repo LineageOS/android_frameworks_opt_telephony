@@ -567,6 +567,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
         String disableCall = SystemProperties.get(
                 TelephonyProperties.PROPERTY_DISABLE_CALL, "false");
 
+        Rlog.d(LOG_TAG, "canDial(): "
+                + "\nserviceState = " + serviceState
+                + "\npendingMO == null::=" + String.valueOf(mPendingMO == null)
+                + "\nringingCall: " + mRingingCall.getState()
+                + "\ndisableCall = " + disableCall
+                + "\nforegndCall: " + mForegroundCall.getState()
+                + "\nbackgndCall: " + mBackgroundCall.getState());
+
         ret = (serviceState != ServiceState.STATE_POWER_OFF)
             && mPendingMO == null
             && !mRingingCall.isRinging()
