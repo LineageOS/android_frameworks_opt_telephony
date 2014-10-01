@@ -38,7 +38,7 @@ public interface AppInterface {
     public static final String CARD_STATUS = "card_status";
     //Intent's actions are broadcasted by Telephony once IccRefresh occurs.
     public static final String CAT_ICC_STATUS_CHANGE =
-                                    "org.codeaurora.intent.action.stk.icc_status_change";
+                                    "android.intent.action.stk.icc_status_change";
 
     /*
      * Callback function from app to telephony to pass a result code and user's
