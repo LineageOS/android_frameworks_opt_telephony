@@ -1855,6 +1855,13 @@ public class SIMRecords extends IccRecords {
                 } else {
                     setServiceProviderName(null);
                     if (DBG) log("No SPN loaded in either CHPS or 3GPP");
+                    if (mPnnHomeName != null && mSpn == null) {
+                        if (DBG) log("Falling back to home network name for SPN");
+                        mSpn = mPnnHomeName;
+                        mTelephonyManager.setSimOperatorNameForPhone(
+                                mParentApp.getPhoneId(), mSpn);
+                        mRecordsEventsRegistrants.notifyResult(EVENT_SPN);
+                    }
                 }
 
                 mSpnState = GetSpnFsmState.IDLE;
