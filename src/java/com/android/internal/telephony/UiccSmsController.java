@@ -296,7 +296,13 @@ public class UiccSmsController extends ISms.Stub {
      * get sms interface manager object based on subscription.
      **/
     private IccSmsInterfaceManager getIccSmsInterfaceManager(long subId) {
-        long phoneId = SubscriptionController.getInstance().getPhoneId(subId);
+        int phoneId = SubscriptionController.getInstance().getPhoneId(subId) ;
+        //Fixme: for multi-subscription case
+        if (!SubscriptionManager.isValidPhoneId(phoneId)
+                || phoneId == SubscriptionManager.DEFAULT_PHONE_ID) {
+            phoneId = 0;
+        }
+
         try {
             return (IccSmsInterfaceManager)
                 ((PhoneProxy)mPhone[(int)phoneId]).getIccSmsInterfaceManager();
