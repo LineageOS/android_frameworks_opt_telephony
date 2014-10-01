@@ -104,7 +104,7 @@ public abstract class CallTracker extends Handler {
     }
 
     protected void notifySrvccState(Call.SrvccState state, ArrayList<Connection> c) {
-        if (state == Call.SrvccState.STARTED) {
+        if (state == Call.SrvccState.STARTED && c != null) {
             mHandoverConnections.addAll(c);
         } else if (state == Call.SrvccState.COMPLETED) {
             mHandoverConnections.clear();
