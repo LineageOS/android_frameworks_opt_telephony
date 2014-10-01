@@ -1100,6 +1100,8 @@ public class ImsPhone extends ImsPhoneBase {
                     ex = getCommandException(e);
                     AsyncResult.forMessage(onComplete, result, ex);
                 }
+            } else {
+                AsyncResult.forMessage(onComplete, result, null);
             }
             onComplete.sendToTarget();
         }
