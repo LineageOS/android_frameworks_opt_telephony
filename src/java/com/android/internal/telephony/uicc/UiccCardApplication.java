@@ -48,6 +48,11 @@ public class UiccCardApplication {
     private static final int EVENT_QUERY_FACILITY_LOCK_DONE = 6;
     private static final int EVENT_CHANGE_FACILITY_LOCK_DONE = 7;
     private static final int EVENT_PIN2_PUK2_DONE = 8;
+    private static final int EVENT_EXCHANGE_APDU_DONE = 9;
+    private static final int EVENT_OPEN_CHANNEL_DONE = 10;
+    private static final int EVENT_CLOSE_CHANNEL_DONE = 11;
+    private static final int EVENT_SIM_IO_DONE = 12;
+    private static final int EVENT_SIM_GET_ATR_DONE = 13;
     private int mPin1RetryCount = -1;
     private int mPin2RetryCount = -1;
 
@@ -436,6 +441,20 @@ public class UiccCardApplication {
                 case EVENT_CHANGE_FACILITY_LOCK_DONE:
                     ar = (AsyncResult)msg.obj;
                     onChangeFacilityLock(ar);
+                    break;
+                case EVENT_EXCHANGE_APDU_DONE:
+                case EVENT_OPEN_CHANNEL_DONE:
+                case EVENT_CLOSE_CHANNEL_DONE:
+                case EVENT_SIM_IO_DONE:
+                case EVENT_SIM_GET_ATR_DONE:
+                    ar = (AsyncResult)msg.obj;
+                    if(ar.exception != null) {
+                       if (DBG) loge("Error in SIM access event: " + msg.what +
+                               " exception: " + ar.exception);
+                    }
+                    AsyncResult.forMessage(((Message)ar.userObj),
+                            ar.result, ar.exception);
+                    ((Message)ar.userObj).sendToTarget();
                     break;
                 default:
                     loge("Unknown Event " + msg.what);
@@ -928,5 +947,31 @@ public class UiccCardApplication {
                     + ((Registrant)mPersoLockedRegistrants.get(i)).getHandler());
         }
         pw.flush();
+    }
+
+    public void exchangeApdu(int cla, int command, int channel, int p1, int p2,
+            int p3, String data, Message onComplete) {
+        mCi.iccExchangeApdu(cla, command, channel, p1, p2, p3, data,
+                mHandler.obtainMessage(EVENT_EXCHANGE_APDU_DONE, onComplete));
+    }
+
+    public void openLogicalChannel(String aid, Message onComplete) {
+        mCi.iccOpenChannel(aid,
+                mHandler.obtainMessage(EVENT_OPEN_CHANNEL_DONE, onComplete));
+    }
+
+    public void closeLogicalChannel(int channel, Message onComplete) {
+        mCi.iccCloseChannel(channel,
+                mHandler.obtainMessage(EVENT_CLOSE_CHANNEL_DONE, onComplete));
+    }
+
+    public void exchangeIccIo(int fileId, int command,int p1, int p2, int p3,
+            String pathId, Message onComplete) {
+        mCi.iccIO(command, fileId, pathId, p1, p2, p3, null, null,
+                mHandler.obtainMessage(EVENT_SIM_IO_DONE, onComplete));
+    }
+
+    public void getAtr(Message onComplete) {
+        mCi.iccGetAtr(mHandler.obtainMessage(EVENT_SIM_GET_ATR_DONE, onComplete));
     }
 }

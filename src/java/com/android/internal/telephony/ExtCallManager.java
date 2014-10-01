@@ -74,6 +74,10 @@ public class ExtCallManager extends CallManager {
     // taken on this sub.
     private static int mActiveSub = 0;
 
+    // Holds the subscription on which call is active (non-LCH).
+    // When no subscription has active call (non-LCH), it holds INVALID_SUBSCRIPTION.
+    private static int mSubInConversation = MSimConstants.INVALID_SUBSCRIPTION;
+
     // Holds the LCH status of subscription
     private enum LchState {
         INACTIVE,
@@ -255,6 +259,19 @@ public class ExtCallManager extends CallManager {
     }
 
     @Override
+    public void setSubInConversation(int subscription) {
+        Rlog.d(LOG_TAG, "setSubInConversation  existing:" + mSubInConversation + " new:"
+                + subscription);
+        mSubInConversation = subscription;
+    }
+
+    @Override
+    public int getSubInConversation() {
+        if (VDBG) Rlog.d(LOG_TAG, "getSubInConversation  = " + mSubInConversation);
+        return mSubInConversation;
+    }
+
+    @Override
     public boolean getLocalCallHoldStatus(int subscription) {
         boolean status = false;
 
@@ -273,7 +290,7 @@ public class ExtCallManager extends CallManager {
      * @param sub to be updated
      * @param reserveLchState true to retain the previous lch state; otherwise false
      */
-    private void updateLchStatus(int sub, boolean reserveLchState) {
+    private void updateLchStatus(int sub) {
         LchState lchStatus = LchState.INACTIVE;
         Phone offHookPhone = getFgPhone(sub);
         Call call = offHookPhone.getForegroundCall();
@@ -288,13 +305,10 @@ public class ExtCallManager extends CallManager {
 
         if ((state == Call.State.ACTIVE) || (state == Call.State.DIALING) ||
                 (state == Call.State.HOLDING) || (state == Call.State.ALERTING)) {
-            if (sub != getActiveSubscription()) {
-                // if sub is not an active sub and if it has an active
+            if (sub != getSubInConversation()) {
+                // if sub is not conversation  sub and if it has an active
                 // voice call then update lchStatus as Active
                 lchStatus = LchState.ACTIVE;
-            } else if (reserveLchState == true){
-                // otherwise don't change the lch status unless we really want to
-                lchStatus = mLchStatus[sub];
             }
         }
         // Update state only if the new state is different
@@ -305,17 +319,6 @@ public class ExtCallManager extends CallManager {
                     mHandler.obtainMessage(EVENT_LOCAL_CALL_HOLD));
             mLchStatus[sub] = lchStatus;
         }
-    }
-
-    private void updateLchStatus(int sub) {
-        // set reserveLchState to true to reserve the lch state
-        updateLchStatus(sub, true);
-    }
-
-    @Override
-    public void deactivateLchState(int sub) {
-        Rlog.d(LOG_TAG, "Deactivating Sub" + sub + "'s Lch state.");
-        updateLchStatus(sub, false);
     }
 
     @Override
@@ -503,6 +506,7 @@ public class ExtCallManager extends CallManager {
 
     @Override
     public void acceptCall(Call ringingCall, int callType) throws CallStateException {
+        setSubInConversation(ringingCall.getPhone().getSubscription());
         updateLchOnOtherSub(ringingCall.getPhone().getSubscription());
         super.acceptCall(ringingCall, callType);
     }
@@ -556,6 +560,7 @@ public class ExtCallManager extends CallManager {
             }
         }
 
+        setSubInConversation(subscription);
         updateLchOnOtherSub(subscription);
 
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
@@ -968,6 +973,16 @@ public class ExtCallManager extends CallManager {
             }
         }
         return false;
+    }
+
+    @Override
+    public void startDtmf(char c, int subscription) {
+        getPhone(subscription).startDtmf(c);
+    }
+
+    @Override
+    public void stopDtmf(int subscription) {
+        getPhone(subscription).stopDtmf();
     }
 
     @Override

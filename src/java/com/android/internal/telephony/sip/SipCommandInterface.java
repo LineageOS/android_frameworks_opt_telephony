@@ -558,5 +558,22 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
             String password, Message result) {
     }
 
+    @Override
+    public void iccExchangeApdu(int cla, int command, int channel, int p1,
+            int p2, int p3, String data, Message response) {
+    }
+
+    @Override
+    public void iccOpenChannel(String aid, Message response) {
+    }
+
+    @Override
+    public void iccCloseChannel(int channel, Message response) {
+    }
+
+    @Override
+    public void iccGetAtr(Message response) {
+    }
+
     public boolean needsOldRilFeature(String feature) { return false; }
 }

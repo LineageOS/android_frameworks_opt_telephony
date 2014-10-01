@@ -2282,7 +2282,20 @@ public class CallManager {
         return false;
     }
 
-    public void deactivateLchState(int sub) {
-        Rlog.e(LOG_TAG, " deactivateLchState not supported");
+    public void startDtmf(char c, int subscription) {
+        Rlog.e(LOG_TAG, " startDtmf not supported for subscription");
+    }
+
+    public void stopDtmf(int subscription) {
+        Rlog.e(LOG_TAG, " stopDtmf not supported for subscription");
+    }
+
+    public void setSubInConversation(int subscription) {
+        Rlog.e(LOG_TAG, " setSubInConversation not supported");
+    }
+
+    public int getSubInConversation() {
+        Rlog.e(LOG_TAG, " getSubInConversation not supported");
+        return 0;
     }
 }
