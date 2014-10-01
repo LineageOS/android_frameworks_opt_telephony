@@ -1282,10 +1282,6 @@ public class CDMAPhone extends PhoneBase {
 
             case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:{
                 Rlog.d(LOG_TAG, "Event EVENT_RADIO_OFF_OR_NOT_AVAILABLE Received");
-                ImsPhone imsPhone = mImsPhone;
-                if (imsPhone != null) {
-                    imsPhone.getServiceState().setStateOff();
-                }
             }
             break;
 
