@@ -909,9 +909,7 @@ public final class DcTracker extends DcTrackerBase {
                         if (PhoneConstants.APN_TYPE_DUN.equals(apnContext.getApnType())) {
                             // CAF_MSIM is this below condition required.
                             // if (PhoneConstants.APN_TYPE_DUN.equals(PhoneConstants.APN_TYPE_DEFAULT)) {
-                            ApnSetting dunSetting = fetchDunApn();
-                            if (dunSetting != null &&
-                                    dunSetting.equals(apnContext.getApnSetting())) {
+                            if (teardownForDun()) {
                                 if (DBG) log("tearing down dedicated DUN connection");
                                 // we need to tear it down - we brought it up just for dun and
                                 // other people are camped on it and now dun is done.  We need
@@ -958,6 +956,17 @@ public final class DcTracker extends DcTrackerBase {
             log("cleanUpConnection: X tearDown=" + tearDown + " reason=" + apnContext.getReason() +
                     " apnContext=" + apnContext + " dcac=" + apnContext.getDcAc());
         }
+    }
+
+    /**
+     * Determine if DUN connection is special and we need to teardown on start/stop
+     */
+    private boolean teardownForDun() {
+        // CDMA always needs to do this the profile id is correct
+        final int rilRat = mPhone.getServiceState().getRilDataRadioTechnology();
+        if (ServiceState.isCdma(rilRat)) return true;
+
+        return (fetchDunApn() != null);
     }
 
     /**
@@ -1144,7 +1153,7 @@ public final class DcTracker extends DcTrackerBase {
     private boolean setupData(ApnContext apnContext, int radioTech) {
         if (DBG) log("setupData: apnContext=" + apnContext);
         ApnSetting apnSetting;
-        DcAsyncChannel dcac;
+        DcAsyncChannel dcac = null;
 
         apnSetting = apnContext.getNextWaitingApn();
         if (apnSetting == null) {
@@ -1157,13 +1166,20 @@ public final class DcTracker extends DcTrackerBase {
             profileId = getApnProfileID(apnContext.getApnType());
         }
 
-        dcac = checkForCompatibleConnectedApnContext(apnContext);
-        if (dcac != null) {
-            // Get the dcacApnSetting for the connection we want to share.
-            ApnSetting dcacApnSetting = dcac.getApnSettingSync();
-            if (dcacApnSetting != null) {
-                // Setting is good, so use it.
-                apnSetting = dcacApnSetting;
+        // On CDMA, if we're explicitly asking for DUN, we need have
+        // a dun-profiled connection so we can't share an existing one
+        // On GSM/LTE we can share existing apn connections provided they support
+        // this type.
+        if (apnContext.getApnType() != PhoneConstants.APN_TYPE_DUN ||
+                teardownForDun() == false) {
+            dcac = checkForCompatibleConnectedApnContext(apnContext);
+            if (dcac != null) {
+                // Get the dcacApnSetting for the connection we want to share.
+                ApnSetting dcacApnSetting = dcac.getApnSettingSync();
+                if (dcacApnSetting != null) {
+                    // Setting is good, so use it.
+                    apnSetting = dcacApnSetting;
+                }
             }
         }
         if (dcac == null) {
@@ -1458,7 +1474,17 @@ public final class DcTracker extends DcTrackerBase {
                 // If ConnectivityService has disabled this network, stop trying to bring
                 // it up, but do not tear it down - ConnectivityService will do that
                 // directly by talking with the DataConnection.
-                cleanup = false;
+                //
+                // This doesn't apply to DUN, however.  Those connections have special
+                // requirements from carriers and we need stop using them when the dun
+                // request goes away.  This applies to both CDMA and GSM because they both
+                // can declare the DUN APN sharable by default traffic, thus still satisfying
+                // those requests and not torn down organically.
+                if (apnContext.getApnType() == PhoneConstants.APN_TYPE_DUN && teardownForDun()) {
+                    cleanup = true;
+                } else {
+                    cleanup = false;
+                }
             } else {
                 apnContext.setReason(Phone.REASON_DATA_DEPENDENCY_UNMET);
             }
