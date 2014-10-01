@@ -89,13 +89,14 @@ public enum DcFailCause {
 
     public boolean isPermanentFail() {
         return (this == OPERATOR_BARRED) || (this == MISSING_UNKNOWN_APN) ||
-               (this == UNKNOWN_PDP_ADDRESS_TYPE) || (this == USER_AUTHENTICATION) ||
-               (this == ACTIVATION_REJECT_GGSN) || (this == SERVICE_OPTION_NOT_SUPPORTED) ||
-               (this == SERVICE_OPTION_NOT_SUBSCRIBED) || (this == NSAPI_IN_USE) ||
-               (this == ONLY_IPV4_ALLOWED) || (this == ONLY_IPV6_ALLOWED) ||
-               (this == PROTOCOL_ERRORS) ||
-               (this == RADIO_POWER_OFF) || (this == TETHERED_CALL_ACTIVE) ||
-               (this == RADIO_NOT_AVAILABLE) || (this == UNACCEPTABLE_NETWORK_PARAMETER);
+                (this == UNKNOWN_PDP_ADDRESS_TYPE) || (this == USER_AUTHENTICATION) ||
+                (this == ACTIVATION_REJECT_GGSN) || (this == SERVICE_OPTION_NOT_SUPPORTED) ||
+                (this == SERVICE_OPTION_NOT_SUBSCRIBED) || (this == NSAPI_IN_USE) ||
+                (this == ONLY_IPV4_ALLOWED) || (this == ONLY_IPV6_ALLOWED) ||
+                (this == PROTOCOL_ERRORS) ||
+                (this == RADIO_POWER_OFF) || (this == TETHERED_CALL_ACTIVE) ||
+                (this == RADIO_NOT_AVAILABLE) || (this == UNACCEPTABLE_NETWORK_PARAMETER) ||
+                (this == SIGNAL_LOST);
     }
 
     public boolean isEventLoggable() {
