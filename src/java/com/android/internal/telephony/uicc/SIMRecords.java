@@ -1513,13 +1513,13 @@ public class SIMRecords extends IccRecords {
     }
 
     private void onLocked() {
-        mRecordsRequested = true;
         if (DBG) log("only fetch EF_LI and EF_PL in lock state");
         loadEfLiAndEfPl();
     }
 
     private void loadEfLiAndEfPl() {
         if (mParentApp.getType() == AppType.APPTYPE_USIM) {
+            mRecordsRequested = true;
             mFh.loadEFTransparent(EF_LI,
                     obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfUsimLiLoaded()));
             mRecordsToLoad++;
