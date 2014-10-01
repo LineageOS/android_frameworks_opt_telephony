@@ -284,8 +284,7 @@ public class UiccCard {
 
             mCarrierPrivilegeRegistrants.add(r);
 
-            if (mCarrierPrivilegeRules == null ||
-                mCarrierPrivilegeRules.areCarrierPriviligeRulesLoaded()) {
+            if (areCarrierPriviligeRulesLoaded()) {
                 r.notifyRegistrant();
             }
         }
@@ -530,6 +529,14 @@ public class UiccCard {
 
     public int getSlotId() {
         return mSlotId;
+    }
+
+    /**
+     * Returns true iff carrier priveleges rules are null (dont need to be loaded) or loaded.
+     */
+    public boolean areCarrierPriviligeRulesLoaded() {
+        return mCarrierPrivilegeRules == null
+            || mCarrierPrivilegeRules.areCarrierPriviligeRulesLoaded();
     }
 
     /**
