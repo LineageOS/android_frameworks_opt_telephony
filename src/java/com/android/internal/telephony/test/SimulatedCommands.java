@@ -994,6 +994,19 @@ public final class SimulatedCommands extends BaseCommands
     @Override
     public void sendSMS (String smscPDU, String pdu, Message result) {unimplemented(result);}
 
+    /**
+     * Send an SMS message, Identical to sendSMS,
+     * except that more messages are expected to be sent soon
+     * smscPDU is smsc address in PDU form GSM BCD format prefixed
+     *      by a length byte (as expected by TS 27.005) or NULL for default SMSC
+     * pdu is SMS in PDU format as an ASCII hex string
+     *      less the SMSC address
+     */
+    @Override
+    public void sendSMSExpectMore (String smscPDU, String pdu, Message result) {
+        unimplemented(result);
+    }
+
     @Override
     public void deleteSmsOnSim(int index, Message response) {
         Rlog.d(LOG_TAG, "Delete message at index " + index);
