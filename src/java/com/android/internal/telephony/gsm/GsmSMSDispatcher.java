@@ -159,7 +159,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         if (pdu != null) {
             HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                    null/*messageUri*/);
+                    null /*messageUri*/, false);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendData(): getSubmitPdu() returned null");
@@ -187,7 +187,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
             }
             HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                    messageUri);
+                    messageUri, false);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendText(): getSubmitPdu() returned null");
@@ -221,7 +221,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                     message, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent,
                     deliveryIntent, getFormat(), unsentPartCount, anyPartFailed, messageUri,
-                    smsHeader);
+                    smsHeader, !lastPart);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendNewSubmitPdu(): getSubmitPdu() returned null");
@@ -312,8 +312,13 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                     pdu[1] = (byte) tracker.mMessageRef; // TP-MR
                 }
             }
-            mCi.sendSMS(IccUtils.bytesToHexString(smsc),
-                    IccUtils.bytesToHexString(pdu), reply);
+            if (tracker.mRetryCount == 0 && tracker.mExpectMore) {
+                mCi.sendSMSExpectMore(IccUtils.bytesToHexString(smsc),
+                        IccUtils.bytesToHexString(pdu), reply);
+            } else {
+                mCi.sendSMS(IccUtils.bytesToHexString(smsc),
+                        IccUtils.bytesToHexString(pdu), reply);
+            }
         } else {
             mCi.sendImsGsmSms(IccUtils.bytesToHexString(smsc),
                     IccUtils.bytesToHexString(pdu), tracker.mImsRetry,
