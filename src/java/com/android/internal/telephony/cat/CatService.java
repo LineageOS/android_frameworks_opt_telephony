@@ -918,7 +918,7 @@ public class CatService extends Handler implements AppInterface {
         }
 
         CardState newState = CardState.CARDSTATE_ABSENT;
-        UiccCard newCard = mUiccController.getUiccCard();
+        UiccCard newCard = mUiccController.getUiccCard(mSlotId);
         if (newCard != null) {
             newState = newCard.getCardState();
         }
