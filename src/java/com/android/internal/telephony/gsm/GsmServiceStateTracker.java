@@ -850,9 +850,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
              * agreements and MVNO's.
              */
             boolean roaming = (mGsmRoaming || mDataRoaming);
-            if ((mGsmRoaming && isSameNamedOperators(mNewSS)
-                        && !isSameNamedOperatorConsideredRoaming(mNewSS))
-                    || isOperatorConsideredNonRoaming(mNewSS)) {
+            if (mGsmRoaming && !isOperatorConsideredRoaming(mNewSS) &&
+                (isSameNamedOperators(mNewSS) || isOperatorConsideredNonRoaming(mNewSS))) {
                 roaming = false;
             }
             mNewSS.setRoaming(roaming);
@@ -1476,7 +1475,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         return false;
     }
 
-    private boolean isSameNamedOperatorConsideredRoaming(ServiceState s) {
+    private boolean isOperatorConsideredRoaming(ServiceState s) {
         String operatorNumeric = s.getOperatorNumeric();
         String[] numericArray = mPhone.getContext().getResources().getStringArray(
                     com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming);
