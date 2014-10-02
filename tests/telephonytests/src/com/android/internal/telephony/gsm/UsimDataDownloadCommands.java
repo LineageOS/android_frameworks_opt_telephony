@@ -351,6 +351,10 @@ class UsimDataDownloadCommands extends BaseCommands {
     }
 
     @Override
+    public void sendSMSExpectMore(String smscPDU, String pdu, Message response) {
+    }
+
+    @Override
     public void sendCdmaSms(byte[] pdu, Message response) {
     }
 
