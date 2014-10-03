@@ -809,7 +809,9 @@ public final class DataConnection extends StateMachine {
     private static final String TCP_BUFFER_SIZES_GPRS = "4092,8760,48000,4096,8760,48000";
     private static final String TCP_BUFFER_SIZES_EDGE = "4093,26280,70800,4096,16384,70800";
     private static final String TCP_BUFFER_SIZES_UMTS = "58254,349525,1048576,58254,349525,1048576";
+    private static final String TCP_BUFFER_SIZES_1XRTT= "16384,32768,131072,4096,16384,102400";
     private static final String TCP_BUFFER_SIZES_EVDO = "4094,87380,262144,4096,16384,262144";
+    private static final String TCP_BUFFER_SIZES_EHRPD= "131072,262144,1048576,4096,16384,524288";
     private static final String TCP_BUFFER_SIZES_HSDPA= "61167,367002,1101005,8738,52429,262114";
     private static final String TCP_BUFFER_SIZES_HSPA = "40778,244668,734003,16777,100663,301990";
     private static final String TCP_BUFFER_SIZES_LTE  =
@@ -852,10 +854,16 @@ public final class DataConnection extends StateMachine {
                 case ServiceState.RIL_RADIO_TECHNOLOGY_UMTS:
                     sizes = TCP_BUFFER_SIZES_UMTS;
                     break;
+                case ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT:
+                    sizes = TCP_BUFFER_SIZES_1XRTT;
+                    break;
                 case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_0:
                 case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A:
                 case ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_B:
                     sizes = TCP_BUFFER_SIZES_EVDO;
+                    break;
+                case ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD:
+                    sizes = TCP_BUFFER_SIZES_EHRPD;
                     break;
                 case ServiceState.RIL_RADIO_TECHNOLOGY_HSDPA:
                     sizes = TCP_BUFFER_SIZES_HSDPA;
