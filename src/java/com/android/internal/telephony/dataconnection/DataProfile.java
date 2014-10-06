@@ -107,4 +107,9 @@ public class DataProfile {
                 + "/" + maxConns + "/" + waitTime + "/" + enabled;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof DataProfile == false) return false;
+        return (toString().equals(o.toString()));
+    }
 }
