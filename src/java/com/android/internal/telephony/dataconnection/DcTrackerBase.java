@@ -1727,7 +1727,8 @@ public abstract class DcTrackerBase extends Handler {
             // Search for Initial APN setting and the first apn that can handle default
             for (ApnSetting apn : mAllApnSettings) {
                 // Can't use apn.canHandleType(), as that returns true for APNs that have no type.
-                if (ArrayUtils.contains(apn.types, PhoneConstants.APN_TYPE_IA)) {
+                if (ArrayUtils.contains(apn.types, PhoneConstants.APN_TYPE_IA) &&
+                        apn.carrierEnabled) {
                     // The Initial Attach APN is highest priority so use it if there is one
                     log("setInitialApn: iaApnSetting=" + apn);
                     iaApnSetting = apn;
@@ -1781,7 +1782,16 @@ public abstract class DcTrackerBase extends Handler {
                 if (apn.modemCognitive) {
                     DataProfile dp = new DataProfile(apn,
                             mPhone.getServiceState().getRoaming());
-                    dps.add(dp);
+                    boolean isDup = false;
+                    for(DataProfile dpIn : dps) {
+                        if (dp.equals(dpIn)) {
+                            isDup = true;
+                            break;
+                        }
+                    }
+                    if (!isDup) {
+                        dps.add(dp);
+                    }
                 }
             }
             if(dps.size() > 0) {
