@@ -157,7 +157,7 @@ public final class MccTable {
 
         if (Build.IS_DEBUGGABLE) {
             String overrideMcc = SystemProperties.get("persist.sys.override_mcc");
-            if (overrideMcc != null) {
+            if (!TextUtils.isEmpty(overrideMcc)) {
                 mccmnc = overrideMcc;
                 Slog.d(LOG_TAG, "updateMccMncConfiguration overriding mccmnc='" + mccmnc + "'");
             }
