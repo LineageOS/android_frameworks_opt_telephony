@@ -79,8 +79,10 @@ import com.android.internal.util.ArrayUtils;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.HashMap;
+import java.util.Objects;
 
 import android.provider.Settings;
 
@@ -2258,6 +2260,8 @@ public final class DcTracker extends DcTrackerBase {
 
         addEmergencyApnSetting();
 
+        dedupeApnSettings();
+
         if (mAllApnSettings.isEmpty()) {
             if (DBG) log("createAllApnList: No APN found for carrier: " + operator);
             mPreferredApn = null;
@@ -2274,6 +2278,76 @@ public final class DcTracker extends DcTrackerBase {
         if (DBG) log("createAllApnList: X mAllApnSettings=" + mAllApnSettings);
 
         setDataProfilesAsNeeded();
+    }
+
+    private void dedupeApnSettings() {
+        ArrayList<ApnSetting> resultApns = new ArrayList<ApnSetting>();
+
+        // coalesce APNs if they are similar enough to prevent
+        // us from bringing up two data calls with the same interface
+        int i = 0;
+        while (i < mAllApnSettings.size() - 1) {
+            ApnSetting first = mAllApnSettings.get(i);
+            ApnSetting second = null;
+            int j = i + 1;
+            while (j < mAllApnSettings.size()) {
+                second = mAllApnSettings.get(j);
+                if (apnsSimilar(first, second)) {
+                    ApnSetting newApn = mergeApns(first, second);
+                    mAllApnSettings.set(i, newApn);
+                    first = newApn;
+                    mAllApnSettings.remove(j);
+                } else {
+                    j++;
+                }
+            }
+            i++;
+        }
+    }
+
+    // Check if neither mention DUN and are substantially similar
+    private boolean apnsSimilar(ApnSetting first, ApnSetting second) {
+        return (first.canHandleType(PhoneConstants.APN_TYPE_DUN) == false &&
+                second.canHandleType(PhoneConstants.APN_TYPE_DUN) == false &&
+                Objects.equals(first.apn, second.apn) &&
+                Objects.equals(first.proxy, second.proxy) &&
+                Objects.equals(first.port, second.port) &&
+                Objects.equals(first.protocol, second.protocol) &&
+                Objects.equals(first.roamingProtocol, second.roamingProtocol) &&
+                first.carrierEnabled == second.carrierEnabled &&
+                first.bearer == second.bearer &&
+                first.profileId == second.profileId &&
+                Objects.equals(first.mvnoType, second.mvnoType) &&
+                Objects.equals(first.mvnoMatchData, second.mvnoMatchData) &&
+                xorEquals(first.mmsc, second.mmsc) &&
+                xorEquals(first.mmsProxy, second.mmsProxy) &&
+                xorEquals(first.mmsPort, second.mmsPort));
+    }
+
+    // equal or one is not specified
+    private boolean xorEquals(String first, String second) {
+        return (Objects.equals(first, second) ||
+                TextUtils.isEmpty(first) ||
+                TextUtils.isEmpty(second));
+    }
+
+    private ApnSetting mergeApns(ApnSetting dest, ApnSetting src) {
+        ArrayList<String> resultTypes = new ArrayList<String>();
+        resultTypes.addAll(Arrays.asList(dest.types));
+        for (String srcType : src.types) {
+            if (resultTypes.contains(srcType) == false) resultTypes.add(srcType);
+        }
+        String mmsc = (TextUtils.isEmpty(dest.mmsc) ? src.mmsc : dest.mmsc);
+        String mmsProxy = (TextUtils.isEmpty(dest.mmsProxy) ? src.mmsProxy : dest.mmsProxy);
+        String mmsPort = (TextUtils.isEmpty(dest.mmsPort) ? src.mmsPort : dest.mmsPort);
+
+
+        return new ApnSetting(dest.id, dest.numeric, dest.carrier, dest.apn,
+                dest.proxy, dest.port, mmsc, mmsProxy, mmsPort, dest.user, dest.password,
+                dest.authType, resultTypes.toArray(new String[0]), dest.protocol,
+                dest.roamingProtocol, dest.carrierEnabled, dest.bearer, dest.profileId,
+                (dest.modemCognitive || src.modemCognitive), dest.maxConns, dest.waitTime,
+                dest.maxConnsTime, dest.mtu, dest.mvnoType, dest.mvnoMatchData);
     }
 
     /** Return the DC AsyncChannel for the new data connection */
