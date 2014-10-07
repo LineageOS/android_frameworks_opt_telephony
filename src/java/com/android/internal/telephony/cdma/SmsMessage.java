@@ -24,6 +24,8 @@ import android.telephony.SmsCbMessage;
 import android.telephony.cdma.CdmaSmsCbProgramData;
 import android.telephony.Rlog;
 import android.util.Log;
+import android.text.TextUtils;
+import android.content.res.Resources;
 
 import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.SmsConstants;
@@ -38,6 +40,7 @@ import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.util.BitwiseInputStream;
 import com.android.internal.util.HexDump;
+import com.android.internal.telephony.Sms7BitEncodingTranslator;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
@@ -458,7 +461,15 @@ public class SmsMessage extends SmsMessageBase {
      */
     public static TextEncodingDetails calculateLength(CharSequence messageBody,
             boolean use7bitOnly) {
-        return BearerData.calcTextEncodingDetails(messageBody, use7bitOnly);
+        CharSequence newMsgBody = null;
+        Resources r = Resources.getSystem();
+        if (r.getBoolean(com.android.internal.R.bool.config_sms_force_7bit_encoding)) {
+            newMsgBody  = Sms7BitEncodingTranslator.translate(messageBody);
+        }
+        if (TextUtils.isEmpty(newMsgBody)) {
+            newMsgBody = messageBody;
+        }
+        return BearerData.calcTextEncodingDetails(newMsgBody, use7bitOnly);
     }
 
     /**
