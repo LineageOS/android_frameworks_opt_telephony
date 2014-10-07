@@ -20,6 +20,7 @@ import android.telephony.PhoneNumberUtils;
 import android.text.format.Time;
 import android.telephony.Rlog;
 import android.content.res.Resources;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.EncodeException;
 import com.android.internal.telephony.GsmAlphabet;
@@ -27,6 +28,7 @@ import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsMessageBase;
+import com.android.internal.telephony.Sms7BitEncodingTranslator;
 
 import java.io.ByteArrayOutputStream;
 import java.io.UnsupportedEncodingException;
@@ -783,11 +785,19 @@ public class SmsMessage extends SmsMessageBase {
      */
     public static TextEncodingDetails calculateLength(CharSequence msgBody,
             boolean use7bitOnly) {
-        TextEncodingDetails ted = GsmAlphabet.countGsmSeptets(msgBody, use7bitOnly);
+        CharSequence newMsgBody = null;
+        Resources r = Resources.getSystem();
+        if (r.getBoolean(com.android.internal.R.bool.config_sms_force_7bit_encoding)) {
+            newMsgBody  = Sms7BitEncodingTranslator.translate(msgBody);
+        }
+        if (TextUtils.isEmpty(newMsgBody)) {
+            newMsgBody = msgBody;
+        }
+        TextEncodingDetails ted = GsmAlphabet.countGsmSeptets(newMsgBody, use7bitOnly);
         if (ted == null) {
             ted = new TextEncodingDetails();
-            int octets = msgBody.length() * 2;
-            ted.codeUnitCount = msgBody.length();
+            int octets = newMsgBody.length() * 2;
+            ted.codeUnitCount = newMsgBody.length();
             if (octets > MAX_USER_DATA_BYTES) {
                 // If EMS is not supported, break down EMS into single segment SMS
                 // and add page info " x/y".
