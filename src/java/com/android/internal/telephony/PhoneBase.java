@@ -103,6 +103,12 @@ public abstract class PhoneBase extends Handler implements Phone {
                 }
             }
 
+            // For MSIM, check phone ID
+            if (intent.hasExtra(ImsManager.EXTRA_PHONEID)) {
+                if (intent.getIntExtra(ImsManager.EXTRA_PHONEID, -1) != getPhoneId())
+                    return;
+            }
+
             if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_UP)) {
                 mImsServiceReady = true;
                 updateImsPhone();
