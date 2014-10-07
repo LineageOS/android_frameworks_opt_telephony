@@ -26,6 +26,7 @@ import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsMessageBase.SubmitPduBase;
+import com.android.internal.telephony.Sms7BitEncodingTranslator;
 
 import java.lang.Math;
 import java.util.ArrayList;
@@ -363,8 +364,16 @@ public class SmsMessage {
             }
         }
 
+        String newMsgBody = null;
+        Resources r = Resources.getSystem();
+        if (r.getBoolean(com.android.internal.R.bool.config_sms_force_7bit_encoding)) {
+            newMsgBody  = Sms7BitEncodingTranslator.translate(text);
+        }
+        if (TextUtils.isEmpty(newMsgBody)) {
+            newMsgBody = text;
+        }
         int pos = 0;  // Index in code units.
-        int textLen = text.length();
+        int textLen = newMsgBody.length();
         ArrayList<String> result = new ArrayList<String>(ted.msgCount);
         while (pos < textLen) {
             int nextPos = 0;  // Counts code units.
@@ -374,7 +383,7 @@ public class SmsMessage {
                     nextPos = pos + Math.min(limit, textLen - pos);
                 } else {
                     // For multi-segment messages, CDMA 7bit equals GSM 7bit encoding (EMS mode).
-                    nextPos = GsmAlphabet.findGsmSeptetLimitIndex(text, pos, limit,
+                    nextPos = GsmAlphabet.findGsmSeptetLimitIndex(newMsgBody, pos, limit,
                             ted.languageTable, ted.languageShiftTable);
                 }
             } else {  // Assume unicode.
@@ -385,7 +394,7 @@ public class SmsMessage {
                           nextPos + " >= " + textLen + ")");
                 break;
             }
-            result.add(text.substring(pos, nextPos));
+            result.add(newMsgBody.substring(pos, nextPos));
             pos = nextPos;
         }
         return result;
