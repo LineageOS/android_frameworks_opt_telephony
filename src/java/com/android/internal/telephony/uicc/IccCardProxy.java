@@ -230,6 +230,9 @@ public class IccCardProxy extends Handler implements IccCard {
         switch (msg.what) {
             case EVENT_RADIO_OFF_OR_UNAVAILABLE:
                 mRadioOn = false;
+                if (CommandsInterface.RadioState.RADIO_UNAVAILABLE == mCi.getRadioState()) {
+                    setExternalState(State.NOT_READY);
+                }
                 break;
             case EVENT_RADIO_ON:
                 mRadioOn = true;
