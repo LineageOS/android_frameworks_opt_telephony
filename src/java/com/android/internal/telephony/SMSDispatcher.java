@@ -302,6 +302,11 @@ public abstract class SMSDispatcher extends Handler {
             if (tracker.isMultipart()) {
                 sendMultipartSms(tracker);
             } else {
+                if (mPendingTrackerCount > 1) {
+                    tracker.mExpectMore = true;
+                } else {
+                    tracker.mExpectMore = false;
+                }
                 sendSms(tracker);
             }
             mPendingTrackerCount--;
