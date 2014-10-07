@@ -434,6 +434,7 @@ public final class GsmCallTracker extends CallTracker {
         }
 
         Connection newRinging = null; //or waiting
+        Connection newUnknown = null;
         boolean hasNonHangupStateChanged = false;   // Any change besides
                                                     // a dropped connection
         boolean hasAnyCallDisconnected = false;
@@ -517,6 +518,8 @@ public final class GsmCallTracker extends CallTracker {
                                 mConnections[i].onStartedHolding();
                             }
                         }
+
+                        newUnknown = mConnections[i];
 
                         unknownConnectionAppeared = true;
                     }
@@ -632,7 +635,7 @@ public final class GsmCallTracker extends CallTracker {
         updatePhoneState();
 
         if (unknownConnectionAppeared) {
-            mPhone.notifyUnknownConnection();
+            mPhone.notifyUnknownConnection(newUnknown);
         }
 
         if (hasNonHangupStateChanged || newRinging != null || hasAnyCallDisconnected) {
