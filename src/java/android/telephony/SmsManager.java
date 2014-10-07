@@ -808,7 +808,7 @@ public final class SmsManager {
      *
      * @hide
      */
-    boolean isImsSmsSupported() {
+    public boolean isImsSmsSupported() {
         boolean boSupported = false;
         try {
             ISms iccISms = getISmsService();
@@ -833,7 +833,7 @@ public final class SmsManager {
      *
      * @hide
      */
-    String getImsSmsFormat() {
+    public String getImsSmsFormat() {
         String format = com.android.internal.telephony.SmsConstants.FORMAT_UNKNOWN;
         try {
             ISms iccISms = getISmsService();
