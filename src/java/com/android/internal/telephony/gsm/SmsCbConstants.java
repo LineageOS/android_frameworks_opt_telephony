@@ -96,6 +96,9 @@ public class SmsCbConstants {
     /** CMAS Message Identifier for operator defined use. */
     public static final int MESSAGE_ID_CMAS_ALERT_OPERATOR_DEFINED_USE      = 0x111E;
 
+    /** CMAS Message Identifier for Presidential Level alerts for Additional Languages. */
+    public static final int MESSAGE_ID_CMAS_ALERT_PRESIDENTIAL_LEVEL_LANGUAGE = 0x111F;
+
     /** End of CMAS Message Identifier range (including future extensions). */
     public static final int MESSAGE_ID_CMAS_LAST_IDENTIFIER                 = 0x112F;
 
