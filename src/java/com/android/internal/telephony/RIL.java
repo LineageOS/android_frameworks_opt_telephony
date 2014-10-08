@@ -29,6 +29,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.hardware.display.DisplayManager;
 import android.net.ConnectivityManager;
 import android.net.LocalSocket;
 import android.net.LocalSocketAddress;
@@ -52,6 +53,7 @@ import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.util.SparseArray;
+import android.view.Display;
 
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
@@ -237,6 +239,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     RILSender mSender;
     Thread mReceiverThread;
     RILReceiver mReceiver;
+    Display mDefaultDisplay;
+    int mDefaultDisplayState = Display.STATE_UNKNOWN;
     WakeLock mWakeLock;
     final int mWakeLockTimeout;
     // The number of wakelock requests currently active.  Don't release the lock
@@ -274,15 +278,18 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     private static final int CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES = 31;
 
-    BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
+    private final DisplayManager.DisplayListener mDisplayListener =
+            new DisplayManager.DisplayListener() {
         @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(Intent.ACTION_SCREEN_ON)) {
-                sendScreenState(true);
-            } else if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)) {
-                sendScreenState(false);
-            } else {
-                Rlog.w(RILJ_LOG_TAG, "RIL received unexpected Intent: " + intent.getAction());
+        public void onDisplayAdded(int displayId) { }
+
+        @Override
+        public void onDisplayRemoved(int displayId) { }
+
+        @Override
+        public void onDisplayChanged(int displayId) {
+            if (displayId == Display.DEFAULT_DISPLAY) {
+                updateScreenState();
             }
         }
     };
@@ -628,10 +635,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             mReceiverThread = new Thread(mReceiver, "RILReceiver" + mInstanceId);
             mReceiverThread.start();
 
-            IntentFilter filter = new IntentFilter();
-            filter.addAction(Intent.ACTION_SCREEN_ON);
-            filter.addAction(Intent.ACTION_SCREEN_OFF);
-            context.registerReceiver(mIntentReceiver, filter);
+            DisplayManager dm = (DisplayManager)context.getSystemService(
+                    Context.DISPLAY_SERVICE);
+            mDefaultDisplay = dm.getDisplay(Display.DEFAULT_DISPLAY);
+            dm.registerDisplayListener(mDisplayListener, null);
         }
 
         TelephonyDevController tdc = TelephonyDevController.getInstance();
@@ -2198,6 +2205,26 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     //***** Private Methods
+
+    // TODO(jeffbrown): Delete me.
+    // The RIL should *not* be listening for screen state changes since they are
+    // becoming increasingly ambiguous on our devices.  The RIL_REQUEST_SCREEN_STATE
+    // message should be deleted and replaced with more precise messages to control
+    // behavior such as signal strength reporting or power managements based on
+    // more robust signals.
+    private void updateScreenState() {
+        final int oldState = mDefaultDisplayState;
+        mDefaultDisplayState = mDefaultDisplay.getState();
+        if (mDefaultDisplayState != oldState) {
+            if (oldState != Display.STATE_ON
+                    && mDefaultDisplayState == Display.STATE_ON) {
+                sendScreenState(true);
+            } else if (oldState == Display.STATE_ON
+                    && mDefaultDisplayState != Display.STATE_ON) {
+                sendScreenState(false);
+            }
+        }
+    }
 
     private void sendScreenState(boolean on) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_SCREEN_STATE, null);
