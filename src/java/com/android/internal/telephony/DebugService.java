@@ -116,6 +116,13 @@ public class DebugService {
         }
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            SubscriptionController.getInstance().dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
         log("dump: -");
     }
 
