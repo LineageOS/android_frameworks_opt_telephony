@@ -17,7 +17,6 @@
 package com.android.internal.telephony;
 
 import android.telephony.Rlog;
-import android.telephony.SubscriptionManager;
 
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.IccCardProxy;
