@@ -821,17 +821,14 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                             if (end[1] !=null) {
                                 endMinute = Integer.parseInt(end[1]);
                             }
-
-                            cfTimerAction = calForwardAction(dialingNumber);
-
-                            Rlog.d(LOG_TAG, "is CFUT setCallForward");
-                            mPhone.setCallForwardingUncondTimerOption(startHour,
-                                    startMinute, endHour, endMinute, cfTimerAction,
-                                    reason, dialingNumber,
-                                    obtainMessage(EVENT_SET_CFF_TIMER_COMPLETE,this));
-
                         }
                     }
+                    cfTimerAction = calForwardAction(dialingNumber);
+                    Rlog.d(LOG_TAG, "is CFUT setCallForward");
+                    mPhone.setCallForwardingUncondTimerOption(startHour,
+                            startMinute, endHour, endMinute, cfTimerAction,
+                            reason, dialingNumber,
+                            obtainMessage(EVENT_SET_CFF_TIMER_COMPLETE,this));
                 }
             } else if (isServiceCodeCallBarring(mSc)) {
                 // sia = password
