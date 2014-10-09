@@ -1411,27 +1411,56 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 Rlog.d(LOG_TAG, "In infos.length == 0");
                 sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
             } else {
-                for (int i = 0, s = infos.length; i < s ; i++) {
-                    if (infos[i].serviceClass == CommandsInterface.SERVICE_CLASS_VOICE
-                            || infos[i].status != 0 ) {
-                        sb.append("StartTime: " + infos[i].startHour + ":" +
-                                infos[i].startMinute + "\n");
-                        sb.append("EndTime: " + infos[i].endHour + ":" +
-                                infos[i].endMinute + "\n");
-                        sb.append("Service:" + mContext.getText(
-                                com.android.internal.R.string.serviceClassVoice));
-                    } else {
-                        sb.append(mContext.getText(com.android.internal.R.string.
-                                serviceDisabled));
+                SpannableStringBuilder tb = new SpannableStringBuilder();
+                for (int serviceClassMask = 1
+                        ; serviceClassMask <= SERVICE_CLASS_MAX
+                        ; serviceClassMask <<= 1) {
+                    for (int i = 0, s = infos.length; i < s ; i++) {
+                        if (( serviceClassMask & infos[i].serviceClass) ==
+                                CommandsInterface.SERVICE_CLASS_VOICE &&
+                                infos[i].status != 0) {
+                            sb.append("StartTime: " + infos[i].startHour + ":" +
+                                    infos[i].startMinute + "\n");
+                            sb.append("EndTime: " + infos[i].endHour + ":" +
+                                    infos[i].endMinute + "\n");
+                            sb.append("Service:" + mContext.getText(
+                                    com.android.internal.R.string.serviceClassVoice));
+                        } else if ((serviceClassMask & infos[i].serviceClass) != 0) {
+                            tb.append(makeCFTQueryResultMessage(infos[i],
+                                    serviceClassMask));
+                            tb.append("\n");
+                        }
                     }
                 }
-              }
+                sb.append(tb);
+            }
           mState = State.COMPLETE;
         }
 
         mMessage = sb;
         mPhone.onMMIDone(this);
 
+    }
+
+    private CharSequence makeCFTQueryResultMessage(CallForwardInfo info, int serviceClassMask) {
+        Rlog.d(LOG_TAG, "makeCFTQueryResultMessage: ");
+        CharSequence template;
+        String sources[] = {"{0}", "{1}", "{2}"};
+        CharSequence destinations[] = new CharSequence[3];
+        boolean needTimeTemplate;
+
+        if (info.status == 0 && isEmptyOrNull(info.number)) {
+            template = mContext.getText(
+                        com.android.internal.R.string.cfTemplateNotForwarded);
+        } else {
+            template = mContext.getText(
+                        com.android.internal.R.string.cfTemplateRegistered);
+        }
+        destinations[0] = serviceClassToCFString(info.serviceClass & serviceClassMask);
+        destinations[1] = PhoneNumberUtils.stringFromStringAndTOA(info.number, info.toa);
+        destinations[2] = Integer.toString(info.timeSeconds);
+
+        return TextUtils.replace(template, sources, destinations);
     }
 
     private void onSuppSvcQueryComplete(AsyncResult ar) {
