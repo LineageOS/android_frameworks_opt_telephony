@@ -204,11 +204,12 @@ public class PhoneProxy extends Handler implements Phone {
                     newVoiceRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT;
                 }
             } else {
-                boolean matchCdma = ServiceState.isCdma(newVoiceRadioTech) &&
-                        mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA;
-                boolean matchGsm = ServiceState.isGsm(newVoiceRadioTech) &&
-                        mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM;
-                if (matchCdma || matchGsm) {
+                boolean matchCdma = ServiceState.isCdma(newVoiceRadioTech);
+                boolean matchGsm = ServiceState.isGsm(newVoiceRadioTech);
+                if ((matchCdma  &&
+                        mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) ||
+                        (matchGsm &&
+                                mActivePhone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM)) {
                     // Nothing changed. Keep phone as it is.
                     logd("phoneObjectUpdater: No change ignore," +
                             " newVoiceRadioTech=" + newVoiceRadioTech +
