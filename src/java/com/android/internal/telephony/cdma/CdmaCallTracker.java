@@ -505,6 +505,7 @@ public final class CdmaCallTracker extends CallTracker {
         }
 
         Connection newRinging = null; //or waiting
+        Connection newUnknown = null;
         boolean hasNonHangupStateChanged = false;   // Any change besides
                                                     // a dropped connection
         boolean hasAnyCallDisconnected = false;
@@ -626,6 +627,7 @@ public final class CdmaCallTracker extends CallTracker {
                         newRinging = checkMtFindNewRinging(dc,i);
                         if (newRinging == null) {
                             unknownConnectionAppeared = true;
+                            newUnknown = conn;
                         }
                         checkAndEnableDataCallAfterEmergencyCallDropped();
                     } else {
@@ -731,7 +733,7 @@ public final class CdmaCallTracker extends CallTracker {
         updatePhoneState();
 
         if (unknownConnectionAppeared) {
-            mPhone.notifyUnknownConnection();
+            mPhone.notifyUnknownConnection(newUnknown);
         }
 
         if (hasNonHangupStateChanged || newRinging != null || hasAnyCallDisconnected) {
