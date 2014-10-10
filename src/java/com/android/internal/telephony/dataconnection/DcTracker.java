@@ -405,7 +405,7 @@ public final class DcTracker extends DcTrackerBase {
         }
 
         private void setEnableFailFastMobileData(int enabled) {
-            sendMessage(obtainMessage(DctConstants.CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA, enabled));
+            sendMessage(obtainMessage(DctConstants.CMD_SET_ENABLE_FAIL_FAST_MOBILE_DATA, enabled, 0));
         }
 
         private void enableMobileProvisioning() {
