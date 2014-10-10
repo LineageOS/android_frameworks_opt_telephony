@@ -34,6 +34,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.SystemProperties;
+import android.provider.Settings;
 import android.preference.PreferenceManager;
 import android.telecom.VideoProfile;
 import android.telephony.DisconnectCause;
@@ -217,6 +218,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 // Call exit ECBM which will invoke onECBMExited
                 mPhone.exitEmergencyCallbackMode();
             }
+            int mPreferredTtyMode = Settings.Secure.getInt(
+                mPhone.getContext().getContentResolver(),
+                Settings.Secure.PREFERRED_TTY_MODE,
+                Phone.TTY_MODE_OFF);
+           mImsManager.setUiTTYMode(mServiceId, mPreferredTtyMode, null);
+
         } catch (ImsException e) {
             loge("getImsService: " + e);
             //Leave mImsManager as null, then CallStateException will be thrown when dialing
@@ -641,6 +648,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
     }
 
     //***** Called from ImsPhone
+
+    void setUiTTYMode(int uiTtyMode, Message onComplete) {
+        try {
+            mImsManager.setUiTTYMode(mServiceId, uiTtyMode, onComplete);
+        } catch (ImsException e) {
+            loge("setTTYMode : " + e);
+            mPhone.sendErrorResponse(onComplete, e);
+        }
+    }
 
     /*package*/ void
     setMute(boolean mute) {

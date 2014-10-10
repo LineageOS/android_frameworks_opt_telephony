@@ -1049,6 +1049,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public void setUiTTYMode(int uiTtyMode, Message onComplete) {
+        mActivePhone.setUiTTYMode(uiTtyMode, onComplete);
+    }
+
+    @Override
     public void setTTYMode(int ttyMode, Message onComplete) {
         mActivePhone.setTTYMode(ttyMode, onComplete);
     }

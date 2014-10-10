@@ -1255,6 +1255,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
+    public void setUiTTYMode(int uiTtyMode, Message onComplete) {
+        Rlog.d(LOG_TAG, "unexpected setUiTTYMode method call");
+    }
+
+    @Override
     public void queryTTYMode(Message onComplete) {
         mCi.queryTTYMode(onComplete);
     }
