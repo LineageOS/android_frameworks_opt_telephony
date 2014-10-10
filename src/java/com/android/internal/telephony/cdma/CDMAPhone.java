@@ -1046,8 +1046,8 @@ public class CDMAPhone extends PhoneBase {
         mNotifier.notifyDisconnectCause(cn.getDisconnectCause(), cn.getPreciseDisconnectCause());
     }
 
-    void notifyUnknownConnection() {
-        mUnknownConnectionRegistrants.notifyResult(this);
+    void notifyUnknownConnection(Connection connection) {
+        mUnknownConnectionRegistrants.notifyResult(connection);
     }
 
     @Override
