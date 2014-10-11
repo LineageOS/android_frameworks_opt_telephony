@@ -1104,6 +1104,7 @@ public final class DcTracker extends DcTrackerBase {
         if (radioTech == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
                 && desiredPowerState == false) {
             desiredPowerState = true;
+            attachedState = true;
         }
 
         IccRecords r = mIccRecords.get();
