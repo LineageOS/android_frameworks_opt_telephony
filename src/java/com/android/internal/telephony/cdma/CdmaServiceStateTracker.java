@@ -1077,8 +1077,21 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
         if (mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
+            boolean resetIwlanRatVal = false;
             log("set service state as POWER_OFF");
+            if (isIwlanFeatureAvailable()
+                    && (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                        == mNewSS.getRilDataRadioTechnology())) {
+                log("pollStateDone: mNewSS = " + mNewSS);
+                log("pollStateDone: reset iwlan RAT value");
+                resetIwlanRatVal = true;
+            }
             mNewSS.setStateOff();
+            if (resetIwlanRatVal) {
+                mNewSS.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN);
+                log("pollStateDone: mNewSS = " + mNewSS);
+                resetIwlanRatVal = false;
+            }
         }
 
         // Add an event log when connection state changes
