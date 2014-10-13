@@ -491,6 +491,31 @@ public class SmsMessage {
     }
 
     /**
+     * Get an SMS-SUBMIT PDU for a destination address and a message.
+     * This method will not attempt to use any GSM national language 7 bit encodings.
+     *
+     * @param scAddress Service Centre address.  Null means use default.
+     * @param subId Subscription of the message
+     * @return a <code>SubmitPdu</code> containing the encoded SC
+     *         address, if applicable, and the encoded message.
+     *         Returns null on encode error.
+     * @hide
+     */
+    public static SubmitPdu getSubmitPdu(String scAddress,
+            String destinationAddress, String message, boolean statusReportRequested, long subId) {
+        SubmitPduBase spb;
+        if (useCdmaFormatForMoSms(subId)) {
+            spb = com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(scAddress,
+                    destinationAddress, message, statusReportRequested, null);
+        } else {
+            spb = com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(scAddress,
+                    destinationAddress, message, statusReportRequested);
+        }
+
+        return new SubmitPdu(spb);
+    }
+
+    /**
      * Get an SMS-SUBMIT PDU for a data message to a destination address &amp; port.
      * This method will not attempt to use any GSM national language 7 bit encodings.
      *
@@ -777,6 +802,25 @@ public class SmsMessage {
         if (!smsManager.isImsSmsSupported()) {
             // use Voice technology to determine SMS format.
             return isCdmaVoice();
+        }
+        // IMS is registered with SMS support, check the SMS format supported
+        return (SmsConstants.FORMAT_3GPP2.equals(smsManager.getImsSmsFormat()));
+    }
+
+    /**
+     * Determines whether or not to use CDMA format for MO SMS.
+     * If SMS over IMS is supported, then format is based on IMS SMS format,
+     * otherwise format is based on current phone type.
+     *
+     * @param subId Subscription for which phone type is returned.
+     *
+     * @return true if Cdma format should be used for MO SMS, false otherwise.
+     */
+    private static boolean useCdmaFormatForMoSms(long subId) {
+        SmsManager smsManager = SmsManager.getSmsManagerForSubscriber(subId);
+        if (!smsManager.isImsSmsSupported()) {
+            // use Voice technology to determine SMS format.
+            return isCdmaVoice(subId);
         }
         // IMS is registered with SMS support, check the SMS format supported
         return (SmsConstants.FORMAT_3GPP2.equals(smsManager.getImsSmsFormat()));
