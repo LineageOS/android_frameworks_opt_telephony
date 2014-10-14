@@ -26,10 +26,12 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 
+import android.telephony.TelephonyManager;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.SubscriptionController;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -848,5 +850,15 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected boolean powerOffOnSimReset() {
         return !mContext.getResources().getBoolean(
                 com.android.internal.R.bool.skip_radio_power_off_on_sim_refresh_reset);
+    }
+
+    protected void setSystemProperty(String property, String value) {
+        if (mParentApp == null) return;
+        int slotId = mParentApp.getUiccCard().getSlotId();
+
+        SubscriptionController subController = SubscriptionController.getInstance();
+        long subId = subController.getSubIdUsingSlotId(slotId)[0];
+
+        TelephonyManager.setTelephonyProperty(property, subId, value);
     }
 }

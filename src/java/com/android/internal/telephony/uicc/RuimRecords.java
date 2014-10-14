@@ -915,11 +915,4 @@ public final class RuimRecords extends IccRecords {
         pw.flush();
     }
 
-    private void setSystemProperty(String key, String val) {
-        // Update the system properties only in case NON-DSDS.
-        // TODO: Shall have a better approach!
-        if (!TelephonyManager.getDefault().isMultiSimEnabled()) {
-            SystemProperties.set(key, val);
-        }
-    }
 }
