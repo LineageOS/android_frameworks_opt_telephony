@@ -2631,6 +2631,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_GET_IMSI:
             case RIL_REQUEST_GET_IMEI:
             case RIL_REQUEST_GET_IMEISV:
+            case RIL_REQUEST_SIM_OPEN_CHANNEL:
+            case RIL_REQUEST_SIM_TRANSMIT_APDU_CHANNEL:
+
                 if (!RILJ_LOGV) {
                     // If not versbose logging just return and don't display IMSI and IMEI, IMEISV
                     return "";
@@ -2902,7 +2905,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 break;
 
             case RIL_UNSOL_STK_PROACTIVE_COMMAND:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
+                if (RILJ_LOGD) unsljLog(response);
 
                 if (mCatProCmdRegistrant != null) {
                     mCatProCmdRegistrant.notifyRegistrant(
@@ -2911,7 +2914,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 break;
 
             case RIL_UNSOL_STK_EVENT_NOTIFY:
-                if (RILJ_LOGD) unsljLogRet(response, ret);
+                if (RILJ_LOGD) unsljLog(response);
 
                 if (mCatEventRegistrant != null) {
                     mCatEventRegistrant.notifyRegistrant(
