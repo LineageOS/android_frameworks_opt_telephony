@@ -326,6 +326,17 @@ public final class DcTracker extends DcTrackerBase {
             mProvisioningSpinner.dismiss();
             mProvisioningSpinner = null;
         }
+
+/* Fix Me - SAND
+        mPhone.getContext().unregisterReceiver(defaultDdsBroadcastReceiver);
+        mPhone.getContext().unregisterReceiver(subInfoBroadcastReceiver);
+*/
+
+        ConnectivityManager cm = (ConnectivityManager)mPhone.getContext().getSystemService(
+                Context.CONNECTIVITY_SERVICE);
+        cm.unregisterNetworkFactory(mNetworkFactoryMessenger);
+        mNetworkFactoryMessenger = null;
+
         cleanUpAllConnections(true, null);
 
         super.dispose();
@@ -3210,6 +3221,14 @@ public final class DcTracker extends DcTrackerBase {
 
             case DctConstants.EVENT_MODEM_DATA_PROFILE_READY:
                 onModemApnProfileReady();
+                break;
+
+            case DctConstants.CMD_CLEAR_PROVISIONING_SPINNER:
+                // Check message sender intended to clear the current spinner.
+                if (mProvisioningSpinner == msg.obj) {
+                    mProvisioningSpinner.dismiss();
+                    mProvisioningSpinner = null;
+                }
                 break;
 
             default:
