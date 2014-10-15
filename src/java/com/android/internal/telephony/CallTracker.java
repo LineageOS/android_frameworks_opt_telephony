@@ -96,7 +96,10 @@ public abstract class CallTracker extends Handler {
 
     protected Connection getHoConnection(DriverCall dc) {
         for (Connection hoConn : mHandoverConnections) {
-            if (hoConn.getState() == Call.stateFromDCState(dc.state)) {
+            log("getHoConnection: hoConn= " + hoConn.toString());
+            if (hoConn.getState() == Call.stateFromDCState(dc.state)
+                    || (hoConn.getAddress() != null && hoConn.getAddress().contains(dc.number))) {
+                log("getHoConnection: Handover connection match found = " + hoConn.toString());
                 return hoConn;
             }
         }
@@ -105,10 +108,14 @@ public abstract class CallTracker extends Handler {
 
     protected void notifySrvccState(Call.SrvccState state, ArrayList<Connection> c) {
         if (state == Call.SrvccState.STARTED && c != null) {
+            // SRVCC started. Prepare handover connections list
             mHandoverConnections.addAll(c);
-        } else if (state == Call.SrvccState.COMPLETED) {
+        } else if (state != Call.SrvccState.COMPLETED) {
+            // SRVCC FAILED/CANCELED. Clear the handover connections list
+            // Individual connections will be removed from the list in handlePollCalls()
             mHandoverConnections.clear();
         }
+        log("notifySrvccState: mHandoverConnections= " + mHandoverConnections.toString());
     }
 
     protected void handleRadioAvailable() {

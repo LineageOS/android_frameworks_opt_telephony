@@ -490,9 +490,9 @@ public final class GsmCallTracker extends CallTracker {
                 } else {
                     mConnections[i] = new GsmConnection(mPhone.getContext(), dc, this, i);
 
-                    if (getHoConnection(dc) != null ) {
+                    Connection hoConnection = getHoConnection(dc);
+                    if (hoConnection != null) {
                         // Single Radio Voice Call Continuity (SRVCC) completed
-                        Connection hoConnection = getHoConnection(dc);
                         mConnections[i].migrateFrom(hoConnection);
                         if (!hoConnection.isMultiparty()) {
                             // Remove only if it is not multiparty
