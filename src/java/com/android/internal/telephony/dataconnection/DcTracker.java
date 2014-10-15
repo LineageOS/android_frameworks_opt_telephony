@@ -18,6 +18,7 @@ package com.android.internal.telephony.dataconnection;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -59,6 +60,7 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
+import android.view.WindowManager;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CDMALTEPhone;
@@ -129,6 +131,8 @@ public final class DcTracker extends DcTrackerBase {
 
     private static final int POLL_PDP_MILLIS = 5 * 1000;
 
+    private static final int PROVISIONING_SPINNER_TIMEOUT_MILLIS = 120 * 1000;
+
     static final Uri PREFERAPN_NO_UPDATE_URI =
                         Uri.parse("content://telephony/carriers/preferapn_no_update");
     static final String APN_ID = "apn_id";
@@ -142,6 +146,7 @@ public final class DcTracker extends DcTrackerBase {
 
     private final String mProvisionActionName;
     private BroadcastReceiver mProvisionBroadcastReceiver;
+    private ProgressDialog mProvisioningSpinner;
 
     /** Used to send us NetworkRequests from ConnectivityService.  Remeber it so we can
      * unregister on dispose. */
@@ -240,6 +245,10 @@ public final class DcTracker extends DcTrackerBase {
         if (mProvisionBroadcastReceiver != null) {
             mPhone.getContext().unregisterReceiver(mProvisionBroadcastReceiver);
             mProvisionBroadcastReceiver = null;
+        }
+        if (mProvisioningSpinner != null) {
+            mProvisioningSpinner.dismiss();
+            mProvisioningSpinner = null;
         }
 
         ConnectivityManager cm = (ConnectivityManager)mPhone.getContext().getSystemService(
@@ -395,12 +404,14 @@ public final class DcTracker extends DcTrackerBase {
     // Class to handle Intent dispatched with user selects the "Sign-in to network"
     // notification.
     private class ProvisionNotificationBroadcastReceiver extends BroadcastReceiver {
+        private final String mNetworkOperator;
         // Mobile provisioning URL.  Valid while provisioning notification is up.
         // Set prior to notification being posted as URL contains ICCID which
         // disappears when radio is off (which is the case when notification is up).
         private final String mProvisionUrl;
 
-        public ProvisionNotificationBroadcastReceiver(String provisionUrl) {
+        public ProvisionNotificationBroadcastReceiver(String provisionUrl, String networkOperator) {
+            mNetworkOperator = networkOperator;
             mProvisionUrl = provisionUrl;
         }
 
@@ -416,6 +427,23 @@ public final class DcTracker extends DcTrackerBase {
 
         @Override
         public void onReceive(Context context, Intent intent) {
+            // Turning back on the radio can take time on the order of a minute, so show user a
+            // spinner so they know something is going on.
+            mProvisioningSpinner = new ProgressDialog(context);
+            mProvisioningSpinner.setTitle(mNetworkOperator);
+            mProvisioningSpinner.setMessage(
+                    // TODO: Don't borrow "Connecting..." i18n string; give Telephony a version.
+                    context.getText(com.android.internal.R.string.media_route_status_connecting));
+            mProvisioningSpinner.setIndeterminate(true);
+            mProvisioningSpinner.setCancelable(true);
+            // Allow non-Activity Service Context to create a View.
+            mProvisioningSpinner.getWindow().setType(
+                    WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG);
+            mProvisioningSpinner.show();
+            // After timeout, hide spinner so user can at least use their device.
+            // TODO: Indicate to user that it is taking an unusually long time to connect?
+            sendMessageDelayed(obtainMessage(DctConstants.CMD_CLEAR_PROVISIONING_SPINNER,
+                    mProvisioningSpinner), PROVISIONING_SPINNER_TIMEOUT_MILLIS);
             // This code is almost identical to the old
             // ConnectivityService.handleMobileProvisioningAction code.
             setRadio(true);
@@ -1808,6 +1836,10 @@ public final class DcTracker extends DcTrackerBase {
         }
         mIsProvisioning = false;
         mProvisioningUrl = null;
+        if (mProvisioningSpinner != null) {
+            sendMessage(obtainMessage(DctConstants.CMD_CLEAR_PROVISIONING_SPINNER,
+                    mProvisioningSpinner));
+        }
 
         mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
         startNetStatPoll();
@@ -1919,7 +1951,8 @@ public final class DcTracker extends DcTrackerBase {
                     // While radio is up, grab provisioning URL.  The URL contains ICCID which
                     // disappears when radio is off.
                     mProvisionBroadcastReceiver = new ProvisionNotificationBroadcastReceiver(
-                            cm.getMobileProvisioningUrl());
+                            cm.getMobileProvisioningUrl(),
+                            TelephonyManager.getDefault().getNetworkOperatorName());
                     mPhone.getContext().registerReceiver(mProvisionBroadcastReceiver,
                             new IntentFilter(mProvisionActionName));
                     // Put up user notification that sign-in is required.
@@ -2656,6 +2689,14 @@ public final class DcTracker extends DcTrackerBase {
             case DctConstants.EVENT_DATA_RAT_CHANGED:
                 //May new Network allow setupData, so try it here
                 setupDataOnConnectableApns(Phone.REASON_NW_TYPE_CHANGED);
+                break;
+
+            case DctConstants.CMD_CLEAR_PROVISIONING_SPINNER:
+                // Check message sender intended to clear the current spinner.
+                if (mProvisioningSpinner == msg.obj) {
+                    mProvisioningSpinner.dismiss();
+                    mProvisioningSpinner = null;
+                }
                 break;
 
             default:
