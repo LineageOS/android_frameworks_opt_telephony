@@ -345,6 +345,16 @@ public abstract class IccRecords extends Handler implements IccConstants {
         mImsiReadyRegistrants.notifyRegistrants();
     }
 
+    /**
+     * Get the Network Access ID (NAI) on a CSIM for CDMA like networks. Default is null if IMSI is
+     * not supported or unavailable.
+     *
+     * @return null if NAI is not yet ready or unavailable
+     */
+    public String getNAI() {
+        return null;
+    }
+
     public String getMsisdnNumber() {
         return mMsisdn;
     }

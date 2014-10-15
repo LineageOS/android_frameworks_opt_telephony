@@ -1086,6 +1086,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public String getNai() {
+        return mActivePhone.getNai();
+    }
+
+    @Override
     public PhoneSubInfo getPhoneSubInfo(){
         return mActivePhone.getPhoneSubInfo();
     }
