@@ -58,6 +58,17 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         }
     }
 
+    public String getNaiForSubscriber(long subId) {
+        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(subId);
+        if (phoneSubInfoProxy != null) {
+            return phoneSubInfoProxy.getNai();
+        } else {
+            Rlog.e(TAG,"getNai phoneSubInfoProxy is null" +
+                      " for Subscription:" + subId);
+            return null;
+        }
+    }
+
     public String getImeiForSubscriber(long subId) {
         PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(subId);
         if (phoneSubInfoProxy != null) {
