@@ -1022,9 +1022,8 @@ public final class DataConnection extends StateMachine {
             // Only change apn setting if it isn't set, it will
             // only NOT be set only if we're in DcInactiveState.
             mApnSetting = apnContext.getApnSetting();
-        } else if (mApnSetting.canHandleType(apnContext.getApnType())) {
-            // All is good.
-        } else {
+        }
+        if (mApnSetting == null || !mApnSetting.canHandleType(apnContext.getApnType())) {
             if (DBG) {
                 log("initConnection: incompatible apnSetting in ConnectionParams cp=" + cp
                         + " dc=" + DataConnection.this);
