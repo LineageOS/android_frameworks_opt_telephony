@@ -236,6 +236,10 @@ public abstract class PhoneBase extends Handler implements Phone {
         return mName;
     }
 
+    public String getNai(){
+         return null;
+    }
+
     /**
      * Return the ActionDetached string. When this action is received by components
      * they are to simulate detaching from the network.

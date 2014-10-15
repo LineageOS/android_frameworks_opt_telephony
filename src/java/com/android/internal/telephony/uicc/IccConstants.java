@@ -85,6 +85,7 @@ public interface IccConstants {
     // C.S0074-Av1.0 Section 4
     static final int EF_CSIM_MLPL = 0x4F20;
     static final int EF_CSIM_MSPL = 0x4F21;
+    static final int EF_CSIM_MIPUPP = 0x6F4D;
 
     //ISIM access
     static final int EF_IMPU = 0x6f04;

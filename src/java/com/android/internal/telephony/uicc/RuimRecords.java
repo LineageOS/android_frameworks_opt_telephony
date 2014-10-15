@@ -38,6 +38,7 @@ import android.os.SystemProperties;
 import android.telephony.TelephonyManager;
 import android.telephony.Rlog;
 import android.text.TextUtils;
+import android.util.Log;
 import com.android.internal.telephony.TelephonyProperties;
 
 import com.android.internal.telephony.CommandsInterface;
@@ -48,6 +49,7 @@ import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
+import com.android.internal.util.BitwiseInputStream;
 
 /**
  * {@hide}
@@ -72,6 +74,7 @@ public final class RuimRecords extends IccRecords {
     private String mMin;
     private String mHomeSystemId;
     private String mHomeNetworkId;
+    private String mNai;
 
     // ***** Ruim constants
     static final int EF_MODEL_FILE_SIZE = 126;
@@ -187,6 +190,12 @@ public final class RuimRecords extends IccRecords {
     /** Returns null if RUIM is not yet ready */
     public String getPrlVersion() {
         return mPrlVersion;
+    }
+
+    @Override
+    /** Returns null if RUIM is not yet ready */
+    public String getNAI() {
+        return mNai;
     }
 
     @Override
@@ -520,6 +529,127 @@ public final class RuimRecords extends IccRecords {
             mPrlVersion = Integer.toString(prlId);
         }
         if (DBG) log("CSIM PRL version=" + mPrlVersion);
+    }
+
+    private class EfCsimMipUppLoaded implements IccRecordLoaded {
+        @Override
+        public String getEfName() {
+            return "EF_CSIM_MIPUPP";
+        }
+
+        boolean checkLengthLegal(int length, int expectLength) {
+            if(length < expectLength) {
+                Log.e(LOG_TAG, "CSIM MIPUPP format error, length = " + length  +
+                        "expected length at least =" + expectLength);
+                return false;
+            } else {
+                return true;
+            }
+        }
+
+        @Override
+        public void onRecordLoaded(AsyncResult ar) {
+            // 3GPP2 C.S0065 section 5.2.24
+            byte[] data = (byte[]) ar.result;
+
+            if(data.length < 1) {
+                Log.e(LOG_TAG,"MIPUPP read error");
+                return;
+            }
+
+            BitwiseInputStream bitStream = new BitwiseInputStream(data);
+            try {
+                int  mipUppLength = bitStream.read(8);
+                //transfer length from byte to bit
+                mipUppLength = (mipUppLength << 3);
+
+                if (!checkLengthLegal(mipUppLength, 1)) {
+                    return;
+                }
+                //parse the MIPUPP body 3GPP2 C.S0016-C 3.5.8.6
+                int retryInfoInclude = bitStream.read(1);
+                mipUppLength--;
+
+                if(retryInfoInclude == 1) {
+                    if (!checkLengthLegal(mipUppLength, 11)) {
+                        return;
+                    }
+                    bitStream.skip(11); //not used now
+                    //transfer length from byte to bit
+                    mipUppLength -= 11;
+                }
+
+                if (!checkLengthLegal(mipUppLength, 4)) {
+                    return;
+                }
+                int numNai = bitStream.read(4);
+                mipUppLength -= 4;
+
+                //start parse NAI body
+                for(int index = 0; index < numNai; index++) {
+                    if (!checkLengthLegal(mipUppLength, 4)) {
+                        return;
+                    }
+                    int naiEntryIndex = bitStream.read(4);
+                    mipUppLength -= 4;
+
+                    if (!checkLengthLegal(mipUppLength, 8)) {
+                        return;
+                    }
+                    int naiLength = bitStream.read(8);
+                    mipUppLength -= 8;
+
+                    if(naiEntryIndex == 0) {
+                        //we find the one!
+                        if (!checkLengthLegal(mipUppLength, naiLength << 3)) {
+                            return;
+                        }
+                        char naiCharArray[] = new char[naiLength];
+                        for(int index1 = 0; index1 < naiLength; index1++) {
+                            naiCharArray[index1] = (char)(bitStream.read(8) & 0xFF);
+                        }
+                        mNai =  new String(naiCharArray);
+                        return; //need not parsing further
+                    } else {
+                        //ignore this NAI body
+                        if (!checkLengthLegal(mipUppLength, (naiLength << 3) + 102)) {
+                            return;
+                        }
+                        bitStream.skip((naiLength << 3) + 101);//not used
+                        int mnAaaSpiIndicator = bitStream.read(1);
+                        mipUppLength -= ((naiLength << 3) + 102);
+
+                        if(mnAaaSpiIndicator == 1) {
+                            if (!checkLengthLegal(mipUppLength, 32)) {
+                                return;
+                            }
+                            bitStream.skip(32); //not used
+                            mipUppLength -= 32;
+                        }
+
+                        //MN-HA_AUTH_ALGORITHM
+                        if (!checkLengthLegal(mipUppLength, 5)) {
+                            return;
+                        }
+                        bitStream.skip(4);
+                        mipUppLength -= 4;
+                        int mnHaSpiIndicator = bitStream.read(1);
+                        mipUppLength--;
+
+                        if(mnHaSpiIndicator == 1) {
+                            if (!checkLengthLegal(mipUppLength, 32)) {
+                                return;
+                            }
+                            bitStream.skip(32);
+                            mipUppLength -= 32;
+                        }
+                    }
+                }
+            } catch(Exception e) {
+              Log.e(LOG_TAG,"MIPUPP read Exception error!");
+                return;
+            }
+        }
     }
 
     @Override
@@ -881,6 +1011,10 @@ public final class RuimRecords extends IccRecords {
         mRecordsToLoad++;
 
         mFh.getEFLinearRecordSize(EF_SMS, obtainMessage(EVENT_GET_SMS_RECORD_SIZE_DONE));
+
+        mFh.loadEFTransparent(EF_CSIM_MIPUPP,
+                obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfCsimMipUppLoaded()));
+        mRecordsToLoad++;
 
         if (DBG) log("fetchRuimRecords " + mRecordsToLoad + " requested: " + mRecordsRequested);
         // Further records that can be inserted are Operator/OEM dependent

@@ -636,6 +636,12 @@ public class CDMAPhone extends PhoneBase {
         return mMeid;
     }
 
+    @Override
+    public String getNai() {
+        IccRecords r = mIccRecords.get();
+        return (r != null) ? r.getNAI() : null;
+    }
+
     //returns MEID or ESN in CDMA
     @Override
     public String getDeviceId() {
