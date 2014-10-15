@@ -569,9 +569,9 @@ public final class CdmaCallTracker extends CallTracker {
                     }
                     mConnections[i] = new CdmaConnection(mPhone.getContext(), dc, this, i);
 
-                    if (getHoConnection(dc) != null ) {
+                    Connection hoConnection = getHoConnection(dc);
+                    if (hoConnection != null) {
                         // Single Radio Voice Call Continuity (SRVCC) completed
-                        Connection hoConnection = getHoConnection(dc);
                         mConnections[i].migrateFrom(hoConnection);
                         mHandoverConnections.remove(hoConnection);
                         mPhone.notifyHandoverStateChanged(mConnections[i]);
