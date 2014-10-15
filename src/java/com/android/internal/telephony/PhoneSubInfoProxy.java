@@ -43,6 +43,10 @@ public class PhoneSubInfoProxy extends IPhoneSubInfo.Stub {
         return mPhoneSubInfo.getImei();
     }
 
+    public String getNai() {
+        return mPhoneSubInfo.getNai();
+    }
+
     @Override
     public String getDeviceSvn() {
         return mPhoneSubInfo.getDeviceSvn();
@@ -162,6 +166,12 @@ public class PhoneSubInfoProxy extends IPhoneSubInfo.Stub {
     @Override
     public String getDeviceSvnUsingSubId(long subId) throws RemoteException {
         // FIXME: getDeviceSvnUsingSubId
+        return null;
+    }
+
+    @Override
+    public String getNaiForSubscriber(long subId) throws RemoteException {
+        // FIXME: NaiForSubscriber
         return null;
     }
 
