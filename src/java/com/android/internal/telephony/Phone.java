@@ -1412,6 +1412,11 @@ public interface Phone {
     String getImei();
 
     /**
+     * Retrieves Nai for phones. Returns null if Nai is not set.
+     */
+    String getNai();
+
+    /**
      * Retrieves the PhoneSubInfo of the Phone
      */
     public PhoneSubInfo getPhoneSubInfo();

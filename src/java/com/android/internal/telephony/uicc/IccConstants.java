@@ -70,6 +70,7 @@ public interface IccConstants {
     static final int EF_CSIM_IMSIM = 0x6F22;
     static final int EF_CSIM_CDMAHOME = 0x6F28;
     static final int EF_CSIM_EPRL = 0x6F5A;
+    static final int EF_CSIM_MIPUPP = 0x6F4D;
 
     //ISIM access
     static final int EF_IMPU = 0x6f04;
