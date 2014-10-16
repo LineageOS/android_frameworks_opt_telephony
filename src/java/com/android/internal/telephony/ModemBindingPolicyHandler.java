@@ -165,7 +165,7 @@ public class ModemBindingPolicyHandler extends Handler {
     private Context mContext;
     private int mNumPhones = TelephonyManager.getDefault().getPhoneCount();
     private boolean mModemRatCapabilitiesAvailable = false;
-    private boolean mIsSetPrefNwModeInProgress = true;
+    private boolean mIsSetPrefNwModeInProgress = false;
     //private boolean mIsBindingInProgress = false;
     private int[] mPreferredStackId = new int[mNumPhones];
     private int[] mCurrentStackId = new int[mNumPhones];
