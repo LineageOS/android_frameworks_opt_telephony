@@ -863,7 +863,8 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             return null;
         }
 
-        int maxlength = ANR_ADDITIONAL_NUMBER_END_ID - ANR_ADDITIONAL_NUMBER_START_ID + 1;
+        // numberToCalledPartyBCD has considered TOA byte
+        int maxlength = ANR_ADDITIONAL_NUMBER_END_ID - ANR_ADDITIONAL_NUMBER_START_ID + 1 + 1;
         if (byteAnr.length > maxlength) {
             System.arraycopy(byteAnr, 0, data, ANR_TON_NPI_ID, maxlength);
             data[ANR_BCD_NUMBER_LENGTH] = (byte) (maxlength);
