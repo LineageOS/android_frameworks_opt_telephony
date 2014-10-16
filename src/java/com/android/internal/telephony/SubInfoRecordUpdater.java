@@ -260,7 +260,7 @@ public class SubInfoRecordUpdater extends Handler {
             case EVENT_STACK_READY:
                 logd("EVENT_STACK_READY" );
                 if (isAllIccIdQueryDone() && PROJECT_SIM_NUM > 1) {
-                    SubscriptionHelper.getInstance().updateSubActivation();
+                    SubscriptionHelper.getInstance().updateSubActivation(sInsertSimState, true);
                 }
                 break;
             default:
@@ -450,9 +450,9 @@ public class SubInfoRecordUpdater extends Handler {
                 sInsertSimState[i] = SIM_REPOSITION;
             }
         }
-        SubscriptionHelper.getInstance().updateSimState(sInsertSimState);
+        SubscriptionHelper.getInstance().updateNwMode();
         if (ModemStackController.getInstance().isStackReady() && PROJECT_SIM_NUM > 1) {
-            SubscriptionHelper.getInstance().updateSubActivation();
+            SubscriptionHelper.getInstance().updateSubActivation(sInsertSimState, false);
         }
 
         List<SubInfoRecord> subInfos = SubscriptionManager.getActiveSubInfoList();

@@ -444,19 +444,19 @@ public class DctController extends Handler {
     }
 
     private static void logv(String s) {
-        Log.v(LOG_TAG, "[DctController] " + s);
+        Rlog.v(LOG_TAG, "[DctController] " + s);
     }
 
     private static void logd(String s) {
-        Log.d(LOG_TAG, "[DctController] " + s);
+        Rlog.d(LOG_TAG, "[DctController] " + s);
     }
 
     private static void logw(String s) {
-        Log.w(LOG_TAG, "[DctController] " + s);
+        Rlog.w(LOG_TAG, "[DctController] " + s);
     }
 
     private static void loge(String s) {
-        Log.e(LOG_TAG, "[DctController] " + s);
+        Rlog.e(LOG_TAG, "[DctController] " + s);
     }
 
     private class SwitchInfo {
@@ -508,22 +508,21 @@ public class DctController extends Handler {
         }
     }
     public void setDefaultDataSubId(long subId) {
-        Rlog.d(LOG_TAG, "setDefaultDataSubId subId :" + subId);
         int phoneId = mSubController.getPhoneId(subId);
         SwitchInfo s = new SwitchInfo(new Integer(phoneId), true);
         int prefPhoneId = mSubController.getPhoneId(mSubController.getCurrentDds());
         if (prefPhoneId < 0 || prefPhoneId >= mPhoneNum) {
-            // If Current dds subId is invalid set the received subId as curretn DDS
-            // and return from here.
-            // DcSwitchState will take care of sending allowData on latet dds subId
-            // once it receives valid data registration state
+            // If Current dds subId is invalid set the received subId as current DDS
+            // This generally happens when device power-up first time.
             logd(" setDefaultDataSubId,  subId = " + subId + " phoneId  " + prefPhoneId);
             Settings.Global.putLong(mContext.getContentResolver(),
                     Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
-            return;
         }
+        Rlog.d(LOG_TAG, "setDefaultDataSubId subId :" + subId + " phoneId = " + phoneId);
 
-        if (subId != mSubController.getDefaultDataSubId()) {
+        // Check for phoneId and prefPhoneId here, to avoid sending
+        //  data allow false and true on same sub.
+        if ((subId != mSubController.getDefaultDataSubId()) && (phoneId != prefPhoneId)) {
             doDetach(prefPhoneId);
         } else {
             logd("setDefaultDataSubId for default DDS, skip PS detach on DDS subs");
@@ -615,19 +614,26 @@ public class DctController extends Handler {
 
     @Override
         public void handleMessage (Message msg) {
+            boolean isLegacySetDds = false;
             Rlog.d(LOG_TAG, "handleMessage msg=" + msg);
 
             switch (msg.what) {
                 case EVENT_LEGACY_SET_DATA_SUBSCRIPTION:
+                    isLegacySetDds = true;
                     //intentional fall through, no break.
                 case EVENT_ALL_DATA_DISCONNECTED: {
                     AsyncResult ar = (AsyncResult)msg.obj;
                     SwitchInfo s = (SwitchInfo)ar.userObj;
                     Integer phoneId = s.mPhoneId;
-                    int prefPhoneId = mSubController.getPhoneId(
-                             mSubController.getCurrentDds());
-                    Rlog.d(LOG_TAG, "EVENT_ALL_DATA_DISCONNECTED switchInfo :" + s);
-                    mPhones[prefPhoneId].unregisterForAllDataDisconnected(this);
+                    Rlog.d(LOG_TAG, "EVENT_ALL_DATA_DISCONNECTED switchInfo :" + s +
+                            " isLegacySetDds = " + isLegacySetDds);
+                    // In this case prefPhoneId points to the newDds we are trying to
+                    // set, hence we do not need to call unregister for data disconnected
+                    if (!isLegacySetDds) {
+                        int prefPhoneId = mSubController.getPhoneId(
+                                 mSubController.getCurrentDds());
+                        mPhones[prefPhoneId].unregisterForAllDataDisconnected(this);
+                    }
                     Message allowedDataDone = Message.obtain(this,
                             EVENT_SET_DATA_ALLOW_DONE, s);
                     Phone phone = mPhones[phoneId].getActivePhone();
