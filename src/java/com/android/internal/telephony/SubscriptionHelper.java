@@ -57,7 +57,10 @@ class SubscriptionHelper extends Handler {
     private Context mContext;
     private CommandsInterface[] mCi;
     private int[] mSubStatus;
-    private static int mNumPhones;
+    private static int sNumPhones;
+    // This flag is used to trigger Dds during boot-up
+    // and when flex mapping performed
+    private static boolean sTriggerDds = true;
 
     private static final int EVENT_SET_UICC_SUBSCRIPTION_DONE = 1;
 
@@ -99,21 +102,21 @@ class SubscriptionHelper extends Handler {
     private SubscriptionHelper(Context c, CommandsInterface[] ci) {
         mContext = c;
         mCi = ci;
-        mNumPhones = TelephonyManager.getDefault().getPhoneCount();
-        mSubStatus = new int[mNumPhones];
-        for (int i=0; i < mNumPhones; i++ ) {
+        sNumPhones = TelephonyManager.getDefault().getPhoneCount();
+        mSubStatus = new int[sNumPhones];
+        for (int i=0; i < sNumPhones; i++ ) {
             mSubStatus[i] = SUB_INIT_STATE;
         }
         mContext.getContentResolver().registerContentObserver(Settings.Global.getUriFor(
                 Settings.Global.PREFERRED_NETWORK_MODE), false, nwModeObserver);
 
 
-        logd("SubscriptionHelper init by Context");
+        logd("SubscriptionHelper init by Context, num phones = " + sNumPhones);
     }
 
     private void updateNwModesInSubIdTable(boolean override) {
         SubscriptionController subCtrlr = SubscriptionController.getInstance();
-        for (int i=0; i < mNumPhones; i++ ) {
+        for (int i=0; i < sNumPhones; i++ ) {
             long[] subIdList = subCtrlr.getSubId(i);
             if (subIdList != null && subIdList[0] > 0) {
                 int nwModeInDb;
@@ -143,47 +146,55 @@ class SubscriptionHelper extends Handler {
         switch(msg.what) {
             case EVENT_SET_UICC_SUBSCRIPTION_DONE:
                 logd("EVENT_SET_UICC_SUBSCRIPTION_DONE");
-                processSetUiccSubscriptionDone((AsyncResult)msg.obj);
+                processSetUiccSubscriptionDone(msg);
                 break;
            default:
            break;
         }
     }
 
-    public void updateSubActivation() {
+    public void updateSubActivation(int[] simStatus, boolean isStackReadyEvent) {
         SubscriptionController subCtrlr = SubscriptionController.getInstance();
-        for (int slotId = 0; slotId < mNumPhones; slotId++) {
-            if (mSubStatus[slotId] == SUB_SIM_NOT_INSERTED) {
-                if (isAllSubsAvailable()) {
-                    logd("Received all sim info, now update user preferred subs");
-                    subCtrlr.updateUserPrefs();
-                }
-                return;
+        boolean setUiccSent = false;
+        if (isStackReadyEvent) {
+            sTriggerDds = true;
+        }
+
+        for (int slotId = 0; slotId < sNumPhones; slotId++) {
+            if (simStatus[slotId] == SUB_SIM_NOT_INSERTED) {
+                mSubStatus[slotId] = simStatus[slotId];
+                logd(" Sim not inserted in slot [" + slotId + "] simStatus= " + simStatus[slotId]);
+                continue;
             }
             long[] subId = subCtrlr.getSubId(slotId);
             int subState = subCtrlr.getSubState(subId[0]);
 
-            logd("setUicc for [" + slotId + "] = " + subState + "subId = " + subId[0]);
-
-            // If sim card present in the slot, get the stored sub status and
-            // perform the activation/deactivation of subscription
-            setUiccSubscription(slotId, subState);
+            logd("setUicc for [" + slotId + "] = " + subState + "subId = " + subId[0] +
+                    " prev subState = " + mSubStatus[slotId] + " stackReady " + isStackReadyEvent);
+            // Do not send SET_UICC if its already sent with same state
+            if ((mSubStatus[slotId] != subState) || isStackReadyEvent) {
+                // If sim card present in the slot, get the stored sub status and
+                // perform the activation/deactivation of subscription
+                setUiccSubscription(slotId, subState);
+                setUiccSent = true;
+            }
         }
-        //set DDS explicitly after setUicc is sent on stack ready.
-        subCtrlr.setDefaultDataSubId(subCtrlr.getDefaultDataSubId());
+        // If at least one uiccrequest sent, updateUserPrefs() will be called
+        // from processSetUiccSubscriptionDone()
+        if (isAllSubsAvailable() && (!setUiccSent)) {
+            logd("Received all sim info, update user pref subs, triggerDds= " + sTriggerDds);
+            subCtrlr.updateUserPrefs(sTriggerDds);
+            sTriggerDds = false;
+        }
     }
 
-    public void updateSimState(int[] simStatus) {
-        for (int slotId = 0; slotId < mNumPhones; slotId++) {
-            mSubStatus[slotId] = simStatus[slotId];
-        }
+    public void updateNwMode() {
         updateNwModesInSubIdTable(false);
         ModemBindingPolicyHandler.getInstance().updatePrefNwTypeIfRequired();
         mNwModeUpdated = true;
     }
 
     public void setUiccSubscription(int slotId, int subStatus) {
-        mSubStatus[slotId] = subStatus;
         boolean set3GPPDone = false, set3GPP2Done = false;
         UiccCard uiccCard = UiccController.getInstance().getUiccCard(slotId);
         if (uiccCard == null) {
@@ -197,13 +208,13 @@ class SubscriptionHelper extends Handler {
             if (set3GPPDone == false && (appType == PhoneConstants.APPTYPE_USIM ||
                     appType == PhoneConstants.APPTYPE_SIM)) {
                 Message msgSetUiccSubDone = Message.obtain(
-                        this, EVENT_SET_UICC_SUBSCRIPTION_DONE, new Integer(slotId));
+                        this, EVENT_SET_UICC_SUBSCRIPTION_DONE, slotId, subStatus);
                 mCi[slotId].setUiccSubscription(slotId, i, slotId, subStatus, msgSetUiccSubDone);
                 set3GPPDone = true;
             } else if (set3GPP2Done == false && (appType == PhoneConstants.APPTYPE_CSIM ||
                     appType == PhoneConstants.APPTYPE_RUIM)) {
                 Message msgSetUiccSubDone = Message.obtain(
-                        this, EVENT_SET_UICC_SUBSCRIPTION_DONE, new Integer(slotId));
+                        this, EVENT_SET_UICC_SUBSCRIPTION_DONE, slotId, subStatus);
                 mCi[slotId].setUiccSubscription(slotId, i, slotId, subStatus, msgSetUiccSubDone);
                 set3GPP2Done = true;
             }
@@ -216,11 +227,13 @@ class SubscriptionHelper extends Handler {
      * Handles the EVENT_SET_UICC_SUBSCRPTION_DONE.
      * @param ar
      */
-    private void processSetUiccSubscriptionDone(AsyncResult ar) {
-        Integer slotId = (Integer)ar.userObj;
-        boolean saveGlobalSettings = false;
+    private void processSetUiccSubscriptionDone(Message msg) {
+        AsyncResult ar = (AsyncResult)msg.obj;
+        int slotId = msg.arg1;
+        int newSubState = msg.arg2;
 
         if (ar.exception != null) {
+            logd("Exception in SET_UICC_SUBSCRIPTION, slotId = " + slotId);
             return;
         }
 
@@ -229,23 +242,25 @@ class SubscriptionHelper extends Handler {
             long[] subId = subCtrlr.getSubIdUsingSlotId(slotId);
             int subStatus = subCtrlr.getSubState(subId[0]);
 
-            if (mSubStatus[slotId] != subStatus) {
-                subCtrlr.setSubState(subId[0], mSubStatus[slotId]);
+            if (newSubState != subStatus) {
+                subCtrlr.setSubState(subId[0], newSubState);
             }
         }
 
+        mSubStatus[slotId] = newSubState;
         // After activating all subs, updated the user preferred sub values
         if (isAllSubsAvailable()) {
-            logd("Received all subs, now update user preferred subs");
-            subCtrlr.updateUserPrefs();
+            logd("Received all subs, now update user preferred subs, slotid = " + slotId
+                    + " newSubState = " + newSubState + " sTriggerDds = " + sTriggerDds);
+            subCtrlr.updateUserPrefs(sTriggerDds);
+            sTriggerDds = false;
         }
-
     }
 
     private boolean isAllSubsAvailable() {
         boolean allSubsAvailable = true;
 
-        for (int i=0; i < mNumPhones; i++) {
+        for (int i=0; i < sNumPhones; i++) {
             if (mSubStatus[i] == SUB_INIT_STATE) {
                 allSubsAvailable = false;
             }

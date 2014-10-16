@@ -404,7 +404,7 @@ public class SubscriptionController extends ISub.Stub {
             subId = getDefaultSubId();
         }
         if (!SubscriptionManager.isValidSubId(subId) || !isSubInfoReady()) {
-            logd("[getSubInfoForSubscriberx]- invalid subId or not ready");
+            logd("[getSubInfoForSubscriberx]- invalid subId or not ready, subId = " + subId);
             return null;
         }
         Cursor cursor = mContext.getContentResolver().query(SubscriptionManager.CONTENT_URI,
@@ -1538,7 +1538,7 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public void activateSubId(long subId) {
         if (getSubState(subId) == SubscriptionManager.ACTIVE) {
-            logd("activateSubId: subscription already active");
+            logd("activateSubId: subscription already active, subId = " + subId);
             return;
         }
 
@@ -1549,6 +1549,7 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public void deactivateSubId(long subId) {
         if (getSubState(subId) == SubscriptionManager.INACTIVE) {
+            logd("activateSubId: subscription already deactivated, subId = " + subId);
             return;
         }
 
@@ -1584,7 +1585,6 @@ public class SubscriptionController extends ISub.Stub {
             result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
                     value, BaseColumns._ID + "=" + Long.toString(subId), null);
 
-            if (subStatus == SubscriptionManager.INACTIVE) updateUserPrefs();
         }
         broadcastSimInfoContentChanged(subId,
                 SubscriptionManager.SUB_STATE, subStatus, SubscriptionManager.DEFAULT_STRING_VALUE);
@@ -1594,22 +1594,27 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public int getSubState(long subId) {
         SubInfoRecord subInfo = getSubInfoForSubscriber(subId);
+        int subStatus = SubscriptionManager.INACTIVE;
 
-        if (subInfo != null)  {
-            return subInfo.mStatus;
-        } else {
-            loge("getSubState: invalid subId = " + subId);
-            return SubscriptionManager.INACTIVE;
+        // Consider the subStatus from subInfo record only if the
+        //  record is associated with a valid slot Id.
+        if ((subInfo != null) && (subInfo.slotId >= 0)) {
+            subStatus = subInfo.mStatus;
         }
+        return subStatus;
     }
 
-    public void updateUserPrefs() {
+    /* setDds flag is used to trigger DDS switch request during
+      device powerUp and when flex map performed */
+    public void updateUserPrefs(boolean setDds) {
         List<SubInfoRecord> subInfoList = getActiveSubInfoList();
         int mActCount = 0;
         SubInfoRecord mNextActivatedSub = null;
 
         if (subInfoList == null) {
-            logd("updateUserPrefs: subscription are not avaiable ");
+            logd("updateUserPrefs: subscription are not avaiable dds = " + getDefaultDataSubId()
+                     + " voice = " + getDefaultVoiceSubId() + " sms = " + getDefaultSmsSubId() +
+                     " setDDs = " + setDds);
             return;
         }
 
@@ -1620,6 +1625,10 @@ public class SubscriptionController extends ISub.Stub {
                 if (mNextActivatedSub == null) mNextActivatedSub = subInfo;
             }
         }
+
+        logd("updateUserPrefs: active sub count = " + mActCount + " dds = " + getDefaultDataSubId()
+                 + " voice = " + getDefaultVoiceSubId() + " sms = "
+                 + getDefaultSmsSubId() + " setDDs = " + setDds);
         //if activated sub count is less than 2, disable prompt.
         if (mActCount < 2) {
             setSMSPromptEnabled(false);
@@ -1629,9 +1638,12 @@ public class SubscriptionController extends ISub.Stub {
         //if there are no activated subs available, no need to update. EXIT.
         if (mNextActivatedSub == null) return;
 
+        long ddsSubId = getDefaultDataSubId();
+        int ddsSubState = getSubState(ddsSubId);
         //if current data sub is not active, fallback to next active sub.
-        if (getSubState(getDefaultDataSubId()) == SubscriptionManager.INACTIVE) {
-            setDefaultDataSubId(mNextActivatedSub.subId);
+        if (setDds || (ddsSubState == SubscriptionManager.INACTIVE)) {
+            if (ddsSubState == SubscriptionManager.INACTIVE) ddsSubId = mNextActivatedSub.subId;
+            setDefaultDataSubId(ddsSubId);
         }
         //if current voice sub is not active and prompt not enabled, fallback to next active sub.
         if (getSubState(getDefaultVoiceSubId()) == SubscriptionManager.INACTIVE &&
@@ -1643,6 +1655,10 @@ public class SubscriptionController extends ISub.Stub {
             !isSMSPromptEnabled()) {
             setDefaultSmsSubId(mNextActivatedSub.subId);
         }
+        logd("updateUserPrefs: after currentDds = " + getDefaultDataSubId() + " voice = " +
+                 getDefaultVoiceSubId() + " sms = " + getDefaultSmsSubId() +
+                 " newDds = " + ddsSubId);
+
     }
 
     /* Returns User Voice Prompt property,  enabled or not */
