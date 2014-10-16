@@ -1388,14 +1388,26 @@ public class SubscriptionController extends ISub.Stub {
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
 
-        for (SubInfoRecord entry : getActiveSubInfoList()) {
-            pw.println(" ActiveSubInfoList:" + entry.toString());
+        List<SubInfoRecord> sirl = getActiveSubInfoList();
+        if (sirl != null) {
+            pw.println(" ActiveSubInfoList:");
+            for (SubInfoRecord entry : sirl) {
+                pw.println("  " + entry.toString());
+            }
+        } else {
+            pw.println(" ActiveSubInfoList: is null");
         }
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
 
-        for (SubInfoRecord entry : getAllSubInfoList()) {
-            pw.println(" AllSubInfoList:" + entry.toString());
+        sirl = getAllSubInfoList();
+        if (sirl != null) {
+            pw.println(" AllSubInfoList:");
+            for (SubInfoRecord entry : sirl) {
+                pw.println("  " + entry.toString());
+            }
+        } else {
+            pw.println(" AllSubInfoList: is null");
         }
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
