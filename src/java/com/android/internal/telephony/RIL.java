@@ -2216,8 +2216,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             if (oldState != Display.STATE_ON
                     && mDefaultDisplayState == Display.STATE_ON) {
                 sendScreenState(true);
-            } else if (oldState == Display.STATE_ON
-                    && mDefaultDisplayState != Display.STATE_ON) {
+            } else if ((oldState == Display.STATE_ON || oldState == Display.STATE_UNKNOWN)
+                        && mDefaultDisplayState != Display.STATE_ON) {
                 sendScreenState(false);
             }
         }
@@ -2239,9 +2239,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     onRadioAvailable() {
         // In case screen state was lost (due to process crash),
         // this ensures that the RIL knows the correct screen state.
-
-        PowerManager pm = (PowerManager)mContext.getSystemService(Context.POWER_SERVICE);
-        sendScreenState(pm.isScreenOn());
+        updateScreenState();
    }
 
     private RadioState getRadioStateFromInt(int stateInt) {
