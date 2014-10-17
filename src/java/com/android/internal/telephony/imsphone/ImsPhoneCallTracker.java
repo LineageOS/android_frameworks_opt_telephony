@@ -980,6 +980,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 } else {
                     cause = DisconnectCause.INCOMING_MISSED;
                 }
+                if (DBG) log("Incoming connection of 0 connect time detected - translated cause = "
+                        + cause);
             }
             processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
 
