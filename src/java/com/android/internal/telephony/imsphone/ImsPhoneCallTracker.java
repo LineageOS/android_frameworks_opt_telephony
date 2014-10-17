@@ -1335,6 +1335,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             mHandoverCall.mConnections.addAll(call.mConnections);
         }
         call.mConnections.clear();
+        call.mState = ImsPhoneCall.State.IDLE;
     }
 
     /* package */
@@ -1346,7 +1347,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
         if (mSrvccState == Call.SrvccState.COMPLETED) {
             transferHandoverConnections(mForegroundCall);
             transferHandoverConnections(mBackgroundCall);
-
+            transferHandoverConnections(mRingingCall);
             // release wake lock hold
             ImsPhoneConnection con = mHandoverCall.getHandoverConnection();
             if (con != null) {
