@@ -17,6 +17,7 @@
 
 package com.android.internal.telephony;
 
+import com.android.internal.telephony.RadioCapability;
 
 import android.content.Context;
 import android.os.Message;
@@ -24,6 +25,7 @@ import android.os.RegistrantList;
 import android.os.Registrant;
 import android.os.Handler;
 import android.os.AsyncResult;
+
 import android.telephony.TelephonyManager;
 
 /**
@@ -69,6 +71,8 @@ public abstract class BaseCommands implements CommandsInterface {
     protected RegistrantList mSubscriptionStatusRegistrants = new RegistrantList();
     protected RegistrantList mSrvccStateRegistrants = new RegistrantList();
     protected RegistrantList mHardwareConfigChangeRegistrants = new RegistrantList();
+    protected RegistrantList mPhoneRadioCapabilityChangedRegistrants =
+            new RegistrantList();
 
     protected Registrant mGsmSmsRegistrant;
     protected Registrant mCdmaSmsRegistrant;
@@ -828,5 +832,24 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void requestShutdown(Message result) {
+    }
+
+    @Override
+    public void getRadioCapability(Message result) {
+    }
+
+    @Override
+    public void setRadioCapability(RadioCapability rc, Message response) {
+    }
+
+    @Override
+    public void registerForRadioCapabilityChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mPhoneRadioCapabilityChangedRegistrants.add(r);
+    }
+
+    @Override
+    public void unregisterForRadioCapabilityChanged(Handler h) {
+        mPhoneRadioCapabilityChangedRegistrants.remove(h);
     }
 }

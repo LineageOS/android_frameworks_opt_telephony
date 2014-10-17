@@ -30,16 +30,17 @@ import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
+import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
-import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.cdma.CDMALTEPhone;
+import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IsimRecords;
@@ -1406,6 +1407,26 @@ public class PhoneProxy extends Handler implements Phone {
     @Override
     public void shutdownRadio() {
         mActivePhone.shutdownRadio();
+    }
+
+    @Override
+    public void setRadioCapability(RadioCapability rc, Message response) {
+        mActivePhone.setRadioCapability(rc, response);
+    }
+
+    @Override
+    public int getRadioAccessFamily() {
+        return mActivePhone.getRadioAccessFamily();
+    }
+
+    @Override
+    public void registerForRadioCapabilityChanged(Handler h, int what, Object obj) {
+        mActivePhone.registerForRadioCapabilityChanged(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForRadioCapabilityChanged(Handler h) {
+        mActivePhone.unregisterForRadioCapabilityChanged(h);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

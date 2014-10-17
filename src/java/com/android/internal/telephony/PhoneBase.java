@@ -39,17 +39,19 @@ import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoCdma;
 import android.telephony.DataConnectionRealTimeInfo;
-import android.telephony.VoLteServiceState;
+import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
+import android.telephony.VoLteServiceState;
 import android.text.TextUtils;
 
 import com.android.ims.ImsManager;
 import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
 import com.android.internal.telephony.imsphone.ImsPhone;
+import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -153,7 +155,8 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_INITIATE_SILENT_REDIAL         = 32;
     protected static final int EVENT_RADIO_NOT_AVAILABLE            = 33;
     protected static final int EVENT_UNSOL_OEM_HOOK_RAW             = 34;
-    protected static final int EVENT_LAST                           = EVENT_UNSOL_OEM_HOOK_RAW;
+    protected static final int EVENT_GET_RADIO_CAPABILITY           = 35;
+    protected static final int EVENT_LAST = EVENT_GET_RADIO_CAPABILITY;
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";
@@ -199,6 +202,8 @@ public abstract class PhoneBase extends Handler implements Phone {
     private final Object mImsLock = new Object();
     private boolean mImsServiceReady = false;
     protected ImsPhone mImsPhone = null;
+
+    protected int mRadioAccessFamily = RadioAccessFamily.RAF_UNKNOWN;
 
     @Override
     public String getPhoneName() {
@@ -533,6 +538,19 @@ public abstract class PhoneBase extends Handler implements Phone {
                 } else {
                     Rlog.e(LOG_TAG, "OEM hook raw exception: " + ar.exception);
                 }
+                break;
+
+            case EVENT_GET_RADIO_CAPABILITY:
+                ar = (AsyncResult) msg.obj;
+                RadioCapability rc = (RadioCapability) ar.result;
+                if (ar.exception != null) {
+                    Rlog.d(LOG_TAG, "get phone radio capability fail,"
+                            + "no need to change mRadioAccessFamily");
+                } else {
+                    mRadioAccessFamily = rc.getRadioAccessFamily();
+                }
+                Rlog.d(LOG_TAG, "EVENT_GET_RADIO_CAPABILITY :"
+                        + "phone RAF : " + mRadioAccessFamily);
                 break;
 
             default:
@@ -1917,6 +1935,26 @@ public abstract class PhoneBase extends Handler implements Phone {
     @Override
     public void shutdownRadio() {
         getServiceStateTracker().requestShutdown();
+    }
+
+    @Override
+    public void setRadioCapability(RadioCapability rc, Message response) {
+        mCi.setRadioCapability(rc, response);
+    }
+
+    @Override
+    public int getRadioAccessFamily() {
+        return mRadioAccessFamily;
+    }
+
+    @Override
+    public void registerForRadioCapabilityChanged(Handler h, int what, Object obj) {
+        mCi.registerForRadioCapabilityChanged(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForRadioCapabilityChanged(Handler h) {
+        mCi.unregisterForRadioCapabilityChanged(this);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

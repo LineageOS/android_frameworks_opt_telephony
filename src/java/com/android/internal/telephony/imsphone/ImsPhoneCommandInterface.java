@@ -22,10 +22,11 @@ import android.os.Message;
 
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.RadioCapability;
+import com.android.internal.telephony.UUSInfo;
 
 /**
  * Volte doesn't need CommandsInterface. The class does nothing but made to work
@@ -598,5 +599,13 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
 
     @Override
     public void requestShutdown(Message result) {
+    }
+
+    @Override
+    public void setRadioCapability(RadioCapability rc, Message response) {
+    }
+
+    @Override
+    public void getRadioCapability(Message response) {
     }
 }
