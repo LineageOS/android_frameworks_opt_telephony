@@ -37,6 +37,7 @@ import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.preference.PreferenceManager;
+import android.telecom.ConferenceParticipant;
 import android.telecom.VideoProfile;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
@@ -53,6 +54,7 @@ import com.android.ims.ImsManager;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsServiceClass;
 import com.android.ims.ImsUtInterface;
+import com.android.ims.internal.CallGroup;
 import com.android.ims.internal.IImsVideoCallProvider;
 import com.android.ims.internal.ImsCallSession;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
@@ -103,7 +105,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
                     // Normal MT call
                     ImsCall imsCall = mImsManager.takeCall(mServiceId, intent, mImsCallListener);
-
                     ImsPhoneConnection conn = new ImsPhoneConnection(mPhone.getContext(), imsCall,
                             ImsPhoneCallTracker.this, mRingingCall);
                     addConnection(conn);
@@ -1103,6 +1104,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     cause = DisconnectCause.INCOMING_MISSED;
                 }
             }
+
+            if (cause == DisconnectCause.NORMAL && conn != null && conn.getImsCall().isMerged()) {
+                // Call was terminated while it is merged instead of a remote disconnect.
+                cause = DisconnectCause.IMS_MERGED_SUCCESSFULLY;
+            }
+
             processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
 
             if (reasonInfo.getCode() == ImsReasonInfo.CODE_USER_TERMINATED) {
@@ -1122,11 +1129,17 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 ImsPhoneCall.State oldState = mBackgroundCall.getState();
                 processCallStateChange(imsCall, ImsPhoneCall.State.HOLDING,
                         DisconnectCause.NOT_DISCONNECTED);
-
                 if (oldState == ImsPhoneCall.State.ACTIVE) {
                     if ((mForegroundCall.getState() == ImsPhoneCall.State.HOLDING)
                             || (mRingingCall.getState() == ImsPhoneCall.State.WAITING)) {
-                        sendEmptyMessage(EVENT_RESUME_BACKGROUND);
+                        boolean isOwner = true;
+                        CallGroup callGroup =  imsCall.getCallGroup();
+                        if (callGroup != null) {
+                            isOwner = callGroup.isOwner(imsCall);
+                        }
+                        if (isOwner) {
+                            sendEmptyMessage(EVENT_RESUME_BACKGROUND);
+                        }
                     } else {
                         //when multiple connections belong to background call,
                         //only the first callback reaches here
@@ -1212,7 +1225,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
 
         @Override
-        public void onCallMerged(ImsCall call, ImsCall newCall) {
+        public void onCallMerged(ImsCall call) {
             if (DBG) log("onCallMerged");
 
             mForegroundCall.merge(mBackgroundCall, mForegroundCall.getState());
@@ -1224,6 +1237,23 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onCallMergeFailed(ImsCall call, ImsReasonInfo reasonInfo) {
             if (DBG) log("onCallMergeFailed reasonCode=" + reasonInfo.getCode());
             mPhone.notifySuppServiceFailed(Phone.SuppService.CONFERENCE);
+        }
+
+        /**
+         * Called when the state of IMS conference participant(s) has changed.
+         *
+         * @param call the call object that carries out the IMS call.
+         * @param participants the participant(s) and their new state information.
+         */
+        @Override
+        public void onConferenceParticipantsStateChanged(ImsCall call,
+                List<ConferenceParticipant> participants) {
+            if (DBG) log("onConferenceParticipantsStateChanged");
+
+            ImsPhoneConnection conn = findConnection(call);
+            if (conn != null) {
+                conn.updateConferenceParticipants(participants);
+            }
         }
     };
 

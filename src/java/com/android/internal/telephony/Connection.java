@@ -16,8 +16,10 @@
 
 package com.android.internal.telephony;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.telecom.ConferenceParticipant;
 import android.telephony.Rlog;
 import android.util.Log;
 
@@ -47,6 +49,7 @@ public abstract class Connection {
                 android.telecom.Connection.VideoProvider videoProvider);
         public void onAudioQualityChanged(int audioQuality);
         public void onCallSubstateChanged(int callSubstate);
+        public void onConferenceParticipantsChanged(List<ConferenceParticipant> participants);
     }
 
     /**
@@ -66,6 +69,8 @@ public abstract class Connection {
         public void onAudioQualityChanged(int audioQuality) {}
         @Override
         public void onCallSubstateChanged(int callSubstate) {}
+        @Override
+        public void onConferenceParticipantsChanged(List<ConferenceParticipant> participants) {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -595,6 +600,26 @@ public abstract class Connection {
         mConvertedNumber = mAddress;
         mAddress = oriNumber;
         mDialString = oriNumber;
+    }
+
+    /**
+     * Notifies listeners of a change to conference participant(s).
+     *
+     * @param conferenceParticipants The participant(s).
+     */
+    public void updateConferenceParticipants(List<ConferenceParticipant> conferenceParticipants) {
+        for (Listener l : mListeners) {
+            l.onConferenceParticipantsChanged(conferenceParticipants);
+        }
+    }
+
+    /**
+     * Notifies this Connection of a request to disconnect a participant of the conference managed
+     * by the connection.
+     *
+     * @param endpoint the {@link Uri} of the participant to disconnect.
+     */
+    public void onDisconnectConferenceParticipant(Uri endpoint) {
     }
 
     /**

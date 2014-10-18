@@ -20,6 +20,7 @@ import android.os.Bundle;
 import android.telephony.Rlog;
 import android.telephony.DisconnectCause;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
@@ -85,7 +86,12 @@ public class ImsPhoneCall extends Call {
     @Override
     public boolean
     isMultiparty() {
-        return mConnections.size() > 1;
+        ImsCall imsCall = getImsCall();
+        if (imsCall == null) {
+            return false;
+        }
+
+        return imsCall.isMultiparty();
     }
 
     /** Please note: if this is the foreground call and a
@@ -169,10 +175,7 @@ public class ImsPhoneCall extends Call {
     /*package*/ void
     detach(ImsPhoneConnection conn) {
         mConnections.remove(conn);
-
-        if (mConnections.size() == 0) {
-            mState = State.IDLE;
-        }
+        clearDisconnected();
     }
 
     /**
@@ -251,7 +254,17 @@ public class ImsPhoneCall extends Call {
         }
     }
 
-    /*package*/ ImsCall
+    /**
+     * Retrieves the {@link ImsCall} for the current {@link ImsPhoneCall}.
+     * <p>
+     * Marked as {@code VisibleForTesting} so that the
+     * {@link com.android.internal.telephony.TelephonyTester} class can inject a test conference
+     * event package into a regular ongoing IMS call.
+     *
+     * @return The {@link ImsCall}.
+     */
+    @VisibleForTesting
+    public ImsCall
     getImsCall() {
         return (getFirstConnection() == null) ? null : getFirstConnection().getImsCall();
     }
@@ -302,11 +315,7 @@ public class ImsPhoneCall extends Call {
 
     /* package */ ImsPhoneConnection
     getHandoverConnection() {
-        ImsPhoneConnection conn = (ImsPhoneConnection) getEarliestConnection();
-        if (conn != null) {
-            conn.setMultiparty(isMultiparty());
-        }
-        return conn;
+        return (ImsPhoneConnection) getEarliestConnection();
     }
 
     void switchWith(ImsPhoneCall that) {
