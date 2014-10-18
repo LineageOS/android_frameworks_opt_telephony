@@ -52,6 +52,7 @@ import com.android.ims.ImsManager;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsServiceClass;
 import com.android.ims.ImsUtInterface;
+import com.android.ims.internal.CallGroup;
 import com.android.ims.internal.IImsVideoCallProvider;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
 import com.android.internal.telephony.Call;
@@ -100,7 +101,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
                     // Normal MT call
                     ImsCall imsCall = mImsManager.takeCall(mServiceId, intent, mImsCallListener);
-
                     ImsPhoneConnection conn = new ImsPhoneConnection(mPhone.getContext(), imsCall,
                             ImsPhoneCallTracker.this, mRingingCall);
                     addConnection(conn);
@@ -983,6 +983,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 }
                 if (DBG) log("Incoming connection of 0 connect time detected - translated cause = "
                         + cause);
+
             }
             processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
 
@@ -1005,11 +1006,17 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 ImsPhoneCall.State oldState = mBackgroundCall.getState();
                 processCallStateChange(imsCall, ImsPhoneCall.State.HOLDING,
                         DisconnectCause.NOT_DISCONNECTED);
-
                 if (oldState == ImsPhoneCall.State.ACTIVE) {
                     if ((mForegroundCall.getState() == ImsPhoneCall.State.HOLDING)
                             || (mRingingCall.getState() == ImsPhoneCall.State.WAITING)) {
-                        sendEmptyMessage(EVENT_RESUME_BACKGROUND);
+                        boolean isOwner = true;
+                        CallGroup callGroup =  imsCall.getCallGroup();
+                        if (callGroup != null) {
+                            isOwner = callGroup.isOwner(imsCall);
+                        }
+                        if (isOwner) {
+                            sendEmptyMessage(EVENT_RESUME_BACKGROUND);
+                        }
                     } else {
                         //when multiple connections belong to background call,
                         //only the first callback reaches here
