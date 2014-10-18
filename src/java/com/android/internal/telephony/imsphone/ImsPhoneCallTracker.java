@@ -1053,6 +1053,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
             case ImsReasonInfo.CODE_USER_TERMINATED:
                 return DisconnectCause.LOCAL;
 
+            case ImsReasonInfo.CODE_LOCAL_CALL_DECLINE:
+                return DisconnectCause.INCOMING_REJECTED;
+
             case ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE:
                 return DisconnectCause.NORMAL;
 
@@ -1168,11 +1171,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
             if (DBG) log("cause = " + cause + " conn = " + conn);
 
             if (conn != null && conn.isIncoming() && conn.getConnectTime() == 0) {
-                // Missed or rejected call
-                if (cause == DisconnectCause.LOCAL) {
+                // Missed
+                if (cause == DisconnectCause.NORMAL) {
                     cause = DisconnectCause.INCOMING_MISSED;
-                } else {
-                    cause = DisconnectCause.INCOMING_REJECTED;
                 }
             }
 
