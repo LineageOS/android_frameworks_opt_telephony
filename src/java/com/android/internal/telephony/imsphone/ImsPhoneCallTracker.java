@@ -176,7 +176,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
     private boolean mIsInEmergencyCall = false;
 
     private int pendingCallClirMode;
-    private int pendingCallVideoState;
+    private int mPendingCallVideoState;
     private boolean pendingCallInEcm = false;
 
     //***** Events
@@ -324,6 +324,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
             }
             // foreground call is empty for the newly dialed connection
             holdBeforeDial = true;
+            // Cache the video state for pending MO call.
+            mPendingCallVideoState = videoState;
             switchWaitingOrHoldingAndActive();
         }
 
@@ -366,7 +368,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 }
                 mPhone.setOnEcbModeExitResponse(this, EVENT_EXIT_ECM_RESPONSE_CDMA, null);
                 pendingCallClirMode = clirMode;
-                pendingCallVideoState = videoState;
+                mPendingCallVideoState = videoState;
                 pendingCallInEcm = true;
             }
         }
@@ -493,6 +495,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
         if ((mRingingCall.getState() == ImsPhoneCall.State.WAITING)
                 && mForegroundCall.getState().isAlive()) {
             setMute(false);
+            // Cache video state for pending MT call.
+            mPendingCallVideoState = videoState;
             switchWaitingOrHoldingAndActive();
         } else if (mRingingCall.getState().isRinging()) {
             if (DBG) log("acceptCall: incoming...");
@@ -840,7 +844,10 @@ public final class ImsPhoneCallTracker extends CallTracker {
             } else if (mRingingCall.getState() == ImsPhoneCall.State.WAITING) {
                 //accept waiting call after holding background call
                 ImsCall imsCall = mRingingCall.getImsCall();
-                if (imsCall != null) imsCall.accept(ImsCallProfile.CALL_TYPE_VOICE);
+                if (imsCall != null) {
+                    imsCall.accept(
+                        ImsCallProfile.getCallTypeFromVideoState(mPendingCallVideoState));
+                }
             } else {
                 //Just resume background call.
                 //To distinguish resuming call with swapping calls
@@ -1377,15 +1384,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 }
                 break;
             case EVENT_DIAL_PENDINGMO:
-                dialInternal(mPendingMO, mClirMode,
-                        VideoProfile.VideoState.AUDIO_ONLY, mPendingMO.getCallExtras());
+                dialInternal(mPendingMO, mClirMode, mPendingCallVideoState,
+                    mPendingMO.getCallExtras());
                 break;
 
             case EVENT_EXIT_ECM_RESPONSE_CDMA:
                 // no matter the result, we still do the same here
                 if (pendingCallInEcm) {
                     dialInternal(mPendingMO, pendingCallClirMode,
-                            pendingCallVideoState, mPendingMO.getCallExtras());
+                            mPendingCallVideoState, mPendingMO.getCallExtras());
                     pendingCallInEcm = false;
                 }
                 mPhone.unsetOnEcbModeExitResponse(this);
