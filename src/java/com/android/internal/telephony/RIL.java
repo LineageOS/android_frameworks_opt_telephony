@@ -69,6 +69,7 @@ import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DcFailCause;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.dataconnection.DataProfile;
+import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.TelephonyDevController;
 import com.android.internal.telephony.HardwareConfig;
 
@@ -2551,7 +2552,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_GET_HARDWARE_CONFIG: ret = responseHardwareConfig(p); break;
             case RIL_REQUEST_SIM_AUTHENTICATION: ret =  responseICC_IOBase64(p); break;
             case RIL_REQUEST_SHUTDOWN: ret = responseVoid(p); break;
-
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -2753,7 +2753,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED: ret =  responseInts(p); break;
             case RIL_UNSOL_SRVCC_STATE_NOTIFY: ret = responseInts(p); break;
             case RIL_UNSOL_HARDWARE_CONFIG_CHANGED: ret = responseHardwareConfig(p); break;
-
+            case RIL_UNSOL_RADIO_CAPABILITY:
+                    ret = responseRadioCapability(p); break;
             default:
                 throw new RuntimeException("Unrecognized unsol response: " + response);
             //break; (implied)
@@ -3150,6 +3151,15 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 if (mHardwareConfigChangeRegistrants != null) {
                     mHardwareConfigChangeRegistrants.notifyRegistrants(
                                              new AsyncResult (null, ret, null));
+                }
+                break;
+
+            case RIL_UNSOL_RADIO_CAPABILITY:
+                if (RILJ_LOGD) unsljLogRet(response, ret);
+
+                if (mPhoneRadioCapabilityChangedRegistrants != null) {
+                    mPhoneRadioCapabilityChangedRegistrants.notifyRegistrants(
+                            new AsyncResult(null, ret, null));
                 }
                 break;
         }
@@ -3866,6 +3876,26 @@ public final class RIL extends BaseCommands implements CommandsInterface {
       return response;
    }
 
+    private Object
+    responseRadioCapability(Parcel p) {
+        int version = p.readInt();
+        int session = p.readInt();
+        int phase = p.readInt();
+        int rat = p.readInt();
+        String logicModemUuid = p.readString();
+        int status = p.readInt();
+
+        riljLog("responseRadioCapability: version= " + version +
+                ", session=" + session +
+                ", phase=" + phase +
+                ", rat=" + rat +
+                ", logicModemUuid=" + logicModemUuid +
+                ", status=" + status);
+        RadioCapability rc = new RadioCapability(
+                mInstanceId.intValue(), session, phase, rat, logicModemUuid, status);
+        return rc;
+    }
+
     static String
     requestToString(int request) {
 /*
@@ -4001,6 +4031,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_GET_HARDWARE_CONFIG: return "GET_HARDWARE_CONFIG";
             case RIL_REQUEST_SIM_AUTHENTICATION: return "RIL_REQUEST_SIM_AUTHENTICATION";
             case RIL_REQUEST_SHUTDOWN: return "RIL_REQUEST_SHUTDOWN";
+            case RIL_REQUEST_SET_RADIO_CAPABILITY:
+                    return "RIL_REQUEST_SET_RADIO_CAPABILITY";
+            case RIL_REQUEST_GET_RADIO_CAPABILITY:
+                    return "RIL_REQUEST_GET_RADIO_CAPABILITY";
             default: return "<unknown request>";
         }
     }
@@ -4058,6 +4092,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_SRVCC_STATE_NOTIFY:
                     return "UNSOL_SRVCC_STATE_NOTIFY";
             case RIL_UNSOL_HARDWARE_CONFIG_CHANGED: return "RIL_UNSOL_HARDWARE_CONFIG_CHANGED";
+            case RIL_UNSOL_RADIO_CAPABILITY:
+                    return "RIL_UNSOL_RADIO_CAPABILITY";
             default: return "<unknown response>";
         }
     }
@@ -4530,6 +4566,36 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
                 + ' ' + resetType);
+
+        send(rr);
+    }
+
+    @Override
+    public void setRadioCapability(RadioCapability rc, Message response) {
+        RILRequest rr = RILRequest.obtain(
+                RIL_REQUEST_SET_RADIO_CAPABILITY, response);
+
+        rr.mParcel.writeInt(rc.getVersion());
+        rr.mParcel.writeInt(rc.getSession());
+        rr.mParcel.writeInt(rc.getPhase());
+        rr.mParcel.writeInt(rc.getRadioAccessFamily());
+        rr.mParcel.writeString(rc.getLogicalModemUuid());
+        rr.mParcel.writeInt(rc.getStatus());
+
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
+                    + " " + rc.toString());
+        }
+
+        send(rr);
+    }
+
+    @Override
+    public void getRadioCapability(Message response) {
+        RILRequest rr = RILRequest.obtain(
+                RIL_REQUEST_GET_RADIO_CAPABILITY, response);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
         send(rr);
     }
