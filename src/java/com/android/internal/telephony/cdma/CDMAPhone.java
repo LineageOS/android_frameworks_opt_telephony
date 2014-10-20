@@ -1208,6 +1208,7 @@ public class CDMAPhone extends PhoneBase {
                 mCi.getBasebandVersion(obtainMessage(EVENT_GET_BASEBAND_VERSION_DONE));
 
                 mCi.getDeviceIdentity(obtainMessage(EVENT_GET_DEVICE_IDENTITY_DONE));
+                mCi.getRadioCapability(obtainMessage(EVENT_GET_RADIO_CAPABILITY));
             }
             break;
 
