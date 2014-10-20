@@ -19,10 +19,12 @@ package com.android.internal.telephony;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.uicc.IccCardStatus;
 
 import android.os.Message;
 import android.os.Handler;
+
 
 /**
  * {@hide}
@@ -1904,4 +1906,37 @@ public interface CommandsInterface {
      * @param result Callback message contains the information of SUCCESS/FAILURE
      */
     public void requestShutdown(Message result);
+
+    /**
+     *  Set phone radio type and access technology.
+     *
+     *  @param rc the phone radio capability defined in
+     *         RadioCapability. It's a input object used to transfer parameter to logic modem
+     *
+     *  @param result Callback message.
+     */
+    public void setRadioCapability(RadioCapability rc, Message result);
+
+    /**
+     *  Get phone radio capability
+     *
+     *  @param result Callback message.
+     */
+    public void getRadioCapability(Message result);
+
+    /**
+     * Registers the handler when phone radio capability is changed.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForRadioCapabilityChanged(Handler h, int what, Object obj);
+
+    /**
+     * Unregister for notifications when phone radio capability is changed.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForRadioCapabilityChanged(Handler h);
 }

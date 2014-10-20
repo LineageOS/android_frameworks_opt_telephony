@@ -28,6 +28,7 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 
 import com.android.internal.telephony.imsphone.ImsPhone;
+import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
@@ -1880,4 +1881,36 @@ public interface Phone {
      * shutdown Radio gracefully
      */
     public void shutdownRadio();
+
+    /**
+     *  Set phone radio  capability
+     *
+     *  @param rc the phone radio capability defined in
+     *         RadioCapability. It's a input object used to transfer parameter to logic modem
+     *  @param response Callback message.
+     */
+    public void setRadioCapability(RadioCapability rc, Message response);
+
+    /**
+     *  Get phone radio access family
+     *
+     *  @return a bit mask to identify the radio access family.
+     */
+    public int getRadioAccessFamily();
+
+    /**
+     * Registers the handler when phone radio  capability is changed.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForRadioCapabilityChanged(Handler h, int what, Object obj);
+
+    /**
+     * Unregister for notifications when phone radio type and access technology is changed.
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForRadioCapabilityChanged(Handler h);
 }
