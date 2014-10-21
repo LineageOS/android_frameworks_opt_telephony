@@ -1309,9 +1309,9 @@ public final class SmsManager {
     public static final int MMS_ERROR_CONFIGURATION_ERROR = 7;
     public static final int MMS_ERROR_NO_DATA_NETWORK = 8;
 
-    // Intent extra name for result data
+    // Intent extra name for MMS sending result data in byte array type
     public static final String EXTRA_MMS_DATA = "android.telephony.extra.MMS_DATA";
-    /** Intent extra name for HTTP status code for MMS HTTP failure in integer type */
+    // Intent extra name for HTTP status code for MMS HTTP failure in integer type
     public static final String EXTRA_MMS_HTTP_STATUS = "android.telephony.extra.MMS_HTTP_STATUS";
 
 
