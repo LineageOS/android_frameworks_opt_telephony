@@ -507,23 +507,28 @@ public class DctController extends Handler {
             dcTracker.cleanUpAllConnections("DDS switch");
         }
     }
-    public void setDefaultDataSubId(long subId) {
-        int phoneId = mSubController.getPhoneId(subId);
-        SwitchInfo s = new SwitchInfo(new Integer(phoneId), true);
-        int prefPhoneId = mSubController.getPhoneId(mSubController.getCurrentDds());
-        if (prefPhoneId < 0 || prefPhoneId >= mPhoneNum) {
+    public void setDefaultDataSubId(long reqSubId) {
+        int reqPhoneId = mSubController.getPhoneId(reqSubId);
+        long currentDds = mSubController.getCurrentDds();
+        long defaultDds = mSubController.getDefaultDataSubId();
+        SwitchInfo s = new SwitchInfo(new Integer(reqPhoneId), true);
+        int currentDdsPhoneId = mSubController.getPhoneId(currentDds);
+        if (currentDdsPhoneId < 0 || currentDdsPhoneId >= mPhoneNum) {
             // If Current dds subId is invalid set the received subId as current DDS
             // This generally happens when device power-up first time.
-            logd(" setDefaultDataSubId,  subId = " + subId + " phoneId  " + prefPhoneId);
+            logd(" setDefaultDataSubId,  reqSubId = " + reqSubId + " currentDdsPhoneId  "
+                    + currentDdsPhoneId);
             Settings.Global.putLong(mContext.getContentResolver(),
-                    Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
+                    Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, reqSubId);
+            defaultDds = reqSubId;
+            currentDdsPhoneId = mSubController.getPhoneId(defaultDds);
         }
-        Rlog.d(LOG_TAG, "setDefaultDataSubId subId :" + subId + " phoneId = " + phoneId);
+        Rlog.d(LOG_TAG, "setDefaultDataSubId reqSubId :" + reqSubId + " reqPhoneId = "
+                + reqPhoneId);
 
-        // Check for phoneId and prefPhoneId here, to avoid sending
-        //  data allow false and true on same sub.
-        if ((subId != mSubController.getDefaultDataSubId()) && (phoneId != prefPhoneId)) {
-            doDetach(prefPhoneId);
+        // Avoid sending data allow false and true on same sub .
+        if ((reqSubId != defaultDds) && (reqPhoneId != currentDdsPhoneId)) {
+            doDetach(currentDdsPhoneId);
         } else {
             logd("setDefaultDataSubId for default DDS, skip PS detach on DDS subs");
             sendMessage(obtainMessage(EVENT_LEGACY_SET_DATA_SUBSCRIPTION,
@@ -531,7 +536,7 @@ public class DctController extends Handler {
             return;
         }
 
-        mPhones[prefPhoneId].registerForAllDataDisconnected(
+        mPhones[currentDdsPhoneId].registerForAllDataDisconnected(
                 this, EVENT_ALL_DATA_DISCONNECTED, s);
     }
 
@@ -568,8 +573,19 @@ public class DctController extends Handler {
         dcTracker.setDataAllowed(true, psAttachDone);
     }
 
-    public void doPsDetach(NetworkRequest n) {
-        Rlog.d(LOG_TAG, "doPsDetach for sub:" + mSubController.getCurrentDds());
+    /**
+     * This is public API and client might call doPsDetach on DDS sub.
+     * Ignore if thats the case.
+     */
+    public void doPsDetach() {
+        long currentDds = mSubController.getCurrentDds();
+        long defaultDds = mSubController.getDefaultDataSubId();
+
+        if (currentDds == defaultDds) {
+            Rlog.d(LOG_TAG, "PS DETACH on DDS sub is not allowed.");
+            return;
+        }
+        Rlog.d(LOG_TAG, "doPsDetach for sub:" + currentDds);
 
         int phoneId = mSubController.getPhoneId(
                 mSubController.getCurrentDds());
