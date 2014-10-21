@@ -488,7 +488,14 @@ public class ModemStackController extends Handler {
                 sendResponseToTarget(mUpdateStackMsg, RILConstants.SUCCESS);
                 mUpdateStackMsg = null;
             }
+            updateNetworkSelectionMode();
             notifyStackReady();
+        }
+    }
+
+    private void updateNetworkSelectionMode() {
+        for (int i = 0; i < mNumPhones; i++) {
+            mCi[i].setNetworkSelectionModeAutomatic(null);
         }
     }
 
@@ -645,7 +652,7 @@ public class ModemStackController extends Handler {
     }
 
     public int updateStackBinding(int[] prefStackIds, boolean isBootUp, Message msg) {
-        boolean isUpdateNotRequired = true;
+        boolean isUpdateRequired = false;
         boolean callInProgress = isAnyCallsInProgress();
 
         if (mNumPhones == 1) {
@@ -659,19 +666,33 @@ public class ModemStackController extends Handler {
                     + mIsStackReady + ". So EXITING!!!");
             return FAILURE;
         }
-        mIsStackReady = false;
         for (int i = 0; i < mNumPhones; i++) {
             mPreferredStackId[i] = prefStackIds[i];
         }
 
-        //Store the msg object , so that result of updateStackbinding can be sent later.
-        mUpdateStackMsg = msg;
-        //Get Stored prefNwMode for all the subs and send request to RIL after update binding.
-        syncPreferredNwModeFromDB();
-        if (isBootUp) {
-            triggerUnBindingOnAllSubs();
+        for (int i = 0; i < mNumPhones; i++) {
+            if (mPreferredStackId[i] != mCurrentStackId[i]) {
+                //if preferred stackId is different from current, bindupdate is required.
+                isUpdateRequired = true;
+                break;
+            }
+        }
+
+        if (isUpdateRequired) {
+            mIsStackReady = false;
+            //Store the msg object , so that result of updateStackbinding can be sent later.
+            mUpdateStackMsg = msg;
+            //Get Stored prefNwMode for all the subs and send request to RIL after update binding.
+            syncPreferredNwModeFromDB();
+            if (isBootUp) {
+                triggerUnBindingOnAllSubs();
+            } else {
+                triggerDeactivationOnAllSubs();
+            }
         } else {
-            triggerDeactivationOnAllSubs();
+            //incase of bootup if cross binding is not required send stack ready notification.
+            if (isBootUp) notifyStackReady();
+            return FAILURE;
         }
         return SUCCESS;
     }
