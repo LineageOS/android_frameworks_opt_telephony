@@ -1285,21 +1285,29 @@ public final class ImsPhoneCallTracker extends CallTracker {
             if (serviceClass == ImsServiceClass.MMTEL) {
                 boolean tmpIsVtEnabled = mIsVtEnabled;
 
-                if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE] ==
-                        ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE) {
-                    mIsVolteEnabled = true;
-                }
-                if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE] ==
-                        ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE) {
-                    mIsVtEnabled = true;
-                }
                 if (disabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE] ==
-                        ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE) {
+                        ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE ||
+                        disabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI] ==
+                        ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI) {
                     mIsVolteEnabled = false;
                 }
                 if (disabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE] ==
-                        ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE) {
+                        ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE ||
+                        disabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI] ==
+                        ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI) {
                     mIsVtEnabled = false;
+                }
+                if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE] ==
+                        ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE ||
+                        enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI] ==
+                        ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI) {
+                    mIsVolteEnabled = true;
+                }
+                if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE] ==
+                        ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE ||
+                        enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI] ==
+                        ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI) {
+                    mIsVtEnabled = true;
                 }
 
                 if (tmpIsVtEnabled != mIsVtEnabled) {
