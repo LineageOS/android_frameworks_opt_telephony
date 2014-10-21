@@ -1038,6 +1038,25 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         }
     }
 
+    /**
+     * Called from GSMPhone
+     *
+     * An unsolicited USSD NOTIFY or REQUEST has come in matching
+     * up with this pending USSD request
+     *
+     * Note: If REQUEST, this exchange is complete, but the session remains
+     *       active (ie, the network expects user input).
+     */
+    void
+    onUssdRelease() {
+        if (mState == State.PENDING) {
+            mState = State.COMPLETE;
+            mMessage = null;
+
+            mPhone.onMMIDone(this);
+        }
+    }
+
     void sendUssd(String ussdMessage) {
         // Treat this as a USSD string
         mIsPendingUSSD = true;

@@ -1537,6 +1537,7 @@ public class GSMPhone extends PhoneBase {
     onIncomingUSSD (int ussdMode, String ussdMessage) {
         boolean isUssdError;
         boolean isUssdRequest;
+        boolean isUssdRelease;
 
         isUssdRequest
             = (ussdMode == CommandsInterface.USSD_MODE_REQUEST);
@@ -1544,6 +1545,8 @@ public class GSMPhone extends PhoneBase {
         isUssdError
             = (ussdMode != CommandsInterface.USSD_MODE_NOTIFY
                 && ussdMode != CommandsInterface.USSD_MODE_REQUEST);
+
+        isUssdRelease = (ussdMode == CommandsInterface.USSD_MODE_NW_RELEASE);
 
         // See comments in GsmMmiCode.java
         // USSD requests aren't finished until one
@@ -1559,7 +1562,9 @@ public class GSMPhone extends PhoneBase {
         if (found != null) {
             // Complete pending USSD
 
-            if (isUssdError) {
+            if (isUssdRelease) {
+                found.onUssdRelease();
+            } else if (isUssdError) {
                 found.onUssdFinishedError();
             } else {
                 found.onUssdFinished(ussdMessage, isUssdRequest);
