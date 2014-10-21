@@ -298,7 +298,7 @@ public class ModemBindingPolicyHandler extends Handler {
     private void handleModemRatCapsAvailable() {
         mModemRatCapabilitiesAvailable = true;
         //Initialization sequence: Need to send Bind request always, so override is true.
-        updateStackBindingIfRequired(true);
+        if (SUCCESS == updateStackBindingIfRequired(true)) mIsSetPrefNwModeInProgress = true;
     }
 
     private void syncCurrentStackInfo() {
@@ -307,7 +307,7 @@ public class ModemBindingPolicyHandler extends Handler {
             mCurrentStackId[i] = mModemStackController.getCurrentStackIdForPhoneId(i);
             mModemCapInfo[mCurrentStackId[i]] = mModemStackController.getModemRatCapsForPhoneId(i);
             //reset Preferred to current.
-            mPreferredStackId[i] = mCurrentStackId[i];
+            mPreferredStackId[i] = (mCurrentStackId[i] >= 0) ? mCurrentStackId[i] : i;
         }
     }
 
