@@ -228,8 +228,8 @@ public class DdsScheduler extends StateMachine {
         mDctController.doPsAttach(n);
     }
 
-    private void requestPsDetach(NetworkRequest n) {
-        mDctController.doPsDetach(n);
+    private void requestPsDetach() {
+        mDctController.doPsDetach();
     }
 
     private int getMaxDataAllowed() {
@@ -468,7 +468,7 @@ public class DdsScheduler extends StateMachine {
             Rlog.d(TAG, "Exit");
 
             //Request PS Detach on currentDds.
-            requestPsDetach(null);
+            requestPsDetach();
             //Update currentDds back to defaultDataSub.
             updateCurrentDds(null);
         }
