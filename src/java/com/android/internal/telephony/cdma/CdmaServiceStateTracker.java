@@ -269,6 +269,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         Settings.Global.putInt(mPhone.getContext().getContentResolver(),
                 Settings.Global.CDMA_SUBSCRIPTION_MODE,
                 source );
+        log("Read from settings: " + Settings.Global.getInt(mPhone.getContext().getContentResolver(),
+                    Settings.Global.CDMA_SUBSCRIPTION_MODE, -1));
     }
 
     private void getSubscriptionInfoAndStartPollingThreads() {
@@ -533,6 +535,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         log("Subscription Source : " + newSubscriptionSource);
         mIsSubscriptionFromRuim =
             (newSubscriptionSource == CdmaSubscriptionSourceManager.SUBSCRIPTION_FROM_RUIM);
+        log("isFromRuim: " + mIsSubscriptionFromRuim);
         saveCdmaSubscriptionSource(newSubscriptionSource);
         if (!mIsSubscriptionFromRuim) {
             // NV is ready when subscription source is NV

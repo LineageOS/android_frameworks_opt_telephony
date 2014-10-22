@@ -65,6 +65,7 @@ public class CdmaSubscriptionSourceManager extends Handler {
         mCi.registerForCdmaSubscriptionChanged(this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
         mCi.registerForOn(this, EVENT_RADIO_ON, null);
         int subscriptionSource = getDefault(context);
+        log("cdmaSSM constructor: " + subscriptionSource);
         mCdmaSubscriptionSource.set(subscriptionSource);
         mCi.registerForSubscriptionStatusChanged(this, EVENT_SUBSCRIPTION_STATUS_CHANGED, null);
     }
@@ -150,6 +151,7 @@ public class CdmaSubscriptionSourceManager extends Handler {
      * @return CDMA subscription source value
      */
     public int getCdmaSubscriptionSource() {
+        log("getcdmasubscriptionSource: " + mCdmaSubscriptionSource.get());
         return mCdmaSubscriptionSource.get();
     }
 
@@ -162,6 +164,7 @@ public class CdmaSubscriptionSourceManager extends Handler {
         // Get the default value from the Settings
         int subscriptionSource = Settings.Global.getInt(context.getContentResolver(),
                 Settings.Global.CDMA_SUBSCRIPTION_MODE, PREFERRED_CDMA_SUBSCRIPTION);
+        Rlog.d(LOG_TAG, "subscriptionSource from settings: " + subscriptionSource);
         return subscriptionSource;
     }
 
