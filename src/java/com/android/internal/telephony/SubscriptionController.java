@@ -1371,6 +1371,8 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        mContext.enforceCallingOrSelfPermission(android.Manifest.permission.DUMP,
+                "Requires DUMP");
         pw.println("SubscriptionController:");
         pw.println(" defaultSubId=" + getDefaultSubId());
         pw.println(" defaultDataSubId=" + getDefaultDataSubId());
