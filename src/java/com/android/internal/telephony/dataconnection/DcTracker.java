@@ -1006,7 +1006,7 @@ public final class DcTracker extends DcTrackerBase {
         return result;
     }
 
-   private boolean imsiMatches(String imsiDB, String imsiSIM) {
+    private boolean imsiMatches(String imsiDB, String imsiSIM) {
         // Note: imsiDB value has digit number or 'x' character for seperating USIM information
         // for MVNO operator. And then digit number is matched at same order and 'x' character
         // could replace by any digit number.
@@ -2206,10 +2206,8 @@ public final class DcTracker extends DcTrackerBase {
         return (first.canHandleType(PhoneConstants.APN_TYPE_DUN) == false &&
                 second.canHandleType(PhoneConstants.APN_TYPE_DUN) == false &&
                 Objects.equals(first.apn, second.apn) &&
-                Objects.equals(first.proxy, second.proxy) &&
-                Objects.equals(first.port, second.port) &&
-                Objects.equals(first.protocol, second.protocol) &&
-                Objects.equals(first.roamingProtocol, second.roamingProtocol) &&
+                xorEquals(first.proxy, second.proxy) &&
+                xorEquals(first.port, second.port) &&
                 first.carrierEnabled == second.carrierEnabled &&
                 first.bearer == second.bearer &&
                 first.profileId == second.profileId &&
@@ -2236,12 +2234,16 @@ public final class DcTracker extends DcTrackerBase {
         String mmsc = (TextUtils.isEmpty(dest.mmsc) ? src.mmsc : dest.mmsc);
         String mmsProxy = (TextUtils.isEmpty(dest.mmsProxy) ? src.mmsProxy : dest.mmsProxy);
         String mmsPort = (TextUtils.isEmpty(dest.mmsPort) ? src.mmsPort : dest.mmsPort);
-
+        String proxy = (TextUtils.isEmpty(dest.proxy) ? src.proxy : dest.proxy);
+        String port = (TextUtils.isEmpty(dest.port) ? src.port : dest.port);
+        String protocol = src.protocol.equals("IPV4V6") ? src.protocol : dest.protocol;
+        String roamingProtocol = src.roamingProtocol.equals("IPV4V6") ? src.roamingProtocol :
+                dest.roamingProtocol;
 
         return new ApnSetting(dest.id, dest.numeric, dest.carrier, dest.apn,
-                dest.proxy, dest.port, mmsc, mmsProxy, mmsPort, dest.user, dest.password,
-                dest.authType, resultTypes.toArray(new String[0]), dest.protocol,
-                dest.roamingProtocol, dest.carrierEnabled, dest.bearer, dest.profileId,
+                proxy, port, mmsc, mmsProxy, mmsPort, dest.user, dest.password,
+                dest.authType, resultTypes.toArray(new String[0]), protocol,
+                roamingProtocol, dest.carrierEnabled, dest.bearer, dest.profileId,
                 (dest.modemCognitive || src.modemCognitive), dest.maxConns, dest.waitTime,
                 dest.maxConnsTime, dest.mtu, dest.mvnoType, dest.mvnoMatchData);
     }
