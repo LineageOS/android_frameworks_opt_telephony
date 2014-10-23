@@ -71,6 +71,7 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
     private boolean driverCallU = needsOldRilFeature("newDriverCallU");
     private boolean dialCode = needsOldRilFeature("newDialCode");
     private boolean samsungEmergency = needsOldRilFeature("samsungEMSReq");
+    private boolean ignoreUnsol1038 = needsOldRilFeature("ignoreUnsol1038");
     public SamsungQualcommRIL(Context context, int networkMode,
             int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
@@ -364,10 +365,10 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                 if(mRilVersion >= 8)
                     setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
-                break;
+                return;
             case RIL_UNSOL_NITZ_TIME_RECEIVED:
                 handleNitzTimeReceived(p);
-                break;
+                return;
             // SAMSUNG STATES
             case SamsungExynos4RIL.RIL_UNSOL_AM:
                 ret = responseString(p);
@@ -380,26 +381,30 @@ public class SamsungQualcommRIL extends RIL implements CommandsInterface {
                     e.printStackTrace();
                     Rlog.e(RILJ_LOG_TAG, "am " + amString + " could not be executed.");
                 }
-                break;
+                return;
             case SamsungExynos4RIL.RIL_UNSOL_RESPONSE_HANDOVER:
                 ret = responseVoid(p);
-                break;
+                return;
             case 1036:
                 ret = responseVoid(p);
-                break;
+                return;
             case SamsungExynos4RIL.RIL_UNSOL_WB_AMR_STATE:
                 ret = responseInts(p);
                 setWbAmr(((int[])ret)[0]);
-                break;
-            default:
-                // Rewind the Parcel
-                p.setDataPosition(dataPosition);
-
-                // Forward responses that we are not overriding to the super class
-                super.processUnsolicited(p);
                 return;
+            case 1038: // Originally RIL_UNSOL_TETHERED_MODE_STATE_CHANGED
+                if (ignoreUnsol1038) {
+                    if (RILJ_LOGD) riljLog("Ignoring unsolicited 1038");
+                    return;
+                }
+                break;
         }
 
+        // Rewind the Parcel
+        p.setDataPosition(dataPosition);
+
+        // Forward responses that we are not overriding to the super class
+        super.processUnsolicited(p);
     }
 
     @Override
