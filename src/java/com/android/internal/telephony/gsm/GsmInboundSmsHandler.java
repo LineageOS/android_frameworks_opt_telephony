@@ -27,6 +27,8 @@ import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsStorageMonitor;
+import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UsimServiceTable;
 
 /**
@@ -107,11 +109,11 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
 
         boolean handled = false;
         if (sms.isMWISetMessage()) {
-            mPhone.setVoiceMessageWaiting(1, sms.getNumOfVoicemails());
+            updateMessageWaitingIndicator(sms.getNumOfVoicemails());
             handled = sms.isMwiDontStore();
             if (DBG) log("Received voice mail indicator set SMS shouldStore=" + !handled);
         } else if (sms.isMWIClearMessage()) {
-            mPhone.setVoiceMessageWaiting(1, 0);   // line 1: no msgs waiting
+            updateMessageWaitingIndicator(0);
             handled = sms.isMwiDontStore();
             if (DBG) log("Received voice mail indicator clear SMS shouldStore=" + !handled);
         }
@@ -127,6 +129,29 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
         }
 
         return dispatchNormalMessage(smsb);
+    }
+
+    /* package */ void updateMessageWaitingIndicator(int voicemailCount) {
+        // range check
+        if (voicemailCount < 0) {
+            voicemailCount = -1;
+        } else if (voicemailCount > 0xff) {
+            // TS 23.040 9.2.3.24.2
+            // "The value 255 shall be taken to mean 255 or greater"
+            voicemailCount = 0xff;
+        }
+        // update voice mail count in GsmPhone
+        mPhone.setVoiceMessageCount(voicemailCount);
+        // store voice mail count in SIM & shared preferences
+        IccRecords records = UiccController.getInstance().getIccRecords(
+                mPhone.getPhoneId(), UiccController.APP_FAM_3GPP);
+        if (records != null) {
+            log("updateMessageWaitingIndicator: updating SIM Records");
+            records.setVoiceMessageWaiting(1, voicemailCount);
+        } else {
+            log("updateMessageWaitingIndicator: SIM Records not found");
+        }
+        storeVoiceMailCount();
     }
 
     /**
