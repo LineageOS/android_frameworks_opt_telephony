@@ -85,6 +85,7 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.HashMap;
 import java.util.Objects;
+import java.lang.StringBuilder;
 
 import android.provider.Settings;
 
@@ -2338,11 +2339,45 @@ public final class DcTracker extends DcTrackerBase {
         }
     }
 
+    //check whether the types of two APN same (even only one type of each APN is same)
+    private boolean apnTypeSameAny(ApnSetting first, ApnSetting second) {
+        if(VDBG) {
+            StringBuilder apnType1 = new StringBuilder(first.apn + ": ");
+            for(int index1 = 0; index1 < first.types.length; index1++) {
+                apnType1.append(first.types[index1]);
+                apnType1.append(",");
+            }
+
+            StringBuilder apnType2 = new StringBuilder(second.apn + ": ");
+            for(int index1 = 0; index1 < second.types.length; index1++) {
+                apnType2.append(second.types[index1]);
+                apnType2.append(",");
+            }
+            log("APN1: is " + apnType1);
+            log("APN2: is " + apnType2);
+        }
+
+        for(int index1 = 0; index1 < first.types.length; index1++) {
+            for(int index2 = 0; index2 < second.types.length; index2++) {
+                if(first.types[index1].equals(PhoneConstants.APN_TYPE_ALL) ||
+                        second.types[index2].equals(PhoneConstants.APN_TYPE_ALL) ||
+                        first.types[index1].equals(second.types[index2])) {
+                    if(VDBG)log("apnTypeSameAny: return true");
+                    return true;
+                }
+            }
+        }
+
+        if(VDBG)log("apnTypeSameAny: return false");
+        return false;
+    }
+
     // Check if neither mention DUN and are substantially similar
     private boolean apnsSimilar(ApnSetting first, ApnSetting second) {
         return (first.canHandleType(PhoneConstants.APN_TYPE_DUN) == false &&
                 second.canHandleType(PhoneConstants.APN_TYPE_DUN) == false &&
                 Objects.equals(first.apn, second.apn) &&
+                !apnTypeSameAny(first, second) &&
                 xorEquals(first.proxy, second.proxy) &&
                 xorEquals(first.port, second.port) &&
                 first.carrierEnabled == second.carrierEnabled &&
