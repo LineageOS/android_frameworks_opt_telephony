@@ -16,6 +16,24 @@
       "revId": "cddfa1563808c601054dc9de08b6e74abe86dcd1",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a18252c_818dfd7d",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 399,
+      "author": {
+        "id": 8555
+      },
+      "writtenOn": "2014-10-24T06:01:26Z",
+      "side": 1,
+      "message": "Fixed!",
+      "parentUuid": "5a18252c_01aa8dd4",
+      "revId": "cddfa1563808c601054dc9de08b6e74abe86dcd1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
