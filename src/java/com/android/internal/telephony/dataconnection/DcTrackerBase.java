@@ -789,6 +789,7 @@ public abstract class DcTrackerBase extends Handler {
     public abstract String[] getPcscfAddress(String apnType);
     public abstract void setImsRegistrationState(boolean registered);
     protected abstract boolean mvnoMatches(IccRecords r, String mvno_type, String mvno_match_data);
+    protected abstract boolean isPermanentFail(DcFailCause dcFailCause);
 
     @Override
     public void handleMessage(Message msg) {
