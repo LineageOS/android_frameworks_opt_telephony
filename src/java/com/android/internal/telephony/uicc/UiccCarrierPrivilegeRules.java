@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.annotation.Nullable;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -297,10 +298,11 @@ public class UiccCarrierPrivilegeRules extends Handler {
         receivers.addAll(packageManager.queryIntentServices(intent, 0));
 
         for (ResolveInfo resolveInfo : receivers) {
-            if (resolveInfo.activityInfo == null) {
+            String packageName = getPackageName(resolveInfo);
+            if (packageName == null) {
                 continue;
             }
-            String packageName = resolveInfo.activityInfo.packageName;
+
             int status = getCarrierPrivilegeStatus(packageManager, packageName);
             if (status == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
                 packages.add(packageName);
@@ -311,6 +313,18 @@ public class UiccCarrierPrivilegeRules extends Handler {
         }
 
         return packages;
+    }
+
+    @Nullable
+    private String getPackageName(ResolveInfo resolveInfo) {
+        if (resolveInfo.activityInfo != null) {
+            return resolveInfo.activityInfo.packageName;
+        } else if (resolveInfo.serviceInfo != null) {
+            return resolveInfo.serviceInfo.packageName;
+        } else if (resolveInfo.providerInfo != null) {
+            return resolveInfo.providerInfo.packageName;
+        }
+        return null;
     }
 
     @Override
