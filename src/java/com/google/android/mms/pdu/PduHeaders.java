@@ -399,10 +399,6 @@ public class PduHeaders {
                 }
                 break;
             case STATUS:
-                if ((value < STATUS_EXPIRED) || (value > STATUS_UNREACHABLE)) {
-                    // Invalid value.
-                    throw new InvalidHeaderValueException("Invalid Octet value!");
-                }
                 break;
             case REPLY_CHARGING:
                 if ((value < REPLY_CHARGING_REQUESTED)
