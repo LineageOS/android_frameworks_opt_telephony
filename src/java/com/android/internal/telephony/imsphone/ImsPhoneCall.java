@@ -82,7 +82,12 @@ public class ImsPhoneCall extends Call {
     @Override
     public boolean
     isMultiparty() {
-        return mConnections.size() > 1;
+        ImsCall imsCall = getImsCall();
+        if (imsCall == null) {
+            return false;
+        }
+
+        return imsCall.isMultiparty();
     }
 
     /** Please note: if this is the foreground call and a
@@ -274,11 +279,7 @@ public class ImsPhoneCall extends Call {
 
     /* package */ ImsPhoneConnection
     getHandoverConnection() {
-        ImsPhoneConnection conn = (ImsPhoneConnection) getEarliestConnection();
-        if (conn != null) {
-            conn.setMultiparty(isMultiparty());
-        }
-        return conn;
+        return (ImsPhoneConnection) getEarliestConnection();
     }
 
     void switchWith(ImsPhoneCall that) {

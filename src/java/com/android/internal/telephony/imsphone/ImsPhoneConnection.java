@@ -71,9 +71,6 @@ public class ImsPhoneConnection extends Connection {
     private int mCause = DisconnectCause.NOT_DISCONNECTED;
     private PostDialState mPostDialState = PostDialState.NOT_STARTED;
     private UUSInfo mUusInfo;
-
-    private boolean mIsMultiparty = false;
-
     private Handler mHandler;
 
     private PowerManager.WakeLock mPartialWakeLock;
@@ -569,15 +566,10 @@ public class ImsPhoneConnection extends Connection {
         return null;
     }
 
-    /* package */ void
-    setMultiparty(boolean isMultiparty) {
-        Rlog.d(LOG_TAG, "setMultiparty " + isMultiparty);
-        mIsMultiparty = isMultiparty;
-    }
-
     @Override
     public boolean isMultiparty() {
-        return mIsMultiparty;
+        Rlog.d(LOG_TAG, "isMultiparty "+mImsCall.isMultiparty());
+        return mImsCall.isMultiparty();
     }
 
     /*package*/ ImsCall getImsCall() {
