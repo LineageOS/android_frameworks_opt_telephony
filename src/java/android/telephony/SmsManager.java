@@ -199,6 +199,11 @@ public final class SmsManager {
      * The suffix to append to the NAI header value for MMS HTTP request (String type)
      */
     public static final String MMS_CONFIG_NAI_SUFFIX = "naiSuffix";
+    /**
+     * If true, show the cell broadcast (amber alert) in the SMS settings. Some carriers
+     * don't want this shown.
+     */
+    public static final String MMS_SHOW_CELL_BROADCAST_APP_LINKS = "config_cellBroadcastAppLinks";
 
     /**
      * Send a text based SMS.
