@@ -245,7 +245,7 @@ class DcController extends StateMachine {
                             if (failCause.isRestartRadioFail()) {
                                 if (DBG) log("onDataStateChanged: X restart radio");
                                 mDct.sendRestartRadio();
-                            } else if (failCause.isPermanentFail()) {
+                            } else if (mDct.isPermanentFail(failCause)) {
                                 if (DBG) log("onDataStateChanged: inactive, add to cleanup list");
                                 apnsToCleanup.addAll(dc.mApnContexts);
                             } else {

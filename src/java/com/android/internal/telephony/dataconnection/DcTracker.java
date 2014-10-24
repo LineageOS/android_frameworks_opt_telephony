@@ -1194,6 +1194,12 @@ public final class DcTracker extends DcTrackerBase {
         return false;
     }
 
+    @Override
+    protected boolean isPermanentFail(DcFailCause dcFailCause) {
+        return (dcFailCause.isPermanentFail() &&
+                (mAttached.get() == false || dcFailCause != DcFailCause.SIGNAL_LOST));
+    }
+
     private ApnSetting makeApnSetting(Cursor cursor) {
         String[] types = parseTypes(
                 cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Carriers.TYPE)));
@@ -1538,7 +1544,7 @@ public final class DcTracker extends DcTrackerBase {
     private void notifyNoData(DcFailCause lastFailCauseCode,
                               ApnContext apnContext) {
         if (DBG) log( "notifyNoData: type=" + apnContext.getApnType());
-        if (lastFailCauseCode.isPermanentFail()
+        if (isPermanentFail(lastFailCauseCode)
             && (!apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DEFAULT))) {
             mPhone.notifyDataConnectionFailed(apnContext.getReason(), apnContext.getApnType());
         }
@@ -2008,7 +2014,7 @@ public final class DcTracker extends DcTrackerBase {
                     apnContext.getApnType(), apn != null ? apn.apn : "unknown", cause.toString());
 
             // Count permanent failures and remove the APN we just tried
-            if (cause.isPermanentFail()) apnContext.decWaitingApnsPermFailCount();
+            if (isPermanentFail(cause)) apnContext.decWaitingApnsPermFailCount();
 
             apnContext.removeWaitingApn(apnContext.getApnSetting());
             if (DBG) {
