@@ -1867,23 +1867,6 @@ public class GSMPhone extends PhoneBase {
         }
     }
 
-    /**
-     * Sets the SIM voice message waiting indicator records.
-     * @param line GSM Subscriber Profile Number, one-based. Only '1' is supported
-     * @param countWaiting The number of messages waiting, if known. Use
-     *                     -1 to indicate that an unknown number of
-     *                      messages are waiting
-     */
-    @Override
-    public void setVoiceMessageWaiting(int line, int countWaiting) {
-        IccRecords r = mIccRecords.get();
-        if (r != null) {
-            r.setVoiceMessageWaiting(line, countWaiting);
-        } else {
-            log("SIM Records not found, MWI not updated");
-        }
-    }
-
     protected void log(String s) {
         Rlog.d(LOG_TAG, "[GSMPhone] " + s);
     }
