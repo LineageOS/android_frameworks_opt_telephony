@@ -1588,16 +1588,16 @@ public final class DataConnection extends StateMachine {
                                         + " isRetryNeeded=" + mRetryManager.isRetryNeeded()
                                         + " result=" + result
                                         + " result.isRestartRadioFail=" +
-                                                result.mFailCause.isRestartRadioFail()
+                                        result.mFailCause.isRestartRadioFail()
                                         + " result.isPermanentFail=" +
-                                                result.mFailCause.isPermanentFail());
+                                        mDct.isPermanentFail(result.mFailCause));
                             }
                             if (result.mFailCause.isRestartRadioFail()) {
                                 if (DBG) log("DcActivatingState: ERR_RilError restart radio");
                                 mDct.sendRestartRadio();
                                 mInactiveState.setEnterNotificationParams(cp, result.mFailCause);
                                 transitionTo(mInactiveState);
-                            } else if (result.mFailCause.isPermanentFail()) {
+                            } else if (mDct.isPermanentFail(result.mFailCause)) {
                                 if (DBG) log("DcActivatingState: ERR_RilError perm error");
                                 mInactiveState.setEnterNotificationParams(cp, result.mFailCause);
                                 transitionTo(mInactiveState);
@@ -1662,7 +1662,7 @@ public final class DataConnection extends StateMachine {
                             mDct.sendRestartRadio();
                             mInactiveState.setEnterNotificationParams(cp, cause);
                             transitionTo(mInactiveState);
-                        } else if (cause.isPermanentFail()) {
+                        } else if (mDct.isPermanentFail(cause)) {
                             if (DBG) log("DcActivatingState: EVENT_GET_LAST_FAIL_DONE perm er");
                             mInactiveState.setEnterNotificationParams(cp, cause);
                             transitionTo(mInactiveState);
