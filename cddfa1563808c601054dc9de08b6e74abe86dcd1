@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a18252c_01aa8dd4",
+        "filename": "src/java/com/android/internal/telephony/SamsungQualcommRIL.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 399,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-10-24T05:30:45Z",
+      "side": 1,
+      "message": "You probably want an else break; so future additions here don\u0027t accidentally break this.",
+      "revId": "cddfa1563808c601054dc9de08b6e74abe86dcd1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
