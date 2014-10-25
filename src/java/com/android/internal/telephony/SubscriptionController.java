@@ -538,7 +538,7 @@ public class SubscriptionController extends ISub.Stub {
             nameToSet = mSpnOverride.getSpn(CarrierName) + " 0" + Integer.toString(slotId + 1);
             logdl("[addSubInfoRecord] Found, name = " + nameToSet);
         } else {
-            nameToSet = "SUB 0" + Integer.toString(slotId + 1);
+            nameToSet = "";
             logdl("[addSubInfoRecord] Not found, name = " + nameToSet);
         }
 

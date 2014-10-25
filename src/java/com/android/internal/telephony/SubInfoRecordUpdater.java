@@ -158,7 +158,7 @@ public class SubInfoRecordUpdater extends Handler {
                                         + Integer.toString(slotId + 1);
                                 logd("Found, name = " + nameToSet);
                             } else {
-                                nameToSet = "SUB 0" + Integer.toString(slotId + 1);
+                                nameToSet = "";
                                 logd("Not found, name = " + nameToSet);
                             }
 
