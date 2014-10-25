@@ -369,7 +369,7 @@ public final class Telephony {
          * @return the URI for the new message
          * @hide
          */
-        public static Uri addMessageToUri(long subId, ContentResolver resolver,
+        public static Uri addMessageToUri(int subId, ContentResolver resolver,
                 Uri uri, String address, String body, String subject,
                 Long date, boolean read, boolean deliveryReport) {
             return addMessageToUri(subId, resolver, uri, address, body, subject,
@@ -415,7 +415,7 @@ public final class Telephony {
          * @return the URI for the new message
          * @hide
          */
-        public static Uri addMessageToUri(long subId, ContentResolver resolver,
+        public static Uri addMessageToUri(int subId, ContentResolver resolver,
                 Uri uri, String address, String body, String subject,
                 Long date, boolean read, boolean deliveryReport, long threadId) {
             return addMessageToUri(subId, resolver, uri, address, body, subject,
@@ -578,7 +578,7 @@ public final class Telephony {
              * @return the URI for the new message
              * @hide
              */
-            public static Uri addMessage(long subId, ContentResolver resolver,
+            public static Uri addMessage(int subId, ContentResolver resolver,
                     String address, String body, String subject, Long date, boolean read) {
                 return addMessageToUri(subId, resolver, CONTENT_URI, address, body,
                         subject, date, read, false);
@@ -636,7 +636,7 @@ public final class Telephony {
              * @return the URI for the new message
              * @hide
              */
-            public static Uri addMessage(long subId, ContentResolver resolver,
+            public static Uri addMessage(int subId, ContentResolver resolver,
                     String address, String body, String subject, Long date) {
                 return addMessageToUri(subId, resolver, CONTENT_URI, address, body,
                         subject, date, true, false);
@@ -681,7 +681,7 @@ public final class Telephony {
              * @return the URI for the new message
              * @hide
              */
-            public static Uri addMessage(long subId, ContentResolver resolver,
+            public static Uri addMessage(int subId, ContentResolver resolver,
                     String address, String body, String subject, Long date) {
                 return addMessageToUri(subId, resolver, CONTENT_URI, address, body,
                         subject, date, true, false);
@@ -748,7 +748,7 @@ public final class Telephony {
              * @return the URI for the new message
              * @hide
              */
-            public static Uri addMessage(long subId, ContentResolver resolver,
+            public static Uri addMessage(int subId, ContentResolver resolver,
                     String address, String body, String subject, Long date,
                     boolean deliveryReport, long threadId) {
                 return addMessageToUri(subId, resolver, CONTENT_URI, address, body,
@@ -1175,7 +1175,7 @@ public final class Telephony {
             public static SmsMessage[] getMessagesFromIntent(Intent intent) {
                 Object[] messages = (Object[]) intent.getSerializableExtra("pdus");
                 String format = intent.getStringExtra("format");
-                long subId = intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
                         SubscriptionManager.getDefaultSmsSubId());
 
                 Rlog.v(TAG, " getMessagesFromIntent sub_id : " + subId);

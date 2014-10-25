@@ -901,10 +901,10 @@ public class UiccCardApplication {
         }
     }
 
-    public long getSubId() {
+    public int getSubId() {
         //FIXME consider making subId an instance variable which is initialized in the constructor
         //FIXME: Doesn't handle empty.
-        long [] subId = SubscriptionController.getInstance().getSubId(mUiccCard.getSlotId());
+        int [] subId = SubscriptionController.getInstance().getSubId(mUiccCard.getSlotId());
 
         return ((subId == null) ? SubscriptionController.getInstance().getDefaultSubId() : subId[0]);
     }

@@ -2048,7 +2048,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     /**
      * Returns the subscription id.
      */
-    public long getSubId() {
+    public int getSubId() {
         return SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhoneId);
     }
 

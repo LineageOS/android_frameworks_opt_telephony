@@ -55,14 +55,14 @@ public class CellBroadcastMessage implements Parcelable {
      *
      * @hide
      */
-    private long mSubId;
+    private int mSubId = 0;
 
     /**
      * set Subscription information
      *
      * @hide
      */
-    public void setSubId(long subId) {
+    public void setSubId(int subId) {
         mSubId = subId;
     }
 
@@ -71,7 +71,7 @@ public class CellBroadcastMessage implements Parcelable {
      *
      * @hide
      */
-    public long getSubId() {
+    public int getSubId() {
         return mSubId;
     }
 

@@ -1460,7 +1460,7 @@ public abstract class SMSDispatcher extends Handler {
         }
     }
 
-    protected Uri writeOutboxMessage(long subId, String address, String text,
+    protected Uri writeOutboxMessage(int subId, String address, String text,
             boolean requireDeliveryReport, String creator) {
         final ContentValues values = new ContentValues(8);
         int phoneId = SubscriptionManager.getPhoneId(subId);
@@ -1489,7 +1489,7 @@ public abstract class SMSDispatcher extends Handler {
         }
     }
 
-    protected void moveToOutbox(long subId, Uri messageUri, String creator) {
+    protected void moveToOutbox(int subId, Uri messageUri, String creator) {
         final ContentValues values = new ContentValues(4);
         int phoneId = SubscriptionManager.getPhoneId(subId);
         values.put(Telephony.Sms.PHONE_ID, phoneId);
@@ -1536,7 +1536,7 @@ public abstract class SMSDispatcher extends Handler {
 
     }
 
-    protected long getSubId() {
+    protected int getSubId() {
         return SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhone.mPhoneId);
     }
 }
