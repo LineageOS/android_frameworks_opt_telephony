@@ -381,14 +381,13 @@ public class PhoneFactory {
     }
 
     /* Gets the default subscription */
-    public static long getDefaultSubscription() {
+    public static int getDefaultSubscription() {
         return SubscriptionController.getInstance().getDefaultSubId();
     }
 
     /* Gets User preferred Voice subscription setting*/
     public static int getVoiceSubscription() {
-        //FIXME Should be long
-        int subId = (int) SubscriptionManager.INVALID_SUB_ID;
+        int subId = SubscriptionManager.INVALID_SUB_ID;
 
         try {
             subId = Settings.Global.getInt(sContext.getContentResolver(),
@@ -462,10 +461,10 @@ public class PhoneFactory {
 
     /* Gets User preferred Data subscription setting*/
     public static long getDataSubscription() {
-        long subId = SubscriptionManager.INVALID_SUB_ID;
+        int subId = SubscriptionManager.INVALID_SUB_ID;
 
         try {
-            subId = Settings.Global.getLong(sContext.getContentResolver(),
+            subId = Settings.Global.getInt(sContext.getContentResolver(),
                     Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION);
         } catch (SettingNotFoundException snfe) {
             Rlog.e(LOG_TAG, "Settings Exception Reading Dual Sim Data Call Values");
@@ -484,8 +483,7 @@ public class PhoneFactory {
 
     /* Gets User preferred SMS subscription setting*/
     public static int getSMSSubscription() {
-        //FIXME Should be long
-        int subId = (int) SubscriptionManager.INVALID_SUB_ID;
+        int subId = SubscriptionManager.INVALID_SUB_ID;
         try {
             subId = Settings.Global.getInt(sContext.getContentResolver(),
                     Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION);
@@ -512,10 +510,10 @@ public class PhoneFactory {
     }
 
     //FIXME can this be removed, it is only called in getDataSubscription
-    static public void setDataSubscription(long subId) {
+    static public void setDataSubscription(int subId) {
         boolean enabled;
 
-        Settings.Global.putLong(sContext.getContentResolver(),
+        Settings.Global.putInt(sContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
         Rlog.d(LOG_TAG, "setDataSubscription: " + subId);
 

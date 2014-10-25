@@ -456,7 +456,7 @@ public class DctController extends Handler {
             }
         }
 
-        long[] subIds = SubscriptionManager.getSubId(activePhoneId);
+        int[] subIds = SubscriptionManager.getSubId(activePhoneId);
         if (subIds ==  null || subIds.length == 0) {
             loge("onSettingsChange, subIds null or length 0 for activePhoneId " + activePhoneId);
             return;
@@ -1040,11 +1040,11 @@ public class DctController extends Handler {
 
     private int getRequestPhoneId(NetworkRequest networkRequest) {
         String specifier = networkRequest.networkCapabilities.getNetworkSpecifier();
-        long subId;
+        int subId;
         if (specifier == null || specifier.equals("")) {
             subId = mSubController.getDefaultDataSubId();
         } else {
-            subId = Long.parseLong(specifier);
+            subId = Integer.parseInt(specifier);
         }
         int phoneId = mSubController.getPhoneId(subId);
         if (!SubscriptionManager.isValidPhoneId(phoneId)) {

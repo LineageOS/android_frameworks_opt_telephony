@@ -1117,8 +1117,7 @@ public class ImsPhone extends ImsPhoneBase {
         mSsnRegistrants.remove(h);
     }
 
-    @Override
-    public long getSubId() {
+    public int getSubId() {
         return mDefaultPhone.getSubId();
     }
 

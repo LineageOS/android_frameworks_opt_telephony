@@ -1956,7 +1956,7 @@ public interface Phone {
     /*
      * Returns the subscription id.
      */
-    public long getSubId();
+    public int getSubId();
 
     /*
      * Returns the phone id.

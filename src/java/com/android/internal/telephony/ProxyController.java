@@ -106,7 +106,24 @@ public class ProxyController {
         logd("Constructor - Exit");
     }
 
-    public void registerForAllDataDisconnected(long subId, Handler h, int what, Object obj) {
+    public void updateDataConnectionTracker(int sub) {
+        mProxyPhones[sub].updateDataConnectionTracker();
+    }
+
+    public void enableDataConnectivity(int sub) {
+        mProxyPhones[sub].setInternalDataEnabled(true);
+    }
+
+    public void disableDataConnectivity(int sub,
+            Message dataCleanedUpMsg) {
+        mProxyPhones[sub].setInternalDataEnabled(false, dataCleanedUpMsg);
+    }
+
+    public void updateCurrentCarrierInProvider(int sub) {
+        mProxyPhones[sub].updateCurrentCarrierInProvider();
+    }
+
+    public void registerForAllDataDisconnected(int subId, Handler h, int what, Object obj) {
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
 
         if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount()) {
@@ -114,7 +131,7 @@ public class ProxyController {
         }
     }
 
-    public void unregisterForAllDataDisconnected(long subId, Handler h) {
+    public void unregisterForAllDataDisconnected(int subId, Handler h) {
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
 
         if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount()) {
@@ -122,7 +139,7 @@ public class ProxyController {
         }
     }
 
-    public boolean isDataDisconnected(long subId) {
+    public boolean isDataDisconnected(int subId) {
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
 
         if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount()) {

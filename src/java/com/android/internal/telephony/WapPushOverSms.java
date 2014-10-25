@@ -202,10 +202,10 @@ public class WapPushOverSms implements ServiceConnection {
 
             if (SmsManager.getDefault().getAutoPersisting()) {
                 // Store the wap push data in telephony
-                long [] subIds = SubscriptionManager.getSubId(phoneId);
+                int [] subIds = SubscriptionManager.getSubId(phoneId);
                 // FIXME (tomtaylor) - when we've updated SubscriptionManager, change
                 // SubscriptionManager.DEFAULT_SUB_ID to SubscriptionManager.getDefaultSmsSubId()
-                long subId = (subIds != null) && (subIds.length > 0) ? subIds[0] :
+                int subId = (subIds != null) && (subIds.length > 0) ? subIds[0] :
                     SmsManager.getDefaultSmsSubId();
                 writeInboxMessage(subId, intentData);
             }
@@ -315,7 +315,7 @@ public class WapPushOverSms implements ServiceConnection {
         }
     }
 
-    private void writeInboxMessage(long subId, byte[] pushData) {
+    private void writeInboxMessage(int subId, byte[] pushData) {
         final GenericPdu pdu = new PduParser(pushData).parse();
         if (pdu == null) {
             Rlog.e(TAG, "Invalid PUSH PDU");

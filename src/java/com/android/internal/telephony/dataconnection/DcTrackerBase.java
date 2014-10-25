@@ -481,8 +481,8 @@ public abstract class DcTrackerBase extends Handler {
         String reason = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON);
         String apnType = intent.getStringExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE);
 
-        long phoneSubId = mPhone.getSubId();
-        long currSubId = intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY,
+        int phoneSubId = mPhone.getSubId();
+        int currSubId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
                 SubscriptionManager.INVALID_SUB_ID);
         log("onActionIntentReconnectAlarm: currSubId = " + currSubId + " phoneSubId=" + phoneSubId);
 

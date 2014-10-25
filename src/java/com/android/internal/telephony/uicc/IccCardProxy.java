@@ -339,7 +339,7 @@ public class IccCardProxy extends Handler implements IccCard {
                             loge("EVENT_RECORDS_LOADED Country code is null");
                         }
 
-                        long[] subId = SubscriptionController.getInstance().getSubId(slotId);
+                        int[] subId = SubscriptionController.getInstance().getSubId(slotId);
                         // Update MCC MNC device configuration information only for default sub.
                         if (subId[0] == SubscriptionController.getInstance().getDefaultSubId()) {
                             log("update mccmnc=" + operator + " config for default subscription.");
@@ -938,7 +938,7 @@ public class IccCardProxy extends Handler implements IccCard {
 
     private void setSystemProperty(String property, int slotId, String value) {
         // FIXME: Add SubscriptionController.getPhoneIdUsingSlotId
-        long[] subId = SubscriptionController.getInstance().getSubIdUsingSlotId(slotId);
+        int[] subId = SubscriptionController.getInstance().getSubIdUsingSlotId(slotId);
         if (subId != null && subId.length > 0) {
             int phoneId = SubscriptionController.getInstance().getPhoneId(subId[0]);
             TelephonyManager.setTelephonyProperty(phoneId, property, value);

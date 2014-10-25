@@ -144,7 +144,7 @@ public class SubInfoRecordUpdater extends Handler {
                         sTelephonyMgr = TelephonyManager.from(sContext);
                     }
 
-                    long subId = intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                    int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
                             SubscriptionManager.INVALID_SUB_ID);
 
                     if (SubscriptionManager.isValidSubId(subId)) {

@@ -1426,7 +1426,7 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
 
-    public long getSubId() {
+    public int getSubId() {
         return mActivePhone.getSubId();
     }
 
