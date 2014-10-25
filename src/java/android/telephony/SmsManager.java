@@ -64,10 +64,10 @@ public final class SmsManager {
     /** Singleton object constructed during class initialization. */
     private static final SmsManager sInstance = new SmsManager(DEFAULT_SUB_ID);
     private static final Object sLockObject = new Object();
-    private static final Map<Long, SmsManager> sSubInstances = new ArrayMap<Long, SmsManager>();
+    private static final Map<Integer, SmsManager> sSubInstances = new ArrayMap<Integer, SmsManager>();
 
     /** A concrete subId, or the pseudo DEFAULT_SUB_ID */
-    private long mSubId;
+    private int mSubId;
 
     /*
      * Key for the various carrier-dependent configuration values.
@@ -470,7 +470,7 @@ public final class SmsManager {
      *   {@link android.telephony.SubscriptionManager}
      * @return the instance of the SmsManager associated with subId
      */
-    public static SmsManager getSmsManagerForSubscriber(long subId) {
+    public static SmsManager getSmsManagerForSubscriber(int subId) {
         // TODO(shri): Add javadoc link once SubscriptionManager is made public api
         synchronized(sLockObject) {
             SmsManager smsManager = sSubInstances.get(subId);
@@ -482,7 +482,7 @@ public final class SmsManager {
         }
     }
 
-    private SmsManager(long subId) {
+    private SmsManager(int subId) {
         mSubId = subId;
     }
 
@@ -494,7 +494,7 @@ public final class SmsManager {
      *
      * @return associated subId
      */
-    public long getSubId() {
+    public int getSubId() {
         if (mSubId == DEFAULT_SUB_ID) {
             return getDefaultSmsSubId();
         }
@@ -855,7 +855,7 @@ public final class SmsManager {
      * @return the default SubId
      * @hide
      */
-    public static long getDefaultSmsSubId() {
+    public static int getDefaultSmsSubId() {
         return SubscriptionManager.getDefaultSmsSubId();
     }
 
