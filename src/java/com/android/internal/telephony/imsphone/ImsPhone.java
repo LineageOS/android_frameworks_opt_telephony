@@ -960,7 +960,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public long getSubId() {
+    public int getSubId() {
         return mDefaultPhone.getSubId();
     }
 

@@ -62,5 +62,5 @@ public interface PhoneNotifier {
 
     public void notifyVoLteServiceStateChanged(Phone sender, VoLteServiceState lteState);
 
-    public void notifyOemHookRawEventForSubscriber(long subId, byte[] rawData);
+    public void notifyOemHookRawEventForSubscriber(int subId, byte[] rawData);
 }
