@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.os.SystemClock;
+import android.telecom.ConferenceParticipant;
 import android.telephony.Rlog;
 import android.util.Log;
 
@@ -45,6 +46,7 @@ public abstract class Connection {
         public void onVideoProviderChanged(
                 android.telecom.Connection.VideoProvider videoProvider);
         public void onAudioQualityChanged(int audioQuality);
+        public void onConferenceParticipantChanged(ConferenceParticipant participant);
     }
 
     /**
@@ -62,6 +64,8 @@ public abstract class Connection {
                 android.telecom.Connection.VideoProvider videoProvider) {}
         @Override
         public void onAudioQualityChanged(int audioQuality) {}
+        @Override
+        public void onConferenceParticipantChanged(ConferenceParticipant participant) {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -540,6 +544,17 @@ public abstract class Connection {
         mConvertedNumber = mAddress;
         mAddress = oriNumber;
         mDialString = oriNumber;
+    }
+
+    /**
+     * Notifies listeners of a change to a conference participant.
+     *
+     * @param conferenceParticipant The participant.
+     */
+    public void updateConferenceParticipant(ConferenceParticipant conferenceParticipant) {
+        for (Listener l : mListeners) {
+            l.onConferenceParticipantChanged(conferenceParticipant);
+        }
     }
 
     /**
