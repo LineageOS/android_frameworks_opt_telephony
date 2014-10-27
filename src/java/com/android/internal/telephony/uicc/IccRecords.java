@@ -65,6 +65,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected String mNewVoiceMailNum = null;
     protected String mNewVoiceMailTag = null;
     protected boolean mIsVoiceMailFixed = false;
+    protected int mCountVoiceMessages = 0;
     protected String mImsi;
     private IccIoResult auth_rsp;
 
@@ -121,6 +122,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " newVoiceMailNum=" + mNewVoiceMailNum
                 + " newVoiceMailTag=" + mNewVoiceMailTag
                 + " isVoiceMailFixed=" + mIsVoiceMailFixed
+                + " countVoiceMessages=" + mCountVoiceMessages
                 + " mImsi=" + mImsi
                 + " mncLength=" + mMncLength
                 + " mailboxIndex=" + mMailboxIndex
@@ -381,10 +383,19 @@ public abstract class IccRecords extends Handler implements IccConstants {
      */
     public abstract void setVoiceMessageWaiting(int line, int countWaiting);
 
+    /** @return  true if there are messages waiting, false otherwise. */
+    public boolean getVoiceMessageWaiting() {
+        return mCountVoiceMessages != 0;
+    }
+
     /**
-     * Called by GsmPhone to update VoiceMail count
+     * Returns number of voice messages waiting, if available
+     * If not available (eg, on an older CPHS SIM) -1 is returned if
+     * getVoiceMessageWaiting() is true
      */
-    public abstract int getVoiceMessageCount();
+    public int getVoiceMessageCount() {
+        return mCountVoiceMessages;
+    }
 
     /**
      * Called by STK Service when REFRESH is received.
@@ -647,6 +658,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mNewVoiceMailNum=" + mNewVoiceMailNum);
         pw.println(" mNewVoiceMailTag=" + mNewVoiceMailTag);
         pw.println(" mIsVoiceMailFixed=" + mIsVoiceMailFixed);
+        pw.println(" mCountVoiceMessages=" + mCountVoiceMessages);
         pw.println(" mImsi=" + mImsi);
         pw.println(" mMncLength=" + mMncLength);
         pw.println(" mMailboxIndex=" + mMailboxIndex);
