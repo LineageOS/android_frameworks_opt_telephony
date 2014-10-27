@@ -675,6 +675,16 @@ public class ImsPhoneConnection extends Connection {
                         changed = true;
                     }
                 }
+
+                // Check if call substate has changed. If so notify listeners of call state changed.
+                int callSubstate = getCallSubstate();
+                int newCallSubstate = imsCall.getCallSubstate();
+
+                if (callSubstate != newCallSubstate) {
+                    setCallSubstate(newCallSubstate);
+                    changed = true;
+                }
+
             } catch (ImsException e) {
                 // No session in place -- no change
             }

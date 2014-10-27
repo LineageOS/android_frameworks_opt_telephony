@@ -45,6 +45,7 @@ public abstract class Connection {
         public void onVideoProviderChanged(
                 android.telecom.Connection.VideoProvider videoProvider);
         public void onAudioQualityChanged(int audioQuality);
+        public void onCallSubstateChanged(int callSubstate);
     }
 
     /**
@@ -62,6 +63,8 @@ public abstract class Connection {
                 android.telecom.Connection.VideoProvider videoProvider) {}
         @Override
         public void onAudioQualityChanged(int audioQuality) {}
+        @Override
+        public void onCallSubstateChanged(int callSubstate) {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -103,6 +106,7 @@ public abstract class Connection {
     private boolean mLocalVideoCapable;
     private boolean mRemoteVideoCapable;
     private int mAudioQuality;
+    private int mCallSubstate;
     private android.telecom.Connection.VideoProvider mVideoProvider;
 
     /* Instance Methods */
@@ -474,6 +478,17 @@ public abstract class Connection {
         return mAudioQuality;
     }
 
+
+    /**
+     * Returns the current call substate of the connection.
+     *
+     * @return The call substate of the connection.
+     */
+    public int getCallSubstate() {
+        return mCallSubstate;
+    }
+
+
     /**
      * Sets the videoState for the current connection and reports the changes to all listeners.
      * Valid video states are defined in {@link android.telecom.VideoProfile}.
@@ -520,6 +535,19 @@ public abstract class Connection {
         mAudioQuality = audioQuality;
         for (Listener l : mListeners) {
             l.onAudioQualityChanged(mAudioQuality);
+        }
+    }
+
+    /**
+     * Sets the call substate for the current connection and reports the changes to all listeners.
+     * Valid call substates are defined in {@link android.telecom.Connection}.
+     *
+     * @return The call substate.
+     */
+    public void setCallSubstate(int callSubstate) {
+        mCallSubstate = callSubstate;
+        for (Listener l : mListeners) {
+            l.onCallSubstateChanged(mCallSubstate);
         }
     }
 
