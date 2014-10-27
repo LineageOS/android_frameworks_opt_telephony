@@ -416,6 +416,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 // Gsm doesn't support OTASP so its not needed
                 mPhone.notifyOtaspChanged(OTASP_NOT_NEEDED);
 
+                updatePhoneObject();
                 updateSpnDisplay();
                 break;
 
@@ -1088,6 +1089,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         mReasonDataDenied = mNewReasonDataDenied;
         mMaxDataCalls = mNewMaxDataCalls;
+
+        if (hasRilVoiceRadioTechnologyChanged) {
+            updatePhoneObject();
+        }
 
         if (hasRilDataRadioTechnologyChanged) {
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
