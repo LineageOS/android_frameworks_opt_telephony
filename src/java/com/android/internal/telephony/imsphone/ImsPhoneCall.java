@@ -19,6 +19,7 @@ package com.android.internal.telephony.imsphone;
 import android.telephony.Rlog;
 import android.telephony.DisconnectCause;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
@@ -228,7 +229,17 @@ public class ImsPhoneCall extends Call {
         }
     }
 
-    /*package*/ ImsCall
+    /**
+     * Retrieves the {@link ImsCall} for the current {@link ImsPhoneCall}.
+     * <p>
+     * Marked as {@code VisibleForTesting} so that the
+     * {@link com.android.internal.telephony.TelephonyTester} class can inject a test conference
+     * event package into a regular ongoing IMS call.
+     *
+     * @return The {@link ImsCall}.
+     */
+    @VisibleForTesting
+    public ImsCall
     getImsCall() {
         return (getFirstConnection() == null) ? null : getFirstConnection().getImsCall();
     }
