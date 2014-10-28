@@ -277,7 +277,7 @@ public class PhoneSubInfo {
      * @param data authentication challenge data
      * @return challenge response
      */
-    public String getIccSimChallengeResponse(long subId, int appType, String data) {
+    public String getIccSimChallengeResponse(int subId, int appType, String data) {
         // FIXME: use subId!!
         mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
                 "Requires READ_PRIVILEGED_PHONE_STATE");
