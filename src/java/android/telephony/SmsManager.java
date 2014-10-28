@@ -469,8 +469,9 @@ public final class SmsManager {
      * Get the the instance of the SmsManager associated with a particular subId
      *
      * @param subId a SMS subscription id, typically accessed using
-     *   {@link android.telephony.SubscriptionManager}
+     *        android.telephony.SubscriptionManager
      * @return the instance of the SmsManager associated with subId
+     * @hide
      */
     public static SmsManager getSmsManagerForSubscriber(long subId) {
         // TODO(shri): Add javadoc link once SubscriptionManager is made public api
@@ -491,10 +492,11 @@ public final class SmsManager {
     /**
      * Get the associated subId. If the instance was returned by {@link #getDefault()}, then this
      * method may return different values at different points in time (if the user changes the
-     * default subId). It will return {@link android.telephony.SubscriptionManager#INVALID_SUB_ID}
+     * default subId). It will return android.telephony.SubscriptionManager#INVALID_SUB_ID
      * if the default subId cannot be determined.
      *
      * @return associated subId
+     * @hide
      */
     public long getSubId() {
         if (mSubId == DEFAULT_SUB_ID) {
