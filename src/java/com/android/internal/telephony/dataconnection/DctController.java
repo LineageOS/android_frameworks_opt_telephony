@@ -132,28 +132,65 @@ public class DctController extends Handler {
     }
 
     public void updatePhoneObject(PhoneProxy phone) {
-        if(phone == null) {
+        if (phone == null) {
             loge("updatePhoneObject phone = null");
             return;
         }
+
         PhoneBase phoneBase = (PhoneBase)phone.getActivePhone();
-        if(phoneBase == null) {
+        if (phoneBase == null) {
             loge("updatePhoneObject phoneBase = null");
             return;
         }
 
-        phoneBase.getServiceStateTracker().registerForDataConnectionAttached(mRspHandler,
-                   EVENT_DATA_ATTACHED, null);
-        phoneBase.getServiceStateTracker().registerForDataConnectionDetached(mRspHandler,
-                   EVENT_DATA_DETACHED, null);
-
-        for(int i = 0; i < mPhoneNum; i++) {
-            if((mPhones[i] == phone) && (mNetworkFactory != null) && (mNetworkFactory[i] != null)){
-                logd("updatePhoneObject for phone i=" + i);
-                ((DctController.TelephonyNetworkFactory)mNetworkFactory[i]).setPhone(phoneBase);
+        for (int i = 0; i < mPhoneNum; i++) {
+            if (mPhones[i] == phone) {
+                updatePhoneBaseForIndex(i, phoneBase);
                 break;
             }
         }
+    }
+
+    private void updatePhoneBaseForIndex(int index, PhoneBase phoneBase) {
+        logd("updatePhoneBaseForIndex for phone index=" + index);
+
+        phoneBase.getServiceStateTracker().registerForDataConnectionAttached(mRspHandler,
+                   EVENT_DATA_ATTACHED + index, null);
+        phoneBase.getServiceStateTracker().registerForDataConnectionDetached(mRspHandler,
+                   EVENT_DATA_DETACHED + index, null);
+
+        ConnectivityManager cm = (ConnectivityManager)mPhones[index].getContext()
+            .getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        if (mNetworkFactoryMessenger != null) {
+            logd("unregister TelephonyNetworkFactory for phone index=" + index);
+            cm.unregisterNetworkFactory(mNetworkFactoryMessenger[index]);
+            mNetworkFactoryMessenger[index] = null;
+            mNetworkFactory[index] = null;
+            mNetworkFilter[index] = null;
+        }
+
+        mNetworkFilter[index] = new NetworkCapabilities();
+        mNetworkFilter[index].addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+        mNetworkFilter[index].addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
+        mNetworkFilter[index].addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
+        mNetworkFilter[index].addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
+        mNetworkFilter[index].addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
+        mNetworkFilter[index].addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
+        mNetworkFilter[index].addCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
+        mNetworkFilter[index].addCapability(NetworkCapabilities.NET_CAPABILITY_IA);
+        mNetworkFilter[index].addCapability(NetworkCapabilities.NET_CAPABILITY_RCS);
+        mNetworkFilter[index].addCapability(NetworkCapabilities.NET_CAPABILITY_XCAP);
+        mNetworkFilter[index].addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
+        mNetworkFilter[index].addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
+        mNetworkFilter[index].addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+        mNetworkFactory[index] = new TelephonyNetworkFactory(this.getLooper(),
+                mPhones[index].getContext(), "TelephonyNetworkFactory", phoneBase,
+                mNetworkFilter[index]);
+        mNetworkFactory[index].setScoreFilter(50);
+        mNetworkFactoryMessenger[index] = new Messenger(mNetworkFactory[index]);
+        cm.registerNetworkFactory(mNetworkFactoryMessenger[index], "Telephony");
     }
 
     private Handler mRspHandler = new Handler() {
@@ -230,37 +267,7 @@ public class DctController extends Handler {
 
             // Register for radio state change
             PhoneBase phoneBase = (PhoneBase)mPhones[i].getActivePhone();
-
-            phoneBase.getServiceStateTracker().registerForDataConnectionAttached(mRspHandler,
-                   EVENT_DATA_ATTACHED + i, null);
-            phoneBase.getServiceStateTracker().registerForDataConnectionDetached(mRspHandler,
-                   EVENT_DATA_DETACHED + i, null);
-
-            ConnectivityManager cm = (ConnectivityManager)mPhones[i].getContext()
-                .getSystemService(Context.CONNECTIVITY_SERVICE);
-
-            mNetworkFilter[i] = new NetworkCapabilities();
-            mNetworkFilter[i].addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
-            mNetworkFilter[i].addCapability(NetworkCapabilities.NET_CAPABILITY_MMS);
-            mNetworkFilter[i].addCapability(NetworkCapabilities.NET_CAPABILITY_SUPL);
-            mNetworkFilter[i].addCapability(NetworkCapabilities.NET_CAPABILITY_DUN);
-            mNetworkFilter[i].addCapability(NetworkCapabilities.NET_CAPABILITY_FOTA);
-            mNetworkFilter[i].addCapability(NetworkCapabilities.NET_CAPABILITY_IMS);
-            mNetworkFilter[i].addCapability(NetworkCapabilities.NET_CAPABILITY_CBS);
-            mNetworkFilter[i].addCapability(NetworkCapabilities.NET_CAPABILITY_IA);
-            mNetworkFilter[i].addCapability(NetworkCapabilities.NET_CAPABILITY_RCS);
-            mNetworkFilter[i].addCapability(NetworkCapabilities.NET_CAPABILITY_XCAP);
-            mNetworkFilter[i].addCapability(NetworkCapabilities.NET_CAPABILITY_EIMS);
-            mNetworkFilter[i].addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED);
-            mNetworkFilter[i].addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-
-            mNetworkFactory[i] = new TelephonyNetworkFactory(this.getLooper(),
-                    mPhones[i].getContext(), "TelephonyNetworkFactory", phoneBase,
-                    mNetworkFilter[i]);
-            mNetworkFactory[i].setScoreFilter(50);
-            mNetworkFactoryMessenger[i] = new Messenger(mNetworkFactory[i]);
-            cm.registerNetworkFactory(mNetworkFactoryMessenger[i], "Telephony");
-
+            updatePhoneBaseForIndex(i, phoneBase);
         }
 
         mContext = mPhones[0].getContext();
@@ -1067,11 +1074,6 @@ public class DctController extends Handler {
     private class TelephonyNetworkFactory extends NetworkFactory {
         private final SparseArray<NetworkRequest> mPendingReq = new SparseArray<NetworkRequest>();
         private Phone mPhone;
-
-        public void setPhone(Phone phone) {
-            log("NetworkCapabilities: setPhone=" + phone);
-            mPhone = phone;
-        }
 
         public TelephonyNetworkFactory(Looper l, Context c, String TAG, Phone phone,
                 NetworkCapabilities nc) {
