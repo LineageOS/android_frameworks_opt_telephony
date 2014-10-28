@@ -655,10 +655,6 @@ public class SubscriptionController extends ISub.Stub {
 
         validateSubId(subId);
         int size = sSimBackgroundDarkRes.length;
-        if (color < 0 || color >= size) {
-            logd("[setColor]- fail");
-            return -1;
-        }
         ContentValues value = new ContentValues(1);
         value.put(SubscriptionManager.COLOR, color);
         logd("[setColor]- color:" + color + " set");
