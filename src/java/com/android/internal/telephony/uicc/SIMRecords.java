@@ -452,7 +452,7 @@ public class SIMRecords extends IccRecords {
 
     public int getVoiceMessageCount() {
         boolean voiceMailWaiting = false;
-        int countVoiceMessages = -1;
+        int countVoiceMessages = 0;
         if (mEfMWIS != null) {
             // Use this data if the EF[MWIS] exists and
             // has been loaded
