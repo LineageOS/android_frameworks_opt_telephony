@@ -107,15 +107,13 @@ public class ApnProfileOmh extends ApnSetting {
     /* Priority of this profile in the modem */
     private int mPriority = 0;
 
-    private static String PROFILE_TYPE = "ApnProfileOmh";
-
     public ApnProfileOmh(int profileId, int priority) {
         /**
          * Default values if the profile is being used for only selective
          * fields e.g: just profileId and Priority. use case is when rest of the
          * fields can be read and processed only by the modem
          */
-        super(0, "", null, PROFILE_TYPE, null, null, null, null, null,
+        super(0, "", null, "", null, null, null, null, null,
                 null, null, RILConstants.SETUP_DATA_AUTH_PAP_CHAP,
                 new String[0], "IP", "IP", true, 0, profileId, false, 0,
                 0, 0, 0, "", "");
