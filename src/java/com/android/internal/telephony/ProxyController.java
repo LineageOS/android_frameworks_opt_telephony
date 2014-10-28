@@ -174,7 +174,7 @@ public class ProxyController {
         mProxyPhones[sub].updateCurrentCarrierInProvider();
     }
 
-    public void registerForAllDataDisconnected(long subId, Handler h, int what, Object obj) {
+    public void registerForAllDataDisconnected(int subId, Handler h, int what, Object obj) {
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
 
         if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount()) {
@@ -182,7 +182,7 @@ public class ProxyController {
         }
     }
 
-    public void unregisterForAllDataDisconnected(long subId, Handler h) {
+    public void unregisterForAllDataDisconnected(int subId, Handler h) {
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
 
         if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount()) {
@@ -190,7 +190,7 @@ public class ProxyController {
         }
     }
 
-    public boolean isDataDisconnected(long subId) {
+    public boolean isDataDisconnected(int subId) {
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
 
         if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount()) {

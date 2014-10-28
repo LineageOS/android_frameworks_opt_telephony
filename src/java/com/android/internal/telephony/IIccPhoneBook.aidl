@@ -53,7 +53,7 @@ interface IIccPhoneBook {
      * @param subId user preferred subId
      * @return List of AdnRecord
      */
-    List<AdnRecord> getAdnRecordsInEfForSubscriber(long subId, int efid);
+    List<AdnRecord> getAdnRecordsInEfForSubscriber(int subId, int efid);
 
     /**
      * Replace oldAdn with newAdn in ADN-like record in EF
@@ -99,7 +99,7 @@ interface IIccPhoneBook {
      * @param subId user preferred subId
      * @return true for success
      */
-    boolean updateAdnRecordsInEfBySearchForSubscriber(long subId, int efid,
+    boolean updateAdnRecordsInEfBySearchForSubscriber(int subId, int efid,
             String oldTag, String oldPhoneNumber,
             String newTag, String newPhoneNumber,
             String pin2);
@@ -138,7 +138,7 @@ interface IIccPhoneBook {
      * @param subId user preferred subId
      * @return true for success
      */
-    boolean updateAdnRecordsInEfByIndexForSubscriber(long subId, int efid, String newTag,
+    boolean updateAdnRecordsInEfByIndexForSubscriber(int subId, int efid, String newTag,
             String newPhoneNumber, int index,
             String pin2);
 
@@ -163,6 +163,6 @@ interface IIccPhoneBook {
      *            recordSizes[1]  is the total length of the EF file
      *            recordSizes[2]  is the number of records in the EF file
      */
-    int[] getAdnRecordsSizeForSubscriber(long subId, int efid);
+    int[] getAdnRecordsSizeForSubscriber(int subId, int efid);
 
 }
