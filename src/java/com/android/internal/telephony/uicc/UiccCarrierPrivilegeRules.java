@@ -32,6 +32,8 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccUtils;
 
 import java.io.ByteArrayInputStream;
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.lang.IllegalArgumentException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -131,8 +133,8 @@ public class UiccCarrierPrivilegeRules extends Handler {
 
         @Override
         public String toString() {
-            return "cert: " + certificateHash + " pkg: " + packageName +
-                " access: " + accessType;
+            return "cert: " + IccUtils.bytesToHexString(certificateHash) + " pkg: " +
+                packageName + " access: " + accessType;
         }
     }
 
@@ -178,11 +180,13 @@ public class UiccCarrierPrivilegeRules extends Handler {
     private AtomicInteger mState;
     private List<AccessRule> mAccessRules;
     private Message mLoadedCallback;
+    private String mStatusMessage;  // Only used for debugging.
 
     public UiccCarrierPrivilegeRules(UiccCard uiccCard, Message loadedCallback) {
         Rlog.d(LOG_TAG, "Creating UiccCarrierPrivilegeRules");
         mUiccCard = uiccCard;
         mState = new AtomicInteger(STATE_LOADING);
+        mStatusMessage = "Not loaded.";
         mLoadedCallback = loadedCallback;
 
         // Start loading the rules.
@@ -323,8 +327,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
                   mUiccCard.iccTransmitApduLogicalChannel(channelId, CLA, COMMAND, P1, P2, P3, DATA,
                       obtainMessage(EVENT_TRANSMIT_LOGICAL_CHANNEL_DONE, new Integer(channelId)));
               } else {
-                  Rlog.e(LOG_TAG, "Error opening channel");
-                  updateState(STATE_ERROR);
+                  updateState(STATE_ERROR, "Error opening channel");
               }
               break;
 
@@ -336,19 +339,17 @@ public class UiccCarrierPrivilegeRules extends Handler {
                   if (response.payload != null && response.sw1 == 0x90 && response.sw2 == 0x00) {
                       try {
                           mAccessRules = parseRules(IccUtils.bytesToHexString(response.payload));
-                          updateState(STATE_LOADED);
+                          updateState(STATE_LOADED, "Loaded successfully");
                       } catch (IllegalArgumentException ex) {
-                          Rlog.e(LOG_TAG, "Error parsing rules: " + ex);
-                          updateState(STATE_ERROR);
+                          updateState(STATE_ERROR, "Error parsing rules: " + ex);
                       }
                    } else {
-                      Rlog.e(LOG_TAG, "Invalid response: payload=" + response.payload +
-                              " sw1=" + response.sw1 + " sw2=" + response.sw2);
-                      updateState(STATE_ERROR);
+                      String errorMsg = "Invalid response: payload=" + response.payload +
+                              " sw1=" + response.sw1 + " sw2=" + response.sw2;
+                      updateState(STATE_ERROR, errorMsg);
                    }
               } else {
-                  Rlog.e(LOG_TAG, "Error reading value from SIM.");
-                  updateState(STATE_ERROR);
+                  updateState(STATE_ERROR, "Error reading value from SIM.");
               }
 
               int channelId = (Integer) ar.userObj;
@@ -476,10 +477,47 @@ public class UiccCarrierPrivilegeRules extends Handler {
     /*
      * Updates the state and notifies the UiccCard that the rules have finished loading.
      */
-    private void updateState(int newState) {
+    private void updateState(int newState, String statusMessage) {
         mState.set(newState);
         if (mLoadedCallback != null) {
             mLoadedCallback.sendToTarget();
         }
+
+        mStatusMessage = statusMessage;
+        Rlog.e(LOG_TAG, mStatusMessage);
+    }
+
+    /**
+     * Dumps info to Dumpsys - useful for debugging.
+     */
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("UiccCarrierPrivilegeRules: " + this);
+        pw.println(" mState=" + getStateString(mState.get()));
+        pw.println(" mStatusMessage='" + mStatusMessage + "'");
+        if (mAccessRules != null) {
+            pw.println(" mAccessRules: ");
+            for (AccessRule ar : mAccessRules) {
+                pw.println("  rule='" + ar + "'");
+            }
+        } else {
+            pw.println(" mAccessRules: null");
+        }
+        pw.flush();
+    }
+
+    /*
+     * Converts state into human readable format.
+     */
+    private String getStateString(int state) {
+      switch (state) {
+        case STATE_LOADING:
+            return "STATE_LOADING";
+        case STATE_LOADED:
+            return "STATE_LOADED";
+        case STATE_ERROR:
+            return "STATE_ERROR";
+        default:
+            return "UNKNOWN";
+      }
     }
 }

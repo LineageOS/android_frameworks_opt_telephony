@@ -691,6 +691,18 @@ public class UiccCard {
                 }
             }
         }
+        // Print UiccCarrierPrivilegeRules and registrants.
+        if (mCarrierPrivilegeRules == null) {
+            pw.println(" mCarrierPrivilegeRules: null");
+        } else {
+            pw.println(" mCarrierPrivilegeRules: " + mCarrierPrivilegeRules);
+            mCarrierPrivilegeRules.dump(fd, pw, args);
+        }
+        pw.println(" mCarrierPrivilegeRegistrants: size=" + mCarrierPrivilegeRegistrants.size());
+        for (int i = 0; i < mCarrierPrivilegeRegistrants.size(); i++) {
+            pw.println("  mCarrierPrivilegeRegistrants[" + i + "]="
+                    + ((Registrant)mCarrierPrivilegeRegistrants.get(i)).getHandler());
+        }
         pw.flush();
     }
 }
