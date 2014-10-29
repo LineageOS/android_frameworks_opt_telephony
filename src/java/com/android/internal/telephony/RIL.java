@@ -3175,7 +3175,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 break;
 
             case RIL_UNSOL_RESPONSE_NEW_BROADCAST_SMS:
-                if (RILJ_LOGD) unsljLog(response);
+                if (RILJ_LOGD) unsljLogvRet(response, IccUtils.bytesToHexString((byte[])ret));
 
                 if (mGsmBroadcastSmsRegistrant != null) {
                     mGsmBroadcastSmsRegistrant
