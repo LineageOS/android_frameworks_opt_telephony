@@ -988,7 +988,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             }
             processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
 
-            if (reasonInfo.getCode() == ImsReasonInfo.CODE_USER_TERMINATED) {
+            if (reasonInfo.getCode() == ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE) {
                 Phone defaultPhone = mPhone.getDefaultPhone();
                 if ((defaultPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA)
                         && (mForegroundCall.getState() == ImsPhoneCall.State.DISCONNECTED)
