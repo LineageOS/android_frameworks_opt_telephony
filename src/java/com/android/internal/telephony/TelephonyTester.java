@@ -116,7 +116,7 @@ public class TelephonyTester {
      */
     private void handleTestConferenceEventPackage(Context context, String fileName) {
         // Attempt to get the active IMS call before parsing the test XML file.
-        ImsPhone imsPhone = (ImsPhone) mPhone.getImsPhone();
+        ImsPhone imsPhone = (ImsPhone) mPhone;
         if (imsPhone == null) {
             return;
         }
