@@ -36,6 +36,7 @@ import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.preference.PreferenceManager;
+import android.telecom.ConferenceParticipant;
 import android.telecom.VideoProfile;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
@@ -1100,6 +1101,23 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onCallMergeFailed(ImsCall call, ImsReasonInfo reasonInfo) {
             if (DBG) log("onCallMergeFailed reasonCode=" + reasonInfo.getCode());
             mPhone.notifySuppServiceFailed(Phone.SuppService.CONFERENCE);
+        }
+
+        /**
+         * Called when the state of an IMS conference participant has changed.
+         *
+         * @param call the call object that carries out the IMS call.
+         * @param participant the participant and its new state information.
+         */
+        @Override
+        public void onConferenceParticipantStateChanged(ImsCall call,
+                ConferenceParticipant participant) {
+            if (DBG) log("onConferenceParticipantStateChanged");
+
+            ImsPhoneConnection conn = findConnection(call);
+            if (conn != null) {
+                conn.updateConferenceParticipant(participant);
+            }
         }
     };
 
