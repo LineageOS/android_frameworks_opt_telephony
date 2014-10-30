@@ -133,7 +133,7 @@ public class IccProvider extends ContentProvider {
             int subId;
 
             for (int i = 0; i < subIdCount; i++) {
-                subId = subInfoList.get(i).subId;
+                subId = subInfoList.get(i).getSubscriptionId();
                 result[i] = loadFromEf(efType, subId);
                 Rlog.i(TAG,"ADN Records loaded for Subscription ::" + subId);
             }
