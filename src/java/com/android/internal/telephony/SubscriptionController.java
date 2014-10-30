@@ -290,45 +290,43 @@ public class SubscriptionController extends ISub.Stub {
      * @return the query result of desired SubInfoRecord
      */
     private SubInfoRecord getSubInfoRecord(Cursor cursor) {
-            SubInfoRecord info = new SubInfoRecord();
-            info.mSubId = cursor.getInt(cursor.getColumnIndexOrThrow(BaseColumns._ID));
-            info.mIccId = cursor.getString(cursor.getColumnIndexOrThrow(
+            int id = cursor.getInt(cursor.getColumnIndexOrThrow(BaseColumns._ID));
+            String iccId = cursor.getString(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.ICC_ID));
-            info.mSlotId = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int simSlotIndex = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.SIM_ID));
-            info.mDisplayName = cursor.getString(cursor.getColumnIndexOrThrow(
+            String displayName = cursor.getString(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.DISPLAY_NAME));
-            info.mNameSource = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int nameSource = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.NAME_SOURCE));
-            info.mColor = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int color = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.COLOR));
-            info.mNumber = cursor.getString(cursor.getColumnIndexOrThrow(
+            String number = cursor.getString(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.NUMBER));
-            info.mDisplayNumberFormat = cursor.getInt(cursor.getColumnIndexOrThrow(
-                    SubscriptionManager.DISPLAY_NUMBER_FORMAT));
-            info.mDataRoaming = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int dataRoaming = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.DATA_ROAMING));
 
+            int[] simIconRes = new int[2];
             int size = sSimBackgroundDarkRes.length;
-            if (info.color >= 0 && info.color < size) {
-                info.simIconRes[RES_TYPE_BACKGROUND_DARK] = sSimBackgroundDarkRes[info.color];
-                info.simIconRes[RES_TYPE_BACKGROUND_LIGHT] = sSimBackgroundLightRes[info.color];
+            if (color >= 0 && color < size) {
+                simIconRes[RES_TYPE_BACKGROUND_DARK] = sSimBackgroundDarkRes[color];
+                simIconRes[RES_TYPE_BACKGROUND_LIGHT] = sSimBackgroundLightRes[color];
             }
-            info.mcc = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int mcc = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.MCC));
-            info.mnc = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int mnc = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.MNC));
-            info.mStatus = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int status = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.SUB_STATE));
-            info.mNwMode = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int nwMode = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.NETWORK_MODE));
 
-            logd("[getSubInfoRecord] SubId:" + info.mSubId + " iccid:" + info.mIccId + " slotId:"
-                    + info.mSlotId + " displayName:" + info.mDisplayName + " color:" + info.mColor +
-                    " mcc/mnc:" + info.mcc + "/" + info.mnc + " subStatus: " + info.mStatus
-                    + " Nwmode: " + info.mNwMode);
+            logd("[getSubInfoRecord] id:" + id + " iccid:" + iccId + " simSlotIndex:" + simSlotIndex
+                    + " displayName:" + displayName + " color:" + color + " mcc:" + mcc
+                    + " mnc:" + mnc + " status:" + status + " nwMode:" + nwMode);
 
-            return info;
+            return new SubInfoRecord(id, iccId, simSlotIndex, displayName, nameSource, color,
+                    number, dataRoaming, simIconRes, mcc, mnc, status, nwMode);
     }
 
     /**
@@ -1253,14 +1251,12 @@ public class SubscriptionController extends ISub.Stub {
             throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
         }
         logdl("[setDefaultDataSubId] subId=" + subId);
-/* FIXME SAND
         if (mDctController == null) {
             mDctController = DctController.getInstance();
             mDctController.registerForDefaultDataSwitchInfo(mDataConnectionHandler,
                     EVENT_SET_DEFAULT_DATA_DONE, null);
         }
         mDctController.setDefaultDataSubId(subId);
-*/
 
         Settings.Global.putInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
@@ -1372,8 +1368,10 @@ public class SubscriptionController extends ISub.Stub {
             return false;
         }
         for (SubInfoRecord record : records) {
-            logd("[shouldDefaultBeCleared] Record.mSubId: " + record.mSubId);
-            if (record.mSubId == subId) {
+            int id = record.getSubscriptionId();
+            logdl("[shouldDefaultBeCleared] Record.id: " + id);
+            if (id == subId) {
+                logdl("[shouldDefaultBeCleared] return false subId is active, subId=" + subId);
                 return false;
             }
         }
