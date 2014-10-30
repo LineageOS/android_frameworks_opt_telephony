@@ -81,7 +81,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
      *   REF_DO = TAG_REF_DO + len + DEVICE_APP_ID_REF_DO + (optional) PKG_REF_DO
      *   AR_DO = TAG_AR_DO + len + PERM_AR_DO
      *
-     *   DEVICE_APP_ID_REF_DO = TAG_DEVICE_APP_ID_REF_DO + len + sha1 hexstring of cert (20 bytes)
+     *   DEVICE_APP_ID_REF_DO = TAG_DEVICE_APP_ID_REF_DO + len + sha256 hexstring of cert
      *   PKG_REF_DO = TAG_PKG_REF_DO + len + package name
      *   PERM_AR_DO = TAG_PERM_AR_DO + len + detailed permission (8 bytes)
      *
@@ -215,14 +215,13 @@ public class UiccCarrierPrivilegeRules extends Handler {
             return TelephonyManager.CARRIER_PRIVILEGE_STATUS_ERROR_LOADING_RULES;
         }
 
-        byte[] certHash = getCertHash(signature);
-        if (certHash == null) {
-          return TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
-        }
-        Rlog.e(LOG_TAG, "Checking: " + IccUtils.bytesToHexString(certHash) + " : " + packageName);
-
+        // SHA-1 is for backward compatible support only, strongly discouraged for new use.
+        byte[] certHash = getCertHash(signature, "SHA-1");
+        byte[] certHash256 = getCertHash(signature, "SHA-256");
+        Rlog.d(LOG_TAG, "Checking SHA1: " + IccUtils.bytesToHexString(certHash) + " : " + packageName);
+        Rlog.d(LOG_TAG, "Checking SHA256: " + IccUtils.bytesToHexString(certHash256) + " : " + packageName);
         for (AccessRule ar : mAccessRules) {
-            if (ar.matches(certHash, packageName)) {
+            if (ar.matches(certHash, packageName) || ar.matches(certHash256, packageName)) {
                 Rlog.d(LOG_TAG, "Match found!");
                 return TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
             }
@@ -454,22 +453,13 @@ public class UiccCarrierPrivilegeRules extends Handler {
     /*
      * Converts a Signature into a Certificate hash usable for comparison.
      */
-    private static byte[] getCertHash(Signature signature) {
-        // TODO: Is the following sufficient.
+    private static byte[] getCertHash(Signature signature, String algo) {
         try {
-            CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
-            X509Certificate cert = (X509Certificate) certFactory.generateCertificate(
-                    new ByteArrayInputStream(signature.toByteArray()));
-
-            MessageDigest md = MessageDigest.getInstance("SHA");
-            return md.digest(cert.getEncoded());
-        } catch (CertificateException ex) {
-            Rlog.e(LOG_TAG, "CertificateException: " + ex);
+            MessageDigest md = MessageDigest.getInstance(algo);
+            return md.digest(signature.toByteArray());
         } catch (NoSuchAlgorithmException ex) {
             Rlog.e(LOG_TAG, "NoSuchAlgorithmException: " + ex);
         }
-
-        Rlog.e(LOG_TAG, "Cannot compute cert hash");
         return null;
     }
 
