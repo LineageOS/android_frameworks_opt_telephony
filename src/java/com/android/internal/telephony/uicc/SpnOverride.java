@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -52,7 +53,7 @@ public class SpnOverride {
     }
 
     private void loadSpnOverrides() {
-        FileReader spnReader;
+        FileReader spnReader = null;
 
         final File spnFile = new File(Environment.getRootDirectory(),
                 PARTNER_SPN_OVERRIDE_PATH);
@@ -62,6 +63,7 @@ public class SpnOverride {
         } catch (FileNotFoundException e) {
             Rlog.w(LOG_TAG, "Can not open " +
                     Environment.getRootDirectory() + "/" + PARTNER_SPN_OVERRIDE_PATH);
+            closeQuietly(spnReader);
             return;
         }
 
@@ -88,6 +90,16 @@ public class SpnOverride {
             Rlog.w(LOG_TAG, "Exception in spn-conf parser " + e);
         } catch (IOException e) {
             Rlog.w(LOG_TAG, "Exception in spn-conf parser " + e);
+        } finally {
+            closeQuietly(spnReader);
+        }
+    }
+
+    private void closeQuietly(Closeable closeable) {
+        if (closeable != null) {
+            try {
+                closeable.close();
+            } catch (IOException e) {}
         }
     }
 
