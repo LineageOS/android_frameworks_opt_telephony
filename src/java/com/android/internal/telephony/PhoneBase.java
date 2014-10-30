@@ -859,6 +859,8 @@ public abstract class PhoneBase extends Handler implements Phone {
 
         Message msg = obtainMessage(EVENT_SET_NETWORK_AUTOMATIC_COMPLETE, nsm);
         mCi.setNetworkSelectionModeAutomatic(msg);
+
+        updateSavedNetworkOperator(nsm);
     }
 
     @Override
@@ -872,6 +874,22 @@ public abstract class PhoneBase extends Handler implements Phone {
 
         Message msg = obtainMessage(EVENT_SET_NETWORK_MANUAL_COMPLETE, nsm);
         mCi.setNetworkSelectionModeManual(network.getOperatorNumeric(), msg);
+
+        updateSavedNetworkOperator(nsm);
+    }
+
+    private void updateSavedNetworkOperator(NetworkSelectMessage nsm) {
+        // open the shared preferences editor, and write the value.
+        // nsm.operatorNumeric is "" if we're in automatic.selection.
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putString(NETWORK_SELECTION_KEY, nsm.operatorNumeric);
+        editor.putString(NETWORK_SELECTION_NAME_KEY, nsm.operatorAlphaLong);
+
+        // commit and log the result.
+        if (!editor.commit()) {
+            Rlog.e(LOG_TAG, "failed to commit network selection preference");
+        }
     }
 
     /**
@@ -892,18 +910,6 @@ public abstract class PhoneBase extends Handler implements Phone {
         if (nsm.message != null) {
             AsyncResult.forMessage(nsm.message, ar.result, ar.exception);
             nsm.message.sendToTarget();
-        }
-
-        // open the shared preferences editor, and write the value.
-        // nsm.operatorNumeric is "" if we're in automatic.selection.
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-        SharedPreferences.Editor editor = sp.edit();
-        editor.putString(NETWORK_SELECTION_KEY, nsm.operatorNumeric);
-        editor.putString(NETWORK_SELECTION_NAME_KEY, nsm.operatorAlphaLong);
-
-        // commit and log the result.
-        if (!editor.commit()) {
-            Rlog.e(LOG_TAG, "failed to commit network selection preference");
         }
     }
 
