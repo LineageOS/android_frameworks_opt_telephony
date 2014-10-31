@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a18252c_c3ad348a",
+        "filename": "src/java/com/android/internal/telephony/uicc/SpnOverride.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-10-31T12:23:39Z",
+      "side": 1,
+      "message": "I feel like you may want to merge these two try catch blocks.",
+      "revId": "dc94522b38ad3080b0b8828ceac9fbe2dfc63765",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
