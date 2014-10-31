@@ -256,8 +256,10 @@ public class ApnContext {
 
     public void decRefCount() {
         synchronized (mRefCountLock) {
-            if (mRefCount-- == 1) {
+            if ((mRefCount > 0) && (mRefCount-- == 1)) {
                 mDcTracker.setEnabled(mDcTracker.apnTypeToId(mApnType), false);
+            } else {
+                log("Ignoring defCount request as mRefCount is: " + mRefCount);
             }
         }
     }
