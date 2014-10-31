@@ -91,24 +91,8 @@ public class UiccController extends Handler {
     private static UiccController mInstance;
 
     private Context mContext;
-/*
-    private CommandsInterface mCi;
-    private UiccCard mUiccCard;
-*/
 
     protected RegistrantList mIccChangedRegistrants = new RegistrantList();
-
-/*
-    public static UiccController make(Context c, CommandsInterface ci) {
-        synchronized (mLock) {
-            if (mInstance != null) {
-                throw new RuntimeException("UiccController.make() should only be called once");
-            }
-            mInstance = new UiccController(c, ci);
-            return mInstance;
-        }
-    }
-*/
 
     public static UiccController make(Context c, CommandsInterface[] ci) {
         synchronized (mLock) {
@@ -169,21 +153,6 @@ public class UiccController extends Handler {
         return getUiccCardApplication(SubscriptionController.getInstance().getPhoneId(SubscriptionController.getInstance().getDefaultSubId()), family);  
     }
 
-/*
-    // Easy to use API
-    public IccRecords getIccRecords(int family) {
-        synchronized (mLock) {
-            if (mUiccCard != null) {
-                UiccCardApplication app = mUiccCard.getApplication(family);
-                if (app != null) {
-                    return app.getIccRecords();
-                }
-            }
-            return null;
-        }
-    }
-*/
-
     // Easy to use API
     public IccRecords getIccRecords(int slotId, int family) {
         synchronized (mLock) {
@@ -194,21 +163,6 @@ public class UiccController extends Handler {
             return null;
         }
     }
-
-/*
-    // Easy to use API
-    public IccFileHandler getIccFileHandler(int family) {
-        synchronized (mLock) {
-            if (mUiccCard != null) {
-                UiccCardApplication app = mUiccCard.getApplication(family);
-                if (app != null) {
-                    return app.getIccFileHandler();
-                }
-            }
-            return null;
-        }
-    }
-*/
 
     // Easy to use API
     public IccFileHandler getIccFileHandler(int slotId, int family) {
@@ -295,17 +249,6 @@ public class UiccController extends Handler {
         return index;
     }
 
-/*
-    private UiccController(Context c, CommandsInterface ci) {
-        if (DBG) log("Creating UiccController");
-        mContext = c;
-        mCi = ci;
-        mCi.registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, null);
-        // This is needed so that we query for sim status in the case when we boot in APM
-        mCi.registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, null);
-    }
-*/
-
     // Easy to use API
     public UiccCardApplication getUiccCardApplication(int slotId, int family) {
         synchronized (mLock) {
@@ -336,14 +279,6 @@ public class UiccController extends Handler {
         if (mUiccCards[index] == null) {
             //Create new card
             mUiccCards[index] = new UiccCard(mContext, mCis[index], status, index);
-
-/*
-            // Update the UiccCard in base class, so that if someone calls
-            // UiccManager.getUiccCard(), it will return the default card.
-            if (index == PhoneConstants.DEFAULT_CARD_INDEX) {
-                mUiccCard = mUiccCards[index];
-            }
-*/
         } else {
             //Update already existing card
             mUiccCards[index].update(mContext, mCis[index] , status);
@@ -367,8 +302,6 @@ public class UiccController extends Handler {
         pw.println("UiccController: " + this);
         pw.println(" mContext=" + mContext);
         pw.println(" mInstance=" + mInstance);
-//        pw.println(" mCi=" + mCi);
-//        pw.println(" mUiccCard=" + mUiccCard);
         pw.println(" mIccChangedRegistrants: size=" + mIccChangedRegistrants.size());
         for (int i = 0; i < mIccChangedRegistrants.size(); i++) {
             pw.println("  mIccChangedRegistrants[" + i + "]="
@@ -376,8 +309,14 @@ public class UiccController extends Handler {
         }
         pw.println();
         pw.flush();
-//        for (int i = 0; i < mUiccCards.length; i++) {
-//            mUiccCards[i].dump(fd, pw, args);
-//        }
+        pw.println(" mUiccCards: size=" + mUiccCards.length);
+        for (int i = 0; i < mUiccCards.length; i++) {
+            if (mUiccCards[i] == null) {
+                pw.println("  mUiccCards[" + i + "]=null");
+            } else {
+                pw.println("  mUiccCards[" + i + "]=" + mUiccCards[i]);
+                mUiccCards[i].dump(fd, pw, args);
+            }
+        }
     }
 }
