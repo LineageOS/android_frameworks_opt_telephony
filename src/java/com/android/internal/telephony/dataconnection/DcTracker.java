@@ -1447,7 +1447,6 @@ public final class DcTracker extends DcTrackerBase {
         mAutoAttachOnCreationConfig = mPhone.getContext().getResources()
                 .getBoolean(com.android.internal.R.bool.config_auto_attach_data_on_creation);
 
-        mAutoAttachOnCreationConfig = true;
         createAllApnList();
         setInitialAttachApn();
         if (mPhone.mCi.getRadioState().isOn()) {
