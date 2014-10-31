@@ -804,6 +804,10 @@ public class DctController extends Handler {
                     Phone phone = mPhones[prefPhoneId].getActivePhone();
                     DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
                     dcTracker.setDataAllowed(false, null);
+                    if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+                        //cleanup data from apss as there is no detach procedure for CDMA
+                        dcTracker.cleanUpAllConnections("Ondemand DDS switch");
+                    }
                     SwitchInfo s = new SwitchInfo(new Integer(phoneId), n, false, false);
                     mPhones[prefPhoneId].registerForAllDataDisconnected(
                             sDctController, EVENT_ALL_DATA_DISCONNECTED, s);
