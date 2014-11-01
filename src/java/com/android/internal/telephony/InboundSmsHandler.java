@@ -47,12 +47,11 @@ import android.os.UserManager;
 import android.preference.PreferenceManager;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
-import android.service.carriermessaging.CarrierMessagingService;
-import android.service.carriermessaging.CarrierMessagingService.SendSmsResponse;
-import android.service.carriermessaging.CarrierMessagingServiceManager;
-import android.service.carriermessaging.ICarrierMessagingCallback;
-import android.service.carriermessaging.ICarrierMessagingService;
-import android.service.carriermessaging.MessagePdu;
+import android.service.carrier.CarrierMessagingService;
+import android.service.carrier.ICarrierMessagingCallback;
+import android.service.carrier.ICarrierMessagingService;
+import android.service.carrier.MessagePdu;
+import android.telephony.CarrierMessagingServiceManager;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
@@ -1097,7 +1096,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             try {
                 carrierMessagingService.filterSms(
                         new MessagePdu(Arrays.asList(mPdus)), mSmsFormat, mDestPort,
-                        mSmsFilterCallback);
+                        mPhone.getSubId(), mSmsFilterCallback);
             } catch (RemoteException e) {
                 loge("Exception filtering the SMS: " + e);
                 mSmsFilterCallback.onFilterComplete(true);
@@ -1136,12 +1135,12 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
 
         @Override
-        public void onSendSmsComplete(int result, SendSmsResponse sendSmsResponse) {
+        public void onSendSmsComplete(int result, int messageRef) {
             loge("Unexpected onSendSmsComplete call with result: " + result);
         }
 
         @Override
-        public void onSendMultipartSmsComplete(int result, List<SendSmsResponse> sendSmsResponse) {
+        public void onSendMultipartSmsComplete(int result, int[] messageRefs) {
             loge("Unexpected onSendMultipartSmsComplete call with result: " + result);
         }
 

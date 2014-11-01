@@ -348,10 +348,12 @@ public final class SmsManager {
      * @param format is the format of SMS pdu (3gpp or 3gpp2)
      * @param receivedIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully received by the
-     *  android application framework. This intent is broadcasted at
+     *  android application framework, or failed. This intent is broadcasted at
      *  the same time an SMS received from radio is acknowledged back.
+     *  The result code will be <code>RESULT_SMS_HANDLED</code> for success, or
+     *  <code>RESULT_SMS_GENERIC_ERROR</code> for error.
      *
-     *  @throws IllegalArgumentException if format is not one of 3gpp and 3gpp2
+     * @throws IllegalArgumentException if format is not one of 3gpp and 3gpp2.
      */
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
         if (!format.equals(SmsMessage.FORMAT_3GPP) && !format.equals(SmsMessage.FORMAT_3GPP2)) {
@@ -370,27 +372,9 @@ public final class SmsManager {
     }
 
     /**
-     * Update the status of a pending (send-by-IP) SMS message and resend by PSTN if necessary.
-     * This outbound message was handled by the carrier app. If the carrier app fails to send
-     * this message, it would be resent by PSTN.
-     *
-     * The caller should have carrier privileges.
-     * @see android.telephony.TelephonyManager.hasCarrierPrivileges
-     *
-     * @param messageRef the reference number of the SMS message.
-     * @param success True if and only if the message was sent successfully. If its value is
-     *  false, this message should be resent via PSTN.
-     * {@hide}
+     * TODO: remove this method.
      */
     public void updateSmsSendStatus(int messageRef, boolean success) {
-        try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
-            if (iccISms != null) {
-                iccISms.updateSmsSendStatus(messageRef, success);
-            }
-        } catch (RemoteException ex) {
-          // ignore it
-        }
     }
 
     /**
@@ -1297,6 +1281,19 @@ public final class SmsManager {
     /** Intent extra name for HTTP status code for MMS HTTP failure in integer type */
     public static final String EXTRA_MMS_HTTP_STATUS = "android.telephony.extra.MMS_HTTP_STATUS";
 
+    /**
+     * TODO: remove this method.
+     */
+    public void updateMmsSendStatus(Context context, int messageRef, byte[] pdu, int status,
+            Uri contentUri) {
+    }
+
+    /**
+     * TODO: remove this method.
+     */
+    public void updateMmsDownloadStatus(Context context, int messageRef, int status,
+            Uri contentUri) {
+    }
 
     /**
      * Import a text message into system's SMS store
