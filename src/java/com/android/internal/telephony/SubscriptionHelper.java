@@ -39,6 +39,7 @@ import android.provider.Settings.SettingNotFoundException;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.os.SystemProperties;
 import android.telephony.TelephonyManager;
 import android.telephony.SubscriptionManager;
 import android.util.Log;
@@ -60,7 +61,7 @@ class SubscriptionHelper extends Handler {
     private static int sNumPhones;
     // This flag is used to trigger Dds during boot-up
     // and when flex mapping performed
-    private static boolean sTriggerDds = true;
+    private static boolean sTriggerDds = false;
 
     private static final int EVENT_SET_UICC_SUBSCRIPTION_DONE = 1;
 
@@ -154,9 +155,13 @@ class SubscriptionHelper extends Handler {
     }
 
     public void updateSubActivation(int[] simStatus, boolean isStackReadyEvent) {
+        boolean isPrimarySubFeatureEnable =
+               SystemProperties.getBoolean("persist.radio.primarycard", false);
         SubscriptionController subCtrlr = SubscriptionController.getInstance();
         boolean setUiccSent = false;
-        if (isStackReadyEvent) {
+        // When isPrimarySubFeatureEnable is enabled apps will take care
+        // of sending DDS on MMode SUB so no need of triggering DDS from here.
+        if (isStackReadyEvent && !isPrimarySubFeatureEnable) {
             sTriggerDds = true;
         }
 

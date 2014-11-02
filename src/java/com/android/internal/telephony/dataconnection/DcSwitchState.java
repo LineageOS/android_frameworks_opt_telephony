@@ -32,6 +32,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.SystemProperties;
 import android.text.TextUtils;
 
 import android.util.Log;
@@ -163,12 +164,20 @@ public class DcSwitchState extends StateMachine {
                             msg.what + ") type=" + type);
                     }
 
+                    boolean isPrimarySubFeatureEnable =
+                            SystemProperties.getBoolean("persist.radio.primarycard", false);
                     PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
                     long subId = pb.getSubId();
-                    SubscriptionController subscriptionController
-                        = SubscriptionController.getInstance();
-                    log("Setting default DDS on " + subId);
-                    subscriptionController.setDefaultDataSubId(subId);
+                    log("Setting default DDS on " + subId + " primary Sub feature"
+                            + isPrimarySubFeatureEnable);
+
+                    // When isPrimarySubFeatureEnable is enabled apps will take care
+                    // of sending DDS request during device power-up.
+                    if (!isPrimarySubFeatureEnable) {
+                        SubscriptionController subscriptionController
+                                = SubscriptionController.getInstance();
+                        subscriptionController.setDefaultDataSubId(subId);
+                    }
 
                     int result = setupConnection(type);
                     if (msg.what == DcSwitchAsyncChannel.REQ_CONNECT) {
