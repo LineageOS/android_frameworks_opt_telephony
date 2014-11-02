@@ -140,6 +140,7 @@ public class ModemStackController extends Handler {
     private static final int SUCCESS = 1;
     private static final int FAILURE = 0;
     private static final int PRIMARY_STACK_ID = 0;
+    private static final int DEFAULT_MAX_DATA_ALLOWED = 1;
 
     //***** Class Variables
     private static ModemStackController sModemStackController;
@@ -624,14 +625,20 @@ public class ModemStackController extends Handler {
 
     public int getMaxDataAllowed() {
         logd("getMaxDataAllowed");
-        List<Integer> unsortedList = new ArrayList<Integer>(mNumPhones);
+        int ret = DEFAULT_MAX_DATA_ALLOWED;
+        List<Integer> unsortedList = new ArrayList<Integer>();
 
         for (int i = 0; i < mNumPhones; i++) {
-            unsortedList.add(mModemCapInfo[i].getMaxDataCap());
+            if (mModemCapInfo[i] != null) {
+                unsortedList.add(mModemCapInfo[i].getMaxDataCap());
+            }
         }
         Collections.sort(unsortedList);
-
-        return unsortedList.get(mNumPhones-1);
+        int listSize = unsortedList.size();
+        if (listSize > 0) {
+            ret = unsortedList.get(listSize - 1);
+        }
+        return ret;
     }
 
     public int getCurrentStackIdForPhoneId(int phoneId) {
