@@ -44,6 +44,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.DefaultPhoneNotifier;
 import com.android.internal.telephony.SubscriptionController;
+import com.android.internal.telephony.dataconnection.DdsScheduler;
 
 import android.util.Log;
 import java.util.HashSet;
@@ -232,6 +233,7 @@ public class DctController extends Handler {
     public static DctController makeDctController(PhoneProxy[] phones, Looper looper) {
         if (sDctController == null) {
             sDctController = new DctController(phones, looper);
+            DdsScheduler.init();
         }
         return sDctController;
     }
