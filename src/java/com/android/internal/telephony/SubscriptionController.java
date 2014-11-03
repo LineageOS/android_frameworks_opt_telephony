@@ -220,8 +220,7 @@ public class SubscriptionController extends ISub.Stub {
         logdl("[SubscriptionController] init by Context");
         mDataConnectionHandler = new DataConnectionHandler();
 
-        mScheduler = DdsScheduler.makeDdsScheduler();
-        mScheduler.start();
+        mScheduler = DdsScheduler.getInstance();
 
         mSchedulerAc = new DdsSchedulerAc();
         mSchedulerAc.connect(mContext, mDataConnectionHandler, mScheduler.getHandler());
