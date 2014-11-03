@@ -72,6 +72,7 @@ public class PhoneProxy extends Handler implements Phone {
     private static final int EVENT_REQUEST_VOICE_RADIO_TECH_DONE = 3;
     private static final int EVENT_RIL_CONNECTED = 4;
     private static final int EVENT_UPDATE_PHONE_OBJECT = 5;
+    private static final int EVENT_SIM_RECORDS_LOADED = 6;
 
     private int mPhoneId = 0;
 
@@ -142,6 +143,16 @@ public class PhoneProxy extends Handler implements Phone {
 
         case EVENT_UPDATE_PHONE_OBJECT:
             phoneObjectUpdater(msg.arg1);
+            break;
+
+        case EVENT_SIM_RECORDS_LOADED:
+            // Only check for the voice radio tech if it not going to be updated by the voice
+            // registration changes.
+            if (!mActivePhone.getContext().getResources().getBoolean(
+                    com.android.internal.R.bool.config_switch_phone_on_voice_reg_state_change)) {
+                mCommandsInterface.getVoiceRadioTechnology(obtainMessage(
+                        EVENT_REQUEST_VOICE_RADIO_TECH_DONE));
+            }
             break;
 
         default:
@@ -264,11 +275,11 @@ public class PhoneProxy extends Handler implements Phone {
 
         if (oldPhone != null) {
             outgoingPhoneName = ((PhoneBase) oldPhone).getPhoneName();
+            oldPhone.unregisterForSimRecordsLoaded(this);
         }
 
         logd("Switching Voice Phone : " + outgoingPhoneName + " >>> "
                 + (ServiceState.isGsm(newVoiceRadioTech) ? "GSM" : "CDMA"));
-
 
         if (ServiceState.isCdma(newVoiceRadioTech)) {
             mActivePhone = PhoneFactory.getCdmaPhone(mPhoneId);
@@ -289,6 +300,7 @@ public class PhoneProxy extends Handler implements Phone {
             if (imsPhone != null) {
                 mActivePhone.acquireOwnershipOfImsPhone(imsPhone);
             }
+            mActivePhone.registerForSimRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
         }
 
         if (oldPhone != null) {
@@ -1291,6 +1303,9 @@ public class PhoneProxy extends Handler implements Phone {
 
     @Override
     public void dispose() {
+        if (mActivePhone != null) {
+            mActivePhone.unregisterForSimRecordsLoaded(this);
+        }
         mCommandsInterface.unregisterForOn(this);
         mCommandsInterface.unregisterForVoiceRadioTechChanged(this);
         mCommandsInterface.unregisterForRilConnected(this);
