@@ -61,9 +61,10 @@ public class DdsScheduler extends StateMachine {
     private PsAttachReservedState mPsAttachReservedState = new PsAttachReservedState();
     private DdsSwitchState mDdsSwitchState = new DdsSwitchState();
     private DdsAutoRevertState mDdsAutoRevertState = new DdsAutoRevertState();
+
     private long mCurrentDds = SubscriptionManager.INVALID_SUB_ID;
     private DctController mDctController;
-    private ModemStackController mModemStackController;
+    private static DdsScheduler sDdsScheduler;
 
     private final int MODEM_DATA_CAPABILITY_UNKNOWN = -1;
     private final int MODEM_SINGLE_DATA_CAPABLE = 1;
@@ -86,17 +87,34 @@ public class DdsScheduler extends StateMachine {
     private List<NetworkRequestInfo> mInbox = Collections.synchronizedList(
             new ArrayList<NetworkRequestInfo>());
 
-    public static DdsScheduler makeDdsScheduler() {
-        HandlerThread t = new HandlerThread("DdsSchedulerThread");
-        t.start();
 
-        DdsScheduler scheduler = new DdsScheduler(t.getLooper());
-        scheduler.start();
-        return scheduler;
+    private static DdsScheduler createDdsScheduler() {
+        DdsScheduler ddsScheduler = new DdsScheduler();
+        ddsScheduler.start();
+
+        return ddsScheduler;
     }
 
-    private DdsScheduler(Looper looper) {
-        super("DdsScheduler", looper);
+
+    public static DdsScheduler getInstance() {
+        if (sDdsScheduler == null) {
+            sDdsScheduler = createDdsScheduler();
+        }
+
+        Rlog.d(TAG, "getInstance = " + sDdsScheduler);
+        return sDdsScheduler;
+    }
+
+    public static void init() {
+        if (sDdsScheduler == null) {
+            sDdsScheduler = getInstance();
+        }
+        sDdsScheduler.registerCallbacks();
+        Rlog.d(TAG, "init = " + sDdsScheduler);
+    }
+
+    private DdsScheduler() {
+        super("DdsScheduler");
 
         addState(mDefaultState);
             addState(mDdsIdleState, mDefaultState);
@@ -221,7 +239,14 @@ public class DdsScheduler extends StateMachine {
     }
 
     private void requestDdsSwitch(NetworkRequest n) {
-        mDctController.setOnDemandDataSubId(n);
+        if (n != null) {
+            mDctController.setOnDemandDataSubId(n);
+        } else {
+            // set DDS to user configured defaultDds SUB.
+            // requestPsAttach would make sure that OemHook api to set DDS
+            // is called as well as PS ATTACH is requested.
+            requestPsAttach(null);
+        }
     }
 
     private void requestPsAttach(NetworkRequest n) {
@@ -233,7 +258,10 @@ public class DdsScheduler extends StateMachine {
     }
 
     private int getMaxDataAllowed() {
-        int maxData = mModemStackController.getMaxDataAllowed();
+        ModemStackController modemStackController = ModemStackController.getInstance();
+        Rlog.d(TAG, "ModemStackController = " + modemStackController);
+
+        int maxData = modemStackController.getMaxDataAllowed();
         Rlog.d(TAG, "modem value of max_data = " + maxData);
 
         int override = SystemProperties.getInt(OVERRIDE_MODEM_DUAL_DATA_CAP_PROP,
@@ -245,25 +273,40 @@ public class DdsScheduler extends StateMachine {
         return maxData;
     }
 
-    void triggerSwitch(NetworkRequest n) {
+    private void registerCallbacks() {
         if(mDctController == null) {
+            Rlog.d(TAG, "registerCallbacks");
             mDctController = DctController.getInstance();
             mDctController.registerForOnDemandDataSwitchInfo(getHandler(),
                     DdsSchedulerAc.EVENT_ON_DEMAND_DDS_SWITCH_DONE, null);
             mDctController.registerForOnDemandPsAttach(getHandler(),
                     DdsSchedulerAc.EVENT_ON_DEMAND_PS_ATTACH_DONE, null);
-            mModemStackController = ModemStackController.getInstance();
-            Rlog.d(TAG, "ModemStackController = " + mModemStackController);
+       }
+    }
 
-            mModemStackController.registerForModemDataCapsUpdate(getHandler(),
-                    DdsSchedulerAc.EVENT_MODEM_DATA_CAPABILITY_UPDATE, null);
+    void triggerSwitch(NetworkRequest n) {
+        boolean multiDataSupported = false;
+
+        if (isMultiDataSupported()) {
+            multiDataSupported = true;
+            Rlog.d(TAG, "Simultaneous dual-data supported");
+        } else {
+            Rlog.d(TAG, "Simultaneous dual-data NOT supported");
         }
 
-        if ((n != null) && (getMaxDataAllowed() == MODEM_DUAL_DATA_CAPABLE)) {
+        if ((n != null) && multiDataSupported) {
             requestPsAttach(n);
         } else {
             requestDdsSwitch(n);
         }
+    }
+
+    boolean isMultiDataSupported() {
+        boolean flag = false;
+        if (getMaxDataAllowed() == MODEM_DUAL_DATA_CAPABLE) {
+            flag = true;
+        }
+        return flag;
     }
 
     boolean isAnyRequestWaiting() {
@@ -300,6 +343,17 @@ public class DdsScheduler extends StateMachine {
                     removeRequest(nr);
                     sendMessage(obtainMessage(DdsSchedulerAc.REQ_DDS_FREE, nr));
                     break;
+                }
+
+                case DdsSchedulerAc.REQ_DDS_ALLOCATION: {
+                    Rlog.d(TAG, "REQ_DDS_ALLOCATION, currentState = "
+                            + getCurrentState().getName());
+                    return HANDLED;
+                }
+
+                case DdsSchedulerAc.REQ_DDS_FREE: {
+                    Rlog.d(TAG, "REQ_DDS_FREE, currentState = " + getCurrentState().getName());
+                    return HANDLED;
                 }
 
                 default: {
@@ -359,11 +413,6 @@ public class DdsScheduler extends StateMachine {
                     return HANDLED;
                 }
 
-                case DdsSchedulerAc.REQ_DDS_FREE: {
-                    Rlog.d(TAG, "REQ_DDS_FREE: NO OP!");
-                    return HANDLED;
-                }
-
                 default: {
                     Rlog.d(TAG, "unknown msg = " + msg);
                     return NOT_HANDLED;
@@ -384,7 +433,7 @@ public class DdsScheduler extends StateMachine {
                 Rlog.d(TAG, "Switch required for " + nr);
                 transitionTo(mDdsSwitchState);
             } else {
-                Rlog.e(TAG, "This request failed to get accepted. nr = " + nr);
+                Rlog.e(TAG, "This request could not get accepted, start over. nr = " + nr);
                 //reset state machine to stable state.
                 transitionTo(mDdsAutoRevertState);
             }
@@ -412,8 +461,10 @@ public class DdsScheduler extends StateMachine {
 
                     if (getSubIdFromNetworkRequest(n) == getCurrentDds()) {
                         Rlog.d(TAG, "Accepting simultaneous request for current sub");
-
                         notifyRequestAccepted(n);
+                    } else if (isMultiDataSupported()) {
+                        Rlog.d(TAG, "Incoming request is for on-demand subscription, n = " + n);
+                        requestPsAttach(n);
                     }
                     return HANDLED;
                 }
@@ -430,6 +481,20 @@ public class DdsScheduler extends StateMachine {
                     return HANDLED;
                 }
 
+                case DdsSchedulerAc.EVENT_ON_DEMAND_PS_ATTACH_DONE: {
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    NetworkRequest n = (NetworkRequest)ar.result;
+                    if (ar.exception == null) {
+                        updateCurrentDds(n);
+                        transitionTo(mPsAttachReservedState);
+                    } else {
+                        Rlog.d(TAG, "Switch failed, ignore the req = " + n);
+                        //discard the request so that we can process other pending reqeusts
+                        removeRequest(n);
+                    }
+                    return HANDLED;
+                }
+
                 default: {
                     Rlog.d(TAG, "unknown msg = " + msg);
                     return NOT_HANDLED;
@@ -440,7 +505,6 @@ public class DdsScheduler extends StateMachine {
 
     private class PsAttachReservedState extends State {
         static final String TAG = DdsScheduler.TAG + "[PSAttachReservedState]";
-        private boolean isMultiDataSupported = true;
 
         private void handleOtherSubRequests() {
             NetworkRequest nr = getFirstWaitingRequest();
@@ -448,9 +512,15 @@ public class DdsScheduler extends StateMachine {
                 Rlog.d(TAG, "No more requests to accept");
             } else if (getSubIdFromNetworkRequest(nr) != getCurrentDds()) {
                 Rlog.d(TAG, "Next request is not for current on-demand PS sub(DSDA). nr = "
-                    + nr);
+                        + nr);
+                if (isAlreadyAccepted(nr)) {
+                    Rlog.d(TAG, "Next request is already accepted on other sub in DSDA mode. nr = "
+                            + nr);
+                    transitionTo(mDdsReservedState);
+                    return;
+                }
             }
-            transitionTo(mDdsIdleState);
+            transitionTo(mDdsAutoRevertState);
         }
 
 
@@ -478,29 +548,22 @@ public class DdsScheduler extends StateMachine {
             switch(msg.what) {
                 case DdsSchedulerAc.REQ_DDS_ALLOCATION: {
                     Rlog.d(TAG, "REQ_DDS_ALLOCATION");
+
+                    NetworkRequest n = (NetworkRequest)msg.obj;
+                    Rlog.d(TAG, "Accepting request in dual-data mode, req = " + n);
+                    notifyRequestAccepted(n);
                     return HANDLED;
                 }
 
                 case DdsSchedulerAc.REQ_DDS_FREE: {
                     Rlog.d(TAG, "REQ_DDS_FREE");
-                    if (isMultiDataSupported) {
-                        Rlog.d(TAG, "Simultaneous dual-data supported.");
-                        if (!acceptWaitingRequest()) {
-                            handleOtherSubRequests();
-                        }
-                    } else {
-                        Rlog.d(TAG, "Simultaneous dual-data no more supported.");
-                        transitionTo(mDdsIdleState);
+                    if (!acceptWaitingRequest()) {
+                        //No more requests for current sub. If there are few accepted requests
+                        //for defaultDds then move to DdsReservedState so that on-demand PS
+                        //detach on current sub can be triggered.
+                        handleOtherSubRequests();
                     }
-                    return HANDLED;
-                }
 
-                case DdsSchedulerAc.EVENT_MODEM_DATA_CAPABILITY_UPDATE: {
-                    Rlog.d(TAG, "EVENT_MODEM_DATA_CAPABILITY_UPDATE");
-                    if (getMaxDataAllowed() != MODEM_DUAL_DATA_CAPABLE) {
-                        Rlog.d(TAG, "Lost simultaneous dual-data capability.");
-                        isMultiDataSupported = false;
-                    }
                     return HANDLED;
                 }
 
@@ -533,16 +596,6 @@ public class DdsScheduler extends StateMachine {
         @Override
         public boolean processMessage(Message msg) {
             switch(msg.what) {
-                case DdsSchedulerAc.REQ_DDS_ALLOCATION: {
-                    Rlog.d(TAG, "REQ_DDS_ALLOCATION");
-                    return HANDLED;
-                }
-
-                case DdsSchedulerAc.REQ_DDS_FREE: {
-                    Rlog.d(TAG, "REQ_DDS_FREE");
-                    return HANDLED;
-                }
-
                 case DdsSchedulerAc.EVENT_ON_DEMAND_PS_ATTACH_DONE:
                 case DdsSchedulerAc.EVENT_ON_DEMAND_DDS_SWITCH_DONE : {
                     AsyncResult ar = (AsyncResult) msg.obj;
@@ -579,11 +632,7 @@ public class DdsScheduler extends StateMachine {
         public void enter() {
             Rlog.d(TAG, "Enter");
 
-            if(!isAnyRequestWaiting()) {
-                triggerSwitch(null);
-            } else {
-                Rlog.d(TAG, "Error");
-            }
+            triggerSwitch(null);
         }
 
         @Override
@@ -594,19 +643,9 @@ public class DdsScheduler extends StateMachine {
         @Override
         public boolean processMessage(Message msg) {
             switch(msg.what) {
-                case DdsSchedulerAc.REQ_DDS_ALLOCATION: {
-                    Rlog.d(TAG, "REQ_DDS_ALLOCATION");
-                    return HANDLED;
-                }
-
-                case DdsSchedulerAc.REQ_DDS_FREE: {
-                    Rlog.d(TAG, "REQ_DDS_FREE");
-                    return HANDLED;
-                }
-                 case DdsSchedulerAc.EVENT_ON_DEMAND_DDS_SWITCH_DONE : {
-                    AsyncResult ar = (AsyncResult) msg.obj;
-                    NetworkRequest n = (NetworkRequest)ar.result;
-                    updateCurrentDds(n);
+                 case DdsSchedulerAc.EVENT_ON_DEMAND_PS_ATTACH_DONE: {
+                    Rlog.d(TAG, "SET_DDS_DONE");
+                    updateCurrentDds(null);
 
                     transitionTo(mDdsIdleState);
                     return HANDLED;
