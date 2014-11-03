@@ -71,12 +71,19 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     public CdmaLteServiceStateTracker(CDMALTEPhone phone) {
         super(phone, new CellInfoLte());
         mCdmaLtePhone = phone;
+        mCdmaLtePhone.registerForSimRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
         mCellInfoLte = (CellInfoLte) mCellInfo;
 
         ((CellInfoLte)mCellInfo).setCellSignalStrength(new CellSignalStrengthLte());
         ((CellInfoLte)mCellInfo).setCellIdentity(new CellIdentityLte());
 
         if (DBG) log("CdmaLteServiceStateTracker Constructors");
+    }
+
+    @Override
+    public void dispose() {
+        mPhone.unregisterForSimRecordsLoaded(this);
+        super.dispose();
     }
 
     @Override
@@ -118,6 +125,9 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             // again to update to the roaming state with
             // the latest variables.
             pollState();
+            break;
+        case EVENT_SIM_RECORDS_LOADED:
+            updatePhoneObject();
             break;
         case EVENT_ALL_DATA_DISCONNECTED:
             long dds = SubscriptionManager.getDefaultDataSubId();
