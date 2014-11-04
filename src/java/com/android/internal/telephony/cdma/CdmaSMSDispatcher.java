@@ -27,13 +27,11 @@ import android.provider.Telephony.Sms;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
-import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
@@ -253,21 +251,23 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
         byte[] pdu = (byte[]) tracker.getData().get("pdu");
 
-        int currentDataNetwork = mPhone.getServiceState().getDataNetworkType();
-        boolean imsSmsDisabled = (currentDataNetwork == TelephonyManager.NETWORK_TYPE_EHRPD
-                    || (currentDataNetwork == TelephonyManager.NETWORK_TYPE_LTE
-                    && !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()))
-                    && mPhone.getServiceState().getVoiceNetworkType()
-                    == TelephonyManager.NETWORK_TYPE_1xRTT
-                    && ((GsmCdmaPhone) mPhone).mCT.mState != PhoneConstants.State.IDLE;
-
         // sms over cdma is used:
         //   if sms over IMS is not supported AND
         //   this is not a retry case after sms over IMS failed
         //     indicated by mImsRetry > 0
-        if (0 == tracker.mImsRetry && !isIms() || imsSmsDisabled) {
+        if (0 == tracker.mImsRetry && !isIms()) {
             mCi.sendCdmaSms(pdu, reply);
-        } else {
+        }
+        // If sending SMS over IMS is not enabled, send SMS over cdma. Simply
+        // calling shouldSendSmsOverIms() to check for that here might yield a
+        // different result if the conditions of UE being attached to eHRPD and
+        // active 1x voice call have changed since we last called it in
+        // ImsSMSDispatcher.isCdmaMo()
+        else if (!mImsSMSDispatcher.isImsSmsEnabled()) {
+            mCi.sendCdmaSms(pdu, reply);
+            mImsSMSDispatcher.enableSendSmsOverIms(true);
+        }
+        else {
             mCi.sendImsCdmaSms(pdu, tracker.mImsRetry, tracker.mMessageRef, reply);
             // increment it here, so in case of SMS_FAIL_RETRY over IMS
             // next retry will be sent using IMS request again.
