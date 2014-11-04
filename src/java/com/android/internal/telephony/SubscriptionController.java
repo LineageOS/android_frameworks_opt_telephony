@@ -251,40 +251,39 @@ public class SubscriptionController extends ISub.Stub {
      * @return the query result of desired SubInfoRecord
      */
     private SubInfoRecord getSubInfoRecord(Cursor cursor) {
-            SubInfoRecord info = new SubInfoRecord();
-            info.subId = cursor.getInt(cursor.getColumnIndexOrThrow(BaseColumns._ID));
-            info.iccId = cursor.getString(cursor.getColumnIndexOrThrow(
+            int id = cursor.getInt(cursor.getColumnIndexOrThrow(BaseColumns._ID));
+            String iccId = cursor.getString(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.ICC_ID));
-            info.slotId = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int simSlotIndex = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.SIM_ID));
-            info.displayName = cursor.getString(cursor.getColumnIndexOrThrow(
+            String displayName = cursor.getString(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.DISPLAY_NAME));
-            info.nameSource = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int nameSource = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.NAME_SOURCE));
-            info.color = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int color = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.COLOR));
-            info.number = cursor.getString(cursor.getColumnIndexOrThrow(
+            String number = cursor.getString(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.NUMBER));
-            info.displayNumberFormat = cursor.getInt(cursor.getColumnIndexOrThrow(
-                    SubscriptionManager.DISPLAY_NUMBER_FORMAT));
-            info.dataRoaming = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int dataRoaming = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.DATA_ROAMING));
 
+            int[] simIconRes = new int[2];
             int size = sSimBackgroundDarkRes.length;
-            if (info.color >= 0 && info.color < size) {
-                info.simIconRes[RES_TYPE_BACKGROUND_DARK] = sSimBackgroundDarkRes[info.color];
-                info.simIconRes[RES_TYPE_BACKGROUND_LIGHT] = sSimBackgroundLightRes[info.color];
+            if (color >= 0 && color < size) {
+                simIconRes[RES_TYPE_BACKGROUND_DARK] = sSimBackgroundDarkRes[color];
+                simIconRes[RES_TYPE_BACKGROUND_LIGHT] = sSimBackgroundLightRes[color];
             }
-            info.mcc = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int mcc = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.MCC));
-            info.mnc = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int mnc = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.MNC));
 
-            logd("[getSubInfoRecord] SubId:" + info.subId + " iccid:" + info.iccId + " slotId:" +
-                    info.slotId + " displayName:" + info.displayName + " color:" + info.color +
-                    " mcc/mnc:" + info.mcc + "/" + info.mnc);
+            logd("[getSubInfoRecord] id:" + id + " iccid:" + iccId + " simSlotIndex:" + simSlotIndex
+                    + " displayName:" + displayName + " color:" + color + " mcc:" + mcc
+                    + " mnc:" + mnc);
 
-            return info;
+            return new SubInfoRecord(id, iccId, simSlotIndex, displayName, nameSource, color,
+                    number, dataRoaming, simIconRes, mcc, mnc);
     }
 
     /**
@@ -1245,8 +1244,9 @@ public class SubscriptionController extends ISub.Stub {
             return false;
         }
         for (SubInfoRecord record : records) {
-            logdl("[shouldDefaultBeCleared] Record.subId: " + record.subId);
-            if (record.subId == subId) {
+            int id = record.getSubscriptionId();
+            logdl("[shouldDefaultBeCleared] Record.id: " + id);
+            if (id == subId) {
                 logdl("[shouldDefaultBeCleared] return false subId is active, subId=" + subId);
                 return false;
             }
