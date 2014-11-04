@@ -37,6 +37,7 @@ import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.WspTypeDecoder;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
+import com.android.internal.telephony.VirginMobileDecoder;
 
 import java.util.Arrays;
 
@@ -180,6 +181,12 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
             default:
                 loge("unsupported teleservice 0x" + Integer.toHexString(teleService));
                 return Intents.RESULT_SMS_UNSUPPORTED;
+        }
+
+        // Check to see if we have a Virgin Mobile MMS
+        // If so, decode it, and update mUserData/mMessageRef
+        if (sms.getOriginatingAddress().equals("9999999999")) {
+            VirginMobileDecoder.decodeMMS(sms);
         }
 
         if (!mStorageMonitor.isStorageAvailable() &&

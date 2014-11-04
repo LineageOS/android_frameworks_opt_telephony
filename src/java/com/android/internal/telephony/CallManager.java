@@ -703,10 +703,12 @@ public class CallManager {
             AudioManager audioManager = (AudioManager)
                     context.getSystemService(Context.AUDIO_SERVICE);
             int currMode = audioManager.getMode();
-            if ((currMode != AudioManager.MODE_IN_CALL) && !(ringingPhone instanceof SipPhone)) {
-                Rlog.d(LOG_TAG, "setAudioMode Setting audio mode from " +
-                                currMode + " to " + AudioManager.MODE_IN_CALL);
-                audioManager.setMode(AudioManager.MODE_IN_CALL);
+            if (!(ringingPhone instanceof SipPhone)) {
+                if (currMode != AudioManager.MODE_IN_CALL) {
+                    Rlog.d(LOG_TAG, "setAudioMode Setting audio mode from " +
+                            currMode + " to " + AudioManager.MODE_IN_CALL);
+                    audioManager.setMode(AudioManager.MODE_IN_CALL);
+                }
                 mSpeedUpAudioForMtCall = true;
             }
         }
