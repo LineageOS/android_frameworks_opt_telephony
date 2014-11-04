@@ -54,6 +54,7 @@ import com.android.ims.ImsManager;
 import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
 import com.android.internal.telephony.imsphone.ImsPhone;
+import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -1457,6 +1458,31 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     public boolean isInEcm() {
         return false;
+    }
+
+    public static int getVideoState(Call call) {
+        int videoState = VideoProfile.VideoState.AUDIO_ONLY;
+        ImsPhoneConnection conn = (ImsPhoneConnection) call.getEarliestConnection();
+        if (conn != null) {
+            videoState = conn.getVideoState();
+        }
+        return videoState;
+    }
+
+    private boolean isImsVideoCall(Call call) {
+        int videoState = getVideoState(call);
+        return (VideoProfile.VideoState.isVideo(videoState));
+    }
+
+    public boolean isImsVtCallPresent() {
+        boolean isVideoCallActive = false;
+        if (mImsPhone != null) {
+            isVideoCallActive = isImsVideoCall(mImsPhone.getForegroundCall()) ||
+                    isImsVideoCall(mImsPhone.getBackgroundCall()) ||
+                    isImsVideoCall(mImsPhone.getRingingCall());
+        }
+        Rlog.d(LOG_TAG, "isVideoCallActive: " + isVideoCallActive);
+        return isVideoCallActive;
     }
 
     @Override

@@ -302,6 +302,10 @@ public class PhoneProxy extends Handler implements Phone {
         return ((PhoneBase)mActivePhone).getIccFileHandler();
     }
 
+    public boolean isImsVtCallPresent() {
+        return mActivePhone.isImsVtCallPresent();
+    }
+
     @Override
     public void updatePhoneObject(int voiceRadioTech) {
         logd("updatePhoneObject: radioTechnology=" + voiceRadioTech);
