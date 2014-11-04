@@ -83,6 +83,7 @@ public class UiccController extends Handler {
     private static final int EVENT_ICC_STATUS_CHANGED = 1;
     private static final int EVENT_GET_ICC_STATUS_DONE = 2;
     private static final int EVENT_RADIO_UNAVAILABLE = 3;
+    private static final int EVENT_SIM_REFRESH = 4;
 
     private CommandsInterface[] mCis;
     private UiccCard[] mUiccCards = new UiccCard[TelephonyManager.getDefault().getPhoneCount()];
@@ -114,6 +115,7 @@ public class UiccController extends Handler {
             // TODO remove this once modem correctly notifies the unsols
             mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
             mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, index);
+            mCis[i].registerForIccRefresh(this, EVENT_SIM_REFRESH, index);
         }
     }
 
@@ -203,6 +205,7 @@ public class UiccController extends Handler {
                 return;
             }
 
+            AsyncResult ar = (AsyncResult)msg.obj;
             switch (msg.what) {
                 case EVENT_ICC_STATUS_CHANGED:
                     if (DBG) log("Received EVENT_ICC_STATUS_CHANGED, calling getIccCardStatus");
@@ -210,7 +213,6 @@ public class UiccController extends Handler {
                     break;
                 case EVENT_GET_ICC_STATUS_DONE:
                     if (DBG) log("Received EVENT_GET_ICC_STATUS_DONE");
-                    AsyncResult ar = (AsyncResult)msg.obj;
                     onGetIccCardStatusDone(ar, index);
                     break;
                 case EVENT_RADIO_UNAVAILABLE:
@@ -220,6 +222,10 @@ public class UiccController extends Handler {
                     }
                     mUiccCards[index] = null;
                     mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, index, null));
+                    break;
+                case EVENT_SIM_REFRESH:
+                    if (DBG) log("Received EVENT_SIM_REFRESH");
+                    onSimRefresh(ar, index);
                     break;
                 default:
                     Rlog.e(LOG_TAG, " Unknown Event " + msg.what);
@@ -287,6 +293,46 @@ public class UiccController extends Handler {
         if (DBG) log("Notifying IccChangedRegistrants");
         mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, index, null));
 
+    }
+
+    private void onSimRefresh(AsyncResult ar, Integer index) {
+        if (ar.exception != null) {
+            Rlog.e(LOG_TAG, "Sim REFRESH with exception: " + ar.exception);
+            return;
+        }
+
+        if (!isValidCardIndex(index)) {
+            Rlog.e(LOG_TAG,"onSimRefresh: invalid index : " + index);
+            return;
+        }
+
+        IccRefreshResponse resp = (IccRefreshResponse) ar.result;
+        Rlog.d(LOG_TAG, "onSimRefresh: " + resp);
+
+        if (mUiccCards[index] == null) {
+            Rlog.e(LOG_TAG,"onSimRefresh: refresh on null card : " + index);
+            return;
+        }
+
+        if (resp.refreshResult != IccRefreshResponse.REFRESH_RESULT_RESET ||
+            resp.aid == null) {
+            Rlog.d(LOG_TAG, "Ignoring reset: " + resp);
+            return;
+        }
+
+        boolean changed = mUiccCards[index].resetAppWithAid(resp.aid);
+        if (changed) {
+            boolean requirePowerOffOnSimRefreshReset = mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_requireRadioPowerOffOnSimRefreshReset);
+            if (requirePowerOffOnSimRefreshReset) {
+                mCis[index].setRadioPower(false, null);
+            } else {
+                mCis[index].getIccCardStatus(obtainMessage(EVENT_GET_ICC_STATUS_DONE));
+            }
+            mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, index, null));
+        }
+        // TODO: For a card level notification, we should delete the CarrierPrivilegeRules and the
+        // CAT service.
     }
 
     private boolean isValidCardIndex(int index) {
