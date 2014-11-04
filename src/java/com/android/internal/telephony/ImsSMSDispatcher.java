@@ -24,8 +24,10 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
+import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
+import com.android.internal.R;
 import com.android.internal.telephony.cdma.CdmaSMSDispatcher;
 import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 import com.android.internal.telephony.gsm.GsmSMSDispatcher;
@@ -49,6 +51,13 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     /** true if IMS is registered and sms is supported, false otherwise.*/
     private boolean mIms = false;
     private String mImsSmsFormat = SmsConstants.FORMAT_UNKNOWN;
+
+    /**
+     * true if MO SMS over IMS is enabled. Default value is true. false for
+     * carriers with config_send_sms1x_on_voice_call = true when attached to
+     * eHRPD and during active 1x voice call
+     */
+    private boolean mImsSmsEnabled = true;
 
     public ImsSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
             SmsUsageMonitor usageMonitor) {
@@ -265,6 +274,7 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
         if (oldFormat.equals(newFormat)) {
             if (isCdmaFormat(newFormat)) {
                 Rlog.d(TAG, "old format matched new format (cdma)");
+                shouldSendSmsOverIms();
                 mCdmaDispatcher.sendSms(tracker);
                 return;
             } else {
@@ -301,6 +311,7 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
                 Rlog.d(TAG, "old format (gsm) ==> new format (cdma)");
                 pdu = com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(
                         scAddr, destAddr, text, (tracker.mDeliveryIntent != null), null);
+                shouldSendSmsOverIms();
             } else {
                 Rlog.d(TAG, "old format (cdma) ==> new format (gsm)");
                 pdu = com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(
@@ -316,6 +327,7 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
                 pdu = com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(
                             scAddr, destAddr, destPort.intValue(), data,
                             (tracker.mDeliveryIntent != null));
+                shouldSendSmsOverIms();
             } else {
                 Rlog.d(TAG, "old format (cdma) ==> new format (gsm)");
                 pdu = com.android.internal.telephony.gsm.SmsMessage.getSubmitPdu(
@@ -382,8 +394,9 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
      * @return true if Cdma format should be used for MO SMS, false otherwise.
      */
     private boolean isCdmaMo() {
-        if (!isIms()) {
-            // IMS is not registered, use Voice technology to determine SMS format.
+        if (!isIms() || !shouldSendSmsOverIms()) {
+            // Either IMS is not registered or there is an active 1x voice call
+            // while on eHRPD, use Voice technology to determine SMS format.
             return (PhoneConstants.PHONE_TYPE_CDMA == mPhone.getPhoneType());
         }
         // IMS is registered with SMS support
@@ -398,5 +411,53 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
      */
     private boolean isCdmaFormat(String format) {
         return (mCdmaDispatcher.getFormat().equals(format));
+    }
+
+    /**
+     * Enables MO SMS over IMS
+     *
+     * @param enable
+     */
+    public void enableSendSmsOverIms(boolean enable) {
+        mImsSmsEnabled = enable;
+    }
+
+    /**
+     * Determines whether MO SMS over IMS is currently enabled.
+     *
+     * @return true if MO SMS over IMS is enabled, false otherwise.
+     */
+    public boolean isImsSmsEnabled() {
+        return mImsSmsEnabled;
+    }
+
+    /**
+     * Determines whether SMS should be sent over IMS if UE is attached to eHRPD
+     * and there is an active voice call
+     *
+     * @return true if SMS should be sent over IMS based on value in config.xml
+     *         or system property false otherwise
+     */
+    public boolean shouldSendSmsOverIms() {
+        boolean sendSmsOn1x = mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_send_sms1x_on_voice_call);
+        int currentCallState = mTelephonyManager.getCallState();
+        int currentVoiceNetwork = mTelephonyManager.getVoiceNetworkType();
+        int currentDataNetwork = mTelephonyManager.getDataNetworkType();
+
+        Rlog.d(TAG, "data = " + currentDataNetwork + " voice = " + currentVoiceNetwork
+                + " call state = " + currentCallState);
+
+        if (sendSmsOn1x) {
+            // The UE shall use 1xRTT for SMS if the UE is attached to an eHRPD
+            // network and there is an active 1xRTT voice call.
+            if (currentDataNetwork == TelephonyManager.NETWORK_TYPE_EHRPD
+                    && currentVoiceNetwork == TelephonyManager.NETWORK_TYPE_1xRTT
+                    && currentCallState != mTelephonyManager.CALL_STATE_IDLE) {
+                enableSendSmsOverIms(false);
+                return false;
+            }
+        }
+        return true;
     }
 }
