@@ -1104,19 +1104,19 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
 
         /**
-         * Called when the state of an IMS conference participant has changed.
+         * Called when the state of IMS conference participant(s) has changed.
          *
          * @param call the call object that carries out the IMS call.
-         * @param participant the participant and its new state information.
+         * @param participants the participant(s) and their new state information.
          */
         @Override
-        public void onConferenceParticipantStateChanged(ImsCall call,
-                ConferenceParticipant participant) {
-            if (DBG) log("onConferenceParticipantStateChanged");
+        public void onConferenceParticipantsStateChanged(ImsCall call,
+                List<ConferenceParticipant> participants) {
+            if (DBG) log("onConferenceParticipantsStateChanged");
 
             ImsPhoneConnection conn = findConnection(call);
             if (conn != null) {
-                conn.updateConferenceParticipant(participant);
+                conn.updateConferenceParticipants(participants);
             }
         }
     };
