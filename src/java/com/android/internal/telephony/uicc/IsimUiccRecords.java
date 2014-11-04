@@ -366,18 +366,8 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
                 break;
 
             case IccRefreshResponse.REFRESH_RESULT_RESET:
+                // Refresh reset is handled by the UiccCard object.
                 if (DBG) log("handleIsimRefresh with REFRESH_RESULT_RESET");
-                // need to reload all files (that we care about)
-                if (requirePowerOffOnSimRefreshReset()) {
-                    mCi.setRadioPower(false, null);
-                    /* Note: no need to call setRadioPower(true).  Assuming the desired
-                    * radio power state is still ON (as tracked by ServiceStateTracker),
-                    * ServiceStateTracker will call setRadioPower when it receives the
-                    * RADIO_STATE_CHANGED notification for the power off.  And if the
-                    * desired power state has changed in the interim, we don't want to
-                    * override it with an unconditional power on.
-                    */
-                }
                 break;
 
             default:

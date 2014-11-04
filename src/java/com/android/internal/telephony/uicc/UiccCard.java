@@ -79,7 +79,6 @@ public class UiccCard {
     private Context mContext;
     private CommandsInterface mCi;
     private CatService mCatService;
-    private boolean mDestroyed = false; //set to true once this card is commanded to be disposed of.
     private RadioState mLastRadioState =  RadioState.RADIO_UNAVAILABLE;
     private UiccCarrierPrivilegeRules mCarrierPrivilegeRules;
 
@@ -129,10 +128,6 @@ public class UiccCard {
 
     public void update(Context c, CommandsInterface ci, IccCardStatus ics) {
         synchronized (mLock) {
-            if (mDestroyed) {
-                loge("Updated after destroyed! Fix me!");
-                return;
-            }
             CardState oldState = mCardState;
             mCardState = ics.mCardState;
             mUniversalPinState = ics.mUniversalPinState;
@@ -141,6 +136,7 @@ public class UiccCard {
             mImsSubscriptionAppIndex = ics.mImsSubscriptionAppIndex;
             mContext = c;
             mCi = ci;
+
             //update applications
             if (DBG) log(ics.mApplications.length + " applications");
             for ( int i = 0; i < mUiccApplications.length; i++) {
@@ -354,12 +350,6 @@ public class UiccCard {
     protected Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg){
-            if (mDestroyed) {
-                loge("Received message " + msg + "[" + msg.what
-                        + "] while being destroyed. Ignoring.");
-                return;
-            }
-
             switch (msg.what) {
                 case EVENT_CARD_REMOVED:
                     onIccSwap(false);
@@ -463,6 +453,23 @@ public class UiccCard {
                 }
             }
             return null;
+        }
+    }
+
+    /**
+     * Resets the application with the input AID. Returns true if any changes were made.
+     */
+    public boolean resetAppWithAid(String aid) {
+        synchronized (mLock) {
+            for (int i = 0; i < mUiccApplications.length; i++) {
+                if (mUiccApplications[i] != null && aid.equals(mUiccApplications[i].getAid())) {
+                    // Delete removed applications
+                    mUiccApplications[i].dispose();
+                    mUiccApplications[i] = null;
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -629,7 +636,6 @@ public class UiccCard {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("UiccCard:");
         pw.println(" mCi=" + mCi);
-        pw.println(" mDestroyed=" + mDestroyed);
         pw.println(" mLastRadioState=" + mLastRadioState);
         pw.println(" mCatService=" + mCatService);
         pw.println(" mAbsentRegistrants: size=" + mAbsentRegistrants.size());
