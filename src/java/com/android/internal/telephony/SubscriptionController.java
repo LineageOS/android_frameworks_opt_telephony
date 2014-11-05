@@ -114,6 +114,8 @@ public class SubscriptionController extends ISub.Stub {
     private static final int EVENT_WRITE_MSISDN_DONE = 1;
     private boolean mCFUpdated = false;
 
+    private int[] colorArr;
+
     protected Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -370,7 +372,27 @@ public class SubscriptionController extends ISub.Stub {
         return subList;
     }
 
+    /**
+     * Find unused color to be set for new SubInfoRecord
+     * @return RGB integer value of color
+     */
+    private int getUnusedColor() {
+        List<SubInfoRecord> availableSubInfos = SubscriptionManager.getActiveSubInfoList();
+        colorArr = mContext.getResources().getIntArray(com.android.internal.R.array.sim_colors);
 
+        for (int i = 0; i < colorArr.length; i++) {
+            int j;
+            for (j = 0; j < availableSubInfos.size(); j++) {
+                if (colorArr[i] == availableSubInfos.get(j).getColor()) {
+                    break;
+                }
+            }
+            if (j == availableSubInfos.size()) {
+                return colorArr[i];
+            }
+        }
+        return colorArr[availableSubInfos.size() % colorArr.length];
+    }
 
     /**
      * Get the SubInfoRecord according to an index
@@ -598,12 +620,14 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.NAME_SOURCE}, SubscriptionManager.ICC_ID + "=?",
                 new String[] {iccId}, null);
 
+        int color = getUnusedColor();
+
         try {
             if (cursor == null || !cursor.moveToFirst()) {
                 ContentValues value = new ContentValues();
                 value.put(SubscriptionManager.ICC_ID, iccId);
                 // default SIM color differs between slots
-                value.put(SubscriptionManager.COLOR, slotId);
+                value.put(SubscriptionManager.COLOR, color);
                 value.put(SubscriptionManager.SIM_ID, slotId);
                 value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
                 Uri uri = resolver.insert(SubscriptionManager.CONTENT_URI, value);
