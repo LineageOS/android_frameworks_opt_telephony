@@ -17,6 +17,7 @@
 package com.android.internal.telephony.imsphone;
 
 import android.content.Context;
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
@@ -661,6 +662,27 @@ public class ImsPhoneConnection extends Connection {
     @Override
     public int getPreciseDisconnectCause() {
         return 0;
+    }
+
+    /**
+     * Notifies this Connection of a request to disconnect a participant of the conference managed
+     * by the connection.
+     *
+     * @param endpoint the {@link android.net.Uri} of the participant to disconnect.
+     */
+    @Override
+    public void onDisconnectConferenceParticipant(Uri endpoint) {
+        ImsCall imsCall = getImsCall();
+        if (imsCall == null) {
+            return;
+        }
+        try {
+            imsCall.removeParticipants(new String[]{endpoint.toString()});
+        } catch (ImsException e) {
+            // No session in place -- no change
+            Rlog.e(LOG_TAG, "onDisconnectConferenceParticipant: no session in place. "+
+                    "Failed to disconnect endpoint = " + endpoint);
+        }
     }
 }
 
