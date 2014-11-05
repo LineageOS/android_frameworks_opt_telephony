@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.net.Uri;
 import android.os.SystemClock;
 import android.telecom.ConferenceParticipant;
 import android.telephony.Rlog;
@@ -555,6 +556,15 @@ public abstract class Connection {
         for (Listener l : mListeners) {
             l.onConferenceParticipantChanged(conferenceParticipant);
         }
+    }
+
+    /**
+     * Notifies this Connection of a request to disconnect a participant of the conference managed
+     * by the connection.
+     *
+     * @param endpoint the {@link Uri} of the participant to disconnect.
+     */
+    public void onDisconnectConferenceParticipant(Uri endpoint) {
     }
 
     /**
