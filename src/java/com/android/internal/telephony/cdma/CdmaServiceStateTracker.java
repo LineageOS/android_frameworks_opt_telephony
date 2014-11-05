@@ -312,7 +312,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             }
 
             // Only support automatic selection mode in CDMA.
-            mPhone.setNetworkSelectionModeAutomatic(null);
+            // mPhone.setNetworkSelectionModeAutomatic(null);
 
             mPhone.prepareEri();
             break;
@@ -321,7 +321,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             updatePhoneObject();
 
             // Only support automatic selection mode in CDMA.
-            mPhone.setNetworkSelectionModeAutomatic(null);
+            // mPhone.setNetworkSelectionModeAutomatic(null);
 
             // For Non-RUIM phones, the subscription information is stored in
             // Non Volatile. Here when Non-Volatile is ready, we can poll the CDMA
