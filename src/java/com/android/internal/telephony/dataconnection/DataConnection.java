@@ -965,6 +965,9 @@ public final class DataConnection extends StateMachine {
         }
         result.setLinkUpstreamBandwidthKbps(up);
         result.setLinkDownstreamBandwidthKbps(down);
+
+        result.setNetworkSpecifier(Integer.toString(mPhone.getSubId()));
+
         return result;
     }
 
