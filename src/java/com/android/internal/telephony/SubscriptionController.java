@@ -1255,15 +1255,25 @@ public class SubscriptionController extends ISub.Stub {
     }
 
 
-    private void updateDataSubId(long subId) {
-        logd(" updateDataSubId,  subId=" + subId);
-        Settings.Global.putLong(mContext.getContentResolver(),
-                Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
+    private void updateDataSubId(AsyncResult ar) {
+        Long subId = (Long)ar.result;
+        int reqStatus = PhoneConstants.FAILURE;
+
+        logd(" updateDataSubId,  subId=" + subId + " exception " + ar.exception);
+        // Update newDds in database if the DDS request succeeded.
+        if (ar.exception == null) {
+            setDataSubId(subId);
+            reqStatus = PhoneConstants.SUCCESS;
+        }
         mScheduler.updateCurrentDds(null);
-        broadcastDefaultDataSubIdChanged(subId);
+        broadcastDefaultDataSubIdChanged(reqStatus);
 
         // FIXME is this still needed?
         updateAllDataConnectionTrackers();
+    }
+    public void setDataSubId(long subId) {
+        Settings.Global.putLong(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
     }
 
     private void updateAllDataConnectionTrackers() {
@@ -1271,17 +1281,18 @@ public class SubscriptionController extends ISub.Stub {
         int len = sProxyPhones.length;
         logdl("[updateAllDataConnectionTrackers] sProxyPhones.length=" + len);
         for (int phoneId = 0; phoneId < len; phoneId++) {
-            logdl("[updateAllDataConnectionTrackers] phoneId=" + phoneId);
             sProxyPhones[phoneId].updateDataConnectionTracker();
         }
     }
 
-    private void broadcastDefaultDataSubIdChanged(long subId) {
+    private void broadcastDefaultDataSubIdChanged(int status) {
         // Broadcast an Intent for default data sub change
-        logdl("[broadcastDefaultDataSubIdChanged] subId=" + subId);
+        logdl("[broadcastDefaultDataSubIdChanged] subId = " + getDefaultDataSubId()
+                 + " status " + status);
         Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED);
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-        intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, subId);
+        intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, getDefaultDataSubId());
+        intent.putExtra(TelephonyIntents.EXTRA_RESULT, status);
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
@@ -1368,9 +1379,8 @@ public class SubscriptionController extends ISub.Stub {
             switch (msg.what) {
                 case EVENT_SET_DEFAULT_DATA_DONE:{
                     AsyncResult ar = (AsyncResult) msg.obj;
-                    Long subId = (Long)ar.result;
-                    logd("EVENT_SET_DEFAULT_DATA_DONE subId:" + subId);
-                    updateDataSubId(subId);
+                    logd("EVENT_SET_DEFAULT_DATA_DONE subId:" + (Long)ar.result);
+                    updateDataSubId(ar);
                     break;
                 }
             }
