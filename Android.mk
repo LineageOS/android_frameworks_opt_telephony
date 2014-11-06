@@ -29,6 +29,7 @@ LOCAL_SRC_FILES += $(call find-other-java-files,$(BOARD_RIL_CLASS))
 endif
 
 LOCAL_JAVA_LIBRARIES := voip-common
+LOCAL_STATIC_JAVA_LIBRARIES := libphonenumbergoogle
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := telephony-common
 
