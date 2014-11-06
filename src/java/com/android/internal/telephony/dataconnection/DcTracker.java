@@ -301,6 +301,10 @@ public final class DcTracker extends DcTrackerBase {
         ((TelephonyNetworkFactory)mNetworkFactory).updateNetworkCapability(mSubId);
     }
 
+    private void releaseAllNetworkRequests() {
+        ((TelephonyNetworkFactory)mNetworkFactory).releaseAllNetworkRequests();
+    }
+
     protected void registerForAllEvents() {
         mPhone.mCi.registerForAvailable(this, DctConstants.EVENT_RADIO_AVAILABLE, null);
         mPhone.mCi.registerForOffOrNotAvailable(this,
@@ -340,6 +344,8 @@ public final class DcTracker extends DcTrackerBase {
     @Override
     public void dispose() {
         if (DBG) log("GsmDCT.dispose");
+
+        releaseAllNetworkRequests();
 
         if (mProvisionBroadcastReceiver != null) {
             mPhone.getContext().unregisterReceiver(mProvisionBroadcastReceiver);
@@ -572,6 +578,19 @@ public final class DcTracker extends DcTrackerBase {
         protected void releaseNetworkFor(NetworkRequest networkRequest) {
             if (DBG) log("Cellular releasing Network for " + networkRequest);
             removeRequestIfFound(networkRequest);
+        }
+
+        public void releaseAllNetworkRequests() {
+            log("releaseAllNetworkRequests");
+            SubscriptionController subController = SubscriptionController.getInstance();
+            for (int i = 0; i < mDdsRequests.size(); i++) {
+                NetworkRequest nr = mDdsRequests.valueAt(i);
+                if (nr != null) {
+                    log("Removing request = " + nr);
+                    subController.stopOnDemandDataSubscriptionRequest(nr);
+                    mDdsRequests.remove(nr.requestId);
+                }
+            }
         }
 
         @Override
