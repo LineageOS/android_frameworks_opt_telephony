@@ -200,6 +200,22 @@ public class ModemStackController extends Handler {
                         sendMessage(msg);
                     }
                 }
+            } else if (TelephonyIntents.ACTION_SUBSCRIPTION_SET_UICC_RESULT.
+                    equals(intent.getAction())) {
+                long subId = intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                        SubscriptionManager.INVALID_SUB_ID);
+                int phoneId = intent.getIntExtra(PhoneConstants.PHONE_KEY,
+                        PhoneConstants.PHONE_ID1);
+                int status = intent.getIntExtra(TelephonyIntents.EXTRA_RESULT,
+                        PhoneConstants.FAILURE);
+                logd("Received ACTION_SUBSCRIPTION_SET_UICC_RESULT on subId: " + subId
+                        + "phoneId " + phoneId + " status: " + status);
+                if (mDeactivationInProgress && (status == PhoneConstants.FAILURE)) {
+                    // Sub deactivation failed
+                    Message msg = obtainMessage(EVENT_SUB_DEACTIVATED, new Integer(phoneId));
+                    AsyncResult.forMessage(msg, SubscriptionStatus.SUB_ACTIVATED, null);
+                    sendMessage(msg);
+                }
             }
         }};
 
@@ -250,6 +266,7 @@ public class ModemStackController extends Handler {
         IntentFilter filter =
                 new IntentFilter(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
         filter.addAction(TelephonyIntents.ACTION_SUBINFO_CONTENT_CHANGE);
+        filter.addAction(TelephonyIntents.ACTION_SUBSCRIPTION_SET_UICC_RESULT);
         mContext.registerReceiver(mReceiver, filter);
         logd("Constructor - Exit");
     }
