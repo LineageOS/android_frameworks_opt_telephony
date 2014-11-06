@@ -148,11 +148,17 @@ public class ImsPhoneConnection extends Connection {
             try {
                 ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
                 if (localCallProfile != null) {
-                    int localCallTypeCapability = localCallProfile.mCallType;
-                    boolean isLocalVideoCapable = localCallTypeCapability
+                    boolean isLocalVideoCapable = localCallProfile.mCallType
                             == ImsCallProfile.CALL_TYPE_VT;
 
                     setLocalVideoCapable(isLocalVideoCapable);
+                }
+                ImsCallProfile remoteCallProfile = imsCall.getRemoteCallProfile();
+                if (remoteCallProfile != null) {
+                    boolean isRemoteVideoCapable = remoteCallProfile.mCallType
+                            == ImsCallProfile.CALL_TYPE_VT;
+
+                    setRemoteVideoCapable(isRemoteVideoCapable);
                 }
             } catch (ImsException e) {
                 // No session, so cannot get local capabilities.
@@ -646,13 +652,27 @@ public class ImsPhoneConnection extends Connection {
                 // Get the current local VT capabilities (i.e. even if currentCallType above is
                 // audio-only, the local capability could support bi-directional video).
                 ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
+                Rlog.d(LOG_TAG, " update localCallProfile=" + localCallProfile
+                        + "isLocalVideoCapable()= " + isLocalVideoCapable());
                 if (localCallProfile != null) {
-                    int localCallTypeCapability = localCallProfile.mCallType;
-                    boolean newLocalVideoCapable = localCallTypeCapability
+                    boolean newLocalVideoCapable = localCallProfile.mCallType
                             == ImsCallProfile.CALL_TYPE_VT;
 
                     if (isLocalVideoCapable() != newLocalVideoCapable) {
                         setLocalVideoCapable(newLocalVideoCapable);
+                        changed = true;
+                    }
+                }
+
+                ImsCallProfile remoteCallProfile = imsCall.getRemoteCallProfile();
+                Rlog.d(LOG_TAG, " update remoteCallProfile=" + remoteCallProfile
+                        + "isRemoteVideoCapable()= " + isRemoteVideoCapable());
+                if (remoteCallProfile != null) {
+                    boolean newRemoteVideoCapable = remoteCallProfile.mCallType
+                            == ImsCallProfile.CALL_TYPE_VT;
+
+                    if (isRemoteVideoCapable() != newRemoteVideoCapable) {
+                        setRemoteVideoCapable(newRemoteVideoCapable);
                         changed = true;
                     }
                 }
