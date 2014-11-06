@@ -33,12 +33,14 @@ package com.android.internal.telephony;
 
 import android.telephony.Rlog;
 import android.content.Context;
+import android.content.Intent;
 import android.database.ContentObserver;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.os.UserHandle;
 import android.os.SystemProperties;
 import android.telephony.TelephonyManager;
 import android.telephony.SubscriptionManager;
@@ -65,6 +67,7 @@ class SubscriptionHelper extends Handler {
 
     private static final int EVENT_SET_UICC_SUBSCRIPTION_DONE = 1;
 
+    public static final int SUB_SET_UICC_FAIL = -100;
     public static final int SUB_SIM_NOT_INSERTED = -99;
     public static final int SUB_INIT_STATE = -1;
     private static boolean mNwModeUpdated = false;
@@ -233,24 +236,26 @@ class SubscriptionHelper extends Handler {
      * @param ar
      */
     private void processSetUiccSubscriptionDone(Message msg) {
+        SubscriptionController subCtrlr = SubscriptionController.getInstance();
         AsyncResult ar = (AsyncResult)msg.obj;
         int slotId = msg.arg1;
         int newSubState = msg.arg2;
+        long[] subId = subCtrlr.getSubIdUsingSlotId(slotId);
 
         if (ar.exception != null) {
-            logd("Exception in SET_UICC_SUBSCRIPTION, slotId = " + slotId);
+            loge("Exception in SET_UICC_SUBSCRIPTION, slotId = " + slotId
+                    + " newSubState " + newSubState);
+            // broadcast set uicc failure
+            mSubStatus[slotId] = SUB_SET_UICC_FAIL;
+            broadcastSetUiccResult(slotId, newSubState, PhoneConstants.FAILURE);
             return;
         }
 
-        SubscriptionController subCtrlr = SubscriptionController.getInstance();
-        if (subCtrlr != null) {
-            long[] subId = subCtrlr.getSubIdUsingSlotId(slotId);
-            int subStatus = subCtrlr.getSubState(subId[0]);
-
-            if (newSubState != subStatus) {
-                subCtrlr.setSubState(subId[0], newSubState);
-            }
+        int subStatus = subCtrlr.getSubState(subId[0]);
+        if (newSubState != subStatus) {
+            subCtrlr.setSubState(subId[0], newSubState);
         }
+        broadcastSetUiccResult(slotId, newSubState, PhoneConstants.SUCCESS);
 
         mSubStatus[slotId] = newSubState;
         // After activating all subs, updated the user preferred sub values
@@ -260,6 +265,16 @@ class SubscriptionHelper extends Handler {
             subCtrlr.updateUserPrefs(sTriggerDds);
             sTriggerDds = false;
         }
+    }
+
+    private void broadcastSetUiccResult(int slotId, int newSubState, int result) {
+        long[] subId = SubscriptionController.getInstance().getSubIdUsingSlotId(slotId);
+        Intent intent = new Intent(TelephonyIntents.ACTION_SUBSCRIPTION_SET_UICC_RESULT);
+        intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
+        SubscriptionManager.putPhoneIdAndSubIdExtra(intent, slotId, subId[0]);
+        intent.putExtra(TelephonyIntents.EXTRA_RESULT, result);
+        intent.putExtra(TelephonyIntents.EXTRA_NEW_SUB_STATE, newSubState);
+        mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
     private boolean isAllSubsAvailable() {
