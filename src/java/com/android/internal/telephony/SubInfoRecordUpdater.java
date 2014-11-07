@@ -24,20 +24,20 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
+import android.os.SystemProperties;
 import android.os.UserHandle;
+import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubInfoRecord;
 import android.telephony.TelephonyManager;
-import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.IccCardConstants;
-import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.PhoneProxy;
-import com.android.internal.telephony.TelephonyIntents;
+import android.util.Log;
+
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccUtils;
@@ -81,6 +81,9 @@ public class SubInfoRecordUpdater extends Handler {
     public static final int STATUS_SIM2_INSERTED = 0x02;
     public static final int STATUS_SIM3_INSERTED = 0x04;
     public static final int STATUS_SIM4_INSERTED = 0x08;
+
+    // Key used to read/write the current IMSI. Updated on SIM_STATE_CHANGED - LOADED.
+    public static final String CURR_IMSI = "curr_imsi";
 
     private static Phone[] sPhone;
     private static Context sContext = null;
@@ -174,6 +177,31 @@ public class SubInfoRecordUpdater extends Handler {
                                     sContext.getString(com.android.internal.R.string.unknownName));
                             contentResolver.update(SubscriptionManager.CONTENT_URI, name,
                                     SubscriptionManager._ID + "=" + Long.toString(subId), null);
+                        }
+
+                        /* Update preferred network type and network selection mode on IMSI change.
+                         * Storing last IMSI in SharedPreference for now. Can consider making it
+                         * part of subscription info db */
+                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
+                        String storedImsi = sp.getString(CURR_IMSI + slotId, "");
+                        String newImsi = sPhone[slotId].getSubscriberId();
+
+                        if (!storedImsi.equals(newImsi)) {
+                            int networkType = SystemProperties.getInt("ro.telephony.default_network",
+                                    RILConstants.PREFERRED_NETWORK_MODE);
+
+                            // Set the modem network mode
+                            sPhone[slotId].setPreferredNetworkType(networkType, null);
+                            Settings.Global.putInt(sPhone[slotId].getContext().getContentResolver(),
+                                    Settings.Global.PREFERRED_NETWORK_MODE, networkType);
+
+                            // Only support automatic selection mode on IMSI change
+                            sPhone[slotId].setNetworkSelectionModeAutomatic(null);
+
+                            // Update stored IMSI
+                            SharedPreferences.Editor editor = sp.edit();
+                            editor.putString(CURR_IMSI + slotId, newImsi);
+                            editor.apply();
                         }
                     } else {
                         logd("[Receiver] Invalid subId, could not update ContentResolver");
