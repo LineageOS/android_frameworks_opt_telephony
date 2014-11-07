@@ -66,7 +66,10 @@ public final class SmsManager {
     private static final SmsManager sInstance = new SmsManager(DEFAULT_SUB_ID);
     private static final Object sLockObject = new Object();
     private static final Map<Integer, SmsManager> sSubInstances = new ArrayMap<Integer, SmsManager>();
-
+    /** @hide */
+    public static final int CELL_BROADCAST_RAN_TYPE_GSM = 0;
+    /** @hide */
+    public static final int CELL_BROADCAST_RAN_TYPE_CDMA = 1;
     /** A concrete subId, or the pseudo DEFAULT_SUB_ID */
     private int mSubId;
 
@@ -868,8 +871,9 @@ public final class SmsManager {
 
     /**
      * Enable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier. Note that if two different clients enable the same
-     * message identifier, they must both disable it for the device to stop
+     * message identifier and RAN type. The RAN type specify this message ID
+     * belong to 3GPP (GSM) or 3GPP2(CDMA).Note that if two different clients
+     * enable the same message identifier, they must both disable it for the device to stop
      * receiving those messages. All received messages will be broadcast in an
      * intent with the action "android.provider.Telephony.SMS_CB_RECEIVED".
      * Note: This call is blocking, callers may want to avoid calling it from
@@ -877,18 +881,22 @@ public final class SmsManager {
      *
      * @param messageIdentifier Message identifier as specified in TS 23.041 (3GPP)
      * or C.R1001-G (3GPP2)
+     * @param ranType as defined in class SmsManager, the value can be one of these:
+     *    android.telephony.SmsMessage.CELL_BROADCAST_RAN_TYPE_GSM
+     *    android.telephony.SmsMessage.CELL_BROADCAST_RAN_TYPE_CDMA
      * @return true if successful, false otherwise
-     * @see #disableCellBroadcast(int)
+     * @see #disableCellBroadcast(int, int)
      *
      * {@hide}
      */
-    public boolean enableCellBroadcast(int messageIdentifier) {
+    public boolean enableCellBroadcast(int messageIdentifier, int ranType) {
         boolean success = false;
 
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.enableCellBroadcastForSubscriber(getSubId(), messageIdentifier);
+                success = iccISms.enableCellBroadcastForSubscriber(getSubId(), messageIdentifier,
+                        ranType);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -899,27 +907,32 @@ public final class SmsManager {
 
     /**
      * Disable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier. Note that if two different clients enable the same
-     * message identifier, they must both disable it for the device to stop
-     * receiving those messages.
+     * message identifier and RAN type. The RAN type specify this message ID
+     * belong to 3GPP (GSM) or 3GPP2(CDMA). Note that if two different clients
+     * enable the same message identifier, they must both disable it for the
+     * device to stop receiving those messages.
      * Note: This call is blocking, callers may want to avoid calling it from
      * the main thread of an application.
      *
      * @param messageIdentifier Message identifier as specified in TS 23.041 (3GPP)
      * or C.R1001-G (3GPP2)
+     * @param ranType as defined in class SmsManager, the value can be one of these:
+     *    android.telephony.SmsMessage.CELL_BROADCAST_RAN_TYPE_GSM
+     *    android.telephony.SmsMessage.CELL_BROADCAST_RAN_TYPE_CDMA
      * @return true if successful, false otherwise
      *
-     * @see #enableCellBroadcast(int)
+     * @see #enableCellBroadcast(int, int)
      *
      * {@hide}
      */
-    public boolean disableCellBroadcast(int messageIdentifier) {
+    public boolean disableCellBroadcast(int messageIdentifier, int ranType) {
         boolean success = false;
 
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.disableCellBroadcastForSubscriber(getSubId(), messageIdentifier);
+                success = iccISms.disableCellBroadcastForSubscriber(getSubId(), messageIdentifier,
+                        ranType);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -930,8 +943,9 @@ public final class SmsManager {
 
     /**
      * Enable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier range. Note that if two different clients enable the same
-     * message identifier, they must both disable it for the device to stop
+     * message identifier range and RAN type. The RAN type specify this message ID
+     * belong to 3GPP (GSM) or 3GPP2(CDMA). Note that if two different clients enable
+     * the same message identifier, they must both disable it for the device to stop
      * receiving those messages. All received messages will be broadcast in an
      * intent with the action "android.provider.Telephony.SMS_CB_RECEIVED".
      * Note: This call is blocking, callers may want to avoid calling it from
@@ -941,13 +955,16 @@ public final class SmsManager {
      * or C.R1001-G (3GPP2)
      * @param endMessageId last message identifier as specified in TS 23.041 (3GPP)
      * or C.R1001-G (3GPP2)
+     * @param ranType as defined in class SmsManager, the value can be one of these:
+     *    android.telephony.SmsMessage.CELL_BROADCAST_RAN_TYPE_GSM
+     *    android.telephony.SmsMessage.CELL_BROADCAST_RAN_TYPE_CDMA
      * @return true if successful, false otherwise
-     * @see #disableCellBroadcastRange(int, int)
+     * @see #disableCellBroadcastRange(int, int, int)
      *
      * @throws IllegalArgumentException if endMessageId < startMessageId
      * {@hide}
      */
-    public boolean enableCellBroadcastRange(int startMessageId, int endMessageId) {
+    public boolean enableCellBroadcastRange(int startMessageId, int endMessageId, int ranType) {
         boolean success = false;
 
         if (endMessageId < startMessageId) {
@@ -957,7 +974,7 @@ public final class SmsManager {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
                 success = iccISms.enableCellBroadcastRangeForSubscriber(getSubId(),
-                        startMessageId, endMessageId);
+                        startMessageId, endMessageId, ranType);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -968,9 +985,10 @@ public final class SmsManager {
 
     /**
      * Disable reception of cell broadcast (SMS-CB) messages with the given
-     * message identifier range. Note that if two different clients enable the same
-     * message identifier, they must both disable it for the device to stop
-     * receiving those messages.
+     * message identifier range and RAN type. The RAN type specify this message
+     * ID range belong to 3GPP (GSM) or 3GPP2(CDMA). Note that if two different
+     * clients enable the same message identifier, they must both disable it for
+     * the device to stop receiving those messages.
      * Note: This call is blocking, callers may want to avoid calling it from
      * the main thread of an application.
      *
@@ -978,14 +996,17 @@ public final class SmsManager {
      * or C.R1001-G (3GPP2)
      * @param endMessageId last message identifier as specified in TS 23.041 (3GPP)
      * or C.R1001-G (3GPP2)
+     * @param ranType as defined in class SmsManager, the value can be one of these:
+     *    android.telephony.SmsMessage.CELL_BROADCAST_RAN_TYPE_GSM
+     *    android.telephony.SmsMessage.CELL_BROADCAST_RAN_TYPE_CDMA
      * @return true if successful, false otherwise
      *
-     * @see #enableCellBroadcastRange(int, int)
+     * @see #enableCellBroadcastRange(int, int, int)
      *
      * @throws IllegalArgumentException if endMessageId < startMessageId
      * {@hide}
      */
-    public boolean disableCellBroadcastRange(int startMessageId, int endMessageId) {
+    public boolean disableCellBroadcastRange(int startMessageId, int endMessageId, int ranType) {
         boolean success = false;
 
         if (endMessageId < startMessageId) {
@@ -995,7 +1016,7 @@ public final class SmsManager {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
                 success = iccISms.disableCellBroadcastRangeForSubscriber(getSubId(),
-                        startMessageId, endMessageId);
+                        startMessageId, endMessageId, ranType);
             }
         } catch (RemoteException ex) {
             // ignore it

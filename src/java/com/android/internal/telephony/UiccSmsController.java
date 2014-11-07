@@ -209,26 +209,29 @@ public class UiccSmsController extends ISms.Stub {
         }
     }
 
-    public boolean enableCellBroadcast(int messageIdentifier) throws android.os.RemoteException {
-        return enableCellBroadcastForSubscriber(getDefaultSmsSubId(), messageIdentifier);
-    }
-
-    public boolean enableCellBroadcastForSubscriber(int subId, int messageIdentifier)
-                throws android.os.RemoteException {
-        return enableCellBroadcastRangeForSubscriber(subId, messageIdentifier, messageIdentifier);
-    }
-
-    public boolean enableCellBroadcastRange(int startMessageId, int endMessageId)
+    public boolean enableCellBroadcast(int messageIdentifier, int ranType)
             throws android.os.RemoteException {
-        return enableCellBroadcastRangeForSubscriber(getDefaultSmsSubId(), startMessageId,
-                endMessageId);
+        return enableCellBroadcastForSubscriber(getPreferredSmsSubscription(), messageIdentifier,
+                ranType);
+    }
+
+    public boolean enableCellBroadcastForSubscriber(int subId, int messageIdentifier, int ranType)
+                throws android.os.RemoteException {
+        return enableCellBroadcastRangeForSubscriber(subId, messageIdentifier, messageIdentifier,
+                ranType);
+    }
+
+    public boolean enableCellBroadcastRange(int startMessageId, int endMessageId, int ranType)
+            throws android.os.RemoteException {
+        return enableCellBroadcastRangeForSubscriber(getPreferredSmsSubscription(), startMessageId,
+                endMessageId, ranType);
     }
 
     public boolean enableCellBroadcastRangeForSubscriber(int subId, int startMessageId,
-            int endMessageId) throws android.os.RemoteException {
+            int endMessageId, int ranType) throws android.os.RemoteException {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null ) {
-            return iccSmsIntMgr.enableCellBroadcastRange(startMessageId, endMessageId);
+            return iccSmsIntMgr.enableCellBroadcastRange(startMessageId, endMessageId, ranType);
         } else {
             Rlog.e(LOG_TAG,"enableCellBroadcast iccSmsIntMgr is null for" +
                           " Subscription: " + subId);
@@ -236,26 +239,29 @@ public class UiccSmsController extends ISms.Stub {
         return false;
     }
 
-    public boolean disableCellBroadcast(int messageIdentifier) throws android.os.RemoteException {
-        return disableCellBroadcastForSubscriber(getDefaultSmsSubId(), messageIdentifier);
-    }
-
-    public boolean disableCellBroadcastForSubscriber(int subId, int messageIdentifier)
-                throws android.os.RemoteException {
-        return disableCellBroadcastRangeForSubscriber(subId, messageIdentifier, messageIdentifier);
-    }
-
-    public boolean disableCellBroadcastRange(int startMessageId, int endMessageId)
+    public boolean disableCellBroadcast(int messageIdentifier, int ranType)
             throws android.os.RemoteException {
-        return disableCellBroadcastRangeForSubscriber(getDefaultSmsSubId(), startMessageId,
-                endMessageId);
+        return disableCellBroadcastForSubscriber(getPreferredSmsSubscription(), messageIdentifier,
+                ranType);
+    }
+
+    public boolean disableCellBroadcastForSubscriber(int subId, int messageIdentifier, int ranType)
+                throws android.os.RemoteException {
+        return disableCellBroadcastRangeForSubscriber(subId, messageIdentifier, messageIdentifier,
+                ranType);
+    }
+
+    public boolean disableCellBroadcastRange(int startMessageId, int endMessageId, int ranType)
+            throws android.os.RemoteException {
+        return disableCellBroadcastRangeForSubscriber(getPreferredSmsSubscription(), startMessageId,
+                endMessageId, ranType);
     }
 
     public boolean disableCellBroadcastRangeForSubscriber(int subId, int startMessageId,
-            int endMessageId) throws android.os.RemoteException {
+            int endMessageId, int ranType) throws android.os.RemoteException {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null ) {
-            return iccSmsIntMgr.disableCellBroadcastRange(startMessageId, endMessageId);
+            return iccSmsIntMgr.disableCellBroadcastRange(startMessageId, endMessageId, ranType);
         } else {
             Rlog.e(LOG_TAG,"disableCellBroadcast iccSmsIntMgr is null for" +
                           " Subscription:"+subId);
