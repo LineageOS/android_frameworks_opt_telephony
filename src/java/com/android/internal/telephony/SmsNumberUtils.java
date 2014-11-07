@@ -23,6 +23,8 @@ import java.util.List;
 
 import android.content.Context;
 import android.os.SystemProperties;
+import android.os.Build;
+import android.text.TextUtils;
 import android.content.ContentResolver;
 import android.database.Cursor;
 import android.database.SQLException;
@@ -41,7 +43,7 @@ import com.android.internal.telephony.HbpcdLookup.MccLookup;
  */
 public class SmsNumberUtils {
     private static final String TAG = "SmsNumberUtils";
-    private static final boolean DBG = false;
+    private static final boolean DBG = Build.IS_DEBUGGABLE;
 
     private static final String PLUS_SIGN = "+";
 
@@ -528,7 +530,7 @@ public class SmsNumberUtils {
     /**
      *  Filter the destination number if using VZW sim card.
      */
-    public static String filterDestAddr(Context context, String destAddr) {
+    public static String filterDestAddr(PhoneBase phoneBase, String destAddr) {
         if (DBG) Rlog.d(TAG, "enter filterDestAddr. destAddr=\"" + destAddr + "\"" );
 
         if (destAddr == null || !PhoneNumberUtils.isGlobalPhoneNumber(destAddr)) {
@@ -539,12 +541,12 @@ public class SmsNumberUtils {
         final String networkOperator = TelephonyManager.getDefault().getNetworkOperator();
         String result = null;
 
-        if (isVZWSimCard()) {
-            final int networkType = getNetworkType(networkOperator);
+        if (needToConvert(phoneBase)) {
+            final int networkType = getNetworkType(phoneBase);
             if (networkType != -1) {
                 String networkMcc = networkOperator.substring(0, 3);
                 if (networkMcc != null && networkMcc.trim().length() > 0) {
-                    result = formatNumber(context, destAddr, networkMcc, networkType);
+                    result = formatNumber(phoneBase.getContext(), destAddr, networkMcc, networkType);
                 }
             }
         }
@@ -556,17 +558,17 @@ public class SmsNumberUtils {
     /**
      * Returns the current network type
      */
-    private static int getNetworkType(String networkOperator) {
+    private static int getNetworkType(PhoneBase phoneBase) {
         int networkType = -1;
         int phoneType = TelephonyManager.getDefault().getPhoneType();
 
         if (phoneType == TelephonyManager.PHONE_TYPE_GSM) {
             networkType = GSM_UMTS_NETWORK;
         } else if (phoneType == TelephonyManager.PHONE_TYPE_CDMA) {
-            if (isVZWNetwork(networkOperator)) {
-                networkType = CDMA_HOME_NETWORK;
-            } else {
+            if (isInternationalRoaming(phoneBase)) {
                 networkType = CDMA_ROAMING_NETWORK;
+            } else {
+                networkType = CDMA_HOME_NETWORK;
             }
         } else {
             if (DBG) Rlog.w(TAG, "warning! unknown mPhoneType value=" + phoneType);
@@ -575,24 +577,66 @@ public class SmsNumberUtils {
         return networkType;
     }
 
-    /**
-     * VZW Network Operator List.
-     * Refers to the wiki link : http://en.wikipedia.org/wiki/Mobile_Network_Code
-     */
-    private final static List<String> sVZWNetworkOperatorList = Arrays.asList("310004", "310005",
-            "310012", "311480");
-
-    private final static List<String> sVZWSimcardOperatorList = Arrays.asList("20404", "310004",
-            "311480");
-
-    private static boolean isVZWSimCard() {
-        String simOperator =
-                SystemProperties.get(TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC);
-        return sVZWSimcardOperatorList.contains(simOperator);
+    private static boolean isInternationalRoaming(PhoneBase phoneBase) {
+        String operatorIsoCountry = phoneBase.getSystemProperty(
+                TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
+        String simIsoCountry = phoneBase.getSystemProperty(
+                TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY, "");
+        boolean internationalRoaming = !TextUtils.isEmpty(operatorIsoCountry)
+                && !TextUtils.isEmpty(simIsoCountry)
+                && !simIsoCountry.equals(operatorIsoCountry);
+        if (internationalRoaming) {
+            if ("us".equals(simIsoCountry)) {
+                internationalRoaming = !"vi".equals(operatorIsoCountry);
+            } else if ("vi".equals(simIsoCountry)) {
+                internationalRoaming = !"us".equals(operatorIsoCountry);
+            }
+        }
+        return internationalRoaming;
     }
 
-    private static boolean isVZWNetwork(String networkOperator) {
-        return sVZWNetworkOperatorList.contains(networkOperator);
+    private static boolean needToConvert(PhoneBase phoneBase) {
+        boolean bNeedToConvert  = false;
+        String[] listArray = phoneBase.getContext().getResources()
+                .getStringArray(com.android.internal.R.array
+                .config_sms_convert_destination_number_support);
+        if (listArray != null && listArray.length > 0) {
+            for (int i=0; i<listArray.length; i++) {
+                if (!TextUtils.isEmpty(listArray[i])) {
+                    String[] needToConvertArray = listArray[i].split(";");
+                    if (needToConvertArray != null && needToConvertArray.length > 0) {
+                        if (needToConvertArray.length == 1) {
+                            bNeedToConvert = "true".equalsIgnoreCase(needToConvertArray[0]);
+                        } else if (needToConvertArray.length == 2 &&
+                                !TextUtils.isEmpty(needToConvertArray[1]) &&
+                                compareGid1(phoneBase, needToConvertArray[1])) {
+                            bNeedToConvert = "true".equalsIgnoreCase(needToConvertArray[0]);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return bNeedToConvert;
     }
 
+    private static boolean compareGid1(PhoneBase phoneBase, String serviceGid1) {
+        String gid1 = phoneBase.getGroupIdLevel1();
+        boolean ret = true;
+
+        if (TextUtils.isEmpty(serviceGid1)) {
+            if (DBG) Rlog.d(TAG, "compareGid1 serviceGid is empty, return " + ret);
+            return ret;
+        }
+
+        int gid_length = serviceGid1.length();
+        // Check if gid1 match service GID1
+        if (!((gid1 != null) && (gid1.length() >= gid_length) &&
+                gid1.substring(0, gid_length).equalsIgnoreCase(serviceGid1))) {
+            if (DBG) Rlog.d(TAG, " gid1 " + gid1 + " serviceGid1 " + serviceGid1);
+            ret = false;
+        }
+        if (DBG) Rlog.d(TAG, "compareGid1 is " + (ret?"Same":"Different"));
+        return ret;
+    }
 }
