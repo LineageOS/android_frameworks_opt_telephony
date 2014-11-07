@@ -47,6 +47,11 @@ import com.android.internal.telephony.uicc.SpnOverride;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+import android.provider.Telephony;
+import android.content.ContentUris;
+import android.net.Uri;
+import android.database.Cursor;
+import android.text.TextUtils;
 
 import java.util.List;
 
@@ -162,24 +167,27 @@ public class SubInfoRecordUpdater extends Handler {
                                 SubscriptionManager.getSubInfoUsingSubId(sContext, subId);
 
                         if (subInfo != null
-                                && subInfo.getNameSource() != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
-                            SpnOverride mSpnOverride = new SpnOverride();
+                                && subInfo.getNameSource() !=
+                                SubscriptionManager.NAME_SOURCE_USER_INPUT) {
                             String nameToSet;
                             String CarrierName =
                                     TelephonyManager.getDefault().getSimOperator(subId);
                             logd("CarrierName = " + CarrierName);
+                            String simCarrierName =
+                                    TelephonyManager.getDefault().getSimOperatorName(subId);
 
-                            if (mSpnOverride.containsCarrier(CarrierName)) {
-                                nameToSet = mSpnOverride.getSpn(CarrierName) + " 0"
-                                        + Integer.toString(slotId + 1);
-                                logd("Found, name = " + nameToSet);
+                            if (!TextUtils.isEmpty(simCarrierName)) {
+                                nameToSet = simCarrierName;
                             } else {
-                                nameToSet = "SUB 0" + Integer.toString(slotId + 1);
-                                logd("Not found, name = " + nameToSet);
+                                nameToSet = "CARD " + Integer.toString(slotId + 1);
                             }
+                            logd("sim name = " + nameToSet + " carrier name = " + simCarrierName);
 
                             ContentValues name = new ContentValues(1);
                             name.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
+                            name.put(SubscriptionManager.CARRIER_NAME,
+                                    !TextUtils.isEmpty(simCarrierName) ? simCarrierName :
+                                    sContext.getString(com.android.internal.R.string.unknownName));
                             contentResolver.update(SubscriptionManager.CONTENT_URI, name,
                                     SubscriptionManager._ID + "=" + Long.toString(subId), null);
                         }
