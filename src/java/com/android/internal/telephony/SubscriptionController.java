@@ -172,6 +172,11 @@ public class SubscriptionController extends ISub.Stub {
     private DdsScheduler mScheduler;
     private DdsSchedulerAc mSchedulerAc;
 
+    // Dummy subId is used when no SIMs present on device
+    // with MSIM configuration and this is corresponds
+    // to phoneId 0.
+    private static final int DUMMY_SUB_ID = -1;
+
     public static SubscriptionController init(Phone phone) {
         synchronized (SubscriptionController.class) {
             if (sInstance == null) {
@@ -1625,6 +1630,12 @@ public class SubscriptionController extends ISub.Stub {
             logd("updateUserPrefs: subscription are not avaiable dds = " + getDefaultDataSubId()
                      + " voice = " + getDefaultVoiceSubId() + " sms = " + getDefaultSmsSubId() +
                      " setDDs = " + setDds);
+            // If no SIM cards present on device, set dummy subId
+            // as data/sms/voice preferred subId.
+            setDefaultSubId(DUMMY_SUB_ID);
+            setDefaultVoiceSubId(DUMMY_SUB_ID);
+            setDefaultSmsSubId(DUMMY_SUB_ID);
+            setDataSubId(DUMMY_SUB_ID);
             return;
         }
 
@@ -1647,6 +1658,10 @@ public class SubscriptionController extends ISub.Stub {
 
         //if there are no activated subs available, no need to update. EXIT.
         if (mNextActivatedSub == null) return;
+
+        if (getSubState(getDefaultSubId()) == SubscriptionManager.INACTIVE) {
+            setDefaultSubId(mNextActivatedSub.subId);
+        }
 
         long ddsSubId = getDefaultDataSubId();
         int ddsSubState = getSubState(ddsSubId);
