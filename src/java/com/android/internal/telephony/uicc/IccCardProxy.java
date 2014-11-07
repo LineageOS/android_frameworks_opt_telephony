@@ -19,8 +19,10 @@ package com.android.internal.telephony.uicc;
 import static android.Manifest.permission.READ_PHONE_STATE;
 
 import android.app.ActivityManagerNative;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -128,6 +130,19 @@ public class IccCardProxy extends Handler implements IccCard {
     private boolean mIsCardStatusAvailable = false;
     private PersoSubState mPersoSubState = PersoSubState.PERSOSUBSTATE_UNKNOWN;
 
+    // Sim State events may be broadcasted before the siminfo table update has been
+    // completed. Due to this such events may be broadcasted with dummy subId for a
+    // particular slotId. Therefore, setExternalState once the siminfo table has been updated.
+    // For example, if the UI receives the sim state broadcast with the state as pin locked
+    // with dummy subId, the pin lock screen will not be displayed.
+    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED.equals(intent.getAction())) {
+                    setExternalState(mExternalState, true);
+                }
+            }};
+
     public IccCardProxy(Context context, CommandsInterface ci) {
         log("Creating");
         mContext = context;
@@ -138,6 +153,9 @@ public class IccCardProxy extends Handler implements IccCard {
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         ci.registerForOn(this,EVENT_RADIO_ON, null);
         ci.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_UNAVAILABLE, null);
+        IntentFilter filter =
+                new IntentFilter(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED);
+        mContext.registerReceiver(mReceiver, filter);
         setExternalState(State.NOT_READY);
     }
 
@@ -153,6 +171,7 @@ public class IccCardProxy extends Handler implements IccCard {
     public void dispose() {
         synchronized (mLock) {
             log("Disposing");
+            mContext.unregisterReceiver(mReceiver);
             //Cleanup icc references
             mUiccController.unregisterForIccChanged(this);
             mUiccController = null;
