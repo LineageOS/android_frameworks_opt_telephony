@@ -47,7 +47,7 @@ public abstract class Connection {
         public void onVideoProviderChanged(
                 android.telecom.Connection.VideoProvider videoProvider);
         public void onAudioQualityChanged(int audioQuality);
-        public void onConferenceParticipantChanged(ConferenceParticipant participant);
+        public void onConferenceParticipantsChanged(List<ConferenceParticipant> participants);
     }
 
     /**
@@ -66,7 +66,7 @@ public abstract class Connection {
         @Override
         public void onAudioQualityChanged(int audioQuality) {}
         @Override
-        public void onConferenceParticipantChanged(ConferenceParticipant participant) {}
+        public void onConferenceParticipantsChanged(List<ConferenceParticipant> participants) {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -548,13 +548,13 @@ public abstract class Connection {
     }
 
     /**
-     * Notifies listeners of a change to a conference participant.
+     * Notifies listeners of a change to conference participant(s).
      *
-     * @param conferenceParticipant The participant.
+     * @param conferenceParticipants The participant(s).
      */
-    public void updateConferenceParticipant(ConferenceParticipant conferenceParticipant) {
+    public void updateConferenceParticipants(List<ConferenceParticipant> conferenceParticipants) {
         for (Listener l : mListeners) {
-            l.onConferenceParticipantChanged(conferenceParticipant);
+            l.onConferenceParticipantsChanged(conferenceParticipants);
         }
     }
 
