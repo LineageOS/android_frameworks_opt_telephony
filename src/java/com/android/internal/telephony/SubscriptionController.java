@@ -29,6 +29,7 @@ import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.os.Messenger;
 import android.telephony.Rlog;
+import android.text.TextUtils;
 import android.util.Log;
 import android.net.ConnectivityManager;
 import android.net.Uri;
@@ -298,6 +299,8 @@ public class SubscriptionController extends ISub.Stub {
                     SubscriptionManager.SIM_ID));
             String displayName = cursor.getString(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.DISPLAY_NAME));
+            String carrierName = cursor.getString(cursor.getColumnIndexOrThrow(
+                    SubscriptionManager.CARRIER_NAME));
             int nameSource = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.NAME_SOURCE));
             int color = cursor.getInt(cursor.getColumnIndexOrThrow(
@@ -326,8 +329,8 @@ public class SubscriptionController extends ISub.Stub {
                     + " displayName:" + displayName + " color:" + color + " mcc:" + mcc
                     + " mnc:" + mnc + " status:" + status + " nwMode:" + nwMode);
 
-            return new SubInfoRecord(id, iccId, simSlotIndex, displayName, nameSource, color,
-                    number, dataRoaming, simIconRes, mcc, mnc, status, nwMode);
+            return new SubInfoRecord(id, iccId, simSlotIndex, displayName, carrierName,
+                    nameSource, color, number, dataRoaming, simIconRes, mcc, mnc, status, nwMode);
     }
 
     /**
@@ -378,7 +381,6 @@ public class SubscriptionController extends ISub.Stub {
     private int getUnusedColor() {
         List<SubInfoRecord> availableSubInfos = SubscriptionManager.getActiveSubInfoList();
         colorArr = mContext.getResources().getIntArray(com.android.internal.R.array.sim_colors);
-
         for (int i = 0; i < colorArr.length; i++) {
             int j;
             for (j = 0; j < availableSubInfos.size(); j++) {
@@ -600,18 +602,18 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         String nameToSet;
-        SpnOverride mSpnOverride = new SpnOverride();
-
         String CarrierName = TelephonyManager.getDefault().getSimOperator(subIds[0]);
-        logd("[addSubInfoRecord] CarrierName = " + CarrierName);
+        logdl("[addSubInfoRecord] CarrierName = " + CarrierName);
+        String simCarrierName =
+                TelephonyManager.getDefault().getSimOperatorName(subIds[0]);
 
-        if (mSpnOverride.containsCarrier(CarrierName)) {
-            nameToSet = mSpnOverride.getSpn(CarrierName) + " 0" + Integer.toString(slotId + 1);
-            logdl("[addSubInfoRecord] SpnOverride set name=" + nameToSet);
+        if (!TextUtils.isEmpty(simCarrierName)) {
+            nameToSet = simCarrierName;
         } else {
-            nameToSet = "";
-            logdl("[addSubInfoRecord] no SpnOverride");
+            nameToSet = "CARD " + Integer.toString(slotId + 1);
         }
+        logdl("[addSubInfoRecord] sim name = " + nameToSet);
+        logdl("[addSubInfoRecord] carrier name = " + simCarrierName);
 
         ContentResolver resolver = mContext.getContentResolver();
         Cursor cursor = resolver.query(SubscriptionManager.CONTENT_URI,
@@ -629,6 +631,9 @@ public class SubscriptionController extends ISub.Stub {
                 value.put(SubscriptionManager.COLOR, color);
                 value.put(SubscriptionManager.SIM_ID, slotId);
                 value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
+                value.put(SubscriptionManager.CARRIER_NAME,
+                        !TextUtils.isEmpty(simCarrierName) ? simCarrierName :
+                        mContext.getString(com.android.internal.R.string.unknownName));
                 Uri uri = resolver.insert(SubscriptionManager.CONTENT_URI, value);
                 logd("[addSubInfoRecord]- New record created: " + uri);
             } else {
@@ -643,6 +648,10 @@ public class SubscriptionController extends ISub.Stub {
 
                 if (nameSource != SubscriptionManager.USER_INPUT) {
                     value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
+                }
+
+                if (!TextUtils.isEmpty(simCarrierName)) {
+                    value.put(SubscriptionManager.CARRIER_NAME, simCarrierName);
                 }
 
                 if (value.size() > 0) {
