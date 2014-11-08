@@ -16,38 +16,36 @@
 
 package com.android.internal.telephony;
 
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.ServiceManager;
 import android.os.UserHandle;
-import android.telephony.Rlog;
-import android.text.TextUtils;
-import android.util.Log;
-import android.net.Uri;
-import android.database.Cursor;
-import android.content.Intent;
 import android.provider.BaseColumns;
 import android.provider.Settings;
-import android.content.ContentResolver;
-import android.content.ContentValues;
-
-import com.android.internal.telephony.ISub;
-import com.android.internal.telephony.uicc.SpnOverride;
-
-import android.telephony.SubscriptionManager;
+import android.telephony.Rlog;
 import android.telephony.SubInfoRecord;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.text.format.Time;
+import android.util.Log;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -120,12 +118,6 @@ public class SubscriptionController extends ISub.Stub {
     protected static PhoneProxy[] sProxyPhones;
     protected Context mContext;
     protected CallManager mCM;
-
-    private static final int RES_TYPE_BACKGROUND_DARK = 0;
-    private static final int RES_TYPE_BACKGROUND_LIGHT = 1;
-
-    private static final int[] sSimBackgroundDarkRes = setSimResource(RES_TYPE_BACKGROUND_DARK);
-    private static final int[] sSimBackgroundLightRes = setSimResource(RES_TYPE_BACKGROUND_LIGHT);
 
     //FIXME this does not allow for multiple subs in a slot
     private static HashMap<Integer, Integer> mSimInfo = new HashMap<Integer, Integer>();
@@ -265,30 +257,27 @@ public class SubscriptionController extends ISub.Stub {
                     SubscriptionManager.CARRIER_NAME));
             int nameSource = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.NAME_SOURCE));
-            int color = cursor.getInt(cursor.getColumnIndexOrThrow(
+            int iconTint = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.COLOR));
             String number = cursor.getString(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.NUMBER));
             int dataRoaming = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.DATA_ROAMING));
-
-            int[] simIconRes = new int[2];
-            int size = sSimBackgroundDarkRes.length;
-            if (color >= 0 && color < size) {
-                simIconRes[RES_TYPE_BACKGROUND_DARK] = sSimBackgroundDarkRes[color];
-                simIconRes[RES_TYPE_BACKGROUND_LIGHT] = sSimBackgroundLightRes[color];
-            }
+            // Get the blank bitmap for this SubInfoRecord
+            Bitmap iconBitmap = BitmapFactory.decodeResource(mContext.getResources(),
+                    com.android.internal.R.drawable.sim_dark_blue);
             int mcc = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.MCC));
             int mnc = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.MNC));
 
             logd("[getSubInfoRecord] id:" + id + " iccid:" + iccId + " simSlotIndex:" + simSlotIndex
-                    + " displayName:" + displayName + " color:" + color + " mcc:" + mcc
-                    + " mnc:" + mnc);
+                    + " displayName:" + displayName + " nameSource:" + nameSource
+                    + " iconTint:" + iconTint + " number:" + number + " dataRoaming:" + dataRoaming
+                    + " mcc:" + mcc + " mnc:" + mnc);
 
-            return new SubInfoRecord(id, iccId, simSlotIndex, displayName, carrierName,
-                    nameSource, color, number, dataRoaming, simIconRes, mcc, mnc);
+            return new SubInfoRecord(id, iccId, simSlotIndex, displayName, carrierName, nameSource,
+                    iconTint, number, dataRoaming, iconBitmap, mcc, mnc);
     }
 
     /**
@@ -341,7 +330,7 @@ public class SubscriptionController extends ISub.Stub {
         for (int i = 0; i < colorArr.length; i++) {
             int j;
             for (j = 0; j < availableSubInfos.size(); j++) {
-                if (colorArr[i] == availableSubInfos.get(j).getColor()) {
+                if (colorArr[i] == availableSubInfos.get(j).getIconTint()) {
                     break;
                 }
             }
@@ -675,26 +664,25 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
-     * Set SIM color by simInfo index
-     * @param color the color of the SIM
+     * Set SIM color tint by simInfo index
+     * @param tint the tint color of the SIM
      * @param subId the unique SubInfoRecord index in database
      * @return the number of records updated
      */
     @Override
-    public int setColor(int color, int subId) {
-        logd("[setColor]+ color:" + color + " subId:" + subId);
+    public int setIconTint(int tint, int subId) {
+        logd("[setIconTint]+ tint:" + tint + " subId:" + subId);
         enforceSubscriptionPermission();
 
         validateSubId(subId);
-        int size = sSimBackgroundDarkRes.length;
         ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.COLOR, color);
-        logd("[setColor]- color:" + color + " set");
+        value.put(SubscriptionManager.COLOR, tint);
+        logd("[setIconTint]- tint:" + tint + " set");
 
         int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                 BaseColumns._ID + "=" + Long.toString(subId), null);
         broadcastSimInfoContentChanged(subId, SubscriptionManager.COLOR,
-                color, SubscriptionManager.DEFAULT_STRING_VALUE);
+                tint, SubscriptionManager.DEFAULT_STRING_VALUE);
 
         return result;
     }
@@ -794,34 +782,6 @@ public class SubscriptionController extends ISub.Stub {
             broadcastSimInfoContentChanged(subId, SubscriptionManager.NUMBER,
                     SubscriptionManager.DEFAULT_INT_VALUE, number);
         }
-
-        return result;
-    }
-
-    /**
-     * Set number display format. 0: none, 1: the first four digits, 2: the last four digits
-     * @param format the display format of phone number
-     * @param subId the unique SubInfoRecord index in database
-     * @return the number of records updated
-     */
-    @Override
-    public int setDisplayNumberFormat(int format, int subId) {
-        logd("[setDisplayNumberFormat]+ format:" + format + " subId:" + subId);
-        enforceSubscriptionPermission();
-
-        validateSubId(subId);
-        if (format < 0) {
-            logd("[setDisplayNumberFormat]- fail, return -1");
-            return -1;
-        }
-        ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.DISPLAY_NUMBER_FORMAT, format);
-        logd("[setDisplayNumberFormat]- format:" + format + " set");
-
-        int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                BaseColumns._ID + "=" + Long.toString(subId), null);
-        broadcastSimInfoContentChanged(subId, SubscriptionManager.DISPLAY_NUMBER_FORMAT,
-                format, SubscriptionManager.DEFAULT_STRING_VALUE);
 
         return result;
     }
@@ -1043,31 +1003,6 @@ public class SubscriptionController extends ISub.Stub {
         mSimInfo.clear();
         logdl("[clearSubInfo]- clear size=" + size);
         return size;
-    }
-
-    private static int[] setSimResource(int type) {
-        int[] simResource = null;
-
-        switch (type) {
-            case RES_TYPE_BACKGROUND_DARK:
-                simResource = new int[] {
-                    com.android.internal.R.drawable.sim_dark_blue,
-                    com.android.internal.R.drawable.sim_dark_orange,
-                    com.android.internal.R.drawable.sim_dark_green,
-                    com.android.internal.R.drawable.sim_dark_purple
-                };
-                break;
-            case RES_TYPE_BACKGROUND_LIGHT:
-                simResource = new int[] {
-                    com.android.internal.R.drawable.sim_light_blue,
-                    com.android.internal.R.drawable.sim_light_orange,
-                    com.android.internal.R.drawable.sim_light_green,
-                    com.android.internal.R.drawable.sim_light_purple
-                };
-                break;
-        }
-
-        return simResource;
     }
 
     private void logvl(String msg) {
