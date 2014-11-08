@@ -417,6 +417,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public boolean hasMatchedTetherApnSetting() {
+        return mActivePhone.hasMatchedTetherApnSetting();
+    }
+
+    @Override
     public String getActiveApnHost(String apnType) {
         return mActivePhone.getActiveApnHost(apnType);
     }

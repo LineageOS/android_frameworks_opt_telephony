@@ -715,6 +715,12 @@ public abstract class DcTrackerBase extends Handler {
         return retDunSetting;
     }
 
+    public boolean hasMatchedTetherApnSetting() {
+        ApnSetting matched = fetchDunApn();
+        log("hasMatchedTetherApnSetting: APN=" + matched);
+        return matched != null;
+    }
+
     public String[] getActiveApnTypes() {
         String[] result;
         if (mActiveApn != null) {
