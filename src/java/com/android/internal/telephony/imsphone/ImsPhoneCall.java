@@ -154,10 +154,7 @@ public class ImsPhoneCall extends Call {
     /*package*/ void
     detach(ImsPhoneConnection conn) {
         mConnections.remove(conn);
-
-        if (mConnections.size() == 0) {
-            mState = State.IDLE;
-        }
+        clearDisconnected();
     }
 
     /**
