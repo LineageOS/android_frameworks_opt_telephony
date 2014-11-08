@@ -590,6 +590,10 @@ public final class DcTracker extends DcTrackerBase {
 
     @Override
     public boolean isApnSupported(String name) {
+        if (name == null) {
+            loge("isApnSupported: name=null");
+            return false;
+        }
         ApnContext apnContext = mApnContexts.get(name);
         if (apnContext == null) {
             loge("Request for unsupported mobile name: " + name);
