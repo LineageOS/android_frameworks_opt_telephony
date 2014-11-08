@@ -518,8 +518,7 @@ public class DctController extends Handler {
             // This generally happens when device power-up first time.
             logd(" setDefaultDataSubId,  reqSubId = " + reqSubId + " currentDdsPhoneId  "
                     + currentDdsPhoneId);
-            Settings.Global.putLong(mContext.getContentResolver(),
-                    Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, reqSubId);
+            mSubController.setDataSubId(reqSubId);
             defaultDds = reqSubId;
             currentDdsPhoneId = mSubController.getPhoneId(defaultDds);
         }
@@ -689,7 +688,7 @@ public class DctController extends Handler {
                     Rlog.d(LOG_TAG, "EVENT_SET_DATA_ALLOWED_DONE  phoneId :" + subId[0]
                             + ", switchInfo = " + s);
 
-                    if(ar.exception != null) {
+                    if (ar.exception != null) {
                         Rlog.d(LOG_TAG, "Failed, switchInfo = " + s
                                 + " attempt delayed retry");
                         s.incRetryCount();
@@ -710,7 +709,7 @@ public class DctController extends Handler {
                     if (s.mIsDefaultDataSwitchRequested) {
                         mNotifyDefaultDataSwitchInfo.notifyRegistrants(
                                 new AsyncResult(null, subId[0], errorEx));
-                    }else if (s.mIsOnDemandPsAttachRequested) {
+                    } else if (s.mIsOnDemandPsAttachRequested) {
                         mNotifyOnDemandPsAttach.notifyRegistrants(
                                 new AsyncResult(null, s.mNetworkRequest, errorEx));
                     } else {
