@@ -1678,6 +1678,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
+    public boolean hasMatchedTetherApnSetting() {
+        return mDcTracker.hasMatchedTetherApnSetting();
+    }
+
+    @Override
     public String getActiveApnHost(String apnType) {
         return mDcTracker.getActiveApnString(apnType);
     }
