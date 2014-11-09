@@ -424,6 +424,14 @@ public class CDMAPhone extends PhoneBase {
             Rlog.w(LOG_TAG, "IMS is disabled: forced to CS");
         }
 
+        if (DBG) {
+            Rlog.d(LOG_TAG, "imsUseEnabled=" + imsUseEnabled + ", imsPhone=" + imsPhone
+                    + ", imsPhone.isVolteEnabled()="
+                    + ((imsPhone != null) ? imsPhone.isVolteEnabled() : "N/A")
+                    + ", imsPhone.getServiceState().getState()="
+                    + ((imsPhone != null) ? imsPhone.getServiceState().getState() : "N/A"));
+        }
+
         if (imsUseEnabled && imsPhone != null && imsPhone.isVolteEnabled()
                 && ((imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
                 && !PhoneNumberUtils.isEmergencyNumber(dialString))

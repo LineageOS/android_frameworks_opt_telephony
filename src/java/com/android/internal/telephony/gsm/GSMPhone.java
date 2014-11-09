@@ -809,6 +809,14 @@ public class GSMPhone extends PhoneBase {
             Rlog.w(LOG_TAG, "IMS is disabled: forced to CS");
         }
 
+        if (LOCAL_DEBUG) {
+            Rlog.d(LOG_TAG, "imsUseEnabled=" + imsUseEnabled + ", imsPhone=" + imsPhone
+                    + ", imsPhone.isVolteEnabled()="
+                    + ((imsPhone != null) ? imsPhone.isVolteEnabled() : "N/A")
+                    + ", imsPhone.getServiceState().getState()="
+                    + ((imsPhone != null) ? imsPhone.getServiceState().getState() : "N/A"));
+        }
+
         if (imsUseEnabled && imsPhone != null && imsPhone.isVolteEnabled()
                 && ((imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
                 && !PhoneNumberUtils.isEmergencyNumber(dialString))
@@ -1097,6 +1105,7 @@ public class GSMPhone extends PhoneBase {
         }
     }
 
+    @Override
     public String getSystemProperty(String property, String defValue) {
         if(getUnitTestMode()) {
             return null;
@@ -1586,7 +1595,7 @@ public class GSMPhone extends PhoneBase {
     }
 
     protected UiccCardApplication getUiccCardApplication() {
-            return  ((UiccController) mUiccController).getUiccCardApplication(mPhoneId,
+            return  mUiccController.getUiccCardApplication(mPhoneId,
                     UiccController.APP_FAM_3GPP);
     }
 
@@ -1867,10 +1876,12 @@ public class GSMPhone extends PhoneBase {
      * @param what User-defined message code
      * @param obj placed in Message.obj
      */
+    @Override
     public void registerForEcmTimerReset(Handler h, int what, Object obj) {
         mEcmTimerResetRegistrants.addUnique(h, what, obj);
     }
 
+    @Override
     public void unregisterForEcmTimerReset(Handler h) {
         mEcmTimerResetRegistrants.remove(h);
     }
