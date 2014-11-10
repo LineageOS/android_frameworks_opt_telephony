@@ -317,18 +317,6 @@ public class PhoneFactory {
             Rlog.e(LOG_TAG, "Settings Exception Reading Dual Sim Voice Call Values");
         }
 
-        // FIXME can this be removed? We should not set defaults
-        int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
-        // Set subscription to 0 if current subscription is invalid.
-        // Ex: multisim.config property is TSTS and subscription is 2.
-        // If user is trying to set multisim.config to DSDS and reboots
-        // in this case index 2 is invalid so need to set to 0.
-        if (phoneId < 0 || phoneId >= TelephonyManager.getDefault().getPhoneCount()) {
-            Rlog.i(LOG_TAG, "Subscription is invalid..." + subId + " Set to 0");
-            subId = 0;
-            setVoiceSubscription(subId);
-        }
-
         return subId;
     }
 
@@ -391,14 +379,6 @@ public class PhoneFactory {
             Rlog.e(LOG_TAG, "Settings Exception Reading Dual Sim Data Call Values");
         }
 
-        // FIXME can this be removed? We should not set defaults
-        int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
-        if (phoneId < 0 || phoneId >= TelephonyManager.getDefault().getPhoneCount()) {
-            subId = 0;
-            Rlog.i(LOG_TAG, "Subscription is invalid..." + subId + " Set to 0");
-            setDataSubscription(subId);
-        }
-
         return subId;
     }
 
@@ -412,58 +392,7 @@ public class PhoneFactory {
             Rlog.e(LOG_TAG, "Settings Exception Reading Dual Sim SMS Values");
         }
 
-        // FIXME can this be removed? We should not set defaults
-        int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
-        if (phoneId < 0 || phoneId >= TelephonyManager.getDefault().getPhoneCount()) {
-            Rlog.i(LOG_TAG, "Subscription is invalid..." + subId + " Set to 0");
-            subId = 0;
-            setSMSSubscription(subId);
-        }
-
         return subId;
-    }
-
-    //FIXME can this be removed, it is only called in getVoiceSubscription
-    static public void setVoiceSubscription(int subId) {
-        Settings.Global.putInt(sContext.getContentResolver(),
-                Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION, subId);
-        Rlog.d(LOG_TAG, "setVoiceSubscription : " + subId);
-    }
-
-    //FIXME can this be removed, it is only called in getDataSubscription
-    static public void setDataSubscription(int subId) {
-        boolean enabled;
-
-        Settings.Global.putInt(sContext.getContentResolver(),
-                Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
-        Rlog.d(LOG_TAG, "setDataSubscription: " + subId);
-
-        // Update the current mobile data flag
-        enabled = TelephonyManager.getIntWithSubId(sContext.getContentResolver(),
-                Settings.Global.MOBILE_DATA, subId, 0) != 0;
-        Settings.Global.putInt(sContext.getContentResolver(),
-                Settings.Global.MOBILE_DATA + subId, enabled ? 1 : 0);
-        Rlog.d(LOG_TAG, "set mobile_data: " + enabled);
-
-        // Update the current data roaming flag
-        enabled = TelephonyManager.getIntWithSubId(sContext.getContentResolver(),
-                Settings.Global.DATA_ROAMING, subId, 0) != 0;
-        Settings.Global.putInt(sContext.getContentResolver(),
-                Settings.Global.DATA_ROAMING + subId, enabled ? 1 : 0);
-        Rlog.d(LOG_TAG, "set data_roaming: " + enabled);
-    }
-
-    //FIXME can this be removed, it is only called in getSMSSubscription
-    static public void setSMSSubscription(int subId) {
-        Settings.Global.putInt(sContext.getContentResolver(),
-                Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION, subId);
-
-        Intent intent = new Intent("com.android.mms.transaction.SEND_MESSAGE");
-        sContext.sendBroadcast(intent);
-
-        // Change occured in SMS preferred sub, update the default
-        // SMS interface Manager object with the new SMS preferred subscription.
-        Rlog.d(LOG_TAG, "setSMSSubscription : " + subId);
     }
 
     /**
