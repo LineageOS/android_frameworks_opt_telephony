@@ -451,6 +451,20 @@ public class CDMAPhone extends PhoneBase {
             }
         }
 
+        if (imsPhone != null && imsPhone.isUtEnabled() && dialString.endsWith("#")) {
+            try {
+                if (DBG) Rlog.d(LOG_TAG, "Trying IMS call with UT enabled");
+                return imsPhone.dial(dialString, videoState, extras);
+            } catch (CallStateException e) {
+                if (DBG) Rlog.d(LOG_TAG, "IMS call UT enable exception " + e);
+                if (!ImsPhone.CS_FALLBACK.equals(e.getMessage())) {
+                    CallStateException ce = new CallStateException(e.getMessage());
+                    ce.setStackTrace(e.getStackTrace());
+                    throw ce;
+                }
+            }
+        }
+
         if (DBG) Rlog.d(LOG_TAG, "Trying (non-IMS) CS call");
         return dialInternal(dialString, null, videoState);
     }
@@ -1045,7 +1059,9 @@ public class CDMAPhone extends PhoneBase {
     public void getCallForwardingUncondTimerOption(int commandInterfaceCFReason,
             Message onComplete) {
         ImsPhone imsPhone = mImsPhone;
-        if (imsPhone != null) {
+        if ((imsPhone != null)
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
+                || imsPhone.isUtEnabled()) {
             imsPhone.getCallForwardingOption(commandInterfaceCFReason, onComplete);
         } else {
             if (onComplete != null) {
@@ -1061,7 +1077,9 @@ public class CDMAPhone extends PhoneBase {
             int endHour, int endMinute, int commandInterfaceCFAction,
             int commandInterfaceCFReason, String dialingNumber, Message onComplete) {
         ImsPhone imsPhone = mImsPhone;
-        if (imsPhone != null) {
+        if ((imsPhone != null)
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
+                || imsPhone.isUtEnabled()) {
             imsPhone.setCallForwardingUncondTimerOption(startHour, startMinute, endHour,
                     endMinute, commandInterfaceCFAction, commandInterfaceCFReason,
                     dialingNumber, onComplete);
