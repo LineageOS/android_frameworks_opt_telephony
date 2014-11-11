@@ -468,21 +468,6 @@ public final class DcTracker extends DcTrackerBase {
             log("Ready to handle network requests");
         }
 
-        private long getSubIdFromNetworkRequest(NetworkRequest networkRequest) {
-            String requestedSpecifierStr = networkRequest.networkCapabilities
-                .getNetworkSpecifier();
-            long requestedSpecifier = SubscriptionManager.INVALID_SUB_ID;
-
-            try {
-                requestedSpecifier = (requestedSpecifierStr != null)? Long.parseLong(
-                        requestedSpecifierStr) : SubscriptionManager.INVALID_SUB_ID;
-            } catch (NumberFormatException e){
-                //nop
-            }
-
-            return requestedSpecifier;
-        }
-
         @Override
         protected void needNetworkFor(NetworkRequest networkRequest, int score) {
             // figure out the apn type and enable it
@@ -492,7 +477,7 @@ public final class DcTracker extends DcTrackerBase {
 
             long currentDds = subController.getDefaultDataSubId();
             long subId = mPhone.getSubId();
-            long requestedSpecifier = getSubIdFromNetworkRequest(networkRequest);
+            long requestedSpecifier = subController.getSubIdFromNetworkRequest(networkRequest);
 
             log("CurrentDds = " + currentDds);
             log("mySubId = " + subId);
@@ -504,8 +489,15 @@ public final class DcTracker extends DcTrackerBase {
                 return;
             }
 
-            if ((requestedSpecifier != SubscriptionManager.INVALID_SUB_ID)
-                    && (currentDds != requestedSpecifier)) {
+            // For clients that do not send subId in NetworkCapabilities,
+            // Connectivity will send to all network factories. Accept only
+            // when requestedSpecifier is same as current factory's subId
+            if (requestedSpecifier != subId) {
+                log("requestedSpecifier is not same as mysubId. Bail out.");
+                return;
+            }
+
+            if (currentDds != requestedSpecifier) {
                 log("This request would result in DDS switch");
                 log("Requested DDS switch to subId = " + requestedSpecifier);
 
