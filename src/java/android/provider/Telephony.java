@@ -34,9 +34,9 @@ import android.text.TextUtils;
 import android.telephony.Rlog;
 import android.util.Patterns;
 
+import com.android.i18n.phonenumbers.PhoneNumberUtil;
 import com.android.internal.telephony.MSimConstants;
 import com.android.internal.telephony.SmsApplication;
-import com.google.i18n.phonenumbers.PhoneNumberUtil;
 
 
 import java.util.ArrayList;
