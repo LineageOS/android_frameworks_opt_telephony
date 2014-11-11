@@ -33,6 +33,8 @@ import android.os.Message;
 import android.os.Messenger;
 import android.provider.Settings;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionListener;
 import android.telephony.SubscriptionManager;
 import android.util.SparseArray;
 
@@ -51,6 +53,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map.Entry;
 
 public class DctController extends Handler {
@@ -102,22 +105,19 @@ public class DctController extends Handler {
 
     private SubscriptionController mSubController = SubscriptionController.getInstance();
 
+    SubscriptionListener mSubscriptionListener = new SubscriptionListener() {
+        @Override
+        public void onSubscriptionInfoChanged() {
+            logd("SubscriptionListener.onSubscriptionInfoChanged: call onSubInfoReady");
+            onSubInfoReady();
+        }
+    };
+
     private ContentObserver mObserver = new ContentObserver(new Handler()) {
         @Override
         public void onChange(boolean selfChange) {
             logd("Settings change");
             onSettingsChange();
-        }
-    };
-
-    private BroadcastReceiver mIntentReceiver = new BroadcastReceiver () {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            logd("onReceive: action=" + action);
-            if (action.equals(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED)) {
-                onSubInfoReady();
-            }
         }
     };
 
@@ -280,6 +280,8 @@ public class DctController extends Handler {
         IntentFilter filter = new IntentFilter();
         filter.addAction(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED);
         mContext.registerReceiver(mIntentReceiver, filter);
+        SubscriptionManager.register(mContext, mSubscriptionListener,
+                SubscriptionListener.LISTEN_SUBSCRIPTION_INFO_LIST_CHANGED);
 
         //Register for settings change.
         mContext.getContentResolver().registerContentObserver(
@@ -297,6 +299,7 @@ public class DctController extends Handler {
             mNetworkFactoryMessenger[i] = null;
         }
 
+        SubscriptionManager.unregister(mContext, mSubscriptionListener);
         mContext.getContentResolver().unregisterContentObserver(mObserver);
     }
 
@@ -959,9 +962,11 @@ public class DctController extends Handler {
 */
 
     private void onSubInfoReady() {
-        logd("onSubInfoReady handle pending requset");
+        logd("onSubInfoReady mPhoneNum=" + mPhoneNum);
         for (int i = 0; i < mPhoneNum; ++i) {
-            mNetworkFilter[i].setNetworkSpecifier(String.valueOf(mPhones[i].getSubId()));
+            int subId = mPhones[i].getSubId();
+            logd("onSubInfoReady handle pending requests subId=" + subId);
+            mNetworkFilter[i].setNetworkSpecifier(String.valueOf(subId));
             ((DctController.TelephonyNetworkFactory)mNetworkFactory[i]).evalPendingRequest();
         }
     }

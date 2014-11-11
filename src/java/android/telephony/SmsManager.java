@@ -728,7 +728,7 @@ public final class SmsManager {
      */
     public int getSubId() {
         if (mSubId == DEFAULT_SUB_ID) {
-            return getDefaultSmsSubId();
+            return getDefaultSmsSubscriptionId();
         }
         return mSubId;
     }
@@ -1121,10 +1121,17 @@ public final class SmsManager {
      * Get default sms subId
      *
      * @return the default SubId
-     * @hide
      */
-    public static int getDefaultSmsSubId() {
-        return SubscriptionManager.getDefaultSmsSubId();
+    public static int getDefaultSmsSubscriptionId() {
+        ISms iccISms = null;
+        try {
+            iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            return iccISms.getPreferredSmsSubscription();
+        } catch (RemoteException ex) {
+            return SubscriptionManager.INVALID_SUB_ID;
+        } catch (NullPointerException ex) {
+            return SubscriptionManager.INVALID_SUB_ID;
+        }
     }
 
     /**

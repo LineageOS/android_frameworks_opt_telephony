@@ -34,7 +34,7 @@ import com.android.internal.telephony.cdma.CDMALTEPhone;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.gsm.GSMPhone;
-import com.android.internal.telephony.SubInfoRecordUpdater;
+import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.sip.SipPhone;
@@ -66,7 +66,7 @@ public class PhoneFactory {
     static private UiccController mUiccController;
 
     static private CommandsInterface sCommandsInterface = null;
-    static private SubInfoRecordUpdater sSubInfoRecordUpdater = null;
+    static private SubscriptionInfoUpdater sSubInfoRecordUpdater = null;
     static private ModemBindingPolicyHandler sModemBindingPolicyHandler;
     static private ModemStackController sModemStackController;
 
@@ -215,7 +215,7 @@ public class PhoneFactory {
                 sMadeDefaults = true;
 
                 Rlog.i(LOG_TAG, "Creating SubInfoRecordUpdater ");
-                sSubInfoRecordUpdater = new SubInfoRecordUpdater(context,
+                sSubInfoRecordUpdater = new SubscriptionInfoUpdater(context,
                         sProxyPhones, sCommandsInterfaces);
                 SubscriptionController.getInstance().updatePhonesAvailability(sProxyPhones);
             }
@@ -275,40 +275,6 @@ public class PhoneFactory {
             }
             return sProxyPhones;
         }
-    }
-
-    public static Phone getCdmaPhone() {
-        if (!sMadeDefaults) {
-            throw new IllegalStateException("Default phones haven't been made yet!");
-        }
-        Phone phone;
-        synchronized(PhoneProxy.lockForRadioTechnologyChange) {
-            switch (TelephonyManager.getLteOnCdmaModeStatic()) {
-                case PhoneConstants.LTE_ON_CDMA_TRUE: {
-                    phone = new CDMALTEPhone(sContext, sCommandsInterface, sPhoneNotifier);
-                    break;
-                }
-                case PhoneConstants.LTE_ON_CDMA_FALSE:
-                case PhoneConstants.LTE_ON_CDMA_UNKNOWN:
-                default: {
-                    phone = new CDMAPhone(sContext, sCommandsInterface, sPhoneNotifier);
-                    break;
-                }
-            }
-        }
-        return phone;
-    }
-
-    public static Phone getGsmPhone() {
-        int phoneId = SubscriptionController.getInstance().getPhoneId(getDefaultSubscription());
-        if (phoneId < 0 || phoneId >= TelephonyManager.getDefault().getPhoneCount()) {
-            phoneId = 0;
-        }
-        return getGsmPhone(phoneId);
-    }
-
-    public static Context getContext() {
-        return sContext;
     }
 
     /**

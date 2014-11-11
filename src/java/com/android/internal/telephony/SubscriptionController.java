@@ -22,13 +22,17 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncResult;
+import android.os.Binder;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
+import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.net.NetworkRequest;
@@ -40,13 +44,17 @@ import com.android.internal.telephony.dataconnection.DdsSchedulerAc;
 
 import android.provider.BaseColumns;
 import android.provider.Settings;
+
 import android.telephony.Rlog;
-import android.telephony.SubInfoRecord;
+import android.telephony.SubscriptionInfo;
+import android.telephony.SubscriptionListener;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.text.format.Time;
 import android.util.Log;
+
+import com.android.internal.telephony.ITelephonyRegistry;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -79,6 +87,65 @@ public class SubscriptionController extends ISub.Stub {
     static final String LOG_TAG = "SubController";
     static final boolean DBG = true;
     static final boolean VDBG = false;
+    static final int MAX_LOCAL_LOG_LINES = 500; // TODO: Reduce to 100 when 17678050 is fixed
+    private ScLocalLog mLocalLog = new ScLocalLog(MAX_LOCAL_LOG_LINES);
+
+    private static class Record {
+        String pkgForDebug;
+        IBinder binder;
+        ISubscriptionListener callback;
+        int callerUid;
+        int events;
+
+        @Override
+        public String toString() {
+            return "{pkgForDebug=" + pkgForDebug + " callerUid=" + callerUid +
+                    " events=" + Integer.toHexString(events) + "}";
+        }
+    }
+
+    // All types of access to both mRemoveList and mRecords must
+    // be inside a synchronized(mRecords) block.
+    private final ArrayList<IBinder> mRemoveList = new ArrayList<IBinder>();
+    private final ArrayList<Record> mRecords = new ArrayList<Record>();
+
+    /**
+     * Copied from android.util.LocalLog with flush() adding flush and line number
+     * TODO: Update LocalLog
+     */
+    static class ScLocalLog {
+
+        private LinkedList<String> mLog;
+        private int mMaxLines;
+        private Time mNow;
+
+        public ScLocalLog(int maxLines) {
+            mLog = new LinkedList<String>();
+            mMaxLines = maxLines;
+            mNow = new Time();
+        }
+
+        public synchronized void log(String msg) {
+            if (mMaxLines > 0) {
+                int pid = android.os.Process.myPid();
+                int tid = android.os.Process.myTid();
+                mNow.setToNow();
+                mLog.add(mNow.format("%m-%d %H:%M:%S") + " pid=" + pid + " tid=" + tid + " " + msg);
+                while (mLog.size() > mMaxLines) mLog.remove();
+            }
+        }
+
+        public synchronized void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+            final int LOOPS_PER_FLUSH = 10; // Flush every N loops.
+            Iterator<String> itr = mLog.listIterator(0);
+            int i = 0;
+            while (itr.hasNext()) {
+                pw.println(Integer.toString(i++) + ": " + itr.next());
+                // Flush periodically so we don't drop lines
+                if ((i % LOOPS_PER_FLUSH) == 0) pw.flush();
+            }
+        }
+    }
 
     protected final Object mLock = new Object();
     protected boolean mSuccess;
@@ -235,46 +302,51 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
-     * Make sure the caller has the READ_PHONE_STATE permission.
-     *
-     * @throws SecurityException if the caller does not have the required permission
+     * Broadcast when SubscriptionInfo has changed
+     * FIXME: Hopefully removed if the API council accepts SubscriptionInfoListener
      */
-    private void enforceSubscriptionPermission() {
-        mContext.enforceCallingOrSelfPermission(android.Manifest.permission.READ_PHONE_STATE,
-                "Requires READ_PHONE_STATE");
-    }
-
-    /**
-     * Broadcast when subinfo settings has chanded
-     * @SubId The unique SubInfoRecord index in database
-     * @param columnName The column that is updated
-     * @param intContent The updated integer value
-     * @param stringContent The updated string value
-     */
-     private void broadcastSimInfoContentChanged(int subId,
-            String columnName, int intContent, String stringContent) {
-
+     private void broadcastSimInfoContentChanged() {
         Intent intent = new Intent(TelephonyIntents.ACTION_SUBINFO_CONTENT_CHANGE);
-        intent.putExtra(BaseColumns._ID, subId);
-        intent.putExtra(TelephonyIntents.EXTRA_COLUMN_NAME, columnName);
-        intent.putExtra(TelephonyIntents.EXTRA_INT_CONTENT, intContent);
-        intent.putExtra(TelephonyIntents.EXTRA_STRING_CONTENT, stringContent);
-        if (intContent != SubscriptionManager.DEFAULT_INT_VALUE) {
-            logd("SubInfoRecord" + subId + " changed, " + columnName + " -> " +  intContent);
-        } else {
-            logd("[broadcastSimInfoContentChanged] subId" + subId
-                    + " changed, " + columnName + " -> " +  stringContent);
-        }
         mContext.sendBroadcast(intent);
-    }
+        intent = new Intent(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED);
+        mContext.sendBroadcast(intent);
+     }
 
+     private boolean checkNotifyPermission(String method) {
+         if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
+                     == PackageManager.PERMISSION_GRANTED) {
+             return true;
+         }
+         if (DBG) {
+             logd("checkNotifyPermission Permission Denial: " + method + " from pid="
+                     + Binder.getCallingPid() + ", uid=" + Binder.getCallingUid());
+         }
+         return false;
+     }
+
+     public void notifySubscriptionInfoChanged() {
+         if (!checkNotifyPermission("notifySubscriptionInfoChanged")) {
+             return;
+         }
+         ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
+                 "telephony.registry"));
+         try {
+             if (DBG) logd("notifySubscriptionInfoChanged:");
+             tr.notifySubscriptionInfoChanged();
+         } catch (RemoteException ex) {
+             // Should never happen because its always available.
+         }
+
+         // FIXME: Remove if listener technique accepted.
+         broadcastSimInfoContentChanged();
+     }
 
     /**
      * New SubInfoRecord instance and fill in detail info
      * @param cursor
      * @return the query result of desired SubInfoRecord
      */
-    private SubInfoRecord getSubInfoRecord(Cursor cursor) {
+    private SubscriptionInfo getSubInfoRecord(Cursor cursor) {
             int id = cursor.getInt(cursor.getColumnIndexOrThrow(BaseColumns._ID));
             String iccId = cursor.getString(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.ICC_ID));
@@ -309,7 +381,7 @@ public class SubscriptionController extends ISub.Stub {
                     + " iconTint:" + iconTint + " number:" + number + " dataRoaming:" + dataRoaming
                     + " mcc:" + mcc + " mnc:" + mnc + " status:" + status + " nwMode:" + nwMode);
 
-            return new SubInfoRecord(id, iccId, simSlotIndex, displayName, carrierName, nameSource,
+            return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName, nameSource,
                     iconTint, number, dataRoaming, iconBitmap, mcc, mnc, status, nwMode);
     }
 
@@ -320,24 +392,24 @@ public class SubscriptionController extends ISub.Stub {
      * @param queryKey query key content
      * @return Array list of queried result from database
      */
-     private List<SubInfoRecord> getSubInfo(String selection, Object queryKey) {
+     private List<SubscriptionInfo> getSubInfo(String selection, Object queryKey) {
         logd("selection:" + selection + " " + queryKey);
         String[] selectionArgs = null;
         if (queryKey != null) {
             selectionArgs = new String[] {queryKey.toString()};
         }
-        ArrayList<SubInfoRecord> subList = null;
+        ArrayList<SubscriptionInfo> subList = null;
         Cursor cursor = mContext.getContentResolver().query(SubscriptionManager.CONTENT_URI,
                 null, selection, selectionArgs, null);
         try {
             if (cursor != null) {
                 while (cursor.moveToNext()) {
-                    SubInfoRecord subInfo = getSubInfoRecord(cursor);
+                    SubscriptionInfo subInfo = getSubInfoRecord(cursor);
                     if (subInfo != null)
                     {
                         if (subList == null)
                         {
-                            subList = new ArrayList<SubInfoRecord>();
+                            subList = new ArrayList<SubscriptionInfo>();
                         }
                         subList.add(subInfo);
                 }
@@ -359,8 +431,10 @@ public class SubscriptionController extends ISub.Stub {
      * @return RGB integer value of color
      */
     private int getUnusedColor() {
-        List<SubInfoRecord> availableSubInfos = SubscriptionManager.getActiveSubInfoList();
+        List<SubscriptionInfo> availableSubInfos =
+                SubscriptionManager.getActiveSubscriptionInfoList();
         colorArr = mContext.getResources().getIntArray(com.android.internal.R.array.sim_colors);
+
         for (int i = 0; i < colorArr.length; i++) {
             int j;
             for (j = 0; j < availableSubInfos.size(); j++) {
@@ -382,7 +456,7 @@ public class SubscriptionController extends ISub.Stub {
      * @return SubInfoRecord, maybe null
      */
     @Override
-    public SubInfoRecord getSubInfoForSubscriber(int subId) {
+    public SubscriptionInfo getSubInfoForSubscriber(int subId) {
         logd("[getSubInfoForSubscriberx]+ subId:" + subId);
         enforceSubscriptionPermission();
 
@@ -419,7 +493,7 @@ public class SubscriptionController extends ISub.Stub {
      * @return SubInfoRecord, maybe null
      */
     @Override
-    public List<SubInfoRecord> getSubInfoUsingIccId(String iccId) {
+    public List<SubscriptionInfo> getSubInfoUsingIccId(String iccId) {
         logd("[getSubInfoUsingIccId]+ iccId:" + iccId);
         enforceSubscriptionPermission();
 
@@ -429,16 +503,16 @@ public class SubscriptionController extends ISub.Stub {
         }
         Cursor cursor = mContext.getContentResolver().query(SubscriptionManager.CONTENT_URI,
                 null, SubscriptionManager.ICC_ID + "=?", new String[] {iccId}, null);
-        ArrayList<SubInfoRecord> subList = null;
+        ArrayList<SubscriptionInfo> subList = null;
         try {
             if (cursor != null) {
                 while (cursor.moveToNext()) {
-                    SubInfoRecord subInfo = getSubInfoRecord(cursor);
+                    SubscriptionInfo subInfo = getSubInfoRecord(cursor);
                     if (subInfo != null)
                     {
                         if (subList == null)
                         {
-                            subList = new ArrayList<SubInfoRecord>();
+                            subList = new ArrayList<SubscriptionInfo>();
                         }
                         subList.add(subInfo);
                 }
@@ -462,7 +536,7 @@ public class SubscriptionController extends ISub.Stub {
      * @return SubInfoRecord, maybe null
      */
     @Override
-    public List<SubInfoRecord> getSubInfoUsingSlotId(int slotId) {
+    public List<SubscriptionInfo> getSubInfoUsingSlotId(int slotId) {
         return getSubInfoUsingSlotIdWithCheck(slotId, true);
     }
 
@@ -472,11 +546,11 @@ public class SubscriptionController extends ISub.Stub {
      * @return Array list of all SubInfoRecords in database, include thsoe that were inserted before
      */
     @Override
-    public List<SubInfoRecord> getAllSubInfoList() {
+    public List<SubscriptionInfo> getAllSubInfoList() {
         logd("[getAllSubInfoList]+");
         enforceSubscriptionPermission();
 
-        List<SubInfoRecord> subList = null;
+        List<SubscriptionInfo> subList = null;
         subList = getSubInfo(null, null);
         if (subList != null) {
             logd("[getAllSubInfoList]- " + subList.size() + " infos return");
@@ -493,11 +567,10 @@ public class SubscriptionController extends ISub.Stub {
      * @return Array list of currently inserted SubInfoRecord(s)
      */
     @Override
-    public List<SubInfoRecord> getActivatedSubInfoList() {
-        logd("[getActivatedSubInfoList]+");
+    public List<SubscriptionInfo> getActiveSubInfoList() {
         enforceSubscriptionPermission();
 
-        List<SubInfoRecord> subList = null;
+        List<SubscriptionInfo> subList = null;
 
         if (!isSubInfoReady()) {
             logdl("[getActiveSubInfoList] Sub Controller not ready");
@@ -520,9 +593,9 @@ public class SubscriptionController extends ISub.Stub {
      * @return active SIM count
      */
     @Override
-    public int getActivatedSubInfoCount() {
-        logd("[getActivatedSubInfoCount]+");
-        List<SubInfoRecord> records = getActivatedSubInfoList();
+    public int getActiveSubInfoCount() {
+        logd("[getActiveSubInfoCount]+");
+        List<SubscriptionInfo> records = getActiveSubInfoList();
         if (records == null) {
             logd("[getActivatedSubInfoCount] records null");
             return 0;
@@ -721,8 +794,7 @@ public class SubscriptionController extends ISub.Stub {
 
         int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                 BaseColumns._ID + "=" + Long.toString(subId), null);
-        broadcastSimInfoContentChanged(subId, SubscriptionManager.COLOR,
-                tint, SubscriptionManager.DEFAULT_STRING_VALUE);
+        notifySubscriptionInfoChanged();
 
         return result;
     }
@@ -770,8 +842,7 @@ public class SubscriptionController extends ISub.Stub {
 
         int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                 BaseColumns._ID + "=" + Long.toString(subId), null);
-        broadcastSimInfoContentChanged(subId, SubscriptionManager.DISPLAY_NAME,
-                SubscriptionManager.DEFAULT_INT_VALUE, nameToSet);
+        notifySubscriptionInfoChanged();
 
         return result;
     }
@@ -821,8 +892,7 @@ public class SubscriptionController extends ISub.Stub {
             result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                     BaseColumns._ID + "=" + Long.toString(subId), null);
             logd("[setDisplayNumber]- update result :" + result);
-            broadcastSimInfoContentChanged(subId, SubscriptionManager.NUMBER,
-                    SubscriptionManager.DEFAULT_INT_VALUE, number);
+            notifySubscriptionInfoChanged();
         }
 
         return result;
@@ -851,8 +921,7 @@ public class SubscriptionController extends ISub.Stub {
 
         int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                 BaseColumns._ID + "=" + Long.toString(subId), null);
-        broadcastSimInfoContentChanged(subId, SubscriptionManager.DATA_ROAMING,
-                roaming, SubscriptionManager.DEFAULT_STRING_VALUE);
+        notifySubscriptionInfoChanged();
 
         return result;
     }
@@ -879,7 +948,7 @@ public class SubscriptionController extends ISub.Stub {
 
         int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                 BaseColumns._ID + "=" + Long.toString(subId), null);
-        broadcastSimInfoContentChanged(subId, SubscriptionManager.MCC, mcc, null);
+        notifySubscriptionInfoChanged();
 
         return result;
     }
@@ -1294,8 +1363,8 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     public void clearDefaultsForInactiveSubIds() {
-        final List<SubInfoRecord> records = getActivatedSubInfoList();
-        logd("[clearDefaultsForInactiveSubIds] records: " + records);
+        final List<SubscriptionInfo> records = getActiveSubInfoList();
+        logdl("[clearDefaultsForInactiveSubIds] records: " + records);
         if (shouldDefaultBeCleared(records, getDefaultDataSubId())) {
             logd("[clearDefaultsForInactiveSubIds]: clearing default data sub id");
             setDefaultDataSubId(SubscriptionManager.INVALID_SUB_ID);
@@ -1310,16 +1379,17 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    private boolean shouldDefaultBeCleared(List<SubInfoRecord> records, int subId) {
+    private boolean shouldDefaultBeCleared(List<SubscriptionInfo> records, int subId) {
         logdl("[shouldDefaultBeCleared: subId] " + subId);
         if (records == null) {
             return true;
         }
-        if (subId == SubscriptionManager.ASK_USER_SUB_ID && records.size() > 1) {
-            // Only allow ASK_USER_SUB_ID if there is more than 1 subscription.
+        if (subId == SubscriptionManager.INVALID_SUB_ID) {
+            // If the subId parameter is INVALID_SUB_ID its already cleared so return false.
+            logdl("[shouldDefaultBeCleared] return false only one subId, subId=" + subId);
             return false;
         }
-        for (SubInfoRecord record : records) {
+        for (SubscriptionInfo record : records) {
             int id = record.getSubscriptionId();
             logdl("[shouldDefaultBeCleared] Record.id: " + id);
             if (id == subId) {
@@ -1344,7 +1414,7 @@ public class SubscriptionController extends ISub.Stub {
         return getSubId(slotId);
     }
 
-    public List<SubInfoRecord> getSubInfoUsingSlotIdWithCheck(int slotId, boolean needCheck) {
+    public List<SubscriptionInfo> getSubInfoUsingSlotIdWithCheck(int slotId, boolean needCheck) {
         logd("[getSubInfoUsingSlotIdWithCheck]+ slotId:" + slotId);
         enforceSubscriptionPermission();
 
@@ -1363,18 +1433,20 @@ public class SubscriptionController extends ISub.Stub {
 
         Cursor cursor = mContext.getContentResolver().query(SubscriptionManager.CONTENT_URI,
                 null, SubscriptionManager.SIM_ID + "=?", new String[] {String.valueOf(slotId)}, null);
-        ArrayList<SubInfoRecord> subList = null;
+        ArrayList<SubscriptionInfo> subList = null;
         try {
-            if (cursor != null && cursor.moveToFirst()) {
-                do {
-                    SubInfoRecord subInfo = getSubInfoRecord(cursor);
-                    if (subInfo != null) {
-                        if (subList == null) {
-                            subList = new ArrayList<SubInfoRecord>();
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    SubscriptionInfo subInfo = getSubInfoRecord(cursor);
+                    if (subInfo != null)
+                    {
+                        if (subList == null)
+                        {
+                            subList = new ArrayList<SubscriptionInfo>();
                         }
                         subList.add(subInfo);
                     }
-                } while (cursor.moveToNext());
+                }
             }
         } finally {
             if (cursor != null) {
@@ -1664,14 +1736,26 @@ public class SubscriptionController extends ISub.Stub {
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
 
-        for (SubInfoRecord entry : getActiveSubInfoList()) {
-            pw.println(" ActiveSubInfoList:" + entry.toString());
+        List<SubscriptionInfo> sirl = getActiveSubInfoList();
+        if (sirl != null) {
+            pw.println(" ActiveSubInfoList:");
+            for (SubscriptionInfo entry : sirl) {
+                pw.println("  " + entry.toString());
+            }
+        } else {
+            pw.println(" ActiveSubInfoList: is null");
         }
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
 
-        for (SubInfoRecord entry : getAllSubInfoList()) {
-            pw.println(" AllSubInfoList:" + entry.toString());
+        sirl = getAllSubInfoList();
+        if (sirl != null) {
+            pw.println(" AllSubInfoList:");
+            for (SubscriptionInfo entry : sirl) {
+                pw.println("  " + entry.toString());
+            }
+        } else {
+            pw.println(" AllSubInfoList: is null");
         }
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
