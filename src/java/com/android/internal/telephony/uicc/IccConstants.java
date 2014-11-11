@@ -68,6 +68,7 @@ public interface IccConstants {
     static final int EF_RUIM_ID = 0x6f31;
     static final int EF_CST = 0x6f32;
     static final int EF_RUIM_SPN =0x6F41;
+    static final int EF_MODEL = 0x6F90;
 
     // ETSI TS.102.221
     static final int EF_PL = 0x2F05;
@@ -78,6 +79,7 @@ public interface IccConstants {
     static final int EF_CSIM_IMSIM = 0x6F22;
     static final int EF_CSIM_CDMAHOME = 0x6F28;
     static final int EF_CSIM_EPRL = 0x6F5A;
+    static final int EF_CSIM_MODEL = 0x6F81;
     static final int EF_CSIM_PRL = 0x6F30;
     // C.S0074-Av1.0 Section 4
     static final int EF_CSIM_MLPL = 0x4F20;
