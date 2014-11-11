@@ -1154,6 +1154,7 @@ public final class Telephony {
              * @param pdus bytes for PDUs
              * @param format the format of the message
              * @return a list of Addresses for the PDUs
+             * @hide
              */
             public static List<String> getNormalizedAddressesFromPdus(byte[][] pdus,
                     String format) {
