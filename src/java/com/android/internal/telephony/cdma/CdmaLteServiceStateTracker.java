@@ -678,36 +678,6 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     }
 
     @Override
-    protected void updatePhoneObject() {
-        if (mPhone.getContext().getResources().
-                getBoolean(com.android.internal.R.bool.config_switch_phone_on_voice_reg_state_change)) {
-            // If the phone is not registered on a network, no need to update.
-            boolean isRegistered = mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE ||
-                    mSS.getVoiceRegState() == ServiceState.STATE_EMERGENCY_ONLY;
-            if (!isRegistered) {
-                Rlog.d(LOG_TAG, "updatePhoneObject: Ignore update");
-                return;
-            }
-
-            // For CDMA-LTE phone don't update phone to GSM
-            // if replacement RAT is unknown
-            // If there is a  real need to switch to LTE, then it will be done via
-            // RIL_UNSOL_VOICE_RADIO_TECH_CHANGED from RIL.
-
-            int volteReplacementRat = mPhoneBase.getContext().getResources().getInteger(
-                    com.android.internal.R.integer.config_volte_replacement_rat);
-            Rlog.d(LOG_TAG, "updatePhoneObject: volteReplacementRat=" + volteReplacementRat);
-
-            int voiceRat = mSS.getRilVoiceRadioTechnology();
-            if (voiceRat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE &&
-                    volteReplacementRat == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
-                voiceRat = ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT;
-            }
-            mPhoneBase.updatePhoneObject(voiceRat);
-        }
-    }
-
-    @Override
     protected void log(String s) {
         Rlog.d(LOG_TAG, "[CdmaLteSST] " + s);
     }
