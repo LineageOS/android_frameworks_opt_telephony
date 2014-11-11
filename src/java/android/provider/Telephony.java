@@ -36,7 +36,6 @@ import android.util.Patterns;
 
 import com.android.internal.telephony.MSimConstants;
 import com.android.internal.telephony.SmsApplication;
-import com.google.i18n.phonenumbers.PhoneNumberUtil;
 
 
 import java.util.ArrayList;
@@ -1165,11 +1164,28 @@ public final class Telephony {
                 for (int i = 0; i < pduCount; i++) {
                     byte[] pdu = (byte[]) pdus[i];
                     msgs[i] = SmsMessage.createFromPdu(pdu, format);
-                    String normalized = PhoneNumberUtil
-                            .normalizeDigitsOnly(msgs[i].getOriginatingAddress());
+                    String normalized = normalizeDigitsOnly(msgs[i].getOriginatingAddress());
                     addresses.add(normalized);
                 }
                 return addresses;
+            }
+
+
+            private static String normalizeDigitsOnly(String number) {
+                return normalizeDigits(number, false /* strip non-digits */).toString();
+            }
+
+            private static StringBuilder normalizeDigits(String number, boolean keepNonDigits) {
+                StringBuilder normalizedDigits = new StringBuilder(number.length());
+                for (char c : number.toCharArray()) {
+                    int digit = Character.digit(c, 10);
+                    if (digit != -1) {
+                        normalizedDigits.append(digit);
+                    } else if (keepNonDigits) {
+                        normalizedDigits.append(c);
+                    }
+                }
+                return normalizedDigits;
             }
         }
     }

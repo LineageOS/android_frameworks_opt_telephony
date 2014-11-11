@@ -50,7 +50,6 @@ import com.android.internal.telephony.PhoneBase;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
-import com.google.i18n.phonenumbers.PhoneNumberUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
