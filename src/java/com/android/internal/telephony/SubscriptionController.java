@@ -366,7 +366,7 @@ public class SubscriptionController extends ISub.Stub {
                     SubscriptionManager.DATA_ROAMING));
             // Get the blank bitmap for this SubInfoRecord
             Bitmap iconBitmap = BitmapFactory.decodeResource(mContext.getResources(),
-                    com.android.internal.R.drawable.sim_dark_blue);
+                    com.android.internal.R.drawable.ic_sim_card_multi_24px_clr);
             int mcc = cursor.getInt(cursor.getColumnIndexOrThrow(
                     SubscriptionManager.MCC));
             int mnc = cursor.getInt(cursor.getColumnIndexOrThrow(
