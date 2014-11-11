@@ -159,12 +159,7 @@ public class GSMPhone extends PhoneBase {
     // Constructors
 
     public
-    GSMPhone (Context context, CommandsInterface ci, PhoneNotifier notifier) {
-        this(context,ci,notifier, false);
-    }
-
-    public
-    GSMPhone (Context context, CommandsInterface ci, PhoneNotifier notifier, boolean unitTestMode) {
+    GSMPhone(Context context, CommandsInterface ci, PhoneNotifier notifier, boolean unitTestMode) {
         super("GSM", notifier, context, ci, unitTestMode);
 
         if (ci instanceof SimulatedRadioControl) {
@@ -193,12 +188,12 @@ public class GSMPhone extends PhoneBase {
     }
 
     public
-    GSMPhone (Context context, CommandsInterface ci, PhoneNotifier notifier, int phoneId) {
+    GSMPhone(Context context, CommandsInterface ci, PhoneNotifier notifier, int phoneId) {
         this(context, ci, notifier, false, phoneId);
     }
 
     public
-    GSMPhone (Context context, CommandsInterface ci,
+    GSMPhone(Context context, CommandsInterface ci,
             PhoneNotifier notifier, boolean unitTestMode, int phoneId) {
         super("GSM", notifier, context, ci, unitTestMode, phoneId);
 

@@ -25,6 +25,7 @@ import android.database.MatrixCursor;
 import android.net.Uri;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -122,8 +123,8 @@ public class IccProvider extends ContentProvider {
     }
 
     private Cursor loadAllSimContacts(int efType) {
-        long[] subIdList = SubscriptionManager.getActivatedSubIdList();
-        Cursor [] result = new Cursor[subIdList.length];
+        Cursor [] result;
+        List<SubscriptionInfo> subInfoList = SubscriptionManager.getActiveSubscriptionInfoList();
 
         if ((subInfoList == null) || (subInfoList.size() == 0)) {
             result = new Cursor[0];

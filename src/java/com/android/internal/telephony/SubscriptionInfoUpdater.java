@@ -30,7 +30,7 @@ import android.os.Message;
 import android.os.UserHandle;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
-import android.telephony.SubInfoRecord;
+import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IccCardConstants;
@@ -58,7 +58,7 @@ import java.util.List;
 /**
  *@hide
  */
-public class SubInfoRecordUpdater extends Handler {
+public class SubscriptionInfoUpdater extends Handler {
     private static final String LOG_TAG = "SUB";
     private static final int PROJECT_SIM_NUM = TelephonyManager.getDefault().getPhoneCount();
     private static final int EVENT_OFFSET = 8;
@@ -103,7 +103,7 @@ public class SubInfoRecordUpdater extends Handler {
     private static boolean sNeedUpdate = true;
     private boolean isNVSubAvailable = false;
 
-    public SubInfoRecordUpdater(Context context, Phone[] phoneProxy, CommandsInterface[] ci) {
+    public SubscriptionInfoUpdater(Context context, Phone[] phoneProxy, CommandsInterface[] ci) {
         logd("Constructor invoked");
 
         sContext = context;
@@ -163,8 +163,8 @@ public class SubInfoRecordUpdater extends Handler {
                                     SubscriptionManager._ID + "=" + Long.toString(subId), null);
                         }
 
-                        SubInfoRecord subInfo =
-                                SubscriptionManager.getSubInfoUsingSubId(sContext, subId);
+                        SubscriptionInfo subInfo =
+                                SubscriptionManager.getSubscriptionInfoForSubscriber(subId);
 
                         if (subInfo != null
                                 && subInfo.getNameSource() !=
@@ -217,7 +217,7 @@ public class SubInfoRecordUpdater extends Handler {
     }
 
     public static void setDisplayNameForNewSub(String newSubName, int subId, int newNameSource) {
-        SubInfoRecord subInfo = SubscriptionManager.getSubInfoForSubscriber(subId);
+        SubscriptionInfo subInfo = SubscriptionManager.getSubscriptionInfoForSubscriber(subId);
         if (subInfo != null) {
             // overwrite SIM display name if it is not assigned by user
             int oldNameSource = subInfo.getNameSource();
@@ -269,7 +269,7 @@ public class SubInfoRecordUpdater extends Handler {
                 }
                 logd("sIccId[" + slotId + "] = " + sIccId[slotId]);
                 if (isAllIccIdQueryDone() && sNeedUpdate) {
-                    updateSimInfoByIccId();
+                    updateSubscriptionInfoByIccId();
                 }
                 break;
             case EVENT_ICC_CHANGED:
@@ -383,22 +383,15 @@ public class SubInfoRecordUpdater extends Handler {
         }
     }
 
-    public void updateSubIdForNV(int slotId) {
-        sIccId[slotId] = ICCID_STRING_FOR_NV;
-        sNeedUpdate = true;
-        logd("[updateSubIdForNV]+ Start");
-        if (isAllIccIdQueryDone()) {
-            logd("[updateSubIdForNV]+ updating");
-            updateSimInfoByIccId();
-            isNVSubAvailable = true;
-        }
-    }
-
-    synchronized public void updateSimInfoByIccId() {
-        logd("[updateSimInfoByIccId]+ Start");
+    /**
+     * TODO: Simplify more, as no one is interested in what happened
+     * only what the current list contains.
+     */
+    synchronized private void updateSubscriptionInfoByIccId() {
+        logd("updateSubscriptionInfoByIccId:+ Start");
         sNeedUpdate = false;
 
-        SubscriptionManager.clearSubInfo();
+        SubscriptionManager.clearSubscriptionInfo();
 
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             sInsertSimState[i] = SIM_NOT_CHANGE;
@@ -432,11 +425,12 @@ public class SubInfoRecordUpdater extends Handler {
         String[] oldIccId = new String[PROJECT_SIM_NUM];
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             oldIccId[i] = null;
-            List<SubInfoRecord> oldSubInfo =
+            List<SubscriptionInfo> oldSubInfo =
                     SubscriptionController.getInstance().getSubInfoUsingSlotIdWithCheck(i, false);
             if (oldSubInfo != null) {
                 oldIccId[i] = oldSubInfo.get(0).getIccId();
-                logd("oldSubId = " + oldSubInfo.get(0).getSubscriptionId());
+                logd("updateSubscriptionInfoByIccId: oldSubId = "
+                        + oldSubInfo.get(0).getSubscriptionId());
                 if (sInsertSimState[i] == SIM_NOT_CHANGE && !sIccId[i].equals(oldIccId[i])) {
                     sInsertSimState[i] = SIM_CHANGED;
                 }
@@ -453,12 +447,13 @@ public class SubInfoRecordUpdater extends Handler {
                     sInsertSimState[i] = SIM_CHANGED;
                 }
                 oldIccId[i] = ICCID_STRING_FOR_NO_SIM;
-                logd("No SIM in slot " + i + " last time");
+                logd("updateSubscriptionInfoByIccId: No SIM in slot " + i + " last time");
             }
         }
 
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
-            logd("oldIccId[" + i + "] = " + oldIccId[i] + ", sIccId[" + i + "] = " + sIccId[i]);
+            logd("updateSubscriptionInfoByIccId: oldIccId[" + i + "] = " + oldIccId[i] +
+                    ", sIccId[" + i + "] = " + sIccId[i]);
         }
 
         //check if the inserted SIM is new SIM
@@ -466,16 +461,16 @@ public class SubInfoRecordUpdater extends Handler {
         int nNewSimStatus = 0;
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             if (sInsertSimState[i] == SIM_NOT_INSERT) {
-                logd("No SIM inserted in slot " + i + " this time");
+                logd("updateSubscriptionInfoByIccId: No SIM inserted in slot " + i + " this time");
             } else {
                 if (sInsertSimState[i] > 0) {
                     //some special SIMs may have the same IccIds, add suffix to distinguish them
                     //FIXME: addSubInfoRecord can return an error.
-                    SubscriptionManager.addSubInfoRecord(sContext, sIccId[i]
+                    SubscriptionManager.addSubscriptionInfoRecord(sIccId[i]
                             + Integer.toString(sInsertSimState[i]), i);
                     logd("SUB" + (i + 1) + " has invalid IccId");
                 } else /*if (sInsertSimState[i] != SIM_NOT_INSERT)*/ {
-                    SubscriptionManager.addSubInfoRecord(sIccId[i], i);
+                    SubscriptionManager.addSubscriptionInfoRecord(sIccId[i], i);
                 }
                 if (isNewSim(sIccId[i], oldIccId)) {
                     nNewCardCount++;
@@ -503,17 +498,20 @@ public class SubInfoRecordUpdater extends Handler {
             if (sInsertSimState[i] == SIM_CHANGED) {
                 sInsertSimState[i] = SIM_REPOSITION;
             }
+            logd("updateSubscriptionInfoByIccId: sInsertSimState[" + i + "] = "
+                    + sInsertSimState[i]);
         }
+
         SubscriptionHelper.getInstance().updateNwMode();
         if (ModemStackController.getInstance().isStackReady() && PROJECT_SIM_NUM > 1) {
             SubscriptionHelper.getInstance().updateSubActivation(sInsertSimState, false);
         }
 
-        List<SubInfoRecord> subInfos = SubscriptionManager.getActivatedSubInfoList(sContext);
+        List<SubscriptionInfo> subInfos = SubscriptionManager.getActiveSubscriptionInfoList();
         int nSubCount = (subInfos == null) ? 0 : subInfos.size();
-        logd("nSubCount = " + nSubCount);
+        logd("updateSubscriptionInfoByIccId: nSubCount = " + nSubCount);
         for (int i=0; i<nSubCount; i++) {
-            SubInfoRecord temp = subInfos.get(i);
+            SubscriptionInfo temp = subInfos.get(i);
 
             String msisdn = TelephonyManager.getDefault().getLine1NumberForSubscriber(
                     temp.getSubscriptionId());
@@ -527,87 +525,8 @@ public class SubInfoRecordUpdater extends Handler {
             }
         }
 
-        // true if any slot has no SIM this time, but has SIM last time
-        boolean hasSimRemoved = false;
-        for (int i=0; i < PROJECT_SIM_NUM; i++) {
-            if (sIccId[i] != null && sIccId[i].equals(ICCID_STRING_FOR_NO_SIM)
-                    && !oldIccId[i].equals("")) {
-                hasSimRemoved = true;
-                break;
-            }
-        }
-
-        if (nNewCardCount == 0) {
-            int i;
-            if (hasSimRemoved) {
-                // no new SIM, at least one SIM is removed, check if any SIM is repositioned first
-                for (i=0; i < PROJECT_SIM_NUM; i++) {
-                    if (sInsertSimState[i] == SIM_REPOSITION) {
-                        logd("No new SIM detected and SIM repositioned");
-                        setUpdatedData(SubscriptionManager.EXTRA_VALUE_REPOSITION_SIM,
-                                nSubCount, nNewSimStatus);
-                        break;
-                    }
-                }
-                if (i == PROJECT_SIM_NUM) {
-                    // no new SIM, no SIM is repositioned => at least one SIM is removed
-                    logd("No new SIM detected and SIM removed");
-                    setUpdatedData(SubscriptionManager.EXTRA_VALUE_REMOVE_SIM,
-                            nSubCount, nNewSimStatus);
-                }
-            } else {
-                // no SIM is removed, no new SIM, just check if any SIM is repositioned
-                for (i=0; i< PROJECT_SIM_NUM; i++) {
-                    if (sInsertSimState[i] == SIM_REPOSITION) {
-                        logd("No new SIM detected and SIM repositioned");
-                        setUpdatedData(SubscriptionManager.EXTRA_VALUE_REPOSITION_SIM,
-                                nSubCount, nNewSimStatus);
-                        break;
-                    }
-                }
-                if (i == PROJECT_SIM_NUM) {
-                    // all status remain unchanged
-                    logd("[updateSimInfoByIccId] All SIM inserted into the same slot");
-                    setUpdatedData(SubscriptionManager.EXTRA_VALUE_NOCHANGE,
-                            nSubCount, nNewSimStatus);
-                }
-            }
-        } else {
-            logd("New SIM detected");
-            setUpdatedData(SubscriptionManager.EXTRA_VALUE_NEW_SIM, nSubCount, nNewSimStatus);
-        }
-
-        logd("[updateSimInfoByIccId]- SimInfo update complete");
-    }
-
-    private static void setUpdatedData(int detectedType, int subCount, int newSimStatus) {
-
-        Intent intent = new Intent(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED);
-
-        logd("[setUpdatedData]+ ");
-
-        if (detectedType == SubscriptionManager.EXTRA_VALUE_NEW_SIM ) {
-            intent.putExtra(SubscriptionManager.INTENT_KEY_DETECT_STATUS,
-                    SubscriptionManager.EXTRA_VALUE_NEW_SIM);
-            intent.putExtra(SubscriptionManager.INTENT_KEY_SIM_COUNT, subCount);
-            intent.putExtra(SubscriptionManager.INTENT_KEY_NEW_SIM_SLOT, newSimStatus);
-        } else if (detectedType == SubscriptionManager.EXTRA_VALUE_REPOSITION_SIM) {
-            intent.putExtra(SubscriptionManager.INTENT_KEY_DETECT_STATUS,
-                    SubscriptionManager.EXTRA_VALUE_REPOSITION_SIM);
-            intent.putExtra(SubscriptionManager.INTENT_KEY_SIM_COUNT, subCount);
-        } else if (detectedType == SubscriptionManager.EXTRA_VALUE_REMOVE_SIM) {
-            intent.putExtra(SubscriptionManager.INTENT_KEY_DETECT_STATUS,
-                    SubscriptionManager.EXTRA_VALUE_REMOVE_SIM);
-            intent.putExtra(SubscriptionManager.INTENT_KEY_SIM_COUNT, subCount);
-        } else if (detectedType == SubscriptionManager.EXTRA_VALUE_NOCHANGE) {
-            intent.putExtra(SubscriptionManager.INTENT_KEY_DETECT_STATUS,
-                    SubscriptionManager.EXTRA_VALUE_NOCHANGE);
-        }
-
-        logd("broadcast intent ACTION_SUBINFO_RECORD_UPDATED : [" + detectedType + ", "
-                + subCount + ", " + newSimStatus+ "]");
-        ActivityManagerNative.broadcastStickyIntent(intent, READ_PHONE_STATE, UserHandle.USER_ALL);
-        logd("[setUpdatedData]- ");
+        SubscriptionController.getInstance().notifySubscriptionInfoChanged();
+        logd("updateSubscriptionInfoByIccId:- SsubscriptionInfo update complete");
     }
 
     private static boolean isNewSim(String iccId, String[] oldIccId) {
@@ -629,7 +548,7 @@ public class SubInfoRecordUpdater extends Handler {
     }
 
     private static void logd(String message) {
-        Rlog.d(LOG_TAG, "[SubInfoRecordUpdater]" + message);
+        Rlog.d(LOG_TAG, "[SubscriptionInfoUpdater]" + message);
     }
 }
 

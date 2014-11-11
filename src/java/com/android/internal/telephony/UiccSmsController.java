@@ -371,7 +371,7 @@ public class UiccSmsController extends ISms.Stub {
     /**
        Gets User preferred SMS subscription */
     public int getPreferredSmsSubscription() {
-        return  SubscriptionManager.getDefaultSmsSubId();
+        return  SubscriptionController.getInstance().getDefaultSmsSubId();
     }
 
     /**
