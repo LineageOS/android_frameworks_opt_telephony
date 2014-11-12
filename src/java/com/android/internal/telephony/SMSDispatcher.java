@@ -45,7 +45,6 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
-import android.telephony.SmsManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.Html;
@@ -638,18 +637,7 @@ public abstract class SMSDispatcher extends Handler {
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
             int priority, boolean isExpectMore, int validityPeriod) {
-        if (messageUri == null) {
-            if (SmsApplication.shouldWriteMessageForPackage(callingPkg, mContext)) {
-                messageUri = writeOutboxMessage(
-                        getSubId(),
-                        destAddr,
-                        getMultipartMessageText(parts),
-                        deliveryIntents != null && deliveryIntents.size() > 0,
-                        callingPkg);
-            }
-        } else {
-            moveToOutbox(getSubId(), messageUri, callingPkg);
-        }
+        final String fullMessageText = getMultipartMessageText(parts);
         int refNumber = getNextConcatenatedRef() & 0x00FF;
         int msgCount = parts.size();
         int encoding = SmsConstants.ENCODING_UNKNOWN;
@@ -702,7 +690,7 @@ public abstract class SMSDispatcher extends Handler {
 
             sendNewSubmitPdu(destAddr, scAddr, parts.get(i), smsHeader, encoding,
                     sentIntent, deliveryIntent, (i == (msgCount - 1)), priority, isExpectMore,
-                    validityPeriod, unsentPartCount, anyPartFailed, messageUri);
+                    validityPeriod, unsentPartCount, anyPartFailed, messageUri, fullMessageText);
         }
     }
 
@@ -713,7 +701,7 @@ public abstract class SMSDispatcher extends Handler {
             String message, SmsHeader smsHeader, int encoding,
             PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart, int priority,
             boolean isExpectMore, int validityPeriod, AtomicInteger unsentPartCount,
-            AtomicBoolean anyPartFailed, Uri messageUri);
+            AtomicBoolean anyPartFailed, Uri messageUri, String fullMessageText);
 
     /**
      * Send a SMS
@@ -1099,11 +1087,17 @@ public abstract class SMSDispatcher extends Handler {
         // Reference to states of a multipart message that this part belongs to
         private AtomicInteger mUnsentPartCount;
         private AtomicBoolean mAnyPartFailed;
+        // The full message content of a single part message
+        // or a multipart message that this part belongs to
+        private String mFullMessageText;
+
+        private int mSubId;
 
         private SmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
                 PendingIntent deliveryIntent, PackageInfo appInfo, String destAddr, String format,
                 AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
-                SmsHeader smsHeader, boolean isExpectMore, int validityPeriod) {
+                SmsHeader smsHeader, boolean isExpectMore, String fullMessageText,
+                int subId, int validityPeriod) {
             mData = data;
             mSentIntent = sentIntent;
             mDeliveryIntent = deliveryIntent;
@@ -1119,6 +1113,8 @@ public abstract class SMSDispatcher extends Handler {
             mAnyPartFailed = anyPartFailed;
             mMessageUri = messageUri;
             mSmsHeader = smsHeader;
+            mFullMessageText = fullMessageText;
+            mSubId = subId;
         }
 
         /**
@@ -1127,27 +1123,6 @@ public abstract class SMSDispatcher extends Handler {
          */
         boolean isMultipart() {
             return mData.containsKey("parts");
-        }
-
-        /**
-         * Persist this as a sent message
-         */
-        void writeSentMessage(Context context) {
-            String text = (String)mData.get("text");
-            if (text != null) {
-                boolean deliveryReport = (mDeliveryIntent != null);
-                // Using invalid threadId 0 here. When the message is inserted into the db, the
-                // provider looks up the threadId based on the recipient(s).
-                mMessageUri = Sms.addMessageToUri(context.getContentResolver(),
-                        Telephony.Sms.Sent.CONTENT_URI,
-                        mDestAddress,
-                        text /*body*/,
-                        null /*subject*/,
-                        mTimestamp /*date*/,
-                        true /*read*/,
-                        deliveryReport /*deliveryReport*/,
-                        0 /*threadId*/);
-            }
         }
 
         /**
@@ -1164,40 +1139,19 @@ public abstract class SMSDispatcher extends Handler {
         }
 
         /**
-         * Update the error_code column of a message
-         *
-         * @param context The Context
-         * @param errorCode The error code
-         */
-        private void updateMessageErrorCode(Context context, int errorCode) {
-            if (mMessageUri == null) {
-                return;
-            }
-            final ContentValues values = new ContentValues(1);
-            values.put(Sms.ERROR_CODE, errorCode);
-            final long identity = Binder.clearCallingIdentity();
-            try {
-                if (SqliteWrapper.update(context, context.getContentResolver(), mMessageUri, values,
-                        null/*where*/, null/*selectionArgs*/) != 1) {
-                    Rlog.e(TAG, "Failed to update message error code");
-                }
-            } finally {
-                Binder.restoreCallingIdentity(identity);
-            }
-        }
-
-        /**
          * Set the final state of a message: FAILED or SENT
          *
          * @param context The Context
          * @param messageType The final message type
+         * @param errorCode The error code
          */
-        private void setMessageFinalState(Context context, int messageType) {
+        private void updateMessageState(Context context, int messageType, int errorCode) {
             if (mMessageUri == null) {
                 return;
             }
-            final ContentValues values = new ContentValues(1);
+            final ContentValues values = new ContentValues(2);
             values.put(Sms.TYPE, messageType);
+            values.put(Sms.ERROR_CODE, errorCode);
             final long identity = Binder.clearCallingIdentity();
             try {
                 if (SqliteWrapper.update(context, context.getContentResolver(), mMessageUri, values,
@@ -1206,6 +1160,75 @@ public abstract class SMSDispatcher extends Handler {
                 }
             } finally {
                 Binder.restoreCallingIdentity(identity);
+            }
+        }
+
+        /**
+         * Persist a sent SMS if required
+         *
+         * @param context
+         * @param messageType The folder to store (FAILED or SENT)
+         * @param errorCode The current error code for this SMS or SMS part
+         * @return The telephony provider URI if stored
+         */
+        private Uri persistSentMessageIfRequired(Context context, int messageType, int errorCode) {
+            if (!SmsApplication.shouldWriteMessageForPackage(mAppInfo.packageName, context)) {
+                return null;
+            }
+            Rlog.d(TAG, "Persist SMS into "
+                    + (messageType == Sms.MESSAGE_TYPE_FAILED ? "FAILED" : "SENT"));
+            final ContentValues values = new ContentValues();
+            values.put(Sms.SUB_ID, mSubId);
+            values.put(Sms.ADDRESS, mDestAddress);
+            values.put(Sms.BODY, mFullMessageText);
+            values.put(Sms.DATE, System.currentTimeMillis()); // milliseconds
+            values.put(Sms.SEEN, 1);
+            values.put(Sms.READ, 1);
+            final String creator = mAppInfo != null ? mAppInfo.packageName : null;
+            if (!TextUtils.isEmpty(creator)) {
+                values.put(Sms.CREATOR, creator);
+            }
+            if (mDeliveryIntent != null) {
+                values.put(Sms.STATUS, Telephony.Sms.STATUS_PENDING);
+            }
+            if (errorCode != 0) {
+                values.put(Sms.ERROR_CODE, errorCode);
+            }
+            final long identity = Binder.clearCallingIdentity();
+            final ContentResolver resolver = context.getContentResolver();
+            try {
+                final Uri uri =  resolver.insert(Telephony.Sms.Sent.CONTENT_URI, values);
+                if (uri != null && messageType == Sms.MESSAGE_TYPE_FAILED) {
+                    // Since we can't persist a message directly into FAILED box,
+                    // we have to update the column after we persist it into SENT box.
+                    // The gap between the state change is tiny so I would not expect
+                    // it to cause any serious problem
+                    // TODO: we should add a "failed" URI for this in SmsProvider?
+                    final ContentValues updateValues = new ContentValues(1);
+                    updateValues.put(Sms.TYPE, Sms.MESSAGE_TYPE_FAILED);
+                    resolver.update(uri, updateValues, null/*where*/, null/*selectionArgs*/);
+                }
+                return uri;
+            } catch (Exception e) {
+                Rlog.e(TAG, "writeOutboxMessage: Failed to persist outbox message", e);
+                return null;
+            } finally {
+                Binder.restoreCallingIdentity(identity);
+            }
+        }
+
+        /**
+         * Persist or update an SMS depending on if we send a new message or a stored message
+         *
+         * @param context
+         * @param messageType The message folder for this SMS, FAILED or SENT
+         * @param errorCode The current error code for this SMS or SMS part
+         */
+        private void persistOrUpdateMessage(Context context, int messageType, int errorCode) {
+            if (mMessageUri != null) {
+                updateMessageState(context, messageType, errorCode);
+            } else {
+                mMessageUri = persistSentMessageIfRequired(context, messageType, errorCode);
             }
         }
 
@@ -1225,11 +1248,8 @@ public abstract class SMSDispatcher extends Handler {
             if (mUnsentPartCount != null) {
                 isSinglePartOrLastPart = mUnsentPartCount.decrementAndGet() == 0;
             }
-            if (errorCode != 0) {
-                updateMessageErrorCode(context, errorCode);
-            }
             if (isSinglePartOrLastPart) {
-                setMessageFinalState(context, Sms.MESSAGE_TYPE_FAILED);
+                persistOrUpdateMessage(context, Sms.MESSAGE_TYPE_FAILED, errorCode);
             }
             if (mSentIntent != null) {
                 try {
@@ -1265,15 +1285,11 @@ public abstract class SMSDispatcher extends Handler {
                 isSinglePartOrLastPart = mUnsentPartCount.decrementAndGet() == 0;
             }
             if (isSinglePartOrLastPart) {
-                boolean success = true;
+                int messageType = Sms.MESSAGE_TYPE_SENT;
                 if (mAnyPartFailed != null && mAnyPartFailed.get()) {
-                    success = false;
+                    messageType = Sms.MESSAGE_TYPE_FAILED;
                 }
-                if (success) {
-                    setMessageFinalState(context, Sms.MESSAGE_TYPE_SENT);
-                } else {
-                    setMessageFinalState(context, Sms.MESSAGE_TYPE_FAILED);
-                }
+                persistOrUpdateMessage(context, messageType, 0/*errorCode*/);
             }
             if (mSentIntent != null) {
                 try {
@@ -1298,7 +1314,7 @@ public abstract class SMSDispatcher extends Handler {
     protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
             PendingIntent deliveryIntent, String format, AtomicInteger unsentPartCount,
             AtomicBoolean anyPartFailed, Uri messageUri, SmsHeader smsHeader,
-            boolean isExpectMore, int validityPeriod) {
+            boolean isExpectMore, String fullMessageText, int validityPeriod) {
         // Get calling app package name via UID from Binder call
         PackageManager pm = mContext.getPackageManager();
         String[] packageNames = pm.getPackagesForUid(Binder.getCallingUid());
@@ -1317,20 +1333,23 @@ public abstract class SMSDispatcher extends Handler {
         // and before displaying the number to the user if confirmation is required.
         String destAddr = PhoneNumberUtils.extractNetworkPortion((String) data.get("destAddr"));
         return new SmsTracker(data, sentIntent, deliveryIntent, appInfo, destAddr, format,
-                unsentPartCount, anyPartFailed, messageUri, smsHeader, isExpectMore, validityPeriod);
+                unsentPartCount, anyPartFailed, messageUri, smsHeader, isExpectMore,
+                fullMessageText, getSubId(), validityPeriod);
     }
 
     protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
-            PendingIntent deliveryIntent, String format, Uri messageUri, boolean isExpectMore) {
+            PendingIntent deliveryIntent, String format, Uri messageUri, boolean isExpectMore,
+            String fullMessageText) {
         return getSmsTracker(data, sentIntent, deliveryIntent, format, null/*unsentPartCount*/,
-                null/*anyPartFailed*/, messageUri, null/*smsHeader*/, isExpectMore, -1);
+                null/*anyPartFailed*/, messageUri, null/*smsHeader*/, isExpectMore, fullMessageText, -1);
     }
 
     protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
             PendingIntent deliveryIntent, String format, Uri messageUri, boolean isExpectMore, 
-            int validityPeriod ) {
+            String fullMessageText, int validityPeriod ) {
         return getSmsTracker(data, sentIntent, deliveryIntent, format, null/*unsentPartCount*/, 
-                null/*anyPartFailed*/, messageUri, null/*smsHeader*/, isExpectMore, validityPeriod);
+                null/*anyPartFailed*/, messageUri, null/*smsHeader*/, isExpectMore, 
+                fullMessageText, validityPeriod);
     }
 
     protected HashMap<String, Object> getSmsTrackerMap(String destAddr, String scAddr,
