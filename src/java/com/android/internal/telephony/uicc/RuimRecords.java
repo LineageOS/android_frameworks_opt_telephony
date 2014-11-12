@@ -43,6 +43,7 @@ import android.telephony.Rlog;
 import android.text.TextUtils;
 import android.util.Log;
 import com.android.internal.telephony.TelephonyProperties;
+import android.content.res.Resources;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.GsmAlphabet;
@@ -972,13 +973,16 @@ public final class RuimRecords extends IccRecords {
                 obtainMessage(EVENT_GET_ICCID_DONE));
         mRecordsToLoad++;
 
-        mFh.loadEFTransparent(EF_PL,
-                obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfPlLoaded()));
-        mRecordsToLoad++;
+        Resources resource = Resources.getSystem();
+        if (resource.getBoolean(com.android.internal.R.bool.config_use_sim_language_file)) {
+            mFh.loadEFTransparent(EF_PL,
+                    obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfPlLoaded()));
+            mRecordsToLoad++;
 
-        mFh.loadEFTransparent(EF_CSIM_LI,
-                obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfCsimLiLoaded()));
-        mRecordsToLoad++;
+            mFh.loadEFTransparent(EF_CSIM_LI,
+                    obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfCsimLiLoaded()));
+            mRecordsToLoad++;
+        }
 
         mFh.loadEFTransparent(EF_CSIM_SPN,
                 obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfCsimSpnLoaded()));
