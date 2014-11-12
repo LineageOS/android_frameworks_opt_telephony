@@ -1985,4 +1985,6 @@ public interface Phone {
      * @param lchStatus, true if call is in lch state
      */
     public void setLocalCallHold(int lchStatus);
+
+    public boolean isImsVtCallPresent();
 }
