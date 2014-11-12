@@ -29,7 +29,6 @@ import android.provider.Telephony;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.util.ArrayMap;
-import android.util.Log;
 
 import com.android.internal.telephony.ISms;
 import com.android.internal.telephony.SmsRawData;
@@ -60,17 +59,21 @@ public final class SmsManager {
      * A psuedo-subId that represents the default subId at any given time. The actual subId it
      * represents changes as the default subId is changed.
      */
-    private static final int DEFAULT_SUB_ID = -1002;
+    private static final int DEFAULT_SUBSCRIPTION_ID = -1002;
 
     /** Singleton object constructed during class initialization. */
-    private static final SmsManager sInstance = new SmsManager(DEFAULT_SUB_ID);
+    private static final SmsManager sInstance = new SmsManager(DEFAULT_SUBSCRIPTION_ID);
     private static final Object sLockObject = new Object();
-    private static final Map<Integer, SmsManager> sSubInstances = new ArrayMap<Integer, SmsManager>();
+
     /** @hide */
     public static final int CELL_BROADCAST_RAN_TYPE_GSM = 0;
     /** @hide */
     public static final int CELL_BROADCAST_RAN_TYPE_CDMA = 1;
-    /** A concrete subId, or the pseudo DEFAULT_SUB_ID */
+
+    private static final Map<Integer, SmsManager> sSubInstances =
+            new ArrayMap<Integer, SmsManager>();
+
+    /** A concrete subscription id, or the pseudo DEFAULT_SUBSCRIPTION_ID */
     private int mSubId;
 
     /*
@@ -204,9 +207,10 @@ public final class SmsManager {
     public static final String MMS_CONFIG_NAI_SUFFIX = "naiSuffix";
     /**
      * If true, show the cell broadcast (amber alert) in the SMS settings. Some carriers
-     * don't want this shown.
+     * don't want this shown. (Boolean type)
      */
-    public static final String MMS_SHOW_CELL_BROADCAST_APP_LINKS = "config_cellBroadcastAppLinks";
+    public static final String MMS_CONFIG_SHOW_CELL_BROADCAST_APP_LINKS =
+            "config_cellBroadcastAppLinks";
 
     /**
      * Send a text based SMS.
@@ -686,10 +690,11 @@ public final class SmsManager {
     }
 
     /**
-    * Get the default instance of the SmsManager
-    *
-    * @return the default instance of the SmsManager
-    */
+     * Get the SmsManager associated with the default subscription id. The instance will always be
+     * associated with the default subscription id, even if the default subscription id is changed.
+     *
+     * @return the SmsManager associated with the default subscription id
+     */
     public static SmsManager getDefault() {
         return sInstance;
     }
@@ -700,20 +705,10 @@ public final class SmsManager {
      * @param subId an SMS subscription id, typically accessed using
      *   {@link android.telephony.SubscriptionManager}
      * @return the instance of the SmsManager associated with subId
-     */
-    public static SmsManager getSmsManagerForSubscriptionId(long subId) {
-        return null;
-    }
-
-    /**
-     * Get the the instance of the SmsManager associated with a particular subId
-     *
-     * @param subId a SMS subscription id, typically accessed using SubscriptionManager
-     * @return the instance of the SmsManager associated with subId
      *
      * {@hide}
      */
-    public static SmsManager getSmsManagerForSubscriber(int subId) {
+    public static SmsManager getSmsManagerForSubscriptionId(int subId) {
         // TODO(shri): Add javadoc link once SubscriptionManager is made public api
         synchronized(sLockObject) {
             SmsManager smsManager = sSubInstances.get(subId);
@@ -732,34 +727,14 @@ public final class SmsManager {
     /**
      * Get the associated subscription id. If the instance was returned by {@link #getDefault()},
      * then this method may return different values at different points in time (if the user
-     * changes the default subscription id). It will return < 0 if the default subscription id
-     * cannot be determined.
-     *
-     * Additionally, to support legacy applications that are not multi-SIM aware,
-     * if the following are true:
-     *     - We are using a multi-SIM device
-     *     - A default SMS SIM has not been selected
-     *     - At least one SIM subscription is available
-     * then ask the user to set the default SMS SIM.
+     * changes the default subscription id). It will return
+     * {@link android.telephony.SubscriptionManager#INVALID_SUB_ID}
+     * if the default subscription id cannot be determined.
      *
      * @return associated subscription id
      */
     public int getSubscriptionId() {
-        return 0;
-    }
-
-    /**
-     * Get the associated subId. If the instance was returned by {@link #getDefault()}, then this
-     * method may return different values at different points in time (if the user changes the
-     * default subId). It will return SubscriptionManager.INVALID_SUB_ID if the default
-     * subId cannot be determined.
-     *
-     * @return associated subId
-     *
-     * {@hide}
-     */
-    public int getSubId() {
-        if (mSubId == DEFAULT_SUB_ID) {
+        if (mSubId == DEFAULT_SUBSCRIPTION_ID) {
             return getDefaultSmsSubscriptionId();
         }
         return mSubId;
@@ -804,8 +779,9 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.copyMessageToIccEfForSubscriber(getSubId(),
-                        ActivityThread.currentPackageName(), status, pdu, smsc);
+                success = iccISms.copyMessageToIccEfForSubscriber(getSubscriptionId(),
+                        ActivityThread.currentPackageName(),
+                        status, pdu, smsc);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -833,8 +809,9 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.updateMessageOnIccEfForSubscriber(getSubId(),
-                        ActivityThread.currentPackageName(),messageIndex, STATUS_ON_ICC_FREE, pdu);
+                success = iccISms.updateMessageOnIccEfForSubscriber(getSubscriptionId(),
+                        ActivityThread.currentPackageName(),
+                        messageIndex, STATUS_ON_ICC_FREE, pdu);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -863,8 +840,9 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.updateMessageOnIccEfForSubscriber(getSubId(),
-                        ActivityThread.currentPackageName(), messageIndex, newStatus, pdu);
+                success = iccISms.updateMessageOnIccEfForSubscriber(getSubscriptionId(),
+                        ActivityThread.currentPackageName(),
+                        messageIndex, newStatus, pdu);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -882,13 +860,14 @@ public final class SmsManager {
      *
      * {@hide}
      */
-    public static ArrayList<SmsMessage> getAllMessagesFromIcc() {
+    public ArrayList<SmsMessage> getAllMessagesFromIcc() {
         List<SmsRawData> records = null;
 
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                records = iccISms.getAllMessagesFromIccEfForSubscriber(getSubId(),
+                records = iccISms.getAllMessagesFromIccEfForSubscriber(
+                        getSubscriptionId(),
                         ActivityThread.currentPackageName());
             }
         } catch (RemoteException ex) {
@@ -924,8 +903,8 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.enableCellBroadcastForSubscriber(getSubId(), messageIdentifier,
-                        ranType);
+                success = iccISms.enableCellBroadcastForSubscriber(
+                        getSubscriptionId(), messageIdentifier, ranType);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -960,8 +939,8 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.disableCellBroadcastForSubscriber(getSubId(), messageIdentifier,
-                        ranType);
+                success = iccISms.disableCellBroadcastForSubscriber(
+                        getSubscriptionId(), messageIdentifier, ranType);
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1002,7 +981,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.enableCellBroadcastRangeForSubscriber(getSubId(),
+                success = iccISms.enableCellBroadcastRangeForSubscriber(getSubscriptionId(),
                         startMessageId, endMessageId, ranType);
             }
         } catch (RemoteException ex) {
@@ -1044,7 +1023,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                success = iccISms.disableCellBroadcastRangeForSubscriber(getSubId(),
+                success = iccISms.disableCellBroadcastRangeForSubscriber(getSubscriptionId(),
                         startMessageId, endMessageId, ranType);
             }
         } catch (RemoteException ex) {
@@ -1096,7 +1075,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                boSupported = iccISms.isImsSmsSupportedForSubscriber(getSubId());
+                boSupported = iccISms.isImsSmsSupportedForSubscriber(getSubscriptionId());
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1121,7 +1100,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                format = iccISms.getImsSmsFormatForSubscriber(getSubId());
+                format = iccISms.getImsSmsFormatForSubscriber(getSubscriptionId());
             }
         } catch (RemoteException ex) {
             // ignore it
@@ -1168,9 +1147,9 @@ public final class SmsManager {
     }
 
     /**
-     * Get default sms subId
+     * Get default sms subscription id
      *
-     * @return the default SubId
+     * @return the default SMS subscription id
      */
     public static int getDefaultSmsSubscriptionId() {
         ISms iccISms = null;
@@ -1266,7 +1245,7 @@ public final class SmsManager {
             grantCarrierPackageUriPermission(context, contentUri,
                     Telephony.Mms.Intents.MMS_SEND_ACTION, Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-            iMms.sendMessage(getSubId(), ActivityThread.currentPackageName(), contentUri,
+            iMms.sendMessage(getSubscriptionId(), ActivityThread.currentPackageName(), contentUri,
                     locationUrl, configOverrides, sentIntent);
         } catch (RemoteException e) {
             // Ignore it
@@ -1318,7 +1297,8 @@ public final class SmsManager {
                     Telephony.Mms.Intents.MMS_DOWNLOAD_ACTION,
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
 
-            iMms.downloadMessage(getSubId(), ActivityThread.currentPackageName(), locationUrl,
+            iMms.downloadMessage(
+                    getSubscriptionId(), ActivityThread.currentPackageName(), locationUrl,
                     contentUri, configOverrides, downloadedIntent);
         } catch (RemoteException e) {
             // Ignore it
@@ -1335,9 +1315,9 @@ public final class SmsManager {
     public static final int MMS_ERROR_CONFIGURATION_ERROR = 7;
     public static final int MMS_ERROR_NO_DATA_NETWORK = 8;
 
-    // Intent extra name for MMS sending result data in byte array type
+    /** Intent extra name for MMS sending result data in byte array type */
     public static final String EXTRA_MMS_DATA = "android.telephony.extra.MMS_DATA";
-    // Intent extra name for HTTP status code for MMS HTTP failure in integer type
+    /** Intent extra name for HTTP status code for MMS HTTP failure in integer type */
     public static final String EXTRA_MMS_HTTP_STATUS = "android.telephony.extra.MMS_HTTP_STATUS";
 
 
@@ -1587,7 +1567,8 @@ public final class SmsManager {
         }
         try {
             ISms iccISms = getISmsServiceOrThrow();
-            iccISms.sendStoredText(getSubId(), ActivityThread.currentPackageName(), messageUri,
+            iccISms.sendStoredText(
+                    getSubscriptionId(), ActivityThread.currentPackageName(), messageUri,
                     scAddress, sentIntent, deliveryIntent);
         } catch (RemoteException ex) {
             // ignore it
@@ -1634,7 +1615,8 @@ public final class SmsManager {
         }
         try {
             ISms iccISms = getISmsServiceOrThrow();
-            iccISms.sendStoredMultipartText(getSubId(), ActivityThread.currentPackageName(), messageUri,
+            iccISms.sendStoredMultipartText(
+                    getSubscriptionId(), ActivityThread.currentPackageName(), messageUri,
                     scAddress, sentIntents, deliveryIntents);
         } catch (RemoteException ex) {
             // ignore it
@@ -1663,7 +1645,8 @@ public final class SmsManager {
         try {
             IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
             if (iMms != null) {
-                iMms.sendStoredMessage(getSubId(), ActivityThread.currentPackageName(), messageUri,
+                iMms.sendStoredMessage(
+                        getSubscriptionId(), ActivityThread.currentPackageName(), messageUri,
                         configOverrides, sentIntent);
             }
         } catch (RemoteException ex) {
@@ -1725,7 +1708,7 @@ public final class SmsManager {
         try {
             IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
             if (iMms != null) {
-                return iMms.getCarrierConfigValues(getSubId());
+                return iMms.getCarrierConfigValues(getSubscriptionId());
             }
         } catch (RemoteException ex) {
             // ignore it
