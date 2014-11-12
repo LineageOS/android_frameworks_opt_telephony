@@ -1164,8 +1164,11 @@ public final class Telephony {
                 for (int i = 0; i < pduCount; i++) {
                     byte[] pdu = (byte[]) pdus[i];
                     msgs[i] = SmsMessage.createFromPdu(pdu, format);
-                    String normalized = normalizeDigitsOnly(msgs[i].getOriginatingAddress());
-                    addresses.add(normalized);
+                    String originatingAddress = msgs[i].getOriginatingAddress();
+                    if (!TextUtils.isEmpty(originatingAddress)) {
+                        String normalized = normalizeDigitsOnly(originatingAddress);
+                        addresses.add(normalized);
+                    }
                 }
                 return addresses;
             }
