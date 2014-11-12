@@ -469,7 +469,7 @@ public class PhoneFactory {
         enabled = Settings.Global.getInt(sContext.getContentResolver(),
                 Settings.Global.MOBILE_DATA + subId, 0) != 0;
         Settings.Global.putInt(sContext.getContentResolver(),
-                Settings.Global.MOBILE_DATA, enabled ? 1 : 0);
+                Settings.Global.MOBILE_DATA + subId, enabled ? 1 : 0);
         Rlog.d(LOG_TAG, "set mobile_data: " + enabled);
 
         // Update the current data roaming flag
