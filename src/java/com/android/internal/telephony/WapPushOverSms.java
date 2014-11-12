@@ -203,7 +203,7 @@ public class WapPushOverSms implements ServiceConnection {
                 // FIXME (tomtaylor) - when we've updated SubscriptionManager, change
                 // SubscriptionManager.DEFAULT_SUB_ID to SubscriptionManager.getDefaultSmsSubId()
                 int subId = (subIds != null) && (subIds.length > 0) ? subIds[0] :
-                    SmsManager.getDefaultSmsSubId();
+                    SmsManager.getDefaultSmsSubscriptionId();
                 writeInboxMessage(subId, intentData);
             }
 

@@ -142,23 +142,9 @@ public class CDMAPhone extends PhoneBase {
 
     static String PROPERTY_CDMA_HOME_OPERATOR_NUMERIC = "ro.cdma.home.operator.numeric";
 
-    // Constructors
-    public CDMAPhone(Context context, CommandsInterface ci, PhoneNotifier notifier) {
-        super("CDMA", notifier, context, ci, false);
-        initSstIcc();
-        init(context, notifier);
-    }
-
     public CDMAPhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
             int phoneId) {
         super("CDMA", notifier, context, ci, false, phoneId);
-        initSstIcc();
-        init(context, notifier);
-    }
-
-    public CDMAPhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
-            boolean unitTestMode) {
-        super("CDMA", notifier, context, ci, unitTestMode);
         initSstIcc();
         init(context, notifier);
     }
