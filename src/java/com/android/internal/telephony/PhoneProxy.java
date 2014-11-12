@@ -1011,6 +1011,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public boolean isOnDemandDataPossible(String apnType) {
+        return mActivePhone.isOnDemandDataPossible(apnType);
+    }
+
+    @Override
     public boolean isDataConnectivityPossible(String apnType) {
         return mActivePhone.isDataConnectivityPossible(apnType);
     }

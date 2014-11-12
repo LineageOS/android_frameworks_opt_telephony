@@ -1448,6 +1448,11 @@ public interface Phone {
     boolean isDataConnectivityPossible();
 
     /**
+     * Report on whether on-demand data connectivity is allowed.
+     */
+    boolean isOnDemandDataPossible(String apnType);
+
+    /**
      * Report on whether data connectivity is allowed for an APN.
      */
     boolean isDataConnectivityPossible(String apnType);
