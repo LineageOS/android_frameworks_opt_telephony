@@ -1508,6 +1508,12 @@ public class SIMRecords extends IccRecords {
     }
 
     private void loadEfLiAndEfPl() {
+        Resources resource = Resources.getSystem();
+        if (!resource.getBoolean(com.android.internal.R.bool.config_use_sim_language_file)) {
+            if (DBG) log ("Not using EF LI/EF PL");
+            return;
+        }
+
         if (mParentApp.getType() == AppType.APPTYPE_USIM) {
             mRecordsRequested = true;
             mFh.loadEFTransparent(EF_LI,
