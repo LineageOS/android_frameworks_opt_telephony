@@ -96,11 +96,6 @@ public class CDMALTEPhone extends CDMAPhone {
 
     }
 
-    // Constructors
-    public CDMALTEPhone(Context context, CommandsInterface ci, PhoneNotifier notifier) {
-        super(context, ci, notifier, false);
-    }
-
     @Override
     protected void initSstIcc() {
         mSST = new CdmaLteServiceStateTracker(this);
