@@ -35,7 +35,6 @@ import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.SMSDispatcher;
-import com.android.internal.telephony.SmsApplication;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsUsageMonitor;
@@ -172,7 +171,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         if (pdu != null) {
             HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, origPort, data, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                    null /*messageUri*/, false);
+                    null /*messageUri*/, false /*isExpectMore*/, null /*fullMessageText*/);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendData(): getSubmitPdu() returned null");
@@ -187,21 +186,9 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, text, (deliveryIntent != null), validityPeriod);
         if (pdu != null) {
-            if (messageUri == null) {
-                if (SmsApplication.shouldWriteMessageForPackage(callingPkg, mContext)) {
-                    messageUri = writeOutboxMessage(
-                            getSubId(),
-                            destAddr,
-                            text,
-                            deliveryIntent != null,
-                            callingPkg);
-                }
-            } else {
-                moveToOutbox(getSubId(), messageUri, callingPkg);
-            }
             HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                    messageUri, isExpectMore, validityPeriod);
+                    messageUri, isExpectMore, text /*fullMessageText*/, validityPeriod);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendText(): getSubmitPdu() returned null");
@@ -227,7 +214,8 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
             String message, SmsHeader smsHeader, int encoding,
             PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart,
             int priority, boolean isExpectMore, int validityPeriod,
-            AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri) {
+            AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
+            String fullMessageText) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(scAddress, destinationAddress,
                 message, deliveryIntent != null, SmsHeader.toByteArray(smsHeader),
                 encoding, smsHeader.languageTable, smsHeader.languageShiftTable, validityPeriod);
@@ -236,7 +224,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                     message, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent,
                     deliveryIntent, getFormat(), unsentPartCount, anyPartFailed, messageUri,
-                    smsHeader, (!lastPart || isExpectMore), validityPeriod);
+                    smsHeader, (!lastPart || isExpectMore), fullMessageText, validityPeriod);
             sendRawPdu(tracker);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendNewSubmitPdu(): getSubmitPdu() returned null");
