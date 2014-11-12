@@ -1748,6 +1748,12 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
+    public boolean isOnDemandDataPossible(String apnType) {
+        return ((mDcTracker != null) &&
+                (mDcTracker.isOnDemandDataPossible(apnType)));
+    }
+
+    @Override
     public boolean isDataConnectivityPossible(String apnType) {
         return ((mDcTracker != null) &&
                 (mDcTracker.isDataPossible(apnType)));
