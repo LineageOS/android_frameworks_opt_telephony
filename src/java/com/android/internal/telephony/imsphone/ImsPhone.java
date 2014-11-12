@@ -127,6 +127,10 @@ public class ImsPhone extends ImsPhoneBase {
 
     private final RegistrantList mSilentRedialRegistrants = new RegistrantList();
 
+    // Variable to cache the video capabilitity. In cases where we delete/re-create the phone
+    // this information is getting lost.
+    private boolean mIsVideoCapable = false;
+
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
         @Override
@@ -176,6 +180,11 @@ public class ImsPhone extends ImsPhoneBase {
         // synchronization is managed at the PhoneBase scope (which calls this function)
         mDefaultPhone = parentPhone;
         mPhoneId = mDefaultPhone.getPhoneId();
+
+        // When the parent phone is updated, we need to notify listeners of the cached video
+        // capability.
+        Rlog.d(LOG_TAG, "updateParentPhone - Notify video capability changed " + mIsVideoCapable);
+        notifyForVideoCapabilityChanged(mIsVideoCapable);
     }
 
     @Override
@@ -469,6 +478,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     public void notifyForVideoCapabilityChanged(boolean isVideoCapable) {
+        mIsVideoCapable = isVideoCapable;
         mDefaultPhone.notifyForVideoCapabilityChanged(isVideoCapable);
     }
 
