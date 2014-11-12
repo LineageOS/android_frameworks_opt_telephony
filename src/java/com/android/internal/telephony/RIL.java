@@ -676,7 +676,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             mNITZTimeRegistrant
                 .notifyRegistrant(
                     new AsyncResult (null, mLastNITZTimeInfo, null));
-            mLastNITZTimeInfo = null;
         }
     }
 
@@ -2868,10 +2867,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
                         mNITZTimeRegistrant
                             .notifyRegistrant(new AsyncResult (null, result, null));
-                    } else {
-                        // in case NITZ time registrant isnt registered yet
-                        mLastNITZTimeInfo = result;
                     }
+                    // in case NITZ time registrant isn't registered yet, or a new registrant
+                    // registers later
+                    mLastNITZTimeInfo = result;
                 }
             break;
 
