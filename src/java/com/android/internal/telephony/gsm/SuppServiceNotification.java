@@ -38,6 +38,9 @@ public class SuppServiceNotification {
     /** List of forwarded numbers, if any */
     public String[] history;
 
+    static public final int NOTIFICATION_TYPE_MO = 0;
+    static public final int NOTIFICATION_TYPE_MT = 1;
+
     static public final int MO_CODE_UNCONDITIONAL_CF_ACTIVE     = 0;
     static public final int MO_CODE_SOME_CF_ACTIVE              = 1;
     static public final int MO_CODE_CALL_FORWARDED              = 2;
@@ -64,7 +67,7 @@ public class SuppServiceNotification {
     public String toString()
     {
         return super.toString() + " mobile"
-            + (notificationType == 0 ? " originated " : " terminated ")
+            + (notificationType == NOTIFICATION_TYPE_MO ? " originated " : " terminated ")
             + " code: " + code
             + " index: " + index
             + " history: " + history
