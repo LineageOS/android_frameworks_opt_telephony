@@ -3914,8 +3914,6 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 if (!TextUtils.isEmpty(pcscf)) {
                     dataCall.pcscf = pcscf.split(" ");
                 }
-            }
-            if (version >= 11) {
                 dataCall.mtu = p.readInt();
             }
         }
@@ -3980,6 +3978,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 if (!TextUtils.isEmpty(pcscf)) {
                     dataCall.pcscf = pcscf.split(" ");
                 }
+            }
+            if (num >= 7) {
+                dataCall.mtu = Integer.parseInt(p.readString());
+                if (RILJ_LOGD) riljLog("responseSetupDataCall got mtu=" + dataCall.mtu);
             }
         } else {
             if (num != 1) {
