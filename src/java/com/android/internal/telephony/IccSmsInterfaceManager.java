@@ -579,27 +579,31 @@ public class IccSmsInterfaceManager {
         return data;
     }
 
-    public boolean enableCellBroadcast(int messageIdentifier) {
-        return enableCellBroadcastRange(messageIdentifier, messageIdentifier);
+    public boolean enableCellBroadcast(int messageIdentifier, int ranType) {
+        return enableCellBroadcastRange(messageIdentifier, messageIdentifier, ranType);
     }
 
-    public boolean disableCellBroadcast(int messageIdentifier) {
-        return disableCellBroadcastRange(messageIdentifier, messageIdentifier);
+    public boolean disableCellBroadcast(int messageIdentifier, int ranType) {
+        return disableCellBroadcastRange(messageIdentifier, messageIdentifier, ranType);
     }
 
-    public boolean enableCellBroadcastRange(int startMessageId, int endMessageId) {
-        if (PhoneConstants.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+    public boolean enableCellBroadcastRange(int startMessageId, int endMessageId, int ranType) {
+        if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_GSM) {
             return enableGsmBroadcastRange(startMessageId, endMessageId);
-        } else {
+        } else if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_CDMA) {
             return enableCdmaBroadcastRange(startMessageId, endMessageId);
+        } else {
+            throw new IllegalArgumentException("Not a supportted RAN Type");
         }
     }
 
-    public boolean disableCellBroadcastRange(int startMessageId, int endMessageId) {
-        if (PhoneConstants.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+    public boolean disableCellBroadcastRange(int startMessageId, int endMessageId, int ranType) {
+        if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_GSM ) {
             return disableGsmBroadcastRange(startMessageId, endMessageId);
-        } else {
+        } else if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_CDMA)  {
             return disableCdmaBroadcastRange(startMessageId, endMessageId);
+        } else {
+            throw new IllegalArgumentException("Not a supportted RAN Type");
         }
     }
 
@@ -616,13 +620,13 @@ public class IccSmsInterfaceManager {
                 Binder.getCallingUid());
 
         if (!mCellBroadcastRangeManager.enableRange(startMessageId, endMessageId, client)) {
-            log("Failed to add cell broadcast subscription for MID range " + startMessageId
+            log("Failed to add GSM cell broadcast subscription for MID range " + startMessageId
                     + " to " + endMessageId + " from client " + client);
             return false;
         }
 
         if (DBG)
-            log("Added cell broadcast subscription for MID range " + startMessageId
+            log("Added GSM cell broadcast subscription for MID range " + startMessageId
                     + " to " + endMessageId + " from client " + client);
 
         setCellBroadcastActivation(!mCellBroadcastRangeManager.isEmpty());
@@ -643,13 +647,13 @@ public class IccSmsInterfaceManager {
                 Binder.getCallingUid());
 
         if (!mCellBroadcastRangeManager.disableRange(startMessageId, endMessageId, client)) {
-            log("Failed to remove cell broadcast subscription for MID range " + startMessageId
+            log("Failed to remove GSM cell broadcast subscription for MID range " + startMessageId
                     + " to " + endMessageId + " from client " + client);
             return false;
         }
 
         if (DBG)
-            log("Removed cell broadcast subscription for MID range " + startMessageId
+            log("Removed GSM cell broadcast subscription for MID range " + startMessageId
                     + " to " + endMessageId + " from client " + client);
 
         setCellBroadcastActivation(!mCellBroadcastRangeManager.isEmpty());
