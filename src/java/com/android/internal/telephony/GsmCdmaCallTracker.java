@@ -87,6 +87,7 @@ public class GsmCdmaCallTracker extends CallTracker {
     private GsmCdmaPhone mPhone;
 
     private boolean mDesiredMute = false;    // false = mute off
+    private boolean mNextGsmCallIsForwarded = false;
 
     public PhoneConstants.State mState = PhoneConstants.State.IDLE;
 
@@ -168,6 +169,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         if (mPhone.isPhoneTypeGsm()) {
             mConnections = new GsmCdmaConnection[MAX_CONNECTIONS_GSM];
             mCi.unregisterForCallWaitingInfo(this);
+            mCi.registerForSuppService(this, EVENT_SUPP_SERVICE_NOTIFY, null);
         } else {
             mConnections = new GsmCdmaConnection[MAX_CONNECTIONS_CDMA];
             mPendingCallInEcm = false;
@@ -176,6 +178,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             mIsEcmTimerCanceled = false;
             m3WayCallFlashDelay = 0;
             mCi.registerForCallWaitingInfo(this, EVENT_CALL_WAITING_INFO_CDMA, null);
+            mCi.unregisterForSuppService(this);
         }
     }
 
@@ -867,6 +870,9 @@ public class GsmCdmaCallTracker extends CallTracker {
                             } else {
                                 newUnknownConnectionCdma = mConnections[i];
                             }
+                        } else {
+                            newRinging.mIsForwarded = mNextGsmCallIsForwarded;
+                            mNextGsmCallIsForwarded = false;
                         }
                     }
                 }
@@ -1112,6 +1118,17 @@ public class GsmCdmaCallTracker extends CallTracker {
         // call list when it gets the CommandException
         // error result from this
         pollCallsWhenSafe();
+    }
+
+    private void handleSuppServiceNotification(AsyncResult asyncResult) {
+        SuppServiceNotification ssn = (SuppServiceNotification) asyncResult.result;
+
+        if (ssn.notificationType == SuppServiceNotification.NOTIFICATION_TYPE_MT) {
+            if (ssn.code == SuppServiceNotification.MT_CODE_FORWARDED_CALL
+                    || ssn.code == SuppServiceNotification.MT_CODE_DEFLECTED_CALL) {
+                mNextGsmCallIsForwarded = true;
+            }
+        }
     }
 
     private void dumpState() {
@@ -1478,6 +1495,10 @@ public class GsmCdmaCallTracker extends CallTracker {
 
             case EVENT_RADIO_NOT_AVAILABLE:
                 handleRadioNotAvailable();
+            break;
+
+            case EVENT_SUPP_SERVICE_NOTIFY:
+                handleSuppServiceNotification((AsyncResult) msg.obj);
             break;
 
             case EVENT_EXIT_ECM_RESPONSE_CDMA:
