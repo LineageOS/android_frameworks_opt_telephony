@@ -50,6 +50,7 @@ public class GsmCdmaConnection extends Connection {
     GsmCdmaCall mParent;
 
     boolean mDisconnected;
+    boolean mIsForwarded;
 
     int mIndex;          // index in GsmCdmaCallTracker.connections[], -1 if unassigned
                         // The GsmCdma index is 1 + this
@@ -1106,5 +1107,9 @@ public class GsmCdmaConnection extends Connection {
         }
 
         return false;
+    }
+
+    public boolean isForwarded() {
+        return mIsForwarded;
     }
 }
