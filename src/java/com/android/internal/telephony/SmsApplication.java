@@ -42,8 +42,10 @@ import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import com.android.internal.R;
 import com.android.internal.content.PackageMonitor;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -745,6 +747,13 @@ public final class SmsApplication {
         ComponentName component = getDefaultSmsApplication(context, false);
         if (component != null) {
             defaultSmsPackage = component.getPackageName();
+        }
+
+        List<String> ignorePackages = Arrays.asList(
+                context.getResources().getStringArray(R.array.config_ignored_sms_packages));
+
+        if (ignorePackages.contains(packageName)) {
+            return false;
         }
 
         if ((defaultSmsPackage == null || !defaultSmsPackage.equals(packageName)) &&
