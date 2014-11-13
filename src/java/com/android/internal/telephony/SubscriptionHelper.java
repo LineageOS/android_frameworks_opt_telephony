@@ -65,7 +65,13 @@ class SubscriptionHelper extends Handler {
     // and when flex mapping performed
     private static boolean sTriggerDds = false;
 
+    private static final String APM_SIM_NOT_PWDN_PROPERTY = "persist.radio.apm_sim_not_pwdn";
+    private static final boolean sApmSIMNotPwdn = (SystemProperties.getInt(
+            APM_SIM_NOT_PWDN_PROPERTY, 0) == 1);
+
     private static final int EVENT_SET_UICC_SUBSCRIPTION_DONE = 1;
+    private static final int EVENT_REFRESH = 2;
+    private static final int EVENT_REFRESH_OEM = 3;
 
     public static final int SUB_SET_UICC_FAIL = -100;
     public static final int SUB_SIM_NOT_INSERTED = -99;
@@ -110,12 +116,20 @@ class SubscriptionHelper extends Handler {
         mSubStatus = new int[sNumPhones];
         for (int i=0; i < sNumPhones; i++ ) {
             mSubStatus[i] = SUB_INIT_STATE;
+            Integer index = new Integer(i);
+            if (mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_sim_refresh_for_dual_mode_card)) {
+                mCi[i].registerForSimRefreshEvent(this, EVENT_REFRESH_OEM, index);
+            } else {
+                mCi[i].registerForIccRefresh(this, EVENT_REFRESH, index);
+            }
         }
         mContext.getContentResolver().registerContentObserver(Settings.Global.getUriFor(
                 Settings.Global.PREFERRED_NETWORK_MODE), false, nwModeObserver);
 
 
-        logd("SubscriptionHelper init by Context, num phones = " + sNumPhones);
+        logd("SubscriptionHelper init by Context, num phones = "
+                + sNumPhones + " ApmSIMNotPwdn = " + sApmSIMNotPwdn);
     }
 
     private void updateNwModesInSubIdTable(boolean override) {
@@ -147,10 +161,20 @@ class SubscriptionHelper extends Handler {
 
     @Override
     public void handleMessage(Message msg) {
+        Integer index = new Integer(PhoneConstants.DEFAULT_CARD_INDEX);
+        AsyncResult ar;
         switch(msg.what) {
             case EVENT_SET_UICC_SUBSCRIPTION_DONE:
                 logd("EVENT_SET_UICC_SUBSCRIPTION_DONE");
                 processSetUiccSubscriptionDone(msg);
+                break;
+            case EVENT_REFRESH:
+            case EVENT_REFRESH_OEM:
+                ar = (AsyncResult)msg.obj;
+                index = (Integer)ar.userObj;
+                logi(" Received SIM refresh, reset sub state " +
+                        index + " old sub state " + mSubStatus[index]);
+                mSubStatus[index] = SUB_INIT_STATE;
                 break;
            default:
            break;
@@ -286,6 +310,45 @@ class SubscriptionHelper extends Handler {
             }
         }
         return allSubsAvailable;
+    }
+
+    public boolean isRadioOn(int phoneId) {
+        return mCi[phoneId].getRadioState().isOn();
+    }
+
+    public boolean isRadioAvailable(int phoneId) {
+        return mCi[phoneId].getRadioState().isAvailable();
+    }
+
+    public boolean proceedToHandleIccEvent() {
+        int apmState = Settings.Global.getInt(mContext.getContentResolver(),
+                 Settings.Global.AIRPLANE_MODE_ON, 0);
+
+        // If SIM powers down in APM, telephony needs to send SET_UICC
+        // once radio turns ON
+        if (!sApmSIMNotPwdn) {
+            for (int phoneId = 0; phoneId < sNumPhones; phoneId++) {
+                if (!isRadioOn(phoneId)) {
+                     logi(" proceedToHandleIccEvent, radio off/unavailable, phoneId = " + phoneId);
+                     mSubStatus[phoneId] = SUB_INIT_STATE;
+                }
+            }
+        }
+
+        // Do not handle if SIM powers down in APM mode
+        if ((apmState == 1) && (!sApmSIMNotPwdn)) {
+            logd(" proceedToHandleIccEvent, sApmSIMNotPwdn = " + sApmSIMNotPwdn);
+            return false;
+        }
+
+        for (int phoneId = 0; phoneId < sNumPhones; phoneId++) {
+            // Seems SSR happenned or RILD crashed, do not handle SIM change events
+            if (!isRadioAvailable(phoneId) || ((apmState == 0) && !isRadioOn(phoneId))) {
+                logi(" proceedToHandleIccEvent, radio not available, phoneId = " + phoneId);
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void logd(String message) {
