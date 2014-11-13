@@ -273,6 +273,10 @@ public class SubInfoRecordUpdater extends Handler {
             return;
         }
         logd("updateIccAvailability: Enter");
+        if (!SubscriptionHelper.getInstance().proceedToHandleIccEvent()) {
+            logd("updateIccAvailability: radio is OFF/unavailable, ignore ");
+            return;
+        }
 
         for (int slotId = 0; slotId < PROJECT_SIM_NUM; slotId++) {
             CardState newState = CardState.CARDSTATE_ABSENT;
