@@ -1342,6 +1342,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
         } else { // Multi-call SRVCC
             mHandoverCall.mConnections.addAll(call.mConnections);
         }
+        if (mHandoverCall.mConnections != null) {
+            for (Connection c : mHandoverCall.mConnections) {
+                ((ImsPhoneConnection)c).changeParent(mHandoverCall);
+            }
+        }
+        if (call.getState().isAlive()) {
+            log ("Call is alive and state is " + call.mState);
+            mHandoverCall.mState = call.mState;
+        }
         call.mConnections.clear();
         call.mState = ImsPhoneCall.State.IDLE;
     }
