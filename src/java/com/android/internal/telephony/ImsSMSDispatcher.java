@@ -17,13 +17,6 @@
 package com.android.internal.telephony;
 
 import static android.telephony.SmsManager.RESULT_ERROR_GENERIC_FAILURE;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
 import android.net.Uri;
@@ -32,10 +25,16 @@ import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 
-import com.android.internal.telephony.cdma.CdmaSMSDispatcher;
-import com.android.internal.telephony.gsm.GsmSMSDispatcher;
-import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
+import com.android.internal.telephony.cdma.CdmaSMSDispatcher;
+import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
+import com.android.internal.telephony.gsm.GsmSMSDispatcher;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class ImsSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "RIL_ImsSms";
@@ -406,7 +405,8 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     protected void sendNewSubmitPdu(String destinationAddress, String scAddress, String message,
             SmsHeader smsHeader, int format, PendingIntent sentIntent,
             PendingIntent deliveryIntent, boolean lastPart,
-            AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri) {
+            AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
+            String fullMessageText) {
         Rlog.e(TAG, "Error! Not implemented for IMS.");
     }
 

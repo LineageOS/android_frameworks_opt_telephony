@@ -30,19 +30,18 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
+import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SMSDispatcher;
-import com.android.internal.telephony.SmsApplication;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsUsageMonitor;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.cdma.sms.UserData;
-import com.android.internal.telephony.PhoneConstants;
-import android.telephony.TelephonyManager;
 
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -115,7 +114,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                 scAddr, destAddr, destPort, data, (deliveryIntent != null));
         HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
         SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                null /*messageUri*/, false);
+                null /*messageUri*/, false /*isExpectMore*/, null /*fullMessageText*/);
         sendSubmitPdu(tracker);
     }
 
@@ -126,21 +125,9 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, text, (deliveryIntent != null), null);
         if (pdu != null) {
-            if (messageUri == null) {
-                if (SmsApplication.shouldWriteMessageForPackage(callingPkg, mContext)) {
-                    messageUri = writeOutboxMessage(
-                            getSubId(),
-                            destAddr,
-                            text,
-                            deliveryIntent != null,
-                            callingPkg);
-                }
-            } else {
-                moveToOutbox(getSubId(), messageUri, callingPkg);
-            }
             HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                    messageUri, false);
+                    messageUri, false /*isExpectMore*/, text);
             sendSubmitPdu(tracker);
         } else {
             Rlog.e(TAG, "CdmaSMSDispatcher.sendText(): getSubmitPdu() returned null");
@@ -165,7 +152,8 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
     protected void sendNewSubmitPdu(String destinationAddress, String scAddress,
             String message, SmsHeader smsHeader, int encoding,
             PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart,
-            AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri) {
+            AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
+            String fullMessageText) {
         UserData uData = new UserData();
         uData.payloadStr = message;
         uData.userDataHeader = smsHeader;
@@ -186,7 +174,8 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         HashMap map = getSmsTrackerMap(destinationAddress, scAddress,
                 message, submitPdu);
         SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent,
-                getFormat(), unsentPartCount, anyPartFailed, messageUri, smsHeader, false);
+                getFormat(), unsentPartCount, anyPartFailed, messageUri, smsHeader,
+                false /*isExpextMore*/, fullMessageText);
         sendSubmitPdu(tracker);
     }
 
