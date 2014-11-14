@@ -305,8 +305,12 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             if (DBG) log("Receive EVENT_RUIM_READY");
             pollState();
 
-            // Only support automatic selection mode in CDMA.
-            mPhone.setNetworkSelectionModeAutomatic(null);
+            boolean skipRestoringSelection = mPhone.getContext().getResources().getBoolean(
+                    com.android.internal.R.bool.skip_restoring_network_selection);
+            if (!skipRestoringSelection) {
+                 // Only support automatic selection mode in CDMA.
+                 mPhone.setNetworkSelectionModeAutomatic(null);
+            }
 
             mPhone.prepareEri();
             break;
