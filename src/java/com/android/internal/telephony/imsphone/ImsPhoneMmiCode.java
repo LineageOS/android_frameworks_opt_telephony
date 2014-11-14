@@ -917,14 +917,14 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 // NOTE: Refer to the note above.
                 if (isActivate()) {
                     try {
-                        mPhone.mCT.getUtInterface().updateCOLR(NUM_PRESENTATION_ALLOWED,
+                        mPhone.mCT.getUtInterface().updateCOLR(NUM_PRESENTATION_RESTRICTED,
                                 obtainMessage(EVENT_SET_COMPLETE, this));
                     } catch (ImsException e) {
                         Rlog.d(LOG_TAG, "Could not get UT handle for updateCOLR.");
                     }
                 } else if (isDeactivate()) {
                     try {
-                        mPhone.mCT.getUtInterface().updateCOLR(NUM_PRESENTATION_RESTRICTED,
+                        mPhone.mCT.getUtInterface().updateCOLR(NUM_PRESENTATION_ALLOWED,
                                 obtainMessage(EVENT_SET_COMPLETE, this));
                     } catch (ImsException e) {
                         Rlog.d(LOG_TAG, "Could not get UT handle for updateCOLR.");
