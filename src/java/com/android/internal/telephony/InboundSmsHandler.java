@@ -65,6 +65,8 @@ import android.text.TextUtils;
 
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.util.BlacklistUtils;
+import com.android.internal.telephony.PhoneBase;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -475,20 +477,40 @@ public abstract class InboundSmsHandler extends StateMachine {
             return;
         }
 
-        int result;
+        int result, blacklistMatchType = -1;
+        SmsMessage sms = null;
+
         try {
-            SmsMessage sms = (SmsMessage) ar.result;
+            sms = (SmsMessage) ar.result;
             result = dispatchMessage(sms.mWrappedSmsMessage);
         } catch (RuntimeException ex) {
             loge("Exception dispatching message", ex);
             result = Intents.RESULT_SMS_GENERIC_ERROR;
         }
 
+        // Translate (internal) blacklist check results to
+        // RESULT_SMS_HANDLED + match type
+        switch (result) {
+            case Intents.RESULT_SMS_BLACKLISTED_UNKNOWN:
+                blacklistMatchType = BlacklistUtils.MATCH_UNKNOWN;
+                result = Intents.RESULT_SMS_HANDLED;
+                break;
+            case Intents.RESULT_SMS_BLACKLISTED_LIST:
+                blacklistMatchType = BlacklistUtils.MATCH_LIST;
+                result = Intents.RESULT_SMS_HANDLED;
+                break;
+            case Intents.RESULT_SMS_BLACKLISTED_REGEX:
+                blacklistMatchType = BlacklistUtils.MATCH_REGEX;
+                result = Intents.RESULT_SMS_HANDLED;
+                break;
+        }
+
+
         // RESULT_OK means that the SMS will be acknowledged by special handling,
         // e.g. for SMS-PP data download. Any other result, we should ack here.
         if (result != Activity.RESULT_OK) {
             boolean handled = (result == Intents.RESULT_SMS_HANDLED);
-            notifyAndAcknowledgeLastIncomingSms(handled, result, null);
+            notifyAndAcknowledgeLastIncomingSms(handled, result, blacklistMatchType, sms, null);
         }
     }
 
@@ -582,14 +604,26 @@ public abstract class InboundSmsHandler extends StateMachine {
      * and send an acknowledge message to the network.
      * @param success indicates that last message was successfully received.
      * @param result result code indicating any error
+     * @param blacklistMatchType blacklist type if the message was blacklisted,
+     *                           -1 if it wasn't blacklisted
+     * @param sms incoming SMS
      * @param response callback message sent when operation completes.
      */
     void notifyAndAcknowledgeLastIncomingSms(boolean success,
-            int result, Message response) {
-        if (!success) {
+            int result, int blacklistMatchType, SmsMessage sms, Message response) {
+        if (!success || blacklistMatchType >= 0) {
             // broadcast SMS_REJECTED_ACTION intent
             Intent intent = new Intent(Intents.SMS_REJECTED_ACTION);
             intent.putExtra("result", result);
+            intent.putExtra("blacklisted", blacklistMatchType >= 0);
+            if (blacklistMatchType >= 0) {
+                intent.putExtra("blacklistMatchType", blacklistMatchType);
+            }
+            if (sms != null) {
+                intent.putExtra("sender", sms.getOriginatingAddress());
+                intent.putExtra("timestamp", sms.getTimestampMillis());
+            }
+            if (DBG) log("notifyAndAcknowledgeLastIncomingSms(): reject intent= " + intent);
             mContext.sendBroadcast(intent, android.Manifest.permission.RECEIVE_SMS);
         }
         acknowledgeLastIncomingSms(success, result, response);
@@ -611,6 +645,11 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @return {@link Intents#RESULT_SMS_HANDLED} if the message was accepted, or an error status
      */
     protected int dispatchNormalMessage(SmsMessageBase sms) {
+        int blacklistResult = checkIfBlacklisted(sms);
+        if (blacklistResult != Intents.RESULT_SMS_HANDLED) {
+            return blacklistResult;
+        }
+
         SmsHeader smsHeader = sms.getUserDataHeader();
         InboundSmsTracker tracker;
 
@@ -638,6 +677,22 @@ public abstract class InboundSmsHandler extends StateMachine {
 
         if (VDBG) log("created tracker: " + tracker);
         return addTrackerToRawTableAndSendMessage(tracker);
+    }
+
+    private int checkIfBlacklisted(SmsMessageBase sms) {
+        int result = BlacklistUtils.isListed(mContext,
+                sms.getOriginatingAddress(), BlacklistUtils.BLOCK_MESSAGES);
+
+        switch (result) {
+            case BlacklistUtils.MATCH_UNKNOWN:
+                return Intents.RESULT_SMS_BLACKLISTED_UNKNOWN;
+            case BlacklistUtils.MATCH_LIST:
+                return Intents.RESULT_SMS_BLACKLISTED_LIST;
+            case BlacklistUtils.MATCH_REGEX:
+                return Intents.RESULT_SMS_BLACKLISTED_REGEX;
+        }
+
+        return Intents.RESULT_SMS_HANDLED;
     }
 
     /**
