@@ -26,6 +26,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemClock;
 import android.telephony.CellInfo;
+import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
@@ -48,6 +49,7 @@ import com.android.internal.telephony.uicc.UiccController;
  * {@hide}
  */
 public abstract class ServiceStateTracker extends Handler {
+    private static final String LOG_TAG = "SST";
     protected  static final boolean DBG = true;
     protected static final boolean VDBG = false;
 
@@ -294,6 +296,13 @@ public abstract class ServiceStateTracker extends Handler {
     protected void updatePhoneObject() {
         if (mPhoneBase.getContext().getResources().
                 getBoolean(com.android.internal.R.bool.config_switch_phone_on_voice_reg_state_change)) {
+            // If the phone is not registered on a network, no need to update.
+            boolean isRegistered = mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE ||
+                    mSS.getVoiceRegState() == ServiceState.STATE_EMERGENCY_ONLY;
+            if (!isRegistered) {
+                Rlog.d(LOG_TAG, "updatePhoneObject: Ignore update");
+                return;
+            }
             mPhoneBase.updatePhoneObject(mSS.getRilVoiceRadioTechnology());
         }
     }
