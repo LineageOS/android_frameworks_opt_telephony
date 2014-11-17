@@ -1056,7 +1056,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     mPhone.initiateSilentRedial();
                     return;
                 }
-                mPendingMO = null;
+                mPendingMO.setDisconnectCause(DisconnectCause.ERROR_UNSPECIFIED);
+                sendEmptyMessageDelayed(EVENT_HANGUP_PENDINGMO, TIMEOUT_HANGUP_PENDINGMO);
             }
         }
 
