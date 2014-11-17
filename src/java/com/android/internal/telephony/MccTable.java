@@ -597,7 +597,7 @@ public final class MccTable {
 		sTable.add(new MccEntry(627,"gq",2));	//Equatorial Guinea (Republic of)
 		sTable.add(new MccEntry(628,"ga",2));	//Gabonese Republic
 		sTable.add(new MccEntry(629,"cg",2));	//Congo (Republic of the)
-		sTable.add(new MccEntry(630,"cg",2));	//Democratic Republic of the Congo
+		sTable.add(new MccEntry(630,"cd",2));	//Democratic Republic of the Congo
 		sTable.add(new MccEntry(631,"ao",2));	//Angola (Republic of)
 		sTable.add(new MccEntry(632,"gw",2));	//Guinea-Bissau (Republic of)
 		sTable.add(new MccEntry(633,"sc",2));	//Seychelles (Republic of)
