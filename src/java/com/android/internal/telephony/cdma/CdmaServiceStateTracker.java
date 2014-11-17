@@ -312,7 +312,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             }
 
             // Only support automatic selection mode in CDMA.
-            // mPhone.setNetworkSelectionModeAutomatic(null);
+            mCi.getNetworkSelectionMode(obtainMessage(EVENT_POLL_STATE_NETWORK_SELECTION_MODE));
 
             mPhone.prepareEri();
             break;
@@ -321,7 +321,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             updatePhoneObject();
 
             // Only support automatic selection mode in CDMA.
-            // mPhone.setNetworkSelectionModeAutomatic(null);
+            mCi.getNetworkSelectionMode(obtainMessage(EVENT_POLL_STATE_NETWORK_SELECTION_MODE));
 
             // For Non-RUIM phones, the subscription information is stored in
             // Non Volatile. Here when Non-Volatile is ready, we can poll the CDMA
@@ -523,13 +523,24 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             setPowerStateToDesired();
             break;
 
+        case EVENT_POLL_STATE_NETWORK_SELECTION_MODE:
+            if (DBG) log("EVENT_POLL_STATE_NETWORK_SELECTION_MODE");
+            ar = (AsyncResult) msg.obj;
+            if (ar.exception == null && ar.result != null) {
+                ints = (int[])ar.result;
+                if (ints[0] == 1) {  // Manual selection.
+                    mPhone.setNetworkSelectionModeAutomatic(null);
+                }
+            } else {
+                log("Unable to getNetworkSelectionMode");
+            }
+            break;
+
         default:
             super.handleMessage(msg);
         break;
         }
     }
-
-    //***** Private Instance Methods
 
     private void handleCdmaSubscriptionSource(int newSubscriptionSource) {
         log("Subscription Source : " + newSubscriptionSource);
