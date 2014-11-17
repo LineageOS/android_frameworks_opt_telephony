@@ -58,6 +58,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private static final int PROJECT_SIM_NUM = TelephonyManager.getDefault().getPhoneCount();
     private static final int EVENT_OFFSET = 8;
     private static final int EVENT_QUERY_ICCID_DONE = 1;
+    private static final int EVENT_GET_NETWORK_SELECTION_MODE_DONE = 2;
     private static final String ICCID_STRING_FOR_NO_SIM = "";
     /**
      *  int[] sInsertSimState maintains all slots' SIM inserted status currently,
@@ -195,8 +196,9 @@ public class SubscriptionInfoUpdater extends Handler {
                             Settings.Global.putInt(sPhone[slotId].getContext().getContentResolver(),
                                     Settings.Global.PREFERRED_NETWORK_MODE, networkType);
 
-                            // Only support automatic selection mode on IMSI change
-                            sPhone[slotId].setNetworkSelectionModeAutomatic(null);
+                            // Only support automatic selection mode on IMSI change.
+                            sPhone[slotId].getNetworkSelectionMode(
+                                    obtainMessage(EVENT_GET_NETWORK_SELECTION_MODE_DONE));
 
                             // Update stored IMSI
                             SharedPreferences.Editor editor = sp.edit();
@@ -288,6 +290,16 @@ public class SubscriptionInfoUpdater extends Handler {
                 logd("sIccId[" + slotId + "] = " + sIccId[slotId]);
                 if (isAllIccIdQueryDone() && sNeedUpdate) {
                     updateSubscriptionInfoByIccId();
+                }
+                break;
+            case EVENT_GET_NETWORK_SELECTION_MODE_DONE:
+                if (ar.exception == null && ar.result != null) {
+                    int[] modes = (int[])ar.result;
+                    if (modes[0] == 1) {  // Manual mode.
+                        sPhone[slotId].setNetworkSelectionModeAutomatic(null);
+                    }
+                } else {
+                    logd("EVENT_GET_NETWORK_SELECTION_MODE_DONE: error getting network mode.");
                 }
                 break;
             default:
