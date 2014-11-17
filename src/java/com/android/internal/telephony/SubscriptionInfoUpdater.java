@@ -65,6 +65,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private static final int EVENT_QUERY_ICCID_DONE = 1;
     private static final int EVENT_ICC_CHANGED = 2;
     private static final int EVENT_STACK_READY = 3;
+    private static final int EVENT_GET_NETWORK_SELECTION_MODE_DONE = 4;
     private static final String ICCID_STRING_FOR_NO_SIM = "";
     private static final String ICCID_STRING_FOR_NV = "DUMMY_NV_ID";
     /**
@@ -286,6 +287,16 @@ public class SubscriptionInfoUpdater extends Handler {
                 logd("EVENT_STACK_READY" );
                 if (isAllIccIdQueryDone() && PROJECT_SIM_NUM > 1) {
                     SubscriptionHelper.getInstance().updateSubActivation(sInsertSimState, true);
+                }
+                break;
+            case EVENT_GET_NETWORK_SELECTION_MODE_DONE:
+                if (ar.exception == null && ar.result != null) {
+                    int[] modes = (int[])ar.result;
+                    if (modes[0] == 1) {  // Manual mode.
+                        sPhone[slotId].setNetworkSelectionModeAutomatic(null);
+                    }
+                } else {
+                    logd("EVENT_GET_NETWORK_SELECTION_MODE_DONE: error getting network mode.");
                 }
                 break;
             default:
