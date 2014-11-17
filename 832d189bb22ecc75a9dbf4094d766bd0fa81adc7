@@ -16,6 +16,24 @@
       "revId": "832d189bb22ecc75a9dbf4094d766bd0fa81adc7",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a122d0e_9a1a776d",
+        "filename": "src/java/com/android/internal/telephony/cdma/CDMAPhone.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1251,
+      "author": {
+        "id": 3671
+      },
+      "writtenOn": "2014-11-17T11:34:12Z",
+      "side": 1,
+      "message": "psh i cherry picked your commit \u003dP",
+      "parentUuid": "1a122d0e_1a0e6734",
+      "revId": "832d189bb22ecc75a9dbf4094d766bd0fa81adc7",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
