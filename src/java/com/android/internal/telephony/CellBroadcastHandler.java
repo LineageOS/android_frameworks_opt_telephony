@@ -22,6 +22,7 @@ import android.app.AppOpsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Message;
+import android.os.UserHandle;
 import android.provider.Telephony;
 import android.telephony.SubscriptionManager;
 import android.telephony.SmsCbMessage;
@@ -91,7 +92,7 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
         }
         intent.putExtra("message", message);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
-        mContext.sendOrderedBroadcast(intent, receiverPermission, appOp, mReceiver,
-                getHandler(), Activity.RESULT_OK, null, null);
+        mContext.sendOrderedBroadcastAsUser(intent, UserHandle.ALL, receiverPermission, appOp,
+                mReceiver, getHandler(), Activity.RESULT_OK, null, null);
     }
 }
