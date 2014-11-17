@@ -576,6 +576,8 @@ public final class MccTable
 		sTable.add(new MccEntry(550,"fm",2));	//Micronesia (Federated States of)
 		sTable.add(new MccEntry(551,"mh",2));	//Marshall Islands (Republic of the)
 		sTable.add(new MccEntry(552,"pw",2));	//Palau (Republic of)
+		sTable.add(new MccEntry(553,"tv",2));	//Tuvalu
+		sTable.add(new MccEntry(555,"nu",2));	//Niue
 		sTable.add(new MccEntry(602,"eg",2));	//Egypt (Arab Republic of)
 		sTable.add(new MccEntry(603,"dz",2));	//Algeria (People's Democratic Republic of)
 		sTable.add(new MccEntry(604,"ma",2));	//Morocco (Kingdom of)
@@ -604,7 +606,7 @@ public final class MccTable
 		sTable.add(new MccEntry(627,"gq",2));	//Equatorial Guinea (Republic of)
 		sTable.add(new MccEntry(628,"ga",2));	//Gabonese Republic
 		sTable.add(new MccEntry(629,"cg",2));	//Congo (Republic of the)
-		sTable.add(new MccEntry(630,"cg",2));	//Democratic Republic of the Congo
+		sTable.add(new MccEntry(630,"cd",2));	//Democratic Republic of the Congo
 		sTable.add(new MccEntry(631,"ao",2));	//Angola (Republic of)
 		sTable.add(new MccEntry(632,"gw",2));	//Guinea-Bissau (Republic of)
 		sTable.add(new MccEntry(633,"sc",2));	//Seychelles (Republic of)
@@ -630,6 +632,7 @@ public final class MccTable
 		sTable.add(new MccEntry(654,"km",2));	//Comoros (Union of the)
 		sTable.add(new MccEntry(655,"za",2,"en"));	//South Africa (Republic of)
 		sTable.add(new MccEntry(657,"er",2));	//Eritrea
+		sTable.add(new MccEntry(659,"ss",2));	//South Sudan (Republic of)
 		sTable.add(new MccEntry(702,"bz",2));	//Belize
 		sTable.add(new MccEntry(704,"gt",2));	//Guatemala (Republic of)
 		sTable.add(new MccEntry(706,"sv",2));	//El Salvador (Republic of)
