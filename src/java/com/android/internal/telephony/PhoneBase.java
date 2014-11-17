@@ -864,6 +864,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
+    public void getNetworkSelectionMode(Message message) {
+        mCi.getNetworkSelectionMode(message);
+    }
+
+    @Override
     public void selectNetworkManually(OperatorInfo network, Message response) {
         // wrap the response message in our own message along with
         // the operator's id.
