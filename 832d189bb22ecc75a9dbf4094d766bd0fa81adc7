@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a122d0e_1a0e6734",
+        "filename": "src/java/com/android/internal/telephony/cdma/CDMAPhone.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1251,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-11-17T11:31:50Z",
+      "side": 1,
+      "message": "100 chars",
+      "revId": "832d189bb22ecc75a9dbf4094d766bd0fa81adc7",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
