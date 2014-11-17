@@ -215,8 +215,8 @@ public abstract class IccPhoneBookInterfaceManager {
         String newAnr = values.getAsString(IccProvider.STR_NEW_ANRS);
         String[] oldEmailArray = TextUtils.isEmpty(oldEmail) ? null : getStringArray(oldEmail);
         String[] newEmailArray = TextUtils.isEmpty(newEmail) ? null : getStringArray(newEmail);
-        String[] oldAnrArray = TextUtils.isEmpty(oldAnr) ? null : getStringArray(oldAnr);
-        String[] newAnrArray = TextUtils.isEmpty(newAnr) ? null : getStringArray(newAnr);
+        String[] oldAnrArray = TextUtils.isEmpty(oldAnr) ? null : getAnrStringArray(oldAnr);
+        String[] newAnrArray = TextUtils.isEmpty(newAnr) ? null : getAnrStringArray(newAnr);
         efid = updateEfForIccType(efid);
 
         if (DBG)
@@ -341,6 +341,13 @@ public abstract class IccPhoneBookInterfaceManager {
                         "You cannot call query on this provder from the main UI thread.");
             }
         }
+    }
+
+    private String[] getAnrStringArray(String str) {
+        if (str != null) {
+            return str.split(":");
+        }
+        return null;
     }
 
     private String[] getStringArray(String str) {
