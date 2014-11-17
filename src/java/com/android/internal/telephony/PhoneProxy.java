@@ -914,6 +914,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public void getNetworkSelectionMode(Message response) {
+        mActivePhone.getNetworkSelectionMode(response);
+    }
+
+    @Override
     public void selectNetworkManually(OperatorInfo network, Message response) {
         mActivePhone.selectNetworkManually(network, response);
     }

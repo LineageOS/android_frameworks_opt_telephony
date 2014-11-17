@@ -1207,6 +1207,15 @@ public interface Phone {
                             Message response);
 
     /**
+     * Query the radio for the current network selection mode.
+     *
+     * Return values:
+     *     0 - automatic.
+     *     1 - manual.
+     */
+    void getNetworkSelectionMode(Message response);
+
+    /**
      *  Requests to set the preferred network type for searching and registering
      * (CS/PS domain, RAT, and operation mode)
      * @param networkType one of  NT_*_TYPE
