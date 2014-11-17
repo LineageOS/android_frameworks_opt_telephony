@@ -564,18 +564,18 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public void
     startDtmf(char c) {
-        if (!PhoneNumberUtils.is12Key(c)) {
+        if (!(PhoneNumberUtils.is12Key(c) || (c >= 'A' && c <= 'D'))) {
             Rlog.e(LOG_TAG,
                     "startDtmf called with invalid character '" + c + "'");
         } else {
-            sendDtmf(c);
+            mCT.startDtmf(c);
         }
     }
 
     @Override
     public void
     stopDtmf() {
-        // no op
+        mCT.stopDtmf();
     }
 
     @Override
