@@ -25,6 +25,7 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
+import android.telecom.Log;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
@@ -569,8 +570,7 @@ public class ImsPhoneConnection extends Connection {
 
     @Override
     public boolean isMultiparty() {
-        Rlog.d(LOG_TAG, "isMultiparty "+mImsCall.isMultiparty());
-        return mImsCall.isMultiparty();
+        return mImsCall != null && mImsCall.isMultiparty();
     }
 
     /*package*/ ImsCall getImsCall() {
@@ -683,6 +683,29 @@ public class ImsPhoneConnection extends Connection {
             Rlog.e(LOG_TAG, "onDisconnectConferenceParticipant: no session in place. "+
                     "Failed to disconnect endpoint = " + endpoint);
         }
+    }
+
+    /**
+     * Provides a string representation of the {@link ImsPhoneConnection}.  Primarily intended for
+     * use in log statements.
+     *
+     * @return String representation of call.
+     */
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[ImsPhoneConnection objId: ");
+        sb.append(System.identityHashCode(this));
+        sb.append(" address:");
+        sb.append(Log.pii(getAddress()));
+        sb.append(" ImsCall:");
+        if (mImsCall == null) {
+            sb.append("null");
+        } else {
+            sb.append(mImsCall);
+        }
+        sb.append("]");
+        return sb.toString();
     }
 }
 
