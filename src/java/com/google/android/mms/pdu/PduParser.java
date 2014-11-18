@@ -17,19 +17,16 @@
 
 package com.google.android.mms.pdu;
 
+import android.util.Log;
+
 import com.google.android.mms.ContentType;
 import com.google.android.mms.InvalidHeaderValueException;
-import com.google.android.mms.pdu.EncodedStringValue;
-
-import android.util.Log;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.HashMap;
-
-import android.content.res.Resources;
 
 public class PduParser {
     /**
@@ -89,12 +86,19 @@ public class PduParser {
     private static final boolean LOCAL_LOGV = false;
 
     /**
+     * Whether to parse content-disposition part header
+     */
+    private final boolean mParseContentDisposition;
+
+    /**
      * Constructor.
      *
      * @param pduDataStream pdu data to be parsed
+     * @param parseContentDisposition whether to parse the Content-Disposition part header
      */
-    public PduParser(byte[] pduDataStream) {
+    public PduParser(byte[] pduDataStream, boolean parseContentDisposition) {
         mPduDataStream = new ByteArrayInputStream(pduDataStream);
+        mParseContentDisposition = parseContentDisposition;
     }
 
     /**
@@ -828,7 +832,7 @@ public class PduParser {
      * @param pduDataStream pdu data input stream
      * @return parts in PduBody structure
      */
-    protected static PduBody parseParts(ByteArrayInputStream pduDataStream) {
+    protected PduBody parseParts(ByteArrayInputStream pduDataStream) {
         if (pduDataStream == null) {
             return null;
         }
@@ -1587,7 +1591,7 @@ public class PduParser {
      * @param length length of the headers
      * @return true if parse successfully, false otherwise
      */
-    protected static boolean parsePartHeaders(ByteArrayInputStream pduDataStream,
+    protected boolean parsePartHeaders(ByteArrayInputStream pduDataStream,
             PduPart part, int length) {
         assert(null != pduDataStream);
         assert(null != part);
@@ -1661,10 +1665,7 @@ public class PduParser {
                          * some carrier mmsc servers do not support content_disposition
                          * field correctly
                          */
-                        boolean contentDisposition = Resources.getSystem().getBoolean(com
-                                .android.internal.R.bool.config_mms_content_disposition_support);
-
-                        if (contentDisposition) {
+                        if (mParseContentDisposition) {
                             int len = parseValueLength(pduDataStream);
                             pduDataStream.mark(1);
                             int thisStartPos = pduDataStream.available();
