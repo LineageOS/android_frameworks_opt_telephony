@@ -81,6 +81,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.gsm.GSMPhone;
+import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.IccRecords;
 
 import java.util.ArrayList;
@@ -126,6 +127,9 @@ public class ImsPhone extends ImsPhoneBase {
     private Registrant mEcmExitRespRegistrant;
 
     private final RegistrantList mSilentRedialRegistrants = new RegistrantList();
+
+    // List of Registrants to send supplementary service notifications to.
+    RegistrantList mSsnRegistrants = new RegistrantList();
 
     // Variable to cache the video capabilitity. In cases where we delete/re-create the phone
     // this information is getting lost.
@@ -421,6 +425,13 @@ public class ImsPhone extends ImsPhoneBase {
         // Treat it as an "unknown" service.
         notifySuppServiceFailed(Phone.SuppService.UNKNOWN);
         return true;
+    }
+
+    public void notifySuppSvcNotification(SuppServiceNotification suppSvc) {
+        Rlog.d(LOG_TAG, "notifySuppSvcNotification: suppSvc = " + suppSvc);
+
+        AsyncResult ar = new AsyncResult(null, suppSvc, null);
+        mSsnRegistrants.notifyRegistrants(ar);
     }
 
     @Override
@@ -1028,6 +1039,17 @@ public class ImsPhone extends ImsPhoneBase {
 
     public void unregisterForSilentRedial(Handler h) {
         mSilentRedialRegistrants.remove(h);
+    }
+
+    @Override
+    public void registerForSuppServiceNotification(
+            Handler h, int what, Object obj) {
+        mSsnRegistrants.addUnique(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForSuppServiceNotification(Handler h) {
+        mSsnRegistrants.remove(h);
     }
 
     @Override
