@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "faac7902_958c0637",
+        "filename": "src/java/com/android/internal/telephony/CallManager.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 466,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2014-11-18T16:39:32Z",
+      "side": 1,
+      "message": "Can\u0027t you just reuse the context here?",
+      "revId": "05e313089e062342def616b22cf4ca6734aef435",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
