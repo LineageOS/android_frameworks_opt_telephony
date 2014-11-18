@@ -641,6 +641,7 @@ public final class CallManager {
         // for events supported only by IMS phone
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             phone.registerForOnHoldTone(handler, EVENT_ONHOLD_TONE, null);
+            phone.registerForSuppServiceFailed(handler, EVENT_SUPP_SERVICE_FAILED, null);
         }
     }
 
@@ -690,6 +691,7 @@ public final class CallManager {
         // for events supported only by IMS phone
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             phone.unregisterForOnHoldTone(handler);
+            phone.unregisterForSuppServiceFailed(handler);
         }
     }
 
