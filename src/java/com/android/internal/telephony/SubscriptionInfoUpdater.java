@@ -193,7 +193,8 @@ public class SubscriptionInfoUpdater extends Handler {
                             // Set the modem network mode
                             sPhone[slotId].setPreferredNetworkType(networkType, null);
                             Settings.Global.putInt(sPhone[slotId].getContext().getContentResolver(),
-                                    Settings.Global.PREFERRED_NETWORK_MODE, networkType);
+                                    Settings.Global.PREFERRED_NETWORK_MODE + sPhone[slotId].getSubId(),
+                                    networkType);
 
                             // Only support automatic selection mode on IMSI change.
                             sPhone[slotId].getNetworkSelectionMode(
