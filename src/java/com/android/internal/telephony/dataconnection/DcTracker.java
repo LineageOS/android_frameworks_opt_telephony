@@ -570,6 +570,13 @@ public final class DcTracker extends DcTrackerBase {
             if(!isNetworkRequestForInternet(n)) {
                 SubscriptionController subController = SubscriptionController.getInstance();
                 subController.stopOnDemandDataSubscriptionRequest(n);
+            } else {
+                // Internet requests are not queued in DDS list. So deactivate here explicitly.
+                ApnContext apnContext = apnContextForNetworkRequest(n);
+                if (apnContext != null) {
+                    log("Deactivating APN=" + apnContext);
+                    apnContext.decRefCount();
+                }
             }
         }
 
