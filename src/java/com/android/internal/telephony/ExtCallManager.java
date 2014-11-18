@@ -336,7 +336,8 @@ public class ExtCallManager extends CallManager {
                 int curAudioMode = mAudioManager.getMode();
                 if (curAudioMode != AudioManager.MODE_RINGTONE) {
                     // only request audio focus if the ringtone is going to be heard
-                    if (mAudioManager.getStreamVolume(AudioManager.STREAM_RING) > 0) {
+                    if (mAudioManager.getStreamVolume(AudioManager.STREAM_RING) > 0
+                            || shouldAlwaysRequestAudioFocusForCall()) {
                         Rlog.d(LOG_TAG, "requestAudioFocus on STREAM_RING");
                         mAudioManager.requestAudioFocusForCall(AudioManager.STREAM_RING,
                                 AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);

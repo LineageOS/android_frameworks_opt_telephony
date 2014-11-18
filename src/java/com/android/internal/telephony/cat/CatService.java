@@ -870,12 +870,12 @@ public class CatService extends Handler implements AppInterface {
                 CatLog.d(this, "handleMsg : MSG_ID_SEND_SMS_RESULT");
                 cancelTimeOut();
                 CatLog.d(this, "The Msg ID data:" + msg.what);
-                if (msg.obj == null)
-                    break;
                 ar = (AsyncResult) msg.obj;
                 if (ar == null || ar.result == null || mCurrntCmd == null || mCurrntCmd.mCmdDet == null)
                     break;
                 sendResult = (int[]) ar.result;
+                if (sendResult.length == 0)
+                    break;
                 switch (sendResult[0]) {
                     default:
                         CatLog.d(this, "SMS SEND GENERIC FAIL");

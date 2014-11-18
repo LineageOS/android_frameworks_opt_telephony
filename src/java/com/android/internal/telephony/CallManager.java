@@ -117,6 +117,8 @@ public class CallManager {
 
     protected boolean mSpeedUpAudioForMtCall = false;
 
+    protected Boolean mAlwaysRequestVolumeFocus;
+
     protected CmHandler mHandler;
 
     // state registrants
@@ -474,7 +476,8 @@ public class CallManager {
                 int curAudioMode = audioManager.getMode();
                 if (curAudioMode != AudioManager.MODE_RINGTONE) {
                     // only request audio focus if the ringtone is going to be heard
-                    if (audioManager.getStreamVolume(AudioManager.STREAM_RING) > 0) {
+                    if (audioManager.getStreamVolume(AudioManager.STREAM_RING) > 0
+                            || shouldAlwaysRequestAudioFocusForCall()) {
                         if (VDBG) Rlog.d(LOG_TAG, "requestAudioFocus on STREAM_RING");
                         audioManager.requestAudioFocusForCall(AudioManager.STREAM_RING,
                                 AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
@@ -525,6 +528,16 @@ public class CallManager {
                 break;
         }
         Rlog.d(LOG_TAG, "setAudioMode state = " + getState());
+    }
+
+    protected boolean shouldAlwaysRequestAudioFocusForCall() {
+        if (mAlwaysRequestVolumeFocus == null) {
+            Context context = getContext();
+            if (context == null) return false;
+            mAlwaysRequestVolumeFocus = context.getResources().getBoolean(
+                    com.android.internal.R.bool.config_alwaysRequestAudioFocusForCalls);
+        }
+        return mAlwaysRequestVolumeFocus;
     }
 
     protected Context getContext() {
