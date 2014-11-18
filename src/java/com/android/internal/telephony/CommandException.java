@@ -45,6 +45,15 @@ public class CommandException extends RuntimeException {
         MISSING_RESOURCE,
         NO_SUCH_ELEMENT,
         SUBSCRIPTION_NOT_SUPPORTED,
+        DIAL_MODIFIED_TO_USSD,
+        DIAL_MODIFIED_TO_SS,
+        DIAL_MODIFIED_TO_DIAL,
+        USSD_MODIFIED_TO_DIAL,
+        USSD_MODIFIED_TO_SS,
+        USSD_MODIFIED_TO_USSD,
+        SS_MODIFIED_TO_DIAL,
+        SS_MODIFIED_TO_USSD,
+        SS_MODIFIED_TO_SS,
     }
 
     public CommandException(Error e) {
@@ -92,6 +101,24 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.NO_SUCH_ELEMENT);
             case RILConstants.SUBSCRIPTION_NOT_SUPPORTED:
                 return new CommandException(Error.SUBSCRIPTION_NOT_SUPPORTED);
+            case RILConstants.DIAL_MODIFIED_TO_USSD:
+                return new CommandException(Error.DIAL_MODIFIED_TO_USSD);
+            case RILConstants.DIAL_MODIFIED_TO_SS:
+                return new CommandException(Error.DIAL_MODIFIED_TO_SS);
+            case RILConstants.DIAL_MODIFIED_TO_DIAL:
+                return new CommandException(Error.DIAL_MODIFIED_TO_DIAL);
+            case RILConstants.USSD_MODIFIED_TO_DIAL:
+                return new CommandException(Error.USSD_MODIFIED_TO_DIAL);
+            case RILConstants.USSD_MODIFIED_TO_SS:
+                return new CommandException(Error.USSD_MODIFIED_TO_SS);
+            case RILConstants.USSD_MODIFIED_TO_USSD:
+                return new CommandException(Error.USSD_MODIFIED_TO_USSD);
+            case RILConstants.SS_MODIFIED_TO_DIAL:
+                return new CommandException(Error.SS_MODIFIED_TO_DIAL);
+            case RILConstants.SS_MODIFIED_TO_USSD:
+                return new CommandException(Error.SS_MODIFIED_TO_USSD);
+            case RILConstants.SS_MODIFIED_TO_SS:
+                return new CommandException(Error.SS_MODIFIED_TO_SS);
             default:
                 Rlog.e("GSM", "Unrecognized RIL errno " + ril_errno);
                 return new CommandException(Error.INVALID_RESPONSE);
