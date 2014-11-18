@@ -219,7 +219,7 @@ import java.util.ArrayList;
      */
     @Deprecated
     public final ArrayList<android.telephony.SmsMessage> getAllMessagesFromSim() {
-        return android.telephony.SmsManager.getAllMessagesFromIcc();
+        return android.telephony.SmsManager.getDefault().getAllMessagesFromIcc();
     }
 
     /** Free space (TS 51.011 10.5.3).
