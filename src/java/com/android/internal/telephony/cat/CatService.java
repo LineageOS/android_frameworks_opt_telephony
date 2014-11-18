@@ -150,6 +150,8 @@ public class CatService extends Handler implements AppInterface {
         //mCmdIf.setOnSimRefresh(this, MSG_ID_REFRESH, null);
 
         mCmdIf.registerForIccRefresh(this, MSG_ID_ICC_REFRESH, null);
+        mCmdIf.setOnCatCcAlphaNotify(this, MSG_ID_ALPHA_NOTIFY, null);
+
         mIccRecords = ir;
         mUiccApplication = ca;
 
@@ -237,7 +239,7 @@ public class CatService extends Handler implements AppInterface {
             mCmdIf.unSetOnCatProactiveCmd(this);
             mCmdIf.unSetOnCatEvent(this);
             mCmdIf.unSetOnCatCallSetUp(this);
-
+            mCmdIf.unSetOnCatCcAlphaNotify(this);
 
             mCmdIf.unregisterForIccRefresh(this);
             if (mUiccController != null) {
@@ -721,6 +723,19 @@ public class CatService extends Handler implements AppInterface {
                 CatLog.d(this, "IccRefresh Message is null");
             }
             break;
+        case MSG_ID_ALPHA_NOTIFY:
+            CatLog.d(this, "Received CAT CC Alpha message from card");
+            if (msg.obj != null) {
+                AsyncResult ar = (AsyncResult) msg.obj;
+                if (ar != null && ar.result != null) {
+                    broadcastAlphaMessage((String)ar.result);
+                } else {
+                    CatLog.d(this, "CAT Alpha message: ar.result is null");
+                }
+            } else {
+                CatLog.d(this, "CAT Alpha message: msg.obj is null");
+            }
+            break;
         default:
             throw new AssertionError("Unrecognized CAT command: " + msg.what);
         }
@@ -748,7 +763,15 @@ public class CatService extends Handler implements AppInterface {
         intent.putExtra(AppInterface.CARD_STATUS, cardPresent);
         CatLog.d(this, "Sending Card Status: "
                 + cardState + " " + "cardPresent: " + cardPresent);
+        mContext.sendBroadcast(intent);
+    }
 
+    private void broadcastAlphaMessage(String alphaString) {
+        CatLog.d(this, "Broadcasting CAT Alpha message from card: " + alphaString);
+        Intent intent = new Intent(AppInterface.CAT_ALPHA_NOTIFY_ACTION);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        intent.putExtra(AppInterface.ALPHA_STRING, alphaString);
+        intent.putExtra("SLOT_ID", mSlotId);
         mContext.sendBroadcast(intent);
     }
 
