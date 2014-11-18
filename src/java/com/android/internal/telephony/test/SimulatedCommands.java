@@ -1268,6 +1268,20 @@ public final class SimulatedCommands extends BaseCommands
     }
 
     /**
+     * Simulates an Stk Call Control Alpha message
+     * @param alphaString Alpha string to send.
+     */
+    public void triggerIncomingStkCcAlpha(String alphaString) {
+        if (mCatCcAlphaRegistrant != null) {
+            mCatCcAlphaRegistrant.notifyResult(alphaString);
+        }
+    }
+
+    public void sendStkCcAplha(String alphaString) {
+        triggerIncomingStkCcAlpha(alphaString);
+    }
+
+    /**
      * Simulates an incoming USSD message
      * @param statusCode  Status code string. See <code>setOnUSSD</code>
      * in CommandsInterface.java
