@@ -82,6 +82,14 @@ class LaunchBrowserParams extends CommandParams {
     }
 }
 
+class SetEventListParams extends CommandParams {
+    int[] mEventInfo;
+    SetEventListParams(CommandDetails cmdDet, int[] eventInfo) {
+        super(cmdDet);
+        this.mEventInfo = eventInfo;
+    }
+}
+
 class PlayToneParams extends CommandParams {
     TextMessage mTextMsg;
     ToneSettings mSettings;

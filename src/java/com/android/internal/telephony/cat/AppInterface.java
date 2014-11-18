@@ -46,6 +46,20 @@ public interface AppInterface {
                                     "android.intent.action.stk.icc_status_change";
 
     /*
+     * This is broadcast from the ActivityManagerService when the screen
+     * switches to idle or busy state
+     */
+    public static final String CAT_IDLE_SCREEN_ACTION =
+                                    "android.intent.action.stk.idle_screen";
+
+    /*
+     * This is broadcast from the Stk Apps to ActivityManagerService when the screen
+     * status is requested.
+     */
+    public static final String CHECK_SCREEN_IDLE_ACTION =
+                                    "android.intent.action.stk.check_screen_idle";
+
+    /*
      * Callback function from app to telephony to pass a result code and user's
      * input back to the ICC.
      */

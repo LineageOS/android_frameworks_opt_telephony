@@ -25,7 +25,16 @@ import com.android.internal.telephony.uicc.IccFileHandler;
 
 import java.util.Iterator;
 import java.util.List;
-
+import static com.android.internal.telephony.cat.CatCmdMessage.
+                   SetupEventListConstants.USER_ACTIVITY_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.
+                   SetupEventListConstants.IDLE_SCREEN_AVAILABLE_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.
+                   SetupEventListConstants.LANGUAGE_SELECTION_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.
+                   SetupEventListConstants.BROWSER_TERMINATION_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.
+                   SetupEventListConstants.BROWSING_STATUS_EVENT;
 /**
  * Factory class, used for decoding raw byte arrays, received from baseband,
  * into a CommandParams object.
@@ -171,6 +180,9 @@ class CommandParamsFactory extends Handler {
              case PLAY_TONE:
                 cmdPending = processPlayTone(cmdDet, ctlvs);
                 break;
+             case SET_UP_EVENT_LIST:
+                 cmdPending = processSetUpEventList(cmdDet, ctlvs);
+                 break;
              case PROVIDE_LOCAL_INFORMATION:
                 cmdPending = processProvideLocalInfo(cmdDet, ctlvs);
                 break;
@@ -363,7 +375,6 @@ class CommandParamsFactory extends Handler {
                 textMsg.iconSelfExplanatory = iconId.selfExplanatory;
             }
         }
-
         mCmdParams = new DisplayTextParams(cmdDet, textMsg);
 
         if (iconId != null) {
@@ -658,6 +669,56 @@ class CommandParamsFactory extends Handler {
             mIconLoader.loadIcon(iconId.recordNumber, this
                     .obtainMessage(MSG_ID_LOAD_ICON_DONE));
             return true;
+        }
+        return false;
+    }
+
+    /**
+     * Processes SET_UP_EVENT_LIST proactive command from the SIM card.
+     *
+     * @param cmdDet Command Details object retrieved.
+     * @param ctlvs List of ComprehensionTlv objects following Command Details
+     *        object and Device Identities object within the proactive command
+     * @return false. This function always returns false meaning that the command
+     *         processing is  not pending and additional asynchronous processing
+     *         is not required.
+     */
+    private boolean processSetUpEventList(CommandDetails cmdDet,
+            List<ComprehensionTlv> ctlvs) {
+
+        CatLog.d(this, "process SetUpEventList");
+        ComprehensionTlv ctlv = searchForTag(ComprehensionTlvTag.EVENT_LIST, ctlvs);
+        if (ctlv != null) {
+            try {
+                byte[] rawValue = ctlv.getRawValue();
+                int valueIndex = ctlv.getValueIndex();
+                int valueLen = ctlv.getLength();
+                int[] eventList = new int[valueLen];
+                int eventValue = -1;
+                int i = 0;
+                while (valueLen > 0) {
+                    eventValue = rawValue[valueIndex] & 0xff;
+                    valueIndex++;
+                    valueLen--;
+
+                    switch (eventValue) {
+                        case USER_ACTIVITY_EVENT:
+                        case IDLE_SCREEN_AVAILABLE_EVENT:
+                        case LANGUAGE_SELECTION_EVENT:
+                        case BROWSER_TERMINATION_EVENT:
+                        case BROWSING_STATUS_EVENT:
+                            eventList[i] = eventValue;
+                            i++;
+                            break;
+                        default:
+                            break;
+                    }
+
+                }
+                mCmdParams = new SetEventListParams(cmdDet, eventList);
+            } catch (IndexOutOfBoundsException e) {
+                CatLog.e(this, " IndexOutofBoundException in processSetUpEventList");
+            }
         }
         return false;
     }
