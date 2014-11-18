@@ -330,6 +330,15 @@ public class GsmConnection extends Connection {
             case CallFailCause.UNOBTAINABLE_NUMBER:
                 return DisconnectCause.UNOBTAINABLE_NUMBER;
 
+            case CallFailCause.DIAL_MODIFIED_TO_USSD:
+                return DisconnectCause.DIAL_MODIFIED_TO_USSD;
+
+            case CallFailCause.DIAL_MODIFIED_TO_SS:
+                return DisconnectCause.DIAL_MODIFIED_TO_SS;
+
+            case CallFailCause.DIAL_MODIFIED_TO_DIAL:
+                return DisconnectCause.DIAL_MODIFIED_TO_DIAL;
+
             case CallFailCause.ERROR_UNSPECIFIED:
             case CallFailCause.NORMAL_CLEARING:
             default:

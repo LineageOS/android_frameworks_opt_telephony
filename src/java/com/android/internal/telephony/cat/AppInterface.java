@@ -25,12 +25,17 @@ public interface AppInterface {
 
     /*
      * Intent's actions which are broadcasted by the Telephony once a new CAT
-     * proactive command, session end arrive.
+     * proactive command, session end, ALPHA during STK CC arrive.
      */
     public static final String CAT_CMD_ACTION =
                                     "android.intent.action.stk.command";
     public static final String CAT_SESSION_END_ACTION =
                                     "android.intent.action.stk.session_end";
+    public static final String CAT_ALPHA_NOTIFY_ACTION =
+                                    "android.intent.action.stk.alpha_notify";
+
+    //This is used to send ALPHA string from card to STK App.
+    public static final String ALPHA_STRING = "alpha_string";
 
     // This is used to send refresh-result when MSG_ID_ICC_REFRESH is received.
     public static final String REFRESH_RESULT = "refresh_result";
