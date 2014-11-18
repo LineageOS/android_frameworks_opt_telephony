@@ -45,6 +45,11 @@ import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.Locale;
 
+import static com.android.internal.telephony.cat.CatCmdMessage.
+                   SetupEventListConstants.IDLE_SCREEN_AVAILABLE_EVENT;
+import static com.android.internal.telephony.cat.CatCmdMessage.
+                   SetupEventListConstants.LANGUAGE_SELECTION_EVENT;
+
 class RilMessage {
     int mId;
     Object mData;
@@ -111,6 +116,7 @@ public class CatService extends Handler implements AppInterface {
     private static final int MSG_ID_ICC_REFRESH  = 30;
 
     private static final int DEV_ID_KEYPAD      = 0x01;
+    private static final int DEV_ID_DISPLAY     = 0x02;
     private static final int DEV_ID_UICC        = 0x81;
     private static final int DEV_ID_TERMINAL    = 0x82;
     private static final int DEV_ID_NETWORK     = 0x83;
@@ -324,6 +330,31 @@ public class CatService extends Handler implements AppInterface {
     }
 
     /**
+     * This function validates the events in SETUP_EVENT_LIST which are currently
+     * supported by the Android framework. In case of SETUP_EVENT_LIST has NULL events
+     * or no events, all the events need to be reset.
+     */
+    private boolean isSupportedSetupEventCommand(CatCmdMessage cmdMsg) {
+        boolean flag = true;
+
+        for (int eventVal: cmdMsg.getSetEventList().eventList) {
+            CatLog.d(this,"Event: " + eventVal);
+            switch (eventVal) {
+                /* Currently android is supporting only the below events in SetupEventList
+                 * Browser Termination,
+                 * Idle Screen Available and
+                 * Language Selection.  */
+                case IDLE_SCREEN_AVAILABLE_EVENT:
+                case LANGUAGE_SELECTION_EVENT:
+                    break;
+                default:
+                    flag = false;
+            }
+        }
+        return flag;
+    }
+
+    /**
      * Handles RIL_UNSOL_STK_EVENT_NOTIFY or RIL_UNSOL_STK_PROACTIVE_COMMAND command
      * from RIL.
      * Sends valid proactive command data to the application using intents.
@@ -357,6 +388,14 @@ public class CatService extends Handler implements AppInterface {
                 break;
             case SET_UP_IDLE_MODE_TEXT:
                 sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
+                break;
+            case SET_UP_EVENT_LIST:
+                if (isSupportedSetupEventCommand(cmdMsg)) {
+                    sendTerminalResponse(cmdParams.mCmdDet, ResultCode.OK, false, 0, null);
+                } else {
+                    sendTerminalResponse(cmdParams.mCmdDet, ResultCode.BEYOND_TERMINAL_CAPABILITY,
+                            false, 0, null);
+                }
                 break;
             case PROVIDE_LOCAL_INFORMATION:
                 ResponseData resp;
@@ -648,6 +687,80 @@ public class CatService extends Handler implements AppInterface {
         mCmdIf.sendEnvelope(hexString, null);
     }
 
+    private void eventDownload(int event, int sourceId, int destinationId,
+            byte[] additionalInfo, boolean oneShot) {
+
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+
+        // tag
+        int tag = BerTlv.BER_EVENT_DOWNLOAD_TAG;
+        buf.write(tag);
+
+        // length
+        buf.write(0x00); // place holder, assume length < 128.
+
+        // event list
+        tag = 0x80 | ComprehensionTlvTag.EVENT_LIST.value();
+        buf.write(tag);
+        buf.write(0x01); // length
+        buf.write(event); // event value
+
+        // device identities
+        tag = 0x80 | ComprehensionTlvTag.DEVICE_IDENTITIES.value();
+        buf.write(tag);
+        buf.write(0x02); // length
+        buf.write(sourceId); // source device id
+        buf.write(destinationId); // destination device id
+
+        /*
+         * Check for type of event download to be sent to UICC - Browser
+         * termination,Idle screen available, User activity, Language selection
+         * etc as mentioned under ETSI TS 102 223 section 7.5
+         */
+
+        /*
+         * Currently the below events are supported:
+         * Browser Termination,
+         * Idle Screen Available and
+         * Language Selection Event.
+         * Other event download commands should be encoded similar way
+         */
+        /* TODO: eventDownload should be extended for other Envelope Commands */
+        switch (event) {
+            case IDLE_SCREEN_AVAILABLE_EVENT:
+                CatLog.d(sInstance, " Sending Idle Screen Available event download to ICC");
+                break;
+            case LANGUAGE_SELECTION_EVENT:
+                CatLog.d(sInstance, " Sending Language Selection event download to ICC");
+                tag = 0x80 | ComprehensionTlvTag.LANGUAGE.value();
+                buf.write(tag);
+                // Language length should be 2 byte
+                buf.write(0x02);
+                break;
+            default:
+                break;
+        }
+
+        // additional information
+        if (additionalInfo != null) {
+            for (byte b : additionalInfo) {
+                buf.write(b);
+            }
+        }
+
+        byte[] rawData = buf.toByteArray();
+
+        // write real length
+        int len = rawData.length - 2; // minus (tag + length)
+        rawData[1] = (byte) len;
+
+        String hexString = IccUtils.bytesToHexString(rawData);
+
+        CatLog.d(this, "ENVELOPE COMMAND: " + hexString);
+
+        mCmdIf.sendEnvelope(hexString, null);
+    }
+
     /**
      * Used by application to get an AppInterface object.
      *
@@ -786,15 +899,16 @@ public class CatService extends Handler implements AppInterface {
     }
 
     private boolean validateResponse(CatResponseMessage resMsg) {
-        boolean ret = false;
-        if (mCurrntCmd != null) {
-            ret = (resMsg.mCmdDet.compareTo(mCurrntCmd.mCmdDet));
-            CatLog.d(this, "SS-validateResponse: ret=" + ret +
-                    " [" + resMsg.mCmdDet.toString()+
-                    "/" + mCurrntCmd.mCmdDet.toString()+ "]");
-            return ret;
+        boolean validResponse = false;
+        if ((resMsg.mCmdDet.typeOfCommand == CommandType.SET_UP_EVENT_LIST.value())
+                || (resMsg.mCmdDet.typeOfCommand == CommandType.SET_UP_MENU.value())) {
+            CatLog.d(this, "CmdType: " + resMsg.mCmdDet.typeOfCommand);
+            validResponse = true;
+        } else if (mCurrntCmd != null) {
+            validResponse = resMsg.mCmdDet.compareTo(mCurrntCmd.mCmdDet);
+            CatLog.d(this, "isResponse for last valid cmd: " + validResponse);
         }
-        return false;
+        return validResponse;
     }
 
     private boolean removeMenu(Menu menu) {
@@ -819,7 +933,13 @@ public class CatService extends Handler implements AppInterface {
         // available for relaunch using the latest application dialog
         // (long press on the home button). Relaunching that activity can send
         // the same command's result again to the CatService and can cause it to
-        // get out of sync with the SIM.
+        // get out of sync with the SIM. This can happen in case of
+        // non-interactive type Setup Event List and SETUP_MENU proactive commands.
+        // Stk framework would have already sent Terminal Response to Setup Event
+        // List and SETUP_MENU proactive commands. After sometime Stk app will send
+        // Envelope Command/Event Download. In which case, the response details doesn't
+        // match with last valid command (which are not related).
+        // However, we should allow Stk framework to send the message to ICC.
         if (!validateResponse(resMsg)) {
             return;
         }
@@ -867,6 +987,10 @@ public class CatService extends Handler implements AppInterface {
                 }
                 break;
             case DISPLAY_TEXT:
+                //For screenbusy case there will be addtional information in the terminal
+                //response. And the value of the additional information byte is 0x01.
+                resMsg.setAdditionalInfo(0x01);
+                break;
             case LAUNCH_BROWSER:
                 break;
             // 3GPP TS.102.223: Open Channel alpha confirmation should not send TR
@@ -877,6 +1001,16 @@ public class CatService extends Handler implements AppInterface {
                 // confirmation result is send back using a dedicated ril message
                 // invoked by the CommandInterface call above.
                 mCurrntCmd = null;
+                return;
+            case SET_UP_EVENT_LIST:
+                if (IDLE_SCREEN_AVAILABLE_EVENT == resMsg.mEventValue) {
+                    eventDownload(resMsg.mEventValue, DEV_ID_DISPLAY, DEV_ID_UICC,
+                            resMsg.mAddedInfo, false);
+                } else {
+                    eventDownload(resMsg.mEventValue, DEV_ID_TERMINAL, DEV_ID_UICC,
+                            resMsg.mAddedInfo, false);
+                }
+                // No need to send the terminal response after event download.
                 return;
             default:
                 break;
