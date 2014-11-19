@@ -262,6 +262,8 @@ public final class Telephony {
         /**
          * The identity of the sender of a sent message. It is
          * usually the package name of the app which sends the message.
+         * <p class="note"><strong>Note:</strong>
+         * This column is read-only. It is set by the provider and can not be changed by apps.
          * <p>Type: TEXT</p>
          */
         public static final String CREATOR = "creator";
@@ -1716,6 +1718,8 @@ public final class Telephony {
         /**
          * The identity of the sender of a sent message. It is
          * usually the package name of the app which sends the message.
+         * <p class="note"><strong>Note:</strong>
+         * This column is read-only. It is set by the provider and can not be changed by apps.
          * <p>Type: TEXT</p>
          */
         public static final String CREATOR = "creator";
@@ -1896,7 +1900,7 @@ public final class Telephony {
                 }
             }
 
-            Rlog.e(TAG, "getOrCreateThreadId failed with uri " + uri.toString());
+            Rlog.e(TAG, "getOrCreateThreadId failed with " + recipients.size() + " recipients");
             throw new IllegalArgumentException("Unable to find or allocate a thread ID.");
         }
     }
