@@ -187,8 +187,7 @@ public class SubscriptionInfoUpdater extends Handler {
                         String newImsi = sPhone[slotId].getSubscriberId();
 
                         if (!storedImsi.equals(newImsi)) {
-                            int networkType = SystemProperties.getInt("ro.telephony.default_network",
-                                    RILConstants.PREFERRED_NETWORK_MODE);
+                            int networkType = RILConstants.PREFERRED_NETWORK_MODE;
 
                             // Set the modem network mode
                             sPhone[slotId].setPreferredNetworkType(networkType, null);
