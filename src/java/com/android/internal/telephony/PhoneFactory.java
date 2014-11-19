@@ -439,8 +439,8 @@ public class PhoneFactory {
         Rlog.d(LOG_TAG, "setDataSubscription: " + subId);
 
         // Update the current mobile data flag
-        enabled = Settings.Global.getInt(sContext.getContentResolver(),
-                Settings.Global.MOBILE_DATA + subId, 0) != 0;
+        enabled = TelephonyManager.getIntWithSubId(sContext.getContentResolver(),
+                Settings.Global.MOBILE_DATA, subId, 0) != 0;
         Settings.Global.putInt(sContext.getContentResolver(),
                 Settings.Global.MOBILE_DATA + subId, enabled ? 1 : 0);
         Rlog.d(LOG_TAG, "set mobile_data: " + enabled);

@@ -572,8 +572,8 @@ public abstract class DcTrackerBase extends Handler {
         filter.addAction(INTENT_DATA_STALL_ALARM);
         filter.addAction(INTENT_PROVISIONING_APN_ALARM);
 
-        mUserDataEnabled = Settings.Global.getInt(
-                mPhone.getContext().getContentResolver(), Settings.Global.MOBILE_DATA + phoneSubId,
+        mUserDataEnabled = TelephonyManager.getIntWithSubId(
+                mPhone.getContext().getContentResolver(), Settings.Global.MOBILE_DATA, phoneSubId,
                 1) == 1;
 
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
@@ -774,12 +774,14 @@ public abstract class DcTrackerBase extends Handler {
      * Return current {@link android.provider.Settings.Global#MOBILE_DATA} value.
      */
     public boolean getDataEnabled() {
+        final ContentResolver resolver = mPhone.getContext().getContentResolver();
         try {
-            final ContentResolver resolver = mPhone.getContext().getContentResolver();
             int phoneSubId = mPhone.getSubId();
-            return Settings.Global.getInt(resolver, Settings.Global.MOBILE_DATA + phoneSubId) != 0;
+            return TelephonyManager.getIntWithSubId(resolver, Settings.Global.MOBILE_DATA,
+                    phoneSubId) != 0;
         } catch (SettingNotFoundException snfe) {
-            return false;
+            return "true".equalsIgnoreCase(
+                    SystemProperties.get("ro.com.android.mobiledata", "true"));
         }
     }
 
