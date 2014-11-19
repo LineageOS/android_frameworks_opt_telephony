@@ -767,6 +767,16 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     public void
     getDataCallProfile(int appType, Message result) {
+        if(mRilVersion < 10) {
+            if (result != null) {
+                CommandException ex = new CommandException(
+                    CommandException.Error.REQUEST_NOT_SUPPORTED);
+                AsyncResult.forMessage(result, null, ex);
+                result.sendToTarget();
+            }
+            return;
+        }
+
         RILRequest rr = RILRequest.obtain(
                 RILConstants.RIL_REQUEST_GET_DATA_CALL_PROFILE, result);
 
