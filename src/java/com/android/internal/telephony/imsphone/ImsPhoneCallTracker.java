@@ -986,6 +986,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
                         + cause);
 
             }
+
+            if (cause == DisconnectCause.NORMAL && conn != null && conn.getImsCall().isMerged()) {
+                // Call was terminated while it is merged instead of a remote disconnect.
+                cause = DisconnectCause.IMS_MERGED_SUCCESSFULLY;
+            }
+
             processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
         }
 
