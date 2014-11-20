@@ -46,8 +46,6 @@ import java.util.List;
 import java.util.Locale;
 
 import static com.android.internal.telephony.cat.CatCmdMessage.
-                   SetupEventListConstants.IDLE_SCREEN_AVAILABLE_EVENT;
-import static com.android.internal.telephony.cat.CatCmdMessage.
                    SetupEventListConstants.LANGUAGE_SELECTION_EVENT;
 
 class RilMessage {
@@ -341,10 +339,7 @@ public class CatService extends Handler implements AppInterface {
             CatLog.d(this,"Event: " + eventVal);
             switch (eventVal) {
                 /* Currently android is supporting only the below events in SetupEventList
-                 * Browser Termination,
-                 * Idle Screen Available and
                  * Language Selection.  */
-                case IDLE_SCREEN_AVAILABLE_EVENT:
                 case LANGUAGE_SELECTION_EVENT:
                     break;
                 default:
@@ -716,16 +711,11 @@ public class CatService extends Handler implements AppInterface {
 
         /*
          * Currently the below events are supported:
-         * Browser Termination,
-         * Idle Screen Available and
          * Language Selection Event.
          * Other event download commands should be encoded similar way
          */
         /* TODO: eventDownload should be extended for other Envelope Commands */
         switch (event) {
-            case IDLE_SCREEN_AVAILABLE_EVENT:
-                CatLog.d(sInstance, " Sending Idle Screen Available event download to ICC");
-                break;
             case LANGUAGE_SELECTION_EVENT:
                 CatLog.d(sInstance, " Sending Language Selection event download to ICC");
                 tag = 0x80 | ComprehensionTlvTag.LANGUAGE.value();
@@ -983,14 +973,8 @@ public class CatService extends Handler implements AppInterface {
                 }
                 break;
             case DISPLAY_TEXT:
-                if (resMsg.mResCode == ResultCode.TERMINAL_CRNTLY_UNABLE_TO_PROCESS) {
-                    // For screenbusy case there will be addtional information in the terminal
-                    // response. And the value of the additional information byte is 0x01.
-                    resMsg.setAdditionalInfo(0x01);
-                } else {
-                    resMsg.mIncludeAdditionalInfo = false;
-                    resMsg.mAdditionalInfo = 0;
-                }
+                resMsg.mIncludeAdditionalInfo = false;
+                resMsg.mAdditionalInfo = 0;
                 break;
             case LAUNCH_BROWSER:
                 break;
@@ -1004,13 +988,8 @@ public class CatService extends Handler implements AppInterface {
                 mCurrntCmd = null;
                 return;
             case SET_UP_EVENT_LIST:
-                if (IDLE_SCREEN_AVAILABLE_EVENT == resMsg.mEventValue) {
-                    eventDownload(resMsg.mEventValue, DEV_ID_DISPLAY, DEV_ID_UICC,
-                            resMsg.mAddedInfo, false);
-                } else {
-                    eventDownload(resMsg.mEventValue, DEV_ID_TERMINAL, DEV_ID_UICC,
-                            resMsg.mAddedInfo, false);
-                }
+                eventDownload(resMsg.mEventValue, DEV_ID_TERMINAL, DEV_ID_UICC,
+                        resMsg.mAddedInfo, false);
                 // No need to send the terminal response after event download.
                 return;
             default:
