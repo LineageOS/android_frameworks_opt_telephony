@@ -987,16 +987,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
             }
             processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
-
-            if (reasonInfo.getCode() == ImsReasonInfo.CODE_USER_TERMINATED_BY_REMOTE) {
-                Phone defaultPhone = mPhone.getDefaultPhone();
-                if ((defaultPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA)
-                        && (mForegroundCall.getState() == ImsPhoneCall.State.DISCONNECTED)
-                        && (mBackgroundCall.getState() == ImsPhoneCall.State.HOLDING)) {
-                    if (DBG) log("autoresume to simulate cdma network behavior");
-                    sendEmptyMessage(EVENT_RESUME_BACKGROUND);
-                }
-            }
         }
 
         @Override
