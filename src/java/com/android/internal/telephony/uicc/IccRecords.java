@@ -618,11 +618,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
         return android.util.Base64.encodeToString(auth_rsp.payload, android.util.Base64.NO_WRAP);
     }
 
-    protected boolean requirePowerOffOnSimRefreshReset() {
-        return mContext.getResources().getBoolean(
-            com.android.internal.R.bool.config_requireRadioPowerOffOnSimRefreshReset);
-    }
-
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("IccRecords: " + this);
         pw.println(" mDestroyed=" + mDestroyed);
