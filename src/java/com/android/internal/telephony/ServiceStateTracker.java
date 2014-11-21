@@ -29,6 +29,8 @@ import android.telephony.CellInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.SubscriptionListener;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Pair;
@@ -214,6 +216,22 @@ public abstract class ServiceStateTracker extends Handler {
     protected boolean mPowerOffDelayNeed = true;
     protected boolean mDeviceShuttingDown = false;
 
+    protected final SubscriptionListener mSubscriptionListener = new SubscriptionListener() {
+        /*
+         * Callback invoked when there is any change to any SubscriptionInfo.
+         * @see android.telephony.SubscriptionListener#onSubscriptionInfoChanged()
+         */
+        @Override
+        public void onSubscriptionInfoChanged() {
+            if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
+            // Set the network type, in case the radio does not restore it.
+            if (mPhoneBase.getSubId() != SubscriptionManager.INVALID_SUB_ID) {
+                int networkType = PhoneFactory.calculatePreferredNetworkType(
+                        mPhoneBase.getContext(), mPhoneBase.getSubId());
+                mCi.setPreferredNetworkType(networkType, null);
+            }
+        }
+    };
 
     protected ServiceStateTracker(PhoneBase phoneBase, CommandsInterface ci, CellInfo cellInfo) {
         mPhoneBase = phoneBase;
@@ -225,6 +243,9 @@ public abstract class ServiceStateTracker extends Handler {
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
         mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
+
+        SubscriptionManager.register(phoneBase.getContext(), mSubscriptionListener,
+                SubscriptionListener.LISTEN_SUBSCRIPTION_INFO_LIST_CHANGED);
 
         mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
             ServiceState.rilRadioTechnologyToString(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN));
