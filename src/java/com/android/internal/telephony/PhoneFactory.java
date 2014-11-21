@@ -117,12 +117,6 @@ public class PhoneFactory {
 
                 sPhoneNotifier = new DefaultPhoneNotifier();
 
-                // Get preferred network mode
-                int preferredNetworkMode = RILConstants.PREFERRED_NETWORK_MODE;
-                if (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE) {
-                    preferredNetworkMode = Phone.NT_MODE_GLOBAL;
-                }
-
                 int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
 
@@ -135,21 +129,9 @@ public class PhoneFactory {
                 sCommandsInterfaces = new RIL[numPhones];
 
                 for (int i = 0; i < numPhones; i++) {
-                    //reads the system properties and makes commandsinterface
-                    try {
-//                        // Get preferred network type.
-//                        TODO: Sishir added this code to but we need a new technique for MSim
-//                        int networkType = calculatePreferredNetworkType(context);
-//                        Rlog.i(LOG_TAG, "Network Type set to " + Integer.toString(networkType));
-
-                        networkModes[i]  = TelephonyManager.getIntAtIndex(
-                                context.getContentResolver(),
-                                Settings.Global.PREFERRED_NETWORK_MODE, i);
-                    } catch (SettingNotFoundException snfe) {
-                        Rlog.e(LOG_TAG, "Settings Exception Reading Value At Index for"+
-                                " Settings.Global.PREFERRED_NETWORK_MODE");
-                        networkModes[i] = preferredNetworkMode;
-                    }
+                    // reads the system properties and makes commandsinterface
+                    // Get preferred network type.
+                    networkModes[i] = RILConstants.PREFERRED_NETWORK_MODE;
 
                     Rlog.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkModes[i]));
                     sCommandsInterfaces[i] = new RIL(context, networkModes[i],
@@ -310,21 +292,12 @@ public class PhoneFactory {
      * @return the preferred network mode that should be set.
      */
     // TODO: Fix when we "properly" have TelephonyDevController/SubscriptionController ..
-    public static int calculatePreferredNetworkType(Context context, int phoneId) {
-        int preferredNetworkType = RILConstants.PREFERRED_NETWORK_MODE;
-        if (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE) {
-            preferredNetworkType = Phone.NT_MODE_GLOBAL;
-        }
-        int networkType = preferredNetworkType;
-        try {
-            networkType = TelephonyManager.getIntAtIndex(
-                    context.getContentResolver(),
-                    Settings.Global.PREFERRED_NETWORK_MODE, phoneId);
-        } catch (SettingNotFoundException snfe) {
-            Rlog.e(LOG_TAG, "Settings Exception Reading Value At Index for"
-                    + " Settings.Global.PREFERRED_NETWORK_MODE");
-        }
-        Rlog.d(LOG_TAG, "calculatePreferredNetworkType: phoneId = " + phoneId);
+    public static int calculatePreferredNetworkType(Context context, int phoneSubId) {
+        int networkType = android.provider.Settings.Global.getInt(context.getContentResolver(),
+                android.provider.Settings.Global.PREFERRED_NETWORK_MODE + phoneSubId,
+                RILConstants.PREFERRED_NETWORK_MODE);
+        Rlog.d(LOG_TAG, "calculatePreferredNetworkType: phoneSubId = " + phoneSubId +
+                " networkType = " + networkType);
         return networkType;
     }
 
