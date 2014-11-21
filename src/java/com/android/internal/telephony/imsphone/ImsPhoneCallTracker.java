@@ -109,13 +109,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                             ImsPhoneCallTracker.this, mRingingCall);
                     addConnection(conn);
 
-                    IImsVideoCallProvider imsVideoCallProvider =
-                            imsCall.getCallSession().getVideoCallProvider();
-                    if (imsVideoCallProvider != null) {
-                        ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
-                                new ImsVideoCallProviderWrapper(imsVideoCallProvider);
-                        conn.setVideoProvider(imsVideoCallProviderWrapper);
-                    }
+                    setVideoCallProvider(conn, imsCall);
 
                     if ((mForegroundCall.getState() != ImsPhoneCall.State.IDLE) ||
                             (mBackgroundCall.getState() != ImsPhoneCall.State.IDLE)) {
@@ -464,13 +458,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     callees, mImsCallListener);
             conn.setImsCall(imsCall);
 
-            IImsVideoCallProvider imsVideoCallProvider =
-                    imsCall.getCallSession().getVideoCallProvider();
-            if (imsVideoCallProvider != null) {
-                ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
-                        new ImsVideoCallProviderWrapper(imsVideoCallProvider);
-                conn.setVideoProvider(imsVideoCallProviderWrapper);
-            }
+            setVideoCallProvider(conn, imsCall);
         } catch (ImsException e) {
             loge("dialInternal : " + e);
             conn.setDisconnectCause(DisconnectCause.ERROR_UNSPECIFIED);
@@ -1227,10 +1215,28 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
 
         @Override
-        public void onCallMerged(ImsCall call) {
+        public void onCallMerged(final ImsCall call) {
             if (DBG) log("onCallMerged");
 
             mForegroundCall.merge(mBackgroundCall, mForegroundCall.getState());
+
+            Runnable r = new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        final ImsPhoneConnection conn = findConnection(call);
+                        log("onCallMerged: ImsPhoneConnection=" + conn);
+                        log("onCallMerged: CurrentVideoProvider=" + conn.getVideoProvider());
+                        setVideoCallProvider(conn, call);
+                        log("onCallMerged: CurrentVideoProvider=" + conn.getVideoProvider());
+                    } catch (Exception e) {
+                        loge("onCallMerged: exception " + e);
+                    }
+                }
+            };
+
+            ImsPhoneCallTracker.this.post(r);
+
             updatePhoneState();
             mPhone.notifyPreciseCallStateChanged();
         }
@@ -1549,5 +1555,16 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     public boolean isVtEnabled() {
         return mIsVtEnabled;
+    }
+
+    private void setVideoCallProvider(ImsPhoneConnection conn, ImsCall imsCall)
+            throws RemoteException {
+        IImsVideoCallProvider imsVideoCallProvider =
+                imsCall.getCallSession().getVideoCallProvider();
+        if (imsVideoCallProvider != null) {
+            ImsVideoCallProviderWrapper imsVideoCallProviderWrapper =
+                    new ImsVideoCallProviderWrapper(imsVideoCallProvider);
+            conn.setVideoProvider(imsVideoCallProviderWrapper);
+        }
     }
 }
