@@ -222,7 +222,7 @@ public class PhoneFactory {
             if (!sMadeDefaults) {
                 throw new IllegalStateException("Default phones haven't been made yet!");
                 // CAF_MSIM FIXME need to introduce default phone id ?
-            } else if (phoneId == SubscriptionManager.DEFAULT_PHONE_ID) {
+            } else if (phoneId == SubscriptionManager.DEFAULT_PHONE_INDEX) {
                 Rlog.d(LOG_TAG, "getPhone: phoneId == DEFAULT_PHONE_ID");
                 phone = sProxyPhone;
             } else {
@@ -308,7 +308,7 @@ public class PhoneFactory {
 
     /* Gets User preferred Voice subscription setting*/
     public static int getVoiceSubscription() {
-        int subId = SubscriptionManager.INVALID_SUB_ID;
+        int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
         try {
             subId = Settings.Global.getInt(sContext.getContentResolver(),
@@ -382,7 +382,7 @@ public class PhoneFactory {
 
     /* Gets User preferred Data subscription setting*/
     public static long getDataSubscription() {
-        int subId = SubscriptionManager.INVALID_SUB_ID;
+        int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
         try {
             subId = Settings.Global.getInt(sContext.getContentResolver(),
@@ -404,7 +404,7 @@ public class PhoneFactory {
 
     /* Gets User preferred SMS subscription setting*/
     public static int getSMSSubscription() {
-        int subId = SubscriptionManager.INVALID_SUB_ID;
+        int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         try {
             subId = Settings.Global.getInt(sContext.getContentResolver(),
                     Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION);
