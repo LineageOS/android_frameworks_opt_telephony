@@ -1241,27 +1241,11 @@ public final class SmsManager {
             if (iMms == null) {
                 return;
             }
-            context.grantUriPermission(PHONE_PACKAGE_NAME, contentUri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            grantCarrierPackageUriPermission(context, contentUri,
-                    Telephony.Mms.Intents.MMS_SEND_ACTION, Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
             iMms.sendMessage(getSubscriptionId(), ActivityThread.currentPackageName(), contentUri,
                     locationUrl, configOverrides, sentIntent);
         } catch (RemoteException e) {
             // Ignore it
-        }
-    }
-
-    private void grantCarrierPackageUriPermission(Context context, Uri contentUri, String action,
-            int permission) {
-        Intent intent = new Intent(action);
-        TelephonyManager telephonyManager =
-            (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-        List<String> carrierPackages = telephonyManager.getCarrierPackageNamesForIntent(
-                intent);
-        if (carrierPackages != null && carrierPackages.size() == 1) {
-            context.grantUriPermission(carrierPackages.get(0), contentUri, permission);
         }
     }
 
@@ -1291,13 +1275,6 @@ public final class SmsManager {
             if (iMms == null) {
                 return;
             }
-            context.grantUriPermission(PHONE_PACKAGE_NAME, contentUri,
-                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-
-            grantCarrierPackageUriPermission(context, contentUri,
-                    Telephony.Mms.Intents.MMS_DOWNLOAD_ACTION,
-                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-
             iMms.downloadMessage(
                     getSubscriptionId(), ActivityThread.currentPackageName(), locationUrl,
                     contentUri, configOverrides, downloadedIntent);
