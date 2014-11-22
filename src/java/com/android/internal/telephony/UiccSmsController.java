@@ -352,7 +352,7 @@ public class UiccSmsController extends ISms.Stub {
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId) ;
         //Fixme: for multi-subscription case
         if (!SubscriptionManager.isValidPhoneId(phoneId)
-                || phoneId == SubscriptionManager.DEFAULT_PHONE_ID) {
+                || phoneId == SubscriptionManager.DEFAULT_PHONE_INDEX) {
             phoneId = 0;
         }
 

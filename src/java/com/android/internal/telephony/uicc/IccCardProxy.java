@@ -340,12 +340,18 @@ public class IccCardProxy extends Handler implements IccCard {
                         }
 
                         int[] subId = SubscriptionController.getInstance().getSubId(slotId);
-                        // Update MCC MNC device configuration information only for default sub.
-                        if (subId[0] == SubscriptionController.getInstance().getDefaultSubId()) {
-                            log("update mccmnc=" + operator + " config for default subscription.");
-                            MccTable.updateMccMncConfiguration(mContext, operator, false);
+                        if (subId != null) {
+                            // Update MCC MNC device configuration information only for default sub.
+                            if (subId[0] ==
+                                    SubscriptionController.getInstance().getDefaultSubId()) {
+                                log("update mccmnc=" + operator
+                                        + " config for default subscription.");
+                                MccTable.updateMccMncConfiguration(mContext, operator, false);
+                            }
+                            SubscriptionController.getInstance().setMccMnc(operator, subId[0]);
+                        } else {
+                            loge("EVENT_RECORDS_LOADED no available subId is null");
                         }
-                        SubscriptionController.getInstance().setMccMnc(operator, subId[0]);
                     } else {
                         loge("EVENT_RECORDS_LOADED Operator name is null");
                     }

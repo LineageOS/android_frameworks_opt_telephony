@@ -65,7 +65,7 @@ class RilMessageDecoder extends StateMachine {
             }
         }
 
-        if (slotId != SubscriptionManager.INVALID_SLOT_ID && slotId < mSimCount) {
+        if (slotId != SubscriptionManager.INVALID_SIM_SLOT_INDEX && slotId < mSimCount) {
             if (null == mInstance[slotId]) {
                 mInstance[slotId] = new RilMessageDecoder(caller, fh);
             }
