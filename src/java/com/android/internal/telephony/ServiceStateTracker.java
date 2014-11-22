@@ -29,8 +29,8 @@ import android.telephony.CellInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
-import android.telephony.SubscriptionListener;
 import android.telephony.SubscriptionManager;
+import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Pair;
@@ -216,16 +216,18 @@ public abstract class ServiceStateTracker extends Handler {
     protected boolean mPowerOffDelayNeed = true;
     protected boolean mDeviceShuttingDown = false;
 
-    protected final SubscriptionListener mSubscriptionListener = new SubscriptionListener() {
-        /*
-         * Callback invoked when there is any change to any SubscriptionInfo.
-         * @see android.telephony.SubscriptionListener#onSubscriptionInfoChanged()
+    protected SubscriptionManager mSubscriptionManager;
+    protected final OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
+            new OnSubscriptionsChangedListener() {
+        /**
+         * Callback invoked when there is any change to any SubscriptionInfo. Typically
+         * this method would invoke {@link SubscriptionManager#getActiveSubscriptionInfoList}
          */
         @Override
-        public void onSubscriptionInfoChanged() {
+        public void onSubscriptionsChanged() {
             if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
             // Set the network type, in case the radio does not restore it.
-            if (mPhoneBase.getSubId() != SubscriptionManager.INVALID_SUB_ID) {
+            if (mPhoneBase.getSubId() != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
                 int networkType = PhoneFactory.calculatePreferredNetworkType(
                         mPhoneBase.getContext(), mPhoneBase.getSubId());
                 mCi.setPreferredNetworkType(networkType, null);
@@ -244,8 +246,9 @@ public abstract class ServiceStateTracker extends Handler {
         mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
         mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
 
-        SubscriptionManager.register(phoneBase.getContext(), mSubscriptionListener,
-                SubscriptionListener.LISTEN_SUBSCRIPTION_INFO_LIST_CHANGED);
+        mSubscriptionManager = SubscriptionManager.from(phoneBase.getContext());
+        mSubscriptionManager
+            .registerOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
 
         mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
             ServiceState.rilRadioTechnologyToString(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN));
@@ -262,6 +265,8 @@ public abstract class ServiceStateTracker extends Handler {
         mCi.unSetOnSignalStrengthUpdate(this);
         mUiccController.unregisterForIccChanged(this);
         mCi.unregisterForCellInfoList(this);
+        mSubscriptionManager
+            .unregisterOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
     }
 
     public boolean getDesiredPowerState() {

@@ -481,7 +481,7 @@ public abstract class DcTrackerBase extends Handler {
 
         int phoneSubId = mPhone.getSubId();
         int currSubId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
-                SubscriptionManager.INVALID_SUB_ID);
+                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         log("onActionIntentReconnectAlarm: currSubId = " + currSubId + " phoneSubId=" + phoneSubId);
 
         // Stop reconnect if not current subId is not correct.
