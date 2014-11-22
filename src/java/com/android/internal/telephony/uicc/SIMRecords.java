@@ -1479,7 +1479,7 @@ public class SIMRecords extends IccRecords {
     private void setSpnFromConfig(String carrier) {
         if (mSpnOverride.containsCarrier(carrier)) {
             setServiceProviderName(mSpnOverride.getSpn(carrier));
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
+            setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
         }
     }
 
