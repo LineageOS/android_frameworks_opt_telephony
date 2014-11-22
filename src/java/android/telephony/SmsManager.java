@@ -728,7 +728,7 @@ public final class SmsManager {
      * Get the associated subscription id. If the instance was returned by {@link #getDefault()},
      * then this method may return different values at different points in time (if the user
      * changes the default subscription id). It will return
-     * {@link android.telephony.SubscriptionManager#INVALID_SUB_ID}
+     * {@link android.telephony.SubscriptionManager#INVALID_SUBSCRIPTION_ID}
      * if the default subscription id cannot be determined.
      *
      * @return associated subscription id
@@ -1157,9 +1157,9 @@ public final class SmsManager {
             iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             return iccISms.getPreferredSmsSubscription();
         } catch (RemoteException ex) {
-            return SubscriptionManager.INVALID_SUB_ID;
+            return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         } catch (NullPointerException ex) {
-            return SubscriptionManager.INVALID_SUB_ID;
+            return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         }
     }
 

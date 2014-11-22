@@ -1178,7 +1178,7 @@ public abstract class SMSDispatcher extends Handler {
             Rlog.d(TAG, "Persist SMS into "
                     + (messageType == Sms.MESSAGE_TYPE_FAILED ? "FAILED" : "SENT"));
             final ContentValues values = new ContentValues();
-            values.put(Sms.SUB_ID, mSubId);
+            values.put(Sms.SUBSCRIPTION_ID, mSubId);
             values.put(Sms.ADDRESS, mDestAddress);
             values.put(Sms.BODY, mFullMessageText);
             values.put(Sms.DATE, System.currentTimeMillis()); // milliseconds
@@ -1482,8 +1482,7 @@ public abstract class SMSDispatcher extends Handler {
     protected Uri writeOutboxMessage(int subId, String address, String text,
             boolean requireDeliveryReport, String creator) {
         final ContentValues values = new ContentValues(8);
-        int phoneId = SubscriptionManager.getPhoneId(subId);
-        values.put(Telephony.Sms.PHONE_ID, phoneId);
+        values.put(Telephony.Sms.SUBSCRIPTION_ID, subId);
         values.put(Telephony.Sms.ADDRESS, address);
         values.put(Telephony.Sms.BODY, text);
         values.put(Telephony.Sms.DATE, System.currentTimeMillis()); // milliseconds
@@ -1510,8 +1509,7 @@ public abstract class SMSDispatcher extends Handler {
 
     protected void moveToOutbox(int subId, Uri messageUri, String creator) {
         final ContentValues values = new ContentValues(4);
-        int phoneId = SubscriptionManager.getPhoneId(subId);
-        values.put(Telephony.Sms.PHONE_ID, phoneId);
+        values.put(Telephony.Sms.SUBSCRIPTION_ID, subId);
         if (!TextUtils.isEmpty(creator)) {
             // Reset creator/sender
             values.put(Telephony.Sms.CREATOR, creator);
