@@ -367,7 +367,7 @@ public class SubscriptionController extends ISub.Stub {
             if (cursor != null) {
                 while (cursor.moveToNext()) {
                     SubInfoRecord subInfo = getSubInfoRecord(cursor);
-                    if (subInfo != null)
+                    if (subInfo != null && SubscriptionManager.isValidSlotId(subInfo.slotId))
                     {
                         if (subList == null)
                         {
