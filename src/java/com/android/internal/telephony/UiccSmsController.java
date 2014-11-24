@@ -409,4 +409,28 @@ public class UiccSmsController extends ISms.Stub {
             return -1;
         }
     }
+
+    public String getSmscAddressFromIccForSubscriber(long subId)
+            throws RemoteException {
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+
+        if (iccSmsIntMgr != null ) {
+            return iccSmsIntMgr.getSmscAddressFromIcc();
+        } else {
+            Rlog.e(LOG_TAG, "iccSmsIntMgr is null for " + " subId: " + subId);
+            return null;
+        }
+    }
+
+    public boolean setSmscAddressToIccForSubscriber(long subId, String scAdress)
+            throws RemoteException {
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+
+        if (iccSmsIntMgr != null ) {
+            return iccSmsIntMgr.setSmscAddressToIcc(scAdress);
+        } else {
+            Rlog.e(LOG_TAG, "iccSmsIntMgr is null for " + " subId: " + subId);
+            return false;
+        }
+    }
 }
