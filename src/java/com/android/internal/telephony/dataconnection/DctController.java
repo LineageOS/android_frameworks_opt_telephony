@@ -16,10 +16,7 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.database.ContentObserver;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
@@ -31,9 +28,8 @@ import android.os.Message;
 import android.os.Messenger;
 import android.provider.Settings;
 import android.telephony.Rlog;
-import android.telephony.SubscriptionInfo;
-import android.telephony.SubscriptionListener;
 import android.telephony.SubscriptionManager;
+import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
@@ -41,7 +37,6 @@ import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.SubscriptionController;
-import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.RequestInfo;
 import com.android.internal.util.AsyncChannel;
 
@@ -49,7 +44,6 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map.Entry;
 
 public class DctController extends Handler {
@@ -83,10 +77,12 @@ public class DctController extends Handler {
 
     private SubscriptionController mSubController = SubscriptionController.getInstance();
 
-    SubscriptionListener mSubscriptionListener = new SubscriptionListener() {
+    private SubscriptionManager mSubMgr;
+
+    private OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
+            new OnSubscriptionsChangedListener() {
         @Override
-        public void onSubscriptionInfoChanged() {
-            logd("SubscriptionListener.onSubscriptionInfoChanged: call onSubInfoReady");
+        public void onSubscriptionsChanged() {
             onSubInfoReady();
         }
     };
@@ -237,9 +233,8 @@ public class DctController extends Handler {
         }
 
         mContext = mPhones[0].getContext();
-
-        SubscriptionManager.register(mContext, mSubscriptionListener,
-                SubscriptionListener.LISTEN_SUBSCRIPTION_INFO_LIST_CHANGED);
+        mSubMgr = SubscriptionManager.from(mContext);
+        mSubMgr.registerOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
 
         //Register for settings change.
         mContext.getContentResolver().registerContentObserver(
@@ -257,7 +252,7 @@ public class DctController extends Handler {
             mNetworkFactoryMessenger[i] = null;
         }
 
-        SubscriptionManager.unregister(mContext, mSubscriptionListener);
+        mSubMgr.unregisterOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
         mContext.getContentResolver().unregisterContentObserver(mObserver);
     }
 

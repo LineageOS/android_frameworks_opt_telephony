@@ -78,8 +78,11 @@ public class IccProvider extends ContentProvider {
         URL_MATCHER.addURI("icc", "sdn/subId/#", SDN_SUB);
     }
 
+    private SubscriptionManager mSubscriptionManager;
+
     @Override
     public boolean onCreate() {
+        mSubscriptionManager = SubscriptionManager.from(getContext());
         return true;
     }
 
@@ -117,7 +120,7 @@ public class IccProvider extends ContentProvider {
 
     private Cursor loadAllSimContacts(int efType) {
         Cursor [] result;
-        List<SubscriptionInfo> subInfoList = SubscriptionManager.getActiveSubscriptionInfoList();
+        List<SubscriptionInfo> subInfoList = mSubscriptionManager.getActiveSubscriptionInfoList();
 
         if ((subInfoList == null) || (subInfoList.size() == 0)) {
             result = new Cursor[0];
