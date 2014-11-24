@@ -1772,6 +1772,58 @@ public class GSMPhone extends PhoneBase {
         return (r != null) ? r.isCspPlmnEnabled() : false;
     }
 
+    boolean isManualNetSelAllowed() {
+
+        int nwMode = Phone.PREFERRED_NT_MODE;
+        int subId = getSubId();
+
+        nwMode = android.provider.Settings.Global.getInt(mContext.getContentResolver(),
+                    android.provider.Settings.Global.PREFERRED_NETWORK_MODE + subId, nwMode);
+
+        Rlog.d(LOG_TAG, "isManualNetSelAllowed in mode = " + nwMode);
+        /*
+         *  For multimode targets in global mode manual network
+         *  selection is disallowed
+         */
+        if (isManualSelProhibitedInGlobalMode()
+                && ((nwMode == Phone.NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA)
+                        || (nwMode == Phone.NT_MODE_GLOBAL)) ){
+            Rlog.d(LOG_TAG, "Manual selection not supported in mode = " + nwMode);
+            return false;
+        } else {
+            Rlog.d(LOG_TAG, "Manual selection is supported in mode = " + nwMode);
+        }
+
+        /*
+         *  Single mode phone with - GSM network modes/global mode
+         *  LTE only for 3GPP
+         *  LTE centric + 3GPP Legacy
+         *  Note: the actual enabling/disabling manual selection for these
+         *  cases will be controlled by csp
+         */
+        return true;
+    }
+
+    private boolean isManualSelProhibitedInGlobalMode() {
+        boolean isProhibited = false;
+        final String configString = getContext().getResources().getString(com.android.internal.
+                                            R.string.prohibit_manual_network_selection_in_gobal_mode);
+
+        if (!TextUtils.isEmpty(configString)) {
+            String[] configArray = configString.split(";");
+
+            if (configArray != null &&
+                    ((configArray.length == 1 && configArray[0].equalsIgnoreCase("true")) ||
+                        (configArray.length == 2 && !TextUtils.isEmpty(configArray[1]) &&
+                            configArray[0].equalsIgnoreCase("true") &&
+                            configArray[1].equalsIgnoreCase(getGroupIdLevel1())))) {
+                            isProhibited = true;
+            }
+        }
+        Rlog.d(LOG_TAG, "isManualNetSelAllowedInGlobal in current carrier is " + isProhibited);
+        return isProhibited;
+    }
+
     private void registerForSimRecordEvents() {
         IccRecords r = mIccRecords.get();
         if (r == null) {
