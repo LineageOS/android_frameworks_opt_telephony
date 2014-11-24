@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static android.Manifest.permission.READ_PHONE_STATE;
-import android.app.ActivityManagerNative;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.ContentResolver;
@@ -29,23 +27,15 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
-import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
-import android.util.Log;
-
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccUtils;
-import com.android.internal.telephony.uicc.SpnOverride;
-import android.provider.Telephony;
-import android.content.ContentUris;
-import android.net.Uri;
-import android.database.Cursor;
 import android.text.TextUtils;
 
 import java.util.List;
@@ -54,7 +44,7 @@ import java.util.List;
  *@hide
  */
 public class SubscriptionInfoUpdater extends Handler {
-    private static final String LOG_TAG = "SUB";
+    private static final String LOG_TAG = "SubscriptionInfoUpdater";
     private static final int PROJECT_SIM_NUM = TelephonyManager.getDefault().getPhoneCount();
     private static final int EVENT_OFFSET = 8;
     private static final int EVENT_QUERY_ICCID_DONE = 1;
@@ -86,25 +76,30 @@ public class SubscriptionInfoUpdater extends Handler {
     // Key used to read/write the current IMSI. Updated on SIM_STATE_CHANGED - LOADED.
     public static final String CURR_IMSI = "curr_imsi";
 
-    private static Phone[] sPhone;
-    private static Context sContext = null;
-    private static IccFileHandler[] sFh = new IccFileHandler[PROJECT_SIM_NUM];
-    private static String sIccId[] = new String[PROJECT_SIM_NUM];
-    private static int[] sInsertSimState = new int[PROJECT_SIM_NUM];
-    private static TelephonyManager sTelephonyMgr = null;
+    private static Phone[] mPhone;
+    private static Context mContext = null;
+    private static IccFileHandler[] mFh = new IccFileHandler[PROJECT_SIM_NUM];
+    private static String mIccId[] = new String[PROJECT_SIM_NUM];
+    private static int[] mInsertSimState = new int[PROJECT_SIM_NUM];
+    private static TelephonyManager mTelephonyMgr = null;
+    private SubscriptionManager mSubscriptionManager = null;
+
     // To prevent repeatedly update flow every time receiver SIM_STATE_CHANGE
-    private static boolean sNeedUpdate = true;
+    private static boolean mNeedUpdate = true;
+
 
     public SubscriptionInfoUpdater(Context context, Phone[] phoneProxy, CommandsInterface[] ci) {
         logd("Constructor invoked");
 
-        sContext = context;
-        sPhone = phoneProxy;
+        mContext = context;
+        mPhone = phoneProxy;
+        mSubscriptionManager = SubscriptionManager.from(mContext);
+
         IntentFilter intentFilter = new IntentFilter(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
-        sContext.registerReceiver(sReceiver, intentFilter);
+        mContext.registerReceiver(sReceiver, intentFilter);
     }
 
-    private static int encodeEventId(int event, int slotId) {
+    private int encodeEventId(int event, int slotId) {
         return event << (slotId * EVENT_OFFSET);
     }
 
@@ -118,41 +113,42 @@ public class SubscriptionInfoUpdater extends Handler {
             if (action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED)) {
                 String simStatus = intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE);
                 slotId = intent.getIntExtra(PhoneConstants.SLOT_KEY,
-                        SubscriptionManager.INVALID_SLOT_ID);
+                        SubscriptionManager.INVALID_SIM_SLOT_INDEX);
                 logd("slotId: " + slotId + " simStatus: " + simStatus);
-                if (slotId == SubscriptionManager.INVALID_SLOT_ID) {
+                if (slotId == SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
                     return;
                 }
                 if (IccCardConstants.INTENT_VALUE_ICC_READY.equals(simStatus)
                         || IccCardConstants.INTENT_VALUE_ICC_LOCKED.equals(simStatus)) {
-                    if (sIccId[slotId] != null && sIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
+                    if (mIccId[slotId] != null && mIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
                         logd("SIM" + (slotId + 1) + " hot plug in");
-                        sIccId[slotId] = null;
-                        sNeedUpdate = true;
+                        mIccId[slotId] = null;
+                        mNeedUpdate = true;
                     }
                     queryIccId(slotId);
                 } else if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(simStatus)) {
                     queryIccId(slotId);
-                    if (sTelephonyMgr == null) {
-                        sTelephonyMgr = TelephonyManager.from(sContext);
+                    if (mTelephonyMgr == null) {
+                        mTelephonyMgr = TelephonyManager.from(mContext);
                     }
-
                     int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
-                            SubscriptionManager.INVALID_SUB_ID);
+                            SubscriptionManager.INVALID_SUBSCRIPTION_ID);
 
                     if (SubscriptionManager.isValidSubId(subId)) {
-                        String msisdn = TelephonyManager.getDefault().getLine1NumberForSubscriber(subId);
-                        ContentResolver contentResolver = sContext.getContentResolver();
+                        String msisdn = TelephonyManager.getDefault()
+                                .getLine1NumberForSubscriber(subId);
+                        ContentResolver contentResolver = mContext.getContentResolver();
 
                         if (msisdn != null) {
                             ContentValues number = new ContentValues(1);
                             number.put(SubscriptionManager.NUMBER, msisdn);
                             contentResolver.update(SubscriptionManager.CONTENT_URI, number,
-                                    SubscriptionManager._ID + "=" + Long.toString(subId), null);
+                                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
+                                    + Long.toString(subId), null);
                         }
 
                         SubscriptionInfo subInfo =
-                                SubscriptionManager.getSubscriptionInfoForSubscriber(subId);
+                                mSubscriptionManager.getActiveSubscriptionInfo(subId);
 
                         if (subInfo != null
                                 && subInfo.getNameSource() !=
@@ -175,29 +171,31 @@ public class SubscriptionInfoUpdater extends Handler {
                             name.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
                             name.put(SubscriptionManager.CARRIER_NAME,
                                     !TextUtils.isEmpty(simCarrierName) ? simCarrierName :
-                                    sContext.getString(com.android.internal.R.string.unknownName));
+                                    mContext.getString(com.android.internal.R.string.unknownName));
                             contentResolver.update(SubscriptionManager.CONTENT_URI, name,
-                                    SubscriptionManager._ID + "=" + Long.toString(subId), null);
+                                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
+                                    + "=" + Long.toString(subId), null);
                         }
 
                         /* Update preferred network type and network selection mode on IMSI change.
                          * Storing last IMSI in SharedPreference for now. Can consider making it
                          * part of subscription info db */
-                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
+                        SharedPreferences sp =
+                                PreferenceManager.getDefaultSharedPreferences(context);
                         String storedImsi = sp.getString(CURR_IMSI + slotId, "");
-                        String newImsi = sPhone[slotId].getSubscriberId();
+                        String newImsi = mPhone[slotId].getSubscriberId();
 
                         if (!storedImsi.equals(newImsi)) {
                             int networkType = RILConstants.PREFERRED_NETWORK_MODE;
 
                             // Set the modem network mode
-                            sPhone[slotId].setPreferredNetworkType(networkType, null);
-                            Settings.Global.putInt(sPhone[slotId].getContext().getContentResolver(),
-                                    Settings.Global.PREFERRED_NETWORK_MODE + sPhone[slotId].getSubId(),
+                            mPhone[slotId].setPreferredNetworkType(networkType, null);
+                            Settings.Global.putInt(mPhone[slotId].getContext().getContentResolver(),
+                                    Settings.Global.PREFERRED_NETWORK_MODE + mPhone[slotId].getSubId(),
                                     networkType);
 
                             // Only support automatic selection mode on IMSI change.
-                            sPhone[slotId].getNetworkSelectionMode(
+                            mPhone[slotId].getNetworkSelectionMode(
                                     obtainMessage(EVENT_GET_NETWORK_SELECTION_MODE_DONE));
 
                             // Update stored IMSI
@@ -209,13 +207,13 @@ public class SubscriptionInfoUpdater extends Handler {
                         logd("[Receiver] Invalid subId, could not update ContentResolver");
                     }
                 } else if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(simStatus)) {
-                    if (sIccId[slotId] != null && !sIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
+                    if (mIccId[slotId] != null && !mIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
                         logd("SIM" + (slotId + 1) + " hot plug out");
-                        sNeedUpdate = true;
+                        mNeedUpdate = true;
                     }
-                    sFh[slotId] = null;
-                    sIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
-                    if (isAllIccIdQueryDone() && sNeedUpdate) {
+                    mFh[slotId] = null;
+                    mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
+                    if (isAllIccIdQueryDone() && mNeedUpdate) {
                         updateSubscriptionInfoByIccId();
                     }
                 }
@@ -226,7 +224,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
     private boolean isAllIccIdQueryDone() {
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
-            if (sIccId[i] == null) {
+            if (mIccId[i] == null) {
                 logd("Wait for SIM" + (i + 1) + " IccId");
                 return false;
             }
@@ -236,8 +234,8 @@ public class SubscriptionInfoUpdater extends Handler {
         return true;
     }
 
-    public static void setDisplayNameForNewSub(String newSubName, int subId, int newNameSource) {
-        SubscriptionInfo subInfo = SubscriptionManager.getSubscriptionInfoForSubscriber(subId);
+    public void setDisplayNameForNewSub(String newSubName, int subId, int newNameSource) {
+        SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
         if (subInfo != null) {
             // overwrite SIM display name if it is not assigned by user
             int oldNameSource = subInfo.getNameSource();
@@ -246,10 +244,11 @@ public class SubscriptionInfoUpdater extends Handler {
                     + ", oldSimName = " + oldSubName + ", oldNameSource = " + oldNameSource
                     + ", newSubName = " + newSubName + ", newNameSource = " + newNameSource);
             if (oldSubName == null ||
-                (oldNameSource == SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE && newSubName != null) ||
+                (oldNameSource ==
+                    SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE && newSubName != null) ||
                 (oldNameSource == SubscriptionManager.NAME_SOURCE_SIM_SOURCE && newSubName != null
                         && !newSubName.equals(oldSubName))) {
-                SubscriptionManager.setDisplayName(newSubName, subInfo.getSubscriptionId(),
+                mSubscriptionManager.setDisplayName(newSubName, subInfo.getSubscriptionId(),
                         newNameSource);
             }
         } else {
@@ -278,17 +277,17 @@ public class SubscriptionInfoUpdater extends Handler {
                 if (ar.exception == null) {
                     if (ar.result != null) {
                         byte[] data = (byte[])ar.result;
-                        sIccId[slotId] = IccUtils.bcdToString(data, 0, data.length);
+                        mIccId[slotId] = IccUtils.bcdToString(data, 0, data.length);
                     } else {
                         logd("Null ar");
-                        sIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
+                        mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
                     }
                 } else {
-                    sIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
+                    mIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
                     logd("Query IccId fail: " + ar.exception);
                 }
-                logd("sIccId[" + slotId + "] = " + sIccId[slotId]);
-                if (isAllIccIdQueryDone() && sNeedUpdate) {
+                logd("sIccId[" + slotId + "] = " + mIccId[slotId]);
+                if (isAllIccIdQueryDone() && mNeedUpdate) {
                     updateSubscriptionInfoByIccId();
                 }
                 break;
@@ -296,7 +295,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 if (ar.exception == null && ar.result != null) {
                     int[] modes = (int[])ar.result;
                     if (modes[0] == 1) {  // Manual mode.
-                        sPhone[slotId].setNetworkSelectionModeAutomatic(null);
+                        mPhone[slotId].setNetworkSelectionModeAutomatic(null);
                     }
                 } else {
                     logd("EVENT_GET_NETWORK_SELECTION_MODE_DONE: error getting network mode.");
@@ -309,15 +308,16 @@ public class SubscriptionInfoUpdater extends Handler {
 
     private void queryIccId(int slotId) {
         logd("queryIccId: slotid=" + slotId);
-        if (sFh[slotId] == null) {
+        if (mFh[slotId] == null) {
             logd("Getting IccFileHandler");
-            sFh[slotId] = ((PhoneProxy)sPhone[slotId]).getIccFileHandler();
+            mFh[slotId] = ((PhoneProxy)mPhone[slotId]).getIccFileHandler();
         }
-        if (sFh[slotId] != null) {
-            String iccId = sIccId[slotId];
+        if (mFh[slotId] != null) {
+            String iccId = mIccId[slotId];
             if (iccId == null) {
                 logd("Querying IccId");
-                sFh[slotId].loadEFTransparent(IccConstants.EF_ICCID, obtainMessage(encodeEventId(EVENT_QUERY_ICCID_DONE, slotId)));
+                mFh[slotId].loadEFTransparent(IccConstants.EF_ICCID,
+                        obtainMessage(encodeEventId(EVENT_QUERY_ICCID_DONE, slotId)));
             } else {
                 logd("NOT Querying IccId its already set sIccid[" + slotId + "]=" + iccId);
             }
@@ -332,39 +332,39 @@ public class SubscriptionInfoUpdater extends Handler {
      */
     synchronized private void updateSubscriptionInfoByIccId() {
         logd("updateSubscriptionInfoByIccId:+ Start");
-        sNeedUpdate = false;
+        mNeedUpdate = false;
 
-        SubscriptionManager.clearSubscriptionInfo();
+        mSubscriptionManager.clearSubscriptionInfo();
 
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
-            sInsertSimState[i] = SIM_NOT_CHANGE;
+            mInsertSimState[i] = SIM_NOT_CHANGE;
         }
 
         int insertedSimCount = PROJECT_SIM_NUM;
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
-            if (ICCID_STRING_FOR_NO_SIM.equals(sIccId[i])) {
+            if (ICCID_STRING_FOR_NO_SIM.equals(mIccId[i])) {
                 insertedSimCount--;
-                sInsertSimState[i] = SIM_NOT_INSERT;
+                mInsertSimState[i] = SIM_NOT_INSERT;
             }
         }
         logd("insertedSimCount = " + insertedSimCount);
 
         int index = 0;
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
-            if (sInsertSimState[i] == SIM_NOT_INSERT) {
+            if (mInsertSimState[i] == SIM_NOT_INSERT) {
                 continue;
             }
             index = 2;
             for (int j = i + 1; j < PROJECT_SIM_NUM; j++) {
-                if (sInsertSimState[j] == SIM_NOT_CHANGE && sIccId[i].equals(sIccId[j])) {
-                    sInsertSimState[i] = 1;
-                    sInsertSimState[j] = index;
+                if (mInsertSimState[j] == SIM_NOT_CHANGE && mIccId[i].equals(mIccId[j])) {
+                    mInsertSimState[i] = 1;
+                    mInsertSimState[j] = index;
                     index++;
                 }
             }
         }
 
-        ContentResolver contentResolver = sContext.getContentResolver();
+        ContentResolver contentResolver = mContext.getContentResolver();
         String[] oldIccId = new String[PROJECT_SIM_NUM];
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             oldIccId[i] = null;
@@ -374,20 +374,21 @@ public class SubscriptionInfoUpdater extends Handler {
                 oldIccId[i] = oldSubInfo.get(0).getIccId();
                 logd("updateSubscriptionInfoByIccId: oldSubId = "
                         + oldSubInfo.get(0).getSubscriptionId());
-                if (sInsertSimState[i] == SIM_NOT_CHANGE && !sIccId[i].equals(oldIccId[i])) {
-                    sInsertSimState[i] = SIM_CHANGED;
+                if (mInsertSimState[i] == SIM_NOT_CHANGE && !mIccId[i].equals(oldIccId[i])) {
+                    mInsertSimState[i] = SIM_CHANGED;
                 }
-                if (sInsertSimState[i] != SIM_NOT_CHANGE) {
+                if (mInsertSimState[i] != SIM_NOT_CHANGE) {
                     ContentValues value = new ContentValues(1);
-                    value.put(SubscriptionManager.SIM_ID, SubscriptionManager.INVALID_SLOT_ID);
+                    value.put(SubscriptionManager.SIM_SLOT_INDEX,
+                            SubscriptionManager.INVALID_SIM_SLOT_INDEX);
                     contentResolver.update(SubscriptionManager.CONTENT_URI, value,
-                            SubscriptionManager._ID + "="
+                            SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
                             + Integer.toString(oldSubInfo.get(0).getSubscriptionId()), null);
                 }
             } else {
-                if (sInsertSimState[i] == SIM_NOT_CHANGE) {
+                if (mInsertSimState[i] == SIM_NOT_CHANGE) {
                     // no SIM inserted last time, but there is one SIM inserted now
-                    sInsertSimState[i] = SIM_CHANGED;
+                    mInsertSimState[i] = SIM_CHANGED;
                 }
                 oldIccId[i] = ICCID_STRING_FOR_NO_SIM;
                 logd("updateSubscriptionInfoByIccId: No SIM in slot " + i + " last time");
@@ -396,26 +397,26 @@ public class SubscriptionInfoUpdater extends Handler {
 
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             logd("updateSubscriptionInfoByIccId: oldIccId[" + i + "] = " + oldIccId[i] +
-                    ", sIccId[" + i + "] = " + sIccId[i]);
+                    ", sIccId[" + i + "] = " + mIccId[i]);
         }
 
         //check if the inserted SIM is new SIM
         int nNewCardCount = 0;
         int nNewSimStatus = 0;
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
-            if (sInsertSimState[i] == SIM_NOT_INSERT) {
+            if (mInsertSimState[i] == SIM_NOT_INSERT) {
                 logd("updateSubscriptionInfoByIccId: No SIM inserted in slot " + i + " this time");
             } else {
-                if (sInsertSimState[i] > 0) {
+                if (mInsertSimState[i] > 0) {
                     //some special SIMs may have the same IccIds, add suffix to distinguish them
                     //FIXME: addSubInfoRecord can return an error.
-                    SubscriptionManager.addSubscriptionInfoRecord(sIccId[i]
-                            + Integer.toString(sInsertSimState[i]), i);
+                    mSubscriptionManager.addSubscriptionInfoRecord(mIccId[i]
+                            + Integer.toString(mInsertSimState[i]), i);
                     logd("SUB" + (i + 1) + " has invalid IccId");
                 } else /*if (sInsertSimState[i] != SIM_NOT_INSERT)*/ {
-                    SubscriptionManager.addSubscriptionInfoRecord(sIccId[i], i);
+                    mSubscriptionManager.addSubscriptionInfoRecord(mIccId[i], i);
                 }
-                if (isNewSim(sIccId[i], oldIccId)) {
+                if (isNewSim(mIccId[i], oldIccId)) {
                     nNewCardCount++;
                     switch (i) {
                         case PhoneConstants.SUB1:
@@ -432,23 +433,23 @@ public class SubscriptionInfoUpdater extends Handler {
                         //    break;
                     }
 
-                    sInsertSimState[i] = SIM_NEW;
+                    mInsertSimState[i] = SIM_NEW;
                 }
             }
         }
 
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
-            if (sInsertSimState[i] == SIM_CHANGED) {
-                sInsertSimState[i] = SIM_REPOSITION;
+            if (mInsertSimState[i] == SIM_CHANGED) {
+                mInsertSimState[i] = SIM_REPOSITION;
             }
             logd("updateSubscriptionInfoByIccId: sInsertSimState[" + i + "] = "
-                    + sInsertSimState[i]);
+                    + mInsertSimState[i]);
         }
 
-        List<SubscriptionInfo> subInfos = SubscriptionManager.getActiveSubscriptionInfoList();
+        List<SubscriptionInfo> subInfos = mSubscriptionManager.getActiveSubscriptionInfoList();
         int nSubCount = (subInfos == null) ? 0 : subInfos.size();
         logd("updateSubscriptionInfoByIccId: nSubCount = " + nSubCount);
-        for (int i=0; i<nSubCount; i++) {
+        for (int i=0; i < nSubCount; i++) {
             SubscriptionInfo temp = subInfos.get(i);
 
             String msisdn = TelephonyManager.getDefault().getLine1NumberForSubscriber(
@@ -458,7 +459,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 ContentValues value = new ContentValues(1);
                 value.put(SubscriptionManager.NUMBER, msisdn);
                 contentResolver.update(SubscriptionManager.CONTENT_URI, value,
-                        SubscriptionManager._ID + "="
+                        SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
                         + Integer.toString(temp.getSubscriptionId()), null);
             }
         }
@@ -467,7 +468,7 @@ public class SubscriptionInfoUpdater extends Handler {
         logd("updateSubscriptionInfoByIccId:- SsubscriptionInfo update complete");
     }
 
-    private static boolean isNewSim(String iccId, String[] oldIccId) {
+    private boolean isNewSim(String iccId, String[] oldIccId) {
         boolean newSim = true;
         for(int i = 0; i < PROJECT_SIM_NUM; i++) {
             if(iccId.equals(oldIccId[i])) {
@@ -482,11 +483,11 @@ public class SubscriptionInfoUpdater extends Handler {
 
     public void dispose() {
         logd("[dispose]");
-        sContext.unregisterReceiver(sReceiver);
+        mContext.unregisterReceiver(sReceiver);
     }
 
-    private static void logd(String message) {
-        Rlog.d(LOG_TAG, "[SubscriptionInfoUpdater]" + message);
+    private void logd(String message) {
+        Rlog.d(LOG_TAG, message);
     }
 }
 
