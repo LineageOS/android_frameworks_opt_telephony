@@ -912,4 +912,28 @@ public abstract class ServiceStateTracker extends Handler {
 
     }
 
+
+    /* Reset Service state when IWLAN is enabled as polling in airplane mode
+     * causes state to go to OUT_OF_SERVICE state instead of STATE_OFF
+     */
+    protected void resetServiceStateInIwlanMode() {
+        if (mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
+            boolean resetIwlanRatVal = false;
+            log("set service state as POWER_OFF");
+            if (isIwlanFeatureAvailable()
+                    && (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                        == mNewSS.getRilDataRadioTechnology())) {
+                log("pollStateDone: mNewSS = " + mNewSS);
+                log("pollStateDone: reset iwlan RAT value");
+                resetIwlanRatVal = true;
+            }
+            mNewSS.setStateOff();
+            if (resetIwlanRatVal) {
+                mNewSS.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN);
+                mNewSS.setDataRegState(ServiceState.STATE_IN_SERVICE);
+                log("pollStateDone: mNewSS = " + mNewSS);
+                resetIwlanRatVal = false;
+            }
+        }
+    }
 }
