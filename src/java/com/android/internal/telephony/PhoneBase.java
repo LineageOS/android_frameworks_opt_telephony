@@ -1153,8 +1153,12 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public void updatePhoneObject(int voiceRadioTech) {
+        Rlog.d(LOG_TAG, "updatePhoneObject: phoneid = " + mPhoneId + " rat = " + voiceRadioTech);
         // Only the PhoneProxy can update the phone object.
-        PhoneFactory.getDefaultPhone().updatePhoneObject(voiceRadioTech);
+        Phone phoneProxy = PhoneFactory.getPhone(mPhoneId);
+        if (phoneProxy != null) {
+            phoneProxy.updatePhoneObject(voiceRadioTech);
+        }
     }
 
     /**
