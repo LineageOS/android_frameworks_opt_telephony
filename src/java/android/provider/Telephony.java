@@ -1164,6 +1164,18 @@ public final class Telephony {
                 for (int i = 0; i < pduCount; i++) {
                     byte[] pdu = (byte[]) pdus[i];
                     msgs[i] = SmsMessage.createFromPdu(pdu, format);
+                    // If the originating address is null on our message
+                    // then the format for SmsMessage createFromPdu is likely
+                    // incorrect. SmsMessage createFromPdu(the new method)
+                    // takes in a format parameter that it gets from the Tracker
+                    // however, on some of our legacy devices using a legacy ril,
+                    // since that format is derived by getting voice tech,
+                    // we can get a bad format and no valid members.
+                    // Thus we introduce a hack that utilizes the deprecated
+                    // SmsMessage.createFromPdu if we get a null originating address.
+                    if (msgs[i].getOriginatingAddress() == null) {
+                        msgs[i] = SmsMessage.createFromPdu(pdu);
+                    }
                     String originatingAddress = msgs[i].getOriginatingAddress();
                     if (!TextUtils.isEmpty(originatingAddress)) {
                         String normalized = normalizeDigitsOnly(originatingAddress);
