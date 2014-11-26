@@ -154,6 +154,17 @@ public class DctController extends Handler {
         }
     };
 
+    boolean isActiveSubId(long subId) {
+        long[] activeSubs = mSubController.getActiveSubIdList();
+        for (int i = 0; i < activeSubs.length; i++) {
+            if (subId == activeSubs[i]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     private class DataStateReceiver extends BroadcastReceiver {
         public void onReceive(Context context, Intent intent) {
             synchronized(this) {
@@ -162,12 +173,12 @@ public class DctController extends Handler {
 
                     long subId = intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY, PhoneConstants.SUB1);
                     int phoneId = SubscriptionManager.getPhoneId(subId);
-                    logd("DataStateReceiver: phoneId= " + phoneId);
-
                     // for the case of network out of service when bootup (ignore dummy values too)
-                    if (!SubscriptionManager.isValidSubId(subId) || (subId < 0)) {
+                    if (!SubscriptionManager.isValidSubId(subId) || (subId < 0) ||
+                            !isActiveSubId(subId)) {
                         // FIXME: Maybe add SM.isRealSubId(subId)??
-                        logd("DataStateReceiver: ignore invalid subId=" + subId);
+                        logd("DataStateReceiver: ignore invalid subId=" + subId
+                                + " phoneId = " + phoneId);
                         return;
                     }
                     if (!SubscriptionManager.isValidPhoneId(phoneId)) {
