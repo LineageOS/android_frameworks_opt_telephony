@@ -96,9 +96,15 @@ public abstract class CallTracker extends Handler {
 
     protected Connection getHoConnection(DriverCall dc) {
         for (Connection hoConn : mHandoverConnections) {
-            log("getHoConnection: hoConn= " + hoConn.toString());
-            if (hoConn.getState() == Call.stateFromDCState(dc.state)
-                    || (hoConn.getAddress() != null && hoConn.getAddress().contains(dc.number))) {
+            log("getHoConnection - compare number: hoConn= " + hoConn.toString());
+            if (hoConn.getAddress() != null && hoConn.getAddress().contains(dc.number)) {
+                log("getHoConnection: Handover connection match found = " + hoConn.toString());
+                return hoConn;
+            }
+        }
+        for (Connection hoConn : mHandoverConnections) {
+            log("getHoConnection: compare state hoConn= " + hoConn.toString());
+            if (hoConn.getStateBeforeHandover() == Call.stateFromDCState(dc.state)) {
                 log("getHoConnection: Handover connection match found = " + hoConn.toString());
                 return hoConn;
             }
