@@ -320,19 +320,19 @@ class SubscriptionHelper extends Handler {
         return mCi[phoneId].getRadioState().isAvailable();
     }
 
-    public boolean proceedToHandleIccEvent() {
+    public boolean isApmSIMNotPwdn() {
+        return sApmSIMNotPwdn;
+    }
+
+    public boolean proceedToHandleIccEvent(int slotId) {
         int apmState = Settings.Global.getInt(mContext.getContentResolver(),
-                 Settings.Global.AIRPLANE_MODE_ON, 0);
+                Settings.Global.AIRPLANE_MODE_ON, 0);
 
         // If SIM powers down in APM, telephony needs to send SET_UICC
-        // once radio turns ON
-        if (!sApmSIMNotPwdn) {
-            for (int phoneId = 0; phoneId < sNumPhones; phoneId++) {
-                if (!isRadioOn(phoneId)) {
-                     logi(" proceedToHandleIccEvent, radio off/unavailable, phoneId = " + phoneId);
-                     mSubStatus[phoneId] = SUB_INIT_STATE;
-                }
-            }
+        // once radio turns ON also do not handle process SIM change events
+        if ((!sApmSIMNotPwdn) && (!isRadioOn(slotId) || (apmState == 1))) {
+            logi(" proceedToHandleIccEvent, radio off/unavailable, slotId = " + slotId);
+            mSubStatus[slotId] = SUB_INIT_STATE;
         }
 
         // Do not handle if SIM powers down in APM mode
@@ -341,12 +341,11 @@ class SubscriptionHelper extends Handler {
             return false;
         }
 
-        for (int phoneId = 0; phoneId < sNumPhones; phoneId++) {
-            // Seems SSR happenned or RILD crashed, do not handle SIM change events
-            if (!isRadioAvailable(phoneId) || ((apmState == 0) && !isRadioOn(phoneId))) {
-                logi(" proceedToHandleIccEvent, radio not available, phoneId = " + phoneId);
-                return false;
-            }
+
+        // Seems SSR happenned or RILD crashed, do not handle SIM change events
+        if (!isRadioAvailable(slotId)) {
+            logi(" proceedToHandleIccEvent, radio not available, slotId = " + slotId);
+            return false;
         }
         return true;
     }
