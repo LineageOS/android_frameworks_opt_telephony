@@ -682,6 +682,7 @@ public class SubscriptionController extends ISub.Stub {
                         if (simCount == 1) {
                             logdl("[addSubInfoRecord] one sim set defaults to subId=" + subId);
                             setDefaultDataSubId(subId);
+                            setDataSubId(subId);
                             setDefaultSmsSubId(subId);
                             setDefaultVoiceSubId(subId);
                         }
