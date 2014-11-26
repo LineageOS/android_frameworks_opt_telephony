@@ -171,32 +171,24 @@ public class SubscriptionInfoUpdater extends Handler {
 
                         SubscriptionInfo subInfo =
                                 mSubscriptionManager.getActiveSubscriptionInfo(subId);
+                        String nameToSet;
+                        String CarrierName =
+                                TelephonyManager.getDefault().getSimOperator(subId);
+                        logd("CarrierName = " + CarrierName);
+                        String simCarrierName =
+                                TelephonyManager.getDefault().getSimOperatorName(subId);
+                        ContentValues name = new ContentValues(1);
 
                         if (subInfo != null
                                 && subInfo.getNameSource() !=
                                 SubscriptionManager.NAME_SOURCE_USER_INPUT) {
-                            String nameToSet;
-                            String CarrierName =
-                                    TelephonyManager.getDefault().getSimOperator(subId);
-                            logd("CarrierName = " + CarrierName);
-                            String simCarrierName =
-                                    TelephonyManager.getDefault().getSimOperatorName(subId);
-
                             if (!TextUtils.isEmpty(simCarrierName)) {
                                 nameToSet = simCarrierName;
                             } else {
                                 nameToSet = "CARD " + Integer.toString(slotId + 1);
                             }
-                            logd("sim name = " + nameToSet + " carrier name = " + simCarrierName);
-
-                            ContentValues name = new ContentValues(1);
                             name.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
-                            name.put(SubscriptionManager.CARRIER_NAME,
-                                    !TextUtils.isEmpty(simCarrierName) ? simCarrierName :
-                                    mContext.getString(com.android.internal.R.string.unknownName));
-                            contentResolver.update(SubscriptionManager.CONTENT_URI, name,
-                                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                                    + "=" + Long.toString(subId), null);
+                            logd("sim name = " + nameToSet);
                         }
                     } else {
                         logd("[Receiver] Invalid subId, could not update ContentResolver");
