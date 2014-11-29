@@ -2683,7 +2683,7 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private boolean isNvSubscription() {
-        int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
+        int radioTech = mPhone.getServiceState().getRilVoiceRadioTechnology();
         if (mCdmaSsm == null) {
             return false;
         }
