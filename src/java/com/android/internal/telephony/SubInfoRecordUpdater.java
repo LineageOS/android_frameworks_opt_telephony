@@ -246,7 +246,7 @@ public class SubInfoRecordUpdater extends Handler {
                         sIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
                     }
                 } else {
-                    sIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
+                    sIccId[slotId] = sFh[slotId].needsFakeIccid() ? IccConstants.FAKE_ICCID : ICCID_STRING_FOR_NO_SIM;
                     logd("Query IccId fail: " + ar.exception);
                 }
                 logd("sIccId[" + slotId + "] = " + sIccId[slotId]);
