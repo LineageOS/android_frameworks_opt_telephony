@@ -567,7 +567,9 @@ public final class DataConnection extends StateMachine {
         }
 
         mPhone.mCi.setupDataCall(
-                Integer.toString(cp.mRilRat + 2),
+                Integer.toString((mPhone.mCi.getRilVersion() > 4) ? cp.mRilRat + 2
+                        : ServiceState.isGsm(cp.mRilRat + 2) ? RILConstants.SETUP_DATA_TECH_GSM
+                        : RILConstants.SETUP_DATA_TECH_CDMA),
                 Integer.toString(dataProfileId),
                 mApnSetting.apn, mApnSetting.user, mApnSetting.password,
                 Integer.toString(authType),
