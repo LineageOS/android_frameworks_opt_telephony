@@ -2014,6 +2014,13 @@ public interface Phone {
     public boolean setOperatorBrandOverride(String brand);
 
     /**
+     * Override the roaming indicator for the current ICCID.
+     */
+    public boolean setRoamingOverride(List<String> gsmRoamingList,
+            List<String> gsmNonRoamingList, List<String> cdmaRoamingList,
+            List<String> cdmaNonRoamingList);
+
+    /**
      * Is Radio Present on the device and is it accessible
      */
     public boolean isRadioAvailable();

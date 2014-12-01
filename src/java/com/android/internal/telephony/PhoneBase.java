@@ -68,8 +68,10 @@ import com.android.internal.telephony.uicc.UsimServiceTable;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -168,10 +170,17 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_INITIATE_SILENT_REDIAL         = 32;
     protected static final int EVENT_RADIO_NOT_AVAILABLE            = 33;
     protected static final int EVENT_UNSOL_OEM_HOOK_RAW             = 34;
-    protected static final int EVENT_SS                             = 35;
-    protected static final int EVENT_SET_CALL_FORWARD_TIMER_DONE    = 36;
-    protected static final int EVENT_GET_CALL_FORWARD_TIMER_DONE    = 37;
+    protected static final int EVENT_GET_RADIO_CAPABILITY           = 35;
+    protected static final int EVENT_SS                             = 36;
+    protected static final int EVENT_SET_CALL_FORWARD_TIMER_DONE    = 37;
+    protected static final int EVENT_GET_CALL_FORWARD_TIMER_DONE    = 38;
     protected static final int EVENT_LAST                   = EVENT_GET_CALL_FORWARD_TIMER_DONE;
+
+    // For shared prefs.
+    private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
+    private static final String GSM_NON_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_non_roaming_list_";
+    private static final String CDMA_ROAMING_LIST_OVERRIDE_PREFIX = "cdma_roaming_list_";
+    private static final String CDMA_NON_ROAMING_LIST_OVERRIDE_PREFIX = "cdma_non_roaming_list_";
 
     // Key used to read/write current CLIR setting
     public static final String CLIR_KEY = "clir_key";
@@ -2092,6 +2101,71 @@ public abstract class PhoneBase extends Handler implements Phone {
     @Override
     public boolean setOperatorBrandOverride(String brand) {
         return false;
+    }
+
+    @Override
+    public boolean setRoamingOverride(List<String> gsmRoamingList,
+            List<String> gsmNonRoamingList, List<String> cdmaRoamingList,
+            List<String> cdmaNonRoamingList) {
+        String iccId = getIccSerialNumber();
+        if (TextUtils.isEmpty(iccId)) {
+            return false;
+        }
+
+        setRoamingOverrideHelper(gsmRoamingList, GSM_ROAMING_LIST_OVERRIDE_PREFIX, iccId);
+        setRoamingOverrideHelper(gsmNonRoamingList, GSM_NON_ROAMING_LIST_OVERRIDE_PREFIX, iccId);
+        setRoamingOverrideHelper(cdmaRoamingList, CDMA_ROAMING_LIST_OVERRIDE_PREFIX, iccId);
+        setRoamingOverrideHelper(cdmaNonRoamingList, CDMA_NON_ROAMING_LIST_OVERRIDE_PREFIX, iccId);
+
+        // Refresh.
+        ServiceStateTracker tracker = getServiceStateTracker();
+        if (tracker != null) {
+            tracker.pollState();
+        }
+        return true;
+    }
+
+    private void setRoamingOverrideHelper(List<String> list, String prefix, String iccId) {
+        SharedPreferences.Editor spEditor =
+                PreferenceManager.getDefaultSharedPreferences(mContext).edit();
+        String key = prefix + iccId;
+        if (list == null || list.isEmpty()) {
+            spEditor.remove(key).commit();
+        } else {
+            spEditor.putStringSet(key, new HashSet<String>(list)).commit();
+        }
+    }
+
+    public boolean isMccMncMarkedAsRoaming(String mccMnc) {
+        return getRoamingOverrideHelper(GSM_ROAMING_LIST_OVERRIDE_PREFIX, mccMnc);
+    }
+
+    public boolean isMccMncMarkedAsNonRoaming(String mccMnc) {
+        return getRoamingOverrideHelper(GSM_NON_ROAMING_LIST_OVERRIDE_PREFIX, mccMnc);
+    }
+
+    public boolean isSidMarkedAsRoaming(int SID) {
+        return getRoamingOverrideHelper(CDMA_ROAMING_LIST_OVERRIDE_PREFIX,
+                Integer.toString(SID));
+    }
+
+    public boolean isSidMarkedAsNonRoaming(int SID) {
+        return getRoamingOverrideHelper(CDMA_NON_ROAMING_LIST_OVERRIDE_PREFIX,
+                Integer.toString(SID));
+    }
+
+    private boolean getRoamingOverrideHelper(String prefix, String key) {
+        String iccId = getIccSerialNumber();
+        if (TextUtils.isEmpty(iccId) || TextUtils.isEmpty(key)) {
+            return false;
+        }
+
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        Set<String> value = sp.getStringSet(prefix + iccId, null);
+        if (value == null) {
+            return false;
+        }
+        return value.contains(key);
     }
 
     @Override

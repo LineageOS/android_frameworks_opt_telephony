@@ -39,6 +39,7 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Message;
 import android.os.UserHandle;
 import android.os.SystemClock;
@@ -325,6 +326,26 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     @Override
     protected void pollStateDone() {
         log("pollStateDone: lte 1 ss=[" + mSS + "] newSS=[" + mNewSS + "]");
+
+        if (mPhone.isMccMncMarkedAsNonRoaming(mNewSS.getOperatorNumeric()) ||
+                mPhone.isSidMarkedAsNonRoaming(mNewSS.getSystemId())) {
+            log("pollStateDone: override - marked as non-roaming.");
+            mNewSS.setVoiceRoaming(false);
+            mNewSS.setDataRoaming(false);
+            mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_OFF);
+        } else if (mPhone.isMccMncMarkedAsRoaming(mNewSS.getOperatorNumeric()) ||
+                mPhone.isSidMarkedAsRoaming(mNewSS.getSystemId())) {
+            log("pollStateDone: override - marked as roaming.");
+            mNewSS.setVoiceRoaming(true);
+            mNewSS.setDataRoaming(true);
+            mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_ON);
+            mNewSS.setCdmaEriIconMode(EriInfo.ROAMING_ICON_MODE_NORMAL);
+        }
+
+        if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
+            mNewSS.setVoiceRoaming(true);
+            mNewSS.setDataRoaming(true);
+        }
 
         useDataRegStateForDataOnlyDevices();
 
