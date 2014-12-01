@@ -105,12 +105,12 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     public static final int EVENT_GET_ICC_RECORD_DONE = 100;
     public static final int EVENT_REFRESH = 31; // ICC refresh occurred
+    protected static final int EVENT_GET_SMS_RECORD_SIZE_DONE = 28;
     public static final int EVENT_REFRESH_OEM = 29;
     protected static final int EVENT_APP_READY = 1;
     private static final int EVENT_AKA_AUTHENTICATE_DONE          = 90;
 
     private boolean mOEMHookSimRefresh = false;
-    protected static final int EVENT_GET_SMS_RECORD_SIZE_DONE = 35;
 
     @Override
     public String toString() {
