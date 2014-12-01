@@ -50,6 +50,7 @@ import com.android.internal.telephony.uicc.UsimServiceTable;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.Set;
 
 import com.android.internal.telephony.dataconnection.DctController;
 
@@ -1443,6 +1444,14 @@ public class PhoneProxy extends Handler implements Phone {
     @Override
     public boolean setOperatorBrandOverride(String brand) {
         return mActivePhone.setOperatorBrandOverride(brand);
+    }
+
+    @Override
+    public boolean setRoamingOverride(List<String> gsmRoamingList,
+            List<String> gsmNonRoamingList, List<String> cdmaRoamingList,
+            List<String> cdmaNonRoamingList) {
+        return mActivePhone.setRoamingOverride(gsmRoamingList, gsmNonRoamingList,
+                cdmaRoamingList, cdmaNonRoamingList);
     }
 
     @Override
