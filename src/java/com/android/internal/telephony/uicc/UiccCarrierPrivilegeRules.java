@@ -161,7 +161,8 @@ public class UiccCarrierPrivilegeRules extends Handler {
         public String parseLength(String data) {
             int offset = tag.length();
             int firstByte = Integer.parseInt(data.substring(offset, offset + 2), 16);
-            if (firstByte < SINGLE_BYTE_MAX_LENGTH) {
+            // TODO: remove second condition before launch. b/18012893
+            if (firstByte < SINGLE_BYTE_MAX_LENGTH || (offset + 2 + firstByte * 2 == data.length())) {
                 length = firstByte * 2;
                 lengthBytes = data.substring(offset, offset + 2);
             } else {
