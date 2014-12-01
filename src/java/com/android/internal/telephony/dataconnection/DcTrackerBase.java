@@ -398,7 +398,8 @@ public abstract class DcTrackerBase extends Handler {
 
         public void register() {
             mResolver.registerContentObserver(
-                    Settings.Global.getUriFor(Settings.Global.DATA_ROAMING), false, this);
+                    Settings.Global.getUriFor(Settings.Global.DATA_ROAMING + mPhone.getSubId()),
+                    false, this);
         }
 
         public void unregister() {
@@ -755,9 +756,11 @@ public abstract class DcTrackerBase extends Handler {
         try {
             final ContentResolver resolver = mPhone.getContext().getContentResolver();
             final int phoneSubId = mPhone.getSubId();
-            return Settings.Global.getInt(resolver, Settings.Global.DATA_ROAMING + phoneSubId) != 0;
+            return TelephonyManager.getIntWithSubId(resolver, Settings.Global.DATA_ROAMING,
+                    phoneSubId) != 0;
         } catch (SettingNotFoundException snfe) {
-            return false;
+            return "true".equalsIgnoreCase(SystemProperties.get("ro.com.android.dataroaming",
+                    "false"));
         }
     }
 
