@@ -129,30 +129,7 @@ public class ImsPhoneConnection extends Connection {
             mCnapNamePresentation = ImsCallProfile.OIRToPresentation(
                     imsCall.getCallProfile().getCallExtraInt(ImsCallProfile.EXTRA_CNAP));
 
-            ImsCallProfile imsCallProfile = imsCall.getCallProfile();
-            if (imsCallProfile != null) {
-                int callType = imsCall.getCallProfile().mCallType;
-                setVideoState(ImsCallProfile.getVideoStateFromCallType(callType));
-
-                ImsStreamMediaProfile mediaProfile = imsCallProfile.mMediaProfile;
-                if (mediaProfile != null) {
-                    setAudioQuality(getAudioQualityFromMediaProfile(mediaProfile));
-                }
-            }
-
-            // Determine if the current call have video capabilities.
-            try {
-                ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
-                if (localCallProfile != null) {
-                    int localCallTypeCapability = localCallProfile.mCallType;
-                    boolean isLocalVideoCapable = localCallTypeCapability
-                            == ImsCallProfile.CALL_TYPE_VT;
-
-                    setLocalVideoCapable(isLocalVideoCapable);
-                }
-            } catch (ImsException e) {
-                // No session, so cannot get local capabilities.
-            }
+            updateMediaCapabilities(imsCall);
         } else {
             mNumberPresentation = PhoneConstants.PRESENTATION_UNKNOWN;
             mCnapNamePresentation = PhoneConstants.PRESENTATION_UNKNOWN;
@@ -201,27 +178,6 @@ public class ImsPhoneConnection extends Connection {
     equalsHandlesNulls (Object a, Object b) {
         return (a == null) ? (b == null) : a.equals (b);
     }
-
-    /**
-     * Determines the {@link ImsPhoneConnection} audio quality based on an
-     * {@link ImsStreamMediaProfile}.
-     *
-     * @param mediaProfile The media profile.
-     * @return The audio quality.
-     */
-    private int getAudioQualityFromMediaProfile(ImsStreamMediaProfile mediaProfile) {
-        int audioQuality;
-
-        // The Adaptive Multi-Rate Wideband codec is used for high definition audio calls.
-        if (mediaProfile.mAudioQuality == ImsStreamMediaProfile.AUDIO_QUALITY_AMR_WB) {
-            audioQuality = AUDIO_QUALITY_HIGH_DEFINITION;
-        } else {
-            audioQuality = AUDIO_QUALITY_STANDARD;
-        }
-
-        return audioQuality;
-    }
-
 
     @Override
     public String getOrigDialString(){
@@ -585,18 +541,17 @@ public class ImsPhoneConnection extends Connection {
         mParent = parent;
     }
 
-    /*package*/ boolean
-    update(ImsCall imsCall, ImsPhoneCall.State state) {
-        boolean changed = false;
-
+    /**
+     * @return {@code true} if the {@link ImsPhoneConnection} or its media capabilities have been
+     *     changed, and {@code false} otherwise.
+     */
+    /*package*/ boolean update(ImsCall imsCall, ImsPhoneCall.State state) {
         if (state == ImsPhoneCall.State.ACTIVE) {
-            if (mParent.getState().isRinging()
-                    || mParent.getState().isDialing()) {
+            if (mParent.getState().isRinging() || mParent.getState().isDialing()) {
                 onConnectedInOrOut();
             }
 
-            if (mParent.getState().isRinging()
-                    || mParent == mOwner.mBackgroundCall) {
+            if (mParent.getState().isRinging() || mParent == mOwner.mBackgroundCall) {
                 //mForegroundCall should be IDLE
                 //when accepting WAITING call
                 //before accept WAITING call,
@@ -609,54 +564,7 @@ public class ImsPhoneConnection extends Connection {
             onStartedHolding();
         }
 
-        changed = mParent.update(this, imsCall, state);
-
-        if (imsCall != null) {
-            // Check for a change in the video capabilities for the call and update the
-            // {@link ImsPhoneConnection} with this information.
-            try {
-                // Get the current local VT capabilities (i.e. even if currentCallType above is
-                // audio-only, the local capability could support bi-directional video).
-                ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
-                if (localCallProfile != null) {
-                    int localCallTypeCapability = localCallProfile.mCallType;
-                    boolean newLocalVideoCapable = localCallTypeCapability
-                            == ImsCallProfile.CALL_TYPE_VT;
-
-                    if (isLocalVideoCapable() != newLocalVideoCapable) {
-                        setLocalVideoCapable(newLocalVideoCapable);
-                        changed = true;
-                    }
-                }
-            } catch (ImsException e) {
-                // No session in place -- no change
-            }
-
-            // Check for a change in the call type / video state, or audio quality of the
-            // {@link ImsCall} and update the {@link ImsPhoneConnection} with this information.
-            ImsCallProfile callProfile = imsCall.getCallProfile();
-            if (callProfile != null) {
-                int oldVideoState = getVideoState();
-                int newVideoState = ImsCallProfile.getVideoStateFromCallType(callProfile.mCallType);
-
-                if (oldVideoState != newVideoState) {
-                    setVideoState(newVideoState);
-                    changed = true;
-                }
-
-                ImsStreamMediaProfile mediaProfile = callProfile.mMediaProfile;
-                if (mediaProfile != null) {
-                    int oldAudioQuality = getAudioQuality();
-                    int newAudioQuality = getAudioQualityFromMediaProfile(mediaProfile);
-
-                    if (oldAudioQuality != newAudioQuality) {
-                        setAudioQuality(newAudioQuality);
-                        changed = true;
-                    }
-                }
-            }
-        }
-        return changed;
+        return mParent.update(this, imsCall, state) || updateMediaCapabilities(imsCall);
     }
 
     @Override
@@ -683,6 +591,77 @@ public class ImsPhoneConnection extends Connection {
             Rlog.e(LOG_TAG, "onDisconnectConferenceParticipant: no session in place. "+
                     "Failed to disconnect endpoint = " + endpoint);
         }
+    }
+
+    /**
+     * Check for a change in the video capabilities and audio quality for the {@link ImsCall}, and
+     * update the {@link ImsPhoneConnection} with this information.
+     *
+     * @param imsCall The call to check for changes in media capabilities.
+     * @return Whether the media capabilities have been changed.
+     */
+    private boolean updateMediaCapabilities(ImsCall imsCall) {
+        if (imsCall == null) {
+            return false;
+        }
+
+        boolean changed = false;
+
+        try {
+            ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
+            ImsCallProfile remoteCallProfile = imsCall.getRemoteCallProfile();
+
+            if (localCallProfile != null) {
+                int callType = localCallProfile.mCallType;
+
+                boolean newLocalVideoCapable = callType == ImsCallProfile.CALL_TYPE_VT;
+                if (isLocalVideoCapable() != newLocalVideoCapable) {
+                    setLocalVideoCapable(newLocalVideoCapable);
+                    changed = true;
+                }
+
+                int newVideoState = ImsCallProfile.getVideoStateFromCallType(callType);
+                if (getVideoState() != newVideoState) {
+                    setVideoState(newVideoState);
+                    changed = true;
+                }
+            }
+
+            int newAudioQuality =
+                    getAudioQualityFromCallProfile(localCallProfile, remoteCallProfile);
+            if (getAudioQuality() != newAudioQuality) {
+                setAudioQuality(newAudioQuality);
+                changed = true;
+            }
+        } catch (ImsException e) {
+            // No session in place -- no change
+        }
+
+        return changed;
+    }
+
+    /**
+     * Determines the {@link ImsPhoneConnection} audio quality based on the local and remote
+     * {@link ImsCallProfile}. If indicate a HQ audio call if the local stream profile
+     * indicates AMR_WB or EVRC_WB and there is no remote restrict cause.
+     *
+     * @param localCallProfile The local call profile.
+     * @param remoteCallProfile The remote call profile.
+     * @return The audio quality.
+     */
+    private int getAudioQualityFromCallProfile(
+            ImsCallProfile localCallProfile, ImsCallProfile remoteCallProfile) {
+        if (localCallProfile == null || remoteCallProfile == null
+                || localCallProfile.mMediaProfile == null) {
+            return AUDIO_QUALITY_STANDARD;
+        }
+
+        boolean isHighDef = (localCallProfile.mMediaProfile.mAudioQuality
+                        == ImsStreamMediaProfile.AUDIO_QUALITY_AMR_WB
+                || localCallProfile.mMediaProfile.mAudioQuality
+                        == ImsStreamMediaProfile.AUDIO_QUALITY_EVRC_WB)
+                && remoteCallProfile.mRestrictCause == ImsCallProfile.CALL_RESTRICT_CAUSE_NONE;
+        return isHighDef ? AUDIO_QUALITY_HIGH_DEFINITION : AUDIO_QUALITY_STANDARD;
     }
 
     /**
