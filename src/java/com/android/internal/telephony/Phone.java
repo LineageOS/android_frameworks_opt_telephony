@@ -277,6 +277,13 @@ public interface Phone {
     String[] getActiveApnTypes();
 
     /**
+     * Check if TETHER_DUN_APN setting or config_tether_apndata includes APN that matches
+     * current operator.
+     * @return true if there is a matching DUN APN.
+     */
+    boolean hasMatchedTetherApnSetting();
+
+    /**
      * Returns string for the active APN host.
      *  @return type as a string or null if none.
      */
