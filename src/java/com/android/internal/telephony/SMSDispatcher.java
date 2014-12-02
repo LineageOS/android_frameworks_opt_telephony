@@ -35,6 +35,7 @@ import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Process;
 import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.provider.Settings;
@@ -330,6 +331,16 @@ public abstract class SMSDispatcher extends Handler {
         }
     }
 
+    private static boolean isSystemUid(Context context, String pkgName) {
+        final PackageManager packageManager = context.getPackageManager();
+        try {
+            return packageManager.getPackageInfo(pkgName, 0)
+                .applicationInfo.uid == Process.SYSTEM_UID;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
+    }
+
     /**
      * Use the carrier messaging service to send a data or text SMS.
      */
@@ -613,6 +624,21 @@ public abstract class SMSDispatcher extends Handler {
 
         if (ar.exception == null) {
             if (DBG) Rlog.d(TAG, "SMS send complete. Broadcasting intent: " + sentIntent);
+
+            String packageName = tracker.mAppInfo.applicationInfo.packageName;
+            // System UID maps to multiple packages. Try to narrow it
+            // down to an actual sender if possible
+            if (isSystemUid(mContext, packageName) && sentIntent != null &&
+                     sentIntent.getCreatorPackage() != null) {
+                packageName = sentIntent.getCreatorPackage();
+            }
+
+            if (SmsApplication.shouldWriteMessageForPackage(
+                    packageName, mContext)) {
+                // Persist it into the SMS database as a sent message
+                // so the user can see it in their default app.
+                tracker.writeSentMessage(mContext);
+            }
 
             if (tracker.mDeliveryIntent != null) {
                 // Expecting a status report.  Add it to the list.
