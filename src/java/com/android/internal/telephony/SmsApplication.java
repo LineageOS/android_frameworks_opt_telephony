@@ -30,6 +30,7 @@ import android.content.pm.ServiceInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
 import android.net.Uri;
+import android.os.Process;
 import android.provider.Settings;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
@@ -606,7 +607,8 @@ public final class SmsApplication {
         List<String> ignorePackages = Arrays.asList(
                 context.getResources().getStringArray(R.array.config_ignored_sms_packages));
 
-        if (ignorePackages.contains(packageName)) {
+        if (ignorePackages.contains(packageName) ||
+                isSystemUid(context, packageName)) {
             return false;
         }
 
@@ -617,5 +619,15 @@ public final class SmsApplication {
         }
 
         return false;
+    }
+
+    private static boolean isSystemUid(Context context, String pkgName) {
+        final PackageManager packageManager = context.getPackageManager();
+        try {
+            return packageManager.getPackageInfo(pkgName, 0)
+                    .applicationInfo.uid == Process.SYSTEM_UID;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
     }
 }
