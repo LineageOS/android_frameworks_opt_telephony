@@ -38,6 +38,7 @@ import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Process;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.provider.Telephony;
@@ -331,6 +332,16 @@ public abstract class SMSDispatcher extends Handler {
         }
     }
 
+    private static boolean isSystemUid(Context context, String pkgName) {
+        final PackageManager packageManager = context.getPackageManager();
+        try {
+            return packageManager.getPackageInfo(pkgName, 0)
+                .applicationInfo.uid == Process.SYSTEM_UID;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
+    }
+
     /**
      * Called when SMS send completes. Broadcasts a sentIntent on success.
      * On failure, either sets up retries or broadcasts a sentIntent with
@@ -353,8 +364,16 @@ public abstract class SMSDispatcher extends Handler {
         if (ar.exception == null) {
             if (DBG) Rlog.d(TAG, "SMS send complete. Broadcasting intent: " + sentIntent);
 
+            String packageName = tracker.mAppInfo.applicationInfo.packageName;
+            // System UID maps to multiple packages. Try to narrow it
+            // down to an actual sender if possible
+            if (isSystemUid(mContext, packageName) && sentIntent != null &&
+                     sentIntent.getCreatorPackage() != null) {
+                packageName = sentIntent.getCreatorPackage();
+            }
+
             if (SmsApplication.shouldWriteMessageForPackage(
-                    tracker.mAppInfo.applicationInfo.packageName, mContext)) {
+                    packageName, mContext)) {
                 // Persist it into the SMS database as a sent message
                 // so the user can see it in their default app.
                 tracker.writeSentMessage(mContext);
