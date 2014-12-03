@@ -194,9 +194,9 @@ public final class DcTracker extends DcTrackerBase {
                DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null);
         mPhone.getServiceStateTracker().registerForDataConnectionDetached(this,
                DctConstants.EVENT_DATA_CONNECTION_DETACHED, null);
-        mPhone.getServiceStateTracker().registerForRoamingOn(this,
+        mPhone.getServiceStateTracker().registerForDataRoamingOn(this,
                DctConstants.EVENT_ROAMING_ON, null);
-        mPhone.getServiceStateTracker().registerForRoamingOff(this,
+        mPhone.getServiceStateTracker().registerForDataRoamingOff(this,
                DctConstants.EVENT_ROAMING_OFF, null);
         mPhone.getServiceStateTracker().registerForPsRestrictedEnabled(this,
                 DctConstants.EVENT_PS_RESTRICT_ENABLED, null);
@@ -244,8 +244,8 @@ public final class DcTracker extends DcTrackerBase {
         mPhone.getCallTracker().unregisterForVoiceCallStarted(this);
         mPhone.getServiceStateTracker().unregisterForDataConnectionAttached(this);
         mPhone.getServiceStateTracker().unregisterForDataConnectionDetached(this);
-        mPhone.getServiceStateTracker().unregisterForRoamingOn(this);
-        mPhone.getServiceStateTracker().unregisterForRoamingOff(this);
+        mPhone.getServiceStateTracker().unregisterForDataRoamingOn(this);
+        mPhone.getServiceStateTracker().unregisterForDataRoamingOff(this);
         mPhone.getServiceStateTracker().unregisterForPsRestrictedEnabled(this);
         mPhone.getServiceStateTracker().unregisterForPsRestrictedDisabled(this);
         //SubscriptionManager.unregisterForDdsSwitch(this);
@@ -719,7 +719,7 @@ public final class DcTracker extends DcTrackerBase {
                     (mPhone.getState() == PhoneConstants.State.IDLE ||
                      mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
                     internalDataEnabled &&
-                    (!mPhone.getServiceState().getRoaming() || getDataOnRoamingEnabled()) &&
+                    (!mPhone.getServiceState().getDataRoaming() || getDataOnRoamingEnabled()) &&
                     //!mIsPsRestricted &&
                     !psRestricted &&
                     desiredPowerState;
@@ -735,7 +735,7 @@ public final class DcTracker extends DcTrackerBase {
                 reason += " - Concurrent voice and data not allowed";
             }
             if (!internalDataEnabled) reason += " - mInternalDataEnabled= false";
-            if (mPhone.getServiceState().getRoaming() && !getDataOnRoamingEnabled()) {
+            if (mPhone.getServiceState().getDataRoaming() && !getDataOnRoamingEnabled()) {
                 reason += " - Roaming and data roaming not enabled";
             }
             if (mIsPsRestricted) reason += " - mIsPsRestricted= true";
