@@ -30,6 +30,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.uicc.UICCConfig;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -82,6 +83,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected String mSpn;
 
     protected String mGid1;
+
+    protected UICCConfig mUCCConfig;
 
     private final Object mLock = new Object();
 
@@ -158,9 +161,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
     }
 
     // ***** Constructor
-    public IccRecords(UiccCardApplication app, Context c, CommandsInterface ci) {
+    public IccRecords(UiccCardApplication app, Context c, CommandsInterface ci, UICCConfig uC) {
         mContext = c;
         mCi = ci;
+        mUCCConfig = uC;
         mFh = app.getIccFileHandler();
         mParentApp = app;
         mOEMHookSimRefresh = mContext.getResources().getBoolean(

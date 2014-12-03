@@ -33,6 +33,7 @@ import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
+
 import android.telephony.TelephonyManager;
 import android.telephony.Rlog;
 import android.text.TextUtils;
@@ -40,10 +41,12 @@ import android.text.TextUtils;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.MccTable;
+import com.android.internal.telephony.PhoneConstants;
 
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.uicc.UICCConfig;
 
 
 /**
@@ -102,8 +105,8 @@ public final class RuimRecords extends IccRecords {
     private static final int EVENT_SMS_ON_RUIM = 21;
     private static final int EVENT_GET_SMS_DONE = 22;
 
-    public RuimRecords(UiccCardApplication app, Context c, CommandsInterface ci) {
-        super(app, c, ci);
+    public RuimRecords(UiccCardApplication app, Context c, CommandsInterface ci, UICCConfig uC ) {
+        super(app, c, ci, uC);
 
         mAdnCache = new AdnRecordCache(mFh);
 
@@ -256,6 +259,17 @@ public final class RuimRecords extends IccRecords {
     public String getOperatorNumeric() {
         if (mImsi == null) {
             return null;
+        }
+
+        String Imsi = mUCCConfig.getImsi();
+        int mnclength = mUCCConfig.getMncLength();
+
+        // If we are LTE over CDMA (Verizon), then pull the correct info from SIMRecords
+        if ((Imsi != null)
+            && (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE))
+        {
+            log("Overriding with Operator Numeric: " + Imsi.substring(0, 3 + mnclength));
+            return Imsi.substring(0, 3 + mnclength);
         }
 
         if (mMncLength != UNINITIALIZED && mMncLength != UNKNOWN) {
