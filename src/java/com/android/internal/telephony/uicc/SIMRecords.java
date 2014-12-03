@@ -660,6 +660,12 @@ public class SIMRecords extends IccRecords {
                     }
                 }
 
+                setSystemProperty("gsm.sim.operator.imsi", mImsi);
+                if (mMncLength == UNKNOWN || mMncLength == UNINITIALIZED) {
+                    setSystemProperty("gsm.sim.operator.mnclength", "3");
+                } else {
+                    setSystemProperty("gsm.sim.operator.mnclength", Integer.toString(mMncLength));
+                }
                 if (mMncLength != UNKNOWN && mMncLength != UNINITIALIZED) {
                     // finally have both the imsi and the mncLength and can parse the imsi properly
                     MccTable.updateMccMncConfiguration(mContext,
@@ -873,6 +879,10 @@ public class SIMRecords extends IccRecords {
                     if (mMncLength == 0xf) {
                         mMncLength = UNKNOWN;
                     }
+                    else {
+                        setSystemProperty("gsm.sim.operator.mnclength", Integer.toString(mMncLength));
+                    }
+
                 } finally {
                     if (((mMncLength == UNINITIALIZED) || (mMncLength == UNKNOWN) ||
                             (mMncLength == 2)) && ((mImsi != null) && (mImsi.length() >= 6))) {
