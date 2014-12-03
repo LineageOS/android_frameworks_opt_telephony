@@ -54,6 +54,7 @@ import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.uicc.UICCConfig;
 
 import com.android.internal.util.BitwiseInputStream;
 
@@ -287,6 +288,18 @@ public final class RuimRecords extends IccRecords {
         if (mImsi == null) {
             return null;
         }
+
+        if (SystemProperties.getBoolean("ro.telephony.get_imsi_from_sim", false)) {
+            String imsi = mParentApp.getUICCConfig().getImsi();
+            int mnclength = mParentApp.getUICCConfig().getMncLength();
+
+            // If we are LTE over CDMA (Verizon), then pull the correct info from SIMRecords
+            if (imsi != null) {
+                log("Overriding with Operator Numeric: " + imsi.substring(0, 3 + mnclength));
+                return imsi.substring(0, 3 + mnclength);
+            }
+        }
+
 
         if (mMncLength != UNINITIALIZED && mMncLength != UNKNOWN) {
             // Length = length of MCC + length of MNC

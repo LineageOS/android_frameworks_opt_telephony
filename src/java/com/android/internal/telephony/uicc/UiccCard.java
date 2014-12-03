@@ -83,6 +83,7 @@ public class UiccCard {
     private boolean mDestroyed = false; //set to true once this card is commanded to be disposed of.
     private RadioState mLastRadioState =  RadioState.RADIO_UNAVAILABLE;
     private UiccCarrierPrivilegeRules mCarrierPrivilegeRules;
+    private UICCConfig mUICCConfig = null;
 
     private RegistrantList mAbsentRegistrants = new RegistrantList();
     private RegistrantList mCarrierPrivilegeRegistrants = new RegistrantList();
@@ -120,6 +121,7 @@ public class UiccCard {
             mCatService = null;
             mUiccApplications = null;
             mCarrierPrivilegeRules = null;
+            mUICCConfig = null;
         }
     }
 
@@ -138,6 +140,8 @@ public class UiccCard {
             mContext = c;
             mCi = ci;
             //update applications
+            if (mUICCConfig == null)
+                mUICCConfig = new UICCConfig();
             if (DBG) log(ics.mApplications.length + " applications");
             for ( int i = 0; i < mUiccApplications.length; i++) {
                 if (mUiccApplications[i] == null) {
@@ -618,6 +622,9 @@ public class UiccCard {
             }
         }
         return null;
+    }
+    public UICCConfig getUICCConfig() {
+        return mUICCConfig;
     }
 
     void onRefresh(IccRefreshResponse refreshResponse){
