@@ -53,7 +53,6 @@ import com.android.ims.ImsManager;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsServiceClass;
 import com.android.ims.ImsUtInterface;
-import com.android.ims.internal.CallGroup;
 import com.android.ims.internal.IImsVideoCallProvider;
 import com.android.ims.internal.ImsVideoCallProviderWrapper;
 import com.android.internal.telephony.Call;
@@ -834,7 +833,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
     }
 
     private void processCallStateChange(ImsCall imsCall, ImsPhoneCall.State state, int cause) {
-        if (DBG) log("processCallStateChange state=" + state + " cause=" + cause);
+        if (DBG) log("processCallStateChange " + imsCall + " state=" + state + " cause=" + cause);
 
         if (imsCall == null) return;
 
@@ -1006,14 +1005,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 if (oldState == ImsPhoneCall.State.ACTIVE) {
                     if ((mForegroundCall.getState() == ImsPhoneCall.State.HOLDING)
                             || (mRingingCall.getState() == ImsPhoneCall.State.WAITING)) {
-                        boolean isOwner = true;
-                        CallGroup callGroup =  imsCall.getCallGroup();
-                        if (callGroup != null) {
-                            isOwner = callGroup.isOwner(imsCall);
-                        }
-                        if (isOwner) {
+
                             sendEmptyMessage(EVENT_RESUME_BACKGROUND);
-                        }
                     } else {
                         //when multiple connections belong to background call,
                         //only the first callback reaches here
