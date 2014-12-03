@@ -252,6 +252,15 @@ public final class RuimRecords extends IccRecords {
         if (mImsi == null) {
             return null;
         }
+        String Imsi = "";
+        int mnclength = 0;
+        Imsi = SystemProperties.get("gsm.sim.operator.imsi", "");
+        mnclength = SystemProperties.getInt("gsm.sim.operator.mnclength", 0);
+
+        if (Imsi.length() > 0) {
+            log("Returning getOperatorNumeric " + Imsi.substring(0, 3 + mnclength));
+            return Imsi.substring(0, 3 + mnclength);
+        }
 
         if (mMncLength != UNINITIALIZED && mMncLength != UNKNOWN) {
             // Length = length of MCC + length of MNC
