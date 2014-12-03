@@ -37,6 +37,7 @@ import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.gsm.SimTlv;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
+import com.android.internal.telephony.uicc.UICCConfig;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -240,6 +241,9 @@ public class SIMRecords extends IccRecords {
         setSystemProperty(PROPERTY_APN_SIM_OPERATOR_NUMERIC, null);
         setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, null);
         setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, null);
+        //setSystemProperty("gsm.sim.operator.imsi", mImsi);
+        UICCConfig.setIMSI(mImsi);
+        UICCConfig.setMncLength(mMncLength);
 
         // recordsRequested is set to false indicating that the SIM
         // read requests made so far are not valid. This is set to
@@ -660,6 +664,14 @@ public class SIMRecords extends IccRecords {
                     }
                 }
 
+                UICCConfig.setIMSI(mImsi);
+                if (mMncLength == UNKNOWN || mMncLength == UNINITIALIZED) {
+                    // We need to default to something that seems common
+                    UICCConfig.setMncLength(3);
+                } else {
+                    UICCConfig.setMncLength(mMncLength);
+                }
+
                 if (mMncLength != UNKNOWN && mMncLength != UNINITIALIZED) {
                     // finally have both the imsi and the mncLength and can parse the imsi properly
                     MccTable.updateMccMncConfiguration(mContext,
@@ -873,6 +885,11 @@ public class SIMRecords extends IccRecords {
                     if (mMncLength == 0xf) {
                         mMncLength = UNKNOWN;
                     }
+                    else {
+                        //setSystemProperty("gsm.sim.operator.mnclength", Integer.toString(mMncLength));
+                        UICCConfig.setMncLength(mMncLength);
+                    }
+
                 } finally {
                     if (((mMncLength == UNINITIALIZED) || (mMncLength == UNKNOWN) ||
                             (mMncLength == 2)) && ((mImsi != null) && (mImsi.length() >= 6))) {
