@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.app.ActivityManagerNative;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.ContentResolver;
@@ -27,6 +28,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.Rlog;
@@ -119,13 +121,22 @@ public class SubscriptionInfoUpdater extends Handler {
                     return;
                 }
                 if (IccCardConstants.INTENT_VALUE_ICC_READY.equals(simStatus)
-                        || IccCardConstants.INTENT_VALUE_ICC_LOCKED.equals(simStatus)) {
+                        || IccCardConstants.INTENT_VALUE_ICC_LOCKED.equals(simStatus)
+                        || IccCardConstants.INTENT_VALUE_ICC_INTERNAL_LOCKED.equals(simStatus)) {
                     if (mIccId[slotId] != null && mIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
                         logd("SIM" + (slotId + 1) + " hot plug in");
                         mIccId[slotId] = null;
                         mNeedUpdate = true;
                     }
-                    queryIccId(slotId);
+                    //TODO: Use RetryManager to limit number of retries and do a exponential backoff
+                    if (((PhoneProxy)mPhone[slotId]).getIccFileHandler() != null) {
+                        queryIccId(slotId);
+                    } else {
+                        intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE,
+                                IccCardConstants.INTENT_VALUE_ICC_INTERNAL_LOCKED);
+                        ActivityManagerNative.broadcastStickyIntent(intent,
+                                "android.permission.READ_PHONE_STATE", UserHandle.USER_ALL);
+                    }
                 } else if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(simStatus)) {
                     queryIccId(slotId);
                     if (mTelephonyMgr == null) {
