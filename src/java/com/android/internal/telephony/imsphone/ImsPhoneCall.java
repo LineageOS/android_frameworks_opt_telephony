@@ -219,7 +219,14 @@ public class ImsPhoneCall extends Call {
     getFirstConnection() {
         if (mConnections.size() == 0) return null;
 
-        return (ImsPhoneConnection) mConnections.get(0);
+        for (int i = mConnections.size() - 1 ; i >= 0 ; i--) {
+            ImsPhoneConnection cn = (ImsPhoneConnection)mConnections.get(i);
+            if (cn.getState().isAlive()) {
+                return (ImsPhoneConnection) mConnections.get(i);
+            }
+        }
+
+        return null;
     }
 
     /*package*/ void
