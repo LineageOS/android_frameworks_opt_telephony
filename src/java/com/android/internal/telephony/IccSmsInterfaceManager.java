@@ -1251,7 +1251,7 @@ public class IccSmsInterfaceManager {
 
     private String filterDestAddress(String destAddr) {
         String result  = null;
-        result = SmsNumberUtils.filterDestAddr(mContext, destAddr);
+        result = SmsNumberUtils.filterDestAddr(mPhone, destAddr);
         return result != null ? result : destAddr;
     }
 
