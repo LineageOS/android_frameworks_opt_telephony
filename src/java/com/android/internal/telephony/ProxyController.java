@@ -117,7 +117,7 @@ public class ProxyController {
         return sProxyController;
     }
 
-    static public ProxyController getInstance() {
+    public static ProxyController getInstance() {
         return sProxyController;
     }
 
@@ -153,7 +153,10 @@ public class ProxyController {
 
         // Clear to be sure we're in the initial state
         clearTransaction();
-
+        for (int i = 0; i < mProxyPhones.length; i++) {
+            mProxyPhones[i].registerForRadioCapabilityChanged(
+                    mHandler, EVENT_NOTIFICATION_RC_CHANGED, null);
+        }
         logd("Constructor - Exit");
     }
 
@@ -231,6 +234,8 @@ public class ProxyController {
         // is one as this is a programming error.
         synchronized (mSetRadioAccessFamilyStatus) {
             for (int i = 0; i < mProxyPhones.length; i++) {
+                logd("setRadioCapability: mSetRadioAccessFamilyStatus[" + i + "]="
+                        + mSetRadioAccessFamilyStatus[i]);
                 if (mSetRadioAccessFamilyStatus[i] != SET_RC_STATUS_IDLE) {
                     throw new RuntimeException("setRadioCapability: Phone" + i + " is not idle");
                 }
@@ -252,10 +257,11 @@ public class ProxyController {
         mHandler.postDelayed(mSetRadioCapabilityRunnable, SET_RC_TIMEOUT_WAITING_MSEC);
 
         synchronized (mSetRadioAccessFamilyStatus) {
-            logd("setRadioCapability: new request session id:" + mRadioCapabilitySessionId);
+            logd("setRadioCapability: new request session id=" + mRadioCapabilitySessionId);
             mRadioAccessFamilyStatusCounter = rafs.length;
             for (int i = 0; i < rafs.length; i++) {
                 int phoneId = rafs[i].getPhoneId();
+                logd("setRadioCapability: phoneId=" + phoneId + " status=STARTING");
                 mSetRadioAccessFamilyStatus[phoneId] = SET_RC_STATUS_STARTING;
                 mOldRadioAccessFamily[phoneId] = mProxyPhones[phoneId].getRadioAccessFamily();
                 mNewRadioAccessFamily[phoneId] = rafs[i].getRadioAccessFamily();
@@ -278,7 +284,7 @@ public class ProxyController {
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
-            logd("handleMessage msg.what:" + msg.what);
+            logd("handleMessage msg.what=" + msg.what);
             switch (msg.what) {
                 case EVENT_START_RC_RESPONSE:
                     onStartRadioCapabilityResponse(msg);
@@ -315,26 +321,26 @@ public class ProxyController {
                 return;
             }
             mRadioAccessFamilyStatusCounter--;
+            int id = rc.getPhoneId();
             if (((AsyncResult) msg.obj).exception != null) {
                 logd("onStartRadioCapabilityResponse: Error response session=" + rc.getSession());
-                mSetRadioAccessFamilyStatus[rc.getPhoneId()] = SET_RC_STATUS_FAIL;
+                logd("onStartRadioCapabilityResponse: phoneId=" + id + " status=FAIL");
+                mSetRadioAccessFamilyStatus[id] = SET_RC_STATUS_FAIL;
             } else {
-                mSetRadioAccessFamilyStatus[rc.getPhoneId()] = SET_RC_STATUS_STARTED;
+                logd("onStartRadioCapabilityResponse: phoneId=" + id + " status=STARTED");
+                mSetRadioAccessFamilyStatus[id] = SET_RC_STATUS_STARTED;
             }
 
             if (mRadioAccessFamilyStatusCounter == 0) {
-                mHandler.removeCallbacks(mSetRadioCapabilityRunnable);
                 resetRadioAccessFamilyStatusCounter();
                 boolean success = checkAllRadioCapabilitySuccess();
-                logd("onStartRadioCapabilityResponse: success:" + success);
+                logd("onStartRadioCapabilityResponse: success=" + success);
                 if (!success) {
                     issueFinish(RadioCapability.RC_STATUS_FAIL,
                             mRadioCapabilitySessionId);
                 } else {
                     // All logical modem accepted the new radio access family, issue the APPLY
                     for (int i = 0; i < mProxyPhones.length; i++) {
-                        mProxyPhones[i].registerForRadioCapabilityChanged(
-                                        mHandler, EVENT_NOTIFICATION_RC_CHANGED, null);
                         sendRadioCapabilityRequest(
                             i,
                             mRadioCapabilitySessionId,
@@ -343,6 +349,8 @@ public class ProxyController {
                             mLogicalModemIds[i],
                             RadioCapability.RC_STATUS_NONE,
                             EVENT_APPLY_RC_RESPONSE);
+
+                        logd("onStartRadioCapabilityResponse: phoneId=" + i + " status=APPLYING");
                         mSetRadioAccessFamilyStatus[i] = SET_RC_STATUS_APPLYING;
                     }
                 }
@@ -365,8 +373,9 @@ public class ProxyController {
         if (((AsyncResult) msg.obj).exception != null) {
             synchronized (mSetRadioAccessFamilyStatus) {
                 logd("onApplyRadioCapabilityResponse: Error response session=" + rc.getSession());
-                mSetRadioAccessFamilyStatus[rc.getPhoneId()] = SET_RC_STATUS_FAIL;
-                mProxyPhones[rc.getPhoneId()].unregisterForRadioCapabilityChanged(mHandler);
+                int id = rc.getPhoneId();
+                logd("onApplyRadioCapabilityResponse: phoneId=" + id + " status=FAIL");
+                mSetRadioAccessFamilyStatus[id] = SET_RC_STATUS_FAIL;
             }
         } else {
             logd("onApplyRadioCapabilityResponse: Valid start expecting notification rc=" + rc);
@@ -393,17 +402,19 @@ public class ProxyController {
                 return;
             }
 
+            int id = rc.getPhoneId();
             if ((((AsyncResult) msg.obj).exception != null) ||
                     (rc.getStatus() == RadioCapability.RC_STATUS_FAIL)) {
-                mSetRadioAccessFamilyStatus[rc.getPhoneId()] = SET_RC_STATUS_FAIL;
+                logd("onNotificationRadioCapabilityChanged: phoneId=" + id + " status=FAIL");
+                mSetRadioAccessFamilyStatus[id] = SET_RC_STATUS_FAIL;
             } else {
-                mSetRadioAccessFamilyStatus[rc.getPhoneId()] = SET_RC_STATUS_SUCCESS;
+                logd("onNotificationRadioCapabilityChanged: phoneId=" + id + " status=SUCCESS");
+                mSetRadioAccessFamilyStatus[id] = SET_RC_STATUS_SUCCESS;
             }
-            mProxyPhones[rc.getPhoneId()]
-                    .unregisterForRadioCapabilityChanged(mHandler);
 
             mRadioAccessFamilyStatusCounter--;
             if (mRadioAccessFamilyStatusCounter == 0) {
+                logd("onNotificationRadioCapabilityChanged: removing callback from handler");
                 mHandler.removeCallbacks(mSetRadioCapabilityRunnable);
                 resetRadioAccessFamilyStatusCounter();
                 boolean success = checkAllRadioCapabilitySuccess();
@@ -431,7 +442,7 @@ public class ProxyController {
             return;
         }
         synchronized (mSetRadioAccessFamilyStatus) {
-            logd(" onFinishRadioCapabilityResponse mRadioAccessFamilyStatusCounter:"
+            logd(" onFinishRadioCapabilityResponse mRadioAccessFamilyStatusCounter="
                     + mRadioAccessFamilyStatusCounter);
             mRadioAccessFamilyStatusCounter--;
             if (mRadioAccessFamilyStatusCounter == 0) {
@@ -445,7 +456,7 @@ public class ProxyController {
         synchronized(mSetRadioAccessFamilyStatus) {
             for (int i = 0; i < mProxyPhones.length; i++) {
                 if (mSetRadioAccessFamilyStatus[i] != SET_RC_STATUS_FAIL) {
-                    logd("issueFinish: Phone" + i + " sessionId=" + sessionId
+                    logd("issueFinish: phoneId=" + i + " sessionId=" + sessionId
                             + " status=" + status);
                     sendRadioCapabilityRequest(
                         i,
@@ -456,6 +467,7 @@ public class ProxyController {
                         status,
                         EVENT_FINISH_RC_RESPONSE);
                     if (status == RadioCapability.RC_STATUS_FAIL) {
+                        logd("issueFinish: phoneId: " + i + " status: FAIL");
                         // At least one failed, mark them all failed.
                         mSetRadioAccessFamilyStatus[i] = SET_RC_STATUS_FAIL;
                     }
@@ -471,12 +483,12 @@ public class ProxyController {
         // Create the intent to broadcast
         Intent intent;
         boolean success = checkAllRadioCapabilitySuccess();
-        logd("onFinishRadioCapabilityResponse: success:" + success);
+        logd("onFinishRadioCapabilityResponse: success=" + success);
         if (success) {
             ArrayList<RadioAccessFamily> phoneRAFList = new ArrayList<RadioAccessFamily>();
             for (int i = 0; i < mProxyPhones.length; i++) {
                 int raf = mProxyPhones[i].getRadioAccessFamily();
-                logd("radioAccessFamily[" + i + "]:" + raf);
+                logd("radioAccessFamily[" + i + "]=" + raf);
                 RadioAccessFamily phoneRC = new RadioAccessFamily(i, raf);
                 phoneRAFList.add(phoneRC);
             }
@@ -496,14 +508,15 @@ public class ProxyController {
 
     // Clear this transaction
     private void clearTransaction() {
-        logd("clearTransaction:");
+        logd("clearTransaction");
         synchronized(mSetRadioAccessFamilyStatus) {
             for (int i = 0; i < mProxyPhones.length; i++) {
+                logd("clearTransaction: phoneId=" + i + " status=IDLE");
                 mSetRadioAccessFamilyStatus[i] = SET_RC_STATUS_IDLE;
                 mOldRadioAccessFamily[i] = 0;
                 mNewRadioAccessFamily[i] = 0;
             }
-            
+
             if (mWakeLock.isHeld()) {
                 mWakeLock.release();
             }
@@ -544,7 +557,6 @@ public class ProxyController {
     private class RadioCapabilityRunnable implements Runnable {
         private int mSessionId;
         public  RadioCapabilityRunnable() {
-
         }
 
         public void setTimeoutState(int sessionId) {
