@@ -25,6 +25,7 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemClock;
+import android.os.SystemProperties;
 import android.telephony.CellInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -103,8 +104,10 @@ public abstract class ServiceStateTracker extends Handler {
      */
     protected boolean mDontPollSignalStrength = false;
 
-    protected RegistrantList mRoamingOnRegistrants = new RegistrantList();
-    protected RegistrantList mRoamingOffRegistrants = new RegistrantList();
+    protected RegistrantList mVoiceRoamingOnRegistrants = new RegistrantList();
+    protected RegistrantList mVoiceRoamingOffRegistrants = new RegistrantList();
+    protected RegistrantList mDataRoamingOnRegistrants = new RegistrantList();
+    protected RegistrantList mDataRoamingOffRegistrants = new RegistrantList();
     protected RegistrantList mAttachedRegistrants = new RegistrantList();
     protected RegistrantList mDetachedRegistrants = new RegistrantList();
     protected RegistrantList mDataRegStateOrRatChangedRegistrants = new RegistrantList();
@@ -334,45 +337,87 @@ public abstract class ServiceStateTracker extends Handler {
     }
 
     /**
-     * Registration point for combined roaming on
+     * Registration point for combined roaming on of mobile voice
      * combined roaming is true when roaming is true and ONS differs SPN
      *
      * @param h handler to notify
      * @param what what code of message when delivered
      * @param obj placed in Message.obj
      */
-    public  void registerForRoamingOn(Handler h, int what, Object obj) {
+    public void registerForVoiceRoamingOn(Handler h, int what, Object obj) {
         Registrant r = new Registrant(h, what, obj);
-        mRoamingOnRegistrants.add(r);
+        mVoiceRoamingOnRegistrants.add(r);
 
-        if (mSS.getRoaming()) {
+        if (mSS.getVoiceRoaming()) {
             r.notifyRegistrant();
         }
     }
 
-    public  void unregisterForRoamingOn(Handler h) {
-        mRoamingOnRegistrants.remove(h);
+    public void unregisterForVoiceRoamingOn(Handler h) {
+        mVoiceRoamingOnRegistrants.remove(h);
     }
 
     /**
-     * Registration point for combined roaming off
+     * Registration point for roaming off of mobile voice
      * combined roaming is true when roaming is true and ONS differs SPN
      *
      * @param h handler to notify
      * @param what what code of message when delivered
      * @param obj placed in Message.obj
      */
-    public  void registerForRoamingOff(Handler h, int what, Object obj) {
+    public void registerForVoiceRoamingOff(Handler h, int what, Object obj) {
         Registrant r = new Registrant(h, what, obj);
-        mRoamingOffRegistrants.add(r);
+        mVoiceRoamingOffRegistrants.add(r);
 
-        if (!mSS.getRoaming()) {
+        if (!mSS.getVoiceRoaming()) {
             r.notifyRegistrant();
         }
     }
 
-    public  void unregisterForRoamingOff(Handler h) {
-        mRoamingOffRegistrants.remove(h);
+    public void unregisterForVoiceRoamingOff(Handler h) {
+        mVoiceRoamingOffRegistrants.remove(h);
+    }
+
+    /**
+     * Registration point for combined roaming on of mobile data
+     * combined roaming is true when roaming is true and ONS differs SPN
+     *
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForDataRoamingOn(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mDataRoamingOnRegistrants.add(r);
+
+        if (mSS.getDataRoaming()) {
+            r.notifyRegistrant();
+        }
+    }
+
+    public void unregisterForDataRoamingOn(Handler h) {
+        mDataRoamingOnRegistrants.remove(h);
+    }
+
+    /**
+     * Registration point for roaming off of mobile data
+     * combined roaming is true when roaming is true and ONS differs SPN
+     *
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForDataRoamingOff(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mDataRoamingOffRegistrants.add(r);
+
+        if (!mSS.getDataRoaming()) {
+            r.notifyRegistrant();
+        }
+    }
+
+    public void unregisterForDataRoamingOff(Handler h) {
+        mDataRoamingOffRegistrants.remove(h);
     }
 
     /**
@@ -886,5 +931,46 @@ public abstract class ServiceStateTracker extends Handler {
             log("update mccmnc=" + newOp + " fromServiceState=true");
             MccTable.updateMccMncConfiguration(context, newOp, true);
         }
+    }
+
+    /**
+     * Check ISO country by MCC to see if phone is roaming in same registered country
+     */
+    protected boolean inSameCountry(String operatorNumeric) {
+        if (TextUtils.isEmpty(operatorNumeric) || (operatorNumeric.length() < 5)) {
+            // Not a valid network
+            return false;
+        }
+        final String homeNumeric = getHomeOperatorNumeric();
+        if (TextUtils.isEmpty(homeNumeric) || (homeNumeric.length() < 5)) {
+            // Not a valid SIM MCC
+            return false;
+        }
+        boolean inSameCountry = true;
+        final String networkMCC = operatorNumeric.substring(0, 3);
+        final String homeMCC = homeNumeric.substring(0, 3);
+        final String networkCountry = MccTable.countryCodeForMcc(Integer.parseInt(networkMCC));
+        final String homeCountry = MccTable.countryCodeForMcc(Integer.parseInt(homeMCC));
+        if (networkCountry.isEmpty() || homeCountry.isEmpty()) {
+            // Not a valid country
+            return false;
+        }
+        inSameCountry = homeCountry.equals(networkCountry);
+        if (inSameCountry) {
+            return inSameCountry;
+        }
+        // special same country cases
+        if ("us".equals(homeCountry) && "vi".equals(networkCountry)) {
+            inSameCountry = true;
+        } else if ("vi".equals(homeCountry) && "us".equals(networkCountry)) {
+            inSameCountry = true;
+        }
+        return inSameCountry;
+    }
+
+    protected abstract void setRoamingType(ServiceState currentServiceState);
+
+    protected String getHomeOperatorNumeric() {
+        return SystemProperties.get(TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
     }
 }
