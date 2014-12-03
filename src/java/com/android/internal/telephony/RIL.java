@@ -3121,6 +3121,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 setCdmaSubscriptionSource(mCdmaSubscription, null);
                 setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
+
+                getRadioCapability(null);
                 break;
             }
             case RIL_UNSOL_CELL_INFO_LIST: {

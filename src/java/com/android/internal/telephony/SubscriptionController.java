@@ -33,6 +33,7 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.provider.Settings;
+import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -1168,12 +1169,33 @@ public class SubscriptionController extends ISub.Stub {
         }
         logdl("[setDefaultDataSubId] subId=" + subId);
 
-        Settings.Global.putInt(mContext.getContentResolver(),
-                Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
-        broadcastDefaultDataSubIdChanged(subId);
+        int len = sProxyPhones.length;
+        logdl("[setDefaultDataSubId] num phones=" + len);
+
+        RadioAccessFamily[] rafs = new RadioAccessFamily[len];
+        for (int phoneId = 0; phoneId < len; phoneId++) {
+            PhoneProxy phone = sProxyPhones[phoneId];
+            int raf = phone.getRadioAccessFamily();
+            int id = phone.getSubId();
+            logdl("[setDefaultDataSubId] phoneId=" + phoneId + " subId=" + id + " RAF=" + raf);
+            // TODO(stuartscott): Need to set 3G or 2G depending on user's preference and modem
+            // supported capabilities
+            if (id == subId) {
+                raf |= RadioAccessFamily.RAF_UMTS;
+            } else {
+                raf &= ~RadioAccessFamily.RAF_UMTS;
+            }
+            logdl("[setDefaultDataSubId] newRAF=" + raf);
+            rafs[phoneId] = new RadioAccessFamily(phoneId, raf);
+        }
+        ProxyController.getInstance().setRadioCapability(rafs);
 
         // FIXME is this still needed?
         updateAllDataConnectionTrackers();
+
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
+        broadcastDefaultDataSubIdChanged(subId);
     }
 
     private void updateAllDataConnectionTrackers() {
