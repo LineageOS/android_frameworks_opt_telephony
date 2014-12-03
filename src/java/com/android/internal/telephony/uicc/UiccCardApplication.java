@@ -30,6 +30,7 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
+import com.android.internal.telephony.uicc.UICCConfig;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -78,7 +79,7 @@ public class UiccCardApplication {
     private Context mContext;
     private IccRecords mIccRecords;
     private IccFileHandler mIccFh;
-
+    private UICCConfig mUCCConfig;
     private boolean mDestroyed;//set to true once this App is commanded to be disposed of.
 
     private RegistrantList mReadyRegistrants = new RegistrantList();
@@ -110,6 +111,7 @@ public class UiccCardApplication {
             queryFdn();
             queryPin1State();
         }
+        mUCCConfig = new UICCConfig();
     }
 
     void update (IccCardApplicationStatus as, Context c, CommandsInterface ci) {
@@ -174,9 +176,9 @@ public class UiccCardApplication {
 
     private IccRecords createIccRecords(AppType type, Context c, CommandsInterface ci) {
         if (type == AppType.APPTYPE_USIM || type == AppType.APPTYPE_SIM) {
-            return new SIMRecords(this, c, ci);
+            return new SIMRecords(this, c, ci, mUCCConfig);
         } else if (type == AppType.APPTYPE_RUIM || type == AppType.APPTYPE_CSIM){
-            return new RuimRecords(this, c, ci);
+            return new RuimRecords(this, c, ci, mUCCConfig);
         } else if (type == AppType.APPTYPE_ISIM) {
             return new IsimUiccRecords(this, c, ci);
         } else {
