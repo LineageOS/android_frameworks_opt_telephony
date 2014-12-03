@@ -43,6 +43,7 @@ import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.uicc.UICCConfig;
 
 
 /**
@@ -251,6 +252,17 @@ public final class RuimRecords extends IccRecords {
     public String getOperatorNumeric() {
         if (mImsi == null) {
             return null;
+        }
+        String Imsi = "";
+        int mnclength = 0;
+        //Imsi = SystemProperties.get("gsm.sim.operator.imsi", "");
+        Imsi = UICCConfig.getIMSI("");
+        //mnclength = SystemProperties.getInt("gsm.sim.operator.mnclength", 0);
+        mnclength = UICCConfig.getMncLength(0);
+
+        if (Imsi.length() > 0) {
+            log("Returning getOperatorNumeric " + Imsi.substring(0, 3 + mnclength));
+            return Imsi.substring(0, 3 + mnclength);
         }
 
         if (mMncLength != UNINITIALIZED && mMncLength != UNKNOWN) {
