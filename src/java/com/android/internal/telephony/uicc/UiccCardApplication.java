@@ -29,6 +29,7 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
+import com.android.internal.telephony.uicc.UICCConfig;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -902,6 +903,10 @@ public class UiccCardApplication {
         synchronized (mLock) {
             return mPin2State == PinState.PINSTATE_ENABLED_PERM_BLOCKED;
         }
+    }
+
+    public UICCConfig getUICCConfig() {
+        return mUiccCard.getUICCConfig();
     }
 
     private void log(String msg) {
