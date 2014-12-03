@@ -30,6 +30,7 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
+import com.android.internal.telephony.uicc.UICCConfig;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -895,6 +896,10 @@ public class UiccCardApplication {
 
     protected UiccCard getUiccCard() {
         return mUiccCard;
+    }
+
+    public UICCConfig getUICCConfig() {
+        return mUiccCard.getUICCConfig();
     }
 
     private void log(String msg) {
