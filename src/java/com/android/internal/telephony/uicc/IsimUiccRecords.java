@@ -76,7 +76,7 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     }
 
     public IsimUiccRecords(UiccCardApplication app, Context c, CommandsInterface ci) {
-        super(app, c, ci);
+        super(app, c, ci, null);
 
         mAdnCache = new AdnRecordCache(mFh);
 
