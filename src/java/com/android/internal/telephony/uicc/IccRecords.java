@@ -30,6 +30,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.uicc.UICCConfig;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;

@@ -30,6 +30,7 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.PersoSubState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
+import com.android.internal.telephony.uicc.UICCConfig;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -78,7 +79,7 @@ public class UiccCardApplication {
     private Context mContext;
     private IccRecords mIccRecords;
     private IccFileHandler mIccFh;
-
+    private UICCConfig mUICCConfig = null;
     private boolean mDestroyed;//set to true once this App is commanded to be disposed of.
 
     private RegistrantList mReadyRegistrants = new RegistrantList();
@@ -173,6 +174,8 @@ public class UiccCardApplication {
     }
 
     private IccRecords createIccRecords(AppType type, Context c, CommandsInterface ci) {
+        if (mUICCConfig == null)
+            mUICCConfig = new UICCConfig();
         if (type == AppType.APPTYPE_USIM || type == AppType.APPTYPE_SIM) {
             return new SIMRecords(this, c, ci);
         } else if (type == AppType.APPTYPE_RUIM || type == AppType.APPTYPE_CSIM){
@@ -895,6 +898,9 @@ public class UiccCardApplication {
 
     protected UiccCard getUiccCard() {
         return mUiccCard;
+    }
+    public UICCConfig getUICCConfig() {
+        return mUICCConfig;
     }
 
     private void log(String msg) {
