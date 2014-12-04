@@ -42,6 +42,7 @@ import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.gsm.SimTlv;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
+import com.android.internal.telephony.uicc.UICCConfig;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -251,6 +252,9 @@ public class SIMRecords extends IccRecords {
         setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, null);
         setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, null);
         setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, null);
+
+        UICCConfig.setIMSI(mImsi);
+        UICCConfig.setMncLength(mMncLength);
 
         // recordsRequested is set to false indicating that the SIM
         // read requests made so far are not valid. This is set to
@@ -653,7 +657,7 @@ public class SIMRecords extends IccRecords {
                 }
 
                 log("IMSI: mMncLength=" + mMncLength);
-                log("IMSI: " + mImsi.substring(0, 6) + "xxxxxxx");
+                log("IMSI: " + /* mImsi.substring(0, 6) + */ "xxxxxxx");
 
                 if (((mMncLength == UNKNOWN) || (mMncLength == 2)) &&
                         ((mImsi != null) && (mImsi.length() >= 6))) {
@@ -678,6 +682,14 @@ public class SIMRecords extends IccRecords {
                         mMncLength = UNKNOWN;
                         loge("Corrupt IMSI! setting3 mMncLength=" + mMncLength);
                     }
+                }
+
+                UICCConfig.setIMSI(mImsi);
+                if (mMncLength == UNKNOWN || mMncLength == UNINITIALIZED) {
+                    // We need to default to something that seems common
+                    UICCConfig.setMncLength(3);
+                } else {
+                    UICCConfig.setMncLength(mMncLength);
                 }
 
                 if (mMncLength != UNKNOWN && mMncLength != UNINITIALIZED) {
@@ -896,6 +908,11 @@ public class SIMRecords extends IccRecords {
                         mMncLength = UNKNOWN;
                         log("setting5 mMncLength=" + mMncLength);
                     }
+                    else {
+                        //setSystemProperty("gsm.sim.operator.mnclength", Integer.toString(mMncLength));
+                        UICCConfig.setMncLength(mMncLength);
+                    }
+
                 } finally {
                     if (((mMncLength == UNINITIALIZED) || (mMncLength == UNKNOWN) ||
                             (mMncLength == 2)) && ((mImsi != null) && (mImsi.length() >= 6))) {
