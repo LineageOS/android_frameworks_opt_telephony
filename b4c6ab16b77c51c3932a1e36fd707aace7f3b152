@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bab6814e_dd2fba9f",
+        "filename": "src/java/com/android/internal/telephony/uicc/IccFileHandler.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 5678
+      },
+      "writtenOn": "2014-12-04T14:30:51Z",
+      "side": 1,
+      "message": "I might be missing something. But why don\u0027t you do that check inside the parse function and throw the Exception there?",
+      "revId": "b4c6ab16b77c51c3932a1e36fd707aace7f3b152",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_fd355ef7",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 5678
+      },
+      "writtenOn": "2014-12-04T14:30:51Z",
+      "side": 1,
+      "message": "Move that out of the try block. Exception is catched and thrown again.",
+      "revId": "b4c6ab16b77c51c3932a1e36fd707aace7f3b152",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_bd2c76ac",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 5678
+      },
+      "writtenOn": "2014-12-04T14:30:51Z",
+      "side": 1,
+      "message": "Is the catch all really needed?",
+      "revId": "b4c6ab16b77c51c3932a1e36fd707aace7f3b152",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
