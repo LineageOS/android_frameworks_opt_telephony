@@ -40,10 +40,12 @@ import android.text.TextUtils;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.MccTable;
+import com.android.internal.telephony.PhoneConstants;
 
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.uicc.UICCConfig;
 
 
 /**
@@ -256,6 +258,17 @@ public final class RuimRecords extends IccRecords {
     public String getOperatorNumeric() {
         if (mImsi == null) {
             return null;
+        }
+
+        String Imsi = UICCConfig.getIMSI("");
+        int mnclength = UICCConfig.getMncLength(0);
+
+        // If we are LTE over CDMA (Verizon), then pull the correct info from SIMRecords
+        if (Imsi.length() > 0
+            && (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE))
+        {
+            log("Overriding with Operator Numeric: " + Imsi.substring(0, 3 + mnclength));
+            return Imsi.substring(0, 3 + mnclength);
         }
 
         if (mMncLength != UNINITIALIZED && mMncLength != UNKNOWN) {
