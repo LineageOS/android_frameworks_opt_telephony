@@ -173,7 +173,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
             networkCapabilities = sender.getNetworkCapabilities(apnType);
         }
         ServiceState ss = sender.getServiceState();
-        if (ss != null) roaming = ss.getRoaming();
+        if (ss != null) roaming = ss.getDataRoaming();
 
         try {
             if (mRegistry != null) {
