@@ -255,7 +255,14 @@ public class SubInfoRecordUpdater extends Handler {
                 }
                 break;
             case EVENT_ICC_CHANGED:
-                updateIccAvailability();
+                Integer cardIndex = new Integer(PhoneConstants.DEFAULT_CARD_INDEX);
+                if (ar.result != null) {
+                    cardIndex = (Integer) ar.result;
+                } else {
+                    Rlog.e(LOG_TAG, "Error: Invalid card index EVENT_ICC_CHANGED ");
+                    return;
+                }
+                updateIccAvailability(cardIndex);
                 break;
             case EVENT_STACK_READY:
                 logd("EVENT_STACK_READY" );
@@ -268,46 +275,56 @@ public class SubInfoRecordUpdater extends Handler {
         }
     }
 
-    private void updateIccAvailability() {
+    private void updateIccAvailability(int slotId) {
         if (null == mUiccController) {
             return;
         }
-        logd("updateIccAvailability: Enter");
-        if (!SubscriptionHelper.getInstance().proceedToHandleIccEvent()) {
+        SubscriptionHelper subHelper = SubscriptionHelper.getInstance();
+        logd("updateIccAvailability: Enter, slotId " + slotId);
+        if (PROJECT_SIM_NUM > 1 && !subHelper.proceedToHandleIccEvent(slotId)) {
             logd("updateIccAvailability: radio is OFF/unavailable, ignore ");
+            if (!subHelper.isApmSIMNotPwdn()) {
+                // set the iccid to null so that once SIM card detected
+                //  ICCID will be read from the card again.
+                sIccId[slotId] = null;
+            }
             return;
         }
 
-        for (int slotId = 0; slotId < PROJECT_SIM_NUM; slotId++) {
-            CardState newState = CardState.CARDSTATE_ABSENT;
-            UiccCard newCard = mUiccController.getUiccCard(slotId);
-            if (newCard != null) {
-                newState = newCard.getCardState();
+        CardState newState = CardState.CARDSTATE_ABSENT;
+        UiccCard newCard = mUiccController.getUiccCard(slotId);
+        if (newCard != null) {
+            newState = newCard.getCardState();
+        }
+        CardState oldState = sCardState[slotId];
+        sCardState[slotId] = newState;
+        logd("Slot[" + slotId + "]: New Card State = "
+                + newState + " " + "Old Card State = " + oldState);
+        if (!newState.isCardPresent()) {
+            //Card moved to ABSENT State
+            if (sIccId[slotId] != null && !sIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
+                logd("SIM" + (slotId + 1) + " hot plug out");
+                sNeedUpdate = true;
             }
-            CardState oldState = sCardState[slotId];
-            sCardState[slotId] = newState;
-            logd("Slot[" + slotId + "]: New Card State = "
-                    + newState + " " + "Old Card State = " + oldState);
-            if (!newState.isCardPresent()) {
-                //Card moved to ABSENT State
-                if (sIccId[slotId] != null && !sIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
-                    logd("SIM" + (slotId + 1) + " hot plug out");
-                    sNeedUpdate = true;
-                }
-                sFh[slotId] = null;
-                sIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
-                if (isAllIccIdQueryDone() && sNeedUpdate) {
-                    updateSimInfoByIccId();
-                }
-            } else if (!oldState.isCardPresent() && newState.isCardPresent()) {
-                // Card moved to PRESENT State.
-                if (sIccId[slotId] != null && sIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
-                    logd("SIM" + (slotId + 1) + " hot plug in");
-                    sIccId[slotId] = null;
-                    sNeedUpdate = true;
-                }
-                queryIccId(slotId);
+            sFh[slotId] = null;
+            sIccId[slotId] = ICCID_STRING_FOR_NO_SIM;
+            if (isAllIccIdQueryDone() && sNeedUpdate) {
+                updateSimInfoByIccId();
             }
+        } else if (!oldState.isCardPresent() && newState.isCardPresent()) {
+            // Card moved to PRESENT State.
+            if (sIccId[slotId] != null && sIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)) {
+                logd("SIM" + (slotId + 1) + " hot plug in");
+                sIccId[slotId] = null;
+                sNeedUpdate = true;
+            }
+            queryIccId(slotId);
+        } else if (oldState.isCardPresent() && newState.isCardPresent() &&
+                (!subHelper.isApmSIMNotPwdn()) && (sIccId[slotId] == null)) {
+            logd("SIM" + (slotId + 1) + " powered up from APM ");
+            sFh[slotId] = null;
+            sNeedUpdate = true;
+            queryIccId(slotId);
         }
     }
 
