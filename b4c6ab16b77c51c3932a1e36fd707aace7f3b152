@@ -72,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "bab6814e_d84b4858",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 5678
+      },
+      "writtenOn": "2014-12-04T15:33:46Z",
+      "side": 1,
+      "message": "Right, wouldn\u0027t it be better then to check data \u003d\u003d null || data.length \u003d\u003d 0 explicitly?\nSince you now removed the catch(Exception) block it won\u0027t catch a possible NPE anymore.",
+      "parentUuid": "bab6814e_d81d0868",
+      "revId": "b4c6ab16b77c51c3932a1e36fd707aace7f3b152",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bab6814e_bd2c76ac",
         "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
         "patchSetId": 4
@@ -101,6 +119,24 @@
       "side": 1,
       "message": "Yes, this can be removed.",
       "parentUuid": "bab6814e_bd2c76ac",
+      "revId": "b4c6ab16b77c51c3932a1e36fd707aace7f3b152",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_b848045d",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 5678
+      },
+      "writtenOn": "2014-12-04T15:33:46Z",
+      "side": 1,
+      "message": "data can also be null. This exception would have caught it, right? Sorry for being bit overhasty.",
+      "parentUuid": "bab6814e_b81ac46c",
       "revId": "b4c6ab16b77c51c3932a1e36fd707aace7f3b152",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
