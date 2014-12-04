@@ -512,17 +512,24 @@ public class SubscriptionController extends ISub.Stub {
         enforceSubscriptionPermission();
 
         List<SubscriptionInfo> subList = getActiveSubscriptionInfoList();
-        for (SubscriptionInfo si : subList) {
-            if (si.getSimSlotIndex() == slotIdx) {
-                if (DBG) {
-                    logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIdx=" + slotIdx
-                        + " subId=" + si);
+        if (subList != null) {
+            for (SubscriptionInfo si : subList) {
+                if (si.getSimSlotIndex() == slotIdx) {
+                    if (DBG) {
+                        logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIdx=" + slotIdx
+                            + " subId=" + si);
+                    }
+                    return si;
                 }
-                return si;
             }
-        }
-        if (DBG) {
-            logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIdx=" + slotIdx + " subId=null");
+            if (DBG) {
+                logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIdx=" + slotIdx
+                    + " subId=null");
+            }
+        } else {
+            if (DBG) {
+                logd("[getActiveSubscriptionInfoForSimSlotIndex]+ subList=null");
+            }
         }
         return null;
     }
