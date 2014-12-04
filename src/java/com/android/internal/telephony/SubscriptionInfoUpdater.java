@@ -320,8 +320,18 @@ public class SubscriptionInfoUpdater extends Handler {
         logd("queryIccId: slotid=" + slotId);
         if (mFh[slotId] == null) {
             logd("Getting IccFileHandler");
-            mFh[slotId] = ((PhoneProxy)mPhone[slotId]).getIccFileHandler();
+            if (mPhone[slotId].getIccCard() != null) {
+                mFh[slotId] = mPhone[slotId].getIccCard().getIccFileHandler();
+            }
+            /** Just in case file handler cannot be obtained from IccCard directly, we can use the
+             * earlier way of getting it from phone */
+            // TODO remove this if block
+             if (mFh[slotId] == null) {
+                logd("queryIccId: Could not get IccFileHandler directly from IccCard");
+                mFh[slotId] = ((PhoneProxy) mPhone[slotId]).getIccFileHandler();
+            }
         }
+
         if (mFh[slotId] != null) {
             String iccId = mIccId[slotId];
             if (iccId == null) {
