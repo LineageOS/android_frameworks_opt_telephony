@@ -494,8 +494,7 @@ public class SubscriptionController extends ISub.Stub {
             return subList;
         }
 
-        subList = getSubInfo(SubscriptionManager.SIM_SLOT_INDEX
-                + "!=" + SubscriptionManager.INVALID_SIM_SLOT_INDEX, null);
+        subList = getSubInfo(SubscriptionManager.SIM_SLOT_INDEX + ">=0", null);
         if (subList != null) {
             // FIXME: Unnecessary when an insertion sort is used!
             Collections.sort(subList, new Comparator<SubscriptionInfo>() {
