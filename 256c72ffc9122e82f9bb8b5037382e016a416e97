@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bab6814e_983a60cc",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 8640
+      },
+      "writtenOn": "2014-12-04T15:22:01Z",
+      "side": 1,
+      "message": "trailing whitespace",
+      "revId": "256c72ffc9122e82f9bb8b5037382e016a416e97",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_7837bce3",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 8640
+      },
+      "writtenOn": "2014-12-04T15:22:01Z",
+      "side": 1,
+      "message": "Wrap line so as not to exceed 100 characters",
+      "revId": "256c72ffc9122e82f9bb8b5037382e016a416e97",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
