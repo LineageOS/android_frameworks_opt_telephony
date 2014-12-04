@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bab6814e_78acdced",
+        "filename": "src/java/com/android/internal/telephony/uicc/SIMRecords.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 886,
+      "author": {
+        "id": 8640
+      },
+      "writtenOn": "2014-12-04T15:48:40Z",
+      "side": 1,
+      "message": "Remove the extra tab whitespace",
+      "revId": "f178373ec1750495a73b138caba191c85faf4989",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
