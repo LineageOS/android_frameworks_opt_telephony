@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "bab6814e_78105c4f",
+        "filename": "src/java/com/android/internal/telephony/uicc/IccFileHandler.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 9448
+      },
+      "writtenOn": "2014-12-04T15:11:32Z",
+      "side": 1,
+      "message": "We don\u0027t need this always. Check line 536 below.",
+      "parentUuid": "bab6814e_dd2fba9f",
+      "revId": "b4c6ab16b77c51c3932a1e36fd707aace7f3b152",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bab6814e_fd355ef7",
         "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
         "patchSetId": 4
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "bab6814e_d81d0868",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 9448
+      },
+      "writtenOn": "2014-12-04T15:11:32Z",
+      "side": 1,
+      "message": "This needs to be here as data[] could be of zero size.",
+      "parentUuid": "bab6814e_fd355ef7",
+      "revId": "b4c6ab16b77c51c3932a1e36fd707aace7f3b152",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bab6814e_bd2c76ac",
         "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
         "patchSetId": 4
@@ -47,6 +83,24 @@
       "writtenOn": "2014-12-04T14:30:51Z",
       "side": 1,
       "message": "Is the catch all really needed?",
+      "revId": "b4c6ab16b77c51c3932a1e36fd707aace7f3b152",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_b81ac46c",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 9448
+      },
+      "writtenOn": "2014-12-04T15:11:32Z",
+      "side": 1,
+      "message": "Yes, this can be removed.",
+      "parentUuid": "bab6814e_bd2c76ac",
       "revId": "b4c6ab16b77c51c3932a1e36fd707aace7f3b152",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
