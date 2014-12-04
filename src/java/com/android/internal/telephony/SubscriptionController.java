@@ -16,12 +16,13 @@
 
 package com.android.internal.telephony;
 
-import android.Manifest;
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -181,6 +182,33 @@ public class SubscriptionController extends ISub.Stub {
     // to phoneId 0.
     private static final int DUMMY_SUB_ID = -1;
 
+    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (DBG) logd("onReceive " + intent);
+            // TODO: Have GsmServiceStateTracker insert this data directly and deprecate
+            // this broadcast.
+            int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                    SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+            if (intent.getAction().equals(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION)) {
+                if (intent.getBooleanExtra(TelephonyIntents.EXTRA_SHOW_PLMN, false)) {
+                    String carrierText = intent.getStringExtra(TelephonyIntents.EXTRA_PLMN);
+                    if (intent.getBooleanExtra(TelephonyIntents.EXTRA_SPN, false)) {
+                        // Need to show both plmn and spn.
+                        String separator = mContext.getString(
+                                com.android.internal.R.string.kg_text_message_separator).toString();
+                        carrierText = new StringBuilder().append(carrierText).append(separator)
+                                .append(intent.getStringExtra(TelephonyIntents.EXTRA_SPN))
+                                .toString();
+                    }
+                    setCarrierText(carrierText, subId);
+                } else if (intent.getBooleanExtra(TelephonyIntents.EXTRA_SHOW_SPN, false)) {
+                    setCarrierText(intent.getStringExtra(TelephonyIntents.EXTRA_PLMN), subId);
+                }
+            }
+        }
+    };
+
     public static SubscriptionController init(Phone phone) {
         synchronized (SubscriptionController.class) {
             if (sInstance == null) {
@@ -221,6 +249,8 @@ public class SubscriptionController extends ISub.Stub {
         if(ServiceManager.getService("isub") == null) {
                 ServiceManager.addService("isub", this);
         }
+        mContext.registerReceiver(mReceiver,
+                new IntentFilter(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION));
 
         if (DBG) logdl("[SubscriptionController] init by Context");
         mDataConnectionHandler = new DataConnectionHandler();
@@ -270,6 +300,8 @@ public class SubscriptionController extends ISub.Stub {
         if(ServiceManager.getService("isub") == null) {
                 ServiceManager.addService("isub", this);
         }
+        mContext.registerReceiver(mReceiver,
+                new IntentFilter(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION));
 
         if (DBG) logdl("[SubscriptionController] init by Phone");
     }
@@ -803,6 +835,26 @@ public class SubscriptionController extends ISub.Stub {
 
         if (DBG) logdl("[addSubInfoRecord]- info size=" + mSlotIdxToSubId.size());
         return 0;
+    }
+
+    /**
+     * Set carrier text by simInfo index
+     * @param text new carrier text
+     * @param subId the unique SubInfoRecord index in database
+     * @return the number of records updated
+     */
+    private int setCarrierText(String text, int subId) {
+        if (DBG) logd("[setCarrierText]+ text:" + text + " subId:" + subId);
+        enforceSubscriptionPermission();
+
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.CARRIER_NAME, text);
+
+        int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+        notifySubscriptionInfoChanged();
+
+        return result;
     }
 
     /**
