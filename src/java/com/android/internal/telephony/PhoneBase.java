@@ -2010,6 +2010,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
+    public int getSupportedRadioAccessFamily() {
+        return mCi.getSupportedRadioAccessFamily();
+    }
+
+    @Override
     public void registerForRadioCapabilityChanged(Handler h, int what, Object obj) {
         mCi.registerForRadioCapabilityChanged(h, what, obj);
     }

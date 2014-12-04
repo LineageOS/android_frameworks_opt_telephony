@@ -1264,13 +1264,19 @@ public class SubscriptionController extends ISub.Stub {
             int raf = phone.getRadioAccessFamily();
             int id = phone.getSubId();
             logdl("[setDefaultDataSubId] phoneId=" + phoneId + " subId=" + id + " RAF=" + raf);
-            // TODO(stuartscott): Need to set 3G or 2G depending on user's preference and modem
-            // supported capabilities
+            raf |= RadioAccessFamily.RAF_GSM;
             if (id == subId) {
                 raf |= RadioAccessFamily.RAF_UMTS;
             } else {
                 raf &= ~RadioAccessFamily.RAF_UMTS;
             }
+            logdl("[setDefaultDataSubId] reqRAF=" + raf);
+
+            // Set the raf to the maximum of the requested and the user's preferred.
+            int networkType = PhoneFactory.calculatePreferredNetworkType(mContext, id);
+            logdl("[setDefaultDataSubId] networkType=" + networkType);
+            raf &= RadioAccessFamily.getRafFromNetworkType(networkType);
+
             logdl("[setDefaultDataSubId] newRAF=" + raf);
             rafs[phoneId] = new RadioAccessFamily(phoneId, raf);
         }
