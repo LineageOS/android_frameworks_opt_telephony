@@ -425,21 +425,6 @@ public class IccSmsInterfaceManager {
     }
 
     /**
-     * Update the status of a pending (send-by-IP) SMS message and resend by PSTN if necessary.
-     * This outbound message was handled by the carrier app. If the carrier app fails to send
-     * this message, it would be resent by PSTN.
-     *
-     * @param messageRef the reference number of the SMS message.
-     * @param success True if and only if the message was sent successfully. If its value is
-     *  false, this message should be resent via PSTN.
-     * {@hide}
-     */
-    public void updateSmsSendStatus(int messageRef, boolean success) {
-        enforceCarrierPrivilege();
-        mDispatcher.updateSmsSendStatus(messageRef, success);
-    }
-
-    /**
      * Send a multi-part text based SMS.
      *
      * @param destAddr the address to send the message to
