@@ -809,9 +809,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     }
 
                     if (!mIsSubscriptionFromRuim) {
-                        // In CDMA in case on NV, the ss.mOperatorAlphaLong is set later with the
-                        // ERI text, so here it is ignored what is coming from the modem.
-                        mNewSS.setOperatorName(null, opNames[1], opNames[2]);
+                        // NV device (as opposed to CSIM)
+                        mNewSS.setOperatorName(opNames[0], opNames[1], opNames[2]);
                     } else {
                         String brandOverride = mUiccController.getUiccCard() != null ?
                             mUiccController.getUiccCard().getOperatorBrandOverride() : null;
