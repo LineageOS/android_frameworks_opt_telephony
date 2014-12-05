@@ -2,6 +2,40 @@
   "comments": [
     {
       "key": {
+        "uuid": "bab6814e_ee2ac67d",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2014-12-05T11:14:42Z",
+      "side": 1,
+      "message": "Imsi shouldn\u0027t be capitalized.",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_2e25eeaa",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2014-12-05T11:14:42Z",
+      "side": 1,
+      "message": "instead of checking length, just do a null check here, that way you don\u0027t have to pass a default value.",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bab6814e_f31c6d79",
         "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
         "patchSetId": 6
