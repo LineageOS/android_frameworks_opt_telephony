@@ -278,10 +278,12 @@ public final class SmsManager {
      * @param format is the format of SMS pdu (3gpp or 3gpp2)
      * @param receivedIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully received by the
-     *  android application framework. This intent is broadcasted at
+     *  android application framework, or failed. This intent is broadcasted at
      *  the same time an SMS received from radio is acknowledged back.
+     *  The result code will be <code>RESULT_SMS_HANDLED</code> for success, or
+     *  <code>RESULT_SMS_GENERIC_ERROR</code> for error.
      *
-     *  @throws IllegalArgumentException if format is not one of 3gpp and 3gpp2.
+     * @throws IllegalArgumentException if format is not one of 3gpp and 3gpp2.
      */
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
         if (!format.equals(SmsMessage.FORMAT_3GPP) && !format.equals(SmsMessage.FORMAT_3GPP2)) {
@@ -300,26 +302,9 @@ public final class SmsManager {
     }
 
     /**
-     * Update the status of a pending (send-by-IP) SMS message and resend by PSTN if necessary.
-     * This outbound message was handled by the carrier app. If the carrier app fails to send
-     * this message, it would be resent by PSTN.
-     *
-     * The caller should have carrier privileges.
-     * @see android.telephony.TelephonyManager.hasCarrierPrivileges
-     *
-     * @param messageRef the reference number of the SMS message.
-     * @param success True if and only if the message was sent successfully. If its value is
-     *  false, this message should be resent via PSTN.
+     * TODO: remove this method.
      */
     public void updateSmsSendStatus(int messageRef, boolean success) {
-        try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
-            if (iccISms != null) {
-                iccISms.updateSmsSendStatus(messageRef, success);
-            }
-        } catch (RemoteException ex) {
-          // ignore it
-        }
     }
 
     /**
@@ -1029,69 +1014,17 @@ public final class SmsManager {
     public static final String EXTRA_MMS_HTTP_STATUS = "android.telephony.extra.MMS_HTTP_STATUS";
 
     /**
-     * Update the status of a pending (send-by-IP) MMS message handled by the carrier app.
-     * If the carrier app fails to send this message, it may be resent via carrier network
-     * depending on the status code.
-     *
-     * The caller should have carrier privileges.
-     * @see android.telephony.TelephonyManager.hasCarrierPrivileges
-     *
-     * @param context application context
-     * @param messageRef the reference number of the MMS message.
-     * @param pdu non-empty (contains the SendConf PDU) if the message was sent successfully,
-     *   otherwise, this param should be null.
-     * @param status send status. It can be Activity.RESULT_OK or one of the MMS error codes.
-     *   If status is Activity.RESULT_OK, the MMS was sent successfully.
-     *   If status is MMS_ERROR_RETRY, this message would be resent via carrier
-     *   network. The message will not be resent for other MMS error statuses.
-     * @param contentUri the URI of the sent message
+     * TODO: remove this method.
      */
     public void updateMmsSendStatus(Context context, int messageRef, byte[] pdu, int status,
             Uri contentUri) {
-        try {
-            IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
-            if (iMms == null) {
-                return;
-            }
-            iMms.updateMmsSendStatus(messageRef, pdu, status);
-        } catch (RemoteException ex) {
-            // ignore it
-        }
-        if (contentUri != null) {
-            context.revokeUriPermission(contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        }
     }
 
     /**
-     * Update the status of a pending (download-by-IP) MMS message handled by the carrier app.
-     * If the carrier app fails to download this message, it may be re-downloaded via carrier
-     * network depending on the status code.
-     *
-     * The caller should have carrier privileges.
-     * @see android.telephony.TelephonyManager.hasCarrierPrivileges
-     *
-     * @param context application context
-     * @param messageRef the reference number of the MMS message.
-     * @param status download status.  It can be Activity.RESULT_OK or one of the MMS error codes.
-     *   If status is Activity.RESULT_OK, the MMS was downloaded successfully.
-     *   If status is MMS_ERROR_RETRY, this message would be re-downloaded via carrier
-     *   network. The message will not be re-downloaded for other MMS error statuses.
-     * @param contentUri the URI of the downloaded message
+     * TODO: remove this method.
      */
     public void updateMmsDownloadStatus(Context context, int messageRef, int status,
             Uri contentUri) {
-        try {
-            IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
-            if (iMms == null) {
-                return;
-            }
-            iMms.updateMmsDownloadStatus(messageRef, status);
-        } catch (RemoteException ex) {
-            // ignore it
-        }
-        if (contentUri != null) {
-            context.revokeUriPermission(contentUri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-        }
     }
 
     /**

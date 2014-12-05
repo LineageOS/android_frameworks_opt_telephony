@@ -20,7 +20,6 @@ import android.app.Activity;
 import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
-import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Message;
@@ -115,7 +114,16 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
         SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
                 null /*messageUri*/, false /*isExpectMore*/, null /*fullMessageText*/);
-        sendSubmitPdu(tracker);
+
+        String carrierPackage = getCarrierAppPackageName();
+        if (carrierPackage != null) {
+            Rlog.d(TAG, "Found carrier package.");
+            DataSmsSender smsSender = new DataSmsSender(tracker);
+            smsSender.sendSmsByCarrierApp(carrierPackage, new SmsSenderCallback(smsSender));
+        } else {
+            Rlog.v(TAG, "No carrier package.");
+            sendSubmitPdu(tracker);
+        }
     }
 
     /** {@inheritDoc} */
@@ -128,7 +136,16 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
             HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
                     messageUri, false /*isExpectMore*/, text);
-            sendSubmitPdu(tracker);
+
+            String carrierPackage = getCarrierAppPackageName();
+            if (carrierPackage != null) {
+                Rlog.d(TAG, "Found carrier package.");
+                TextSmsSender smsSender = new TextSmsSender(tracker);
+                smsSender.sendSmsByCarrierApp(carrierPackage, new SmsSenderCallback(smsSender));
+            } else {
+                Rlog.v(TAG, "No carrier package.");
+                sendSubmitPdu(tracker);
+            }
         } else {
             Rlog.e(TAG, "CdmaSMSDispatcher.sendText(): getSubmitPdu() returned null");
         }
@@ -149,7 +166,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     @Override
-    protected void sendNewSubmitPdu(String destinationAddress, String scAddress,
+    protected SmsTracker getNewSubmitPduTracker(String destinationAddress, String scAddress,
             String message, SmsHeader smsHeader, int encoding,
             PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart,
             AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
@@ -173,12 +190,12 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
         HashMap map = getSmsTrackerMap(destinationAddress, scAddress,
                 message, submitPdu);
-        SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent,
+        return getSmsTracker(map, sentIntent, deliveryIntent,
                 getFormat(), unsentPartCount, anyPartFailed, messageUri, smsHeader,
                 false /*isExpextMore*/, fullMessageText);
-        sendSubmitPdu(tracker);
     }
 
+    @Override
     protected void sendSubmitPdu(SmsTracker tracker) {
         if (SystemProperties.getBoolean(TelephonyProperties.PROPERTY_INECM_MODE, false)) {
             if (VDBG) {
@@ -205,37 +222,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                 + " mMessageRef=" + tracker.mMessageRef
                 + " SS=" + mPhone.getServiceState().getState());
 
-        // Send SMS via the carrier app.
-        BroadcastReceiver resultReceiver = new SMSDispatcherReceiver(tracker);
-
-        // Direct the intent to only the default carrier app.
-        Intent intent = new Intent(Intents.SMS_SEND_ACTION);
-        String carrierPackage = getCarrierAppPackageName(intent);
-        if (carrierPackage != null) {
-            intent.setPackage(getCarrierAppPackageName(intent));
-            intent.putExtra("pdu", pdu);
-            intent.putExtra("format", getFormat());
-            if (tracker.mSmsHeader != null && tracker.mSmsHeader.concatRef != null) {
-                SmsHeader.ConcatRef concatRef = tracker.mSmsHeader.concatRef;
-                intent.putExtra("concat.refNumber", concatRef.refNumber);
-                intent.putExtra("concat.seqNumber", concatRef.seqNumber);
-                intent.putExtra("concat.msgCount", concatRef.msgCount);
-            }
-            intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
-            Rlog.d(TAG, "Sending SMS by carrier app.");
-            mContext.sendOrderedBroadcast(intent, android.Manifest.permission.RECEIVE_SMS,
-                                          AppOpsManager.OP_RECEIVE_SMS, resultReceiver,
-                                          null, Activity.RESULT_CANCELED, null, null);
-        } else {
-            sendSmsByPstn(tracker);
-        }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    protected void updateSmsSendStatus(int messageRef, boolean success) {
-        // This function should be defined in ImsDispatcher.
-        Rlog.e(TAG, "updateSmsSendStatus should never be called from here!");
+        sendSmsByPstn(tracker);
     }
 
     /** {@inheritDoc} */
