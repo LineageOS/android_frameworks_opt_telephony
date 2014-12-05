@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bab6814e_b8f92450",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 9215
+      },
+      "writtenOn": "2014-12-05T00:48:22Z",
+      "side": 1,
+      "message": "No need to check mFileType because its not in UiccTlvData.",
+      "revId": "8ea61bf0b0aa1c69ef53a82f3026dc2170df6803",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_589f5803",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 9215
+      },
+      "writtenOn": "2014-12-05T00:48:22Z",
+      "side": 1,
+      "message": "can you remove this return?",
+      "revId": "8ea61bf0b0aa1c69ef53a82f3026dc2170df6803",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_b89004ee",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 9215
+      },
+      "writtenOn": "2014-12-05T00:48:22Z",
+      "side": 1,
+      "message": "The minimum you need is mFileSize so if (mFileSize \u003d\u003d -1) throw IccFileTypeMismatch() else if (mRecordSize \u003d\u003d -1) { mRecordSize \u003d mFileSize; mNumRecords \u003d 1; }\nreturn parsedData;\n\nThen you wouldn\u0027t need isIncomplete() right?",
+      "revId": "8ea61bf0b0aa1c69ef53a82f3026dc2170df6803",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
