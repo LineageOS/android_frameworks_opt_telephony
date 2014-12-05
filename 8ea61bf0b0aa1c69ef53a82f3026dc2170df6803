@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "bab6814e_b87e44ac",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 9448
+      },
+      "writtenOn": "2014-12-05T02:00:37Z",
+      "side": 1,
+      "message": "We need to check mFileType as it is an invalid FCP without fileType",
+      "parentUuid": "bab6814e_b8f92450",
+      "revId": "8ea61bf0b0aa1c69ef53a82f3026dc2170df6803",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bab6814e_589f5803",
         "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
         "patchSetId": 6
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "bab6814e_184af083",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 9448
+      },
+      "writtenOn": "2014-12-05T02:00:37Z",
+      "side": 1,
+      "message": "Yes it can be removed.",
+      "parentUuid": "bab6814e_589f5803",
+      "revId": "8ea61bf0b0aa1c69ef53a82f3026dc2170df6803",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bab6814e_b89004ee",
         "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
         "patchSetId": 6
@@ -47,6 +83,24 @@
       "writtenOn": "2014-12-05T00:48:22Z",
       "side": 1,
       "message": "The minimum you need is mFileSize so if (mFileSize \u003d\u003d -1) throw IccFileTypeMismatch() else if (mRecordSize \u003d\u003d -1) { mRecordSize \u003d mFileSize; mNumRecords \u003d 1; }\nreturn parsedData;\n\nThen you wouldn\u0027t need isIncomplete() right?",
+      "revId": "8ea61bf0b0aa1c69ef53a82f3026dc2170df6803",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_58447873",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 96,
+      "author": {
+        "id": 9448
+      },
+      "writtenOn": "2014-12-05T02:00:37Z",
+      "side": 1,
+      "message": "I prefer the inComplete method.\nincase we have some issues with getting whole records in some phones this will be used by IccFileHandler to check and get the whole data.",
+      "parentUuid": "bab6814e_b89004ee",
       "revId": "8ea61bf0b0aa1c69ef53a82f3026dc2170df6803",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
