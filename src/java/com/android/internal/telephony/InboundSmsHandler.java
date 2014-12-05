@@ -30,8 +30,12 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.UserInfo;
 import android.content.SharedPreferences;
+import android.content.pm.UserInfo;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
@@ -67,6 +71,7 @@ import com.android.internal.util.StateMachine;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -754,18 +759,49 @@ public abstract class InboundSmsHandler extends StateMachine {
             loge("UiccCard not initialized.");
         }
 
+        List<String> systemPackages =
+                getSystemAppForIntent(new Intent(CarrierMessagingService.SERVICE_INTERFACE));
+
         if (carrierPackages != null && carrierPackages.size() == 1) {
             log("Found carrier package.");
             CarrierSmsFilter smsFilter = new CarrierSmsFilter(pdus, destPort,
                     tracker.getFormat(), resultReceiver);
             CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter);
             smsFilter.filterSms(carrierPackages.get(0), smsFilterCallback);
+        } else if (systemPackages != null && systemPackages.size() == 1) {
+            log("Found system package.");
+            CarrierSmsFilter smsFilter = new CarrierSmsFilter(pdus, destPort,
+                    tracker.getFormat(), resultReceiver);
+            CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter);
+            smsFilter.filterSms(systemPackages.get(0), smsFilterCallback);
         } else {
-            logv("Unable to find carrier package: " + carrierPackages);
+            logv("Unable to find carrier package: " + carrierPackages
+                    + ", nor systemPackages: " + systemPackages);
             dispatchSmsDeliveryIntent(pdus, tracker.getFormat(), destPort, resultReceiver);
         }
 
         return true;
+    }
+
+    private List<String> getSystemAppForIntent(Intent intent) {
+        List<String> packages = new ArrayList<String>();
+        PackageManager packageManager = mContext.getPackageManager();
+        List<ResolveInfo> receivers = packageManager.queryIntentServices(intent, 0);
+        String carrierFilterSmsPerm = "android.permission.CARRIER_FILTER_SMS";
+
+        for (ResolveInfo info : receivers) {
+            if (info.serviceInfo == null) {
+                loge("Can't get service information from " + info);
+                continue;
+            }
+            String packageName = info.serviceInfo.packageName;
+                if (packageManager.checkPermission(carrierFilterSmsPerm, packageName) ==
+                        packageManager.PERMISSION_GRANTED) {
+                    packages.add(packageName);
+                    if (DBG) log("getSystemAppForIntent: added package "+ packageName);
+                }
+        }
+        return packages;
     }
 
     /**
@@ -1114,6 +1150,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         public void onFilterComplete(boolean keepMessage) {
             mSmsFilter.disposeConnection(mContext);
 
+            logv("onFilterComplete: keepMessage is "+ keepMessage);
             if (keepMessage) {
                 dispatchSmsDeliveryIntent(mSmsFilter.mPdus, mSmsFilter.mSmsFormat,
                         mSmsFilter.mDestPort, mSmsFilter.mSmsBroadcastReceiver);
