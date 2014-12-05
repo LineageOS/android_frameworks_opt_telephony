@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bab6814e_f31c6d79",
+        "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2014-12-05T11:08:36Z",
+      "side": 1,
+      "message": "add CyanogenMod open source copyright header please",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_d32fa99f",
+        "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2014-12-05T11:08:36Z",
+      "side": 1,
+      "message": "Please use full qualified imports",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_b32ca5ac",
+        "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2014-12-05T11:08:36Z",
+      "side": 1,
+      "message": "same here",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_53129963",
+        "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2014-12-05T11:08:36Z",
+      "side": 1,
+      "message": "this class should be static",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_33171553",
+        "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2014-12-05T11:08:36Z",
+      "side": 1,
+      "message": "Please comment on purpose. Also add @hide annotation on the class itself and the public methods.",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
