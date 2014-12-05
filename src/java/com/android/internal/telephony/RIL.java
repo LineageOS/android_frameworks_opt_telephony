@@ -3115,14 +3115,14 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RIL_CONNECTED: {
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 
+                getRadioCapability(mSupportedRafHandler.obtainMessage());
+
                 // Initial conditions
                 setRadioPower(false, null);
                 setPreferredNetworkType(mPreferredNetworkType, null);
                 setCdmaSubscriptionSource(mCdmaSubscription, null);
                 setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
-
-                getRadioCapability(null);
                 break;
             }
             case RIL_UNSOL_CELL_INFO_LIST: {
@@ -3186,6 +3186,23 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 break;
         }
     }
+
+    /**
+     * Receives and stores the capabilities supported by the modem.
+     */
+    private Handler mSupportedRafHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            AsyncResult ar = (AsyncResult) msg.obj;
+            RadioCapability rc = (RadioCapability) ar.result;
+            if (ar.exception != null) {
+                if (RILJ_LOGD) riljLog("Get supported radio access family fail");
+            } else {
+                mSupportedRaf = rc.getRadioAccessFamily();
+                if (RILJ_LOGD) riljLog("Supported radio access family=" + mSupportedRaf);
+            }
+        }
+    };
 
     /**
      * Notifiy all registrants that the ril has connected or disconnected.
