@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "bab6814e_4c267bbb",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 5085
+      },
+      "writtenOn": "2014-12-05T19:12:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bab6814e_ee2ac67d",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bab6814e_2e25eeaa",
         "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
         "patchSetId": 6
@@ -30,6 +48,24 @@
       "writtenOn": "2014-12-05T11:14:42Z",
       "side": 1,
       "message": "instead of checking length, just do a null check here, that way you don\u0027t have to pass a default value.",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_2c2b3784",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 5085
+      },
+      "writtenOn": "2014-12-05T19:12:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bab6814e_2e25eeaa",
       "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "bab6814e_8c09832f",
+        "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 5085
+      },
+      "writtenOn": "2014-12-05T19:12:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bab6814e_f31c6d79",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bab6814e_d32fa99f",
         "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
         "patchSetId": 6
@@ -64,6 +118,24 @@
       "writtenOn": "2014-12-05T11:08:36Z",
       "side": 1,
       "message": "Please use full qualified imports",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_6c0edf35",
+        "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 5085
+      },
+      "writtenOn": "2014-12-05T19:12:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bab6814e_d32fa99f",
       "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "bab6814e_cc138b5b",
+        "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 5085
+      },
+      "writtenOn": "2014-12-05T19:12:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bab6814e_b32ca5ac",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bab6814e_53129963",
         "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
         "patchSetId": 6
@@ -104,6 +194,24 @@
     },
     {
       "key": {
+        "uuid": "bab6814e_ac10c74f",
+        "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 5085
+      },
+      "writtenOn": "2014-12-05T19:12:54Z",
+      "side": 1,
+      "message": "I am unable to declare the class as \"public final static class\".",
+      "parentUuid": "bab6814e_53129963",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bab6814e_33171553",
         "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
         "patchSetId": 6
@@ -115,6 +223,24 @@
       "writtenOn": "2014-12-05T11:08:36Z",
       "side": 1,
       "message": "Please comment on purpose. Also add @hide annotation on the class itself and the public methods.",
+      "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bab6814e_ec1acf6d",
+        "filename": "src/java/com/android/internal/telephony/uicc/UICCConfig.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 5085
+      },
+      "writtenOn": "2014-12-05T19:12:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bab6814e_33171553",
       "revId": "b87fd34daa5805a3558d15a4bb101bb73f34a911",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
