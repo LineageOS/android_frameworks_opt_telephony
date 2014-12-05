@@ -453,8 +453,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         if (hasChanged) {
             boolean hasBrandOverride = mUiccController.getUiccCard() == null ? false :
                     (mUiccController.getUiccCard().getOperatorBrandOverride() != null);
-            if (!hasBrandOverride && (mCi.getRadioState().isOn()) && (mPhone.isEriFileLoaded())
-                && !mIsSubscriptionFromRuim) {
+            if (!hasBrandOverride && (mCi.getRadioState().isOn()) && (mPhone.isEriFileLoaded())) {
                 String eriText;
                 // Now the CDMAPhone sees the new ServiceState so it can get the
                 // new ERI text
