@@ -1413,6 +1413,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
             mHandoverCall.mConnections.addAll(call.mConnections);
         }
         if (mHandoverCall.mConnections != null) {
+            if (call.getImsCall() != null) {
+                call.getImsCall().close();
+            }
             for (Connection c : mHandoverCall.mConnections) {
                 ((ImsPhoneConnection)c).changeParent(mHandoverCall);
             }
