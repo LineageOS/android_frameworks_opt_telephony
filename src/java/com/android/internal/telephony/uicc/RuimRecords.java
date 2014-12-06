@@ -260,14 +260,15 @@ public final class RuimRecords extends IccRecords {
             return null;
         }
 
-        String imsi = UICCConfig.getImsi();
-        int mnclength = UICCConfig.getMncLength();
-
-        // If we are LTE over CDMA (Verizon), then pull the correct info from SIMRecords
-        if ((TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE)
-             && imsi != null) {
-            log("Overriding with Operator Numeric: " + imsi.substring(0, 3 + mnclength));
-            return imsi.substring(0, 3 + mnclength);
+        if (SystemProperties.getBoolean("ro.telephony.get_imsi_from_sim", false)) {
+            String imsi = UICCConfig.getImsi();
+            int mnclength = UICCConfig.getMncLength();
+ 
+            // If we are LTE over CDMA (Verizon), then pull the correct info from SIMRecords
+            if (imsi != null) {
+                log("Overriding with Operator Numeric: " + imsi.substring(0, 3 + mnclength));
+                return imsi.substring(0, 3 + mnclength);
+            }
         }
 
         if (mMncLength != UNINITIALIZED && mMncLength != UNKNOWN) {
