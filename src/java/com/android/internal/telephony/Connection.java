@@ -114,6 +114,7 @@ public abstract class Connection {
     private int mAudioQuality;
     private int mCallSubstate;
     private android.telecom.Connection.VideoProvider mVideoProvider;
+    public Call.State mPreHandoverState = Call.State.IDLE;
 
     /* Instance Methods */
 
@@ -261,6 +262,14 @@ public abstract class Connection {
         } else {
             return c.getState();
         }
+    }
+
+    /**
+     * If this connection went through handover return the state of the
+     * call that contained this connection before handover.
+     */
+    public Call.State getStateBeforeHandover() {
+        return mPreHandoverState;
     }
 
     /**

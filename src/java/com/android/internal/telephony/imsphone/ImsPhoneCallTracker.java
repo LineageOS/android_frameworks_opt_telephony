@@ -1407,6 +1407,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
     }
 
     private void transferHandoverConnections(ImsPhoneCall call) {
+        if (call.mConnections != null) {
+            for (Connection c : call.mConnections) {
+                c.mPreHandoverState = call.mState;
+                log ("Connection state before handover is " + c.getStateBeforeHandover());
+            }
+        }
         if (mHandoverCall.mConnections == null ) {
             mHandoverCall.mConnections = call.mConnections;
         } else { // Multi-call SRVCC
