@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bab6814e_0f91059a",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 267,
+      "author": {
+        "id": 3671
+      },
+      "writtenOn": "2014-12-06T10:25:55Z",
+      "side": 1,
+      "message": "i wonder if we should consider a prop of its own here, just to be sure we don\u0027t enable this for devices that don\u0027t actually need it (sprint is lteOnCdma)\n\nro.telephony.get_imsi_from_sim_only\n\nor something",
+      "revId": "ed72dc20527938b6a203243ffc443fd8426f7bd1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
