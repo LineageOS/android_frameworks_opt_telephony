@@ -901,6 +901,19 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     private void processCallStateChange(ImsCall imsCall, ImsPhoneCall.State state, int cause) {
         if (DBG) log("processCallStateChange " + imsCall + " state=" + state + " cause=" + cause);
+        // This method is called on onCallUpdate() where there is not necessarily a call state
+        // change. In these situations, we'll ignore the state related updates and only process
+        // the change in media capabilities (as expected).  The default is to not ignore state
+        // changes so we do not change existing behavior.
+        processCallStateChange(imsCall, state, cause, false /* do not ignore state update */);
+    }
+
+    private void processCallStateChange(ImsCall imsCall, ImsPhoneCall.State state, int cause,
+            boolean ignoreState) {
+        if (DBG) {
+            log("processCallStateChange state=" + state + " cause=" + cause
+                    + " ignoreState=" + ignoreState);
+        }
 
         if (imsCall == null) return;
 
@@ -912,13 +925,21 @@ public final class ImsPhoneCallTracker extends CallTracker {
             return;
         }
 
-        changed = conn.update(imsCall, state);
-
-        if (state == ImsPhoneCall.State.DISCONNECTED) {
-            changed = conn.onDisconnect(cause) || changed;
-            //detach the disconnected connections
-            conn.getCall().detach(conn);
-            removeConnection(conn);
+        // processCallStateChange is triggered for onCallUpdated as well.
+        // onCallUpdated should not modify the state of the call
+        // It should modify only other capabilities of call through updateMediaCapabilities
+        // State updates will be triggered through individual callbacks
+        // i.e. onCallHeld, onCallResume, etc and conn.update will be responsible for the update
+        if (ignoreState) {
+            changed = conn.updateMediaCapabilities(imsCall);
+        } else {
+            changed = conn.update(imsCall, state);
+            if (state == ImsPhoneCall.State.DISCONNECTED) {
+                changed = conn.onDisconnect(cause) || changed;
+                //detach the disconnected connections
+                conn.getCall().detach(conn);
+                removeConnection(conn);
+            }
         }
 
         if (changed) {
@@ -1020,7 +1041,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             ImsPhoneConnection conn = findConnection(imsCall);
             if (conn != null) {
                 processCallStateChange(imsCall, conn.getCall().mState,
-                        DisconnectCause.NOT_DISCONNECTED);
+                        DisconnectCause.NOT_DISCONNECTED, true /*ignore state update*/);
             }
         }
 
