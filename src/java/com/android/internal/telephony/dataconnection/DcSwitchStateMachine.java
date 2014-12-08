@@ -162,6 +162,9 @@ public class DcSwitchStateMachine extends StateMachine {
                         log("AttachingState: REQ_CONNECT");
                     }
 
+                    PhoneBase pb = (PhoneBase) ((PhoneProxy) mPhone).getActivePhone();
+                    pb.mCi.setDataAllowed(true, null);
+
                     mAc.replyToMessage(msg, DcSwitchAsyncChannel.RSP_CONNECT,
                             PhoneConstants.APN_REQUEST_STARTED);
                     retVal = HANDLED;
