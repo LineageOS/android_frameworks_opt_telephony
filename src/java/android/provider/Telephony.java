@@ -241,8 +241,7 @@ public final class Telephony {
 
         /**
          * The subscription to which the message belongs to. Its value will be
-         * {@link android.telephony.SubscriptionManager#INVALID_SUBSCRIPTION_ID} if
-         * the sub id cannot be determined.
+         * < 0 if the sub id cannot be determined.
          * <p>Type: INTEGER (long) </p>
          */
         public static final String SUBSCRIPTION_ID = "sub_id";
@@ -1786,8 +1785,7 @@ public final class Telephony {
 
         /**
          * The subscription to which the message belongs to. Its value will be
-         * {@link android.telephony.SubscriptionManager#INVALID_SUBSCRIPTION_ID} if
-         * the sub id cannot be determined.
+         * < 0 if the sub id cannot be determined.
          * <p>Type: INTEGER (long)</p>
          */
         public static final String SUBSCRIPTION_ID = "sub_id";
@@ -2648,8 +2646,7 @@ public final class Telephony {
 
             /**
              * The subscription to which the message belongs to. Its value will be
-             * {@link android.telephony.SubscriptionManager#INVALID_SUBSCRIPTION_ID} if
-             * the sub id cannot be determined.
+             * < 0 if the sub id cannot be determined.
              * <p>Type: INTEGER (long) </p>
              */
             public static final String SUBSCRIPTION_ID = "pending_sub_id";
