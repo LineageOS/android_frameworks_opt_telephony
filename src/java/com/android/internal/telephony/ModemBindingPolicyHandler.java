@@ -113,7 +113,7 @@ public class ModemBindingPolicyHandler extends Handler {
     private static final int NETWORK_MASK_LTE_GSM_WCDMA =
             NETWORK_MASK_LTE_ONLY |
             NETWORK_MASK_GSM_UMTS;
-    private static final int NETWORK_MASK_LTE_CMDA_EVDO_GSM_WCDMA =
+    private static final int NETWORK_MASK_LTE_CDMA_EVDO_GSM_WCDMA =
             NETWORK_MASK_LTE_ONLY |
             NETWORK_MASK_CDMA |
             NETWORK_MASK_GSM_UMTS;
@@ -148,7 +148,7 @@ public class ModemBindingPolicyHandler extends Handler {
             NETWORK_MASK_GSM_UMTS;
     private static final int NETWORK_MASK_TD_SCDMA_LTE_CDMA_EVDO_GSM_WCDMA =
             NETWORK_MASK_TD_SCDMA_ONLY |
-            NETWORK_MASK_LTE_CMDA_EVDO_GSM_WCDMA;
+            NETWORK_MASK_LTE_CDMA_EVDO_GSM_WCDMA;
 
     //***** Events
     private static final int EVENT_MODEM_RAT_CAPS_AVAILABLE = 1;
@@ -528,7 +528,7 @@ public class ModemBindingPolicyHandler extends Handler {
 
             case RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA:
                 supportedRatMaskForNwMode = modemCaps.getSupportedRatBitMask() &
-                        NETWORK_MASK_LTE_CMDA_EVDO_GSM_WCDMA;
+                        NETWORK_MASK_LTE_CDMA_EVDO_GSM_WCDMA;
                 break;
 
             case RILConstants.NETWORK_MODE_LTE_ONLY:
