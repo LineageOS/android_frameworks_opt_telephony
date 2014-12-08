@@ -64,7 +64,9 @@ import com.android.internal.telephony.GsmAlphabet.TextEncodingDetails;
 import com.android.internal.telephony.ImsSMSDispatcher;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -364,13 +366,7 @@ public abstract class SMSDispatcher extends Handler {
         if (ar.exception == null) {
             if (DBG) Rlog.d(TAG, "SMS send complete. Broadcasting intent: " + sentIntent);
 
-            String packageName = tracker.mAppInfo.applicationInfo.packageName;
-            // System UID maps to multiple packages. Try to narrow it
-            // down to an actual sender if possible
-            if (isSystemUid(mContext, packageName) && sentIntent != null &&
-                     sentIntent.getCreatorPackage() != null) {
-                packageName = sentIntent.getCreatorPackage();
-            }
+            String packageName = resolvePackageName(tracker);
 
             if (SmsApplication.shouldWriteMessageForPackage(
                     packageName, mContext)) {
@@ -820,6 +816,15 @@ public abstract class SMSDispatcher extends Handler {
      * @return true if the destination is approved; false if user confirmation event was sent
      */
     boolean checkDestination(SmsTracker tracker) {
+        List<String> ignorePackages = Arrays.asList(
+                mContext.getResources().getStringArray(R.array.config_ignored_sms_packages));
+
+        String packageName = resolvePackageName(tracker);
+
+        if (ignorePackages.contains(packageName)) {
+            return true;
+        }
+
         if (mContext.checkCallingOrSelfPermission(SEND_SMS_NO_CONFIRMATION_PERMISSION)
                 == PackageManager.PERMISSION_GRANTED) {
             return true;            // app is pre-approved to send to short codes
@@ -920,6 +925,25 @@ public abstract class SMSDispatcher extends Handler {
             Rlog.e(TAG, "PackageManager Name Not Found for package " + appPackage);
             return appPackage;  // fall back to package name if we can't get app label
         }
+    }
+
+    /**
+     * Returns the package name from the original creator of the sms, even
+     * if the package is mapped with others in a specific UID (like System UID)
+     *
+     * @param tracker
+     * @return the package name that created the original sms
+     */
+    private String resolvePackageName(SmsTracker tracker) {
+        PendingIntent sentIntent = tracker.mSentIntent;
+        String packageName = tracker.mAppInfo.applicationInfo.packageName;
+        // System UID maps to multiple packages. Try to narrow it
+        // down to an actual sender if possible
+        if (isSystemUid(mContext, packageName) && sentIntent != null &&
+                sentIntent.getCreatorPackage() != null) {
+            packageName = sentIntent.getCreatorPackage();
+        }
+        return packageName;
     }
 
     /**
