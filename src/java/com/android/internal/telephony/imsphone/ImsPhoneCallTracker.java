@@ -942,7 +942,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
     }
 
     private void processCallStateChange(ImsCall imsCall, ImsPhoneCall.State state, int cause) {
-        if (DBG) log("processCallStateChange state=" + state + " cause=" + cause);
+        processCallStateChange(imsCall, state, cause, false);
+    }
+
+    private void processCallStateChange(ImsCall imsCall, ImsPhoneCall.State state, int cause,
+            boolean ignoreState) {
+        if (DBG) {
+            log("processCallStateChange state=" + state + " cause=" + cause
+                    + " ignoreState=" + ignoreState);
+        }
 
         if (imsCall == null) return;
 
@@ -954,13 +962,16 @@ public final class ImsPhoneCallTracker extends CallTracker {
             return;
         }
 
-        changed = conn.update(imsCall, state);
-
-        if (state == ImsPhoneCall.State.DISCONNECTED) {
-            changed = conn.onDisconnect(cause) || changed;
-            //detach the disconnected connections
-            conn.getCall().detach(conn);
-            removeConnection(conn);
+        if (ignoreState) {
+            changed = conn.update(imsCall);
+        } else {
+            changed = conn.update(imsCall, state);
+            if (state == ImsPhoneCall.State.DISCONNECTED) {
+                changed = conn.onDisconnect(cause) || changed;
+                //detach the disconnected connections
+                conn.getCall().detach(conn);
+                removeConnection(conn);
+            }
         }
 
         if (changed) {
@@ -1059,7 +1070,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             ImsPhoneConnection conn = findConnection(imsCall);
             if (conn != null) {
                 processCallStateChange(imsCall, conn.getCall().mState,
-                        DisconnectCause.NOT_DISCONNECTED);
+                        DisconnectCause.NOT_DISCONNECTED, true);
             }
         }
 
