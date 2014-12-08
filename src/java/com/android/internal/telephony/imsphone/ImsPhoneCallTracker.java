@@ -1289,6 +1289,34 @@ public final class ImsPhoneCallTracker extends CallTracker {
         return ut;
     }
 
+    private void transferHandoverConnections(ImsPhoneCall call) {
+        if (call.mConnections != null) {
+            for (Connection c : call.mConnections) {
+                c.mPreHandoverState = call.mState;
+                log ("Connection state before handover is " + c.getStateBeforeHandover());
+            }
+        }
+        if (mHandoverCall.mConnections == null ) {
+            mHandoverCall.mConnections = call.mConnections;
+        } else { // Multi-call SRVCC
+            mHandoverCall.mConnections.addAll(call.mConnections);
+        }
+        if (mHandoverCall.mConnections != null) {
+            if (call.getImsCall() != null) {
+                call.getImsCall().close();
+            }
+            for (Connection c : mHandoverCall.mConnections) {
+                ((ImsPhoneConnection)c).changeParent(mHandoverCall);
+            }
+        }
+        if (call.getState().isAlive()) {
+            log ("Call is alive and state is " + call.mState);
+            mHandoverCall.mState = call.mState;
+        }
+        call.mConnections.clear();
+        call.mState = ImsPhoneCall.State.IDLE;
+    }
+
     /* package */
     void notifySrvccState(Call.SrvccState state) {
         if (DBG) log("notifySrvccState state=" + state);
@@ -1296,12 +1324,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
         mSrvccState = state;
 
         if (mSrvccState == Call.SrvccState.COMPLETED) {
-            if (mForegroundCall.getConnections().size() > 0) {
-                mHandoverCall.switchWith(mForegroundCall);
-            } else if (mBackgroundCall.getConnections().size() > 0) {
-                mHandoverCall.switchWith(mBackgroundCall);
-            }
-
+            transferHandoverConnections(mForegroundCall);
+            transferHandoverConnections(mBackgroundCall);
+            transferHandoverConnections(mRingingCall);
             // release wake lock hold
             ImsPhoneConnection con = mHandoverCall.getHandoverConnection();
             if (con != null) {
