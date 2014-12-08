@@ -1466,6 +1466,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public int getSupportedRadioAccessFamily() {
+        return mCommandsInterface.getSupportedRadioAccessFamily();
+    }
+
+    @Override
     public void registerForRadioCapabilityChanged(Handler h, int what, Object obj) {
         mActivePhone.registerForRadioCapabilityChanged(h, what, obj);
     }
