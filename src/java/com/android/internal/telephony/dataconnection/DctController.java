@@ -493,6 +493,7 @@ public class DctController extends Handler {
             mNetworkFilter[i].setNetworkSpecifier(String.valueOf(subId));
             ((DctController.TelephonyNetworkFactory)mNetworkFactory[i]).evalPendingRequest();
         }
+        processRequests();
     }
 
     private String apnForNetworkRequest(NetworkRequest nr) {
