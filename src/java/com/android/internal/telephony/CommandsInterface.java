@@ -1898,6 +1898,11 @@ public interface CommandsInterface {
      */
     int getRilVersion();
 
+    /**
+     * @return Radio access families supported by the hardware.
+     */
+    int getSupportedRadioAccessFamily();
+
    /**
      * Sets user selected subscription at Modem.
      *

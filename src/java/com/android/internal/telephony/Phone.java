@@ -1899,7 +1899,7 @@ public interface Phone {
     public void shutdownRadio();
 
     /**
-     *  Set phone radio  capability
+     *  Set phone radio capability
      *
      *  @param rc the phone radio capability defined in
      *         RadioCapability. It's a input object used to transfer parameter to logic modem
@@ -1913,6 +1913,13 @@ public interface Phone {
      *  @return a bit mask to identify the radio access family.
      */
     public int getRadioAccessFamily();
+
+    /**
+     *  Get supported phone radio access family
+     *
+     *  @return a bit mask to identify the radio access family.
+     */
+    public int getSupportedRadioAccessFamily();
 
     /**
      * Registers the handler when phone radio  capability is changed.
