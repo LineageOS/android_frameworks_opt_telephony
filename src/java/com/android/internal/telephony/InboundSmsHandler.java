@@ -1164,9 +1164,14 @@ public abstract class InboundSmsHandler extends StateMachine {
                         mSmsFilter.mDestPort, mSmsFilter.mSmsBroadcastReceiver);
             } else {
                 // Drop this SMS.
-                log("SMS filtered");
-                deleteFromRawTable(mSmsFilter.mSmsBroadcastReceiver.mDeleteWhere,
-                        mSmsFilter.mSmsBroadcastReceiver.mDeleteWhereArgs);
+                final long token = Binder.clearCallingIdentity();
+                try {
+                    // Needs phone package permissions.
+                    deleteFromRawTable(mSmsFilter.mSmsBroadcastReceiver.mDeleteWhere,
+                            mSmsFilter.mSmsBroadcastReceiver.mDeleteWhereArgs);
+                } finally {
+                    Binder.restoreCallingIdentity(token);
+                }
                 sendMessage(EVENT_BROADCAST_COMPLETE);
             }
         }
