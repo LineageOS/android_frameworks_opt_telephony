@@ -218,20 +218,22 @@ public class PhoneFactory {
 
     public static Phone getPhone(int phoneId) {
         Phone phone;
+        String dbgInfo = "";
+
         synchronized (sLockProxyPhones) {
             if (!sMadeDefaults) {
                 throw new IllegalStateException("Default phones haven't been made yet!");
                 // CAF_MSIM FIXME need to introduce default phone id ?
             } else if (phoneId == SubscriptionManager.DEFAULT_PHONE_INDEX) {
-                Rlog.d(LOG_TAG, "getPhone: phoneId == DEFAULT_PHONE_ID");
+                dbgInfo = "phoneId == DEFAULT_PHONE_ID return sProxyPhone";
                 phone = sProxyPhone;
             } else {
-                Rlog.d(LOG_TAG, "getPhone: phoneId != DEFAULT_PHONE_ID");
+                dbgInfo = "phoneId != DEFAULT_PHONE_ID return sProxyPhones[phoneId]";
                 phone = (((phoneId >= 0)
                                 && (phoneId < TelephonyManager.getDefault().getPhoneCount()))
                         ? sProxyPhones[phoneId] : null);
             }
-            Rlog.d(LOG_TAG, "getPhone:- phone=" + phone);
+            Rlog.d(LOG_TAG, "getPhone:- " + dbgInfo + " phoneId=" + phoneId + " phone=" + phone);
             return phone;
         }
     }
