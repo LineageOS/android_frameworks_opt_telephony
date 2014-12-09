@@ -170,7 +170,7 @@ public class SubscriptionController extends ISub.Stub {
             if (intent.getAction().equals(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION)) {
                 if (intent.getBooleanExtra(TelephonyIntents.EXTRA_SHOW_PLMN, false)) {
                     String carrierText = intent.getStringExtra(TelephonyIntents.EXTRA_PLMN);
-                    if (intent.getBooleanExtra(TelephonyIntents.EXTRA_SPN, false)) {
+                    if (intent.getBooleanExtra(TelephonyIntents.EXTRA_SHOW_SPN, false)) {
                         // Need to show both plmn and spn.
                         String separator = mContext.getString(
                                 com.android.internal.R.string.kg_text_message_separator).toString();
