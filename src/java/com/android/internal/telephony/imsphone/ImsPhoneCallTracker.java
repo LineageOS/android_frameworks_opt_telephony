@@ -813,14 +813,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    /*package*/ void
-    setMute(boolean mute) {
+    /*package*/ void setMute(boolean mute) {
         mDesiredMute = mute;
         mForegroundCall.setMute(mute);
     }
 
-    /*package*/ boolean
-    getMute() {
+    /*package*/ boolean getMute() {
         return mDesiredMute;
     }
 
@@ -831,11 +829,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
         ImsCall imscall = mForegroundCall.getImsCall();
         if (imscall != null) {
             imscall.sendDtmf(c);
+        } else {
+            loge("sendDtmf : no foreground call");
         }
     }
 
-    /*package*/ void
-    sendDtmf(char c, Message result) {
+    /* package */ void sendDtmf(char c, Message result) {
         if (DBG) log("sendDtmf");
 
         ImsCall imscall = mForegroundCall.getImsCall();
