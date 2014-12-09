@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9abb7d3a_a3bab2be",
+        "filename": "src/java/com/android/internal/telephony/ModemBindingPolicyHandler.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 474,
+      "author": {
+        "id": 3671
+      },
+      "writtenOn": "2014-12-09T19:21:43Z",
+      "side": 1,
+      "message": "spacing",
+      "revId": "541578bf7a33957af6b6dcb02f2879ec02dc3b00",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
