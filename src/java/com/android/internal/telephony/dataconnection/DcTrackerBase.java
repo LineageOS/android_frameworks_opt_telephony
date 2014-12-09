@@ -776,6 +776,7 @@ public abstract class DcTrackerBase extends Handler {
     public void setDataEnabled(boolean enable) {
         Message msg = obtainMessage(DctConstants.CMD_SET_USER_DATA_ENABLE);
         msg.arg1 = enable ? 1 : 0;
+        if (DBG) log("setDataEnabled: sendMessage: enable=" + enable);
         sendMessage(msg);
     }
 
@@ -784,14 +785,20 @@ public abstract class DcTrackerBase extends Handler {
      */
     public boolean getDataEnabled() {
         final ContentResolver resolver = mPhone.getContext().getContentResolver();
+        boolean retVal;
         try {
             int phoneSubId = mPhone.getSubId();
-            return TelephonyManager.getIntWithSubId(resolver, Settings.Global.MOBILE_DATA,
+            retVal = TelephonyManager.getIntWithSubId(resolver, Settings.Global.MOBILE_DATA,
                     phoneSubId) != 0;
+            if (DBG) log("getDataEnabled: getIntWithSubId retVal=" + retVal);
         } catch (SettingNotFoundException snfe) {
-            return "true".equalsIgnoreCase(
+            retVal = "true".equalsIgnoreCase(
                     SystemProperties.get("ro.com.android.mobiledata", "true"));
+            if (DBG) {
+                log("getDataEnabled: system property ro.com.android.mobiledata retVal=" + retVal);
+            }
         }
+        return retVal;
     }
 
     // abstract methods
