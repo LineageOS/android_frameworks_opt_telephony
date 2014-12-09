@@ -679,6 +679,30 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
+    /*package*/ void
+    startDtmf(char c) {
+        if (DBG) log("startDtmf");
+
+        ImsCall imscall = mForegroundCall.getImsCall();
+        if (imscall != null) {
+            imscall.startDtmf(c);
+        } else {
+            loge("startDtmf : no foreground call");
+        }
+    }
+
+    /*package*/ void
+    stopDtmf() {
+        if (DBG) log("stopDtmf");
+
+        ImsCall imscall = mForegroundCall.getImsCall();
+        if (imscall != null) {
+            imscall.stopDtmf();
+        } else {
+            loge("stopDtmf : no foreground call");
+        }
+    }
+
     //***** Called from ImsPhoneConnection
 
     /*package*/ void
