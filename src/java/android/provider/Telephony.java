@@ -1085,6 +1085,16 @@ public final class Telephony {
                 "android.provider.Telephony.SMS_REJECTED";
 
             /**
+             * Broadcast Action: An incoming MMS has been downloaded. The intent is sent to all
+             * users, except for secondary users where SMS has been disabled and to managed
+             * profiles.
+             * @hide
+             */
+            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+            public static final String MMS_DOWNLOADED_ACTION =
+                "android.provider.Telephony.MMS_DOWNLOADED";
+
+            /**
              * Broadcast Action: A new SMS PDU needs to be sent from
              * the device. This intent will only be delivered to a
              * carrier app. That app is responsible for sending the PDU.
