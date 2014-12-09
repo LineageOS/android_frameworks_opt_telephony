@@ -176,6 +176,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
     private int pendingCallClirMode;
     private int pendingCallVideoState;
     private boolean pendingCallInEcm = false;
+    private boolean mSwitchingFgAndBgCalls = false;
+    private ImsCall mCallExpectedToResume = null;
 
     //***** Events
 
@@ -490,8 +492,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 throw new CallStateException("no ims call");
             }
 
+            // Swap the ImsCalls pointed to by the foreground and background ImsPhoneCalls.
+            // If hold or resume later fails, we will swap them back.
+            mSwitchingFgAndBgCalls = true;
+            mCallExpectedToResume = mBackgroundCall.getImsCall();
             mForegroundCall.switchWith(mBackgroundCall);
 
+            // Hold the foreground call; once the foreground call is held, the background call will
+            // be resumed.
             try {
                 imsCall.hold();
             } catch (ImsException e) {
@@ -1027,6 +1035,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 processCallStateChange(imsCall, ImsPhoneCall.State.HOLDING,
                         DisconnectCause.NOT_DISCONNECTED);
                 if (oldState == ImsPhoneCall.State.ACTIVE) {
+                    // Note: This case comes up when we have just held a call in response to a
+                    // switchWaitingOrHoldingAndActive.  We now need to resume the background call.
+                    // The EVENT_RESUME_BACKGROUND causes resumeWaitingOrHolding to be called.
                     if ((mForegroundCall.getState() == ImsPhoneCall.State.HOLDING)
                             || (mRingingCall.getState() == ImsPhoneCall.State.WAITING)) {
 
@@ -1069,6 +1080,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onCallResumed(ImsCall imsCall) {
             if (DBG) log("onCallResumed");
 
+            // If we are the in midst of swapping FG and BG calls and the call we end up resuming
+            // is not the one we expected, we likely had a resume failure and we need to swap the
+            // FG and BG calls back.
+            if (mSwitchingFgAndBgCalls && imsCall != mCallExpectedToResume) {
+                mForegroundCall.switchWith(mBackgroundCall);
+                mSwitchingFgAndBgCalls = false;
+                mCallExpectedToResume = null;
+            }
             processCallStateChange(imsCall, ImsPhoneCall.State.ACTIVE,
                     DisconnectCause.NOT_DISCONNECTED);
         }
@@ -1076,6 +1095,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
         @Override
         public void onCallResumeFailed(ImsCall imsCall, ImsReasonInfo reasonInfo) {
             // TODO : What should be done?
+            // If we are in the midst of swapping the FG and BG calls and we got a resume fail, we
+            // need to swap back the FG and BG calls.
+            if (mSwitchingFgAndBgCalls && imsCall == mCallExpectedToResume) {
+                mForegroundCall.switchWith(mBackgroundCall);
+                mCallExpectedToResume = null;
+                mSwitchingFgAndBgCalls = false;
+            }
+            mPhone.notifySuppServiceFailed(Phone.SuppService.RESUME);
         }
 
         @Override
