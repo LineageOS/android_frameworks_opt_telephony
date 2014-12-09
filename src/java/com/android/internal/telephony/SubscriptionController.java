@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.content.BroadcastReceiver;
+import android.content.ContentProviderClient;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -224,8 +225,7 @@ public class SubscriptionController extends ISub.Stub {
         if(ServiceManager.getService("isub") == null) {
                 ServiceManager.addService("isub", this);
         }
-        mContext.registerReceiver(mReceiver,
-                new IntentFilter(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION));
+        registerReceiverIfNeeded();
 
         if (DBG) logdl("[SubscriptionController] init by Context");
     }
@@ -241,10 +241,22 @@ public class SubscriptionController extends ISub.Stub {
         if(ServiceManager.getService("isub") == null) {
                 ServiceManager.addService("isub", this);
         }
-        mContext.registerReceiver(mReceiver,
-                new IntentFilter(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION));
+        registerReceiverIfNeeded();
 
         if (DBG) logdl("[SubscriptionController] init by Phone");
+    }
+
+    private void registerReceiverIfNeeded() {
+        // We only need to register the broadcast receiver if the URI
+        // where we are going to store the data is valid.
+        // TODO: This can be removed once the SubscriptionController is not running
+        // on devices that don't need it, such as TVs.
+        if (mContext.getPackageManager().resolveContentProvider(
+                SubscriptionManager.CONTENT_URI.getAuthority(), 0) != null) {
+            if (DBG) logd("registering SPN updated receiver");
+            mContext.registerReceiver(mReceiver,
+                    new IntentFilter(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION));
+        }
     }
 
     /**
