@@ -471,7 +471,9 @@ public class ModemBindingPolicyHandler extends Handler {
     private int getNumOfRatSupportedForNwMode(int nwMode,
             ModemCapabilityInfo modemCaps) {
         int supportedRatMaskForNwMode = 0;
-
+        if (modemCaps == null){
+            return supportedRatMaskForNwMode;
+        }
         logd("getNumOfRATsSupportedForNwMode: nwMode[" + nwMode +"] modemCaps = " + modemCaps);
 
         //send result by ANDing corresponding NETWORK MASK and Modem Caps mask.
