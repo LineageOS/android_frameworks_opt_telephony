@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
+
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.IntentFilter;
@@ -34,6 +36,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Pair;
 import android.util.TimeUtils;
 
@@ -44,6 +47,7 @@ import java.util.List;
 
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
+import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
@@ -230,10 +234,40 @@ public abstract class ServiceStateTracker extends Handler {
         public void onSubscriptionsChanged() {
             if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
             // Set the network type, in case the radio does not restore it.
-            if (mPhoneBase.getSubId() != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            int subId = mPhoneBase.getSubId();
+            if (SubscriptionManager.isValidSubId(subId)) {
                 int networkType = PhoneFactory.calculatePreferredNetworkType(
-                        mPhoneBase.getContext(), mPhoneBase.getSubId());
+                        mPhoneBase.getContext(), subId);
                 mCi.setPreferredNetworkType(networkType, null);
+
+                //store OperatorNumeric in case subId is not valid when EVENT_RECORDS_LOADED issued
+                int phoneId = mPhoneBase.getPhoneId();
+                PhoneProxy[] phoneProxys = (PhoneProxy[]) PhoneFactory.getPhones();
+                if(phoneProxys != null && phoneProxys.length > phoneId) {
+                    PhoneProxy phoneProxy = phoneProxys[phoneId];
+                    if(phoneProxy != null) {
+                        IccCardProxy iccCardProxy = phoneProxy.getPhoneIccCardProxy();
+                        if(iccCardProxy != null) {
+                            iccCardProxy.saveOperatorNumeric();
+                            // store alpha
+                            if(iccCardProxy.getIccRecord() != null) {
+                                TelephonyManager.setTelephonyProperty(phoneId,
+                                        PROPERTY_ICC_OPERATOR_ALPHA,
+                                        iccCardProxy.getIccRecord().getServiceProviderName());
+                            } else {
+                                Log.e(LOG_TAG,"IccRecord is null");
+                            }
+                        } else {
+                            Log.e(LOG_TAG,"iccCardProxy is null");
+                        }
+                    }else {
+                        Log.e(LOG_TAG, "Null phoneProxy");
+                    }
+                } else {
+                    Log.e(LOG_TAG, "invalid phoneProxy[] or PhoneId" + phoneId);
+                }
+                mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
+                    ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
             }
         }
     };
