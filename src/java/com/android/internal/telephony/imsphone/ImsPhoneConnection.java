@@ -564,7 +564,9 @@ public class ImsPhoneConnection extends Connection {
             onStartedHolding();
         }
 
-        return mParent.update(this, imsCall, state) || updateMediaCapabilities(imsCall);
+        boolean updateParent = mParent.update(this, imsCall, state);
+        boolean updateMediaCapabilities = updateMediaCapabilities(imsCall);
+        return updateParent || updateMediaCapabilities;
     }
 
     @Override
