@@ -956,6 +956,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
             changed = conn.update(imsCall, state);
             if (state == ImsPhoneCall.State.DISCONNECTED) {
                 changed = conn.onDisconnect(cause) || changed;
+                //detach the disconnected connections
+                conn.getCall().detach(conn);
                 removeConnection(conn);
             }
         }
