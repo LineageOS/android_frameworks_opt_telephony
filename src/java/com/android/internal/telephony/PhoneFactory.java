@@ -33,6 +33,7 @@ import android.telephony.TelephonyManager;
 import com.android.internal.telephony.cdma.CDMALTEPhone;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
+import com.android.internal.telephony.dataconnection.DctController;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -429,6 +430,12 @@ public class PhoneFactory {
             }
             pw.flush();
             pw.println("++++++++++++++++++++++++++++++++");
+        }
+
+        try {
+            DctController.getInstance().dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
         try {

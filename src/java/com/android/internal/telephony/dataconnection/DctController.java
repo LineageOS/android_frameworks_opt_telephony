@@ -701,5 +701,12 @@ public class DctController extends Handler {
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
         pw.flush();
+        pw.println("TelephonyNetworkFactories:");
+        for (NetworkFactory tnf : mNetworkFactory) {
+            pw.println("  " + tnf);
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+        pw.flush();
     }
 }
