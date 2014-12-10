@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9abb7d3a_a92a917c",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 8
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 5085
+      },
+      "writtenOn": "2014-12-10T15:27:40Z",
+      "side": 1,
+      "message": "this isn\u0027t used anymore",
+      "revId": "52e3f40ccfaf5be633abd723893917e4030da883",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9abb7d3a_c92555af",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 8
+      },
+      "lineNbr": 267,
+      "author": {
+        "id": 5085
+      },
+      "writtenOn": "2014-12-10T15:27:40Z",
+      "side": 1,
+      "message": "err, whitespace",
+      "revId": "52e3f40ccfaf5be633abd723893917e4030da883",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9abb7d3a_2910614e",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccCardApplication.java",
+        "patchSetId": 8
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 5085
+      },
+      "writtenOn": "2014-12-10T15:27:40Z",
+      "side": 1,
+      "message": "err, whitespace",
+      "revId": "52e3f40ccfaf5be633abd723893917e4030da883",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
