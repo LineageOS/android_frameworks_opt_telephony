@@ -1088,7 +1088,11 @@ public final class DcTracker extends DcTrackerBase {
         }
 
         IccRecords r = mIccRecords.get();
-        boolean recordsLoaded = (r != null) ? r.getRecordsLoaded() : false;
+        boolean recordsLoaded = false;
+        if (r != null) {
+            recordsLoaded = r.getRecordsLoaded();
+            if (DBG) log("isDataAllowed getRecordsLoaded=" + recordsLoaded);
+        }
         boolean subscriptionFromNv = isNvSubscription();
 
         int dataSub = SubscriptionManager.getDefaultDataSubId();
