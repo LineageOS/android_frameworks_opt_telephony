@@ -28,6 +28,7 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.gsm.GsmCellLocation;
 import android.util.EventLog;
+import java.util.Iterator;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.Call;
@@ -495,9 +496,15 @@ public final class GsmCallTracker extends CallTracker {
                     if (hoConnection != null) {
                         // Single Radio Voice Call Continuity (SRVCC) completed
                         mConnections[i].migrateFrom(hoConnection);
-                        if (!hoConnection.isMultiparty()) {
-                            // Remove only if it is not multiparty
-                            mHandoverConnections.remove(hoConnection);
+                        for (Iterator<Connection> it = mHandoverConnections.iterator();
+                            it.hasNext();) {
+                            Connection c = it.next();
+                            Rlog.i(LOG_TAG, "HO Conn state is " + c.mPreHandoverState);
+                            if (c.mPreHandoverState == mConnections[i].getState()) {
+                                Rlog.i(LOG_TAG, "Removing HO conn "
+                                    + hoConnection + c.mPreHandoverState);
+                                it.remove();
+                            }
                         }
                         mPhone.notifyHandoverStateChanged(mConnections[i]);
                     } else if ( mConnections[i].getCall() == mRingingCall ) { // it's a ringing call
