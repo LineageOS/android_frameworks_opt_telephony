@@ -101,7 +101,7 @@ public class ProxyController {
         mDctController = DctController.makeDctController((PhoneProxy[])phoneProxy, t.getLooper());
         mUiccPhoneBookController = new UiccPhoneBookController(mProxyPhones);
         mPhoneSubInfoController = new PhoneSubInfoController(mProxyPhones);
-        mUiccSmsController = new UiccSmsController(mProxyPhones);
+        //mUiccSmsController = new UiccSmsController(mProxyPhones);
 
         logd("Constructor - Exit");
     }

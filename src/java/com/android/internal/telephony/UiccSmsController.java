@@ -37,6 +37,7 @@ import java.util.List;
  * access Sms in Icc.
  */
 public class UiccSmsController extends ISms.Stub {
+
     static final String LOG_TAG = "RIL_UiccSmsController";
 
     protected Phone[] mPhone;
@@ -370,6 +371,12 @@ public class UiccSmsController extends ISms.Stub {
     // FIXME: Add injectSmsPdu to ISms.aidl
     public void injectSmsPdu(int subId, byte[] pdu, String format, PendingIntent receivedIntent) {
         getIccSmsInterfaceManager(subId).injectSmsPdu(pdu, format, receivedIntent);
+    }
+
+    @Override
+    public void synthesizeMessages(String originatingAddress,
+                                   String scAddress, List<String> messages,
+                                   long timestampMillis) throws RemoteException {
     }
 
     /**
