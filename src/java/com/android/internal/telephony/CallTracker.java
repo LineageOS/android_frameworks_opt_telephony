@@ -25,6 +25,7 @@ import com.android.internal.telephony.CommandException;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 
 
 /**
@@ -41,7 +42,7 @@ public abstract class CallTracker extends Handler {
     protected int mPendingOperations;
     protected boolean mNeedsPoll;
     protected Message mLastRelevantPoll;
-    protected Connection mHandoverConnection;
+    protected ArrayList<Connection> mHandoverConnections = new ArrayList<Connection>();
 
     public CommandsInterface mCi;
 
@@ -93,12 +94,34 @@ public abstract class CallTracker extends Handler {
 
     protected abstract void handlePollCalls(AsyncResult ar);
 
-    protected void notifySrvccState(Call.SrvccState state, Connection c) {
-        if (state == Call.SrvccState.STARTED) {
-            mHandoverConnection = c;
-        } else if (state != Call.SrvccState.COMPLETED) {
-            mHandoverConnection = null;
+    protected Connection getHoConnection(DriverCall dc) {
+        for (Connection hoConn : mHandoverConnections) {
+            log("getHoConnection - compare number: hoConn= " + hoConn.toString());
+            if (hoConn.getAddress() != null && hoConn.getAddress().contains(dc.number)) {
+                log("getHoConnection: Handover connection match found = " + hoConn.toString());
+                return hoConn;
+            }
         }
+        for (Connection hoConn : mHandoverConnections) {
+            log("getHoConnection: compare state hoConn= " + hoConn.toString());
+            if (hoConn.getStateBeforeHandover() == Call.stateFromDCState(dc.state)) {
+                log("getHoConnection: Handover connection match found = " + hoConn.toString());
+                return hoConn;
+            }
+        }
+        return null;
+    }
+
+    protected void notifySrvccState(Call.SrvccState state, ArrayList<Connection> c) {
+        if (state == Call.SrvccState.STARTED && c != null) {
+            // SRVCC started. Prepare handover connections list
+            mHandoverConnections.addAll(c);
+        } else if (state != Call.SrvccState.COMPLETED) {
+            // SRVCC FAILED/CANCELED. Clear the handover connections list
+            // Individual connections will be removed from the list in handlePollCalls()
+            mHandoverConnections.clear();
+        }
+        log("notifySrvccState: mHandoverConnections= " + mHandoverConnections.toString());
     }
 
     protected void handleRadioAvailable() {
