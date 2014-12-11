@@ -224,8 +224,9 @@ public class ProxyController {
      * @param rafs an RadioAccessFamily array to indicate all phone's
      *        new radio access family. The length of RadioAccessFamily
      *        must equal to phone count.
+     * @return false if another session is already active and the request is rejected.
      */
-    public void setRadioCapability(RadioAccessFamily[] rafs) {
+    public boolean setRadioCapability(RadioAccessFamily[] rafs) {
         if (rafs.length != mProxyPhones.length) {
             throw new RuntimeException("Length of input rafs must equal to total phone count");
         }
@@ -237,7 +238,9 @@ public class ProxyController {
                 logd("setRadioCapability: mSetRadioAccessFamilyStatus[" + i + "]="
                         + mSetRadioAccessFamilyStatus[i]);
                 if (mSetRadioAccessFamilyStatus[i] != SET_RC_STATUS_IDLE) {
-                    throw new RuntimeException("setRadioCapability: Phone" + i + " is not idle");
+                    // TODO: The right behaviour is to cancel previous request and send this.
+                    loge("setRadioCapability: Phone[" + i + "] is not idle. Rejecting request.");
+                    return false;
                 }
             }
         }
@@ -282,6 +285,8 @@ public class ProxyController {
                         EVENT_START_RC_RESPONSE);
             }
         }
+
+        return true;
     }
 
     private Handler mHandler = new Handler() {
@@ -594,6 +599,10 @@ public class ProxyController {
 
     private void logd(String string) {
         Rlog.d(LOG_TAG, string);
+    }
+
+    private void loge(String string) {
+        Rlog.e(LOG_TAG, string);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
