@@ -644,6 +644,25 @@ public interface Phone {
     public void unregisterForSimRecordsLoaded(Handler h);
 
     /**
+     * Register for TTY mode change notifications from the network.
+     * Message.obj will contain an AsyncResult.
+     * AsyncResult.result will be an Integer containing new mode.
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForTtyModeReceived(Handler h, int what, Object obj);
+
+    /**
+     * Unregisters for TTY mode change notifications.
+     * Extraneous calls are tolerated silently
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForTtyModeReceived(Handler h);
+
+    /**
      * Returns SIM record load state. Use
      * <code>getSimCard().registerForReady()</code> for change notification.
      *
