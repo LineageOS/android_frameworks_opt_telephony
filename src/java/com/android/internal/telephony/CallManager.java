@@ -87,6 +87,7 @@ public final class CallManager {
     private static final int EVENT_SUPP_SERVICE_NOTIFY = 121;
     // FIXME Taken from klp-sprout-dev but setAudioMode was removed in L.
     //private static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE = 121;
+    private static final int EVENT_TTY_MODE_RECEIVED = 122;
 
     // Singleton instance
     private static final CallManager INSTANCE = new CallManager();
@@ -191,6 +192,9 @@ public final class CallManager {
     = new RegistrantList();
 
     protected final RegistrantList mActiveSubChangeRegistrants
+    = new RegistrantList();
+
+    protected final RegistrantList mTtyModeReceivedRegistrants
     = new RegistrantList();
 
     private CallManager() {
@@ -659,6 +663,7 @@ public final class CallManager {
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
             phone.registerForOnHoldTone(handler, EVENT_ONHOLD_TONE, null);
             phone.registerForSuppServiceFailed(handler, EVENT_SUPP_SERVICE_FAILED, null);
+            phone.registerForTtyModeReceived(handler, EVENT_TTY_MODE_RECEIVED, null);
         }
     }
 
@@ -687,6 +692,7 @@ public final class CallManager {
         phone.unregisterForMmiComplete(handler);
         phone.unregisterForSuppServiceFailed(handler);
         phone.unregisterForServiceStateChanged(handler);
+        phone.unregisterForTtyModeReceived(handler);
         // FIXME Taken from klp-sprout-dev but setAudioMode was removed in L.
         //phone.unregisterForRadioOffOrNotAvailable(handler);
 
@@ -1834,6 +1840,29 @@ public final class CallManager {
         mPostDialCharacterRegistrants.remove(h);
     }
 
+    /**
+     * Register for TTY mode change notifications from the network.
+     * Message.obj will contain an AsyncResult.
+     * AsyncResult.result will be an Integer containing new mode.
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForTtyModeReceived(Handler h, int what, Object obj){
+        mTtyModeReceivedRegistrants.addUnique(h, what, obj);
+    }
+
+    /**
+     * Unregisters for TTY mode change notifications.
+     * Extraneous calls are tolerated silently
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForTtyModeReceived(Handler h) {
+        mTtyModeReceivedRegistrants.remove(h);
+    }
+
     /* APIs to access foregroudCalls, backgroudCalls, and ringingCalls
      * 1. APIs to access list of calls
      * 2. APIs to check if any active call, which has connection other than
@@ -2424,6 +2453,10 @@ public final class CallManager {
                 case EVENT_ONHOLD_TONE:
                     if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_ONHOLD_TONE)");
                     mOnHoldToneRegistrants.notifyRegistrants((AsyncResult) msg.obj);
+                    break;
+                case EVENT_TTY_MODE_RECEIVED:
+                    if (VDBG) Rlog.d(LOG_TAG, " handleMessage (EVENT_TTY_MODE_RECEIVED)");
+                    mTtyModeReceivedRegistrants.notifyRegistrants((AsyncResult) msg.obj);
                     break;
                 /* FIXME Taken from klp-sprout-dev but setAudioMode was removed in L.
                 case EVENT_RADIO_OFF_OR_NOT_AVAILABLE:

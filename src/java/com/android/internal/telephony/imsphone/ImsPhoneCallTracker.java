@@ -1405,6 +1405,11 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 mAddPartResp = null;
             }
         }
+
+        @Override
+        public void onCallSessionTtyModeReceived(ImsCall call, int mode) {
+            mPhone.onTtyModeReceived(mode);
+        }
     };
 
     /**
