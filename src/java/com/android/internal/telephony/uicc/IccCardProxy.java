@@ -224,6 +224,28 @@ public class IccCardProxy extends Handler implements IccCard {
         }
     }
 
+    public void saveOperatorNumeric() {
+        if (mIccRecords != null) {
+            String operator = mIccRecords.getOperatorNumeric();
+            int slotId = mCardIndex;
+
+            log("operator=" + operator + " slotId=" + slotId);
+            if (operator != null) {
+                log("update icc_operator_numeric=" + operator);
+                setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, slotId, operator);
+                String countryCode = operator.substring(0,3);
+                if (countryCode != null) {
+                    setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, slotId,
+                            MccTable.countryCodeForMcc(Integer.parseInt(countryCode)));
+                } else {
+                    loge("EVENT_RECORDS_LOADED Country code is null");
+                }
+            } else {
+                loge("EVENT_RECORDS_LOADED Operator name is null");
+            }
+        }
+    }
+
     @Override
     public void handleMessage(Message msg) {
         switch (msg.what) {
@@ -256,22 +278,10 @@ public class IccCardProxy extends Handler implements IccCard {
                 break;
             case EVENT_RECORDS_LOADED:
                 if (mIccRecords != null) {
+                    saveOperatorNumeric();
                     String operator = mIccRecords.getOperatorNumeric();
-                    int slotId = mCardIndex;
-
-                    log("operator=" + operator + " slotId=" + slotId);
-
-                    if (operator != null) {
-                        log("update icc_operator_numeric=" + operator);
-                        setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, slotId, operator);
-                        String countryCode = operator.substring(0,3);
-                        if (countryCode != null) {
-                            setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, slotId,
-                                    MccTable.countryCodeForMcc(Integer.parseInt(countryCode)));
-                        } else {
-                            loge("EVENT_RECORDS_LOADED Country code is null");
-                        }
-
+                    if(operator != null) {
+                        int slotId = mCardIndex;
                         int[] subId = SubscriptionController.getInstance().getSubId(slotId);
                         if (subId != null) {
                             // Update MCC MNC device configuration information only for default sub.
@@ -281,7 +291,7 @@ public class IccCardProxy extends Handler implements IccCard {
                                         + " config for default subscription.");
                                 MccTable.updateMccMncConfiguration(mContext, operator, false);
                             }
-                            SubscriptionController.getInstance().setMccMnc(operator, subId[0]);
+                            SubscriptionController.getInstance().setMccMnc(operator,subId[0]);
                         } else {
                             loge("EVENT_RECORDS_LOADED no available subId is null");
                         }
@@ -894,6 +904,9 @@ public class IccCardProxy extends Handler implements IccCard {
         }
     }
 
+    public IccRecords getIccRecord() {
+        return mIccRecords;
+    }
     private void log(String s) {
         Rlog.d(LOG_TAG, s);
     }
