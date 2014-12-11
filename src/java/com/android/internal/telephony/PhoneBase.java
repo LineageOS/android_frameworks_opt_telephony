@@ -591,7 +591,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     private void handleSrvccStateChanged(int[] ret) {
         Rlog.d(LOG_TAG, "handleSrvccStateChanged");
 
-        Connection conn = null;
+        ArrayList<Connection> conn = null;
         ImsPhone imsPhone = mImsPhone;
         Call.SrvccState srvccState = Call.SrvccState.NONE;
         if (ret != null && ret.length != 0) {
@@ -601,6 +601,7 @@ public abstract class PhoneBase extends Handler implements Phone {
                     srvccState = Call.SrvccState.STARTED;
                     if (imsPhone != null) {
                         conn = imsPhone.getHandoverConnection();
+                        migrateFrom(imsPhone);
                     } else {
                         Rlog.d(LOG_TAG, "HANDOVER_STARTED: mImsPhone null");
                     }
