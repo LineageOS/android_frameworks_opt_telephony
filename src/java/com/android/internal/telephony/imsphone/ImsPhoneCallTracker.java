@@ -666,24 +666,21 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    /*package*/ void
-    setMute(boolean mute) {
+    /*package*/ void setMute(boolean mute) {
         mDesiredMute = mute;
         mForegroundCall.setMute(mute);
     }
 
-    /*package*/ boolean
-    getMute() {
+    /*package*/ boolean getMute() {
         return mDesiredMute;
     }
 
-    /*package*/ void
-    sendDtmf(char c) {
+    /* package */ void sendDtmf(char c, Message result) {
         if (DBG) log("sendDtmf");
 
         ImsCall imscall = mForegroundCall.getImsCall();
         if (imscall != null) {
-            imscall.sendDtmf(c);
+            imscall.sendDtmf(c, result);
         }
     }
 
