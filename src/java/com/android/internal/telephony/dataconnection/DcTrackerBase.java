@@ -488,7 +488,7 @@ public abstract class DcTrackerBase extends Handler {
 
         // Stop reconnect if not current subId is not correct.
         // FIXME STOPSHIP - phoneSubId is coming up as -1 way after boot and failing this?
-        if (!SubscriptionManager.isValidSubId(currSubId) || (currSubId != phoneSubId)) {
+        if (!SubscriptionManager.isValidSubscriptionId(currSubId) || (currSubId != phoneSubId)) {
             log("receive ReconnectAlarm but subId incorrect, ignore");
             return;
         }
