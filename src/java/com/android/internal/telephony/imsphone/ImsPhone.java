@@ -515,7 +515,7 @@ public class ImsPhone extends ImsPhoneBase {
                     "sendDtmf called with invalid character '" + c + "'");
         } else {
             if (mCT.mState ==  PhoneConstants.State.OFFHOOK) {
-                mCT.sendDtmf(c);
+                mCT.sendDtmf(c, null);
             }
         }
     }
