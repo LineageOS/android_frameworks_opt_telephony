@@ -387,7 +387,7 @@ public class DctController extends Handler {
 
     private void onReleaseRequest(RequestInfo requestInfo) {
         logd("onReleaseRequest request=" + requestInfo);
-        if (requestInfo.executed) {
+        if (requestInfo != null && requestInfo.executed) {
             String apn = apnForNetworkRequest(requestInfo.request);
             int phoneId = getRequestPhoneId(requestInfo.request);
             PhoneBase phoneBase = (PhoneBase)mPhones[phoneId].getActivePhone();
