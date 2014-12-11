@@ -724,7 +724,8 @@ public class SubscriptionController extends ISub.Stub {
                     // If mSlotIdToSubIdMap already has a valid subId for a slotId/phoneId,
                     // do not add another subId for same slotId/phoneId.
                     Integer currentSubId = mSlotIdxToSubId.get(slotId);
-                    if (currentSubId == null || !SubscriptionManager.isValidSubId(currentSubId)) {
+                    if (currentSubId == null
+                            || !SubscriptionManager.isValidSubscriptionId(currentSubId)) {
                         // TODO While two subs active, if user deactivats first
                         // one, need to update the default subId with second one.
 
@@ -742,7 +743,8 @@ public class SubscriptionController extends ISub.Stub {
                         }
 
                         // Set the default sub if not set or if single sim device
-                        if (!SubscriptionManager.isValidSubId(defaultSubId) || subIdCountMax == 1) {
+                        if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
+                                || subIdCountMax == 1) {
                             setDefaultSubId(subId);
                         }
                         // If single sim device, set this subscription as the default for everything
@@ -981,7 +983,7 @@ public class SubscriptionController extends ISub.Stub {
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             subId = getDefaultSubId();
         }
-        if (!SubscriptionManager.isValidSubId(subId)) {
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
             if (DBG) logd("[getSlotId]- subId invalid");
             return SubscriptionManager.INVALID_SIM_SLOT_INDEX;
         }
@@ -1079,7 +1081,7 @@ public class SubscriptionController extends ISub.Stub {
             if (DBG) logdl("[getPhoneId] asked for default subId=" + subId);
         }
 
-        if (!SubscriptionManager.isValidSubId(subId)) {
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
             if (DBG) {
                 logdl("[getPhoneId]- invalid subId return="
                         + SubscriptionManager.INVALID_PHONE_INDEX);
@@ -1331,7 +1333,7 @@ public class SubscriptionController extends ISub.Stub {
             throw new RuntimeException("setDefaultSubId called with DEFAULT_SUB_ID");
         }
         if (DBG) logdl("[setDefaultSubId] subId=" + subId);
-        if (SubscriptionManager.isValidSubId(subId)) {
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
             int phoneId = getPhoneId(subId);
             if (phoneId >= 0 && (phoneId < TelephonyManager.getDefault().getPhoneCount()
                     || TelephonyManager.getDefault().getSimCount() == 1)) {
@@ -1383,9 +1385,8 @@ public class SubscriptionController extends ISub.Stub {
             if (DBG) logdl("[shouldDefaultBeCleared] return true no records subId=" + subId);
             return true;
         }
-        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-            // If the subId parameter is INVALID_SUBSCRIPTION_ID its
-            // already cleared so return false.
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+            // If the subId parameter is not valid its already cleared so return false.
             if (DBG) logdl("[shouldDefaultBeCleared] return false only one subId, subId=" + subId);
             return false;
         }
@@ -1462,7 +1463,7 @@ public class SubscriptionController extends ISub.Stub {
 
     private void validateSubId(int subId) {
         if (DBG) logd("validateSubId subId: " + subId);
-        if (!SubscriptionManager.isValidSubId(subId)) {
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) {
             throw new RuntimeException("Invalid sub id passed as parameter");
         } else if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             throw new RuntimeException("Default sub id passed as parameter");

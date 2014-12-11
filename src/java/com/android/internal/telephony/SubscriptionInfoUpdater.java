@@ -145,7 +145,7 @@ public class SubscriptionInfoUpdater extends Handler {
                     int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
                             SubscriptionManager.INVALID_SUBSCRIPTION_ID);
 
-                    if (SubscriptionManager.isValidSubId(subId)) {
+                    if (SubscriptionManager.isValidSubscriptionId(subId)) {
                         String msisdn = TelephonyManager.getDefault()
                                 .getLine1NumberForSubscriber(subId);
                         ContentResolver contentResolver = mContext.getContentResolver();
