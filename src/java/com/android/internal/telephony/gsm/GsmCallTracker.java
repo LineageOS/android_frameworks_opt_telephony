@@ -490,15 +490,17 @@ public final class GsmCallTracker extends CallTracker {
                 } else {
                     mConnections[i] = new GsmConnection(mPhone.getContext(), dc, this, i);
 
-                    // it's a ringing call
-                    if (mConnections[i].getCall() == mRingingCall) {
-                        newRinging = mConnections[i];
-                    } else if (mHandoverConnection != null) {
+                    Connection hoConnection = getHoConnection(dc);
+                    if (hoConnection != null) {
                         // Single Radio Voice Call Continuity (SRVCC) completed
-                        mPhone.migrateFrom((PhoneBase) mPhone.getImsPhone());
-                        mConnections[i].migrateFrom(mHandoverConnection);
+                        mConnections[i].migrateFrom(hoConnection);
+                        if (!hoConnection.isMultiparty()) {
+                            // Remove only if it is not multiparty
+                            mHandoverConnections.remove(hoConnection);
+                        }
                         mPhone.notifyHandoverStateChanged(mConnections[i]);
-                        mHandoverConnection = null;
+                    } else if ( mConnections[i].getCall() == mRingingCall ) { // it's a ringing call
+                        newRinging = mConnections[i];
                     } else {
                         // Something strange happened: a call appeared
                         // which is neither a ringing call or one we created.
