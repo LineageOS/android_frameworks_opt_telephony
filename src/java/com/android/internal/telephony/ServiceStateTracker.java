@@ -235,7 +235,7 @@ public abstract class ServiceStateTracker extends Handler {
             if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
             // Set the network type, in case the radio does not restore it.
             int subId = mPhoneBase.getSubId();
-            if (SubscriptionManager.isValidSubId(subId)) {
+            if (SubscriptionManager.isValidSubscriptionId(subId)) {
                 int networkType = PhoneFactory.calculatePreferredNetworkType(
                         mPhoneBase.getContext(), subId);
                 mCi.setPreferredNetworkType(networkType, null);
