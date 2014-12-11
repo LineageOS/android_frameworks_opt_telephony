@@ -1489,6 +1489,9 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone.unregisterForRadioCapabilityChanged(h);
     }
 
+    public IccCardProxy getPhoneIccCardProxy() {
+        return mIccCardProxy;
+    }
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         try {
             ((PhoneBase)mActivePhone).dump(fd, pw, args);
