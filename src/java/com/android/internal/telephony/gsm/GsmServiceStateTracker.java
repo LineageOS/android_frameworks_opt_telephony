@@ -918,8 +918,12 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 setSignalStrengthDefaultValues();
                 mGotCountryCode = false;
                 mNitzUpdatedTime = false;
-                pollStateDone();
+                if (!isIwlanFeatureAvailable()
+                    || (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                        != mSS.getRilDataRadioTechnology())) {
+                    pollStateDone();
 
+                }
                 /**
                  * If iwlan feature is enabled then we do get
                  * voice_network_change indication from RIL. At this moment we
@@ -1015,23 +1019,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         boolean needNotifyData = (mSS.getCssIndicator() != mNewSS.getCssIndicator());
 
-        if (mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
-            boolean resetIwlanRatVal = false;
-            log("set service state as POWER_OFF");
-            if (isIwlanFeatureAvailable()
-                    && (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
-                        == mNewSS.getRilDataRadioTechnology())) {
-                log("pollStateDone: mNewSS = " + mNewSS);
-                log("pollStateDone: reset iwlan RAT value");
-                resetIwlanRatVal = true;
-            }
-            mNewSS.setStateOff();
-            if (resetIwlanRatVal) {
-                mNewSS.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN);
-                log("pollStateDone: mNewSS = " + mNewSS);
-                resetIwlanRatVal = false;
-            }
-        }
+        resetServiceStateInIwlanMode();
 
         // Add an event log when connection state changes
         if (hasVoiceRegStateChanged || hasDataRegStateChanged) {
