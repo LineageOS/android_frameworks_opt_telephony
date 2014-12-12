@@ -862,6 +862,14 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
+    public void registerForTtyModeReceived(Handler h, int what, Object obj) {
+    }
+
+    @Override
+    public void unregisterForTtyModeReceived(Handler h) {
+    }
+
+    @Override
     public void setNetworkSelectionModeAutomatic(Message response) {
         // wrap the response message in our own message along with
         // an empty string (to indicate automatic selection) for the

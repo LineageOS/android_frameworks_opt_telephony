@@ -649,6 +649,16 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public void registerForTtyModeReceived(Handler h, int what, Object obj) {
+        mActivePhone.registerForTtyModeReceived(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForTtyModeReceived(Handler h) {
+        mActivePhone.unregisterForTtyModeReceived(h);
+    }
+
+    @Override
     public boolean getIccRecordsLoaded() {
         return mIccCardProxy.getIccRecordsLoaded();
     }
