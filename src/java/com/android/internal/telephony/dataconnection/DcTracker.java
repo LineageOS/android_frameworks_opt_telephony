@@ -712,6 +712,8 @@ public final class DcTracker extends DcTrackerBase {
             attachedState = true;
             psRestricted = false;
         }
+        int dataSub = SubscriptionManager.getDefaultDataSubId();
+        boolean defaultDataSelected = SubscriptionManager.isValidSubscriptionId(dataSub);
 
         boolean allowed =
                     (attachedState || mAutoAttachOnCreation) &&
