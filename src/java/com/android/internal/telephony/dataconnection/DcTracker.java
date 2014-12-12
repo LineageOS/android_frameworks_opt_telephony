@@ -703,7 +703,11 @@ public final class DcTracker extends DcTrackerBase {
         boolean attachedState = mAttached.get();
         boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
         IccRecords r = mIccRecords.get();
-        boolean recordsLoaded = (r != null) ? r.getRecordsLoaded() : false;
+        boolean recordsLoaded = false;
+        if (r != null) {
+            recordsLoaded = r.getRecordsLoaded();
+            if (DBG) log("isDataAllowed getRecordsLoaded=" + recordsLoaded);
+        }
 
         //FIXME always attach
         boolean psRestricted = mIsPsRestricted;
@@ -712,6 +716,8 @@ public final class DcTracker extends DcTrackerBase {
             attachedState = true;
             psRestricted = false;
         }
+        int dataSub = SubscriptionManager.getDefaultDataSubId();
+        boolean defaultDataSelected = SubscriptionManager.isValidSubId(dataSub);
 
         boolean allowed =
                     (attachedState || mAutoAttachOnCreation) &&
@@ -719,6 +725,7 @@ public final class DcTracker extends DcTrackerBase {
                     (mPhone.getState() == PhoneConstants.State.IDLE ||
                      mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
                     internalDataEnabled &&
+                    defaultDataSelected &&
                     (!mPhone.getServiceState().getDataRoaming() || getDataOnRoamingEnabled()) &&
                     //!mIsPsRestricted &&
                     !psRestricted &&
@@ -735,6 +742,7 @@ public final class DcTracker extends DcTrackerBase {
                 reason += " - Concurrent voice and data not allowed";
             }
             if (!internalDataEnabled) reason += " - mInternalDataEnabled= false";
+            if (!defaultDataSelected) reason += " - defaultDataSelected= false";
             if (mPhone.getServiceState().getDataRoaming() && !getDataOnRoamingEnabled()) {
                 reason += " - Roaming and data roaming not enabled";
             }
