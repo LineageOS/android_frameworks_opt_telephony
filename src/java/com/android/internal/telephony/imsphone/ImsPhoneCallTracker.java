@@ -1156,6 +1156,11 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 conn.updateConferenceParticipants(participants);
             }
         }
+
+        @Override
+        public void onCallSessionTtyModeReceived(ImsCall call, int mode) {
+            mPhone.onTtyModeReceived(mode);
+        }
     };
 
     /**
