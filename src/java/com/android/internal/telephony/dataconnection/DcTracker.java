@@ -3062,13 +3062,13 @@ public final class DcTracker extends DcTrackerBase {
 
         log("setPreferredApn: delete");
         ContentResolver resolver = mPhone.getContext().getContentResolver();
-        resolver.delete(PREFERAPN_NO_UPDATE_URI, null, null);
+        resolver.delete(getUri(PREFERAPN_NO_UPDATE_URI), null, null);
 
         if (pos >= 0) {
             log("setPreferredApn: insert");
             ContentValues values = new ContentValues();
             values.put(APN_ID, pos);
-            resolver.insert(PREFERAPN_NO_UPDATE_URI, values);
+            resolver.insert(getUri(PREFERAPN_NO_UPDATE_URI), values);
         }
     }
 
@@ -3079,7 +3079,7 @@ public final class DcTracker extends DcTrackerBase {
         }
 
         Cursor cursor = mPhone.getContext().getContentResolver().query(
-                PREFERAPN_NO_UPDATE_URI, new String[] { "_id", "name", "apn" },
+                getUri(PREFERAPN_NO_UPDATE_URI), new String[] { "_id", "name", "apn" },
                 null, null, Telephony.Carriers.DEFAULT_SORT_ORDER);
 
         if (cursor != null) {
@@ -3591,4 +3591,9 @@ public final class DcTracker extends DcTrackerBase {
             }
         }
     }
+
+    private Uri getUri(Uri uri) {
+        return Uri.withAppendedPath(uri, "/subId/" + mSubId);
+    }
+
 }
