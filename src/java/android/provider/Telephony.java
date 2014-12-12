@@ -2441,6 +2441,13 @@ public final class Telephony {
         }
 
         /**
+         * The column that specifies number of messages of type.
+         * @hide
+         */
+        public static final String TRANSPORT_TYPE_COUNT_COLUMN =
+                "transport_type_count";
+
+        /**
          * The column to distinguish SMS and MMS messages in query results.
          */
         public static final String TYPE_DISCRIMINATOR_COLUMN =
