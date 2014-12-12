@@ -446,13 +446,18 @@ public class SubscriptionController extends ISub.Stub {
         enforceSubscriptionPermission();
 
         List<SubscriptionInfo> subList = getActiveSubscriptionInfoList();
-        for (SubscriptionInfo si : subList) {
-            if (si.getSubscriptionId() == subId) {
-                if (DBG) logd("[getActiveSubInfoForSubscriber]+ subId=" + subId + " subInfo=" + si);
-                return si;
+        if (subList != null) {
+            for (SubscriptionInfo si : subList) {
+                if (si.getSubscriptionId() == subId) {
+                    if (DBG) logd("[getActiveSubInfoForSubscriber]+ subId=" + subId + " subInfo=" + si);
+                    return si;
+                }
             }
         }
-        if (DBG) logd("[getActiveSubInfoForSubscriber]+ subId=" + subId + " subInfo=null");
+        if (DBG) {
+            logd("[getActiveSubInfoForSubscriber]- subId=" + subId
+                    + " subList=" + subList + " subInfo=null");
+        }
         return null;
     }
 
@@ -466,13 +471,18 @@ public class SubscriptionController extends ISub.Stub {
         enforceSubscriptionPermission();
 
         List<SubscriptionInfo> subList = getActiveSubscriptionInfoList();
-        for (SubscriptionInfo si : subList) {
-            if (si.getIccId() == iccId) {
-                if (DBG) logd("[getActiveSubInfoUsingIccId]+ iccId=" + iccId + " subInfo=" + si);
-                return si;
+        if (subList != null) {
+            for (SubscriptionInfo si : subList) {
+                if (si.getIccId() == iccId) {
+                    if (DBG) logd("[getActiveSubInfoUsingIccId]+ iccId=" + iccId + " subInfo=" + si);
+                    return si;
+                }
             }
         }
-        if (DBG) logd("[getActiveSubInfoUsingIccId]+ iccId=" + iccId + " subInfo=null");
+        if (DBG) {
+            logd("[getActiveSubInfoUsingIccId]+ iccId=" + iccId
+                    + " subList=" + subList + " subInfo=null");
+        }
         return null;
     }
 
