@@ -372,7 +372,7 @@ public class ImsPhoneConnection extends Connection {
     }
 
     /** Called when the connection has been disconnected */
-    /*package*/ boolean
+    public boolean
     onDisconnect(int cause) {
         Rlog.d(LOG_TAG, "onDisconnect: cause=" + cause);
         if (mCause != DisconnectCause.LOCAL) mCause = cause;
