@@ -488,6 +488,10 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone.notifyNewRingingConnectionP(c);
     }
 
+    void notifyUnknownConnection(Connection c) {
+        mDefaultPhone.notifyUnknownConnectionP(c);
+    }
+
     public void notifyForVideoCapabilityChanged(boolean isVideoCapable) {
         mIsVideoCapable = isVideoCapable;
         mDefaultPhone.notifyForVideoCapabilityChanged(isVideoCapable);

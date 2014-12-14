@@ -1775,6 +1775,12 @@ public abstract class PhoneBase extends Handler implements Phone {
         mNewRingingConnectionRegistrants.notifyRegistrants(ar);
     }
 
+    /**
+     * Notify registrants of a new unknown connection.
+     */
+    public void notifyUnknownConnectionP(Connection cn) {
+        mUnknownConnectionRegistrants.notifyResult(cn);
+    }
 
     /**
      * Notify registrants if phone is video capable.
