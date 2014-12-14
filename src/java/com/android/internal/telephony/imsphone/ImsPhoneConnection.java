@@ -636,7 +636,12 @@ public class ImsPhoneConnection extends Connection {
         }
 
         changed = mParent.update(this, imsCall, state);
+        return (update(imsCall) || changed);
+    }
 
+    /*package*/ boolean
+    update(ImsCall imsCall) {
+        boolean changed = false;
         if (imsCall != null) {
             // Check for a change in the video capabilities for the call and update the
             // {@link ImsPhoneConnection} with this information.
