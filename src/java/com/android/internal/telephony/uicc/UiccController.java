@@ -22,6 +22,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.SystemProperties;
 import android.telephony.TelephonyManager;
 import android.telephony.Rlog;
 
@@ -85,6 +86,8 @@ public class UiccController extends Handler {
     private static final int EVENT_RADIO_UNAVAILABLE = 3;
     private static final int EVENT_SIM_REFRESH = 4;
 
+    private static final String DECRYPT_STATE = "trigger_restart_framework";
+
     private CommandsInterface[] mCis;
     private UiccCard[] mUiccCards = new UiccCard[TelephonyManager.getDefault().getPhoneCount()];
 
@@ -113,7 +116,11 @@ public class UiccController extends Handler {
             Integer index = new Integer(i);
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, index);
             // TODO remove this once modem correctly notifies the unsols
-            mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
+            if (DECRYPT_STATE.equals(SystemProperties.get("vold.decrypt"))) {
+                mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
+            } else {
+                mCis[i].registerForOn(this, EVENT_ICC_STATUS_CHANGED, index);
+            }
             mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, index);
             mCis[i].registerForIccRefresh(this, EVENT_SIM_REFRESH, index);
         }
