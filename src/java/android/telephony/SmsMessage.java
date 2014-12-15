@@ -555,7 +555,7 @@ public class SmsMessage {
      * form or null if unavailable
      */
     public String getOriginatingAddress() {
-        return mWrappedSmsMessage.getOriginatingAddress();
+        return mWrappedSmsMessage != null ? mWrappedSmsMessage.getOriginatingAddress() : null;
     }
 
     /**
