@@ -48,6 +48,12 @@ public class ApnContext {
 
     private ArrayList<ApnSetting> mWaitingApns = null;
 
+    /**
+     * Used to check if conditions (new RAT) are resulting in a new list which warrants a retry.
+     * Set in the last trySetupData call.
+     */
+    private ArrayList<ApnSetting> mOriginalWaitingApns = null;
+
     public final int priority;
 
     /** A zero indicates that all waiting APNs had a permanent error */
@@ -75,6 +81,12 @@ public class ApnContext {
     AtomicBoolean mDependencyMet;
 
     private final DcTrackerBase mDcTracker;
+
+    /**
+     * Remember this as a change in this value to a more permissive state
+     * should cause us to retry even permanent failures
+     */
+    private boolean mConcurrentVoiceAndDataAllowed;
 
     public ApnContext(Context context, String apnType, String logTag, NetworkConfig config,
             DcTrackerBase tracker) {
@@ -126,6 +138,7 @@ public class ApnContext {
 
     public synchronized void setWaitingApns(ArrayList<ApnSetting> waitingApns) {
         mWaitingApns = waitingApns;
+        mOriginalWaitingApns = new ArrayList<ApnSetting>(waitingApns);
         mWaitingApnsPermanentFailureCountDown.set(mWaitingApns.size());
     }
 
@@ -155,8 +168,20 @@ public class ApnContext {
         }
     }
 
+    public synchronized ArrayList<ApnSetting> getOriginalWaitingApns() {
+        return mOriginalWaitingApns;
+    }
+
     public synchronized ArrayList<ApnSetting> getWaitingApns() {
         return mWaitingApns;
+    }
+
+    public synchronized void setConcurrentVoiceAndDataAllowed(boolean allowed) {
+        mConcurrentVoiceAndDataAllowed = allowed;
+    }
+
+    public synchronized boolean isConcurrentVoiceAndDataAllowed() {
+        return mConcurrentVoiceAndDataAllowed;
     }
 
     public synchronized void setState(DctConstants.State s) {
