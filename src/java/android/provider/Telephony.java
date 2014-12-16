@@ -853,38 +853,6 @@ public final class Telephony {
 
             /**
              * Broadcast Action: A new text-based SMS message has been received
-             * by the device. This intent will only be delivered to a
-             * carrier app which is responsible for filtering the message.
-             * If the carrier app wants to drop a message, it should set the result
-             * code to {@link android.app.Activity#RESULT_CANCELED}. The carrier app can
-             * also modify the SMS PDU by setting the "pdus" value in result extras.</p>
-             *
-             * The intent will have the following extra values:</p>
-             *
-             * <ul>
-             *   <li><em>"pdus"</em> - An Object[] of byte[]s containing the PDUs
-             *   that make up the message.</li>
-             *   <li><em>"format"</em> - A String describing the format of the PDUs. It can
-             *   be either "3gpp" or "3gpp2".</li>
-             *   <li><em>"destport"</em> - An int describing the destination port of a data
-             *   SMS. It will be -1 for text SMS.</li>
-             * </ul>
-             *
-             * <p>The extra values can be extracted using
-             * {@link #getMessagesFromIntent(Intent)}.</p>
-             *
-             * <p class="note"><strong>Note:</strong>
-             * The broadcast receiver that filters for this intent must be a carrier privileged app.
-             * It must also declare {@link android.Manifest.permission#BROADCAST_SMS} as a required
-             * permission in the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">
-             * {@code &lt;receiver>}</a> tag.
-             */
-            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
-            public static final String SMS_FILTER_ACTION =
-                    "android.provider.Telephony.SMS_FILTER";
-
-            /**
-             * Broadcast Action: A new text-based SMS message has been received
              * by the device. This intent will be delivered to all registered
              * receivers as a notification. These apps are not expected to write the
              * message or notify the user. The intent will have the following extra
@@ -1092,47 +1060,6 @@ public final class Telephony {
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String MMS_DOWNLOADED_ACTION =
                 "android.provider.Telephony.MMS_DOWNLOADED";
-
-            /**
-             * Broadcast Action: A new SMS PDU needs to be sent from
-             * the device. This intent will only be delivered to a
-             * carrier app. That app is responsible for sending the PDU.
-             * The intent will have the following extra values:</p>
-             *
-             * <ul>
-             *   <li><em>"pdu"</em> - (byte[]) The PDU to send.</li>
-             *   <li><em>"smsc"</em> - (byte[]) The service center address (for GSM PDU only).</li>
-             *   <li><em>"format"</em> - (String) The format of the PDU. Either 3gpp or 3gpp2. </li>
-             *   <li><em>"concat.refNumber"</em> - (int) If the SMS is part of a multi-part SMS, the
-             *   ref number used in the SMS header.</li>
-             *   <li><em>"concat.seqNumber"</em> - (int) If the SMS is part of a multi-part SMS, the
-             *   sequence number of this SMS.</li>
-             *   <li><em>"concat.msgCount"</em> - (int) If the SMS is part of a multi-part SMS, the
-             *   total number of SMSes in the multi-part SMS.</li>
-             * </ul>
-             *
-             * <p>If a BroadcastReceiver is trying to send the message,
-             *  it should set the result code to {@link android.app.Activity#RESULT_OK} and set
-             *  the following in the result extra values:</p>
-             *
-             * <ul>
-             *   <li><em>"messageref"</em> - (int) The new message reference number which will be
-             *   later used in the updateSmsSendStatus call.</li>
-             * </ul>
-             *
-             * <p>If a BroadcastReceiver cannot send the message, it should not set the result
-             *  code and the platform will send it via the normal pathway.
-             * </p>
-             *
-             * <p class="note"><strong>Note:</strong>
-             * The broadcast receiver that filters for this intent must be a carrier privileged app.
-             * It must also declare {@link android.Manifest.permission#BROADCAST_SMS} as a required
-             * permission in the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">
-             * {@code &lt;receiver>}</a> tag.
-             */
-            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
-            public static final String SMS_SEND_ACTION =
-                "android.provider.Telephony.SMS_SEND";
 
             /**
              * Read the PDUs out of an {@link #SMS_RECEIVED_ACTION} or a
@@ -2303,97 +2230,9 @@ public final class Telephony {
                     = "android.intent.action.CONTENT_CHANGED";
 
             /**
-             * Broadcast Action: A new MMS PDU needs to be sent from
-             * the device. This intent will only be delivered to a
-             * carrier app. That app is responsible for sending the PDU.
-             * The intent will have the following extra values:</p>
-             *
-             * <ul>
-             *   <li><em>{@link #EXTRA_MMS_CONTENT_URI}</em> - (Uri) The content provider of the
-             *     PDU to send.</li>
-             *   <li><em>{@link #EXTRA_MMS_LOCATION_URL}</em> - (String) The optional url to send
-             *     this MMS PDU. If this is not specified, PDU should be sent to the default MMSC
-             *     url.</li>
-             * </ul>
-             *
-             * <p>If a BroadcastReceiver is trying to send the message,
-             *  it should set the result code to {@link android.app.Activity#RESULT_OK} and set
-             *  the following in the result extra values:</p>
-             *
-             * <ul>
-             *   <li><em>"messageref"</em> - (int) The new message reference number which will be
-             *   later used in the updateMmsSendStatus call.</li>
-             * </ul>
-             *
-             * <p>If a BroadcastReceiver cannot send the message, it should not set the result
-             *  code and the platform will send it via the normal pathway.
-             * </p>
-             *
-             * <p class="note"><strong>Note:</strong>
-             * The broadcast receiver that filters for this intent must be a carrier privileged app.
-             * It must also declare {@link android.Manifest.permission#BROADCAST_WAP_PUSH} as a required
-             * permission in the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">
-             * {@code &lt;receiver>}</a> tag.
-             */
-            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
-            public static final String MMS_SEND_ACTION =
-                    "android.provider.Telephony.MMS_SEND";
-
-            /**
-             * Broadcast Action: A new MMS needs to be downloaded.
-             * This intent will only be delivered to a
-             * carrier app. That app is responsible for downloading the message at the URL.
-             * The intent will have the following extra values:</p>
-             *
-             * <ul>
-             *   <li><em>{@link #EXTRA_MMS_CONTENT_URI}</em> - (Uri) The content provider of the
-             *     PDU to be downloaded.</li>
-             *   <li><em>{@link #EXTRA_MMS_LOCATION_URL}</em> - (String) The message URL to be
-             *     downloaded.</li>
-             * </ul>
-             *
-             * <p>If a BroadcastReceiver is trying to download the message,
-             *  it should set the result code to {@link android.app.Activity#RESULT_OK} and set
-             *  the following in the result extra values:</p>
-             *
-             * <ul>
-             *   <li><em>"messageref"</em> - (int) The new message reference number which will be
-             *   later used in the updateMmsDownloadStatus call.</li>
-             * </ul>
-             *
-             * <p>If a BroadcastReceiver cannot download the message, it should not set the result
-             *  code and the platform will download it via the normal pathway.
-             * </p>
-             *
-             * <p class="note"><strong>Note:</strong>
-             * The broadcast receiver that filters for this intent must be a carrier privileged app.
-             * It must also declare {@link android.Manifest.permission#BROADCAST_WAP_PUSH} as a required
-             * permission in the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">
-             * {@code &lt;receiver>}</a> tag.
-             */
-            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
-            public static final String MMS_DOWNLOAD_ACTION =
-                    "android.provider.Telephony.MMS_DOWNLOAD";
-
-            /**
              * An extra field which stores the URI of deleted contents.
              */
             public static final String DELETED_CONTENTS = "deleted_contents";
-
-            /**
-             * The content provider of the PDU to be sent/downloaded passed as an extra for
-             * {@link #MMS_DOWNLOAD_ACTION} and {@link #MMS_SEND_ACTION}.
-             */
-            public static final String EXTRA_MMS_CONTENT_URI =
-                    "android.provider.Telephony.extra.MMS_CONTENT_URI";
-
-            /**
-             * The message URL to be downloaded passed as an extra for {@link #MMS_DOWNLOAD_ACTION}.
-             * It is also the URL to send an MMS to passed as an extra for
-             * {@link #MMS_SEND_ACTION}.
-             */
-            public static final String EXTRA_MMS_LOCATION_URL =
-                    "android.provider.Telephony.extra.MMS_LOCATION_URL";
         }
     }
 
