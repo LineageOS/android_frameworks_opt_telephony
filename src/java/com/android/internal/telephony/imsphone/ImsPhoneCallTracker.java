@@ -43,6 +43,7 @@ import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.VoLteServiceState;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsCallProfile;
@@ -1348,24 +1349,33 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onImsConnected() {
             if (DBG) log("onImsConnected");
             mPhone.setServiceState(ServiceState.STATE_IN_SERVICE);
+            mPhone.notifyVoLteServiceStateChanged(new VoLteServiceState(
+                VoLteServiceState.IMS_REGISTERED));
         }
 
         @Override
         public void onImsDisconnected() {
             if (DBG) log("onImsDisconnected");
             mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
+            mPhone.notifyVoLteServiceStateChanged(new VoLteServiceState(
+                VoLteServiceState.IMS_UNREGISTERED));
         }
 
         @Override
         public void onImsResumed() {
             if (DBG) log("onImsResumed");
             mPhone.setServiceState(ServiceState.STATE_IN_SERVICE);
+            mPhone.notifyVoLteServiceStateChanged(new VoLteServiceState(
+                VoLteServiceState.IMS_REGISTERED));
+
         }
 
         @Override
         public void onImsSuspended() {
             if (DBG) log("onImsSuspended");
             mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
+            mPhone.notifyVoLteServiceStateChanged(new VoLteServiceState(
+                VoLteServiceState.IMS_UNREGISTERED));
         }
 
         @Override
