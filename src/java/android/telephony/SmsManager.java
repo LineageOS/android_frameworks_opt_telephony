@@ -1104,6 +1104,46 @@ public final class SmsManager {
         return ret;
     }
 
+    /**
+     * Get the SMSC from Icc card
+     *
+     * @return SMSC of ICC
+     * @hide
+     */
+    public String getSmscAddressFromIcc() {
+        String ret = null;
+        try {
+            ISms iccISms = getISmsService();
+            if (iccISms != null) {
+                ret = iccISms.getSmscAddressFromIccForSubscriber(getSubId());
+            }
+        } catch (RemoteException ex) {
+            //ignore it
+        }
+        return ret;
+    }
+
+    /**
+     * Set the SMSC to Icc card
+     *
+     * @param subId for subId which setSmscAddressToIcc is queried.
+     * @param scAddress is the service center address
+     * @return true if SMSC is set successfully, false otherwise
+     * @hide
+     */
+    public boolean setSmscAddressToIcc(String scAddress) {
+        boolean ret = false;
+        try {
+            ISms iccISms = getISmsService();
+            if (iccISms != null) {
+                ret = iccISms.setSmscAddressToIccForSubscriber(getSubId(), scAddress);
+            }
+        } catch (RemoteException ex) {
+            //ignore it
+        }
+        return ret;
+    }
+
     // see SmsMessage.getStatusOnIcc
 
     /** Free space (TS 51.011 10.5.3 / 3GPP2 C.S0023 3.4.27). */
