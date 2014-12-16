@@ -767,6 +767,9 @@ public class GsmConnection extends Connection {
             }
         }
 
+        notifyPostDialListenersNextChar(c);
+
+        // TODO: remove the following code since the handler no longer executes anything.
         postDialHandler = mOwner.mPhone.mPostDialHandler;
 
         Message notifyMessage;
