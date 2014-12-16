@@ -836,6 +836,11 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             return data; // return the empty record (for delete)
         }
         byte[] byteEmail = GsmAlphabet.stringToGsm8BitPacked(email);
+        if (byteEmail.length > length) {
+            log("[buildEmailData] wrong email length");
+            return null;
+        }
+
         System.arraycopy(byteEmail, 0, data, 0, byteEmail.length);
         int pbrIndex = getPbrIndexBy(adnRecIndex);
         int recordIndex = adnRecIndex - getInitIndexBy(pbrIndex);
@@ -866,12 +871,11 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         // numberToCalledPartyBCD has considered TOA byte
         int maxlength = ANR_ADDITIONAL_NUMBER_END_ID - ANR_ADDITIONAL_NUMBER_START_ID + 1 + 1;
         if (byteAnr.length > maxlength) {
-            System.arraycopy(byteAnr, 0, data, ANR_TON_NPI_ID, maxlength);
-            data[ANR_BCD_NUMBER_LENGTH] = (byte) (maxlength);
-        } else {
-            System.arraycopy(byteAnr, 0, data, ANR_TON_NPI_ID, byteAnr.length);
-            data[ANR_BCD_NUMBER_LENGTH] = (byte) (byteAnr.length);
+            log("[buildAnrData] wrong ANR length");
+            return null;
         }
+        System.arraycopy(byteAnr, 0, data, ANR_TON_NPI_ID, byteAnr.length);
+        data[ANR_BCD_NUMBER_LENGTH] = (byte) (byteAnr.length);
         data[ANR_CAPABILITY_ID] = (byte) 0xFF;
         data[ANR_EXTENSION_ID] = (byte) 0xFF;
         if (length == 17) {
@@ -1040,6 +1044,13 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                     return;
                 }
                 data = buildEmailData(recordSize[0], adnRecIndex, newEmail);
+                if (data == null) {
+                    mSuccess = false;
+                    synchronized (mLock) {
+                        mLock.notify();
+                    }
+                    return;
+                }
 
                 actualRecNumber = recordNumber;
                 if (!mEmailPresentInIap) {
