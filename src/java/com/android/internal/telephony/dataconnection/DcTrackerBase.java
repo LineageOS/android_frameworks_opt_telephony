@@ -23,7 +23,6 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.res.Resources;
 import android.content.SharedPreferences;
 import android.database.ContentObserver;
 import android.net.ConnectivityManager;
@@ -38,24 +37,21 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.os.Messenger;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.SubscriptionManager;
+import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.EventLog;
 import android.telephony.Rlog;
-import android.telephony.ServiceState;
 
 import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
-import com.android.internal.telephony.DctConstants.State;
 import com.android.internal.telephony.EventLogTags;
-import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
@@ -390,6 +386,30 @@ public abstract class DcTrackerBase extends Handler {
         }
     };
 
+    private SubscriptionManager mSubscriptionManager;
+    private final OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
+            new OnSubscriptionsChangedListener() {
+        /**
+         * Callback invoked when there is any change to any SubscriptionInfo. Typically
+         * this method would invoke {@link SubscriptionManager#getActiveSubscriptionInfoList}
+         */
+        @Override
+        public void onSubscriptionsChanged() {
+            if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
+            // Set the network type, in case the radio does not restore it.
+            int subId = mPhone.getSubId();
+            if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                if (mDataRoamingSettingObserver != null) {
+                    mDataRoamingSettingObserver.unregister();
+                }
+                // Watch for changes to Settings.Global.DATA_ROAMING
+                mDataRoamingSettingObserver = new DataRoamingSettingObserver(mPhone,
+                        mPhone.getContext());
+                mDataRoamingSettingObserver.register();
+            }
+        }
+    };
+
     private class DataRoamingSettingObserver extends ContentObserver {
 
         public DataRoamingSettingObserver(Handler handler, Context context) {
@@ -415,7 +435,7 @@ public abstract class DcTrackerBase extends Handler {
             }
         }
     }
-    private final DataRoamingSettingObserver mDataRoamingSettingObserver;
+    private DataRoamingSettingObserver mDataRoamingSettingObserver;
 
     /**
      * The Initial MaxRetry sent to a DataConnection as a parameter
@@ -589,9 +609,9 @@ public abstract class DcTrackerBase extends Handler {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
         mAutoAttachOnCreation = sp.getBoolean(PhoneBase.DATA_DISABLED_ON_BOOT_KEY, false);
 
-        // Watch for changes to Settings.Global.DATA_ROAMING
-        mDataRoamingSettingObserver = new DataRoamingSettingObserver(mPhone, mPhone.getContext());
-        mDataRoamingSettingObserver.register();
+        mSubscriptionManager = SubscriptionManager.from(mPhone.getContext());
+        mSubscriptionManager
+                .registerOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
 
         HandlerThread dcHandlerThread = new HandlerThread("DcHandlerThread");
         dcHandlerThread.start();
@@ -609,7 +629,11 @@ public abstract class DcTrackerBase extends Handler {
         mIsDisposed = true;
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
         mUiccController.unregisterForIccChanged(this);
-        mDataRoamingSettingObserver.unregister();
+        if (mDataRoamingSettingObserver != null) {
+            mDataRoamingSettingObserver.unregister();
+        }
+        mSubscriptionManager
+                .unregisterOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
         mDcc.dispose();
         mDcTesterFailBringUpAll.dispose();
     }
