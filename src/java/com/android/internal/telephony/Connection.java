@@ -35,6 +35,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 public abstract class Connection {
     public interface PostDialListener {
         void onPostDialWait();
+        void onPostDialChar(char c);
     }
 
     /**
@@ -387,6 +388,12 @@ public abstract class Connection {
             for (PostDialListener listener : new ArrayList<>(mPostDialListeners)) {
                 listener.onPostDialWait();
             }
+        }
+    }
+
+    protected final void notifyPostDialListenersNextChar(char c) {
+        for (PostDialListener listener : new ArrayList<>(mPostDialListeners)) {
+            listener.onPostDialChar(c);
         }
     }
 
