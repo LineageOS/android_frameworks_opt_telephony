@@ -224,3 +224,23 @@ class ActivateParams extends CommandParams {
     }
 }
 
+// Samsung STK
+class SendSMSParams extends DisplayTextParams {
+    String pdu;
+    String smscAddress;
+
+    SendSMSParams(CommandDetails cmdDet, TextMessage textmessage, String smscaddress, String smsPdu) {
+        super(cmdDet, textmessage);
+        smscAddress = smscaddress;
+        pdu = smsPdu;
+    }
+}
+
+class SendUSSDParams extends DisplayTextParams {
+    String ussdString;
+
+    SendUSSDParams(CommandDetails cmdDet, TextMessage textmessage, String ussdstring) {
+        super(cmdDet, textmessage);
+        ussdString = ussdstring;
+    }
+}
