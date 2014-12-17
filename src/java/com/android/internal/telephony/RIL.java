@@ -3016,6 +3016,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_HARDWARE_CONFIG_CHANGED: ret = responseHardwareConfig(p); break;
             case RIL_UNSOL_ON_SS: ret =  responseSsData(p); break;
             case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: ret =  responseString(p); break;
+            case RIL_UNSOL_STK_SEND_SMS_RESULT: ret = responseInts(p); break; // Samsung STK
 
             default:
                 throw new RuntimeException("Unrecognized unsol response: " + response);
@@ -3439,6 +3440,18 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 if (mCatCcAlphaRegistrant != null) {
                     mCatCcAlphaRegistrant.notifyRegistrant(
                                         new AsyncResult (null, ret, null));
+                }
+                break;
+            // Samsung STK
+            case RIL_UNSOL_STK_SEND_SMS_RESULT:
+                if (Resources.getSystem().
+                        getBoolean(com.android.internal.R.bool.config_samsung_stk)) {
+                    if (RILJ_LOGD) unsljLogRet(response, ret);
+
+                    if (mCatSendSmsResultRegistrant != null) {
+                        mCatSendSmsResultRegistrant.notifyRegistrant(
+                                new AsyncResult (null, ret, null));
+                    }
                 }
                 break;
         }
@@ -4517,6 +4530,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_HARDWARE_CONFIG_CHANGED: return "RIL_UNSOL_HARDWARE_CONFIG_CHANGED";
             case RIL_UNSOL_ON_SS: return "UNSOL_ON_SS";
             case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: return "UNSOL_STK_CC_ALPHA_NOTIFY";
+            case RIL_UNSOL_STK_SEND_SMS_RESULT: return "RIL_UNSOL_STK_SEND_SMS_RESULT";
             default: return "<unknown response>";
         }
     }
