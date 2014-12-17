@@ -753,23 +753,59 @@ public final class DcTracker extends DcTrackerBase {
         return allowed;
     }
 
+    // arg for setupDataOnConnectableApns
+    private enum RetryFailures {
+        // retry failed networks always (the old default)
+        ALWAYS,
+        // retry only when a substantial change has occured.  Either:
+        // 1) we were restricted by voice/data concurrency and aren't anymore
+        // 2) our apn list has change
+        ONLY_ON_CHANGE
+    };
+
     private void setupDataOnConnectableApns(String reason) {
+        setupDataOnConnectableApns(reason, RetryFailures.ALWAYS);
+    }
+
+    private void setupDataOnConnectableApns(String reason, RetryFailures retryFailures) {
         if (DBG) log("setupDataOnConnectableApns: " + reason);
+        ArrayList<ApnSetting> waitingApns = null;
 
         for (ApnContext apnContext : mPrioritySortedApnContexts) {
             if (DBG) log("setupDataOnConnectableApns: apnContext " + apnContext);
             if (apnContext.getState() == DctConstants.State.FAILED) {
-                apnContext.setState(DctConstants.State.IDLE);
+                if (retryFailures == RetryFailures.ALWAYS) {
+                    apnContext.setState(DctConstants.State.IDLE);
+                } else if (apnContext.isConcurrentVoiceAndDataAllowed() == false &&
+                         mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
+                    // RetryFailures.ONLY_ON_CHANGE - check if voice concurrency has changed
+                    apnContext.setState(DctConstants.State.IDLE);
+                } else {
+                    // RetryFailures.ONLY_ON_CHANGE - check if the apns have changed
+                    int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
+                    ArrayList<ApnSetting> originalApns = apnContext.getOriginalWaitingApns();
+                    if (originalApns != null && originalApns.isEmpty() == false) {
+                        waitingApns = buildWaitingApns(apnContext.getApnType(), radioTech);
+                        if (originalApns.size() != waitingApns.size() ||
+                                originalApns.containsAll(waitingApns) == false) {
+                            apnContext.setState(DctConstants.State.IDLE);
+                        }
+                    }
+                }
             }
             if (apnContext.isConnectable()) {
                 log("setupDataOnConnectableApns: isConnectable() call trySetupData");
                 apnContext.setReason(reason);
-                trySetupData(apnContext);
+                trySetupData(apnContext, waitingApns);
             }
         }
     }
 
     private boolean trySetupData(ApnContext apnContext) {
+        return trySetupData(apnContext, null);
+    }
+
+    private boolean trySetupData(ApnContext apnContext, ArrayList<ApnSetting> waitingApns) {
         if (DBG) {
             log("trySetupData for type:" + apnContext.getApnType() +
                     " due to " + apnContext.getReason() + " apnContext=" + apnContext);
@@ -789,7 +825,8 @@ public final class DcTracker extends DcTrackerBase {
         // Allow SETUP_DATA request for E-APN to be completed during emergency call
         // and MOBILE DATA On/Off cases as well.
         boolean isEmergencyApn = apnContext.getApnType().equals(PhoneConstants.APN_TYPE_EMERGENCY);
-        boolean desiredPowerState = mPhone.getServiceStateTracker().getDesiredPowerState();
+        final ServiceStateTracker sst = mPhone.getServiceStateTracker();
+        boolean desiredPowerState = sst.getDesiredPowerState();
         boolean checkUserDataEnabled =
                     !(apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IMS));
 
@@ -801,10 +838,11 @@ public final class DcTracker extends DcTrackerBase {
                 apnContext.setState(DctConstants.State.IDLE);
             }
             int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
+            apnContext.setConcurrentVoiceAndDataAllowed(sst.isConcurrentVoiceAndDataAllowed());
             if (apnContext.getState() == DctConstants.State.IDLE) {
-
-                ArrayList<ApnSetting> waitingApns = buildWaitingApns(apnContext.getApnType(),
-                        radioTech);
+                if (waitingApns == null) {
+                    waitingApns = buildWaitingApns(apnContext.getApnType(), radioTech);
+                }
                 if (waitingApns.isEmpty()) {
                     notifyNoData(DcFailCause.MISSING_UNKNOWN_APN, apnContext);
                     notifyOffApnsOfAvailability(apnContext.getReason());
@@ -2074,6 +2112,8 @@ public final class DcTracker extends DcTrackerBase {
             mDisconnectPendingCount--;
 
         if (mDisconnectPendingCount == 0) {
+            apnContext.setConcurrentVoiceAndDataAllowed(
+                    mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed());
             notifyDataDisconnectComplete();
             notifyAllDataDisconnected();
         }
@@ -2635,7 +2675,8 @@ public final class DcTracker extends DcTrackerBase {
 
             case DctConstants.EVENT_DATA_RAT_CHANGED:
                 //May new Network allow setupData, so try it here
-                setupDataOnConnectableApns(Phone.REASON_NW_TYPE_CHANGED);
+                setupDataOnConnectableApns(Phone.REASON_NW_TYPE_CHANGED,
+                        RetryFailures.ONLY_ON_CHANGE);
                 break;
 
             case DctConstants.CMD_CLEAR_PROVISIONING_SPINNER:
