@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7aa08908_9af26a99",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManager.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 293,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-12-17T16:25:57Z",
+      "side": 0,
+      "message": "Did this appops code go elsewhere?",
+      "revId": "d10be37967fd99df2d974d83b131f95f3e68eeba",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7aa08908_7aefbeb0",
+        "filename": "src/java/com/android/internal/telephony/IccSmsInterfaceManager.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 784,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-12-17T16:25:57Z",
+      "side": 0,
+      "message": "What happened to this line?",
+      "revId": "d10be37967fd99df2d974d83b131f95f3e68eeba",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7aa08908_ba2f66f5",
+        "filename": "src/java/com/android/internal/telephony/PhoneProxy.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 242,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-12-17T16:25:57Z",
+      "side": 0,
+      "message": "What happened to this line?",
+      "revId": "d10be37967fd99df2d974d83b131f95f3e68eeba",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
