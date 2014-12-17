@@ -18,6 +18,7 @@ package android.telephony;
 
 import android.app.ActivityThread;
 import android.app.PendingIntent;
+import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -29,6 +30,7 @@ import android.provider.Telephony;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.util.ArrayMap;
+import android.util.Log;
 
 import com.android.internal.telephony.ISms;
 import com.android.internal.telephony.SmsRawData;
@@ -55,6 +57,7 @@ import java.util.Map;
  * and higher, see {@link android.provider.Telephony}.
  */
 public final class SmsManager {
+    private static final String TAG = "SmsManager";
     /**
      * A psuedo-subId that represents the default subId at any given time. The actual subId it
      * represents changes as the default subId is changed.
@@ -211,6 +214,11 @@ public final class SmsManager {
      */
     public static final String MMS_CONFIG_SHOW_CELL_BROADCAST_APP_LINKS =
             "config_cellBroadcastAppLinks";
+    /*
+     * Forwarded constants from SimDialogActivity.
+     */
+    private static String DIALOG_TYPE_KEY = "dialog_type";
+    private static final int SMS_PICK = 2;
 
     /**
      * Send a text based SMS.
@@ -710,13 +718,55 @@ public final class SmsManager {
      * changes the default subscription id). It will return < 0 if the default subscription id
      * cannot be determined.
      *
+     * Additionally, to support legacy applications that are not multi-SIM aware,
+     * if the following are true:
+     *     - We are using a multi-SIM device
+     *     - A default SMS SIM has not been selected
+     *     - At least one SIM subscription is available
+     * then ask the user to set the default SMS SIM.
+     *
      * @return associated subscription id
      */
     public int getSubscriptionId() {
-        if (mSubId == DEFAULT_SUBSCRIPTION_ID) {
-            return getDefaultSmsSubscriptionId();
+        final int subId = (mSubId == DEFAULT_SUBSCRIPTION_ID)
+                ? getDefaultSmsSubscriptionId() : mSubId;
+        final Context context = ActivityThread.currentApplication().getApplicationContext();
+        TelephonyManager telephonyManager =
+                (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        List<SubscriptionInfo> subInfoList =
+                SubscriptionManager.from(context).getActiveSubscriptionInfoList();
+
+        if (subInfoList != null) {
+            final int subInfoLength = subInfoList.size();
+
+            for (int i = 0; i < subInfoLength; ++i) {
+                final SubscriptionInfo sir = subInfoList.get(i);
+                if (sir != null && sir.getSubscriptionId() == subId) {
+                    // The subscription id is valid.
+                    return subId;
+                }
+            }
+
+            // The subscription id is not valid.
+            // Now if there is at least one valid subscription and 2 or more SIM slots, then ask
+            // the user for a default SMS SIM.
+            if (subInfoList.size() > 0 && telephonyManager.getSimCount() > 1) {
+                Intent intent = new Intent();
+                intent.setClassName("com.android.settings",
+                        "com.android.settings.sim.SimDialogActivity");
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                intent.putExtra(DIALOG_TYPE_KEY, SMS_PICK);
+                try {
+                    context.startActivity(intent);
+                } catch (ActivityNotFoundException anfe) {
+                    // If Settings is not installed, only log the error as we do not want to break
+                    // legacy applications.
+                    Log.e(TAG, "Unable to launch Settings application.");
+                }
+            }
         }
-        return mSubId;
+
+        return subId;
     }
 
     /**
