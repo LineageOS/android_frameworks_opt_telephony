@@ -302,12 +302,6 @@ public final class SmsManager {
     }
 
     /**
-     * TODO: remove this method.
-     */
-    public void updateSmsSendStatus(int messageRef, boolean success) {
-    }
-
-    /**
      * Divide a message text into several fragments, none bigger than
      * the maximum SMS message size.
      *
@@ -1011,20 +1005,6 @@ public final class SmsManager {
     public static final String EXTRA_MMS_DATA = "android.telephony.extra.MMS_DATA";
     /** Intent extra name for HTTP status code for MMS HTTP failure in integer type */
     public static final String EXTRA_MMS_HTTP_STATUS = "android.telephony.extra.MMS_HTTP_STATUS";
-
-    /**
-     * TODO: remove this method.
-     */
-    public void updateMmsSendStatus(Context context, int messageRef, byte[] pdu, int status,
-            Uri contentUri) {
-    }
-
-    /**
-     * TODO: remove this method.
-     */
-    public void updateMmsDownloadStatus(Context context, int messageRef, int status,
-            Uri contentUri) {
-    }
 
     /**
      * Import a text message into system's SMS store
