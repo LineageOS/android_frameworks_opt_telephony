@@ -2118,4 +2118,16 @@ public interface CommandsInterface {
      * @param h handler to be removed
      */
     public void unregisterForPcoData(Handler h);
+
+    /**
+     * @hide
+     * samsung stk service implementation - set up registrant for sending
+     * sms send result from modem(RIL) to catService
+     */
+    void setOnCatSendSmsResult(Handler h, int what, Object obj);
+
+    /**
+     * @hide
+     */
+    void unSetOnCatSendSmsResult(Handler h);
 }
