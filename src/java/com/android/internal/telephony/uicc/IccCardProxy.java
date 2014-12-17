@@ -119,6 +119,8 @@ public class IccCardProxy extends Handler implements IccCard {
     private boolean mInitialized = false;
     private State mExternalState = State.UNKNOWN;
 
+    public static final String ACTION_INTERNAL_SIM_STATE_CHANGED = "android.intent.action.internal_sim_state_changed";
+
     public IccCardProxy(Context context, CommandsInterface ci, int cardIndex) {
         if (DBG) log("ctor: ci=" + ci + " cardIndex=" + cardIndex);
         mContext = context;
@@ -364,7 +366,7 @@ public class IccCardProxy extends Handler implements IccCard {
     }
 
     private void onRecordsLoaded() {
-        broadcastIccStateChangedIntent(IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
+        broadcastInternalIccStateChangedIntent(IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
     }
 
     private void updateIccAvailability() {
@@ -513,6 +515,24 @@ public class IccCardProxy extends Handler implements IccCard {
         }
     }
 
+    private void broadcastInternalIccStateChangedIntent(String value, String reason) {
+        synchronized (mLock) {
+            if (mCardIndex == null) {
+                loge("broadcastInternalIccStateChangedIntent: Card Index is not set; Return!!");
+                return;
+            }
+
+            Intent intent = new Intent(ACTION_INTERNAL_SIM_STATE_CHANGED);
+            intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
+            intent.putExtra(PhoneConstants.PHONE_NAME_KEY, "Phone");
+            intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, value);
+            intent.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
+            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mCardIndex);
+            log("Sending intent ACTION_INTERNAL_SIM_STATE_CHANGED" + " for mCardIndex : " + mCardIndex);
+            ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
+        }
+    }
+
     private void setExternalState(State newState, boolean override) {
         synchronized (mLock) {
             if (mCardIndex == null || !SubscriptionManager.isValidSlotId(mCardIndex)) {
@@ -527,8 +547,15 @@ public class IccCardProxy extends Handler implements IccCard {
             mExternalState = newState;
             loge("setExternalState: set mCardIndex=" + mCardIndex + " mExternalState=" + mExternalState);
             setSystemProperty(PROPERTY_SIM_STATE, mCardIndex, getState().toString());
-            broadcastIccStateChangedIntent(getIccStateIntentString(mExternalState),
-                    getIccStateReason(mExternalState));
+
+            // For locked states, we should be sending internal broadcast.
+            if (IccCardConstants.INTENT_VALUE_ICC_LOCKED.equals(getIccStateIntentString(mExternalState))) {
+                broadcastInternalIccStateChangedIntent(getIccStateIntentString(mExternalState),
+                        getIccStateReason(mExternalState));
+            } else {
+                broadcastIccStateChangedIntent(getIccStateIntentString(mExternalState),
+                        getIccStateReason(mExternalState));
+            }
             // TODO: Need to notify registrants for other states as well.
             if ( State.ABSENT == mExternalState) {
                 mAbsentRegistrants.notifyRegistrants();
