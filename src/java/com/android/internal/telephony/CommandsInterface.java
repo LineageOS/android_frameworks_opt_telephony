@@ -2038,4 +2038,16 @@ public interface CommandsInterface {
      * CM-specific: Ask the RIL about the presence of back-compat flags
      */
     public boolean needsOldRilFeature(String feature);
+
+    /**
+     * @hide
+     * samsung stk service implementation - set up registrant for sending
+     * sms send result from modem(RIL) to catService
+     */
+    void setOnCatSendSmsResult(Handler h, int what, Object obj);
+
+    /**
+     * @hide
+     */
+    void unSetOnCatSendSmsResult(Handler h);
 }
