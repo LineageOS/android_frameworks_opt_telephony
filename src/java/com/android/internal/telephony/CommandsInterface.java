@@ -2083,4 +2083,16 @@ public interface CommandsInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForAdnRecordsInfo(Handler h);
+
+    /**
+     * @hide
+     * samsung stk service implementation - set up registrant for sending
+     * sms send result from modem(RIL) to catService
+     */
+    void setOnCatSendSmsResult(Handler h, int what, Object obj);
+
+    /**
+     * @hide
+     */
+    void unSetOnCatSendSmsResult(Handler h);
 }
