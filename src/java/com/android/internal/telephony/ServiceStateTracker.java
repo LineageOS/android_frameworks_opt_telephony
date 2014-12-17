@@ -226,6 +226,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected SubscriptionManager mSubscriptionManager;
     protected final OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
             new OnSubscriptionsChangedListener() {
+        private int lastActiveSubId = -1; // < 0 is invalid subId
         /**
          * Callback invoked when there is any change to any SubscriptionInfo. Typically
          * this method would invoke {@link SubscriptionManager#getActiveSubscriptionInfoList}
@@ -236,38 +237,41 @@ public abstract class ServiceStateTracker extends Handler {
             // Set the network type, in case the radio does not restore it.
             int subId = mPhoneBase.getSubId();
             if (SubscriptionManager.isValidSubscriptionId(subId)) {
-                int networkType = PhoneFactory.calculatePreferredNetworkType(
-                        mPhoneBase.getContext(), subId);
-                mCi.setPreferredNetworkType(networkType, null);
+                if (lastActiveSubId != subId) {
+                    lastActiveSubId = subId;
+                    int networkType = PhoneFactory.calculatePreferredNetworkType(
+                            mPhoneBase.getContext(), subId);
+                    mCi.setPreferredNetworkType(networkType, null);
 
-                //store OperatorNumeric in case subId is not valid when EVENT_RECORDS_LOADED issued
-                int phoneId = mPhoneBase.getPhoneId();
-                PhoneProxy[] phoneProxys = (PhoneProxy[]) PhoneFactory.getPhones();
-                if(phoneProxys != null && phoneProxys.length > phoneId) {
-                    PhoneProxy phoneProxy = phoneProxys[phoneId];
-                    if(phoneProxy != null) {
-                        IccCardProxy iccCardProxy = phoneProxy.getPhoneIccCardProxy();
-                        if(iccCardProxy != null) {
-                            iccCardProxy.saveOperatorNumeric();
-                            // store alpha
-                            if(iccCardProxy.getIccRecord() != null) {
-                                TelephonyManager.setTelephonyProperty(phoneId,
-                                        PROPERTY_ICC_OPERATOR_ALPHA,
-                                        iccCardProxy.getIccRecord().getServiceProviderName());
+                    //store OperatorNumeric in case subId is not valid when EVENT_RECORDS_LOADED issued
+                    int phoneId = mPhoneBase.getPhoneId();
+                    PhoneProxy[] phoneProxys = (PhoneProxy[]) PhoneFactory.getPhones();
+                    if(phoneProxys != null && phoneProxys.length > phoneId) {
+                        PhoneProxy phoneProxy = phoneProxys[phoneId];
+                        if(phoneProxy != null) {
+                            IccCardProxy iccCardProxy = phoneProxy.getPhoneIccCardProxy();
+                            if(iccCardProxy != null) {
+                                iccCardProxy.saveOperatorNumeric();
+                                // store alpha
+                                if(iccCardProxy.getIccRecord() != null) {
+                                    TelephonyManager.setTelephonyProperty(phoneId,
+                                            PROPERTY_ICC_OPERATOR_ALPHA,
+                                            iccCardProxy.getIccRecord().getServiceProviderName());
+                                } else {
+                                    Log.e(LOG_TAG,"IccRecord is null");
+                                }
                             } else {
-                                Log.e(LOG_TAG,"IccRecord is null");
+                                Log.e(LOG_TAG,"iccCardProxy is null");
                             }
-                        } else {
-                            Log.e(LOG_TAG,"iccCardProxy is null");
+                        }else {
+                            Log.e(LOG_TAG, "Null phoneProxy");
                         }
-                    }else {
-                        Log.e(LOG_TAG, "Null phoneProxy");
+                    } else {
+                        Log.e(LOG_TAG, "invalid phoneProxy[] or PhoneId" + phoneId);
                     }
-                } else {
-                    Log.e(LOG_TAG, "invalid phoneProxy[] or PhoneId" + phoneId);
+                    mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
+                        ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
                 }
-                mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
-                    ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
             }
         }
     };
