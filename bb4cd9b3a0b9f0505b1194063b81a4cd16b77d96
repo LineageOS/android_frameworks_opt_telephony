@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7aa08908_9a4eeabf",
+        "filename": "src/java/com/android/internal/telephony/SMSDispatcher.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 755,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2014-12-17T16:32:26Z",
+      "side": 1,
+      "message": "herp derp",
+      "revId": "bb4cd9b3a0b9f0505b1194063b81a4cd16b77d96",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
