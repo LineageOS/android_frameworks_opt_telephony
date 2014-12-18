@@ -2055,6 +2055,25 @@ public abstract class PhoneBase extends Handler implements Phone {
                 Integer.toString(SID));
     }
 
+    /**
+     * Get IMS Registration Status
+     */
+    @Override
+    public boolean isImsRegistered() {
+        ImsPhone imsPhone = mImsPhone;
+        boolean isImsRegistered = false;
+        if (imsPhone != null) {
+            isImsRegistered = imsPhone.isImsRegistered();
+        } else {
+            ServiceStateTracker sst = getServiceStateTracker();
+            if (sst != null) {
+                isImsRegistered = sst.isImsRegistered();
+            }
+        }
+        Rlog.d(LOG_TAG, "isImsRegistered =" + isImsRegistered);
+        return isImsRegistered;
+    }
+
     private boolean getRoamingOverrideHelper(String prefix, String key) {
         String iccId = getIccSerialNumber();
         if (TextUtils.isEmpty(iccId) || TextUtils.isEmpty(key)) {
