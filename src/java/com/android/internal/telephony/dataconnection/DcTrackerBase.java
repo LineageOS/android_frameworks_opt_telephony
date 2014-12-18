@@ -771,11 +771,22 @@ public abstract class DcTrackerBase extends Handler {
      * Modify {@link android.provider.Settings.Global#DATA_ROAMING} value.
      */
     public void setDataOnRoamingEnabled(boolean enabled) {
+        final int phoneSubId = mPhone.getSubId();
         if (getDataOnRoamingEnabled() != enabled) {
             final ContentResolver resolver = mPhone.getContext().getContentResolver();
-            final int phoneSubId = mPhone.getSubId();
-            Settings.Global.putInt(resolver, Settings.Global.DATA_ROAMING + phoneSubId, enabled ? 1 : 0);
+            int roaming = enabled ? 1 : 0;
+            Settings.Global.putInt(resolver, Settings.Global.DATA_ROAMING + phoneSubId, roaming);
+            mSubscriptionManager.setDataRoaming(roaming, phoneSubId);
             // will trigger handleDataOnRoamingChange() through observer
+            if (DBG) {
+               log("setDataOnRoamingEnabled: set phoneSubId=" + phoneSubId
+                       + " isRoaming=" + enabled);
+            }
+        } else {
+            if (DBG) {
+                log("setDataOnRoamingEnabled: unchanged phoneSubId=" + phoneSubId
+                        + " isRoaming=" + enabled);
+             }
         }
     }
 
@@ -783,15 +794,22 @@ public abstract class DcTrackerBase extends Handler {
      * Return current {@link android.provider.Settings.Global#DATA_ROAMING} value.
      */
     public boolean getDataOnRoamingEnabled() {
+        boolean isRoaming;
+        final int phoneSubId = mPhone.getSubId();
+
         try {
             final ContentResolver resolver = mPhone.getContext().getContentResolver();
-            final int phoneSubId = mPhone.getSubId();
-            return TelephonyManager.getIntWithSubId(resolver, Settings.Global.DATA_ROAMING,
-                    phoneSubId) != 0;
+            isRoaming = TelephonyManager.getIntWithSubId(resolver,
+                    Settings.Global.DATA_ROAMING, phoneSubId) != 0;
         } catch (SettingNotFoundException snfe) {
-            return "true".equalsIgnoreCase(SystemProperties.get("ro.com.android.dataroaming",
+            if (DBG) log("getDataOnRoamingEnabled: SettingNofFoundException snfe=" + snfe);
+            isRoaming = "true".equalsIgnoreCase(SystemProperties.get("ro.com.android.dataroaming",
                     "false"));
         }
+        if (DBG) {
+            log("getDataOnRoamingEnabled: phoneSubId=" + phoneSubId + " isRoaming=" + isRoaming);
+        }
+        return isRoaming;
     }
 
     /**
