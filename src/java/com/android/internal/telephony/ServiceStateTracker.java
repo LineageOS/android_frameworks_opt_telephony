@@ -176,6 +176,8 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final int EVENT_GET_CELL_INFO_LIST                = 43;
     protected static final int EVENT_UNSOL_CELL_INFO_LIST              = 44;
     protected static final int EVENT_CHANGE_IMS_STATE                  = 45;
+    protected static final int EVENT_IMS_STATE_CHANGED                 = 46;
+    protected static final int EVENT_IMS_STATE_DONE                    = 47;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -224,6 +226,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final String ACTION_RADIO_OFF = "android.intent.action.ACTION_RADIO_OFF";
     protected boolean mPowerOffDelayNeed = true;
     protected boolean mDeviceShuttingDown = false;
+    private boolean mImsRegistered = false;
 
     protected SubscriptionManager mSubscriptionManager;
     protected final OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
@@ -288,6 +291,7 @@ public abstract class ServiceStateTracker extends Handler {
 
         mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
             ServiceState.rilRadioTechnologyToString(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN));
+        mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
     }
 
     void requestShutdown() {
@@ -566,6 +570,18 @@ public abstract class ServiceStateTracker extends Handler {
                 }
                 break;
             }
+
+            case  EVENT_IMS_STATE_CHANGED: // received unsol
+                mCi.getImsRegistrationState(this.obtainMessage(EVENT_IMS_STATE_DONE));
+                break;
+
+            case EVENT_IMS_STATE_DONE:
+                AsyncResult ar = (AsyncResult) msg.obj;
+                if (ar.exception == null) {
+                    int[] responseArray = (int[])ar.result;
+                    mImsRegistered = (responseArray[0] == 1) ? true : false;
+                }
+                break;
 
             default:
                 log("Unhandled message with number: " + msg.what);
@@ -929,6 +945,9 @@ public abstract class ServiceStateTracker extends Handler {
         pw.flush();
     }
 
+    public boolean isImsRegistered() {
+        return mImsRegistered;
+    }
     /**
      * Verifies the current thread is the same as the thread originally
      * used in the initialization of this instance. Throws RuntimeException

@@ -1428,12 +1428,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onImsConnected() {
             if (DBG) log("onImsConnected");
             mPhone.setServiceState(ServiceState.STATE_IN_SERVICE);
+            mPhone.setImsRegistered(true);
         }
 
         @Override
         public void onImsDisconnected() {
             if (DBG) log("onImsDisconnected");
             mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
+            mPhone.setImsRegistered(false);
         }
 
         @Override

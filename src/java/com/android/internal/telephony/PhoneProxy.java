@@ -1541,6 +1541,10 @@ public class PhoneProxy extends Handler implements Phone {
         return mActivePhone.dial(dialString, videoState, extras);
     }
 
+    public boolean isImsRegistered() {
+        return mActivePhone.isImsRegistered();
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         try {
             ((PhoneBase)mActivePhone).dump(fd, pw, args);
