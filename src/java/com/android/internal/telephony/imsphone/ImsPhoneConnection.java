@@ -60,6 +60,8 @@ public class ImsPhoneConnection extends Connection {
 
     private Bundle mCallExtras = null;
 
+    private boolean mMptyState = false;
+
     /*
     int mIndex;          // index in ImsPhoneCallTracker.connections[], -1 if unassigned
                         // The GSM index is 1 + this
@@ -709,6 +711,12 @@ public class ImsPhoneConnection extends Connection {
                         changed = true;
                     }
                 }
+            }
+
+            boolean mptyState = isMultiparty();
+            if (mptyState != mMptyState) {
+                changed = true;
+                mMptyState = mptyState;
             }
         }
         return changed;
