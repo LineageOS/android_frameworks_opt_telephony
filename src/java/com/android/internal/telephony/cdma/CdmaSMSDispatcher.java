@@ -255,7 +255,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                     && !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()))
                     && mPhone.getServiceState().getVoiceNetworkType()
                     == TelephonyManager.NETWORK_TYPE_1xRTT
-                    && mPhone.getState() != PhoneConstants.State.IDLE;
+                    && ((CDMAPhone) mPhone).mCT.mState != PhoneConstants.State.IDLE;
 
         // sms over cdma is used:
         //   if sms over IMS is not supported AND
