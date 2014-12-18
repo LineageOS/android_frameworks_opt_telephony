@@ -290,6 +290,22 @@ public abstract class Connection {
     }
 
     /**
+     * Get the details of conference participants. Expected to be
+     * overwritten by the Connection subclasses.
+     */
+    public List<ConferenceParticipant> getConferenceParticipants() {
+        Call c;
+
+        c = getCall();
+
+        if (c == null) {
+            return null;
+        } else {
+            return c.getConferenceParticipants();
+        }
+    }
+
+    /**
      * isAlive()
      *
      * @return true if the connection isn't disconnected
