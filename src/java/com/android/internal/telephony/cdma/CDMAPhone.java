@@ -307,6 +307,13 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public PhoneConstants.State getState() {
+        if (mImsPhone != null) {
+            PhoneConstants.State imsState = mImsPhone.getState();
+            if (imsState != PhoneConstants.State.IDLE) {
+                return imsState;
+            }
+        }
+
         return mCT.mState;
     }
 
