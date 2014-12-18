@@ -443,6 +443,12 @@ public class IccSmsInterfaceManager {
             callingUid = Integer.parseInt(callingParts[1]);
         }
 
+        // Reset the calling package, remove the trailing uid so
+        // shouldWriteMessageForPackage can match correctly
+        // if our message has been synthesized by an
+        // external package
+        callingPackage = callingParts[0];
+
         if (Binder.getCallingPid() != android.os.Process.myPid()) {
             mPhone.getContext().enforceCallingPermission(
                     Manifest.permission.SEND_SMS,
@@ -596,6 +602,12 @@ public class IccSmsInterfaceManager {
                                          callingParts.length > 1) {
             callingUid = Integer.parseInt(callingParts[1]);
         }
+
+        // Reset the calling package, remove the trailing uid so
+        // shouldWriteMessageForPackage can match correctly
+        // if our message has been synthesized by an
+        // external package
+        callingPackage = callingParts[0];
 
         if (Binder.getCallingPid() != android.os.Process.myPid()) {
             mPhone.getContext().enforceCallingPermission(
