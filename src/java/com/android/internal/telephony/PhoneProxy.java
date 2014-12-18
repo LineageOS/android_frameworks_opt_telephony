@@ -1561,6 +1561,10 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone.notifyCallForwardingIndicator();
     }
 
+    public boolean isImsRegistered() {
+        return mActivePhone.isImsRegistered();
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         try {
             ((PhoneBase)mActivePhone).dump(fd, pw, args);
