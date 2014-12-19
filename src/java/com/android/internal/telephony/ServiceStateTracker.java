@@ -226,7 +226,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected SubscriptionManager mSubscriptionManager;
     protected final OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
             new OnSubscriptionsChangedListener() {
-        private int lastActiveSubId = -1; // < 0 is invalid subId
+        private int previousSubId = -1; // < 0 is invalid subId
         /**
          * Callback invoked when there is any change to any SubscriptionInfo. Typically
          * this method would invoke {@link SubscriptionManager#getActiveSubscriptionInfoList}
@@ -236,9 +236,9 @@ public abstract class ServiceStateTracker extends Handler {
             if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
             // Set the network type, in case the radio does not restore it.
             int subId = mPhoneBase.getSubId();
-            if (SubscriptionManager.isValidSubscriptionId(subId)) {
-                if (lastActiveSubId != subId) {
-                    lastActiveSubId = subId;
+            if (previousSubId != subId) {
+                previousSubId = subId;
+                if (SubscriptionManager.isValidSubscriptionId(subId)) {
                     int networkType = PhoneFactory.calculatePreferredNetworkType(
                             mPhoneBase.getContext(), subId);
                     mCi.setPreferredNetworkType(networkType, null);
@@ -263,7 +263,7 @@ public abstract class ServiceStateTracker extends Handler {
                             } else {
                                 Log.e(LOG_TAG,"iccCardProxy is null");
                             }
-                        }else {
+                        } else {
                             Log.e(LOG_TAG, "Null phoneProxy");
                         }
                     } else {
