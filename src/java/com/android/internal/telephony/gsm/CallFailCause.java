@@ -55,5 +55,9 @@ public interface CallFailCause {
     static final int DIAL_MODIFIED_TO_SS = 245;
     static final int DIAL_MODIFIED_TO_DIAL = 246;
 
+    //Emergency Redial
+    static final int EMERGENCY_TEMP_FAILURE = 325;
+    static final int EMERGENCY_PERM_FAILURE = 326;
+
     static final int ERROR_UNSPECIFIED = 0xffff;
 }
