@@ -1101,9 +1101,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
             if (conn != null && conn.isIncoming() && conn.getConnectTime() == 0) {
                 // Missed or rejected call
                 if (cause == DisconnectCause.LOCAL) {
-                    cause = DisconnectCause.INCOMING_REJECTED;
-                } else {
                     cause = DisconnectCause.INCOMING_MISSED;
+                } else {
+                    cause = DisconnectCause.INCOMING_REJECTED;
                 }
             }
 
