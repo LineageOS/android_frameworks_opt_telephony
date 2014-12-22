@@ -254,15 +254,16 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                 }
             }
 
+            if (!hasRecordIn(mEmailFileRecord, recNum)) {
+                Rlog.e(LOG_TAG, "Error: Email file is empty");
+                return;
+            }
+
             for (int m = 0; m < mEmailFileRecord.get(recNum).size(); m++) {
                 mEmailFlagsRecord[recNum].add(0);
             }
             mEmailFlags.put(recNum, mEmailFlagsRecord[recNum]);
 
-            if (!hasRecordIn(mEmailFileRecord, recNum)) {
-                Rlog.e(LOG_TAG, "Error: Email file is empty");
-                return;
-            }
             updatePhoneAdnRecordWithEmail(recNum);
         }
 
@@ -307,15 +308,16 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                 }
             }
 
+            if (!hasRecordIn(mAnrFileRecord, recNum)) {
+                Rlog.e(LOG_TAG, "Error: Anr file is empty");
+                return;
+            }
+
             for (int m = 0; m < mAnrFileRecord.get(recNum).size(); m++) {
                 mAnrFlagsRecord[recNum].add(0);
             }
             mAnrFlags.put(recNum, mAnrFlagsRecord[recNum]);
 
-            if (!hasRecordIn(mAnrFileRecord, recNum)) {
-                Rlog.e(LOG_TAG, "Error: Anr file is empty");
-                return;
-            }
             updatePhoneAdnRecordWithAnr(recNum);
         }
     }
@@ -493,12 +495,8 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
     }
 
     private boolean hasRecordIn(Map<Integer, ArrayList<byte[]>> record, int pbrIndex) {
-        if (record == null)
-            return false;
-        try {
-            record.get(pbrIndex);
-        } catch (IndexOutOfBoundsException e) {
-            Rlog.e(LOG_TAG, "record is empty in pbrIndex" + pbrIndex);
+        if (record == null || record.isEmpty() || record.get(pbrIndex) == null) {
+            Rlog.e(LOG_TAG, "record [" + record + "] is empty in pbrIndex" + pbrIndex);
             return false;
         }
         return true;
@@ -584,6 +582,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                     if (rec != null && (!TextUtils.isEmpty(anrs[0]))) {
                         rec.setAdditionalNumbers(anrs);
                         mPhoneBookRecords.set(adnRecIndex, rec);
+                        mAnrFlags.get(pbrIndex).set(recNum - 1, 1);
                     }
 
                 }
@@ -641,7 +640,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             if (rec != null) {
                 String[] emails = new String[emailList.size()];
                 System.arraycopy(emailList.toArray(), 0, emails, 0, emailList.size());
-                rec.setAdditionalNumbers(emails);
+                rec.setEmails(emails);
                 mPhoneBookRecords.set(i, rec);
             }
         }
