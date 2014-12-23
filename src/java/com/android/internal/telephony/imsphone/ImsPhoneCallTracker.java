@@ -1120,6 +1120,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     sendEmptyMessage(EVENT_RESUME_BACKGROUND);
                 }
             }
+            if (mForegroundCall.getState() != ImsPhoneCall.State.ACTIVE) {
+                if (mRingingCall.getState().isRinging()) {
+                    // Drop pending MO. We should address incoming call first
+                    mPendingMO = null;
+                } else if (mPendingMO != null) {
+                    sendEmptyMessage(EVENT_DIAL_PENDINGMO);
+                }
+            }
         }
 
         @Override
