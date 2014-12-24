@@ -39,6 +39,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.SystemProperties;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
@@ -680,11 +681,15 @@ public class ModemStackController extends Handler {
             loge("No need to update Stack Binding in case of Single Sim.");
             return FAILURE;
         }
+        boolean isFlexmapDisabled = (SystemProperties.getInt(
+                "persist.radio.disable_flexmap", 0) == 1);
 
-        if (callInProgress || mIsPhoneInEcbmMode || (!mIsStackReady && !isBootUp)) {
-            loge("updateStackBinding: Calls is progress = " + callInProgress +
-                    ", mIsPhoneInEcbmMode = " + mIsPhoneInEcbmMode + ", mIsStackReady = "
-                    + mIsStackReady + ". So EXITING!!!");
+        if (isFlexmapDisabled || callInProgress || mIsPhoneInEcbmMode 
+                || (!mIsStackReady && !isBootUp)) {
+            loge("updateStackBinding: FlexMap Disabled :" + isFlexmapDisabled
+                    + "Calls is progress = " + callInProgress + ", mIsPhoneInEcbmMode = "
+                    + mIsPhoneInEcbmMode + ", mIsStackReady = " + mIsStackReady +
+                    ". So EXITING!!!");
             return FAILURE;
         }
         for (int i = 0; i < mNumPhones; i++) {
