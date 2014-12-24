@@ -499,6 +499,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     class RILReceiver implements Runnable {
         byte[] buffer;
+        boolean isMtkRIL = SystemProperties.getBoolean("ro.telephony.uses_mtk_ril", false);
 
         RILReceiver() {
             buffer = new byte[RIL_MAX_COMMAND_BYTES];
@@ -519,6 +520,35 @@ public class RIL extends BaseCommands implements CommandsInterface {
                 } else {
                     rilSocket = SOCKET_NAME_RIL[mInstanceId];
                 }
+
+        if(isMtkRIL) {
+                int currentSim;
+
+                if (mInstanceId == null || mInstanceId ==0) {
+                currentSim = 0;
+                } else {
+                currentSim = mInstanceId;
+                }
+
+
+                int m3GsimId = 0;
+                m3GsimId =  SystemProperties.getInt("gsm.3gswitch", 0);
+                if((m3GsimId > 0) && (m3GsimId <= 2)) {
+                --m3GsimId;
+                } else {
+                m3GsimId=0;
+                }
+
+                if (m3GsimId >= 1) {
+                      if (currentSim == 0){
+                         rilSocket = SOCKET_NAME_RIL[m3GsimId];
+                        }
+                      else if(currentSim == m3GsimId){
+                            rilSocket = SOCKET_NAME_RIL[0];
+                        }
+                       if (RILJ_LOGD) riljLog("Capability switched, swap sockets [" + currentSim + ", " + rilSocket + "]");
+                }
+        }
 
                 try {
                     s = new LocalSocket();
