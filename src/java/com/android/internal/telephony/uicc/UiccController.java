@@ -118,10 +118,18 @@ public class UiccController extends Handler {
         if (DBG) log("Creating UiccController");
         mContext = c;
         mCis = ci;
+        boolean radioApmSimNotPwdn = SystemProperties.getBoolean(
+                "persist.radio.apm_sim_not_pwdn", false);
         for (int i = 0; i < mCis.length; i++) {
             Integer index = new Integer(i);
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, index);
-            mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
+            if (radioApmSimNotPwdn) {
+                // Reading ICC status in airplane mode is only supported in QCOM
+                // RILs when persist.radio.apm_sim_not_pwdn is set to true
+                mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
+            } else {
+                mCis[i].registerForOn(this, EVENT_ICC_STATUS_CHANGED, index);
+            }
             mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, index);
             mCis[i].registerForIccRefresh(this, EVENT_SIM_REFRESH, index);
         }
