@@ -126,7 +126,10 @@ public class UiccController extends Handler {
             Integer index = new Integer(i);
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, index);
             // TODO remove this once modem correctly notifies the unsols
-            if (DECRYPT_STATE.equals(SystemProperties.get("vold.decrypt"))) {
+            if (DECRYPT_STATE.equals(SystemProperties.get("vold.decrypt")) ||
+                    SystemProperties.getBoolean("persist.radio.apm_sim_not_pwdn", false)) {
+                // Reading ICC status in airplane mode is only supported in QCOM
+                // RILs when this property is set to true
                 mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
             } else {
                 mCis[i].registerForOn(this, EVENT_ICC_STATUS_CHANGED, index);
