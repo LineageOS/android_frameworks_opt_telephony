@@ -127,6 +127,7 @@ public class ImsPhone extends ImsPhoneBase {
 
     private final RegistrantList mSilentRedialRegistrants = new RegistrantList();
 
+    private boolean mImsRegistered = false;
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
         @Override
@@ -1243,5 +1244,12 @@ public class ImsPhone extends ImsPhoneBase {
 
     public Phone getDefaultPhone() {
         return mDefaultPhone;
+    }
+
+    public boolean isImsRegistered() {
+        return mImsRegistered;
+    }
+    public void setImsRegistered(boolean value) {
+        mImsRegistered = value;
     }
 }

@@ -1962,4 +1962,11 @@ public interface Phone {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForRadioCapabilityChanged(Handler h);
+
+    /**
+     * Query the IMS Registration Status.
+     *
+     * @return true if IMS is Registered
+     */
+    public boolean isImsRegistered();
 }
