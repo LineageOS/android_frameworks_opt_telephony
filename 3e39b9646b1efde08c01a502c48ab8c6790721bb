@@ -22,6 +22,24 @@
       "revId": "3e39b9646b1efde08c01a502c48ab8c6790721bb",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7aa08908_f2f1f9ce",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccController.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 1381
+      },
+      "writtenOn": "2014-12-30T18:45:38Z",
+      "side": 1,
+      "message": "I\u0027m trying to emulate upstream behavior.\n\nAOSP uses registerForOn\n\nThe latest patch from CAF uses registerForAvailable without registerForOn (the registerForOn removed below was added by me in an earlier patch).",
+      "parentUuid": "7aa08908_52e28d04",
+      "revId": "3e39b9646b1efde08c01a502c48ab8c6790721bb",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
