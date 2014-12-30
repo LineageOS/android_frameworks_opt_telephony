@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7aa08908_52e28d04",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccController.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2014-12-30T18:37:57Z",
+      "side": 1,
+      "message": "I don\u0027t think that else is really needed here, why?",
+      "range": {
+        "startLine": 149,
+        "startChar": 24,
+        "endLine": 149,
+        "endChar": 37
+      },
+      "revId": "3e39b9646b1efde08c01a502c48ab8c6790721bb",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
