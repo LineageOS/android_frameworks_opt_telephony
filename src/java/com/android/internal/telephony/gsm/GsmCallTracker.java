@@ -67,7 +67,7 @@ public final class GsmCallTracker extends CallTracker {
 
     //***** Constants
 
-    static final int MAX_CONNECTIONS = 7;   // only 7 connections allowed in GSM
+    static final int MAX_CONNECTIONS = 19;   // 7 allowed in GSM + 12 from IMS for SRVCC
     static final int MAX_CONNECTIONS_PER_CALL = 5; // only 5 connections allowed per call
 
     //***** Instance Variables
@@ -632,10 +632,12 @@ public final class GsmCallTracker extends CallTracker {
         }
 
         /* Disconnect any pending Handover connections */
-        for (Connection hoConnection : mHandoverConnections) {
-            log("handlePollCalls - disconnect hoConn= " + hoConnection.toString());
+        for (Iterator<Connection> it = mHandoverConnections.iterator();
+                it.hasNext();) {
+            Connection hoConnection = it.next();
+            log("handlePollCalls - disconnect hoConn= " + hoConnection);
             ((ImsPhoneConnection)hoConnection).onDisconnect(DisconnectCause.NOT_VALID);
-            mHandoverConnections.remove(hoConnection);
+            it.remove();
         }
 
         // Any non-local disconnects: determine cause

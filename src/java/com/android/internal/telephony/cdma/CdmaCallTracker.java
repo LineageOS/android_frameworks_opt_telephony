@@ -47,6 +47,7 @@ import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 
@@ -724,10 +725,12 @@ public final class CdmaCallTracker extends CallTracker {
         }
 
         /* Disconnect any pending Handover connections */
-        for (Connection hoConnection : mHandoverConnections) {
-            log("handlePollCalls - disconnect hoConn= " + hoConnection.toString());
+        for (Iterator<Connection> it = mHandoverConnections.iterator();
+                it.hasNext();) {
+            Connection hoConnection = it.next();
+            log("handlePollCalls - disconnect hoConn= " + hoConnection);
             ((ImsPhoneConnection)hoConnection).onDisconnect(DisconnectCause.NOT_VALID);
-            mHandoverConnections.remove(hoConnection);
+            it.remove();
         }
 
         // Any non-local disconnects: determine cause
