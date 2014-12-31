@@ -1256,8 +1256,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
             ImsPhoneCallTracker.this.post(r);
 
-            updatePhoneState();
-            mPhone.notifyPreciseCallStateChanged();
+            processCallStateChange(call, ImsPhoneCall.State.ACTIVE,
+                    DisconnectCause.NOT_DISCONNECTED, true);
         }
 
         @Override
