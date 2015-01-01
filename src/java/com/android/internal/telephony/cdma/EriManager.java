@@ -20,6 +20,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
 import android.os.PersistableBundle;
+import android.os.SystemProperties;
 import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.util.Xml;
@@ -312,7 +313,7 @@ public class EriManager {
         EriDisplayInformation ret;
 
         // Carrier can use carrier config to customize any built-in roaming display indications
-        if (mIsEriFileLoaded) {
+        if (mIsEriFileLoaded || SystemProperties.getBoolean("ro.ril.force_eri_from_xml", false)) {
             EriInfo eriInfo = getEriInfo(roamInd);
             if (eriInfo != null) {
                 if (VDBG) Rlog.v(LOG_TAG, "ERI roamInd " + roamInd + " found in ERI file");
