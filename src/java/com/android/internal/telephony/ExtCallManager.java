@@ -971,16 +971,6 @@ public class ExtCallManager extends CallManager {
     }
 
     @Override
-    public void startDtmf(char c, int subscription) {
-        getPhone(subscription).startDtmf(c);
-    }
-
-    @Override
-    public void stopDtmf(int subscription) {
-        getPhone(subscription).stopDtmf();
-    }
-
-    @Override
     public void registerForSubscriptionChange(Handler h, int what, Object obj) {
         mActiveSubChangeRegistrants.addUnique(h, what, obj);
     }
