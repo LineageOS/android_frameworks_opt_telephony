@@ -448,7 +448,6 @@ public class IccCardProxy extends Handler implements IccCard {
                 registerUiccCardEvents();
                 updateActiveRecord();
             }
-
             updateExternalState();
         }
     }
@@ -463,7 +462,15 @@ public class IccCardProxy extends Handler implements IccCard {
     }
 
     private void updateExternalState() {
-        if (mUiccCard == null || mUiccCard.getCardState() == CardState.CARDSTATE_ABSENT) {
+
+        // mUiccCard could be null at bootup, before valid card states have
+        // been received from UiccController.
+        if (mUiccCard == null) {
+            setExternalState(State.NOT_READY);
+            return;
+        }
+
+        if (mUiccCard.getCardState() == CardState.CARDSTATE_ABSENT) {
             if (mRadioOn) {
                 setExternalState(State.ABSENT);
             } else {
