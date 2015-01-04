@@ -1357,4 +1357,8 @@ public class ImsPhone extends ImsPhoneBase {
     public boolean isVtEnabled() {
         return mCT.isVtEnabled();
     }
+
+    public boolean isUtEnabled() {
+        return mCT.isUtEnabled();
+    }
 }
