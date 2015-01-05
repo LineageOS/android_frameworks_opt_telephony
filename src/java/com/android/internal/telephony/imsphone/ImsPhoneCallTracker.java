@@ -1116,7 +1116,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
             if (reasonInfo.getCode() == ImsReasonInfo.CODE_USER_TERMINATED) {
                 if ((oldState == ImsPhoneCall.State.DISCONNECTING)
-                        && (mForegroundCall.getState() == ImsPhoneCall.State.DISCONNECTED)
+                        && (mForegroundCall.getState() == ImsPhoneCall.State.IDLE)
                         && (mBackgroundCall.getState() == ImsPhoneCall.State.HOLDING)) {
                     sendEmptyMessage(EVENT_RESUME_BACKGROUND);
                 }
