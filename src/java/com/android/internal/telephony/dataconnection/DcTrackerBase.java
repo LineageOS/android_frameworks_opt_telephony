@@ -417,9 +417,14 @@ public abstract class DcTrackerBase extends Handler {
         }
 
         public void register() {
-            mResolver.registerContentObserver(
-                    Settings.Global.getUriFor(Settings.Global.DATA_ROAMING + mPhone.getSubId()),
-                    false, this);
+            String contentUri;
+            if (TelephonyManager.getDefault().getSimCount() == 1) {
+                contentUri = Settings.Global.DATA_ROAMING;
+            } else {
+                contentUri = Settings.Global.DATA_ROAMING + mPhone.getSubId();
+            }
+
+            mResolver.registerContentObserver(Settings.Global.getUriFor(contentUri), false, this);
         }
 
         public void unregister() {
@@ -593,9 +598,7 @@ public abstract class DcTrackerBase extends Handler {
         filter.addAction(INTENT_DATA_STALL_ALARM);
         filter.addAction(INTENT_PROVISIONING_APN_ALARM);
 
-        mUserDataEnabled = TelephonyManager.getIntWithSubId(
-                mPhone.getContext().getContentResolver(), Settings.Global.MOBILE_DATA, phoneSubId,
-                1) == 1;
+        mUserDataEnabled = getDataEnabled();
 
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
 
@@ -689,9 +692,7 @@ public abstract class DcTrackerBase extends Handler {
         }
         int bearer = -1;
         ApnSetting retDunSetting = null;
-        Context c = mPhone.getContext();
-        String apnData = Settings.Global.getString(c.getContentResolver(),
-                Settings.Global.TETHER_DUN_APN);
+        String apnData = Settings.Global.getString(mResolver, Settings.Global.TETHER_DUN_APN);
         List<ApnSetting> dunSettings = ApnSetting.arrayFromString(apnData);
         IccRecords r = mIccRecords.get();
         for (ApnSetting dunSetting : dunSettings) {
@@ -716,6 +717,7 @@ public abstract class DcTrackerBase extends Handler {
             }
         }
 
+        Context c = mPhone.getContext();
         String[] apnArrayData = c.getResources().getStringArray(R.array.config_tether_apndata);
         for (String apn : apnArrayData) {
             ApnSetting dunSetting = ApnSetting.fromString(apn);
@@ -773,9 +775,15 @@ public abstract class DcTrackerBase extends Handler {
     public void setDataOnRoamingEnabled(boolean enabled) {
         final int phoneSubId = mPhone.getSubId();
         if (getDataOnRoamingEnabled() != enabled) {
-            final ContentResolver resolver = mPhone.getContext().getContentResolver();
             int roaming = enabled ? 1 : 0;
-            Settings.Global.putInt(resolver, Settings.Global.DATA_ROAMING + phoneSubId, roaming);
+
+            // For single SIM phones, this is a per phone property.
+            if (TelephonyManager.getDefault().getSimCount() == 1) {
+                Settings.Global.putInt(mResolver, Settings.Global.DATA_ROAMING, roaming);
+            } else {
+                Settings.Global.putInt(mResolver, Settings.Global.DATA_ROAMING + phoneSubId, roaming);
+            }
+
             mSubscriptionManager.setDataRoaming(roaming, phoneSubId);
             // will trigger handleDataOnRoamingChange() through observer
             if (DBG) {
@@ -794,22 +802,27 @@ public abstract class DcTrackerBase extends Handler {
      * Return current {@link android.provider.Settings.Global#DATA_ROAMING} value.
      */
     public boolean getDataOnRoamingEnabled() {
-        boolean isRoaming;
+        boolean isDataRoamingEnabled = "true".equalsIgnoreCase(SystemProperties.get(
+                "ro.com.android.dataroaming", "false"));
         final int phoneSubId = mPhone.getSubId();
 
         try {
-            final ContentResolver resolver = mPhone.getContext().getContentResolver();
-            isRoaming = TelephonyManager.getIntWithSubId(resolver,
-                    Settings.Global.DATA_ROAMING, phoneSubId) != 0;
+            // For single SIM phones, this is a per phone property.
+            if (TelephonyManager.getDefault().getSimCount() == 1) {
+                isDataRoamingEnabled = Settings.Global.getInt(mResolver,
+                        Settings.Global.DATA_ROAMING, isDataRoamingEnabled ? 1 : 0) != 0;
+            } else {
+                isDataRoamingEnabled = TelephonyManager.getIntWithSubId(mResolver,
+                        Settings.Global.DATA_ROAMING, phoneSubId) != 0;
+            }
         } catch (SettingNotFoundException snfe) {
             if (DBG) log("getDataOnRoamingEnabled: SettingNofFoundException snfe=" + snfe);
-            isRoaming = "true".equalsIgnoreCase(SystemProperties.get("ro.com.android.dataroaming",
-                    "false"));
         }
         if (DBG) {
-            log("getDataOnRoamingEnabled: phoneSubId=" + phoneSubId + " isRoaming=" + isRoaming);
+            log("getDataOnRoamingEnabled: phoneSubId=" + phoneSubId +
+                    " isDataRoamingEnabled=" + isDataRoamingEnabled);
         }
-        return isRoaming;
+        return isDataRoamingEnabled;
     }
 
     /**
@@ -826,12 +839,17 @@ public abstract class DcTrackerBase extends Handler {
      * Return current {@link android.provider.Settings.Global#MOBILE_DATA} value.
      */
     public boolean getDataEnabled() {
-        final ContentResolver resolver = mPhone.getContext().getContentResolver();
-        boolean retVal;
+        boolean retVal = "true".equalsIgnoreCase(SystemProperties.get(
+                "ro.com.android.mobiledata", "true"));
         try {
-            int phoneSubId = mPhone.getSubId();
-            retVal = TelephonyManager.getIntWithSubId(resolver, Settings.Global.MOBILE_DATA,
-                    phoneSubId) != 0;
+            if (TelephonyManager.getDefault().getSimCount() == 1) {
+                retVal = Settings.Global.getInt(mResolver, Settings.Global.MOBILE_DATA,
+                        retVal ? 1 : 0) != 0;
+            } else {
+                int phoneSubId = mPhone.getSubId();
+                retVal = TelephonyManager.getIntWithSubId(mResolver, Settings.Global.MOBILE_DATA,
+                        phoneSubId) != 0;
+            }
             if (DBG) log("getDataEnabled: getIntWithSubId retVal=" + retVal);
         } catch (SettingNotFoundException snfe) {
             retVal = "true".equalsIgnoreCase(
@@ -1411,9 +1429,15 @@ public abstract class DcTrackerBase extends Handler {
         synchronized (mDataEnabledLock) {
             if (mUserDataEnabled != enabled) {
                 mUserDataEnabled = enabled;
-                int phoneSubId = mPhone.getSubId();
-                Settings.Global.putInt(mPhone.getContext().getContentResolver(),
-                        Settings.Global.MOBILE_DATA + phoneSubId, enabled ? 1 : 0);
+
+                // For single SIM phones, this is a per phone property.
+                if (TelephonyManager.getDefault().getSimCount() == 1) {
+                    Settings.Global.putInt(mResolver, Settings.Global.MOBILE_DATA, enabled ? 1 : 0);
+                } else {
+                    int phoneSubId = mPhone.getSubId();
+                    Settings.Global.putInt(mResolver, Settings.Global.MOBILE_DATA + phoneSubId,
+                            enabled ? 1 : 0);
+                }
                 if (getDataOnRoamingEnabled() == false &&
                         mPhone.getServiceState().getDataRoaming() == true) {
                     if (enabled) {
@@ -1592,14 +1616,13 @@ public abstract class DcTrackerBase extends Handler {
     }
 
     public int getRecoveryAction() {
-        int action = Settings.System.getInt(mPhone.getContext().getContentResolver(),
+        int action = Settings.System.getInt(mResolver,
                 "radio.data.stall.recovery.action", RecoveryAction.GET_DATA_CALL_LIST);
         if (VDBG_STALL) log("getRecoveryAction: " + action);
         return action;
     }
     public void putRecoveryAction(int action) {
-        Settings.System.putInt(mPhone.getContext().getContentResolver(),
-                "radio.data.stall.recovery.action", action);
+        Settings.System.putInt(mResolver, "radio.data.stall.recovery.action", action);
         if (VDBG_STALL) log("putRecoveryAction: " + action);
     }
 
