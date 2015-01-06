@@ -434,12 +434,7 @@ public abstract class Connection {
     public void migrateFrom(Connection c) {
         if (c == null) return;
         mListeners = c.mListeners;
-        mAddress = c.getAddress();
-        mNumberPresentation = c.getNumberPresentation();
         mDialString = c.getOrigDialString();
-        mCnapName = c.getCnapName();
-        mCnapNamePresentation = c.getCnapNamePresentation();
-        mIsIncoming = c.isIncoming();
         mCreateTime = c.getCreateTime();
         mConnectTime = c.getConnectTime();
         mConnectTimeReal = c.getConnectTimeReal();
