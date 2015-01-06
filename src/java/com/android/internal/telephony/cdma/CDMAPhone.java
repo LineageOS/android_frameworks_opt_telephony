@@ -688,8 +688,9 @@ public class CDMAPhone extends PhoneBase {
     }
 
     @Override
-    public void setLine1Number(String alphaTag, String number, Message onComplete) {
+    public boolean setLine1Number(String alphaTag, String number, final Message onComplete) {
         Rlog.e(LOG_TAG, "setLine1Number: not possible in CDMA");
+        return false;
     }
 
     @Override

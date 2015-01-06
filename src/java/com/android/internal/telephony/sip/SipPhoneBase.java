@@ -319,10 +319,9 @@ abstract class SipPhoneBase extends PhoneBase {
     }
 
     @Override
-    public void setLine1Number(String alphaTag, String number, Message onComplete) {
+    public boolean setLine1Number(String alphaTag, String number, Message onComplete) {
         // FIXME: what to reply for SIP?
-        AsyncResult.forMessage(onComplete, null, null);
-        onComplete.sendToTarget();
+        return false;
     }
 
     @Override
