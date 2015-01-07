@@ -964,8 +964,11 @@ public interface Phone {
      *        (see getMsisdnAlphaTag)
      * @param number the new MSISDN phone number to be set on the SIM.
      * @param onComplete a callback message when the action is completed.
+     *
+     * @return true if req is sent, false otherwise. If req is not sent there will be no response,
+     * that is, onComplete will never be sent.
      */
-    void setLine1Number(String alphaTag, String number, Message onComplete);
+    boolean setLine1Number(String alphaTag, String number, Message onComplete);
 
     /**
      * Get the voice mail access phone number. Typically dialed when the
