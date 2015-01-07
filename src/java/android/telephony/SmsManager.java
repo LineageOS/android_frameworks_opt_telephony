@@ -1050,6 +1050,7 @@ public final class SmsManager {
     public static final int MMS_ERROR_IO_ERROR = 5;
     public static final int MMS_ERROR_RETRY = 6;
     public static final int MMS_ERROR_CONFIGURATION_ERROR = 7;
+    public static final int MMS_ERROR_NO_DATA_NETWORK = 8;
 
     /** Intent extra name for MMS sending result data in byte array type */
     public static final String EXTRA_MMS_DATA = "android.telephony.extra.MMS_DATA";
