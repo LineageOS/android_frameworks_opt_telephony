@@ -2759,8 +2759,7 @@ public final class DcTracker extends DcTrackerBase {
         registerForAllEvents();
         onUpdateIcc();
 
-        mUserDataEnabled = TelephonyManager.getIntWithSubId(mPhone.getContext().getContentResolver(),
-                Settings.Global.MOBILE_DATA, mPhone.getSubId(), 1) == 1;
+        mUserDataEnabled = getDataEnabled();
 
         if (mPhone instanceof CDMALTEPhone) {
             ((CDMALTEPhone)mPhone).updateCurrentCarrierInProvider();
