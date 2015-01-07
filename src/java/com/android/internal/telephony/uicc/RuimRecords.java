@@ -32,7 +32,7 @@ import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
-import android.telephony.TelephonyManager;
+import android.telephony.SubscriptionManager;
 import android.telephony.Rlog;
 import android.text.TextUtils;
 import android.util.Log;
@@ -832,6 +832,11 @@ public final class RuimRecords extends IccRecords {
         setLocaleFromCsim();
         mRecordsLoadedRegistrants.notifyRegistrants(
             new AsyncResult(null, null, null));
+
+        if (!TextUtils.isEmpty(mMdn)) {
+            log("Calling setDisplayNumber for subId and number " + mParentApp.getSubId() + " and " + mMdn);
+            SubscriptionManager.from(mContext).setDisplayNumber(mMdn, mParentApp.getSubId());
+        }
     }
 
     @Override

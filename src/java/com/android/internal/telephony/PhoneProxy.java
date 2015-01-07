@@ -809,8 +809,8 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
-    public void setLine1Number(String alphaTag, String number, Message onComplete) {
-        mActivePhone.setLine1Number(alphaTag, number, onComplete);
+    public boolean setLine1Number(String alphaTag, String number, Message onComplete) {
+        return mActivePhone.setLine1Number(alphaTag, number, onComplete);
     }
 
     @Override

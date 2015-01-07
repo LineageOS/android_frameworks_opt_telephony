@@ -907,16 +907,19 @@ public class SubscriptionController extends ISub.Stub {
         Phone phone = sProxyPhones[phoneId];
         String alphaTag = TelephonyManager.getDefault().getLine1AlphaTagForSubscriber(subId);
 
-        synchronized(mLock) {
+        synchronized (mLock) {
             mSuccess = false;
             Message response = mHandler.obtainMessage(EVENT_WRITE_MSISDN_DONE);
 
-            phone.setLine1Number(alphaTag, number, response);
-
-            try {
-                mLock.wait();
-            } catch (InterruptedException e) {
-                loge("interrupted while trying to write MSISDN");
+            if (phone.setLine1Number(alphaTag, number, response)) {
+                try {
+                    mLock.wait();
+                } catch (InterruptedException e) {
+                    loge("interrupted while trying to write MSISDN");
+                }
+            } else {
+                logd("setLine1Number() returned false; moving on");
+                mSuccess = true;
             }
         }
 
@@ -926,6 +929,8 @@ public class SubscriptionController extends ISub.Stub {
                         + "=" + Long.toString(subId), null);
             if (DBG) logd("[setDisplayNumber]- update result :" + result);
             notifySubscriptionInfoChanged();
+        } else {
+            logd("[setDisplayNumber]- mSuccess is false");
         }
 
         return result;

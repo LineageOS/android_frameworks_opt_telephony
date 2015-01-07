@@ -1076,10 +1076,13 @@ public class GSMPhone extends PhoneBase {
     }
 
     @Override
-    public void setLine1Number(String alphaTag, String number, Message onComplete) {
+    public boolean setLine1Number(String alphaTag, String number, Message onComplete) {
         IccRecords r = mIccRecords.get();
         if (r != null) {
             r.setMsisdnNumber(alphaTag, number, onComplete);
+            return true;
+        } else {
+            return false;
         }
     }
 
