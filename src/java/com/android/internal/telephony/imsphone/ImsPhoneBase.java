@@ -356,10 +356,9 @@ abstract class ImsPhoneBase extends PhoneBase {
     }
 
     @Override
-    public void setLine1Number(String alphaTag, String number, Message onComplete) {
+    public boolean setLine1Number(String alphaTag, String number, Message onComplete) {
         // FIXME: what to reply for Volte?
-        AsyncResult.forMessage(onComplete, null, null);
-        onComplete.sendToTarget();
+        return false;
     }
 
     @Override
