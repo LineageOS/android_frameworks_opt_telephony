@@ -246,6 +246,8 @@ public abstract class ServiceStateTracker extends Handler {
                             mPhoneBase.getContext(), subId);
                     mCi.setPreferredNetworkType(networkType, null);
 
+                    mPhoneBase.notifyCallForwardingIndicator();
+
                     //store OperatorNumeric in case subId is not valid when EVENT_RECORDS_LOADED issued
                     int phoneId = mPhoneBase.getPhoneId();
                     PhoneProxy[] phoneProxys = (PhoneProxy[]) PhoneFactory.getPhones();
