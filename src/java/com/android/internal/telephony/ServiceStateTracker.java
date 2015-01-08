@@ -227,6 +227,7 @@ public abstract class ServiceStateTracker extends Handler {
     private boolean mImsRegistered = false;
 
     protected SubscriptionManager mSubscriptionManager;
+    protected SubscriptionController mSubscriptionController;
     protected final OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
             new OnSubscriptionsChangedListener() {
         private int previousSubId = -1; // < 0 is invalid subId
@@ -292,6 +293,7 @@ public abstract class ServiceStateTracker extends Handler {
         mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
         mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
 
+        mSubscriptionController = SubscriptionController.getInstance();
         mSubscriptionManager = SubscriptionManager.from(phoneBase.getContext());
         mSubscriptionManager
             .registerOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
