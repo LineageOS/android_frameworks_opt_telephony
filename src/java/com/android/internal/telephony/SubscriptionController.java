@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import android.content.BroadcastReceiver;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -159,33 +158,6 @@ public class SubscriptionController extends ISub.Stub {
         }
     };
 
-    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (DBG) logd("onReceive " + intent);
-            // TODO: Have GsmServiceStateTracker insert this data directly and deprecate
-            // this broadcast.
-            int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
-                    SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-            if (intent.getAction().equals(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION)) {
-                if (intent.getBooleanExtra(TelephonyIntents.EXTRA_SHOW_PLMN, false)) {
-                    String carrierText = intent.getStringExtra(TelephonyIntents.EXTRA_PLMN);
-                    if (intent.getBooleanExtra(TelephonyIntents.EXTRA_SHOW_SPN, false)) {
-                        // Need to show both plmn and spn.
-                        String separator = mContext.getString(
-                                com.android.internal.R.string.kg_text_message_separator).toString();
-                        carrierText = new StringBuilder().append(carrierText).append(separator)
-                                .append(intent.getStringExtra(TelephonyIntents.EXTRA_SPN))
-                                .toString();
-                    }
-                    setCarrierText(carrierText, subId);
-                } else if (intent.getBooleanExtra(TelephonyIntents.EXTRA_SHOW_SPN, false)) {
-                    setCarrierText(intent.getStringExtra(TelephonyIntents.EXTRA_PLMN), subId);
-                }
-            }
-        }
-    };
-
     public static SubscriptionController init(Phone phone) {
         synchronized (SubscriptionController.class) {
             if (sInstance == null) {
@@ -225,7 +197,6 @@ public class SubscriptionController extends ISub.Stub {
         if(ServiceManager.getService("isub") == null) {
                 ServiceManager.addService("isub", this);
         }
-        registerReceiverIfNeeded();
 
         if (DBG) logdl("[SubscriptionController] init by Context");
     }
@@ -241,22 +212,8 @@ public class SubscriptionController extends ISub.Stub {
         if(ServiceManager.getService("isub") == null) {
                 ServiceManager.addService("isub", this);
         }
-        registerReceiverIfNeeded();
 
         if (DBG) logdl("[SubscriptionController] init by Phone");
-    }
-
-    private void registerReceiverIfNeeded() {
-        // We only need to register the broadcast receiver if the URI
-        // where we are going to store the data is valid.
-        // TODO: This can be removed once the SubscriptionController is not running
-        // on devices that don't need it, such as TVs.
-        if (mContext.getPackageManager().resolveContentProvider(
-                SubscriptionManager.CONTENT_URI.getAuthority(), 0) != null) {
-            if (DBG) logd("registering SPN updated receiver");
-            mContext.registerReceiver(mReceiver,
-                    new IntentFilter(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION));
-        }
     }
 
     /**
@@ -786,6 +743,34 @@ public class SubscriptionController extends ISub.Stub {
 
         if (DBG) logdl("[addSubInfoRecord]- info size=" + mSlotIdxToSubId.size());
         return 0;
+    }
+
+    public void setPlmnSpn(int slotId, boolean showPlmn, String plmn,
+            boolean showSpn, String spn) {
+        if (mContext.getPackageManager().resolveContentProvider(
+                SubscriptionManager.CONTENT_URI.getAuthority(), 0) == null) {
+            // No place to store this info, we are done.
+            // TODO: This can be removed once SubscriptionController is not running on devices
+            // that don't need it, such as TVs.
+            return;
+        }
+        String carrierText = "";
+        if (showPlmn) {
+            carrierText = plmn;
+            if (showSpn) {
+                // Need to show both plmn and spn.
+                String separator = mContext.getString(
+                        com.android.internal.R.string.kg_text_message_separator).toString();
+                carrierText = new StringBuilder().append(carrierText).append(separator).append(spn)
+                        .toString();
+            }
+        } else if (showSpn) {
+            carrierText = spn;
+        }
+        int[] subIds = getSubId(slotId);
+        for (int i = 0; i < subIds.length; i++) {
+            setCarrierText(carrierText, subIds[i]);
+        }
     }
 
     /**
