@@ -159,16 +159,20 @@ public class SubInfoRecordUpdater extends Handler {
                                 && subInfo.nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
                             SpnOverride mSpnOverride = new SpnOverride();
                             String nameToSet;
-                            String CarrierName =
+                            String Carrier =
                                     TelephonyManager.getDefault().getSimOperator(subId);
+                            logd("Carrier = " + Carrier);
+                            String CarrierName =
+                                    TelephonyManager.getDefault().getSimOperatorName(subId);
                             logd("CarrierName = " + CarrierName);
 
-                            if (mSpnOverride.containsCarrier(CarrierName)) {
-                                nameToSet = mSpnOverride.getSpn(CarrierName) + " 0"
-                                        + Integer.toString(slotId + 1);
+                            if (mSpnOverride.containsCarrier(Carrier)) {
+                                nameToSet = mSpnOverride.getSpn(Carrier);
                                 logd("Found, name = " + nameToSet);
+                            } else if (CarrierName != "") {
+                                nameToSet = CarrierName;
                             } else {
-                                nameToSet = "SUB 0" + Integer.toString(slotId + 1);
+                                nameToSet = "SIM " + Integer.toString(slotId + 1);
                                 logd("Not found, name = " + nameToSet);
                             }
 
