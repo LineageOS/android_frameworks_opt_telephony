@@ -144,7 +144,7 @@ public class SubscriptionController extends ISub.Stub {
 
     // FIXME: Does not allow for multiple subs in a slot and change to SparseArray
     private static HashMap<Integer, Integer> mSlotIdxToSubId = new HashMap<Integer, Integer>();
-    private static int mDefaultVoiceSubId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
+    private static int mDefaultFallbackSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     private static int mDefaultPhoneId = 0;
 
     private static final int EVENT_WRITE_MSISDN_DONE = 1;
@@ -810,8 +810,8 @@ public class SubscriptionController extends ISub.Stub {
                             || !SubscriptionManager.isValidSubscriptionId(currentSubId)) {
                         // TODO While two subs active, if user deactivats first
 
-                        // FIXME: Currently we assume phoneId and slotId may not be true
-                        // when we cross map modem or when multiple subs per slot.
+                        // FIXME: Currently we assume phoneId == slotId which in the future
+                        // may not be true, for instance with multiple subs per slot.
                         // But is true at the moment.
                         mSlotIdxToSubId.put(slotId, subId);
                         int subIdCountMax = getActiveSubInfoCountMax();
@@ -826,7 +826,7 @@ public class SubscriptionController extends ISub.Stub {
                         // Set the default sub if not set or if single sim device
                         if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
                                 || subIdCountMax == 1) {
-                            setDefaultSubId(subId);
+                            setDefaultFallbackSubId(subId);
                         }
                         // If single sim device, set this subscription as the default for everything
                         if (subIdCountMax == 1) {
@@ -1286,10 +1286,21 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public int getDefaultSubId() {
-        //FIXME: Make this smarter, need to handle data only and voice devices
-        int subId = Settings.Global.getInt(mContext.getContentResolver(),
-                 Settings.Global.MULTI_SIM_DEFAULT_SUBSCRIPTION, DUMMY_SUB_ID);
-        if (VDBG) logd("getDefaultSubId, value = " + subId);
+        int subId;
+        boolean isVoiceCapable = mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_voice_capable);
+        if (isVoiceCapable) {
+            subId = getDefaultVoiceSubId();
+            if (VDBG) logdl("[getDefaultSubId] isVoiceCapable subId=" + subId);
+        } else {
+            subId = getDefaultDataSubId();
+            if (VDBG) logdl("[getDefaultSubId] NOT VoiceCapable subId=" + subId);
+        }
+        if ( ! isActiveSubId(subId)) {
+            subId = mDefaultFallbackSubId;
+            if (VDBG) logdl("[getDefaultSubId] NOT active use fall back subId=" + subId);
+        }
+        if (VDBG) logv("[getDefaultSubId]- value = " + subId);
         return subId;
     }
 
@@ -1454,18 +1465,17 @@ public class SubscriptionController extends ISub.Stub {
      * sub is set as default subId. If two or more  sub's are active
      * the first sub is set as default subscription
      */
-    // FIXME
-    public void setDefaultSubId(int subId) {
+    private void setDefaultFallbackSubId(int subId) {
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             throw new RuntimeException("setDefaultSubId called with DEFAULT_SUB_ID");
         }
-        if (DBG) logdl("[setDefaultSubId] subId=" + subId);
+        if (DBG) logdl("[setDefaultFallbackSubId] subId=" + subId);
         if (SubscriptionManager.isValidSubscriptionId(subId)) {
             int phoneId = getPhoneId(subId);
             if (phoneId >= 0 && (phoneId < TelephonyManager.getDefault().getPhoneCount()
                     || TelephonyManager.getDefault().getSimCount() == 1)) {
-                if (DBG) logdl("[setDefaultSubId] set mDefaultVoiceSubId=" + subId);
-                mDefaultVoiceSubId = subId;
+                if (DBG) logdl("[setDefaultFallbackSubId] set mDefaultFallbackSubId=" + subId);
+                mDefaultFallbackSubId = subId;
                 Settings.Global.putLong(mContext.getContentResolver(),
                          Settings.Global.MULTI_SIM_DEFAULT_SUBSCRIPTION, subId);
                 // Update MCC MNC device configuration information
@@ -1476,14 +1486,14 @@ public class SubscriptionController extends ISub.Stub {
                 Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_SUBSCRIPTION_CHANGED);
                 intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
                 SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId, subId);
-                if (VDBG) {
-                    logdl("[setDefaultSubId] broadcast default subId changed phoneId=" + phoneId
+                if (DBG) {
+                    logdl("[setDefaultFallbackSubId] broadcast default subId changed phoneId=" + phoneId
                             + " subId=" + subId);
                 }
                 mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
             } else {
-                if (VDBG) {
-                    logdl("[setDefaultSubId] not set invalid phoneId=" + phoneId
+                if (DBG) {
+                    logdl("[setDefaultFallbackSubId] not set invalid phoneId=" + phoneId
                             + " subId=" + subId);
                 }
             }
@@ -1851,6 +1861,25 @@ public class SubscriptionController extends ISub.Stub {
                 sp.edit().remove(prefKey+subInfo.getSubscriptionId()).commit();
             }
         }
+    }
+
+    private boolean isActiveSubId(int subId) {
+        boolean retVal = false;
+
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+            Set<Entry<Integer, Integer>> simInfoSet = mSlotIdxToSubId.entrySet();
+            if (VDBG) logdl("[isActiveSubId] simInfoSet=" + simInfoSet);
+
+            for (Entry<Integer, Integer> entry: simInfoSet) {
+                if (subId == entry.getValue()) {
+                    retVal = true;
+                    break;
+                }
+            }
+        }
+
+        if (VDBG) logdl("[isActiveSubId]- " + retVal);
+        return retVal;
     }
 
     /**
