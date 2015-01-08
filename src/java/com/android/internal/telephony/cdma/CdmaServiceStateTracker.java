@@ -588,6 +588,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             intent.putExtra(TelephonyIntents.EXTRA_PLMN, plmn);
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
             mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
+
+            mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
+                    showPlmn, plmn, false, "");
         }
 
         mCurPlmn = plmn;
