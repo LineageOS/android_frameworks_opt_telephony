@@ -606,6 +606,8 @@ public class IccSmsInterfaceManager {
             return;
         }
 
+        destAddr = filterDestAddress(destAddr);
+
         if (parts.size() > 1 && parts.size() < 10 && !SmsMessage.hasEmsSupport()) {
             for (int i = 0; i < parts.size(); i++) {
                 // If EMS is not supported, we have to break down EMS into single segment SMS
@@ -1135,6 +1137,8 @@ public class IccSmsInterfaceManager {
             return;
         }
 
+        textAndAddress[1] = filterDestAddress(textAndAddress[1]);
+
         if (parts.size() > 1 && parts.size() < 10 && !SmsMessage.hasEmsSupport()) {
             for (int i = 0; i < parts.size(); i++) {
                 // If EMS is not supported, we have to break down EMS into single segment SMS
@@ -1163,7 +1167,6 @@ public class IccSmsInterfaceManager {
             return;
         }
 
-        textAndAddress[1] = filterDestAddress(textAndAddress[1]);
         mDispatcher.sendMultipartText(
                 textAndAddress[1], // destAddress
                 scAddress,
