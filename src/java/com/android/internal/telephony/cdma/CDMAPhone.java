@@ -1060,8 +1060,8 @@ public class CDMAPhone extends PhoneBase {
             Message onComplete) {
         ImsPhone imsPhone = mImsPhone;
         if ((imsPhone != null)
-                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
-                || imsPhone.isUtEnabled()) {
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+                || imsPhone.isUtEnabled())) {
             imsPhone.getCallForwardingOption(commandInterfaceCFReason, onComplete);
         } else {
             if (onComplete != null) {
@@ -1078,8 +1078,8 @@ public class CDMAPhone extends PhoneBase {
             int commandInterfaceCFReason, String dialingNumber, Message onComplete) {
         ImsPhone imsPhone = mImsPhone;
         if ((imsPhone != null)
-                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
-                || imsPhone.isUtEnabled()) {
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+                || imsPhone.isUtEnabled())) {
             imsPhone.setCallForwardingUncondTimerOption(startHour, startMinute, endHour,
                     endMinute, commandInterfaceCFAction, commandInterfaceCFReason,
                     dialingNumber, onComplete);
