@@ -63,7 +63,10 @@ public final class UsimFileHandler extends IccFileHandler implements IccConstant
         case EF_LI:
         case EF_PLMNWACT:
             return MF_SIM + DF_ADF;
-
+        /* Support for reading user & operator PLMN list from SIM */
+        /* 3GPP TS 11.11. File read : EFPLMNsel) */
+        case EF_PLMN_SEL:
+            return MF_SIM + DF_GSM;
         case EF_PBR:
             if (mUseLocalPb) {
                 return MF_SIM + DF_ADF + DF_PHONEBOOK;
