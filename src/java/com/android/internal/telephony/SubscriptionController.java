@@ -16,21 +16,16 @@
 
 package com.android.internal.telephony;
 
-import android.content.ContentProviderClient;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
-import android.os.AsyncResult;
 import android.os.Binder;
-import android.os.Handler;
-import android.os.Message;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
@@ -44,7 +39,6 @@ import android.text.TextUtils;
 import android.text.format.Time;
 import android.util.Log;
 
-import com.android.internal.telephony.ITelephonyRegistry;
 import com.android.internal.telephony.IccCardConstants.State;
 
 import java.io.FileDescriptor;
@@ -122,7 +116,6 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     protected final Object mLock = new Object();
-    protected boolean mSuccess;
 
     /** The singleton instance. */
     private static SubscriptionController sInstance = null;
@@ -136,27 +129,7 @@ public class SubscriptionController extends ISub.Stub {
     private static int mDefaultFallbackSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     private static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
 
-    private static final int EVENT_WRITE_MSISDN_DONE = 1;
-
     private int[] colorArr;
-
-    protected Handler mHandler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            AsyncResult ar;
-
-            switch (msg.what) {
-                case EVENT_WRITE_MSISDN_DONE:
-                    ar = (AsyncResult) msg.obj;
-                    synchronized (mLock) {
-                        mSuccess = (ar.exception == null);
-                        if (DBG) logd("EVENT_WRITE_MSISDN_DONE, mSuccess = "+mSuccess);
-                        mLock.notifyAll();
-                    }
-                    break;
-            }
-        }
-    };
 
     public static SubscriptionController init(Phone phone) {
         synchronized (SubscriptionController.class) {
@@ -877,7 +850,7 @@ public class SubscriptionController extends ISub.Stub {
         enforceSubscriptionPermission();
 
         validateSubId(subId);
-        int result = 0;
+        int result;
         int phoneId = getPhoneId(subId);
 
         if (number == null || phoneId < 0 ||
@@ -887,36 +860,16 @@ public class SubscriptionController extends ISub.Stub {
         }
         ContentValues value = new ContentValues(1);
         value.put(SubscriptionManager.NUMBER, number);
-        if (DBG) logd("[setDisplayNumber]- number:" + number + " set");
 
-        Phone phone = sProxyPhones[phoneId];
-        String alphaTag = TelephonyManager.getDefault().getLine1AlphaTagForSubscriber(subId);
+        // This function had a call to update number on the SIM (Phone.setLine1Number()) but that
+        // was removed as there doesn't seem to be a reason for that. If it is added back, watch out
+        // for deadlocks.
 
-        synchronized (mLock) {
-            mSuccess = false;
-            Message response = mHandler.obtainMessage(EVENT_WRITE_MSISDN_DONE);
-
-            if (phone.setLine1Number(alphaTag, number, response)) {
-                try {
-                    mLock.wait();
-                } catch (InterruptedException e) {
-                    loge("interrupted while trying to write MSISDN");
-                }
-            } else {
-                logd("setLine1Number() returned false; moving on");
-                mSuccess = true;
-            }
-        }
-
-        if (mSuccess) {
-            result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                        + "=" + Long.toString(subId), null);
-            if (DBG) logd("[setDisplayNumber]- update result :" + result);
-            notifySubscriptionInfoChanged();
-        } else {
-            logd("[setDisplayNumber]- mSuccess is false");
-        }
+        result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
+                    + "=" + Long.toString(subId), null);
+        if (DBG) logd("[setDisplayNumber]- number: " + number + " update result :" + result);
+        notifySubscriptionInfoChanged();
 
         return result;
     }
