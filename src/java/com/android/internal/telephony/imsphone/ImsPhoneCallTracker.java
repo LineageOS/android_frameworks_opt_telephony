@@ -1539,6 +1539,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             }
             for (Connection c : mHandoverCall.mConnections) {
                 ((ImsPhoneConnection)c).changeParent(mHandoverCall);
+                ((ImsPhoneConnection)c).releaseWakeLock();
             }
         }
         if (call.getState().isAlive()) {
@@ -1559,11 +1560,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
             transferHandoverConnections(mForegroundCall);
             transferHandoverConnections(mBackgroundCall);
             transferHandoverConnections(mRingingCall);
-            // release wake lock hold
-            ImsPhoneConnection con = mHandoverCall.getHandoverConnection();
-            if (con != null) {
-                con.releaseWakeLock();
-            }
             // Make mIsSrvccCompleted flag to true after SRVCC complete.
             // After SRVCC complete sometimes SRV_STATUS_UPDATE come late.
             mIsSrvccCompleted = true;
