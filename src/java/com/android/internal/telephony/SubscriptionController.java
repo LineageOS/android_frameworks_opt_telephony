@@ -587,24 +587,55 @@ public class SubscriptionController extends ISub.Stub {
             logdl("[addSubInfoRecord]- null iccId");
         }
 
-        long[] subIds = getSubId(slotId);
-        if (subIds == null || subIds.length == 0) {
-            logdl("[addSubInfoRecord]- getSubId fail");
-            return 0;
-        }
-
         String nameToSet;
-        SpnOverride mSpnOverride = new SpnOverride();
+        if (isSubInfoReady()) { // we can only get a subId if SubInfo is ready
+            long[] subIds = getSubId(slotId);
+            if (subIds == null || subIds.length == 0) {
+                logdl("[addSubInfoRecord]- getSubId fail");
+                return 0;
+            }
 
-        String CarrierName = TelephonyManager.getDefault().getSimOperator(subIds[0]);
-        logdl("[addSubInfoRecord] CarrierName = " + CarrierName);
+            int subIdsIndex = 0;
+            if (subIds.length > 1) { // one SIM can have more than one subId
+                for (int i = 0; i < subIds.length; i++) {
+                    logdl("[addSubInfoRecord] inspecting subIds["+i+"]: " + subIds[i]);
+                    if (TelephonyManager.getDefault().getSimOperatorName(subIds[i]) != "") {
+                        // We have a Carrier here, with a CarrierName and everything!
+                        subIdsIndex = i;
+                        logdl("[addSubInfoRecord] using subIds["+i+"]: it has a Carrier");
+                    }
+                }
+            }
 
-        if (mSpnOverride.containsCarrier(CarrierName)) {
-            nameToSet = mSpnOverride.getSpn(CarrierName) + " 0" + Integer.toString(slotId + 1);
-            logdl("[addSubInfoRecord] Found, name = " + nameToSet);
+            if (subIds[subIdsIndex] == -1) { // DUMMY value from getSubId
+                Long currentSubId = mSimInfo.get(slotId);
+                if (currentSubId == null) {
+                    logdl("[addSubInfoRecord] currentSubId is null, proceed with dummy value");
+                } else {
+                    logdl("[addSubInfoRecord] currentSubId " + currentSubId + ", proceed with it");
+                    subIds[subIdsIndex] = currentSubId;
+                }
+            }
+
+            String Carrier = TelephonyManager.getDefault().getSimOperator(subIds[subIdsIndex]);
+            logdl("[addSubInfoRecord] Carrier = " + Carrier);
+            String CarrierName = TelephonyManager.getDefault().getSimOperatorName(subIds[subIdsIndex]);
+            logdl("[addSubInfoRecord] CarrierName = " + CarrierName);
+            SpnOverride mSpnOverride = new SpnOverride();
+
+            if (mSpnOverride.containsCarrier(Carrier)) {
+                nameToSet = mSpnOverride.getSpn(Carrier);
+                logdl("[addSubInfoRecord] Found, SpnOverride, name = " + nameToSet);
+            } else if (CarrierName != "") {
+                nameToSet = CarrierName;
+                logdl("[addSubInfoRecord] Found, name = " + nameToSet);
+            } else {
+                nameToSet = "SIM " + Integer.toString(slotId + 1);
+                logdl("[addSubInfoRecord] Not found, name = " + nameToSet);
+            }
         } else {
-            nameToSet = "SUB 0" + Integer.toString(slotId + 1);
-            logdl("[addSubInfoRecord] Not found, name = " + nameToSet);
+            nameToSet = "SIM " + Integer.toString(slotId + 1);
+            logdl("[addSubInfoRecord] SubInfo not ready, name = " + nameToSet);
         }
 
         ContentResolver resolver = mContext.getContentResolver();
@@ -633,8 +664,9 @@ public class SubscriptionController extends ISub.Stub {
                     value.put(SubscriptionManager.SIM_ID, slotId);
                 }
 
-                if (nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
+                if (nameSource == SubscriptionManager.NAME_SOURCE_UNDEFINDED) {
                     value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
+                    logdl("[addSubInfoRecord]- going to update SIM name to " + nameToSet);
                 }
 
                 if (value.size() > 0) {
