@@ -234,7 +234,7 @@ public class DctController extends Handler {
 
         mContext = mPhones[0].getContext();
         mSubMgr = SubscriptionManager.from(mContext);
-        mSubMgr.registerOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+        mSubMgr.addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
 
         //Register for settings change.
         mContext.getContentResolver().registerContentObserver(
@@ -252,7 +252,7 @@ public class DctController extends Handler {
             mNetworkFactoryMessenger[i] = null;
         }
 
-        mSubMgr.unregisterOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+        mSubMgr.removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
         mContext.getContentResolver().unregisterContentObserver(mObserver);
     }
 

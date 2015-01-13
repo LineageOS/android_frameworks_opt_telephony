@@ -616,7 +616,7 @@ public abstract class DcTrackerBase extends Handler {
 
         mSubscriptionManager = SubscriptionManager.from(mPhone.getContext());
         mSubscriptionManager
-                .registerOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+                .addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
 
         HandlerThread dcHandlerThread = new HandlerThread("DcHandlerThread");
         dcHandlerThread.start();
@@ -638,7 +638,7 @@ public abstract class DcTrackerBase extends Handler {
             mDataRoamingSettingObserver.unregister();
         }
         mSubscriptionManager
-                .unregisterOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+                .removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
         mDcc.dispose();
         mDcTesterFailBringUpAll.dispose();
     }
