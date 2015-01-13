@@ -146,14 +146,10 @@ public class UiccController extends Handler {
         }
     }
 
-    public UiccCard getUiccCard() {
-        return getUiccCard(SubscriptionController.getInstance().getPhoneId(SubscriptionController.getInstance().getDefaultSubId()));
-    }
-
-    public UiccCard getUiccCard(int slotId) {
+    public UiccCard getUiccCard(int phoneId) {
         synchronized (mLock) {
-            if (isValidCardIndex(slotId)) {
-                return mUiccCards[slotId];
+            if (isValidCardIndex(phoneId)) {
+                return mUiccCards[phoneId];
             }
             return null;
         }
@@ -174,9 +170,9 @@ public class UiccController extends Handler {
     }
 
     // Easy to use API
-    public IccRecords getIccRecords(int slotId, int family) {
+    public IccRecords getIccRecords(int phoneId, int family) {
         synchronized (mLock) {
-            UiccCardApplication app = getUiccCardApplication(slotId, family);
+            UiccCardApplication app = getUiccCardApplication(phoneId, family);
             if (app != null) {
                 return app.getIccRecords();
             }
@@ -185,9 +181,9 @@ public class UiccController extends Handler {
     }
 
     // Easy to use API
-    public IccFileHandler getIccFileHandler(int slotId, int family) {
+    public IccFileHandler getIccFileHandler(int phoneId, int family) {
         synchronized (mLock) {
-            UiccCardApplication app = getUiccCardApplication(slotId, family);
+            UiccCardApplication app = getUiccCardApplication(phoneId, family);
             if (app != null) {
                 return app.getIccFileHandler();
             }
@@ -341,12 +337,12 @@ public class UiccController extends Handler {
     }
 
     // Easy to use API
-    public UiccCardApplication getUiccCardApplication(int slotId, int family) {
+    public UiccCardApplication getUiccCardApplication(int phoneId, int family) {
         synchronized (mLock) {
-            if (isValidCardIndex(slotId)) {
-                UiccCard c = mUiccCards[slotId];
+            if (isValidCardIndex(phoneId)) {
+                UiccCard c = mUiccCards[phoneId];
                 if (c != null) {
-                    return mUiccCards[slotId].getApplication(family);
+                    return mUiccCards[phoneId].getApplication(family);
                 }
             }
             return null;

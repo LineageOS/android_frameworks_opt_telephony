@@ -1782,7 +1782,7 @@ public abstract class SMSDispatcher extends Handler {
     }
 
     protected String getCarrierAppPackageName() {
-        UiccCard card = UiccController.getInstance().getUiccCard();
+        UiccCard card = UiccController.getInstance().getUiccCard(mPhone.getPhoneId());
         if (card == null) {
             return null;
         }

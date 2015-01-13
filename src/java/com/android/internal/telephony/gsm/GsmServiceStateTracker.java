@@ -841,8 +841,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
                     if (opNames != null && opNames.length >= 3) {
                         // FIXME: Giving brandOverride higher precedence, is this desired?
-                        String brandOverride = mUiccController.getUiccCard() != null ?
-                            mUiccController.getUiccCard().getOperatorBrandOverride() : null;
+                        String brandOverride = mUiccController.getUiccCard(getPhoneId()) != null ?
+                            mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() : null;
                         if (brandOverride != null) {
                             log("EVENT_POLL_STATE_OPERATOR: use brandOverride=" + brandOverride);
                             mNewSS.setOperatorName(brandOverride, brandOverride, opNames[2]);

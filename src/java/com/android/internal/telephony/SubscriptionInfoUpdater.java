@@ -136,6 +136,21 @@ public class SubscriptionInfoUpdater extends Handler {
             int slotId;
             logd("Action: " + action);
 
+            if (!action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED) &&
+                !action.equals(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED)) {
+                return;
+            }
+
+            int slotId = intent.getIntExtra(PhoneConstants.PHONE_KEY,
+                    SubscriptionManager.INVALID_SIM_SLOT_INDEX);
+            logd("slotId: " + slotId);
+            if (slotId == SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
+                return;
+            }
+
+            String simStatus = intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE);
+            logd("simStatus: " + simStatus);
+
             if (action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED)) {
                 String simStatus = intent.getStringExtra(IccCardConstants.INTENT_KEY_ICC_STATE);
                 slotId = intent.getIntExtra(PhoneConstants.SLOT_KEY,
@@ -157,11 +172,11 @@ public class SubscriptionInfoUpdater extends Handler {
                                 "android.permission.READ_PHONE_STATE", UserHandle.USER_ALL);
                     }
                 } else if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(simStatus)) {
-                    int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
-                            SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-                    sendMessage(obtainMessage(EVENT_SIM_LOADED, slotId, subId));
+                    sendMessage(obtainMessage(EVENT_SIM_LOADED, slotId, -1));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(simStatus)) {
                     sendMessage(obtainMessage(EVENT_SIM_ABSENT, slotId, -1));
+                } else {
+                    logd("Ignoring simStatus: " + simStatus);
                 }
             }
             logd("[Receiver]-");
@@ -257,7 +272,7 @@ public class SubscriptionInfoUpdater extends Handler {
             }
 
            case EVENT_SIM_LOADED:
-                handleSimLoaded(msg.arg1, msg.arg2);
+                handleSimLoaded(msg.arg1);
                 break;
 
             case EVENT_SIM_ABSENT:
@@ -336,15 +351,32 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
-    private void handleSimLoaded(int slotId, int subId) {
+    private void handleSimLoaded(int slotId) {
+        logd("handleSimStateLoadedInternal: slotId: " + slotId);
+
         queryIccId(slotId);
         if (mTelephonyMgr == null) {
             mTelephonyMgr = TelephonyManager.from(mContext);
         }
 
+        int subId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
+        int[] subIds = SubscriptionController.getInstance().getSubId(slotId);
+        if (subIds != null) {   // Why an array?
+            subId = subIds[0];
+        }
+
         if (SubscriptionManager.isValidSubscriptionId(subId)) {
-            String msisdn = TelephonyManager.getDefault()
-                    .getLine1NumberForSubscriber(subId);
+            String operator = records.getOperatorNumeric();
+            if (operator != null) {
+                if (subId == SubscriptionController.getInstance().getDefaultSubId()) {
+                    MccTable.updateMccMncConfiguration(mContext, operator, false);
+                }
+                SubscriptionController.getInstance().setMccMnc(operator,subId);
+            } else {
+                logd("EVENT_RECORDS_LOADED Operator name is null");
+            }
+
+            String msisdn = TelephonyManager.getDefault().getLine1NumberForSubscriber(subId);
             ContentResolver contentResolver = mContext.getContentResolver();
 
             if (msisdn != null) {
@@ -355,18 +387,14 @@ public class SubscriptionInfoUpdater extends Handler {
                         + Long.toString(subId), null);
             }
 
-            SubscriptionInfo subInfo =
-                    mSubscriptionManager.getActiveSubscriptionInfo(subId);
+            SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
             String nameToSet;
-            String CarrierName =
-                    TelephonyManager.getDefault().getSimOperator(subId);
+            String CarrierName = TelephonyManager.getDefault().getSimOperator(subId);
             logd("CarrierName = " + CarrierName);
-            String simCarrierName =
-                    TelephonyManager.getDefault().getSimOperatorName(subId);
+            String simCarrierName = TelephonyManager.getDefault().getSimOperatorName(subId);
             ContentValues name = new ContentValues(1);
 
-            if (subInfo != null
-                    && subInfo.getNameSource() !=
+            if (subInfo != null && subInfo.getNameSource() !=
                     SubscriptionManager.NAME_SOURCE_USER_INPUT) {
                 if (!TextUtils.isEmpty(simCarrierName)) {
                     nameToSet = simCarrierName;

@@ -383,7 +383,7 @@ public class CdmaConnection extends Connection {
                 int serviceState = phone.getServiceState().getState();
                 UiccCardApplication app = UiccController
                         .getInstance()
-                        .getUiccCardApplication(UiccController.APP_FAM_3GPP2);
+                        .getUiccCardApplication(phone.getPhoneId(), UiccController.APP_FAM_3GPP2);
                 AppState uiccAppState = (app != null) ? app.getState() : AppState.APPSTATE_UNKNOWN;
                 if (serviceState == ServiceState.STATE_POWER_OFF) {
                     return DisconnectCause.POWER_OFF;

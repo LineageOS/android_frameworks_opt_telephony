@@ -97,11 +97,11 @@ public class UiccCard {
     private static final int EVENT_CARRIER_PRIVILIGES_LOADED = 20;
     private static final int EVENT_SIM_GET_ATR_DONE = 21;
 
-    private int mSlotId;
+    private int mPhoneId;
 
-    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int slotId) {
+    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId) {
         mCardState = ics.mCardState;
-        mSlotId = slotId;
+        mPhoneId = phoneId;
         update(c, ci, ics);
     }
 
@@ -193,7 +193,7 @@ public class UiccCard {
         if (mUiccApplications.length > 0 && mUiccApplications[0] != null) {
             // Initialize or Reinitialize CatService
             if (mCatService == null) {
-                mCatService = CatServiceFactory.makeCatService(mCi, mContext, this, mSlotId);
+                mCatService = CatServiceFactory.makeCatService(mCi, mContext, this, mPhoneId);
             }
         } else {
             if (mCatService != null) {
@@ -529,8 +529,8 @@ public class UiccCard {
         return count;
     }
 
-    public int getSlotId() {
-        return mSlotId;
+    public int getPhoneId() {
+        return mPhoneId;
     }
 
     /**

@@ -1044,4 +1044,8 @@ public abstract class ServiceStateTracker extends Handler {
     protected String getHomeOperatorNumeric() {
         return SystemProperties.get(TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
     }
+
+    protected int getPhoneId() {
+        return mPhoneBase.getPhoneId();
+    }
 }

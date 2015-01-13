@@ -816,8 +816,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                         // NV device (as opposed to CSIM)
                         mNewSS.setOperatorName(opNames[0], opNames[1], opNames[2]);
                     } else {
-                        String brandOverride = mUiccController.getUiccCard() != null ?
-                            mUiccController.getUiccCard().getOperatorBrandOverride() : null;
+                        String brandOverride = mUiccController.getUiccCard(getPhoneId()) != null ?
+                            mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() : null;
                         if (brandOverride != null) {
                             mNewSS.setOperatorName(brandOverride, brandOverride, opNames[2]);
                         } else {
