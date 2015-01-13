@@ -823,7 +823,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
 
         List<String> carrierPackages = null;
-        UiccCard card = UiccController.getInstance().getUiccCard();
+        UiccCard card = UiccController.getInstance().getUiccCard(mPhone.getPhoneId());
         if (card != null) {
             carrierPackages = card.getCarrierPackageNamesForIntent(
                     mContext.getPackageManager(),

@@ -958,4 +958,8 @@ public abstract class ServiceStateTracker extends Handler {
             }
         }
     }
+
+    protected int getPhoneId() {
+        return mPhoneBase.getPhoneId();
+    }
 }
