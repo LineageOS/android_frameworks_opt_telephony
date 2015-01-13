@@ -176,6 +176,15 @@ public abstract class Connection {
     }
 
     /**
+     * Sets the Connection connect time in currentTimeMillis() format.
+     *
+     * @param connectTime the new connect time.
+     */
+    public void setConnectTime(long connectTime) {
+        mConnectTime = connectTime;
+    }
+
+    /**
      * Connection connect time in elapsedRealtime() format.
      * For outgoing calls: Begins at (DIALING|ALERTING) -> ACTIVE transition.
      * For incoming calls: Begins at (INCOMING|WAITING) -> ACTIVE transition.
