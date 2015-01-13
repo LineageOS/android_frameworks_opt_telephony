@@ -319,7 +319,7 @@ public class DctController extends Handler {
                 new IntentFilter(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED));
 
         mSubMgr = SubscriptionManager.from(mContext);
-        mSubMgr.registerOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+        mSubMgr.addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
 
         //Register for settings change.
         mContext.getContentResolver().registerContentObserver(
@@ -340,7 +340,7 @@ public class DctController extends Handler {
         mContext.unregisterReceiver(defaultDdsBroadcastReceiver);
         mContext.unregisterReceiver(subInfoBroadcastReceiver);
 
-        mSubMgr.unregisterOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+        mSubMgr.removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
         mContext.getContentResolver().unregisterContentObserver(mObserver);
     }
 

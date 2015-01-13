@@ -247,7 +247,7 @@ public abstract class ServiceStateTracker extends Handler {
 
         mSubscriptionManager = SubscriptionManager.from(phoneBase.getContext());
         mSubscriptionManager
-            .registerOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+            .addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
 
         mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
             ServiceState.rilRadioTechnologyToString(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN));
@@ -265,7 +265,7 @@ public abstract class ServiceStateTracker extends Handler {
         mUiccController.unregisterForIccChanged(this);
         mCi.unregisterForCellInfoList(this);
         mSubscriptionManager
-            .unregisterOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+            .removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
     }
 
     public boolean getDesiredPowerState() {
