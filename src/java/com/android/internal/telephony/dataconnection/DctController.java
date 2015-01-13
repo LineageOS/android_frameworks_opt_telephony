@@ -334,6 +334,9 @@ public class DctController extends Handler {
             mNetworkFactoryMessenger[i] = null;
         }
 
+        mContext.unregisterReceiver(defaultDdsBroadcastReceiver);
+        mContext.unregisterReceiver(subInfoBroadcastReceiver);
+
         mSubMgr.removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
         mContext.getContentResolver().unregisterContentObserver(mObserver);
     }
