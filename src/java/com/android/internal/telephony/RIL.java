@@ -3786,7 +3786,8 @@ public class RIL extends BaseCommands implements CommandsInterface {
             appStatus.pin1_replaced  = p.readInt();
             appStatus.pin1           = appStatus.PinStateFromRILInt(p.readInt());
             appStatus.pin2           = appStatus.PinStateFromRILInt(p.readInt());
-            cardStatus.mApplications[i] = appStatus;
+            if (!(appStatus.app_type == appStatus.AppTypeFromRILInt(5)||appStatus.app_type == appStatus.AppTypeFromRILInt(4)||appStatus.app_type == appStatus.AppTypeFromRILInt(3)))
+                cardStatus.mApplications[i] = appStatus;
         }
         return cardStatus;
     }
