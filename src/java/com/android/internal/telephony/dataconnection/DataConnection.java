@@ -25,6 +25,7 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.util.AsyncChannel;
+import com.android.internal.util.FastPrintWriter;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -54,7 +55,9 @@ import android.util.Patterns;
 import android.util.TimeUtils;
 
 import java.io.FileDescriptor;
+import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -1108,7 +1111,11 @@ public final class DataConnection extends StateMachine {
                     break;
                 }
                 case AsyncChannel.CMD_CHANNEL_DISCONNECTED: {
-                    if (VDBG) log("CMD_CHANNEL_DISCONNECTED");
+                    if (DBG) {
+                        log("DcDefault: CMD_CHANNEL_DISCONNECTED before quiting call dump");
+                        dumpToLog();
+                    }
+
                     quit();
                     break;
                 }
@@ -1951,15 +1958,17 @@ public final class DataConnection extends StateMachine {
             super(l, c, TAG, ni, nc, lp, score, misc);
         }
 
+        @Override
         protected void unwanted() {
             if (mNetworkAgent != this) {
-                log("unwanted found mNetworkAgent=" + mNetworkAgent +
+                log("DcNetworkAgent: unwanted found mNetworkAgent=" + mNetworkAgent +
                         ", which isn't me.  Aborting unwanted");
                 return;
             }
             // this can only happen if our exit has been called - we're already disconnected
             if (mApnContexts == null) return;
             for (ApnContext apnContext : mApnContexts) {
+                log("DcNetworkAgent: [unwanted]: disconnect apnContext=" + apnContext);
                 Message msg = mDct.obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, apnContext);
                 DisconnectParams dp = new DisconnectParams(apnContext, apnContext.getReason(), msg);
                 DataConnection.this.sendMessage(DataConnection.this.
@@ -2118,6 +2127,19 @@ public final class DataConnection extends StateMachine {
     @Override
     public String toString() {
         return "{" + toStringSimple() + " mApnContexts=" + mApnContexts + "}";
+    }
+
+    private void dumpToLog() {
+        dump(null, new PrintWriter(new StringWriter(0)) {
+            @Override
+            public void println(String s) {
+                DataConnection.this.logd(s);
+            }
+
+            @Override
+            public void flush() {
+            }
+        }, null);
     }
 
     /**

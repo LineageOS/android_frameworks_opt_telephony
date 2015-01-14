@@ -979,6 +979,10 @@ public final class DcTracker extends DcTrackerBase {
                 apnContext.setState(DctConstants.State.IDLE);
                 if (!apnContext.isReady()) {
                     if (dcac != null) {
+                        if (DBG) {
+                            log("cleanUpConnection: teardown, disconnected, !ready apnContext="
+                                    + apnContext);
+                        }
                         dcac.tearDown(apnContext, "", null);
                     }
                     apnContext.setDataConnectionAc(null);
@@ -992,7 +996,9 @@ public final class DcTracker extends DcTrackerBase {
                             // CAF_MSIM is this below condition required.
                             // if (PhoneConstants.APN_TYPE_DUN.equals(PhoneConstants.APN_TYPE_DEFAULT)) {
                             if (teardownForDun()) {
-                                if (DBG) log("tearing down dedicated DUN connection");
+                                if (DBG) {
+                                    log("cleanUpConnection: disconnectAll DUN connection");
+                                }
                                 // we need to tear it down - we brought it up just for dun and
                                 // other people are camped on it and now dun is done.  We need
                                 // to stop using it and let the normal apn list get used to find
@@ -1001,7 +1007,8 @@ public final class DcTracker extends DcTrackerBase {
                             }
                         }
                         if (DBG) {
-                            log("cleanUpConnection: tearing down" + (disconnectAll ? " all" :""));
+                            log("cleanUpConnection: tearing down" + (disconnectAll ? " all" :"")
+                                    + "apnContext=" + apnContext);
                         }
                         Message msg = obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, apnContext);
                         if (disconnectAll) {
