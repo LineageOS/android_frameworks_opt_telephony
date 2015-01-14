@@ -74,8 +74,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     private static final boolean DBG = true;
 
-    private boolean mIsVolteEnabled = false;
-    private boolean mIsVtEnabled = false;
+    private boolean[] mImsFeatureEnabled = {false, false, false, false};
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -1304,25 +1303,17 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onFeatureCapabilityChanged(int serviceClass,
                 int[] enabledFeatures, int[] disabledFeatures) {
             if (serviceClass == ImsServiceClass.MMTEL) {
-                if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE] ==
-                        ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE) {
-                    mIsVolteEnabled = true;
-                }
-                if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE] ==
-                        ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE) {
-                    mIsVtEnabled = true;
-                }
-                if (disabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE] ==
-                        ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE) {
-                    mIsVolteEnabled = false;
-                }
-                if (disabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE] ==
-                        ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE) {
-                    mIsVtEnabled = false;
+                for (int  i = ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE;
+                        i <= ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI; i++) {
+                    if (enabledFeatures[i] == i) {
+                        mImsFeatureEnabled[i] = true;
+                    }
+                    if (disabledFeatures[i] == i) {
+                        mImsFeatureEnabled[i] = false;
+                    }
                 }
             }
-            if (DBG) log("onFeatureCapabilityChanged, mIsVolteEnabled = " +  mIsVolteEnabled
-                    + " mIsVtEnabled = " + mIsVtEnabled);
+            if (DBG) log("onFeatureCapabilityChanged,  mImsFeatureEnabled=" +  mImsFeatureEnabled);
         }
     };
 
@@ -1466,11 +1457,16 @@ public final class ImsPhoneCallTracker extends CallTracker {
     }
 
     public boolean isVolteEnabled() {
-        return mIsVolteEnabled;
+        return mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE];
+    }
+
+    public boolean isVowifiEnabled() {
+        return mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI];
     }
 
     public boolean isVtEnabled() {
-        return mIsVtEnabled;
+        return (mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE]
+                || mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI]);
     }
     @Override
     public PhoneConstants.State getState() {

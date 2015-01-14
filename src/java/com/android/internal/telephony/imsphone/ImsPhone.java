@@ -1238,6 +1238,10 @@ public class ImsPhone extends ImsPhoneBase {
         return mCT.isVolteEnabled();
     }
 
+    public boolean isVowifiEnabled() {
+        return mCT.isVowifiEnabled();
+    }
+
     public boolean isVtEnabled() {
         return mCT.isVtEnabled();
     }
