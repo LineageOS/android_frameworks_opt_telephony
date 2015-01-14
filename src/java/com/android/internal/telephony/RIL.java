@@ -3768,6 +3768,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
         if (!oldRil)
             cardStatus.mImsSubscriptionAppIndex = p.readInt();
 
+        if (needsOldRilFeature("ignoreCdma") {
+            cardStatus.mCdmaSubscriptionAppIndex = -1;
+            cardStatus.mImsSubscriptionAppIndex = -1;
+        }
+
         int numApplications = p.readInt();
 
         // limit to maximum allowed applications
