@@ -37,6 +37,7 @@ public class SpnOverride {
 
     static final String LOG_TAG = "SpnOverride";
     static final String PARTNER_SPN_OVERRIDE_PATH ="etc/spn-conf.xml";
+    static final String OEM_SPN_OVERRIDE_PATH = "telephony/spn-conf.xml";
 
     public SpnOverride () {
         mCarrierSpnMap = new HashMap<String, String>();
@@ -54,14 +55,32 @@ public class SpnOverride {
     private void loadSpnOverrides() {
         FileReader spnReader;
 
-        final File spnFile = new File(Environment.getRootDirectory(),
+        File spnFile = new File(Environment.getRootDirectory(),
                 PARTNER_SPN_OVERRIDE_PATH);
+        File oemSpnFile = new File(Environment.getOemDirectory(),
+                OEM_SPN_OVERRIDE_PATH);
+
+        if (oemSpnFile.exists()) {
+            // OEM image exist SPN xml, get the timestamp from OEM & System image for comparison.
+            long oemSpnTime = oemSpnFile.lastModified();
+            long sysSpnTime = spnFile.lastModified();
+            Rlog.d(LOG_TAG, "SPN Timestamp: oemTime = " + oemSpnTime + " sysTime = " + sysSpnTime);
+
+            // To get the newer version of SPN from OEM image
+            if (oemSpnTime > sysSpnTime) {
+                Rlog.d(LOG_TAG, "SPN in OEM image is newer than System image");
+                spnFile = oemSpnFile;
+            }
+        } else {
+            // No SPN in OEM image, so load it from system image.
+            Rlog.d(LOG_TAG, "No SPN in OEM image = " + oemSpnFile.getPath() +
+                " Load SPN from system image");
+        }
 
         try {
             spnReader = new FileReader(spnFile);
         } catch (FileNotFoundException e) {
-            Rlog.w(LOG_TAG, "Can not open " +
-                    Environment.getRootDirectory() + "/" + PARTNER_SPN_OVERRIDE_PATH);
+            Rlog.w(LOG_TAG, "Can not open " + spnFile.getAbsolutePath());
             return;
         }
 
