@@ -84,7 +84,7 @@ public class SubscriptionInfoUpdater extends Handler {
     public static final int STATUS_SIM4_INSERTED = 0x08;
 
     // Key used to read/write the current IMSI. Updated on SIM_STATE_CHANGED - LOADED.
-    public static final String CURR_IMSI = "curr_imsi";
+    public static final String CURR_SUBID = "curr_subid";
 
     private static Phone[] mPhone;
     private static Context mContext = null;
@@ -342,15 +342,13 @@ public class SubscriptionInfoUpdater extends Handler {
                     + "=" + Long.toString(subId), null);
             logd("carrier name = " + simCarrierName);
 
-            /* Update preferred network type and network selection mode on IMSI change.
-             * Storing last IMSI in SharedPreference for now. Can consider making it
-             * part of subscription info db */
+            /* Update preferred network type and network selection mode on SIM change.
+             * Storing last subId in SharedPreference for now to detect SIM change. */
             SharedPreferences sp =
                     PreferenceManager.getDefaultSharedPreferences(mContext);
-            String storedImsi = sp.getString(CURR_IMSI + slotId, "");
-            String newImsi = mPhone[slotId].getSubscriberId();
+            int storedSubId = sp.getInt(CURR_SUBID + slotId, -1);
 
-            if (!storedImsi.equals(newImsi)) {
+            if (storedSubId != subId) {
                 int networkType = RILConstants.PREFERRED_NETWORK_MODE;
 
                 // Set the modem network mode
@@ -359,13 +357,13 @@ public class SubscriptionInfoUpdater extends Handler {
                         Settings.Global.PREFERRED_NETWORK_MODE + mPhone[slotId].getSubId(),
                         networkType);
 
-                // Only support automatic selection mode on IMSI change.
+                // Only support automatic selection mode on SIM change.
                 mPhone[slotId].getNetworkSelectionMode(
                         obtainMessage(EVENT_GET_NETWORK_SELECTION_MODE_DONE, new Integer(slotId)));
 
-                // Update stored IMSI
+                // Update stored subId
                 SharedPreferences.Editor editor = sp.edit();
-                editor.putString(CURR_IMSI + slotId, newImsi);
+                editor.putInt(CURR_SUBID + slotId, subId);
                 editor.apply();
             }
         } else {
