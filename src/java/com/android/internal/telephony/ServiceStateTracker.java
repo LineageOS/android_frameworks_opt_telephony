@@ -224,6 +224,14 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final String ACTION_RADIO_OFF = "android.intent.action.ACTION_RADIO_OFF";
     protected boolean mPowerOffDelayNeed = true;
     protected boolean mDeviceShuttingDown = false;
+    /** Keep track of SPN display rules, so we only broadcast intent if something changes. */
+    protected boolean mSpnUpdatePending = false;
+    protected String mCurSpn = null;
+    protected String mCurPlmn = null;
+    protected boolean mCurShowPlmn = false;
+    protected boolean mCurShowSpn = false;
+
+
     private boolean mImsRegistered = false;
 
     protected SubscriptionManager mSubscriptionManager;
@@ -277,6 +285,12 @@ public abstract class ServiceStateTracker extends Handler {
                     }
                     mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
                         ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
+
+                    if (mSpnUpdatePending) {
+                        mSubscriptionController.setPlmnSpn(phoneId, mCurShowPlmn, mCurPlmn,
+                                mCurShowSpn, mCurSpn);
+                        mSpnUpdatePending = false;
+                    }
                 }
             }
         }

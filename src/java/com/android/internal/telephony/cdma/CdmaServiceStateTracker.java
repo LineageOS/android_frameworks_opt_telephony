@@ -126,9 +126,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     private PowerManager.WakeLock mWakeLock;
     private static final String WAKELOCK_TAG = "ServiceStateTracker";
 
-    /** Contains the name of the registered network in CDMA (either ONS or ERI text). */
-    protected String mCurPlmn = null;
-
     protected String mMdn;
     protected int mHomeSystemId[] = null;
     protected int mHomeNetworkId[] = null;
@@ -569,13 +566,14 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     protected void updateSpnDisplay() {
         // mOperatorAlphaLong contains the ERI text
         String plmn = mSS.getOperatorAlphaLong();
+        boolean showPlmn = false;
 
         if (!TextUtils.equals(plmn, mCurPlmn)) {
             // Allow A blank plmn, "" to set showPlmn to true. Previously, we
             // would set showPlmn to true only if plmn was not empty, i.e. was not
             // null and not blank. But this would cause us to incorrectly display
             // "No Service". Now showPlmn is set to true for any non null string.
-            boolean showPlmn = plmn != null;
+            showPlmn = plmn != null;
             if (DBG) {
                 log(String.format("updateSpnDisplay: changed sending intent" +
                             " showPlmn='%b' plmn='%s'", showPlmn, plmn));
@@ -589,10 +587,15 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
             mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
 
-            mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
-                    showPlmn, plmn, false, "");
+            if (!mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
+                    showPlmn, plmn, false, "")) {
+                mSpnUpdatePending = true;
+            }
         }
 
+        mCurShowSpn = false;
+        mCurShowPlmn = showPlmn;
+        mCurSpn = "";
         mCurPlmn = plmn;
     }
 
