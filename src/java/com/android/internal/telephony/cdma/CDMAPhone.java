@@ -1814,7 +1814,7 @@ public class CDMAPhone extends PhoneBase {
             return false;
         }
 
-        UiccCard card = mUiccController.getUiccCard();
+        UiccCard card = mUiccController.getUiccCard(getPhoneId());
         if (card == null) {
             return false;
         }
