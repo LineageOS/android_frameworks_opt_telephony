@@ -263,9 +263,9 @@ public final class MccTable
         if (Build.IS_DEBUGGABLE) {
             alwaysPersist = SystemProperties.getBoolean("persist.always.persist.locale", false);
         }
-        String persistSysLanguage = SystemProperties.get("persist.sys.language", "");
-        String persistSysCountry = SystemProperties.get("persist.sys.country", "");
-        if (!(alwaysPersist || (persistSysLanguage.isEmpty() && persistSysCountry.isEmpty()))) {
+
+        final String persistedLocale = SystemProperties.get("persist.sys.locale", "");
+        if (!alwaysPersist && !persistedLocale.isEmpty()) {
             Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping already persisted");
             return null;
         }
