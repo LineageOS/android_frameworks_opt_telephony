@@ -453,7 +453,9 @@ public final class DcTracker extends DcTrackerBase {
             log("update networkCapabilites for subId = " + subId);
 
             mNetworkCapabilities.setNetworkSpecifier(""+subId);
-            if (subId == SubscriptionController.getInstance().getDefaultDataSubId()) {
+            if ((subId > 0 && SubscriptionController.getInstance().
+                    getSubState(subId) == SubscriptionManager.ACTIVE) &&
+                    (subId == SubscriptionController.getInstance().getDefaultDataSubId())) {
                 log("INTERNET capability is with subId = " + subId);
                 //Only defaultDataSub provides INTERNET.
                 mNetworkCapabilities.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
