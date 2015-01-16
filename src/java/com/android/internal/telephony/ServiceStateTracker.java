@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -26,6 +27,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.preference.PreferenceManager;
 import android.telephony.CellInfo;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -234,6 +236,41 @@ public abstract class ServiceStateTracker extends Handler {
         public void onSubscriptionsChanged() {
             if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
             // Set the network type, in case the radio does not restore it.
+            int subId = mPhoneBase.getSubId();
+            if (previousSubId != subId) {
+                previousSubId = subId;
+                if (SubscriptionManager.isValidSubscriptionId(subId)) {
+
+                    mPhoneBase.notifyCallForwardingIndicator();
+
+                    if (mSpnUpdatePending) {
+                        mSubscriptionController.setPlmnSpn(mPhoneBase.getPhoneId(), mCurShowPlmn,
+                                mCurPlmn, mCurShowSpn, mCurSpn);
+                        mSpnUpdatePending = false;
+                    }
+
+                    // Remove old network selection sharedPreferences since SP key names are now
+                    // changed to include subId. This will be done only once when upgrading from an
+                    // older build that did not include subId in the names.
+                    SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
+                            context);
+                    String oldNetworkSelectionName = sp.getString(PhoneBase.
+                            NETWORK_SELECTION_NAME_KEY, "");
+                    String oldNetworkSelection = sp.getString(PhoneBase.NETWORK_SELECTION_KEY,
+                            "");
+                    if (!TextUtils.isEmpty(oldNetworkSelectionName) ||
+                            !TextUtils.isEmpty(oldNetworkSelection)) {
+                        SharedPreferences.Editor editor = sp.edit();
+                        editor.putString(PhoneBase.NETWORK_SELECTION_NAME_KEY + subId,
+                                oldNetworkSelectionName);
+                        editor.putString(PhoneBase.NETWORK_SELECTION_KEY + subId,
+                                oldNetworkSelection);
+                        editor.remove(PhoneBase.NETWORK_SELECTION_NAME_KEY);
+                        editor.remove(PhoneBase.NETWORK_SELECTION_KEY);
+                        editor.commit();
+                    }
+                }
+            }
         }
     };
 
