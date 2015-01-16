@@ -404,6 +404,7 @@ public class ImsPhoneConnection extends Connection {
             if (mImsCall != null) mImsCall.close();
             mImsCall = null;
         }
+        clearPostDialListeners();
         releaseWakeLock();
         return changed;
     }
@@ -440,7 +441,9 @@ public class ImsPhoneConnection extends Connection {
     private boolean
     processPostDialChar(char c) {
         if (PhoneNumberUtils.is12Key(c)) {
-            mOwner.mCi.sendDtmf(c, mHandler.obtainMessage(EVENT_DTMF_DONE));
+            if (mOwner != null) {
+                mOwner.sendDtmf(c, mHandler.obtainMessage(EVENT_DTMF_DONE));
+            }
         } else if (c == PhoneNumberUtils.PAUSE) {
             // From TS 22.101:
             // It continues...
@@ -484,6 +487,7 @@ public class ImsPhoneConnection extends Connection {
     @Override
     protected void finalize()
     {
+        clearPostDialListeners();
         releaseWakeLock();
     }
 
@@ -559,6 +563,7 @@ public class ImsPhoneConnection extends Connection {
             releaseWakeLock();
         }
         mPostDialState = s;
+        notifyPostDialListeners();
     }
 
     private void
