@@ -257,38 +257,12 @@ public abstract class ServiceStateTracker extends Handler {
 
                     mPhoneBase.notifyCallForwardingIndicator();
 
-                    //store OperatorNumeric in case subId is not valid when EVENT_RECORDS_LOADED issued
-                    int phoneId = mPhoneBase.getPhoneId();
-                    PhoneProxy[] phoneProxys = (PhoneProxy[]) PhoneFactory.getPhones();
-                    if(phoneProxys != null && phoneProxys.length > phoneId) {
-                        PhoneProxy phoneProxy = phoneProxys[phoneId];
-                        if(phoneProxy != null) {
-                            IccCardProxy iccCardProxy = phoneProxy.getPhoneIccCardProxy();
-                            if(iccCardProxy != null) {
-                                iccCardProxy.saveOperatorNumeric();
-                                // store alpha
-                                if(iccCardProxy.getIccRecord() != null) {
-                                    TelephonyManager.setTelephonyProperty(phoneId,
-                                            PROPERTY_ICC_OPERATOR_ALPHA,
-                                            iccCardProxy.getIccRecord().getServiceProviderName());
-                                } else {
-                                    Log.e(LOG_TAG,"IccRecord is null");
-                                }
-                            } else {
-                                Log.e(LOG_TAG,"iccCardProxy is null");
-                            }
-                        } else {
-                            Log.e(LOG_TAG, "Null phoneProxy");
-                        }
-                    } else {
-                        Log.e(LOG_TAG, "invalid phoneProxy[] or PhoneId" + phoneId);
-                    }
                     mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
                         ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
 
                     if (mSpnUpdatePending) {
-                        mSubscriptionController.setPlmnSpn(phoneId, mCurShowPlmn, mCurPlmn,
-                                mCurShowSpn, mCurSpn);
+                        mSubscriptionController.setPlmnSpn(mPhoneBase.getPhoneId(), mCurShowPlmn,
+                                mCurPlmn, mCurShowSpn, mCurSpn);
                         mSpnUpdatePending = false;
                     }
                 }
@@ -1047,5 +1021,9 @@ public abstract class ServiceStateTracker extends Handler {
 
     protected String getHomeOperatorNumeric() {
         return SystemProperties.get(TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
+    }
+
+    protected int getPhoneId() {
+        return mPhoneBase.getPhoneId();
     }
 }

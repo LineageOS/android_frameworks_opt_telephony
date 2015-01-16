@@ -117,7 +117,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 return;
             }
 
-            int slotId = intent.getIntExtra(PhoneConstants.SLOT_KEY,
+            int slotId = intent.getIntExtra(PhoneConstants.PHONE_KEY,
                     SubscriptionManager.INVALID_SIM_SLOT_INDEX);
             logd("slotId: " + slotId);
             if (slotId == SubscriptionManager.INVALID_SIM_SLOT_INDEX) {
@@ -139,9 +139,7 @@ public class SubscriptionInfoUpdater extends Handler {
                         IccCardConstants.INTENT_KEY_LOCKED_REASON);
                     sendMessage(obtainMessage(EVENT_SIM_LOCKED, slotId, -1, reason));
                 } else if (IccCardConstants.INTENT_VALUE_ICC_LOADED.equals(simStatus)) {
-                    int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
-                            SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-                    sendMessage(obtainMessage(EVENT_SIM_LOADED, slotId, subId));
+                    sendMessage(obtainMessage(EVENT_SIM_LOADED, slotId, -1));
                 } else {
                     logd("Ignoring simStatus: " + simStatus);
                 }
@@ -228,7 +226,7 @@ public class SubscriptionInfoUpdater extends Handler {
             }
 
            case EVENT_SIM_LOADED:
-                handleSimLoaded(msg.arg1, msg.arg2);
+                handleSimLoaded(msg.arg1);
                 break;
 
             case EVENT_SIM_ABSENT:
@@ -279,8 +277,8 @@ public class SubscriptionInfoUpdater extends Handler {
         }
     }
 
-    private void handleSimLoaded(int slotId, int subId) {
-        logd("handleSimStateLoadedInternal: slotId: " + slotId + " subId: " + subId);
+    private void handleSimLoaded(int slotId) {
+        logd("handleSimStateLoadedInternal: slotId: " + slotId);
 
         // The SIM should be loaded at this state, but it is possible in cases such as SIM being
         // removed or a refresh RESET that the IccRecords could be null. The right behavior is to
@@ -300,9 +298,24 @@ public class SubscriptionInfoUpdater extends Handler {
             updateSubscriptionInfoByIccId();
         }
 
+        int subId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
+        int[] subIds = SubscriptionController.getInstance().getSubId(slotId);
+        if (subIds != null) {   // Why an array?
+            subId = subIds[0];
+        }
+
         if (SubscriptionManager.isValidSubscriptionId(subId)) {
-            String msisdn = TelephonyManager.getDefault()
-                    .getLine1NumberForSubscriber(subId);
+            String operator = records.getOperatorNumeric();
+            if (operator != null) {
+                if (subId == SubscriptionController.getInstance().getDefaultSubId()) {
+                    MccTable.updateMccMncConfiguration(mContext, operator, false);
+                }
+                SubscriptionController.getInstance().setMccMnc(operator,subId);
+            } else {
+                logd("EVENT_RECORDS_LOADED Operator name is null");
+            }
+
+            String msisdn = TelephonyManager.getDefault().getLine1NumberForSubscriber(subId);
             ContentResolver contentResolver = mContext.getContentResolver();
 
             if (msisdn != null) {
@@ -313,18 +326,14 @@ public class SubscriptionInfoUpdater extends Handler {
                         + Long.toString(subId), null);
             }
 
-            SubscriptionInfo subInfo =
-                    mSubscriptionManager.getActiveSubscriptionInfo(subId);
+            SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
             String nameToSet;
-            String CarrierName =
-                    TelephonyManager.getDefault().getSimOperator(subId);
+            String CarrierName = TelephonyManager.getDefault().getSimOperator(subId);
             logd("CarrierName = " + CarrierName);
-            String simCarrierName =
-                    TelephonyManager.getDefault().getSimOperatorName(subId);
+            String simCarrierName = TelephonyManager.getDefault().getSimOperatorName(subId);
             ContentValues name = new ContentValues(1);
 
-            if (subInfo != null
-                    && subInfo.getNameSource() !=
+            if (subInfo != null && subInfo.getNameSource() !=
                     SubscriptionManager.NAME_SOURCE_USER_INPUT) {
                 if (!TextUtils.isEmpty(simCarrierName)) {
                     nameToSet = simCarrierName;
@@ -354,7 +363,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 // Set the modem network mode
                 mPhone[slotId].setPreferredNetworkType(networkType, null);
                 Settings.Global.putInt(mPhone[slotId].getContext().getContentResolver(),
-                        Settings.Global.PREFERRED_NETWORK_MODE + mPhone[slotId].getSubId(),
+                        Settings.Global.PREFERRED_NETWORK_MODE + subId,
                         networkType);
 
                 // Only support automatic selection mode on SIM change.

@@ -431,8 +431,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         }
 
         if (hasChanged) {
-            boolean hasBrandOverride = mUiccController.getUiccCard() == null ? false :
-                    (mUiccController.getUiccCard().getOperatorBrandOverride() != null);
+            boolean hasBrandOverride = mUiccController.getUiccCard(getPhoneId()) == null ? false :
+                    (mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() != null);
             if (!hasBrandOverride && (mCi.getRadioState().isOn()) && (mPhone.isEriFileLoaded()) &&
                     (mSS.getRilVoiceRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_LTE ||
                             mPhone.getContext().getResources().getBoolean(com.android.internal.R.

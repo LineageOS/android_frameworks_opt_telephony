@@ -856,17 +856,8 @@ public class UiccCardApplication {
         }
     }
 
-    public int getSubId() {
-        //FIXME consider making subId an instance variable which is initialized in the constructor
-        //FIXME: Doesn't handle empty.
-        int [] subId = SubscriptionController.getInstance().getSubId(mUiccCard.getSlotId());
-
-        return ((subId == null) ? SubscriptionController.getInstance().getDefaultSubId() : subId[0]);
-    }
-
     public int getPhoneId() {
-        //FIXME consider making phoneId an instance variable which is initialized in the constructor
-        return SubscriptionController.getInstance().getPhoneId(getSubId());
+        return mUiccCard.getPhoneId();
     }
 
     protected UiccCard getUiccCard() {
