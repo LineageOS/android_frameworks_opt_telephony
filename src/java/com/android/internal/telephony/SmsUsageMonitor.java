@@ -283,7 +283,7 @@ public class SmsUsageMonitor {
         }
     }
 
-    private static class SmsLimitObserverHandler extends Handler {
+    private class SmsLimitObserverHandler extends Handler {
         SmsLimitObserverHandler(Context context) {
             ContentResolver resolver = context.getContentResolver();
 
