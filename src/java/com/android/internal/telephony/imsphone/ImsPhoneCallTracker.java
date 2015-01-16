@@ -764,6 +764,16 @@ public final class ImsPhoneCallTracker extends CallTracker {
     }
 
     /*package*/ void
+    sendDtmf(char c, Message result) {
+        if (DBG) log("sendDtmf");
+
+        ImsCall imscall = mForegroundCall.getImsCall();
+        if (imscall != null) {
+            imscall.sendDtmf(c, result);
+        }
+    }
+
+    /*package*/ void
     startDtmf(char c) {
         if (DBG) log("startDtmf");
 
