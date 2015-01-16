@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a9d85d2_f6a3d14d",
+        "filename": "src/java/com/android/internal/telephony/SmsUsageMonitor.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 12155
+      },
+      "writtenOn": "2015-01-16T17:14:40Z",
+      "side": 1,
+      "message": "This is causing a compile error:\n\nframeworks/opt/telephony/src/java/com/android/internal/telephony/SmsUsageMonitor.java:290: error: non-static variable this cannot be referenced from a static context\n            ContentObserver globalObserver \u003d new SmsLimitObserver(this, context);\n                                             ^\nNote: Some input files use or override a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\nNote: Some input files use unchecked or unsafe operations.\nNote: Recompile with -Xlint:unchecked for details.\n1 error",
+      "revId": "e6acd94ee400fbdd8ecf8237035f092982f07331",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
