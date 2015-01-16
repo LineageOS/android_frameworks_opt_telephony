@@ -62,6 +62,11 @@ public class CommandException extends RuntimeException {
         mError = e;
     }
 
+    public CommandException(Error e, String errString) {
+        super(errString);
+        mError = e;
+    }
+
     public static CommandException
     fromRilErrno(int ril_errno) {
         switch(ril_errno) {
