@@ -157,12 +157,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     private PowerManager.WakeLock mWakeLock;
     private static final String WAKELOCK_TAG = "ServiceStateTracker";
 
-    /** Keep track of SPN display rules, so we only broadcast intent if something changes. */
-    private String mCurSpn = null;
-    private String mCurPlmn = null;
-    private boolean mCurShowPlmn = false;
-    private boolean mCurShowSpn = false;
-
     /** Notification type. */
     static final int PS_ENABLED = 1001;            // Access Control blocks data service
     static final int PS_DISABLED = 1002;           // Access Control enables data service
@@ -673,8 +667,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
             mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
 
-            mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
-                    showPlmn, plmn, showSpn, spn);
+            if (!mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(),
+                    showPlmn, plmn, showSpn, spn)) {
+                mSpnUpdatePending = true;
+            }
         }
 
         mCurShowSpn = showSpn;
