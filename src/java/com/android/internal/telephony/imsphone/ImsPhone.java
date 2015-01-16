@@ -918,7 +918,12 @@ public class ImsPhone extends ImsPhoneBase {
 
     /* package */
     CommandException getCommandException(int code) {
-        Rlog.d(LOG_TAG, "getCommandException code=" + code);
+        return getCommandException(code, null);
+    }
+
+    CommandException getCommandException(int code, String errorString) {
+        Rlog.d(LOG_TAG, "getCommandException code= " + code
+                + ", errorString= " + errorString);
         CommandException.Error error = CommandException.Error.GENERIC_FAILURE;
 
         switch(code) {
@@ -932,7 +937,7 @@ public class ImsPhone extends ImsPhoneBase {
                 break;
         }
 
-        return new CommandException(error);
+        return new CommandException(error, errorString);
     }
 
     /* package */
@@ -940,7 +945,7 @@ public class ImsPhone extends ImsPhoneBase {
         CommandException ex = null;
 
         if (e instanceof ImsException) {
-            ex = getCommandException(((ImsException)e).getCode());
+            ex = getCommandException(((ImsException)e).getCode(), e.getMessage());
         } else {
             Rlog.d(LOG_TAG, "getCommandException generic failure");
             ex = new CommandException(CommandException.Error.GENERIC_FAILURE);
@@ -1154,15 +1159,9 @@ public class ImsPhone extends ImsPhoneBase {
     sendResponse(Message onComplete, Object result, Throwable e) {
         if (onComplete != null) {
             CommandException ex = null;
-            ImsException imsEx = null;
             if (e != null) {
-                if (e instanceof ImsException) {
-                    imsEx = (ImsException) e;
-                    AsyncResult.forMessage(onComplete, result, imsEx);
-                } else {
                     ex = getCommandException(e);
                     AsyncResult.forMessage(onComplete, result, ex);
-                }
             } else {
                 AsyncResult.forMessage(onComplete, result, null);
             }
