@@ -733,14 +733,26 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    public void setPlmnSpn(int slotId, boolean showPlmn, String plmn, boolean showSpn, String spn) {
+    /**
+     * Generate and set carrier text based on input parameters
+     * @param showPlmn flag to indicate if plmn should be included in carrier text
+     * @param plmn plmn to be included in carrier text
+     * @param showSpn flag to indicate if spn should be included in carrier text
+     * @param spn spn to be included in carrier text
+     * @return true if carrier text is set, false otherwise
+     */
+    public boolean setPlmnSpn(int slotId, boolean showPlmn, String plmn, boolean showSpn,
+                              String spn) {
         synchronized (mLock) {
+            int[] subIds = getSubId(slotId);
             if (mContext.getPackageManager().resolveContentProvider(
-                    SubscriptionManager.CONTENT_URI.getAuthority(), 0) == null) {
+                    SubscriptionManager.CONTENT_URI.getAuthority(), 0) == null ||
+                    subIds == null ||
+                    !SubscriptionManager.isValidSubscriptionId(subIds[0])) {
                 // No place to store this info, we are done.
                 // TODO: This can be removed once SubscriptionController is not running on devices
                 // that don't need it, such as TVs.
-                return;
+                return false;
             }
             String carrierText = "";
             if (showPlmn) {
@@ -755,10 +767,10 @@ public class SubscriptionController extends ISub.Stub {
             } else if (showSpn) {
                 carrierText = spn;
             }
-            int[] subIds = getSubId(slotId);
             for (int i = 0; i < subIds.length; i++) {
                 setCarrierText(carrierText, subIds[i]);
             }
+            return true;
         }
     }
 
