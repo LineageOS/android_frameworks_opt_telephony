@@ -35,8 +35,10 @@ import android.util.Patterns;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SmsApplication;
 
-
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -861,6 +863,30 @@ public final class Telephony {
             public static final int RESULT_SMS_BLACKLISTED_REGEX = 8;
 
             /**
+             * Used internally:
+             * Broadcast Action: A new protected text-based SMS message has been received
+             * by the device. This intent will be delivered to all registered
+             * receivers who possess {@link android.Manifest.permission#RECEIVE_PROTECTED_SMS}.
+             * These apps SHOULD NOT write the message or notify the user.
+             * The intent will have the following extra values:
+             * </p>
+             *
+             * <ul>
+             *   <li><em>"pdus"</em> - An Object[] of byte[]s containing the PDUs
+             *   that make up the message.</li>
+             * </ul>
+             *
+             * <p>The extra values can be extracted using
+             * {@link #getMessagesFromIntent(Intent)}.</p>
+             *
+             * <p>If a BroadcastReceiver encounters an error while processing
+             * this intent it should set the result code appropriately.</p>
+             * @hide
+             */
+            public static final String PROTECTED_SMS_RECEIVED_ACTION =
+                    "android.provider.Telephony.ACTION_PROTECTED_SMS_RECEIVED";
+
+            /**
              * Activity action: Ask the user to change the default
              * SMS application. This will show a dialog that asks the
              * user whether they want to replace the current default
@@ -1226,6 +1252,48 @@ public final class Telephony {
                 }
                 return msgs;
             }
+
+            /**
+             * Read the normalized addresses out of PDUs
+             * @param pdus bytes for PDUs
+             * @param format the format of the message
+             * @return a list of Addresses for the PDUs
+             */
+            public static List<String> getNormalizedAddressesFromPdus(byte[][] pdus,
+                    String format) {
+                int pduCount = pdus.length;
+                SmsMessage[] msgs = new SmsMessage[pduCount];
+                List<String> addresses = new ArrayList<String>();
+
+                for (int i = 0; i < pduCount; i++) {
+                    byte[] pdu = (byte[]) pdus[i];
+                    msgs[i] = SmsMessage.createFromPdu(pdu, format);
+                    String originatingAddress = msgs[i].getOriginatingAddress();
+                    if (!TextUtils.isEmpty(originatingAddress)) {
+                        String normalized = normalizeDigitsOnly(originatingAddress);
+                        addresses.add(normalized);
+                    }
+                }
+                return addresses;
+            }
+
+            private static String normalizeDigitsOnly(String number) {
+                return normalizeDigits(number, false /* strip non-digits */).toString();
+            }
+
+            private static StringBuilder normalizeDigits(String number, boolean keepNonDigits) {
+                StringBuilder normalizedDigits = new StringBuilder(number.length());
+                for (char c : number.toCharArray()) {
+                    int digit = Character.digit(c, 10);
+                    if (digit != -1) {
+                        normalizedDigits.append(digit);
+                    } else if (keepNonDigits) {
+                        normalizedDigits.append(c);
+                    }
+                }
+                return normalizedDigits;
+            }
+
         }
     }
 
