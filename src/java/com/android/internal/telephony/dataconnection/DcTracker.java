@@ -1975,6 +1975,12 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private void onRecordsLoaded() {
+        mAutoAttachOnCreationConfig = mPhone.getContext().getResources()
+                .getBoolean(com.android.internal.R.bool.config_auto_attach_data_on_creation);
+        if (mAutoAttachOnCreationConfig && mAttached.get()) {
+            mAutoAttachOnCreation = true;
+        }
+
         if (mOmhApt != null) {
             log("OMH: onRecordsLoaded(): calling loadProfiles()");
             /* query for data profiles stored in the modem */
