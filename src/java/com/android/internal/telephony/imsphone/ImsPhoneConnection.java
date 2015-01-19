@@ -119,7 +119,7 @@ public class ImsPhoneConnection extends Connection {
     /** This is probably an MT call */
     /*package*/
     ImsPhoneConnection(Context context, ImsCall imsCall, ImsPhoneCallTracker ct,
-           ImsPhoneCall parent, boolean isUnknown) {
+           ImsPhoneCall parent, boolean isUnknown, ImsPhoneCall.State state, String address) {
         createWakeLock(context);
         acquireWakeLock();
 
@@ -169,15 +169,23 @@ public class ImsPhoneConnection extends Connection {
             mCnapNamePresentation = PhoneConstants.PRESENTATION_UNKNOWN;
         }
 
-        mIsIncoming = !isUnknown;
         mCreateTime = System.currentTimeMillis();
         mUusInfo = null;
 
         //mIndex = index;
 
         mParent = parent;
-        mParent.attach(this,
-                (mIsIncoming? ImsPhoneCall.State.INCOMING: ImsPhoneCall.State.DIALING));
+        mIsIncoming = !isUnknown;
+        if (isUnknown) {
+            mParent.attach(this, state);
+            mAddress = address;
+            mCnapName = address;
+            mCnapNamePresentation = PhoneConstants.PRESENTATION_ALLOWED;
+            mNumberPresentation = PhoneConstants.PRESENTATION_ALLOWED;
+        } else {
+            mParent.attach(this,
+                    (mIsIncoming? ImsPhoneCall.State.INCOMING: ImsPhoneCall.State.DIALING));
+        }
     }
 
     /** This is an MO call, created when dialing */
