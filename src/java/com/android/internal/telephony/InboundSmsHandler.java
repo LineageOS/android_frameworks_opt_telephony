@@ -44,6 +44,7 @@ import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
@@ -56,6 +57,7 @@ import android.util.Log;
 
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
+import android.text.TextUtils;
 import com.android.internal.telephony.util.BlacklistUtils;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.util.HexDump;
@@ -63,8 +65,11 @@ import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
 
@@ -803,7 +808,23 @@ public abstract class InboundSmsHandler extends StateMachine {
             return (result == Activity.RESULT_OK);
         }
 
-        Intent intent = new Intent(Intents.SMS_FILTER_ACTION);
+        Intent intent;
+        List<String> regAddresses = Settings.Secure.getDelimitedStringAsList(mContext.getContentResolver(),
+                Settings.Secure.PROTECTED_SMS_ADDRESSES , "\\|");
+
+        List<String> allAddresses = Intents
+                .getNormalizedAddressesFromPdus(pdus, tracker.getFormat());
+
+        if (!Collections.disjoint(regAddresses, allAddresses)) {
+            intent = new Intent(Intents.PROTECTED_SMS_RECEIVED_ACTION);
+            intent.putExtra("pdus", pdus);
+            intent.putExtra("format", tracker.getFormat());
+            dispatchIntent(intent, android.Manifest.permission.RECEIVE_PROTECTED_SMS,
+                    AppOpsManager.OP_RECEIVE_SMS, resultReceiver);
+            return true;
+        }
+
+        intent = new Intent(Intents.SMS_FILTER_ACTION);
         List<String> carrierPackages = null;
         UiccCard card = UiccController.getInstance().getUiccCard();
         if (card != null) {
