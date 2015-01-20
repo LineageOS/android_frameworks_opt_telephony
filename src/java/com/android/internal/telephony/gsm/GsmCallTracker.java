@@ -998,4 +998,8 @@ public final class GsmCallTracker extends CallTracker {
         pw.println(" mDesiredMute=" + mDesiredMute);
         pw.println(" mState=" + mState);
     }
+    @Override
+    public PhoneConstants.State getState() {
+        return mState;
+    }
 }

@@ -1091,12 +1091,20 @@ public final class DcTracker extends DcTrackerBase {
         boolean recordsLoaded = (r != null) ? r.getRecordsLoaded() : false;
         boolean subscriptionFromNv = isNvSubscription();
 
+        int dataSub = SubscriptionManager.getDefaultDataSubId();
+        boolean defaultDataSelected = SubscriptionManager.isValidSubscriptionId(dataSub);
+
+        PhoneConstants.State state = PhoneConstants.State.IDLE;
+        if (mPhone.getCallTracker() != null) {
+            state = mPhone.getCallTracker().getState();
+        }
         boolean allowed =
                     (attachedState || mAutoAttachOnCreation) &&
                     (subscriptionFromNv || recordsLoaded) &&
-                    (mPhone.getState() == PhoneConstants.State.IDLE ||
+                    (state == PhoneConstants.State.IDLE ||
                      mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
                     internalDataEnabled &&
+                    defaultDataSelected &&
                     (!mPhone.getServiceState().getDataRoaming() || getDataOnRoamingEnabled()) &&
                     !mIsPsRestricted &&
                     desiredPowerState;
@@ -1108,12 +1116,13 @@ public final class DcTracker extends DcTrackerBase {
             if (!(subscriptionFromNv || recordsLoaded)) {
                 reason += " - SIM not loaded and not NV subscription";
             }
-            if (mPhone.getState() != PhoneConstants.State.IDLE &&
+            if (state != PhoneConstants.State.IDLE &&
                     !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
-                reason += " - PhoneState= " + mPhone.getState();
+                reason += " - PhoneState= " + state;
                 reason += " - Concurrent voice and data not allowed";
             }
             if (!internalDataEnabled) reason += " - mInternalDataEnabled= false";
+            if (!defaultDataEnabled) reason += " - defaultDataEnabled= false";
             if (mPhone.getServiceState().getDataRoaming() && !getDataOnRoamingEnabled()) {
                 reason += " - Roaming and data roaming not enabled";
             }

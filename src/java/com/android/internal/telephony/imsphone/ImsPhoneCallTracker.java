@@ -1677,5 +1677,10 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     public boolean isUtEnabled() {
         return mIsUtEnabled;
+   }
+
+    @Override
+    public PhoneConstants.State getState() {
+        return mState;
     }
 }
