@@ -1512,6 +1512,16 @@ public class PhoneProxy extends Handler implements Phone {
         return mActivePhone.isImsRegistered();
     }
 
+    /**
+     * Determines if video calling is enabled for the IMS phone.
+     *
+     * @return {@code true} if video calling is enabled.
+     */
+    @Override
+    public boolean isVideoEnabled() {
+        return mActivePhone.isVideoEnabled();
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         try {
             ((PhoneBase)mActivePhone).dump(fd, pw, args);

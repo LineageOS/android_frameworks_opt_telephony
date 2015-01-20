@@ -2149,6 +2149,21 @@ public abstract class PhoneBase extends Handler implements Phone {
         return imsUseEnabled;
     }
 
+    /**
+     * Determines if video calling is enabled for the IMS phone.
+     *
+     * @return {@code true} if video calling is enabled.
+     */
+    @Override
+    public boolean isVideoEnabled() {
+        ImsPhone imsPhone = mImsPhone;
+        if ((imsPhone != null)
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
+            return imsPhone.isVideoEnabled();
+        }
+        return false;
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("PhoneBase: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);

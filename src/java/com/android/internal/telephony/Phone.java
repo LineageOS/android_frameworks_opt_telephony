@@ -1978,4 +1978,11 @@ public interface Phone {
      * @return true if IMS is Registered
      */
     public boolean isImsRegistered();
+
+    /**
+     * Determines if video calling is enabled for the phone.
+     *
+     * @return {@code true} if video calling is enabled, {@code false} otherwise.
+     */
+    public boolean isVideoEnabled();
 }

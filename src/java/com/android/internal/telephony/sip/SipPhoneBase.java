@@ -502,6 +502,16 @@ abstract class SipPhoneBase extends PhoneBase {
         return null;
     }
 
+    /**
+     * Determines if video calling is enabled.  Always {@code false} for SIP.
+     *
+     * @return {@code false} since SIP does not support video calling.
+     */
+    @Override
+    public boolean isVideoEnabled() {
+        return false;
+    }
+
     void updatePhoneState() {
         PhoneConstants.State oldState = mState;
 
