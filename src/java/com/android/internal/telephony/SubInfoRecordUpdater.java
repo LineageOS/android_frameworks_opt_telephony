@@ -295,7 +295,13 @@ public class SubInfoRecordUpdater extends Handler {
         UiccCard newCard = mUiccController.getUiccCard(slotId);
         if (newCard != null) {
             newState = newCard.getCardState();
+        } else {
+            // Uicc Card is null return from here, this would be called
+            // again after reading the SIM Card status from RIL.
+            Rlog.i(LOG_TAG, "updateIccAvailability: newCard is null, slotId " + slotId);
+            return;
         }
+
         CardState oldState = sCardState[slotId];
         sCardState[slotId] = newState;
         logd("Slot[" + slotId + "]: New Card State = "
