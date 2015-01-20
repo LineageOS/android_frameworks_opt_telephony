@@ -37,6 +37,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 
 import java.io.FileDescriptor;
@@ -467,6 +468,10 @@ public final class CdmaCallTracker extends CallTracker {
                 !(mForegroundCall.isIdle() && mBackgroundCall.isIdle())) {
             mState = PhoneConstants.State.OFFHOOK;
         } else {
+            ImsPhone imsPhone = (ImsPhone)mPhone.getImsPhone();
+            if ( mState == PhoneConstants.State.OFFHOOK && (imsPhone != null)){
+                imsPhone.callEndCleanupHandOverCallIfAny();
+            }
             mState = PhoneConstants.State.IDLE;
         }
 
