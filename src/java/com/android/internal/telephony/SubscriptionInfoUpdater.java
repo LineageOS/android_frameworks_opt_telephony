@@ -548,7 +548,8 @@ public class SubscriptionInfoUpdater extends Handler {
 
     private void broadcastSimStateChanged(int slotId, String state, String reason) {
         Intent i = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
-        i.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
+        i.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
+                | Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
         i.putExtra(PhoneConstants.PHONE_NAME_KEY, "Phone");
         i.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, state);
         i.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
