@@ -544,7 +544,8 @@ public class IccCardProxy extends Handler implements IccCard {
             }
 
             Intent intent = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
-            intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
+            intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
+                    | Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
             intent.putExtra(PhoneConstants.PHONE_NAME_KEY, "Phone");
             intent.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, value);
             intent.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
