@@ -317,6 +317,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             mNewRilRadioTechnology = mNewSS.getRilVoiceRadioTechnology();
             mNewSS.setDataRegState(radioTechnologyToDataServiceState(mNewRilRadioTechnology));
             mNewSS.setRilDataRadioTechnology(mNewRilRadioTechnology);
+            updatePhoneObject();
             log("pollStateDone CDMA STATE_IN_SERVICE mNewRilRadioTechnology = " +
                     mNewRilRadioTechnology + " mNewSS.getDataRegState() = " +
                     mNewSS.getDataRegState());
