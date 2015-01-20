@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2015, Linux Foundation. All rights reserved.
+ * Not a Contribution.
+ *
  * Copyright (C) 2008 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -458,8 +461,12 @@ public final class RuimRecords extends IccRecords {
                     MccTable.updateMccMncConfiguration(mContext, operatorNumeric, false);
                 }
             }
-
-            mImsiReadyRegistrants.notifyRegistrants();
+            if (isAppStateReady()) {
+                mImsiReadyRegistrants.notifyRegistrants();
+            } else {
+                log("onRecordLoaded: AppState is not ready; not notifying the imsi ready"
+                        + "registrants");
+            }
         }
    }
 
@@ -780,8 +787,12 @@ public final class RuimRecords extends IccRecords {
         }
 
         setLocaleFromCsim();
-        mRecordsLoadedRegistrants.notifyRegistrants(
-            new AsyncResult(null, null, null));
+        if (isAppStateReady()) {
+            mRecordsLoadedRegistrants.notifyRegistrants(
+                    new AsyncResult(null, null, null));
+        } else {
+            log("onAllRecordsLoaded: AppState is not ready; not notifying the registrants");
+        }
     }
 
     @Override

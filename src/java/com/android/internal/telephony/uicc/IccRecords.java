@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2015, Linux Foundation. All rights reserved.
+ * Not a Contribution.
+ *
  * Copyright (C) 2006 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -234,10 +237,27 @@ public abstract class IccRecords extends Handler implements IccConstants {
         Registrant r = new Registrant(h, what, obj);
         mRecordsLoadedRegistrants.add(r);
 
-        if (mRecordsToLoad == 0 && mRecordsRequested == true) {
+        // Do not notify the registrant if the records were loaded but the app state
+        // is not ready. Consider the case -Sub/sim is enabled, sim is ready for use and a client
+        // is registered for records loaded notification. At a later point, the subscription is
+        // disabled, due to which the client unregisters for the notification and the app state has
+        // moved to detected. When the sub is enabled again, the client would register for records
+        // loaded. At this point the cached values of the record load state is available(as the
+        // records were not disposed), but the app state has not moved to ready. If the client is
+        // notified of records loaded event in such a situation, the client would erroneously think
+        // that the sim is ready and all the records are available. The client should be
+        // notified once the app state has moved to ready and the records have been loaded after
+        // the sub has been successfully enabled.
+        // TODO: Dispose the records once the sub has been disabled instead of checking for
+        // the app state .
+        if (mRecordsToLoad == 0 && mRecordsRequested == true
+                && isAppStateReady()) {
             r.notifyRegistrant(new AsyncResult(null, null, null));
+        } else {
+            log("registerForRecordsLoaded, not notifying the registrant immediately");
         }
     }
+
     public void unregisterForRecordsLoaded(Handler h) {
         mRecordsLoadedRegistrants.remove(h);
     }
@@ -250,10 +270,25 @@ public abstract class IccRecords extends Handler implements IccConstants {
         Registrant r = new Registrant(h, what, obj);
         mImsiReadyRegistrants.add(r);
 
-        if (mImsi != null) {
+        // Do not notify the registrant if imsi is available but the app state
+        // is not ready. Consider the case - a client is registered for imsi ready
+        // notification. At a later point, the subscription is disabled, due to which the
+        // client unregisters for the notification and the app state has moved to detected.
+        // When the sub is enabled again, the client would register for imsi ready. At this point
+        // the cached imsi is available(as the records were not disposed), but the app state has
+        // not moved to ready. If the client is notified of imsi ready in such a situation,
+        // the client would erroneously think that the sim is ready and imsi is available for use.
+        // The client should be notified once the app state has moved to ready and the imsi has
+        // been read after the sub has been successfully enabled.
+        // TODO: Dispose the records once the sub has been disabled instead of checking for
+        // the app state.
+        if ((mImsi != null) && isAppStateReady()) {
             r.notifyRegistrant(new AsyncResult(null, null, null));
+        } else {
+            log("registerForImsiReady, not notifying the registrant immediately");
         }
     }
+
     public void unregisterForImsiReady(Handler h) {
         mImsiReadyRegistrants.remove(h);
     }
@@ -863,5 +898,11 @@ public abstract class IccRecords extends Handler implements IccConstants {
         long subId = subController.getSubIdUsingSlotId(slotId)[0];
 
         TelephonyManager.setTelephonyProperty(property, subId, value);
+    }
+
+    protected boolean isAppStateReady() {
+        AppState appState = mParentApp.getState();
+        if (DBG) log("isAppStateReady : appState = " + appState);
+        return (appState == AppState.APPSTATE_READY);
     }
 }
