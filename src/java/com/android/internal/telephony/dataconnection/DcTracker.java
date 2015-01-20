@@ -2785,8 +2785,6 @@ public final class DcTracker extends DcTrackerBase {
             }
         }
 
-        dedupeApnSettings();
-
         if (mAllApnSettings.isEmpty() && isDummyProfileNeeded()) {
             addDummyApnSettings(operator);
         }
@@ -2807,6 +2805,9 @@ public final class DcTracker extends DcTrackerBase {
             if (DBG) log("createAllApnList: mPreferredApn=" + mPreferredApn);
         }
         if (DBG) log("createAllApnList: X mAllApnSettings=" + mAllApnSettings);
+
+        //merge apns only after prefer apn is set
+        dedupeApnSettings();
 
         setDataProfilesAsNeeded();
     }
@@ -2908,8 +2909,18 @@ public final class DcTracker extends DcTrackerBase {
         String protocol = src.protocol.equals("IPV4V6") ? src.protocol : dest.protocol;
         String roamingProtocol = src.roamingProtocol.equals("IPV4V6") ? src.roamingProtocol :
                 dest.roamingProtocol;
+        int apnId = dest.id;
+        if (mCanSetPreferApn && mPreferredApn != null) {
+            if (src.id == mPreferredApn.id) {
+                apnId = src.id;
+            }
+        } else {
+            if (src.canHandleType(PhoneConstants.APN_TYPE_DEFAULT)) {
+                apnId = src.id;
+            }
+        }
 
-        return new ApnSetting(dest.id, dest.numeric, dest.carrier, dest.apn,
+        return new ApnSetting(apnId, dest.numeric, dest.carrier, dest.apn,
                 proxy, port, mmsc, mmsProxy, mmsPort, dest.user, dest.password,
                 dest.authType, resultTypes.toArray(new String[0]), protocol,
                 roamingProtocol, dest.carrierEnabled, dest.bearer, dest.profileId,
