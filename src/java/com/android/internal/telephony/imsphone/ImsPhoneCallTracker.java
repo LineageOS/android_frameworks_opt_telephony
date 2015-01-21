@@ -1186,6 +1186,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     mPendingMO = null;
                     mPhone.initiateSilentRedial();
                     return;
+                } else {
+                    int cause = getDisconnectCauseFromReasonInfo(reasonInfo);
+                    processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
                 }
                 mPendingMO.setDisconnectCause(DisconnectCause.ERROR_UNSPECIFIED);
                 sendEmptyMessageDelayed(EVENT_HANGUP_PENDINGMO, TIMEOUT_HANGUP_PENDINGMO);
