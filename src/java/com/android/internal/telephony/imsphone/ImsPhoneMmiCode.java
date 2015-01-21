@@ -989,7 +989,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     if (isInterrogate()) {
                         mPhone.mCT.getUtInterface()
                         .queryCallBarring(ImsUtInterface.CB_BIC_ACR,
-                                          obtainMessage(EVENT_SUPP_SVC_QUERY_COMPLETE,this));
+                                          obtainMessage(EVENT_QUERY_ICB_COMPLETE,this));
                     } else {
                         if (isActivate()) {
                             callAction = CommandsInterface.CF_ACTION_ENABLE;
@@ -1555,19 +1555,13 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             } else {
                 Rlog.d(LOG_TAG, "Received Call Barring Response.");
                 // Response for Call Barring queries.
-                ImsSsInfo[] arr = (ImsSsInfo[])ar.result;
-                // Check if ImsPhone has received call barring
-                // enabled for service class voice.
-                for (int i = 0, s = arr.length; i < s ; i++) {
-                    if(arr[i].mStatus == 1) {
-                        sb.append(mContext.getText(com.android.internal
-                                .R.string.serviceEnabled));
-                        mState = State.COMPLETE;
-                    } else {
-                        sb.append(mContext.getText(com.android.internal
-                                .R.string.serviceDisabled));
-                        mState = State.COMPLETE;
-                    }
+                int[] cbInfos = (int[]) ar.result;
+                if (cbInfos[0] == 1) {
+                    sb.append(mContext.getText(com.android.internal.R.string.serviceEnabled));
+                    mState = State.COMPLETE;
+                } else {
+                    sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
+                    mState = State.COMPLETE;
                 }
             }
         }
@@ -1595,18 +1589,24 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 sb.append(getErrorMessage(ar));
             }
         } else {
-            mState = State.FAILED;
             ImsSsInfo[] infos = (ImsSsInfo[])ar.result;
             if (infos.length == 0) {
                 sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
-                mState = State.COMPLETE;
             } else {
                 for (int i = 0, s = infos.length; i < s ; i++) {
-                    sb.append("Num: " + infos[i].mIcbNum + " status: "
-                            + infos[i].mStatus + "\n");
+                    if (infos[i].mIcbNum !=null) {
+                        sb.append("Num: " + infos[i].mIcbNum + " status: "
+                                + infos[i].mStatus + "\n");
+                    } else if (infos[i].mStatus == 1) {
+                        sb.append(mContext.getText(com.android.internal
+                                .R.string.serviceEnabled));
+                    } else {
+                        sb.append(mContext.getText(com.android.internal
+                                .R.string.serviceDisabled));
+                    }
                 }
-                mState = State.COMPLETE;
             }
+            mState = State.COMPLETE;
         }
         mMessage = sb;
         mPhone.onMMIDone(this);
