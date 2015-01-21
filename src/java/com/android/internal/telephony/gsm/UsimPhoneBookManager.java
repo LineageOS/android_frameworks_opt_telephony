@@ -641,7 +641,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                 String[] emails = new String[emailList.size()];
                 System.arraycopy(emailList.toArray(), 0, emails, 0, emailList.size());
                 rec.setEmails(emails);
-                mPhoneBookRecords.set(i, rec);
+                mPhoneBookRecords.set(i+adnInitIndex, rec);
             }
         }
     }
@@ -682,7 +682,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                 String[] anrs = new String[anrList.size()];
                 System.arraycopy(anrList.toArray(), 0, anrs, 0, anrList.size());
                 rec.setAdditionalNumbers(anrs);
-                mPhoneBookRecords.set(i, rec);
+                mPhoneBookRecords.set(i+adnInitIndex, rec);
             }
         }
     }
@@ -835,15 +835,20 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             return data; // return the empty record (for delete)
         }
         byte[] byteEmail = GsmAlphabet.stringToGsm8BitPacked(email);
-        if (byteEmail.length > length) {
+
+        // 3gpp 31.102 4.4.2.13, Record in non-type1 EF_EMAIL file
+        // should exclude last two bytes
+        int tmpLen = mEmailPresentInIap == true ? length - 2 : length;
+
+        if (byteEmail.length > tmpLen) {
             log("[buildEmailData] wrong email length");
             return null;
         }
 
         System.arraycopy(byteEmail, 0, data, 0, byteEmail.length);
-        int pbrIndex = getPbrIndexBy(adnRecIndex);
-        int recordIndex = adnRecIndex - getInitIndexBy(pbrIndex);
         if (mEmailPresentInIap) {
+            int pbrIndex = getPbrIndexBy(adnRecIndex);
+            int recordIndex = adnRecIndex - getInitIndexBy(pbrIndex);
             data[length - 1] = (byte) (recordIndex + 1);
         }
         log("buildEmailData: data is" + IccUtils.bytesToHexString(data));
