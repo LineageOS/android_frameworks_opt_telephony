@@ -576,9 +576,8 @@ public class CatService extends Handler implements AppInterface {
     }
 
     private void getPliResponse(ByteArrayOutputStream buf) {
-
         // Locale Language Setting
-        String lang = SystemProperties.get("persist.sys.language");
+        final String lang = Locale.getDefault().getLanguage();
 
         if (lang != null) {
             // tag
