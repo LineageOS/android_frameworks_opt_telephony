@@ -1033,6 +1033,11 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 ImsPhoneCall.State oldState = mBackgroundCall.getState();
                 processCallStateChange(imsCall, ImsPhoneCall.State.HOLDING,
                         DisconnectCause.NOT_DISCONNECTED);
+
+                // Note: If we're performing a switchWaitingOrHoldingAndActive, the call to
+                // processCallStateChange above may have caused the mBackgroundCall and
+                // mForegroundCall references below to change meaning.  Watch out for this if you
+                // are reading through this code.
                 if (oldState == ImsPhoneCall.State.ACTIVE) {
                     // Note: This case comes up when we have just held a call in response to a
                     // switchWaitingOrHoldingAndActive.  We now need to resume the background call.
@@ -1048,6 +1053,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
                         if (mPendingMO != null) {
                             sendEmptyMessage(EVENT_DIAL_PENDINGMO);
                         }
+
+                        // In this case there will be no call resumed, so we can assume that we
+                        // are done switching fg and bg calls now.
+                        // This may happen if there is no BG call and we are holding a call so that
+                        // we can dial another one.
+                        mSwitchingFgAndBgCalls = false;
                     }
                 }
             }
