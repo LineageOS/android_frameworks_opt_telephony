@@ -44,6 +44,8 @@ import android.text.TextUtils;
 import android.telephony.Rlog;
 import android.util.Log;
 
+import android.telephony.TelephonyManager;
+
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -80,9 +82,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
 
 /**
  * {@hide}
@@ -177,9 +176,9 @@ public class CDMAPhone extends PhoneBase {
             = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,LOG_TAG);
 
+        TelephonyManager tm = TelephonyManager.from(mContext);
         //Change the system setting
-        SystemProperties.set(TelephonyProperties.CURRENT_ACTIVE_PHONE,
-                Integer.toString(PhoneConstants.PHONE_TYPE_CDMA));
+        tm.setPhoneType(getPhoneId(), PhoneConstants.PHONE_TYPE_CDMA);
 
         // This is needed to handle phone process crashes
         String inEcm=SystemProperties.get(TelephonyProperties.PROPERTY_INECM_MODE, "false");
@@ -190,8 +189,7 @@ public class CDMAPhone extends PhoneBase {
         }
 
         // get the string that specifies the carrier OTA Sp number
-        mCarrierOtaSpNumSchema = SystemProperties.get(
-                TelephonyProperties.PROPERTY_OTASP_NUM_SCHEMA,"");
+        mCarrierOtaSpNumSchema = tm.getOtaSpNumberSchemaForPhone(getPhoneId(), "");
 
         // Sets operator properties by retrieving from build-time system property
         String operatorAlpha = SystemProperties.get("ro.cdma.home.operator.alpha");
@@ -202,12 +200,12 @@ public class CDMAPhone extends PhoneBase {
             log("init: APP_FAM_3GPP == NULL");
             if (!TextUtils.isEmpty(operatorAlpha)) {
                 log("init: set 'gsm.sim.operator.alpha' to operator='" + operatorAlpha + "'");
-                setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, operatorAlpha);
+                tm.setSimOperatorNameForPhone(mPhoneId, operatorAlpha);
             }
             if (!TextUtils.isEmpty(operatorNumeric)) {
                 log("init: set 'gsm.sim.operator.numeric' to operator='" + operatorNumeric + "'");
                 log("update icc_operator_numeric=" + operatorNumeric);
-                setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
+                tm.setSimOperatorNumericForPhone(mPhoneId, operatorNumeric);
 
                 SubscriptionController.getInstance().setMccMnc(operatorNumeric, getSubId());
             }
@@ -1208,7 +1206,8 @@ public class CDMAPhone extends PhoneBase {
                 }
 
                 if (DBG) Rlog.d(LOG_TAG, "Baseband version: " + ar.result);
-                setSystemProperty(TelephonyProperties.PROPERTY_BASEBAND_VERSION, (String)ar.result);
+                TelephonyManager.from(mContext).setBasebandVersionForPhone(getPhoneId(),
+                        (String)ar.result);
             }
             break;
 
@@ -1672,9 +1671,10 @@ public class CDMAPhone extends PhoneBase {
      *
      */
     protected void setIsoCountryProperty(String operatorNumeric) {
+        TelephonyManager tm = TelephonyManager.from(mContext);
         if (TextUtils.isEmpty(operatorNumeric)) {
             log("setIsoCountryProperty: clear 'gsm.sim.operator.iso-country'");
-            setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, "");
+            tm.setSimCountryIsoForPhone(mPhoneId, "");
         } else {
             String iso = "";
             try {
@@ -1687,7 +1687,7 @@ public class CDMAPhone extends PhoneBase {
             }
 
             log("setIsoCountryProperty: set 'gsm.sim.operator.iso-country' to iso=" + iso);
-            setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, iso);
+            tm.setSimCountryIsoForPhone(mPhoneId, iso);
         }
     }
 
@@ -1829,8 +1829,8 @@ public class CDMAPhone extends PhoneBase {
         if (status) {
             IccRecords iccRecords = mIccRecords.get();
             if (iccRecords != null) {
-                SystemProperties.set(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA,
-                        iccRecords.getServiceProviderName());
+                TelephonyManager.from(mContext).setSimOperatorNameForPhone(
+                        mPhoneId, iccRecords.getServiceProviderName());
             }
             if (mSST != null) {
                 mSST.pollState();

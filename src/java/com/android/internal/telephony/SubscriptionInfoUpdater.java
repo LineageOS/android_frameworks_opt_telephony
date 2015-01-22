@@ -314,8 +314,8 @@ public class SubscriptionInfoUpdater extends Handler {
             } else {
                 logd("EVENT_RECORDS_LOADED Operator name is null");
             }
-
-            String msisdn = TelephonyManager.getDefault().getLine1NumberForSubscriber(subId);
+            TelephonyManager tm = TelephonyManager.getDefault();
+            String msisdn = tm.getLine1NumberForSubscriber(subId);
             ContentResolver contentResolver = mContext.getContentResolver();
 
             if (msisdn != null) {
@@ -328,9 +328,9 @@ public class SubscriptionInfoUpdater extends Handler {
 
             SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
             String nameToSet;
-            String CarrierName = TelephonyManager.getDefault().getSimOperator(subId);
+            String CarrierName = tm.getSimOperatorNumericForSubscription(subId);
             logd("CarrierName = " + CarrierName);
-            String simCarrierName = TelephonyManager.getDefault().getSimOperatorName(subId);
+            String simCarrierName = tm.getSimOperatorNameForSubscription(subId);
             ContentValues name = new ContentValues(1);
 
             if (subInfo != null && subInfo.getNameSource() !=

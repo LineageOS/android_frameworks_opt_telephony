@@ -772,8 +772,15 @@ public class SmsMessage {
             return true;
         }
 
-        String simOperator = TelephonyManager.getDefault().getSimOperator();
-        String gid = TelephonyManager.getDefault().getGroupIdLevel1();
+        String simOperator;
+        String gid;
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            simOperator = TelephonyManager.getDefault().getSimOperatorNumeric();
+            gid = TelephonyManager.getDefault().getGroupIdLevel1();
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
 
         for (NoEmsSupportConfig currentConfig : mNoEmsSupportConfigList) {
             if (simOperator.startsWith(currentConfig.mOperatorNumber) &&
@@ -795,8 +802,16 @@ public class SmsMessage {
             return false;
         }
 
-        String simOperator = TelephonyManager.getDefault().getSimOperator();
-        String gid = TelephonyManager.getDefault().getGroupIdLevel1();
+        String simOperator;
+        String gid;
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            simOperator = TelephonyManager.getDefault().getSimOperatorNumeric();
+            gid = TelephonyManager.getDefault().getGroupIdLevel1();
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+
         for (NoEmsSupportConfig currentConfig : mNoEmsSupportConfigList) {
             if (simOperator.startsWith(currentConfig.mOperatorNumber) &&
                 (TextUtils.isEmpty(currentConfig.mGid1) ||
