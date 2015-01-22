@@ -115,6 +115,8 @@ public class GSMPhone extends PhoneBase {
     public static final String VM_NUMBER = "vm_number_key";
     // Key used to read/write the SIM IMSI used for storing the imsi
     public static final String SIM_IMSI = "sim_imsi_key";
+    // Key used to read/write the kitkat SIM IMSI used for storing the imsi
+    public static final String VM_SIM_IMSI = "vm_sim_imsi_key";
     // Key used to read/write if Call Forwarding is enabled
     public static final String CF_ENABLED = "cf_enabled_key";
 
@@ -1051,6 +1053,25 @@ public class GSMPhone extends PhoneBase {
         String number = (r != null) ? r.getVoiceMailNumber() : "";
         if (TextUtils.isEmpty(number)) {
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+            if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+                // Migrate KK setting for Msim
+                if (!sp.contains(VM_NUMBER + getSubId()) && sp.contains(VM_NUMBER + mPhoneId)) {
+                    number = sp.getString(VM_NUMBER + mPhoneId, null);
+                    SharedPreferences.Editor editor = sp.edit();
+                    editor.remove(VM_NUMBER + mPhoneId);
+                    editor.putString(VM_NUMBER + getSubId(), number);
+                    editor.commit();
+                }
+            } else {
+                // Migrate KK setting for single sim
+                if (!sp.contains(VM_NUMBER + getSubId()) && sp.contains(VM_NUMBER)) {
+                    number = sp.getString(VM_NUMBER, null);
+                    SharedPreferences.Editor editor = sp.edit();
+                    editor.remove(VM_NUMBER);
+                    editor.putString(VM_NUMBER + getSubId(), number);
+                    editor.commit();
+                }
+            }
             number = sp.getString(VM_NUMBER + getSubId(), null);
         }
 
@@ -1080,6 +1101,25 @@ public class GSMPhone extends PhoneBase {
 
     private String getSimImsi() {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+            //Migrate KK sim_imsi value for msim
+            if (!sp.contains(SIM_IMSI + getSubId()) && sp.contains(VM_SIM_IMSI + mPhoneId)) {
+                String imsi = sp.getString(VM_SIM_IMSI + mPhoneId, null);
+                setSimImsi(imsi);
+                SharedPreferences.Editor editor = sp.edit();
+                editor.remove(VM_SIM_IMSI + mPhoneId);
+                editor.commit();
+            }
+        } else {
+            //Migrate KK sim_imsi value for single sim
+            if (!sp.contains(SIM_IMSI + getSubId()) && sp.contains(VM_SIM_IMSI)) {
+                String imsi = sp.getString(VM_SIM_IMSI, null);
+                setSimImsi(imsi);
+                SharedPreferences.Editor editor = sp.edit();
+                editor.remove(VM_SIM_IMSI);
+                editor.commit();
+            }
+        }
         return sp.getString(SIM_IMSI + getSubId(), null);
     }
 
@@ -1477,7 +1517,25 @@ public class GSMPhone extends PhoneBase {
         if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Get callforwarding info from perferences");
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        boolean cf = sp.getBoolean(CF_ENABLED + getSubId(), false);
+        boolean cf = false;
+        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+            if (!sp.contains(CF_ENABLED + getSubId()) && sp.contains(CF_ENABLED + mPhoneId)) {
+                cf = sp.getBoolean(CF_ENABLED + mPhoneId, false);
+                setCallForwardingPreference(cf);
+                SharedPreferences.Editor edit = sp.edit();
+                edit.remove(CF_ENABLED + mPhoneId);
+                edit.commit();
+            }
+        } else {
+            if (!sp.contains(CF_ENABLED + getSubId()) && sp.contains(CF_ENABLED)) {
+                cf = sp.getBoolean(CF_ENABLED, false);
+                setCallForwardingPreference(cf);
+                SharedPreferences.Editor edit = sp.edit();
+                edit.remove(CF_ENABLED);
+                edit.commit();
+            }
+        }
+        cf = sp.getBoolean(CF_ENABLED + getSubId(), false);
         return cf;
     }
 

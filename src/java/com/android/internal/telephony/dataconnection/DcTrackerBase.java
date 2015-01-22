@@ -571,8 +571,7 @@ public abstract class DcTrackerBase extends Handler {
         filter.addAction(INTENT_DATA_STALL_ALARM);
         filter.addAction(INTENT_PROVISIONING_APN_ALARM);
 
-        mUserDataEnabled = Settings.Global.getInt(mPhone.getContext().getContentResolver(),
-                Settings.Global.MOBILE_DATA + mPhone.getPhoneId(), 1) == 1;
+        mUserDataEnabled = getDataEnabled();
 
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
 
@@ -714,7 +713,16 @@ public abstract class DcTrackerBase extends Handler {
             return Settings.Global.getInt(resolver,
                     Settings.Global.DATA_ROAMING + mPhone.getPhoneId()) != 0;
         } catch (SettingNotFoundException snfe) {
-            return false;
+            try {
+                final ContentResolver resolver = mPhone.getContext().getContentResolver();
+                boolean enabled = Settings.Global.getInt(resolver,
+                        Settings.Global.DATA_ROAMING) != 0;
+                Settings.Global.putInt(resolver,
+                        Settings.Global.DATA_ROAMING + mPhone.getPhoneId(), enabled ? 1 : 0);
+                return enabled;
+            } catch (SettingNotFoundException e) {
+                return false;
+            }
         }
     }
 
@@ -735,8 +743,18 @@ public abstract class DcTrackerBase extends Handler {
             final ContentResolver resolver = mPhone.getContext().getContentResolver();
             return Settings.Global.getInt(resolver,
                     Settings.Global.MOBILE_DATA + mPhone.getPhoneId()) != 0;
-        } catch (SettingNotFoundException snfe) {
-            return false;
+        } catch (SettingNotFoundException e) {
+            try {
+                final ContentResolver resolver = mPhone.getContext().getContentResolver();
+                boolean enabled = Settings.Global.getInt(resolver,
+                        Settings.Global.MOBILE_DATA) != 0;
+                Settings.Global.putInt(resolver,
+                        Settings.Global.MOBILE_DATA + mPhone.getPhoneId(),
+                        enabled ? 1 : 0);
+                return enabled;
+            } catch (SettingNotFoundException snfe) {
+                return true;
+            }
         }
     }
 
