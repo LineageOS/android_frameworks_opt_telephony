@@ -253,9 +253,8 @@ public final class MccTable {
 
         // If this is a regular user and they already have a persisted locale, we're done.
         if (!debuggingMccOverride) {
-            String persistSysLanguage = SystemProperties.get("persist.sys.language", "");
-            String persistSysCountry = SystemProperties.get("persist.sys.country", "");
-            if (!(persistSysLanguage.isEmpty() && persistSysCountry.isEmpty())) {
+            final String persistedLocale = SystemProperties.get("persist.sys.locale", "");
+            if (!persistedLocale.isEmpty()) {
                 Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping already persisted");
                 return null;
             }
