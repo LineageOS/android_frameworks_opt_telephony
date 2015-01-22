@@ -648,4 +648,3 @@ public class SubscriptionInfoUpdater extends Handler {
         Rlog.d(LOG_TAG, message);
     }
 }
-
