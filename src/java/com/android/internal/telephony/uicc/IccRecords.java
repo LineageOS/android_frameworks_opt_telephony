@@ -43,6 +43,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected CommandsInterface mCi;
     protected IccFileHandler mFh;
     protected UiccCardApplication mParentApp;
+    protected TelephonyManager mTelephonyManager;
 
     protected RegistrantList mRecordsLoadedRegistrants = new RegistrantList();
     protected RegistrantList mImsiReadyRegistrants = new RegistrantList();
@@ -153,6 +154,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
         mCi = ci;
         mFh = app.getIccFileHandler();
         mParentApp = app;
+        mTelephonyManager = (TelephonyManager) mContext.getSystemService(
+                Context.TELEPHONY_SERVICE);
     }
 
     /**

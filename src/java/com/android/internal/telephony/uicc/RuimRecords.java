@@ -16,11 +16,6 @@
 
 package com.android.internal.telephony.uicc;
 
-
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
-
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
 import static com.android.internal.telephony.TelephonyProperties.PROPERTY_TEST_CSIM;
 
 import java.io.FileDescriptor;
@@ -34,6 +29,7 @@ import android.os.Message;
 import android.os.SystemProperties;
 import android.telephony.SubscriptionManager;
 import android.telephony.Rlog;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.content.res.Resources;
@@ -346,7 +342,8 @@ public final class RuimRecords extends IccRecords {
             }
             if (DBG) log("spn=" + getServiceProviderName());
             if (DBG) log("spnCondition=" + mCsimSpnDisplayCondition);
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
+            mTelephonyManager.setSimOperatorNameForPhone(
+                    mParentApp.getPhoneId(), getServiceProviderName());
         }
     }
 
@@ -819,15 +816,18 @@ public final class RuimRecords extends IccRecords {
                 log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
                         operator + "'");
                 log("update icc_operator_numeric=" + operator);
-                SystemProperties.set(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
+                mTelephonyManager.setSimOperatorNumericForPhone(
+                        mParentApp.getPhoneId(), operator);
             } else {
                 log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
             }
 
             if (!TextUtils.isEmpty(mImsi)) {
                 log("onAllRecordsLoaded set mcc imsi=" + mImsi);
-                SystemProperties.set(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
-                        MccTable.countryCodeForMcc(Integer.parseInt(mImsi.substring(0,3))));
+                mTelephonyManager.setSimCountryIsoForPhone(
+                        mParentApp.getPhoneId(),
+                        MccTable.countryCodeForMcc(
+                        Integer.parseInt(mImsi.substring(0,3))));
             } else {
                 log("onAllRecordsLoaded empty imsi skipping setting mcc");
             }

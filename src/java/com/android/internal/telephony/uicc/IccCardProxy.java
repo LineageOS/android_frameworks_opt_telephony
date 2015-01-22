@@ -53,12 +53,6 @@ import com.android.internal.telephony.uicc.UiccController;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_SIM_STATE;
-
-
 /**
  * @Deprecated use {@link UiccController}.getUiccCard instead.
  *
@@ -102,6 +96,7 @@ public class IccCardProxy extends Handler implements IccCard {
     private final Object mLock = new Object();
     private Context mContext;
     private CommandsInterface mCi;
+    private TelephonyManager mTelephonyManager;
 
     private RegistrantList mAbsentRegistrants = new RegistrantList();
     private RegistrantList mPinLockedRegistrants = new RegistrantList();
@@ -126,6 +121,8 @@ public class IccCardProxy extends Handler implements IccCard {
         mContext = context;
         mCi = ci;
         mPhoneId = phoneId;
+        mTelephonyManager = (TelephonyManager) mContext.getSystemService(
+                Context.TELEPHONY_SERVICE);
         mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(context,
                 ci, this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
         mUiccController = UiccController.getInstance();
@@ -264,10 +261,10 @@ public class IccCardProxy extends Handler implements IccCard {
 
                     if (operator != null) {
                         log("update icc_operator_numeric=" + operator);
-                        setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
+                        mTelephonyManager.setSimOperatorNumericForPhone(mPhoneId, operator);
                         String countryCode = operator.substring(0,3);
                         if (countryCode != null) {
-                            setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
+                            mTelephonyManager.setSimCountryIsoForPhone(mPhoneId,
                                     MccTable.countryCodeForMcc(Integer.parseInt(countryCode)));
                         } else {
                             loge("EVENT_RECORDS_LOADED Country code is null");
@@ -308,8 +305,8 @@ public class IccCardProxy extends Handler implements IccCard {
                     AsyncResult ar = (AsyncResult)msg.obj;
                     int eventCode = (Integer) ar.result;
                     if (eventCode == SIMRecords.EVENT_SPN) {
-                        setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA,
-                                mIccRecords.getServiceProviderName());
+                        mTelephonyManager.setSimOperatorNameForPhone(
+                                mPhoneId, mIccRecords.getServiceProviderName());
                     }
                 }
                 break;
@@ -373,9 +370,9 @@ public class IccCardProxy extends Handler implements IccCard {
     void resetProperties() {
         if (mCurrentAppType == UiccController.APP_FAM_3GPP) {
             log("update icc_operator_numeric=" + "");
-            setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, "");
-            setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, "");
-            setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, "");
+            mTelephonyManager.setSimOperatorNumericForPhone(mPhoneId, "");
+            mTelephonyManager.setSimCountryIsoForPhone(mPhoneId, "");
+            mTelephonyManager.setSimOperatorNameForPhone(mPhoneId, "");
          }
     }
 
@@ -458,7 +455,7 @@ public class IccCardProxy extends Handler implements IccCard {
     }
 
     private void updateStateProperty() {
-        setSystemProperty(PROPERTY_SIM_STATE, getState().toString());
+        mTelephonyManager.setSimStateForPhone(mPhoneId, getState().toString());
     }
 
     private void broadcastIccStateChangedIntent(String value, String reason) {
@@ -525,7 +522,7 @@ public class IccCardProxy extends Handler implements IccCard {
             }
             mExternalState = newState;
             loge("setExternalState: set mPhoneId=" + mPhoneId + " mExternalState=" + mExternalState);
-            setSystemProperty(PROPERTY_SIM_STATE, getState().toString());
+            mTelephonyManager.setSimStateForPhone(mPhoneId, getState().toString());
 
             // For locked states, we should be sending internal broadcast.
             if (IccCardConstants.INTENT_VALUE_ICC_LOCKED.equals(getIccStateIntentString(mExternalState))) {

@@ -51,6 +51,7 @@ import android.telephony.SignalStrength;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.SparseArray;
 import android.view.Display;
@@ -3647,24 +3648,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
        response = new ArrayList<NeighboringCellInfo>();
 
        // Determine the radio access type
-       String radioString = SystemProperties.get(
-               TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE, "unknown");
-       int radioType;
-       if (radioString.equals("GPRS")) {
-           radioType = NETWORK_TYPE_GPRS;
-       } else if (radioString.equals("EDGE")) {
-           radioType = NETWORK_TYPE_EDGE;
-       } else if (radioString.equals("UMTS")) {
-           radioType = NETWORK_TYPE_UMTS;
-       } else if (radioString.equals("HSDPA")) {
-           radioType = NETWORK_TYPE_HSDPA;
-       } else if (radioString.equals("HSUPA")) {
-           radioType = NETWORK_TYPE_HSUPA;
-       } else if (radioString.equals("HSPA")) {
-           radioType = NETWORK_TYPE_HSPA;
-       } else {
-           radioType = NETWORK_TYPE_UNKNOWN;
-       }
+       int[] subId = SubscriptionManager.getSubId(mInstanceId);
+       int radioType =
+               ((TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE)).
+               getDataNetworkType(subId[0]);
 
        // Interpret the location based on radio access type
        if (radioType != NETWORK_TYPE_UNKNOWN) {
