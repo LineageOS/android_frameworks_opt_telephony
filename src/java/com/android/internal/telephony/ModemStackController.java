@@ -687,12 +687,10 @@ public class ModemStackController extends Handler {
         boolean isFlexmapDisabled = (SystemProperties.getInt(
                 "persist.radio.disable_flexmap", 0) == 1);
 
-        if (isFlexmapDisabled || callInProgress || mIsPhoneInEcbmMode 
-                || (!mIsStackReady && !isBootUp)) {
-            loge("updateStackBinding: FlexMap Disabled :" + isFlexmapDisabled
-                    + "Calls is progress = " + callInProgress + ", mIsPhoneInEcbmMode = "
-                    + mIsPhoneInEcbmMode + ", mIsStackReady = " + mIsStackReady +
-                    ". So EXITING!!!");
+        if (callInProgress || mIsPhoneInEcbmMode || (!mIsStackReady && !isBootUp)) {
+            loge("updateStackBinding: Calls is progress = " + callInProgress +
+                    ", mIsPhoneInEcbmMode = " + mIsPhoneInEcbmMode + ", mIsStackReady = "
+                    + mIsStackReady + ". So EXITING!!!");
             return FAILURE;
         }
         for (int i = 0; i < mNumPhones; i++) {
@@ -707,7 +705,7 @@ public class ModemStackController extends Handler {
             }
         }
 
-        if (isUpdateRequired) {
+        if (!isFlexmapDisabled && isUpdateRequired) {
             mIsStackReady = false;
             //Store the msg object , so that result of updateStackbinding can be sent later.
             mUpdateStackMsg = msg;
@@ -719,6 +717,7 @@ public class ModemStackController extends Handler {
                 triggerDeactivationOnAllSubs();
             }
         } else {
+            loge("updateStackBinding: FlexMap Disabled : " + isFlexmapDisabled);
             //incase of bootup if cross binding is not required send stack ready notification.
             if (isBootUp) notifyStackReady();
             return FAILURE;
