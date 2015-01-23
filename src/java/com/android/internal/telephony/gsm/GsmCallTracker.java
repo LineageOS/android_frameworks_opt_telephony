@@ -46,6 +46,7 @@ import com.android.internal.telephony.gsm.CallFailCause;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.gsm.GsmCall;
 import com.android.internal.telephony.gsm.GsmConnection;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 
 import java.io.FileDescriptor;
@@ -393,13 +394,16 @@ public final class GsmCallTracker extends CallTracker {
     private void
     updatePhoneState() {
         PhoneConstants.State oldState = mState;
-
         if (mRingingCall.isRinging()) {
             mState = PhoneConstants.State.RINGING;
         } else if (mPendingMO != null ||
                 !(mForegroundCall.isIdle() && mBackgroundCall.isIdle())) {
             mState = PhoneConstants.State.OFFHOOK;
         } else {
+            ImsPhone imsPhone = (ImsPhone)mPhone.getImsPhone();
+            if ( mState == PhoneConstants.State.OFFHOOK && (imsPhone != null)){
+                imsPhone.callEndCleanupHandOverCallIfAny();
+            }
             mState = PhoneConstants.State.IDLE;
         }
 

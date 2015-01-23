@@ -1249,7 +1249,12 @@ public class ImsPhone extends ImsPhoneBase {
     public boolean isImsRegistered() {
         return mImsRegistered;
     }
+
     public void setImsRegistered(boolean value) {
         mImsRegistered = value;
+    }
+
+    public void callEndCleanupHandOverCallIfAny() {
+        mCT.callEndCleanupHandOverCallIfAny();
     }
 }
