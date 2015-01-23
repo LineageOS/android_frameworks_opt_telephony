@@ -323,7 +323,8 @@ public abstract class IccPhoneBookInterfaceManager {
             AtomicBoolean status = new AtomicBoolean(false);
             Message response = mBaseHandler.obtainMessage(EVENT_LOAD_DONE, status);
             if (mAdnCache != null) {
-                mAdnCache.requestLoadAllAdnLike(efid, mAdnCache.extensionEfForEf(efid), response);
+                mAdnCache.requestLoadAllAdnLike(efid,
+                        mAdnCache.extensionEfForEf(efid), null, response);
                 waitForResult(status);
             } else {
                 loge("Failure while trying to load from SIM due to uninitialised adncache");

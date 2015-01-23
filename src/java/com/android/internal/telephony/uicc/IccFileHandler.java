@@ -318,10 +318,28 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
      */
     public void loadEFLinearFixedPart(int fileid,
             ArrayList<Integer> recordNums, Message onLoaded) {
-        Message response = obtainMessage(EVENT_GET_RECORD_SIZE_DONE, new LoadLinearFixedContext(
-                fileid, recordNums, getEFPath(fileid), onLoaded));
+        loadEFLinearFixedPart(fileid, getEFPath(fileid), recordNums, onLoaded);
+    }
 
-        mCi.iccIOForApp(COMMAND_GET_RESPONSE, fileid, getEFPath(fileid), 0, 0,
+    /**
+     * Load several records from a SIM Linear Fixed EF
+     *
+     * @param fileid EF id
+     * @param path Path of the EF on the card
+     * @param onLoaded
+     *
+     * ((AsyncResult)(onLoaded.obj)).result is an ArrayList<byte[]>
+     *
+     */
+    public void loadEFLinearFixedPart(int fileid, String path,
+            ArrayList<Integer> recordNums, Message onLoaded) {
+        if (path == null){
+            path = getEFPath(fileid);
+        }
+        Message response = obtainMessage(EVENT_GET_RECORD_SIZE_DONE,
+                new LoadLinearFixedContext(fileid, recordNums, path, onLoaded));
+
+        mCi.iccIOForApp(COMMAND_GET_RESPONSE, fileid, path, 0, 0,
                 GET_RESPONSE_EF_SIZE_BYTES, null, null, mAid, response);
     }
 

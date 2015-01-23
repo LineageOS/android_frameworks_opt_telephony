@@ -230,6 +230,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                     return;
                 }
                 mFh.loadEFLinearFixedAll(fileIds.get(USIM_EFEMAIL_TAG),
+                        getPBPath(),
                         obtainMessage(EVENT_EMAIL_LOAD_DONE, recNum));
 
                 log("readEmailFileAndWait email efid is : " + fileIds.get(USIM_EFEMAIL_TAG));
@@ -242,7 +243,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             } else {
                 // Read all Email files per Record
                 for (int efid: mPbrFile.mEmailFileIds.get(recNum)) {
-                    mFh.loadEFLinearFixedPart(efid, getValidRecordNums(recNum),
+                    mFh.loadEFLinearFixedPart(efid, getPBPath(), getValidRecordNums(recNum),
                         obtainMessage(EVENT_EMAIL_LOAD_DONE, recNum));
 
                     log("readEmailFileAndWait email efid is : " + efid + " recNum:" + recNum);
@@ -287,6 +288,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                     return;
                 }
                 mFh.loadEFLinearFixedAll(fileIds.get(USIM_EFANR_TAG),
+                        getPBPath(),
                         obtainMessage(EVENT_ANR_LOAD_DONE, recNum));
                 log("readAnrFileAndWait anr efid is : " + fileIds.get(USIM_EFANR_TAG));
                 try {
@@ -297,7 +299,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             } else {
                 // Read all Anr files for each Adn Record
                 for (int efid: mPbrFile.mAnrFileIds.get(recNum)) {
-                    mFh.loadEFLinearFixedPart(efid, getValidRecordNums(recNum),
+                    mFh.loadEFLinearFixedPart(efid, getPBPath(), getValidRecordNums(recNum),
                         obtainMessage(EVENT_ANR_LOAD_DONE, recNum));
                     log("readAnrFileAndWait anr efid is : " + efid + " recNum:" + recNum);
                     try {
@@ -324,7 +326,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
 
     private void readIapFileAndWait(int efid, int recNum) {
         log("pbrIndex is " + recNum + ",iap efid is : " + efid);
-        mFh.loadEFLinearFixedPart(efid, getValidRecordNums(recNum),
+        mFh.loadEFLinearFixedPart(efid, getPBPath(), getValidRecordNums(recNum),
                 obtainMessage(EVENT_IAP_LOAD_DONE, recNum));
         try {
             mLock.wait();
@@ -361,7 +363,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         }
         if (mSuccess) {
             synchronized (mLock) {
-                mFh.getEFLinearRecordSize(efid,
+                mFh.getEFLinearRecordSize(efid, getPBPath(),
                         obtainMessage(EVENT_EF_EMAIL_RECORD_SIZE_DONE, adnRecNum, efid, emails));
                 try {
                     mLock.wait();
@@ -402,7 +404,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             mSuccess = true;
         }
         synchronized (mLock) {
-            mFh.getEFLinearRecordSize(efid,
+            mFh.getEFLinearRecordSize(efid, getPBPath(),
                     obtainMessage(EVENT_EF_ANR_RECORD_SIZE_DONE, adnRecNum, efid, anrs));
             try {
                 mLock.wait();
@@ -439,7 +441,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         log("updateIapFile  efid=" + efid + ", recordNumber= " + recordNumber + ", adnRecNum="
                 + adnRecNum);
         synchronized (mLock) {
-            mFh.getEFLinearRecordSize(efid,
+            mFh.getEFLinearRecordSize(efid, getPBPath(),
                     obtainMessage(EVENT_EF_IAP_RECORD_SIZE_DONE, adnRecNum, recordNumber, tag));
             try {
                 mLock.wait();
@@ -733,6 +735,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         }
         log("readAdnFileAndWait adn efid is : " + fileIds.get(USIM_EFADN_TAG));
         mAdnCache.requestLoadAllAdnLike(fileIds.get(USIM_EFADN_TAG), extEf,
+                getPBPath(),
                 obtainMessage(EVENT_USIM_ADN_LOAD_DONE, recNum));
         try {
             mLock.wait();
@@ -1074,6 +1077,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
 
                 mFh.updateEFLinearFixed(
                         efid,
+                        getPBPath(),
                         recordNumber,
                         data,
                         null,
@@ -1140,6 +1144,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
 
                 mFh.updateEFLinearFixed(
                         efid,
+                        getPBPath(),
                         recordNumber,
                         data,
                         null,
@@ -1250,6 +1255,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                             + " with value= " + IccUtils.bytesToHexString(recordData));
                     mFh.updateEFLinearFixed(
                             efid,
+                            getPBPath(),
                             recordIndex + 1,
                             recordData,
                             null,
@@ -1530,5 +1536,10 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         } else {
             return 0;
         }
+    }
+
+    public String getPBPath() {
+        //Only support global PB
+        return MF_SIM + DF_TELECOM + DF_PHONEBOOK;
     }
 }
