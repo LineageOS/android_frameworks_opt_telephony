@@ -548,8 +548,12 @@ public class SubscriptionInfoUpdater extends Handler {
 
     private void broadcastSimStateChanged(int slotId, String state, String reason) {
         Intent i = new Intent(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
-        i.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
-                | Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
+        // TODO - we'd like this intent to have a single snapshot of all sim state,
+        // but until then this should not use REPLACE_PENDING or we may lose
+        // information
+        // i.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING
+        //         | Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
+        i.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY_BEFORE_BOOT);
         i.putExtra(PhoneConstants.PHONE_NAME_KEY, "Phone");
         i.putExtra(IccCardConstants.INTENT_KEY_ICC_STATE, state);
         i.putExtra(IccCardConstants.INTENT_KEY_LOCKED_REASON, reason);
@@ -570,4 +574,3 @@ public class SubscriptionInfoUpdater extends Handler {
         Rlog.d(LOG_TAG, message);
     }
 }
-
