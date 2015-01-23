@@ -780,6 +780,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
         mPhone.notifyPreciseCallStateChanged();
     }
 
+    void callEndCleanupHandOverCallIfAny() {
+        if (mHandoverCall.mConnections.size() > 0) {
+            if (DBG) log("callEndCleanupHandOverCallIfAny, mHandoverCall.mConnections="
+                    + mHandoverCall.mConnections);
+            mHandoverCall.mConnections.clear();
+            mState = PhoneConstants.State.IDLE;
+        }
+    }
+
     /* package */
     void resumeWaitingOrHolding() throws CallStateException {
         if (DBG) log("resumeWaitingOrHolding");
