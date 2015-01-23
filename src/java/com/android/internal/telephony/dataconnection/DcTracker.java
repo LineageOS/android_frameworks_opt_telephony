@@ -718,11 +718,14 @@ public final class DcTracker extends DcTrackerBase {
         }
         int dataSub = SubscriptionManager.getDefaultDataSubId();
         boolean defaultDataSelected = SubscriptionManager.isValidSubscriptionId(dataSub);
-
+        PhoneConstants.State state = PhoneConstants.State.IDLE;
+        if (mPhone.getCallTracker() != null) {
+            state = mPhone.getCallTracker().getState();
+        }
         boolean allowed =
                     (attachedState || mAutoAttachOnCreation) &&
                     recordsLoaded &&
-                    (mPhone.getState() == PhoneConstants.State.IDLE ||
+                    (state == PhoneConstants.State.IDLE ||
                      mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
                     internalDataEnabled &&
                     defaultDataSelected &&
@@ -736,9 +739,9 @@ public final class DcTracker extends DcTrackerBase {
                 reason += " - Attached= " + attachedState;
             }
             if (!recordsLoaded) reason += " - SIM not loaded";
-            if (mPhone.getState() != PhoneConstants.State.IDLE &&
+            if (state != PhoneConstants.State.IDLE &&
                     !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
-                reason += " - PhoneState= " + mPhone.getState();
+                reason += " - PhoneState= " + state;
                 reason += " - Concurrent voice and data not allowed";
             }
             if (!internalDataEnabled) reason += " - mInternalDataEnabled= false";

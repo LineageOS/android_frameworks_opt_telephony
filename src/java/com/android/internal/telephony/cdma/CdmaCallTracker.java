@@ -1205,4 +1205,8 @@ public final class CdmaCallTracker extends CallTracker {
         pw.println(" mState=" + mState);
         pw.println(" mIsEcmTimerCanceled=" + mIsEcmTimerCanceled);
     }
+    @Override
+    public PhoneConstants.State getState() {
+        return mState;
+    }
 }
