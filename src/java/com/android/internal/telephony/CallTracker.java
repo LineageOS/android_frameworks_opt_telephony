@@ -285,7 +285,7 @@ public abstract class CallTracker extends Handler {
     public abstract void unregisterForVoiceCallStarted(Handler h);
     public abstract void registerForVoiceCallEnded(Handler h, int what, Object obj);
     public abstract void unregisterForVoiceCallEnded(Handler h);
-
+    public abstract PhoneConstants.State getState();
     protected abstract void log(String msg);
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
