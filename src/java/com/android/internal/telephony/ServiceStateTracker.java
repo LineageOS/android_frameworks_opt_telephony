@@ -21,6 +21,7 @@ import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OP
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -28,6 +29,7 @@ import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemClock;
 import android.os.SystemProperties;
+import android.preference.PreferenceManager;
 import android.telephony.CellInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -251,11 +253,18 @@ public abstract class ServiceStateTracker extends Handler {
             if (previousSubId != subId) {
                 previousSubId = subId;
                 if (SubscriptionManager.isValidSubscriptionId(subId)) {
-                    int networkType = PhoneFactory.calculatePreferredNetworkType(
-                            mPhoneBase.getContext(), subId);
+                    Context context = mPhoneBase.getContext();
+                    int networkType = PhoneFactory.calculatePreferredNetworkType(context, subId);
                     mCi.setPreferredNetworkType(networkType, null);
 
                     mPhoneBase.notifyCallForwardingIndicator();
+
+                    boolean skipRestoringSelection = context.getResources().getBoolean(
+                            com.android.internal.R.bool.skip_restoring_network_selection);
+                    if (!skipRestoringSelection) {
+                        // restore the previous network selection.
+                        mPhoneBase.restoreSavedNetworkSelection(null);
+                    }
 
                     mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
                         ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
@@ -264,6 +273,27 @@ public abstract class ServiceStateTracker extends Handler {
                         mSubscriptionController.setPlmnSpn(mPhoneBase.getPhoneId(), mCurShowPlmn,
                                 mCurPlmn, mCurShowSpn, mCurSpn);
                         mSpnUpdatePending = false;
+                    }
+
+                    // Remove old network selection sharedPreferences since SP key names are now
+                    // changed to include subId. This will be done only once when upgrading from an
+                    // older build that did not include subId in the names.
+                    SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
+                            context);
+                    String oldNetworkSelectionName = sp.getString(PhoneBase.
+                            NETWORK_SELECTION_NAME_KEY, "");
+                    String oldNetworkSelection = sp.getString(PhoneBase.NETWORK_SELECTION_KEY,
+                            "");
+                    if (!TextUtils.isEmpty(oldNetworkSelectionName) ||
+                            !TextUtils.isEmpty(oldNetworkSelection)) {
+                        SharedPreferences.Editor editor = sp.edit();
+                        editor.putString(PhoneBase.NETWORK_SELECTION_NAME_KEY + subId,
+                                oldNetworkSelectionName);
+                        editor.putString(PhoneBase.NETWORK_SELECTION_KEY + subId,
+                                oldNetworkSelection);
+                        editor.remove(PhoneBase.NETWORK_SELECTION_NAME_KEY);
+                        editor.remove(PhoneBase.NETWORK_SELECTION_KEY);
+                        editor.commit();
                     }
                 }
             }
