@@ -906,16 +906,22 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     private void updateSavedNetworkOperator(NetworkSelectMessage nsm) {
-        // open the shared preferences editor, and write the value.
-        // nsm.operatorNumeric is "" if we're in automatic.selection.
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-        SharedPreferences.Editor editor = sp.edit();
-        editor.putString(NETWORK_SELECTION_KEY, nsm.operatorNumeric);
-        editor.putString(NETWORK_SELECTION_NAME_KEY, nsm.operatorAlphaLong);
+        int subId = getSubId();
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+            // open the shared preferences editor, and write the value.
+            // nsm.operatorNumeric is "" if we're in automatic.selection.
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+            SharedPreferences.Editor editor = sp.edit();
+            editor.putString(NETWORK_SELECTION_KEY + subId, nsm.operatorNumeric);
+            editor.putString(NETWORK_SELECTION_NAME_KEY + subId, nsm.operatorAlphaLong);
 
-        // commit and log the result.
-        if (!editor.commit()) {
-            Rlog.e(LOG_TAG, "failed to commit network selection preference");
+            // commit and log the result.
+            if (!editor.commit()) {
+                Rlog.e(LOG_TAG, "failed to commit network selection preference");
+            }
+        } else {
+            Rlog.e(LOG_TAG, "Cannot update network selection preference due to invalid subId " +
+                    subId);
         }
     }
 
@@ -946,7 +952,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     private String getSavedNetworkSelection() {
         // open the shared preferences and search with our key.
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-        return sp.getString(NETWORK_SELECTION_KEY, "");
+        return sp.getString(NETWORK_SELECTION_KEY + getSubId(), "");
     }
 
     /**
