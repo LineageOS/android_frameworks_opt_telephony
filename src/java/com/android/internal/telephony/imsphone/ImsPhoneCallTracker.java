@@ -1442,4 +1442,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
     public boolean isVtEnabled() {
         return mIsVtEnabled;
     }
+    @Override
+    public PhoneConstants.State getState() {
+        return mState;
+    }
 }
