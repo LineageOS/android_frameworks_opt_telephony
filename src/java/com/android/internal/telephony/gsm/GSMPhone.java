@@ -1234,8 +1234,8 @@ public class GSMPhone extends PhoneBase {
     public void getCallForwardingOption(int commandInterfaceCFReason, Message onComplete) {
         ImsPhone imsPhone = mImsPhone;
         if ((imsPhone != null)
-                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
-                || imsPhone.isUtEnabled()) {
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+                || imsPhone.isUtEnabled())) {
             imsPhone.getCallForwardingOption(commandInterfaceCFReason, onComplete);
             return;
         }
@@ -1260,8 +1260,8 @@ public class GSMPhone extends PhoneBase {
             Message onComplete) {
         ImsPhone imsPhone = mImsPhone;
         if ((imsPhone != null)
-                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
-                || imsPhone.isUtEnabled()) {
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+                || imsPhone.isUtEnabled())) {
             imsPhone.setCallForwardingOption(commandInterfaceCFAction,
                     commandInterfaceCFReason, dialingNumber, timerSeconds, onComplete);
             return;
@@ -1294,8 +1294,8 @@ public class GSMPhone extends PhoneBase {
 
         ImsPhone imsPhone = mImsPhone;
         if ((imsPhone != null)
-                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
-                || imsPhone.isUtEnabled()) {
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+                || imsPhone.isUtEnabled())) {
             imsPhone.setCallForwardingUncondTimerOption(startHour, startMinute, endHour,
                     endMinute, commandInterfaceCFAction, commandInterfaceCFReason,
                     dialingNumber, onComplete);
@@ -1314,8 +1314,8 @@ public class GSMPhone extends PhoneBase {
 
         ImsPhone imsPhone = mImsPhone;
         if ((imsPhone != null)
-                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
-                || imsPhone.isUtEnabled()) {
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+                || imsPhone.isUtEnabled())) {
             imsPhone.getCallForwardingOption(commandInterfaceCFReason, onComplete);
         } else {
             if (onComplete != null) {
@@ -1342,8 +1342,8 @@ public class GSMPhone extends PhoneBase {
     public void getCallWaiting(Message onComplete) {
         ImsPhone imsPhone = mImsPhone;
         if ((imsPhone != null)
-                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
-                || imsPhone.isUtEnabled()) {
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+                || imsPhone.isUtEnabled())) {
             imsPhone.getCallWaiting(onComplete);
             return;
         }
@@ -1357,8 +1357,8 @@ public class GSMPhone extends PhoneBase {
     public void setCallWaiting(boolean enable, Message onComplete) {
         ImsPhone imsPhone = mImsPhone;
         if ((imsPhone != null)
-                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
-                || imsPhone.isUtEnabled()) {
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+                || imsPhone.isUtEnabled())) {
             imsPhone.setCallWaiting(enable, onComplete);
             return;
         }
