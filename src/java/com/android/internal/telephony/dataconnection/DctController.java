@@ -106,6 +106,9 @@ public class DctController extends Handler {
     private NetworkFactory[] mNetworkFactory;
     private NetworkCapabilities[] mNetworkFilter;
 
+    private long mDdsSwitchReqTag = 0;
+    private long mPsAttachReqTag = 0;
+
     private SubscriptionManager mSubMgr;
 
     private BroadcastReceiver defaultDdsBroadcastReceiver = new BroadcastReceiver() {
@@ -341,6 +344,18 @@ public class DctController extends Handler {
         mContext.getContentResolver().unregisterContentObserver(mObserver);
     }
 
+    private boolean isCurrentRequest(SwitchInfo s) {
+        boolean ret = false;
+        if (s != null && ((s.mIsOnDemandPsAttachRequested && s.mTag == mPsAttachReqTag) ||
+                (!s.mIsOnDemandPsAttachRequested && s.mTag == mDdsSwitchReqTag))) {
+            ret = true;
+        }
+        logd("isRetryNeeded: SwitchInfo = " + s + " mPsAttachReqTag = "
+            + mPsAttachReqTag + " mDdsSwitchReqTag = " + mDdsSwitchReqTag
+            + " ret = " + ret);
+        return ret;
+    }
+
     @Override
     public void handleMessage (Message msg) {
         logd("handleMessage msg=" + msg);
@@ -350,11 +365,14 @@ public class DctController extends Handler {
                 isLegacySetDds = true;
                     //intentional fall through, no break.
             case EVENT_ALL_DATA_DISCONNECTED: {
+                mDdsSwitchReqTag++;
                 AsyncResult ar = (AsyncResult)msg.obj;
                 SwitchInfo s = (SwitchInfo)ar.userObj;
+                s.mTag = mDdsSwitchReqTag;
                 Integer phoneId = s.mPhoneId;
                 Rlog.d(LOG_TAG, "EVENT_ALL_DATA_DISCONNECTED switchInfo :" + s +
-                        " isLegacySetDds = " + isLegacySetDds);
+                        " isLegacySetDds = " + isLegacySetDds +
+                        " mDdsSwitchReqTag = " + mDdsSwitchReqTag);
                 // In this case prefPhoneId points to the newDds we are trying to
                 // set, hence we do not need to call unregister for data disconnected
                 if (!isLegacySetDds) {
@@ -389,7 +407,14 @@ public class DctController extends Handler {
                     if(psAttach) {
                         Message psAttachDone = Message.obtain(this,
                                 EVENT_SET_DATA_ALLOW_DONE, s);
-                        dcTracker.setDataAllowed(true, psAttachDone);
+                        if (isCurrentRequest(s)) {
+                            dcTracker.setDataAllowed(true, psAttachDone);
+                        } else {
+                            logd("Ignoring retry for old request.");
+                            AsyncResult.forMessage(psAttachDone, null,
+                                    new RuntimeException("PS ATTACH failed"));
+                            sendMessage(psAttachDone);
+                        }
                     } else {
                         Message psDetachDone = Message.obtain(this,
                                 EVENT_SET_DATA_ALLOW_FALSE, s);
@@ -416,7 +441,7 @@ public class DctController extends Handler {
                     Rlog.d(LOG_TAG, "Failed, switchInfo = " + s
                             + " attempt delayed retry");
                     s.incRetryCount();
-                    if ( s.isRetryPossible()) {
+                    if (s.isRetryPossible() && isCurrentRequest(s)) {
                         SomeArgs args = SomeArgs.obtain();
                         args.arg1 = s;
                         args.arg2 = true;
@@ -734,6 +759,7 @@ public class DctController extends Handler {
         public NetworkRequest mNetworkRequest;
         public boolean mIsDefaultDataSwitchRequested;
         public boolean mIsOnDemandPsAttachRequested;
+        public long mTag = 0;
 
         public SwitchInfo(int phoneId, NetworkRequest n, boolean flag, boolean isAttachReq) {
             mPhoneId = phoneId;
@@ -762,7 +788,7 @@ public class DctController extends Handler {
                 + ", NetworkRequest =" + mNetworkRequest
                 + ", isDefaultSwitchRequested = " + mIsDefaultDataSwitchRequested
                 + ", isOnDemandPsAttachRequested = " + mIsOnDemandPsAttachRequested
-                + ", RetryCount = " + mRetryCount;
+                + ", RetryCount = " + mRetryCount + ",mTag = " + mTag;
         }
     }
 
@@ -832,7 +858,9 @@ public class DctController extends Handler {
         //request only PS ATTACH on requested subscription.
         //No DdsSerealization lock required.
         SwitchInfo s = new SwitchInfo(new Integer(phoneId), n, false, true);
-
+        mPsAttachReqTag++;
+        s.mTag = mPsAttachReqTag;
+        Rlog.d(LOG_TAG, "doPsAttach: tag = " + mPsAttachReqTag);
         Message psAttachDone = Message.obtain(this,
                 EVENT_SET_DATA_ALLOW_DONE, s);
 
