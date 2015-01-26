@@ -613,8 +613,22 @@ public class ImsPhoneConnection extends Connection {
         boolean changed = false;
 
         try {
+            // The actual call profile (negotiated between local and peer).
+            ImsCallProfile negotiatedCallProfile = imsCall.getCallProfile();
+            // The capabilities of the local device.
             ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
+            // The capabilities of the peer device.
             ImsCallProfile remoteCallProfile = imsCall.getRemoteCallProfile();
+
+            if (negotiatedCallProfile != null) {
+                int callType = negotiatedCallProfile.mCallType;
+
+                int newVideoState = ImsCallProfile.getVideoStateFromCallType(callType);
+                if (getVideoState() != newVideoState) {
+                    setVideoState(newVideoState);
+                    changed = true;
+                }
+            }
 
             if (localCallProfile != null) {
                 int callType = localCallProfile.mCallType;
@@ -622,12 +636,6 @@ public class ImsPhoneConnection extends Connection {
                 boolean newLocalVideoCapable = callType == ImsCallProfile.CALL_TYPE_VT;
                 if (isLocalVideoCapable() != newLocalVideoCapable) {
                     setLocalVideoCapable(newLocalVideoCapable);
-                    changed = true;
-                }
-
-                int newVideoState = ImsCallProfile.getVideoStateFromCallType(callType);
-                if (getVideoState() != newVideoState) {
-                    setVideoState(newVideoState);
                     changed = true;
                 }
             }
