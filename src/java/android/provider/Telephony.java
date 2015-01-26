@@ -1786,7 +1786,6 @@ public final class Telephony {
          * It's convenient for use with SMS messages.
          * @param context the context object to use.
          * @param recipient the recipient to send to.
-         * @hide
          */
         public static long getOrCreateThreadId(Context context, String recipient) {
             Set<String> recipients = new HashSet<String>();
@@ -1804,7 +1803,6 @@ public final class Telephony {
          * <p>Find the thread ID of the same set of recipients (in any order,
          * without any additions). If one is found, return it. Otherwise,
          * return a unique thread ID.</p>
-         * @hide
          */
         public static long getOrCreateThreadId(
                 Context context, Set<String> recipients) {
