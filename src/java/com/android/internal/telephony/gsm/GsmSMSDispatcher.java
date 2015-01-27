@@ -17,7 +17,6 @@
 package com.android.internal.telephony.gsm;
 
 import android.app.Activity;
-import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
 import android.content.Intent;
@@ -170,7 +169,8 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         if (pdu != null) {
             HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, origPort, data, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                    null /*messageUri*/, false /*isExpectMore*/, null /*fullMessageText*/);
+                    null /*messageUri*/, false /*isExpectMore*/, null /*fullMessageText*/,
+                    false /*isText*/);
 
             String carrierPackage = getCarrierAppPackageName();
             if (carrierPackage != null) {
@@ -196,7 +196,8 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
         if (pdu != null) {
             HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                    messageUri, isExpectMore, text /*fullMessageText*/, validityPeriod);
+                    messageUri, isExpectMore, text /*fullMessageText*/,
+                    true /*isText*/, validityPeriod);
 
             String carrierPackage = getCarrierAppPackageName();
             if (carrierPackage != null) {
@@ -241,7 +242,8 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
                     message, pdu);
             return getSmsTracker(map, sentIntent,
                     deliveryIntent, getFormat(), unsentPartCount, anyPartFailed, messageUri,
-                    smsHeader, (!lastPart || isExpectMore), fullMessageText, validityPeriod);
+                    smsHeader, (!lastPart || isExpectMore),
+                    fullMessageText, true /*isText*/, validityPeriod);
         } else {
             Rlog.e(TAG, "GsmSMSDispatcher.sendNewSubmitPdu(): getSubmitPdu() returned null");
             return null;
