@@ -17,7 +17,6 @@
 package com.android.internal.telephony.cdma;
 
 import android.app.Activity;
-import android.app.AppOpsManager;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
 import android.content.Intent;
@@ -26,7 +25,6 @@ import android.net.Uri;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.provider.Telephony.Sms;
-import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SmsManager;
@@ -114,7 +112,8 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                 scAddr, destAddr, destPort, origPort, data, (deliveryIntent != null));
         HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, origPort, data, pdu);
         SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                null /*messageUri*/, false /*isExpectMore*/, null /*fullMessageText*/);
+                null /*messageUri*/, false /*isExpectMore*/, null /*fullMessageText*/,
+                false /*isText*/);
 
         String carrierPackage = getCarrierAppPackageName();
         if (carrierPackage != null) {
@@ -137,7 +136,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         if (pdu != null) {
             HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                    messageUri, isExpectMore, text, validityPeriod);
+                    messageUri, isExpectMore, text, true /*isText*/, validityPeriod);
 
             String carrierPackage = getCarrierAppPackageName();
             if (carrierPackage != null) {
@@ -202,7 +201,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                 message, submitPdu);
         return getSmsTracker(map, sentIntent, deliveryIntent,
                 getFormat(), unsentPartCount, anyPartFailed, messageUri, smsHeader,
-                (!lastPart || isExpectMore), fullMessageText, validityPeriod);
+                (!lastPart || isExpectMore), fullMessageText, true /*isText*/, validityPeriod);
     }
 
     @Override

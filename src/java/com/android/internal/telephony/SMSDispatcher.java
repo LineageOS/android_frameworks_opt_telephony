@@ -19,7 +19,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
-import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -29,21 +28,18 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
-import android.content.ServiceConnection;
 import android.database.ContentObserver;
 import android.database.sqlite.SqliteWrapper;
 import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Message;
 import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms;
-import android.provider.Telephony.Sms.Intents;
 import android.service.carrier.CarrierMessagingService;
 import android.service.carrier.ICarrierMessagingCallback;
 import android.service.carrier.ICarrierMessagingService;
@@ -72,7 +68,6 @@ import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
@@ -1334,11 +1329,14 @@ public abstract class SMSDispatcher extends Handler {
 
         private int mSubId;
 
+        // If this is a text message (instead of data message)
+        private boolean mIsText;
+
         private SmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
                 PendingIntent deliveryIntent, PackageInfo appInfo, String destAddr, String format,
                 AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
                 SmsHeader smsHeader, boolean isExpectMore, String fullMessageText,
-                int subId, int validityPeriod) {
+                int subId, boolean isText, int validityPeriod) {
             mData = data;
             mSentIntent = sentIntent;
             mDeliveryIntent = deliveryIntent;
@@ -1356,6 +1354,7 @@ public abstract class SMSDispatcher extends Handler {
             mSmsHeader = smsHeader;
             mFullMessageText = fullMessageText;
             mSubId = subId;
+            mIsText = isText;
         }
 
         /**
@@ -1405,7 +1404,10 @@ public abstract class SMSDispatcher extends Handler {
         }
 
         /**
-         * Persist a sent SMS if required
+         * Persist a sent SMS if required:
+         * 1. It is a text message
+         * 2. SmsApplication tells us to persist: sent from apps that are not default-SMS app or
+         *    bluetooth
          *
          * @param context
          * @param messageType The folder to store (FAILED or SENT)
@@ -1413,7 +1415,8 @@ public abstract class SMSDispatcher extends Handler {
          * @return The telephony provider URI if stored
          */
         private Uri persistSentMessageIfRequired(Context context, int messageType, int errorCode) {
-            if (!SmsApplication.shouldWriteMessageForPackage(mAppInfo.packageName, context)) {
+            if (!mIsText ||
+                    !SmsApplication.shouldWriteMessageForPackage(mAppInfo.packageName, context)) {
                 return null;
             }
             Rlog.d(TAG, "Persist SMS into "
@@ -1555,7 +1558,7 @@ public abstract class SMSDispatcher extends Handler {
     protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
             PendingIntent deliveryIntent, String format, AtomicInteger unsentPartCount,
             AtomicBoolean anyPartFailed, Uri messageUri, SmsHeader smsHeader,
-            boolean isExpectMore, String fullMessageText, int validityPeriod) {
+            boolean isExpectMore, String fullMessageText, boolean isText, int validityPeriod) {
         // Get calling app package name via UID from Binder call
         PackageManager pm = mContext.getPackageManager();
         String[] packageNames = pm.getPackagesForUid(Binder.getCallingUid());
@@ -1575,22 +1578,23 @@ public abstract class SMSDispatcher extends Handler {
         String destAddr = PhoneNumberUtils.extractNetworkPortion((String) data.get("destAddr"));
         return new SmsTracker(data, sentIntent, deliveryIntent, appInfo, destAddr, format,
                 unsentPartCount, anyPartFailed, messageUri, smsHeader, isExpectMore,
-                fullMessageText, getSubId(), validityPeriod);
+                fullMessageText, getSubId(), isText, validityPeriod);
     }
 
     protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
             PendingIntent deliveryIntent, String format, Uri messageUri, boolean isExpectMore,
-            String fullMessageText) {
+            String fullMessageText, boolean isText) {
         return getSmsTracker(data, sentIntent, deliveryIntent, format, null/*unsentPartCount*/,
-                null/*anyPartFailed*/, messageUri, null/*smsHeader*/, isExpectMore, fullMessageText, -1);
+                null/*anyPartFailed*/, messageUri, null/*smsHeader*/,
+                isExpectMore, fullMessageText, isText, -1);
     }
 
     protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
             PendingIntent deliveryIntent, String format, Uri messageUri, boolean isExpectMore, 
-            String fullMessageText, int validityPeriod ) {
+            String fullMessageText, boolean isText, int validityPeriod ) {
         return getSmsTracker(data, sentIntent, deliveryIntent, format, null/*unsentPartCount*/, 
                 null/*anyPartFailed*/, messageUri, null/*smsHeader*/, isExpectMore, 
-                fullMessageText, validityPeriod);
+                fullMessageText, isText, validityPeriod);
     }
 
     protected HashMap<String, Object> getSmsTrackerMap(String destAddr, String scAddr,
@@ -1717,57 +1721,6 @@ public abstract class SMSDispatcher extends Handler {
         } else {
             Rlog.e(TAG, mImsSMSDispatcher + " is null");
             return null;
-        }
-    }
-
-    protected Uri writeOutboxMessage(int subId, String address, String text,
-            boolean requireDeliveryReport, String creator) {
-        final ContentValues values = new ContentValues(8);
-        values.put(Telephony.Sms.SUBSCRIPTION_ID, subId);
-        values.put(Telephony.Sms.ADDRESS, address);
-        values.put(Telephony.Sms.BODY, text);
-        values.put(Telephony.Sms.DATE, System.currentTimeMillis()); // milliseconds
-        values.put(Telephony.Sms.SEEN, 1);
-        values.put(Telephony.Sms.READ, 1);
-        if (!TextUtils.isEmpty(creator)) {
-            values.put(Telephony.Sms.CREATOR, creator);
-        }
-        if (requireDeliveryReport) {
-            values.put(Telephony.Sms.STATUS, Telephony.Sms.STATUS_PENDING);
-        }
-        final long identity = Binder.clearCallingIdentity();
-        try {
-            final Uri uri =  mContext.getContentResolver().insert(
-                    Telephony.Sms.Outbox.CONTENT_URI, values);
-            return uri;
-        } catch (Exception e) {
-            Rlog.e(TAG, "writeOutboxMessage: Failed to persist outbox message", e);
-            return null;
-        } finally {
-            Binder.restoreCallingIdentity(identity);
-        }
-    }
-
-    protected void moveToOutbox(int subId, Uri messageUri, String creator) {
-        final ContentValues values = new ContentValues(4);
-        values.put(Telephony.Sms.SUBSCRIPTION_ID, subId);
-        if (!TextUtils.isEmpty(creator)) {
-            // Reset creator/sender
-            values.put(Telephony.Sms.CREATOR, creator);
-        }
-        // Reset the timestamp
-        values.put(Telephony.Sms.DATE, System.currentTimeMillis()); // milliseconds
-        values.put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_OUTBOX);
-        final long identity = Binder.clearCallingIdentity();
-        try {
-            if (mContext.getContentResolver().update(messageUri, values,
-                    null/*where*/, null/*selectionArgs*/) != 1) {
-                Rlog.e(TAG, "moveToOutbox: failed to update message " + messageUri);
-            }
-        } catch (Exception e) {
-            Rlog.e(TAG, "moveToOutbox: Failed to update message", e);
-        } finally {
-            Binder.restoreCallingIdentity(identity);
         }
     }
 
