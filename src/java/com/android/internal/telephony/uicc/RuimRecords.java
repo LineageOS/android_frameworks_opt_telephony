@@ -618,6 +618,9 @@ public final class RuimRecords extends IccRecords {
                             naiCharArray[index1] = (char)(bitStream.read(8) & 0xFF);
                         }
                         mNai =  new String(naiCharArray);
+                        if (Log.isLoggable(LOG_TAG, Log.VERBOSE)) {
+                            Log.v(LOG_TAG,"MIPUPP Nai = " + mNai);
+                        }
                         return; //need not parsing further
                     } else {
                         //ignore this NAI body
