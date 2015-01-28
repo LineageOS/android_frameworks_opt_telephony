@@ -386,6 +386,11 @@ public class SubscriptionController extends ISub.Stub {
                 " status:" + status + " nwMode:" + nwMode);
         }
 
+        String line1Number = mTelephonyManager.getLine1NumberForSubscriber(id);
+        if (!TextUtils.isEmpty(line1Number) && !line1Number.equals(number)) {
+            logd("Line1Number is different: " + line1Number);
+            number = line1Number;
+        }
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
                 nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
                 status, nwMode);
