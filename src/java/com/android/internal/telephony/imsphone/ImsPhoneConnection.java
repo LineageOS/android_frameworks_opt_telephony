@@ -30,6 +30,7 @@ import android.telecom.Log;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
+import android.text.TextUtils;
 
 import com.android.ims.ImsException;
 import com.android.ims.ImsStreamMediaProfile;
@@ -708,6 +709,44 @@ public class ImsPhoneConnection extends Connection {
             // {@link ImsCall} and update the {@link ImsPhoneConnection} with this information.
             ImsCallProfile callProfile = imsCall.getCallProfile();
             if (callProfile != null) {
+
+                String address = callProfile.getCallExtra(ImsCallProfile.EXTRA_OI);
+                String name = callProfile.getCallExtra(ImsCallProfile.EXTRA_CNA);
+                int nump = ImsCallProfile.OIRToPresentation(
+                        callProfile.getCallExtraInt(ImsCallProfile.EXTRA_OIR));
+                int namep = ImsCallProfile.OIRToPresentation(
+                        callProfile.getCallExtraInt(ImsCallProfile.EXTRA_CNAP));
+                if (Phone.DEBUG_PHONE) {
+                    Rlog.d(LOG_TAG, "address = " +  address + " name = " + name +
+                            " nump = " + nump + " namep = " + namep);
+                }
+
+                if ((mAddress == null && address != null) ||
+                        (mAddress != null && !mAddress.equals(address))) {
+                    mAddress = address;
+                    changed = true;
+                }
+
+                if (TextUtils.isEmpty(name)) {
+                    if (!TextUtils.isEmpty(mCnapName)) {
+                        mCnapName = "";
+                        changed = true;
+                    }
+                } else if (!name.equals(mCnapName)) {
+                    mCnapName = name;
+                    changed = true;
+                }
+
+                if (mNumberPresentation != nump) {
+                    mNumberPresentation = nump;
+                    changed = true;
+                }
+
+                if (mCnapNamePresentation != namep) {
+                    mCnapNamePresentation = namep;
+                    changed = true;
+                }
+
                 int oldVideoState = getVideoState();
                 int newVideoState = ImsCallProfile.getVideoStateFromImsCallProfile(callProfile);
 
