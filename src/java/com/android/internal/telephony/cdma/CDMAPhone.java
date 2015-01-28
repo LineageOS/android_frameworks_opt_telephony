@@ -43,6 +43,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.text.TextUtils;
 import android.telephony.Rlog;
+import android.util.Log;
 
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.Call;
@@ -625,6 +626,9 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public String getNai() {
         IccRecords r = mIccRecords.get();
+        if (Log.isLoggable(LOG_TAG, Log.VERBOSE)) {
+            Rlog.v(LOG_TAG, "IccRecords is " + r);
+        }
         return (r != null) ? r.getNAI() : null;
     }
 
