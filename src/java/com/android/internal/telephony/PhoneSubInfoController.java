@@ -44,16 +44,15 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
 
     // Use first phoneId to return unique value always
     public String getDeviceId() {
-        return getDeviceIdForSubscriber(getFirstPhoneSubId());
+        return getDeviceIdForPhone(PhoneConstants.PHONE_ID1);
     }
 
-    public String getDeviceIdForSubscriber(int subId) {
-        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(subId);
-        if (phoneSubInfoProxy != null) {
-            return phoneSubInfoProxy.getDeviceId();
+    public String getDeviceIdForPhone(int phoneId) {
+        Phone phone = getPhone(phoneId);
+        if (phone != null) {
+            return phone.getDeviceId();
         } else {
-            Rlog.e(TAG,"getDeviceId phoneSubInfoProxy is null" +
-                      " for Subscription:" + subId);
+            Rlog.e(TAG,"getDeviceIdForPhone phone " + phoneId + " is null");
             return null;
         }
     }
@@ -223,21 +222,21 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private PhoneSubInfoProxy getPhoneSubInfoProxy(int subId) {
 
         int phoneId = SubscriptionManager.getPhoneId(subId);
-        if (phoneId < 0 || phoneId >= TelephonyManager.getDefault().getPhoneCount()) {
-            phoneId = 0;
-        }
 
         try {
-            return ((PhoneProxy)mPhone[phoneId]).getPhoneSubInfoProxy();
+            return getPhone(phoneId).getPhoneSubInfoProxy();
         } catch (NullPointerException e) {
             Rlog.e(TAG, "Exception is :" + e.toString() + " For subId :" + subId);
             e.printStackTrace();
             return null;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            Rlog.e(TAG, "Exception is :" + e.toString() + " For subId :" + subId);
-            e.printStackTrace();
-            return null;
         }
+    }
+
+    private PhoneProxy getPhone(int phoneId) {
+        if (phoneId < 0 || phoneId >= TelephonyManager.getDefault().getPhoneCount()) {
+            phoneId = 0;
+        }
+        return (PhoneProxy) mPhone[phoneId];
     }
 
     private int getDefaultSubscription() {
