@@ -383,7 +383,7 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) {
             logd("[getSubInfoRecord] id:" + id + " iccid:" + iccId + " simSlotIndex:" + simSlotIndex
                 + " displayName:" + displayName + " nameSource:" + nameSource
-                + " iconTint:" + iconTint + " number:" + number + " dataRoaming:" + dataRoaming
+                + " iconTint:" + iconTint + " dataRoaming:" + dataRoaming
                 + " mcc:" + mcc + " mnc:" + mnc + " countIso:" + countryIso +
                 " status:" + status + " nwMode:" + nwMode);
         }
