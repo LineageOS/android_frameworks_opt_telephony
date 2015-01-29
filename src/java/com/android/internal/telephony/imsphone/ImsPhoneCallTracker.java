@@ -527,6 +527,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
             return;
         }
 
+        // Keep track of the connect time of the earliest call so that it can be set on the
+        // {@code ImsConference} when it is created.
+        long conferenceConnectTime = Math.min(mForegroundCall.getEarliestConnectTime(),
+                mBackgroundCall.getEarliestConnectTime());
+        ImsPhoneConnection foregroundConnection = mForegroundCall.getFirstConnection();
+        if (foregroundConnection != null) {
+            foregroundConnection.setConferenceConnectTime(conferenceConnectTime);
+        }
+
         try {
             fgImsCall.merge(bgImsCall);
         } catch (ImsException e) {
@@ -1151,10 +1160,19 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
 
         @Override
-        public void onCallMerged(ImsCall call) {
+        public void onCallMerged(ImsCall call, boolean swapCalls) {
             if (DBG) log("onCallMerged");
 
             mForegroundCall.merge(mBackgroundCall, mForegroundCall.getState());
+            if (swapCalls) {
+                try {
+                    switchWaitingOrHoldingAndActive();
+                } catch (CallStateException e) {
+                    if (Phone.DEBUG_PHONE) {
+                        loge("Failed swap fg and bg calls on merge exception=" + e);
+                    }
+                }
+            }
             updatePhoneState();
             mPhone.notifyPreciseCallStateChanged();
         }

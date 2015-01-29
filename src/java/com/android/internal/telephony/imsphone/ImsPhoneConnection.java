@@ -77,6 +77,9 @@ public class ImsPhoneConnection extends Connection {
 
     private PowerManager.WakeLock mPartialWakeLock;
 
+    // The cached connect time of the connection when it turns into a conference.
+    private long mConferenceConnectTime = 0;
+
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
     private static final int EVENT_PAUSE_DONE = 2;
@@ -596,6 +599,23 @@ public class ImsPhoneConnection extends Connection {
             Rlog.e(LOG_TAG, "onDisconnectConferenceParticipant: no session in place. "+
                     "Failed to disconnect endpoint = " + endpoint);
         }
+    }
+
+    /**
+     * Sets the conference connect time.  Used when an {@code ImsConference} is created to out of
+     * this phone connection.
+     *
+     * @param conferenceConnectTime The conference connect time.
+     */
+    public void setConferenceConnectTime(long conferenceConnectTime) {
+        mConferenceConnectTime = conferenceConnectTime;
+    }
+
+    /**
+     * @return The conference connect time.
+     */
+    public long getConferenceConnectTime() {
+        return mConferenceConnectTime;
     }
 
     /**
