@@ -1900,47 +1900,59 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        pw.println("SubscriptionController:");
-        pw.println(" defaultDataSubId=" + getDefaultDataSubId());
-        pw.println(" defaultVoiceSubId=" + getDefaultVoiceSubId());
-        pw.println(" defaultSmsSubId=" + getDefaultSmsSubId());
+        mContext.enforceCallingOrSelfPermission(android.Manifest.permission.DUMP,
+                "Requires DUMP");
+        final long token = Binder.clearCallingIdentity();
+        try {
+            pw.println("SubscriptionController:");
+            pw.println(" defaultSubId=" + getDefaultSubId());
+            pw.println(" defaultDataSubId=" + getDefaultDataSubId());
+            pw.println(" defaultVoiceSubId=" + getDefaultVoiceSubId());
+            pw.println(" defaultSmsSubId=" + getDefaultSmsSubId());
 
-        pw.println(" defaultDataPhoneId=" + SubscriptionManager
-                .from(mContext).getDefaultDataPhoneId());
-        pw.println(" defaultVoicePhoneId=" + SubscriptionManager.getDefaultVoicePhoneId());
-        pw.println(" defaultSmsPhoneId=" + SubscriptionManager
-                .from(mContext).getDefaultSmsPhoneId());
-        pw.flush();
+            pw.println(" defaultDataPhoneId=" + SubscriptionManager
+                    .from(mContext).getDefaultDataPhoneId());
+            pw.println(" defaultVoicePhoneId=" + SubscriptionManager.getDefaultVoicePhoneId());
+            pw.println(" defaultSmsPhoneId=" + SubscriptionManager
+                    .from(mContext).getDefaultSmsPhoneId());
+            pw.flush();
 
-        for (Entry<Integer, Integer> entry : mSlotIdxToSubId.entrySet()) {
-            pw.println(" mSlotIdToSubIdMap[" + entry.getKey() + "]: subId=" + entry.getValue());
-        }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
-
-        List<SubscriptionInfo> sirl = getActiveSubscriptionInfoList();
-        if (sirl != null) {
-            pw.println(" ActiveSubInfoList:");
-            for (SubscriptionInfo entry : sirl) {
-                pw.println("  " + entry.toString());
+            for (Entry<Integer, Integer> entry : mSlotIdxToSubId.entrySet()) {
+                pw.println(" mSlotIdToSubIdMap[" + entry.getKey() + "]: subId=" + entry.getValue());
             }
-        } else {
-            pw.println(" ActiveSubInfoList: is null");
-        }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
 
-        sirl = getAllSubInfoList();
-        if (sirl != null) {
-            pw.println(" AllSubInfoList:");
-            for (SubscriptionInfo entry : sirl) {
-                pw.println("  " + entry.toString());
+            List<SubscriptionInfo> sirl = getActiveSubscriptionInfoList();
+            if (sirl != null) {
+                pw.println(" ActiveSubInfoList:");
+                for (SubscriptionInfo entry : sirl) {
+                    pw.println("  " + entry.toString());
+                }
+            } else {
+                pw.println(" ActiveSubInfoList: is null");
             }
-        } else {
-            pw.println(" AllSubInfoList: is null");
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
+
+            sirl = getAllSubInfoList();
+            if (sirl != null) {
+                pw.println(" AllSubInfoList:");
+                for (SubscriptionInfo entry : sirl) {
+                    pw.println("  " + entry.toString());
+                }
+            } else {
+                pw.println(" AllSubInfoList: is null");
+            }
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
+
+            mLocalLog.dump(fd, pw, args);
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
+            pw.flush();
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
-        pw.flush();
     }
 }
