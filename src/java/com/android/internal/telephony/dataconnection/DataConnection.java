@@ -33,6 +33,7 @@ import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
+import android.app.AlertDialog;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.net.ConnectivityManager;
@@ -56,6 +57,7 @@ import android.text.TextUtils;
 import android.util.Pair;
 import android.util.Patterns;
 import android.util.TimeUtils;
+import android.view.WindowManager;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -100,6 +102,22 @@ public final class DataConnection extends StateMachine {
 
     private static final String NETWORK_TYPE = "MOBILE";
 
+    //Maximum data reject count
+    private static final int MAX_PDP_REJECT_COUNT = 3;
+
+    //current data reject count
+    private static int mPdpRejectCount = 0;
+
+    //current data reject cause
+    private static DcFailCause mPdpRejectCause = DcFailCause.UNKNOWN;
+
+    //data reject dialog, made static because only one dialog object can be
+    //used between multiple dataconnection objects.
+    private static AlertDialog mDataRejectDialog = null;
+
+    //Data reset event tracker to know reset events.
+    private DataResetEventTracker mDataResetEventTracker = null;
+
     // The data connection controller
     private DcController mDcController;
 
@@ -116,6 +134,22 @@ public final class DataConnection extends StateMachine {
     private DcTrackerBase mDct = null;
 
     protected String[] mPcscfAddr;
+
+    //Data reset event listener. Dc will get get onResetEvent
+    //whenever any data reset event occurs.
+    private DataResetEventTracker.ResetEventListener mResetEventListener
+            = new DataResetEventTracker.ResetEventListener() {
+
+        @Override
+        public void onResetEvent() {
+            if (DBG) log("DataConnection onResetEvent");
+            mPdpRejectCount = 0;
+            mPdpRejectCause = DcFailCause.UNKNOWN;
+            mDcRetryAlarmController.cancel();
+            mDataResetEventTracker.stopResetEventTracker();
+            sendMessage(obtainMessage(EVENT_RETRY_CONNECTION, mTag, 0));
+        }
+    };
 
     /**
      * Used internally for saving connecting parameters.
@@ -267,6 +301,10 @@ public final class DataConnection extends StateMachine {
 
     void dispose() {
         log("dispose: call quiteNow()");
+        if(mDataResetEventTracker != null) {
+            mDataResetEventTracker.dispose();
+            mDataResetEventTracker = null;
+        }
         quitNow();
     }
 
@@ -707,6 +745,14 @@ public final class DataConnection extends StateMachine {
             }
             notifyAllWithEvent(alreadySent, DctConstants.EVENT_DISCONNECT_DONE, reason);
         }
+        //Data connection is disconnected,
+        //reset pdp reject count to 0
+        mPdpRejectCount = 0;
+        //cancel the pending alarm and stop the data reset tracker
+        mDcRetryAlarmController.cancel();
+        if (mDataResetEventTracker != null ) {
+            mDataResetEventTracker.stopResetEventTracker();
+        }
         if (DBG) log("NotifyDisconnectCompleted DisconnectParams=" + dp);
     }
 
@@ -1050,6 +1096,33 @@ public final class DataConnection extends StateMachine {
                     + " mConnectionParams=" + mConnectionParams);
         }
         return true;
+    }
+
+    /**
+     * This function will display the pdp reject message
+     */
+    private void displayPopup(DcFailCause pdpRejectCause) {
+        if (DBG) log("displayPopup : " + pdpRejectCause);
+        String title = mPhone.getContext().getResources()
+                .getString(com.android.internal.R.string.data_conn_status_title);
+        String message = null;
+        if (pdpRejectCause == DcFailCause.USER_AUTHENTICATION) {
+            message = mPhone.getContext().getResources().getString(
+                com.android.internal.R.string.user_authentication_failed);
+        } else if (pdpRejectCause == DcFailCause.SERVICE_OPTION_NOT_SUBSCRIBED) {
+            message = mPhone.getContext().getResources().getString(
+                com.android.internal.R.string.service_not_subscribed);
+        }
+        if (mDataRejectDialog == null || !mDataRejectDialog.isShowing()) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(mPhone.getContext());
+            builder.setCancelable(true);
+            builder.setPositiveButton(android.R.string.ok, null);
+            mDataRejectDialog = builder.create();
+        }
+        mDataRejectDialog.setMessage(message);
+        mDataRejectDialog.setTitle(title);
+        mDataRejectDialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
+        mDataRejectDialog.show();
     }
 
     /**
@@ -1588,6 +1661,14 @@ public final class DataConnection extends StateMachine {
                             // All is well
                             mDcFailCause = DcFailCause.NONE;
                             transitionTo(mActiveState);
+                            if (mPdpRejectCount > 0 && mPdpRejectCause != DcFailCause.UNKNOWN) {
+                                mPdpRejectCount = 0;
+                                mPdpRejectCause = DcFailCause.UNKNOWN;
+                                if (mDataResetEventTracker != null) {
+                                    mDataResetEventTracker.stopResetEventTracker();
+                                }
+                            }
+
                             break;
                         case ERR_BadCommand:
                             // Vendor ril rejected the command and didn't connect.
@@ -1619,6 +1700,27 @@ public final class DataConnection extends StateMachine {
                                         + " result.isPermanentFail=" +
                                         mDct.isPermanentFail(result.mFailCause));
                             }
+
+                            // only check for reject cause USER_AUTHENTICATION or
+                            // SERVICE_OPTION_NOT_SUBSCRIBED if the rat
+                            // isWCDMA and feature flag is enabled
+                            if (isWCDMA(mPhone.getServiceState().getRilDataRadioTechnology())
+                                    && mPhone.getContext().getResources().getBoolean(com.android.
+                                        internal.R.bool.config_pdp_retry_for_29_33_enabled)) {
+                                if (DBG) log("config is enabled retry count:" + mPdpRejectCount);
+                                boolean ishandled = handleDataReject(result);
+                                if (ishandled) {
+                                    break;
+                                }
+                            } else {
+                                if (DBG) log("DataConnection not on wcdma");
+                                mPdpRejectCount = 0;
+                                mPdpRejectCause = DcFailCause.UNKNOWN;
+                                if (mDataResetEventTracker != null) {
+                                    mDataResetEventTracker.stopResetEventTracker();
+                                }
+                            }
+
                             if (result.mFailCause.isRestartRadioFail()) {
                                 if (DBG) log("DcActivatingState: ERR_RilError restart radio");
                                 mDct.sendRestartRadio();
@@ -1720,6 +1822,69 @@ public final class DataConnection extends StateMachine {
                     break;
             }
             return retVal;
+        }
+
+        /**
+         * returns true if Data call reject is happened with following cause code.
+         * or if data is throttled. else false.
+         * 1. USER_AUTHENTICATION
+         * 2. SERVICE_OPTION_NOT_SUBSCRIBED
+         */
+        private boolean handleDataReject(DataCallResponse.SetupResult result) {
+            boolean handled = false;
+            int delay = mPhone
+                    .getContext()
+                    .getResources()
+                    .getInteger(com.android.internal.R.integer.data_retry_delay);
+
+            /* If failure reason is USER_AUTHENTICATION or
+             * SERVICE_OPTION_NOT_SUBSCRIBED, increment counter and store cause
+             */
+            if (result.mFailCause == DcFailCause.USER_AUTHENTICATION
+                    || result.mFailCause == DcFailCause.SERVICE_OPTION_NOT_SUBSCRIBED) {
+                mPdpRejectCount++;
+                mPdpRejectCause = result.mFailCause;
+                /* If MAX Reject count reached, display pop-up to user */
+                if (MAX_PDP_REJECT_COUNT <= mPdpRejectCount) {
+                    if (DBG) log("reached max retry count");
+                    mPdpRejectCount = 0;
+                    displayPopup(mPdpRejectCause);
+                    delay = mPhone.getContext().getResources()
+                            .getInteger(com.android.internal.R.integer.data_retry_idle_delay);
+                    if (DBG)
+                        log("DataConnection  next attempt in " + (delay / 1000)
+                                + "s");
+                    if (mDataResetEventTracker == null) {
+                        mDataResetEventTracker = new DataResetEventTracker(
+                                mPhone, DataConnection.this,
+                                mResetEventListener);
+                    }
+                    mDataResetEventTracker.startResetEventTracker();
+                }
+                if (delay >= 0) {
+                    if (DBG)
+                        log("DcActivatingState: **ERR_RilError retry**");
+                    mDcRetryAlarmController.startRetryAlarm(
+                            EVENT_RETRY_CONNECTION, mTag, delay);
+                    transitionTo(mRetryingState);
+                }
+                handled = true;
+            } else if (result.mFailCause == DcFailCause.PDP_FAIL_IPV4_CALL_THROTTLED
+                    || result.mFailCause == DcFailCause.PDP_FAIL_IPV6_CALL_THROTTLED) {
+                /*
+                 * Continue data call retry if Linux Data gives intermediate
+                 * call failure error
+                 */
+                if (delay >= 0) {
+                    if (DBG)
+                        log("DcActivatingState: ERR_Ril retry IPVx THROTTLED");
+                    mDcRetryAlarmController.startRetryAlarm(
+                            EVENT_RETRY_CONNECTION, mTag, delay);
+                    transitionTo(mRetryingState);
+                }
+                handled = true;
+            }
+            return handled;
         }
     }
     private DcActivatingState mActivatingState = new DcActivatingState();
@@ -1989,6 +2154,17 @@ public final class DataConnection extends StateMachine {
                         obtainMessage(EVENT_DISCONNECT, dp));
             }
         }
+    }
+
+    /**
+     * returns true if radioTechnology is WCDMA rat, else false
+     */
+    private boolean isWCDMA(int radioTechnology) {
+        return radioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_UMTS
+            || radioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_HSDPA
+            || radioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_HSUPA
+            || radioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_HSPA
+            || radioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_HSPAP;
     }
 
     // ******* "public" interface
