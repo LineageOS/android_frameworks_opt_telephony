@@ -26,8 +26,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ServiceManager;
-import android.provider.Telephony;
-import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.Log;
@@ -730,39 +728,31 @@ public final class SmsManager {
     public int getSubscriptionId() {
         final int subId = (mSubId == DEFAULT_SUBSCRIPTION_ID)
                 ? getDefaultSmsSubscriptionId() : mSubId;
+        boolean isSmsSimPickActivityNeeded = false;
         final Context context = ActivityThread.currentApplication().getApplicationContext();
-        TelephonyManager telephonyManager =
-                (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-        List<SubscriptionInfo> subInfoList =
-                SubscriptionManager.from(context).getActiveSubscriptionInfoList();
-
-        if (subInfoList != null) {
-            final int subInfoLength = subInfoList.size();
-
-            for (int i = 0; i < subInfoLength; ++i) {
-                final SubscriptionInfo sir = subInfoList.get(i);
-                if (sir != null && sir.getSubscriptionId() == subId) {
-                    // The subscription id is valid.
-                    return subId;
-                }
+        try {
+            ISms iccISms = getISmsService();
+            if (iccISms != null) {
+                isSmsSimPickActivityNeeded = iccISms.isSmsSimPickActivityNeeded(subId);
             }
+        } catch (RemoteException ex) {
+            Log.e(TAG, "Exception in getSubscriptionId");
+        }
 
-            // The subscription id is not valid.
-            // Now if there is at least one valid subscription and 2 or more SIM slots, then ask
-            // the user for a default SMS SIM.
-            if (subInfoList.size() > 0 && telephonyManager.getSimCount() > 1) {
-                Intent intent = new Intent();
-                intent.setClassName("com.android.settings",
-                        "com.android.settings.sim.SimDialogActivity");
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                intent.putExtra(DIALOG_TYPE_KEY, SMS_PICK);
-                try {
-                    context.startActivity(intent);
-                } catch (ActivityNotFoundException anfe) {
-                    // If Settings is not installed, only log the error as we do not want to break
-                    // legacy applications.
-                    Log.e(TAG, "Unable to launch Settings application.");
-                }
+        if (isSmsSimPickActivityNeeded) {
+            Log.d(TAG, "getSubscriptionId isSmsSimPickActivityNeeded is true");
+            // ask the user for a default SMS SIM.
+            Intent intent = new Intent();
+            intent.setClassName("com.android.settings",
+                    "com.android.settings.sim.SimDialogActivity");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.putExtra(DIALOG_TYPE_KEY, SMS_PICK);
+            try {
+                context.startActivity(intent);
+            } catch (ActivityNotFoundException anfe) {
+                // If Settings is not installed, only log the error as we do not want to break
+                // legacy applications.
+                Log.e(TAG, "Unable to launch Settings application.");
             }
         }
 
