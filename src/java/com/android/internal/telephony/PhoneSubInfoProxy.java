@@ -152,8 +152,8 @@ public class PhoneSubInfoProxy extends IPhoneSubInfo.Stub {
     }
 
     @Override
-    public String getDeviceIdForSubscriber(int subId) throws RemoteException {
-        // FIXME: getDeviceIdForSubscriber
+    public String getDeviceIdForPhone(int phoneId) throws RemoteException {
+        // FIXME: getDeviceIdForPhone
         return null;
     }
 
