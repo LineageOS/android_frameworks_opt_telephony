@@ -18,18 +18,18 @@
 
 package com.android.internal.telephony;
 
+import android.app.ActivityThread;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.net.Uri;
+import android.os.Binder;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 
-import com.android.internal.telephony.ISms;
-import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.SmsRawData;
-
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -264,6 +264,39 @@ public class UiccSmsController extends ISms.Stub {
         } else {
             Rlog.e(LOG_TAG, "isImsSmsSupported iccSmsIntMgr is null");
         }
+        return false;
+    }
+
+    @Override
+    public boolean isSmsSimPickActivityNeeded(int subId) {
+        final Context context = ActivityThread.currentApplication().getApplicationContext();
+        TelephonyManager telephonyManager =
+                (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+        List<SubscriptionInfo> subInfoList;
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            subInfoList = SubscriptionManager.from(context).getActiveSubscriptionInfoList();
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
+
+        if (subInfoList != null) {
+            final int subInfoLength = subInfoList.size();
+
+            for (int i = 0; i < subInfoLength; ++i) {
+                final SubscriptionInfo sir = subInfoList.get(i);
+                if (sir != null && sir.getSubscriptionId() == subId) {
+                    // The subscription id is valid, sms sim pick activity not needed
+                    return false;
+                }
+            }
+
+            // If reached here and multiple SIMs and subs present, sms sim pick activity is needed
+            if (subInfoLength > 0 && telephonyManager.getSimCount() > 1) {
+                return true;
+            }
+        }
+
         return false;
     }
 
