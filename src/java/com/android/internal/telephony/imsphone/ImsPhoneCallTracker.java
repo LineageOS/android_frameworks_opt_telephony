@@ -1046,6 +1046,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
             case ImsReasonInfo.CODE_LOCAL_POWER_OFF:
                 return DisconnectCause.POWER_OFF;
 
+            case ImsReasonInfo.CODE_EMERGENCY_TEMP_FAILURE:
+                return DisconnectCause.EMERGENCY_TEMP_FAILURE;
+
+            case ImsReasonInfo.CODE_EMERGENCY_PERM_FAILURE:
+                return DisconnectCause.EMERGENCY_PERM_FAILURE;
+
             default:
         }
 
