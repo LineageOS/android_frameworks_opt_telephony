@@ -397,7 +397,7 @@ public final class RuimRecords extends IccRecords {
             }
             if (DBG) log("spn=" + getServiceProviderName());
             if (DBG) log("spnCondition=" + mCsimSpnDisplayCondition);
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
+            setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
         }
     }
 
