@@ -66,9 +66,6 @@ import com.android.internal.telephony.TelephonyProperties;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
 
 public class CDMALTEPhone extends CDMAPhone {
     static final String LOG_LTE_TAG = "CDMALTEPhone";
@@ -332,28 +329,28 @@ public class CDMALTEPhone extends CDMAPhone {
         }
 
         // get the string that specifies the carrier OTA Sp number
-        mCarrierOtaSpNumSchema = SystemProperties.get(
-                TelephonyProperties.PROPERTY_OTASP_NUM_SCHEMA,"");
+        mCarrierOtaSpNumSchema = TelephonyManager.from(mContext).getOtaSpNumberSchemaForPhone(
+                getPhoneId(), "");
 
         setProperties();
     }
 
     // Set the properties per subscription
     private void setProperties() {
+        TelephonyManager tm = TelephonyManager.from(mContext);
         //Change the system property
-        setSystemProperty(TelephonyProperties.CURRENT_ACTIVE_PHONE,
-                new Integer(PhoneConstants.PHONE_TYPE_CDMA).toString());
+        tm.setPhoneType(getPhoneId(), PhoneConstants.PHONE_TYPE_CDMA);
         // Sets operator alpha property by retrieving from build-time system property
         String operatorAlpha = SystemProperties.get("ro.cdma.home.operator.alpha");
         if (!TextUtils.isEmpty(operatorAlpha)) {
-            setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, operatorAlpha);
+            tm.setSimOperatorNameForPhone(getPhoneId(), operatorAlpha);
         }
 
         // Sets operator numeric property by retrieving from build-time system property
         String operatorNumeric = SystemProperties.get(PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
         log("update icc_operator_numeric=" + operatorNumeric);
         if (!TextUtils.isEmpty(operatorNumeric)) {
-            setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
+            tm.setSimOperatorNumericForPhone(getPhoneId(), operatorNumeric);
 
             SubscriptionController.getInstance().setMccMnc(operatorNumeric, getSubId());
             // Sets iso country property by retrieving from build-time system property

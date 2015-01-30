@@ -578,10 +578,10 @@ public class SmsNumberUtils {
     }
 
     private static boolean isInternationalRoaming(PhoneBase phoneBase) {
-        String operatorIsoCountry = phoneBase.getSystemProperty(
-                TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
-        String simIsoCountry = phoneBase.getSystemProperty(
-                TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY, "");
+        String operatorIsoCountry = TelephonyManager.getDefault().getNetworkCountryIsoForPhone(
+                phoneBase.getPhoneId());
+        String simIsoCountry = TelephonyManager.getDefault().getSimCountryIsoForPhone(
+                phoneBase.getPhoneId());
         boolean internationalRoaming = !TextUtils.isEmpty(operatorIsoCountry)
                 && !TextUtils.isEmpty(simIsoCountry)
                 && !simIsoCountry.equals(operatorIsoCountry);

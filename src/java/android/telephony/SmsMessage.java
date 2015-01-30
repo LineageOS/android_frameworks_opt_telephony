@@ -776,7 +776,7 @@ public class SmsMessage {
         String gid;
         final long identity = Binder.clearCallingIdentity();
         try {
-            simOperator = TelephonyManager.getDefault().getSimOperator();
+            simOperator = TelephonyManager.getDefault().getSimOperatorNumeric();
             gid = TelephonyManager.getDefault().getGroupIdLevel1();
         } finally {
             Binder.restoreCallingIdentity(identity);
@@ -806,11 +806,12 @@ public class SmsMessage {
         String gid;
         final long identity = Binder.clearCallingIdentity();
         try {
-            simOperator = TelephonyManager.getDefault().getSimOperator();
+            simOperator = TelephonyManager.getDefault().getSimOperatorNumeric();
             gid = TelephonyManager.getDefault().getGroupIdLevel1();
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
+
         for (NoEmsSupportConfig currentConfig : mNoEmsSupportConfigList) {
             if (simOperator.startsWith(currentConfig.mOperatorNumber) &&
                 (TextUtils.isEmpty(currentConfig.mGid1) ||

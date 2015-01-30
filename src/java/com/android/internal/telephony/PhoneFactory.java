@@ -275,7 +275,7 @@ public class PhoneFactory {
         }
 
         // Update MCC MNC device configuration information
-        String defaultMccMnc = TelephonyManager.getDefault().getSimOperator(phoneId);
+        String defaultMccMnc = TelephonyManager.getDefault().getSimOperatorNumericForPhone(phoneId);
         Rlog.d(LOG_TAG, "update mccmnc=" + defaultMccMnc);
         MccTable.updateMccMncConfiguration(sContext, defaultMccMnc, false);
 

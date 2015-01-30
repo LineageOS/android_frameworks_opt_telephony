@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
-
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.IntentFilter;
@@ -1050,7 +1048,9 @@ public abstract class ServiceStateTracker extends Handler {
     protected abstract void setRoamingType(ServiceState currentServiceState);
 
     protected String getHomeOperatorNumeric() {
-        return SystemProperties.get(TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
+        return ((TelephonyManager) mPhoneBase.getContext().
+                getSystemService(Context.TELEPHONY_SERVICE)).
+                getSimOperatorNumericForPhone(mPhoneBase.getPhoneId());
     }
 
     protected int getPhoneId() {
