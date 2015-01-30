@@ -93,7 +93,6 @@ public class DctController extends Handler {
 
     private HashSet<String> mApnTypes = new HashSet<String>();
 
-    private BroadcastReceiver mDataStateReceiver;
     private Context mContext;
 
     private AsyncChannel mDdsSwitchPropService;
@@ -166,71 +165,6 @@ public class DctController extends Handler {
         return false;
     }
 
-
-    private class DataStateReceiver extends BroadcastReceiver {
-        public void onReceive(Context context, Intent intent) {
-            synchronized(this) {
-                if (intent.getAction().equals(TelephonyIntents.ACTION_SERVICE_STATE_CHANGED)) {
-                    ServiceState ss = ServiceState.newFromBundle(intent.getExtras());
-
-                    long subId = intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY, PhoneConstants.SUB1);
-                    int phoneId = SubscriptionManager.getPhoneId(subId);
-                    // for the case of network out of service when bootup (ignore dummy values too)
-                    if (!SubscriptionManager.isValidSubId(subId) || (subId < 0) ||
-                            !isActiveSubId(subId)) {
-                        // FIXME: Maybe add SM.isRealSubId(subId)??
-                        logd("DataStateReceiver: ignore invalid subId=" + subId
-                                + " phoneId = " + phoneId);
-                        return;
-                    }
-                    if (!SubscriptionManager.isValidPhoneId(phoneId)) {
-                        logd("DataStateReceiver: ignore invalid phoneId=" + phoneId);
-                        return;
-                    }
-
-                    boolean prevPowerOff = mServicePowerOffFlag[phoneId];
-                    if (ss != null) {
-                        int state = ss.getState();
-                        switch (state) {
-                            case ServiceState.STATE_POWER_OFF:
-                                mServicePowerOffFlag[phoneId] = true;
-                                logd("DataStateReceiver: STATE_POWER_OFF Intent from phoneId="
-                                        + phoneId);
-                                break;
-                            case ServiceState.STATE_IN_SERVICE:
-                                mServicePowerOffFlag[phoneId] = false;
-                                logd("DataStateReceiver: STATE_IN_SERVICE Intent from phoneId="
-                                        + phoneId);
-                                break;
-                            case ServiceState.STATE_OUT_OF_SERVICE:
-                                logd("DataStateReceiver: STATE_OUT_OF_SERVICE Intent from phoneId="
-                                        + phoneId);
-                                if (mServicePowerOffFlag[phoneId]) {
-                                    mServicePowerOffFlag[phoneId] = false;
-                                }
-                                break;
-                            case ServiceState.STATE_EMERGENCY_ONLY:
-                                logd("DataStateReceiver: STATE_EMERGENCY_ONLY Intent from phoneId="
-                                        + phoneId);
-                                break;
-                            default:
-                                logd("DataStateReceiver: SERVICE_STATE_CHANGED invalid state");
-                                break;
-                        }
-
-                        if (prevPowerOff && mServicePowerOffFlag[phoneId] == false &&
-                                mCurrentDataPhone == PHONE_NONE &&
-                                phoneId == getDataConnectionFromSetting()) {
-                            logd("DataStateReceiver: Current Phone is none and default phoneId="
-                                    + phoneId + ", then enableApnType()");
-                            enableApnType(subId, PhoneConstants.APN_TYPE_DEFAULT);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     public DefaultPhoneNotifier.IDataStateChangedCallback getDataStateChangedCallback() {
         return mDataStateChangedCallback;
     }
@@ -296,13 +230,6 @@ public class DctController extends Handler {
         }
 
         mContext = mActivePhone.getContext();
-
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(TelephonyIntents.ACTION_DATA_CONNECTION_FAILED);
-        filter.addAction(TelephonyIntents.ACTION_SERVICE_STATE_CHANGED);
-
-        mDataStateReceiver = new DataStateReceiver();
-        Intent intent = mContext.registerReceiver(mDataStateReceiver, filter);
 
         HandlerThread t = new HandlerThread("DdsSwitchSerializer");
         t.start();
