@@ -54,7 +54,6 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_NOT_REA
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_BUSY;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_BASEBAND_VERSION;
 
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.Call;
@@ -214,8 +213,7 @@ public class GSMPhone extends PhoneBase {
     }
 
     protected void setProperties() {
-        TelephonyManager.setTelephonyProperty(mPhoneId, TelephonyProperties.CURRENT_ACTIVE_PHONE,
-                new Integer(PhoneConstants.PHONE_TYPE_GSM).toString());
+        TelephonyManager.from(mContext).setPhoneType(getPhoneId(), PhoneConstants.PHONE_TYPE_GSM);
     }
 
     @Override
@@ -1472,12 +1470,8 @@ public class GSMPhone extends PhoneBase {
                 }
 
                 if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Baseband version: " + ar.result);
-
-                if (SubscriptionManager.isValidPhoneId(mPhoneId)) {
-                    String prop = PROPERTY_BASEBAND_VERSION +
-                            ((mPhoneId == 0 ) ? "" : Integer.toString(mPhoneId));
-                    SystemProperties.set(prop, (String)ar.result);
-                }
+                TelephonyManager.from(mContext).setBasebandVersionForPhone(getPhoneId(),
+                        (String)ar.result);
             break;
 
             case EVENT_GET_IMEI_DONE:
@@ -1903,8 +1897,8 @@ public class GSMPhone extends PhoneBase {
         if (status) {
             IccRecords iccRecords = mIccRecords.get();
             if (iccRecords != null) {
-                SystemProperties.set(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA,
-                        iccRecords.getServiceProviderName());
+                TelephonyManager.from(mContext).setSimOperatorNameForPhone(
+                        getPhoneId(), iccRecords.getServiceProviderName());
             }
             if (mSST != null) {
                 mSST.pollState();

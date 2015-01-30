@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.cdma;
 
+import android.content.Context;
 import android.content.Intent;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.MccTable;
@@ -378,6 +379,9 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             ((mNewSS.getRilDataRadioTechnology() >= ServiceState.RIL_RADIO_TECHNOLOGY_IS95A) &&
              (mNewSS.getRilDataRadioTechnology() <= ServiceState.RIL_RADIO_TECHNOLOGY_EVDO_A));
 
+        TelephonyManager tm =
+                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
+
         if (DBG) {
             log("pollStateDone:"
                 + " hasRegistered=" + hasRegistered
@@ -422,8 +426,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         }
 
         if (hasDataRadioTechnologyChanged) {
-            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
-                    ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
+            tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), mSS.getRilDataRadioTechnology());
         }
 
         if (hasRegistered) {
@@ -476,24 +479,22 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
             String operatorNumeric;
 
-            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ALPHA,
-                    mSS.getOperatorAlphaLong());
+            tm.setNetworkOperatorNameForPhone(mPhone.getPhoneId(), mSS.getOperatorAlphaLong());
 
-            String prevOperatorNumeric =
-                    SystemProperties.get(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, "");
+            String prevOperatorNumeric = tm.getNetworkOperatorForPhone(mPhone.getPhoneId());
             operatorNumeric = mSS.getOperatorNumeric();
             // try to fix the invalid Operator Numeric
             if (isInvalidOperatorNumeric(operatorNumeric)) {
                 int sid = mSS.getSystemId();
                 operatorNumeric = fixUnknownMcc(operatorNumeric, sid);
             }
-            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, operatorNumeric);
+            tm.setNetworkOperatorNumericForPhone(mPhone.getPhoneId(), operatorNumeric);
             updateCarrierMccMncConfiguration(operatorNumeric,
                     prevOperatorNumeric, mPhone.getContext());
 
             if (isInvalidOperatorNumeric(operatorNumeric)) {
                 if (DBG) log("operatorNumeric is null");
-                mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
+                tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), "");
                 mGotCountryCode = false;
             } else {
                 String isoCountryCode = "";
@@ -507,8 +508,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                     loge("countryCodeForMcc error" + ex);
                 }
 
-                mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
-                        isoCountryCode);
+                tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), isoCountryCode);
                 mGotCountryCode = true;
 
                 setOperatorIdd(operatorNumeric);
@@ -519,8 +519,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 }
             }
 
-            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
-                    (mSS.getVoiceRoaming() || mSS.getDataRoaming()) ? "true" : "false");
+            tm.setNetworkRoamingForPhone(mPhone.getPhoneId(),
+                    (mSS.getVoiceRoaming() || mSS.getDataRoaming()));
 
             updateSpnDisplay();
             setRoamingType(mSS);

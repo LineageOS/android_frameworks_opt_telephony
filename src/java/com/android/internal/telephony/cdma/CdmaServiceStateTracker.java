@@ -980,11 +980,13 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     }
 
     protected String getHomeOperatorNumeric() {
-        final String cdmaNumeric =
-                SystemProperties.get(CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC, "");
-        final String simNumeric = SystemProperties.get(
-                TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, cdmaNumeric);
-        return simNumeric;
+        String numeric = ((TelephonyManager) mPhone.getContext().
+                getSystemService(Context.TELEPHONY_SERVICE)).
+                getSimOperatorNumericForPhone(mPhoneBase.getPhoneId());
+        if (TextUtils.isEmpty(numeric)) {
+            numeric = SystemProperties.get(CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC, "");
+        }
+        return numeric;
     }
 
     protected void setSignalStrengthDefaultValues() {
@@ -1168,6 +1170,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
+        TelephonyManager tm =
+                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
+
         // Add an event log when connection state changes
         if (mSS.getVoiceRegState() != mNewSS.getVoiceRegState() ||
                 mSS.getDataRegState() != mNewSS.getDataRegState()) {
@@ -1192,8 +1197,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         }
 
         if (hasRilDataRadioTechnologyChanged) {
-            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
-                    ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
+            tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), mSS.getRilDataRadioTechnology());
         }
 
         if (hasRegistered) {
@@ -1217,11 +1221,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
             String operatorNumeric;
 
-            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ALPHA,
-                    mSS.getOperatorAlphaLong());
+            tm.setNetworkOperatorNameForPhone(mPhone.getPhoneId(), mSS.getOperatorAlphaLong());
 
-            String prevOperatorNumeric =
-                    SystemProperties.get(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, "");
+            String prevOperatorNumeric = tm.getNetworkOperatorForPhone(mPhone.getPhoneId());
             operatorNumeric = mSS.getOperatorNumeric();
 
             // try to fix the invalid Operator Numeric
@@ -1230,13 +1232,13 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 operatorNumeric = fixUnknownMcc(operatorNumeric, sid);
             }
 
-            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, operatorNumeric);
+            tm.setNetworkOperatorNumericForPhone(mPhone.getPhoneId(), operatorNumeric);
             updateCarrierMccMncConfiguration(operatorNumeric,
                     prevOperatorNumeric, mPhone.getContext());
 
             if (isInvalidOperatorNumeric(operatorNumeric)) {
                 if (DBG) log("operatorNumeric "+ operatorNumeric +"is invalid");
-                mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
+                tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), "");
                 mGotCountryCode = false;
             } else {
                 String isoCountryCode = "";
@@ -1250,8 +1252,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     loge("pollStateDone: countryCodeForMcc error" + ex);
                 }
 
-                mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY,
-                        isoCountryCode);
+                tm.setNetworkCountryIsoForPhone(mPhone.getPhoneId(), isoCountryCode);
                 mGotCountryCode = true;
 
                 setOperatorIdd(operatorNumeric);
@@ -1262,8 +1263,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 }
             }
 
-            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
-                    (mSS.getVoiceRoaming() || mSS.getDataRoaming()) ? "true" : "false");
+            tm.setNetworkRoamingForPhone(mPhone.getPhoneId(),
+                    (mSS.getVoiceRoaming() || mSS.getDataRoaming()));
 
             updateSpnDisplay();
             // set roaming type
@@ -1509,7 +1510,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
      */
     private
     boolean isRoamingBetweenOperators(boolean cdmaRoaming, ServiceState s) {
-        String spn = getSystemProperty(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA, "empty");
+        String spn = ((TelephonyManager) mPhone.getContext().
+                getSystemService(Context.TELEPHONY_SERVICE)).
+                getSimOperatorNameForPhone(mPhoneBase.getPhoneId());
 
         // NOTE: in case of RUIM we should completely ignore the ERI data file and
         // mOperatorAlphaLong is set from RIL_REQUEST_OPERATOR response 0 (alpha ONS)
@@ -1595,7 +1598,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 zone = TimeZone.getTimeZone( tzname );
             }
 
-            String iso = getSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
+            String iso = ((TelephonyManager) mPhone.getContext().
+                    getSystemService(Context.TELEPHONY_SERVICE)).
+                    getNetworkCountryIsoForPhone(mPhone.getPhoneId());
 
             if (zone == null) {
                 if (mGotCountryCode) {
@@ -1852,8 +1857,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
      */
     String getImsi() {
         // TODO: When RUIM is enabled, IMSI will come from RUIM not build-time props.
-        String operatorNumeric = getSystemProperty(
-                TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
+        String operatorNumeric = ((TelephonyManager) mPhone.getContext().
+                getSystemService(Context.TELEPHONY_SERVICE)).
+                getSimOperatorNumericForPhone(mPhoneBase.getPhoneId());
 
         if (!TextUtils.isEmpty(operatorNumeric) && getCdmaMin() != null) {
             return (operatorNumeric + getCdmaMin());

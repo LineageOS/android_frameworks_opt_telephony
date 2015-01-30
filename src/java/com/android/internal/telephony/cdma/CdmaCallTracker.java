@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.cdma;
 
+import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -25,6 +26,8 @@ import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 import android.telephony.Rlog;
+import android.telephony.TelephonyManager;
+
 import android.os.SystemProperties;
 import android.text.TextUtils;
 
@@ -175,11 +178,11 @@ public final class CdmaCallTracker extends CallTracker {
             throw new CallStateException("cannot dial in current state");
         }
 
+        TelephonyManager tm =
+                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
         String origNumber = dialString;
-        String operatorIsoContry = mPhone.getSystemProperty(
-                TelephonyProperties.PROPERTY_OPERATOR_ISO_COUNTRY, "");
-        String simIsoContry = mPhone.getSystemProperty(
-                TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY, "");
+        String operatorIsoContry = tm.getNetworkCountryIsoForPhone(mPhone.getPhoneId());
+        String simIsoContry = tm.getSimCountryIsoForPhone(mPhone.getPhoneId());
         boolean internationalRoaming = !TextUtils.isEmpty(operatorIsoContry)
                 && !TextUtils.isEmpty(simIsoContry)
                 && !simIsoContry.equals(operatorIsoContry);

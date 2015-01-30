@@ -192,8 +192,8 @@ public abstract class SMSDispatcher extends Handler {
 
         mSmsCapable = mContext.getResources().getBoolean(
                 com.android.internal.R.bool.config_sms_capable);
-        mSmsSendDisabled = !SystemProperties.getBoolean(
-                                TelephonyProperties.PROPERTY_SMS_SEND, mSmsCapable);
+        mSmsSendDisabled = !mTelephonyManager.getSmsSendCapableForPhone(
+                mPhone.getPhoneId(), mSmsCapable);
         Rlog.d(TAG, "SMSDispatcher: ctor mSmsCapable=" + mSmsCapable + " format=" + getFormat()
                 + " mSmsSendDisabled=" + mSmsSendDisabled);
     }
