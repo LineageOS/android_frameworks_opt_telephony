@@ -16,10 +16,6 @@
 
 package com.android.internal.telephony.uicc;
 
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY;
-import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC;
-
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
@@ -251,9 +247,9 @@ public class SIMRecords extends IccRecords {
 
         log("SIMRecords: onRadioOffOrNotAvailable set 'gsm.sim.operator.numeric' to operator=null");
         log("update icc_operator_numeric=" + null);
-        setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, null);
-        setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, null);
-        setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY, null);
+        mTelephonyManager.setSimOperatorNumericForPhone(mParentApp.getPhoneId(), "");
+        mTelephonyManager.setSimOperatorNameForPhone(mParentApp.getPhoneId(), "");
+        mTelephonyManager.setSimCountryIsoForPhone(mParentApp.getPhoneId(), "");
 
         // recordsRequested is set to false indicating that the SIM
         // read requests made so far are not valid. This is set to
@@ -1452,7 +1448,8 @@ public class SIMRecords extends IccRecords {
             log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
                     operator + "'");
             log("update icc_operator_numeric=" + operator);
-            setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
+            mTelephonyManager.setSimOperatorNumericForPhone(
+                    mParentApp.getPhoneId(), operator);
             final SubscriptionController subController = SubscriptionController.getInstance();
             subController.setMccMnc(operator, subController.getDefaultSmsSubId());
         } else {
@@ -1461,8 +1458,9 @@ public class SIMRecords extends IccRecords {
 
         if (!TextUtils.isEmpty(mImsi)) {
             log("onAllRecordsLoaded set mcc imsi=" + mImsi);
-            setSystemProperty(PROPERTY_ICC_OPERATOR_ISO_COUNTRY,
-                    MccTable.countryCodeForMcc(Integer.parseInt(mImsi.substring(0,3))));
+            mTelephonyManager.setSimCountryIsoForPhone(
+                    mParentApp.getPhoneId(), MccTable.countryCodeForMcc(
+                    Integer.parseInt(mImsi.substring(0,3))));
         } else {
             log("onAllRecordsLoaded empty imsi skipping setting mcc");
         }
@@ -1479,7 +1477,8 @@ public class SIMRecords extends IccRecords {
     private void setSpnFromConfig(String carrier) {
         if (mSpnOverride.containsCarrier(carrier)) {
             setServiceProviderName(mSpnOverride.getSpn(carrier));
-            setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
+            mTelephonyManager.setSimOperatorNameForPhone(
+                    mParentApp.getPhoneId(), getServiceProviderName());
         }
     }
 
@@ -1731,7 +1730,8 @@ public class SIMRecords extends IccRecords {
 
                     if (DBG) log("Load EF_SPN: " + getServiceProviderName()
                             + " spnDisplayCondition: " + mSpnDisplayCondition);
-                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
+                    mTelephonyManager.setSimOperatorNameForPhone(
+                            mParentApp.getPhoneId(), getServiceProviderName());
 
                     mSpnState = GetSpnFsmState.IDLE;
                 } else {
@@ -1752,7 +1752,8 @@ public class SIMRecords extends IccRecords {
                     setServiceProviderName(IccUtils.adnStringFieldToString(data, 0, data.length));
 
                     if (DBG) log("Load EF_SPN_CPHS: " + getServiceProviderName());
-                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
+                    mTelephonyManager.setSimOperatorNameForPhone(
+                            mParentApp.getPhoneId(), getServiceProviderName());
 
                     mSpnState = GetSpnFsmState.IDLE;
                 } else {
@@ -1769,7 +1770,8 @@ public class SIMRecords extends IccRecords {
                     setServiceProviderName(IccUtils.adnStringFieldToString(data, 0, data.length));
 
                     if (DBG) log("Load EF_SPN_SHORT_CPHS: " + getServiceProviderName());
-                    setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
+                    mTelephonyManager.setSimOperatorNameForPhone(
+                            mParentApp.getPhoneId(), getServiceProviderName());
                 }else {
                     if (DBG) log("No SPN loaded in either CHPS or 3GPP");
                 }

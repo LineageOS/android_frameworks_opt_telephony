@@ -166,7 +166,7 @@ public final class MccTable {
         if (!TextUtils.isEmpty(mccmnc)) {
             int mcc, mnc;
 
-            String defaultMccMnc = TelephonyManager.getDefault().getSimOperator();
+            String defaultMccMnc = TelephonyManager.getDefault().getSimOperatorNumeric();
             Slog.d(LOG_TAG, "updateMccMncConfiguration defaultMccMnc=" + defaultMccMnc);
             //Update mccmnc only for default subscription in case of MultiSim.
 //            if (!defaultMccMnc.equals(mccmnc)) {

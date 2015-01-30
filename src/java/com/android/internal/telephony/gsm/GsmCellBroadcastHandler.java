@@ -24,6 +24,7 @@ import android.telephony.CellLocation;
 import android.telephony.SmsCbLocation;
 import android.telephony.SmsCbMessage;
 import android.telephony.gsm.GsmCellLocation;
+import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.CellBroadcastHandler;
 import com.android.internal.telephony.PhoneBase;
@@ -107,7 +108,8 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
             }
 
             SmsCbHeader header = new SmsCbHeader(receivedPdu);
-            String plmn = SystemProperties.get(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC);
+            String plmn = TelephonyManager.from(mContext).getNetworkOperatorForPhone(
+                    mPhone.getPhoneId());
             int lac = -1;
             int cid = -1;
             CellLocation cl = mPhone.getCellLocation();

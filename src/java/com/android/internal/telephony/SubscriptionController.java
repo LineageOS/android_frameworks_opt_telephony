@@ -300,9 +300,7 @@ public class SubscriptionController extends ISub.Stub {
         if (phoneId < 0) {
             return "";
         }
-        // FIXME: have a better way to get country code instead of reading from system property
-        return TelephonyManager.getTelephonyProperty(
-                phoneId, TelephonyProperties.PROPERTY_ICC_OPERATOR_ISO_COUNTRY, "");
+        return mTelephonyManager.getSimOperatorNumericForPhone(phoneId);
     }
 
     /**
@@ -592,10 +590,9 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         String nameToSet;
-        String CarrierName = TelephonyManager.getDefault().getSimOperator(subIds[0]);
+        String CarrierName = mTelephonyManager.getSimOperatorNumericForSubscription(subIds[0]);
         if (DBG) logdl("[addSubInfoRecord] CarrierName = " + CarrierName);
-        String simCarrierName =
-                TelephonyManager.getDefault().getSimOperatorName(subIds[0]);
+        String simCarrierName = mTelephonyManager.getSimOperatorNameForSubscription(subIds[0]);
 
         if (!TextUtils.isEmpty(simCarrierName)) {
             nameToSet = simCarrierName;
@@ -872,7 +869,7 @@ public class SubscriptionController extends ISub.Stub {
         int phoneId = getPhoneId(subId);
 
         if (number == null || phoneId < 0 ||
-                phoneId >= TelephonyManager.getDefault().getPhoneCount()) {
+                phoneId >= mTelephonyManager.getPhoneCount()) {
             if (DBG) logd("[setDispalyNumber]- fail");
             return -1;
         }
@@ -1317,12 +1314,12 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logdl("[setDefaultFallbackSubId] subId=" + subId);
         if (SubscriptionManager.isValidSubscriptionId(subId)) {
             int phoneId = getPhoneId(subId);
-            if (phoneId >= 0 && (phoneId < TelephonyManager.getDefault().getPhoneCount()
-                    || TelephonyManager.getDefault().getSimCount() == 1)) {
+            if (phoneId >= 0 && (phoneId < mTelephonyManager.getPhoneCount()
+                    || mTelephonyManager.getSimCount() == 1)) {
                 if (DBG) logdl("[setDefaultFallbackSubId] set mDefaultFallbackSubId=" + subId);
                 mDefaultFallbackSubId = subId;
                 // Update MCC MNC device configuration information
-                String defaultMccMnc = TelephonyManager.getDefault().getSimOperator(phoneId);
+                String defaultMccMnc = mTelephonyManager.getSimOperatorNumericForPhone(phoneId);
                 MccTable.updateMccMncConfiguration(mContext, defaultMccMnc, false);
 
                 // Broadcast an Intent for default sub change
