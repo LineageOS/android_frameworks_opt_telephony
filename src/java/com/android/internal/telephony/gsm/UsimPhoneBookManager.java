@@ -254,15 +254,16 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                 }
             }
 
+            if (!hasRecordIn(mEmailFileRecord, recNum)) {
+                Rlog.e(LOG_TAG, "Error: Email file is empty");
+                return;
+            }
+
             for (int m = 0; m < mEmailFileRecord.get(recNum).size(); m++) {
                 mEmailFlagsRecord[recNum].add(0);
             }
             mEmailFlags.put(recNum, mEmailFlagsRecord[recNum]);
 
-            if (!hasRecordIn(mEmailFileRecord, recNum)) {
-                Rlog.e(LOG_TAG, "Error: Email file is empty");
-                return;
-            }
             updatePhoneAdnRecordWithEmail(recNum);
         }
 
@@ -307,15 +308,16 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                 }
             }
 
+            if (!hasRecordIn(mAnrFileRecord, recNum)) {
+                Rlog.e(LOG_TAG, "Error: Anr file is empty");
+                return;
+            }
+
             for (int m = 0; m < mAnrFileRecord.get(recNum).size(); m++) {
                 mAnrFlagsRecord[recNum].add(0);
             }
             mAnrFlags.put(recNum, mAnrFlagsRecord[recNum]);
 
-            if (!hasRecordIn(mAnrFileRecord, recNum)) {
-                Rlog.e(LOG_TAG, "Error: Anr file is empty");
-                return;
-            }
             updatePhoneAdnRecordWithAnr(recNum);
         }
     }
@@ -493,12 +495,8 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
     }
 
     private boolean hasRecordIn(Map<Integer, ArrayList<byte[]>> record, int pbrIndex) {
-        if (record == null)
-            return false;
-        try {
-            record.get(pbrIndex);
-        } catch (IndexOutOfBoundsException e) {
-            Rlog.e(LOG_TAG, "record is empty in pbrIndex" + pbrIndex);
+        if (record == null || record.isEmpty() || record.get(pbrIndex) == null) {
+            Rlog.e(LOG_TAG, "record [" + record + "] is empty in pbrIndex" + pbrIndex);
             return false;
         }
         return true;
@@ -584,6 +582,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                     if (rec != null && (!TextUtils.isEmpty(anrs[0]))) {
                         rec.setAdditionalNumbers(anrs);
                         mPhoneBookRecords.set(adnRecIndex, rec);
+                        mAnrFlags.get(pbrIndex).set(recNum - 1, 1);
                     }
 
                 }
@@ -641,8 +640,8 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             if (rec != null) {
                 String[] emails = new String[emailList.size()];
                 System.arraycopy(emailList.toArray(), 0, emails, 0, emailList.size());
-                rec.setAdditionalNumbers(emails);
-                mPhoneBookRecords.set(i, rec);
+                rec.setEmails(emails);
+                mPhoneBookRecords.set(i+adnInitIndex, rec);
             }
         }
     }
@@ -683,7 +682,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                 String[] anrs = new String[anrList.size()];
                 System.arraycopy(anrList.toArray(), 0, anrs, 0, anrList.size());
                 rec.setAdditionalNumbers(anrs);
-                mPhoneBookRecords.set(i, rec);
+                mPhoneBookRecords.set(i+adnInitIndex, rec);
             }
         }
     }
@@ -836,10 +835,20 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             return data; // return the empty record (for delete)
         }
         byte[] byteEmail = GsmAlphabet.stringToGsm8BitPacked(email);
+
+        // 3gpp 31.102 4.4.2.13, Record in non-type1 EF_EMAIL file
+        // should exclude last two bytes
+        int tmpLen = mEmailPresentInIap == true ? length - 2 : length;
+
+        if (byteEmail.length > tmpLen) {
+            log("[buildEmailData] wrong email length");
+            return null;
+        }
+
         System.arraycopy(byteEmail, 0, data, 0, byteEmail.length);
-        int pbrIndex = getPbrIndexBy(adnRecIndex);
-        int recordIndex = adnRecIndex - getInitIndexBy(pbrIndex);
         if (mEmailPresentInIap) {
+            int pbrIndex = getPbrIndexBy(adnRecIndex);
+            int recordIndex = adnRecIndex - getInitIndexBy(pbrIndex);
             data[length - 1] = (byte) (recordIndex + 1);
         }
         log("buildEmailData: data is" + IccUtils.bytesToHexString(data));
@@ -866,12 +875,11 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         // numberToCalledPartyBCD has considered TOA byte
         int maxlength = ANR_ADDITIONAL_NUMBER_END_ID - ANR_ADDITIONAL_NUMBER_START_ID + 1 + 1;
         if (byteAnr.length > maxlength) {
-            System.arraycopy(byteAnr, 0, data, ANR_TON_NPI_ID, maxlength);
-            data[ANR_BCD_NUMBER_LENGTH] = (byte) (maxlength);
-        } else {
-            System.arraycopy(byteAnr, 0, data, ANR_TON_NPI_ID, byteAnr.length);
-            data[ANR_BCD_NUMBER_LENGTH] = (byte) (byteAnr.length);
+            log("[buildAnrData] wrong ANR length");
+            return null;
         }
+        System.arraycopy(byteAnr, 0, data, ANR_TON_NPI_ID, byteAnr.length);
+        data[ANR_BCD_NUMBER_LENGTH] = (byte) (byteAnr.length);
         data[ANR_CAPABILITY_ID] = (byte) 0xFF;
         data[ANR_EXTENSION_ID] = (byte) 0xFF;
         if (length == 17) {
@@ -1040,6 +1048,13 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                     return;
                 }
                 data = buildEmailData(recordSize[0], adnRecIndex, newEmail);
+                if (data == null) {
+                    mSuccess = false;
+                    synchronized (mLock) {
+                        mLock.notify();
+                    }
+                    return;
+                }
 
                 actualRecNumber = recordNumber;
                 if (!mEmailPresentInIap) {

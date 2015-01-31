@@ -241,8 +241,6 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                         + " dataRadioTechnology=" + type);
             }
             mDataRoaming = regCodeIsRoaming(regState);
-
-            if (mDataRoaming) mNewSS.setRoaming(true);
         } else {
             super.handlePollStateResultMessage(what, ar);
         }
@@ -269,7 +267,11 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 setSignalStrengthDefaultValues();
                 mGotCountryCode = false;
 
-                pollStateDone();
+                if (!isIwlanFeatureAvailable()
+                    || (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                        != mSS.getRilDataRadioTechnology())) {
+                    pollStateDone();
+                }
 
                 /**
                  * If iwlan feature is enabled then we do get
@@ -343,23 +345,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
-        if (mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
-            boolean resetIwlanRatVal = false;
-            log("set service state as POWER_OFF");
-            if (isIwlanFeatureAvailable()
-                    && (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
-                        == mNewSS.getRilDataRadioTechnology())) {
-                log("pollStateDone: mNewSS = " + mNewSS);
-                log("pollStateDone: reset iwlan RAT value");
-                resetIwlanRatVal = true;
-            }
-            mNewSS.setStateOff();
-            if (resetIwlanRatVal) {
-                mNewSS.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN);
-                log("pollStateDone: mNewSS = " + mNewSS);
-                resetIwlanRatVal = false;
-            }
-        }
+        resetServiceStateInIwlanMode();
 
         boolean has4gHandoff =
                 mNewSS.getDataRegState() == ServiceState.STATE_IN_SERVICE &&

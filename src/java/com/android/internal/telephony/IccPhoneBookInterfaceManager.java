@@ -276,8 +276,8 @@ public abstract class IccPhoneBookInterfaceManager {
         String newAnr = values.getAsString(IccProvider.STR_NEW_ANRS);
         String[] oldEmailArray = TextUtils.isEmpty(oldEmail) ? null : getStringArray(oldEmail);
         String[] newEmailArray = TextUtils.isEmpty(newEmail) ? null : getStringArray(newEmail);
-        String[] oldAnrArray = TextUtils.isEmpty(oldAnr) ? null : getStringArray(oldAnr);
-        String[] newAnrArray = TextUtils.isEmpty(newAnr) ? null : getStringArray(newAnr);
+        String[] oldAnrArray = TextUtils.isEmpty(oldAnr) ? null : getAnrStringArray(oldAnr);
+        String[] newAnrArray = TextUtils.isEmpty(newAnr) ? null : getAnrStringArray(newAnr);
         efid = updateEfForIccType(efid);
 
         if (DBG)
@@ -404,6 +404,13 @@ public abstract class IccPhoneBookInterfaceManager {
         }
     }
 
+    private String[] getAnrStringArray(String str) {
+        if (str != null) {
+            return str.split(":");
+        }
+        return null;
+    }
+
     private String[] getStringArray(String str) {
         if (str != null) {
             return str.split(",");
@@ -434,7 +441,7 @@ public abstract class IccPhoneBookInterfaceManager {
     public int getAdnCount() {
         int adnCount = 0;
         if (mAdnCache != null) {
-            if (mPhone.getCurrentUiccAppType() == AppType.APPTYPE_USIM) {
+            if (mIs3gCard) {
                 adnCount = mAdnCache.getUsimAdnCount();
             } else {
                 adnCount = mAdnCache.getAdnCount();

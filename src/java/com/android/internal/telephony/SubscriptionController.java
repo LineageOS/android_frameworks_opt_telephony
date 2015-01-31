@@ -1143,7 +1143,8 @@ public class SubscriptionController extends ISub.Stub {
     @Deprecated
     public long getDefaultSubId() {
         //FIXME: Make this smarter, need to handle data only and voice devices
-        long subId = mDefaultVoiceSubId;
+        long subId = Settings.Global.getLong(mContext.getContentResolver(),
+                 Settings.Global.MULTI_SIM_DEFAULT_SUBSCRIPTION, DUMMY_SUB_ID);
         if (VDBG) logv("[getDefaultSubId] value = " + subId);
         return subId;
     }
@@ -1317,6 +1318,8 @@ public class SubscriptionController extends ISub.Stub {
                     || TelephonyManager.getDefault().getSimCount() == 1)) {
                 logdl("[setDefaultSubId] set mDefaultVoiceSubId=" + subId);
                 mDefaultVoiceSubId = subId;
+                Settings.Global.putLong(mContext.getContentResolver(),
+                         Settings.Global.MULTI_SIM_DEFAULT_SUBSCRIPTION, subId);
                 // Update MCC MNC device configuration information
                 String defaultMccMnc = TelephonyManager.getDefault().getSimOperator(phoneId);
                 MccTable.updateMccMncConfiguration(mContext, defaultMccMnc, false);
@@ -1659,6 +1662,7 @@ public class SubscriptionController extends ISub.Stub {
         //if there are no activated subs available, no need to update. EXIT.
         if (mNextActivatedSub == null) return;
 
+        //if current default sub is not active, fallback to next active sub.
         if (getSubState(getDefaultSubId()) == SubscriptionManager.INACTIVE) {
             setDefaultSubId(mNextActivatedSub.subId);
         }

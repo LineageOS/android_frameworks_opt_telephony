@@ -65,6 +65,10 @@ public class IccSmsInterfaceManager {
     protected final Object mLock = new Object();
     protected boolean mSuccess;
     private List<SmsRawData> mSms;
+    private String mSmscAddress = null;
+    private boolean mSmscSuccess = false;
+    private final Object mGetSmscLock = new Object();
+    private final Object mSetSmscLock = new Object();
 
     private CellBroadcastRangeManager mCellBroadcastRangeManager =
             new CellBroadcastRangeManager();
@@ -75,6 +79,8 @@ public class IccSmsInterfaceManager {
     private static final int EVENT_UPDATE_DONE = 2;
     protected static final int EVENT_SET_BROADCAST_ACTIVATION_DONE = 3;
     protected static final int EVENT_SET_BROADCAST_CONFIG_DONE = 4;
+    protected static final int EVENT_GET_SMSC_ADDRESS_DONE = 5;
+    protected static final int EVENT_SET_SMSC_ADDRESS_DONE = 6;
     private static final int SMS_CB_CODE_SCHEME_MIN = 0;
     private static final int SMS_CB_CODE_SCHEME_MAX = 255;
 
@@ -120,6 +126,27 @@ public class IccSmsInterfaceManager {
                     synchronized (mLock) {
                         mSuccess = (ar.exception == null);
                         mLock.notifyAll();
+                    }
+                    break;
+                case EVENT_GET_SMSC_ADDRESS_DONE:
+                    ar = (AsyncResult) msg.obj;
+                    synchronized (mGetSmscLock) {
+                        if (ar.exception == null) {
+                            mSmscAddress = (String) ar.result;
+                        } else {
+                            if (Rlog.isLoggable("SMS", Log.DEBUG)) {
+                                log("Load Smsc failed");
+                            }
+                            mSmscAddress = null;
+                        }
+                        mGetSmscLock.notifyAll();
+                    }
+                    break;
+                case EVENT_SET_SMSC_ADDRESS_DONE:
+                    ar = (AsyncResult) msg.obj;
+                    synchronized (mSetSmscLock) {
+                        mSmscSuccess = (ar.exception == null);
+                        mSetSmscLock.notifyAll();
                     }
                     break;
             }
@@ -1251,7 +1278,7 @@ public class IccSmsInterfaceManager {
 
     private String filterDestAddress(String destAddr) {
         String result  = null;
-        result = SmsNumberUtils.filterDestAddr(mContext, destAddr);
+        result = SmsNumberUtils.filterDestAddr(mPhone, destAddr);
         return result != null ? result : destAddr;
     }
 
@@ -1267,5 +1294,37 @@ public class IccSmsInterfaceManager {
 
         log("getSmsCapacityOnIcc().numberOnIcc = " + numberOnIcc);
         return numberOnIcc;
+    }
+
+    public String getSmscAddressFromIcc() {
+        synchronized (mGetSmscLock) {
+            Message response = mHandler.obtainMessage(EVENT_GET_SMSC_ADDRESS_DONE);
+
+            mPhone.getSmscAddress(response);
+
+            try {
+                mGetSmscLock.wait();
+            } catch (InterruptedException e) {
+                log("interrupted while trying to get SMSC address");
+            }
+
+            return mSmscAddress;
+        }
+    }
+
+    public boolean setSmscAddressToIcc(String scAddress) {
+        synchronized (mSetSmscLock) {
+            Message response = mHandler.obtainMessage(EVENT_SET_SMSC_ADDRESS_DONE);
+
+            mSmscSuccess = false;
+            mPhone.setSmscAddress(scAddress, response);
+
+            try {
+                mSetSmscLock.wait();
+            } catch (InterruptedException e) {
+                log("interrupted while trying to set SMSC address");
+            }
+        }
+        return mSmscSuccess;
     }
 }

@@ -752,13 +752,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 // When registration state is roaming and TSB58
                 // roaming indicator is not in the carrier-specified
                 // list of ERIs for home system, mCdmaRoaming is true.
-                mCdmaRoaming =
-                        regCodeIsRoaming(registrationState) && !isRoamIndForHomeSystem(states[10]);
-                mCdmaRoaming = mCdmaRoaming || mDataRoaming;
+                mCdmaRoaming = regCodeIsRoaming(registrationState);
                 mNewSS.setState (regCodeToServiceState(registrationState));
-
                 mNewSS.setRilVoiceRadioTechnology(radioTechnology);
-
                 mNewSS.setCssIndicator(cssIndicator);
                 mNewSS.setSystemAndNetworkId(systemId, networkId);
                 mRoamingIndicator = roamingIndicator;
@@ -866,7 +862,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             if (!isSidsAllZeros() && isHomeSid(mNewSS.getSystemId())) {
                 namMatch = true;
             }
-
+            mCdmaRoaming =
+                    (mCdmaRoaming || mDataRoaming) &&
+                            !isRoamIndForHomeSystem(String.valueOf(mRoamingIndicator));
             // Setting SS Roaming (general)
             if (mIsSubscriptionFromRuim) {
                 mNewSS.setRoaming(isRoamingBetweenOperators(mCdmaRoaming, mNewSS));
@@ -966,7 +964,11 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             setSignalStrengthDefaultValues();
             mGotCountryCode = false;
 
-            pollStateDone();
+            if (!isIwlanFeatureAvailable()
+                    || (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                        != mSS.getRilDataRadioTechnology())) {
+                pollStateDone();
+            }
 
             /**
              * If iwlan feature is enabled then we do get
@@ -1106,23 +1108,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
-        if (mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
-            boolean resetIwlanRatVal = false;
-            log("set service state as POWER_OFF");
-            if (isIwlanFeatureAvailable()
-                    && (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
-                        == mNewSS.getRilDataRadioTechnology())) {
-                log("pollStateDone: mNewSS = " + mNewSS);
-                log("pollStateDone: reset iwlan RAT value");
-                resetIwlanRatVal = true;
-            }
-            mNewSS.setStateOff();
-            if (resetIwlanRatVal) {
-                mNewSS.setRilDataRadioTechnology(ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN);
-                log("pollStateDone: mNewSS = " + mNewSS);
-                resetIwlanRatVal = false;
-            }
-        }
+        resetServiceStateInIwlanMode();
 
         // Add an event log when connection state changes
         if (mSS.getVoiceRegState() != mNewSS.getVoiceRegState() ||

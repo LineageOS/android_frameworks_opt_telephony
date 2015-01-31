@@ -3033,6 +3033,38 @@ public final class Telephony {
     }
 
     /**
+     * @hide
+     */
+    public static final class CdmaCallOptions implements BaseColumns {
+        /**
+         * The content:// style URL for this table
+         */
+        public static final Uri CONTENT_URI =
+                Uri.parse("content://cdma/calloption");
+
+        /**
+         * The default sort order for this table
+         */
+        public static final String DEFAULT_SORT_ORDER = "name ASC";
+
+        public static final String NAME = "name";
+
+        public static final String MCC = "mcc";
+
+        public static final String MNC = "mnc";
+
+        public static final String NUMERIC = "numeric";
+
+        public static final String NUMBER = "number";
+
+        public static final String TYPE = "type";
+
+        public static final String CATEGORY = "category";
+
+        public static final String STATE = "state";
+    }
+
+    /**
      * Contains phone numbers that are blacklisted
      * for phone and/or message purposes.
      * @hide
@@ -3042,7 +3074,6 @@ public final class Telephony {
          * The content:// style URL for this table
          */
         public static final Uri CONTENT_URI =
-
                 Uri.parse("content://blacklist");
 
         /**

@@ -488,6 +488,10 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone.notifyNewRingingConnectionP(c);
     }
 
+    void notifyUnknownConnection(Connection c) {
+        mDefaultPhone.notifyUnknownConnectionP(c);
+    }
+
     public void notifyForVideoCapabilityChanged(boolean isVideoCapable) {
         mIsVideoCapable = isVideoCapable;
         mDefaultPhone.notifyForVideoCapabilityChanged(isVideoCapable);
@@ -848,10 +852,18 @@ public class ImsPhone extends ImsPhoneBase {
         Message resp;
         resp = obtainMessage(EVENT_SET_CALL_BARRING_DONE, onComplete);
 
+        int action;
+        if (lockState) {
+            action = CommandsInterface.CF_ACTION_ENABLE;
+        }
+        else {
+            action = CommandsInterface.CF_ACTION_DISABLE;
+        }
+
         try {
             ImsUtInterface ut = mCT.getUtInterface();
             // password is not required with Ut interface
-            ut.updateCallBarring(getCBTypeFromFacility(facility), lockState, resp, null);
+            ut.updateCallBarring(getCBTypeFromFacility(facility), action, resp, null);
         } catch (ImsException e) {
             sendErrorResponse(onComplete, e);
         }
@@ -1348,5 +1360,9 @@ public class ImsPhone extends ImsPhoneBase {
 
     public boolean isVtEnabled() {
         return mCT.isVtEnabled();
+    }
+
+    public boolean isUtEnabled() {
+        return mCT.isUtEnabled();
     }
 }

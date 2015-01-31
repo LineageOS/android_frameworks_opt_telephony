@@ -503,7 +503,7 @@ public class IccProvider extends ContentProvider {
                 for (String anr : anrs) {
                     if (DBG) log("Adding anr:" + anr);
                     anrString.append(anr);
-                    anrString.append(",");
+                    anrString.append(":");
                 }
                 contact[3] = anrString.toString();
             }

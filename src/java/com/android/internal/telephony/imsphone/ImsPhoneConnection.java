@@ -60,6 +60,8 @@ public class ImsPhoneConnection extends Connection {
 
     private Bundle mCallExtras = null;
 
+    private boolean mMptyState = false;
+
     /*
     int mIndex;          // index in ImsPhoneCallTracker.connections[], -1 if unassigned
                         // The GSM index is 1 + this
@@ -116,7 +118,8 @@ public class ImsPhoneConnection extends Connection {
 
     /** This is probably an MT call */
     /*package*/
-    ImsPhoneConnection(Context context, ImsCall imsCall, ImsPhoneCallTracker ct, ImsPhoneCall parent) {
+    ImsPhoneConnection(Context context, ImsCall imsCall, ImsPhoneCallTracker ct,
+           ImsPhoneCall parent, boolean isUnknown) {
         createWakeLock(context);
         acquireWakeLock();
 
@@ -166,14 +169,15 @@ public class ImsPhoneConnection extends Connection {
             mCnapNamePresentation = PhoneConstants.PRESENTATION_UNKNOWN;
         }
 
-        mIsIncoming = true;
+        mIsIncoming = !isUnknown;
         mCreateTime = System.currentTimeMillis();
         mUusInfo = null;
 
         //mIndex = index;
 
         mParent = parent;
-        mParent.attach(this, ImsPhoneCall.State.INCOMING);
+        mParent.attach(this,
+                (mIsIncoming? ImsPhoneCall.State.INCOMING: ImsPhoneCall.State.DIALING));
     }
 
     /** This is an MO call, created when dialing */
@@ -372,7 +376,7 @@ public class ImsPhoneConnection extends Connection {
     }
 
     /** Called when the connection has been disconnected */
-    /*package*/ boolean
+    public boolean
     onDisconnect(int cause) {
         Rlog.d(LOG_TAG, "onDisconnect: cause=" + cause);
         if (mCause != DisconnectCause.LOCAL) mCause = cause;
@@ -400,6 +404,7 @@ public class ImsPhoneConnection extends Connection {
             if (mImsCall != null) mImsCall.close();
             mImsCall = null;
         }
+        clearPostDialListeners();
         releaseWakeLock();
         return changed;
     }
@@ -436,7 +441,9 @@ public class ImsPhoneConnection extends Connection {
     private boolean
     processPostDialChar(char c) {
         if (PhoneNumberUtils.is12Key(c)) {
-            mOwner.mCi.sendDtmf(c, mHandler.obtainMessage(EVENT_DTMF_DONE));
+            if (mOwner != null) {
+                mOwner.sendDtmf(c, mHandler.obtainMessage(EVENT_DTMF_DONE));
+            }
         } else if (c == PhoneNumberUtils.PAUSE) {
             // From TS 22.101:
             // It continues...
@@ -480,6 +487,7 @@ public class ImsPhoneConnection extends Connection {
     @Override
     protected void finalize()
     {
+        clearPostDialListeners();
         releaseWakeLock();
     }
 
@@ -555,6 +563,7 @@ public class ImsPhoneConnection extends Connection {
             releaseWakeLock();
         }
         mPostDialState = s;
+        notifyPostDialListeners();
     }
 
     private void
@@ -636,7 +645,12 @@ public class ImsPhoneConnection extends Connection {
         }
 
         changed = mParent.update(this, imsCall, state);
+        return (update(imsCall) || changed);
+    }
 
+    /*package*/ boolean
+    update(ImsCall imsCall) {
+        boolean changed = false;
         if (imsCall != null) {
             // Check for a change in the video capabilities for the call and update the
             // {@link ImsPhoneConnection} with this information.
@@ -704,6 +718,12 @@ public class ImsPhoneConnection extends Connection {
                         changed = true;
                     }
                 }
+            }
+
+            boolean mptyState = isMultiparty();
+            if (mptyState != mMptyState) {
+                changed = true;
+                mMptyState = mptyState;
             }
         }
         return changed;
