@@ -96,7 +96,7 @@ public abstract class IccPhoneBookInterfaceManager {
                         } else {
                             if(DBG) logd("Cannot load ADN records");
                             if (mRecords != null) {
-                                mRecords.clear();
+                                mRecords = null;
                             }
                         }
                         notifyPending(ar);
