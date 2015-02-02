@@ -220,12 +220,15 @@ public class ImsPhoneCall extends Call {
     /* package */ void
     merge(ImsPhoneCall that, State state) {
         // This call is the conference host and the "that" call is the one being merged in.
-        // Set the connect time to the earliest of this call and the other call.
-        // This ensures that when an ImsConference is started, its start time will be when the first
-        // call in the conference started.
-        long earliestConnectTime = Math.min(getEarliestConnectTime(),
-                that.getEarliestConnectTime());
-        getFirstConnection().setConnectTime(earliestConnectTime);
+        // Set the connect time for the conference; this will have been determined when the
+        // conference was initially created.
+        ImsPhoneConnection imsPhoneConnection = getFirstConnection();
+        if (imsPhoneConnection != null) {
+            long conferenceConnectTime = imsPhoneConnection.getConferenceConnectTime();
+            if (conferenceConnectTime > 0) {
+                imsPhoneConnection.setConnectTime(conferenceConnectTime);
+            }
+        }
 
         ImsPhoneConnection[] cc = that.mConnections.toArray(
                 new ImsPhoneConnection[that.mConnections.size()]);
