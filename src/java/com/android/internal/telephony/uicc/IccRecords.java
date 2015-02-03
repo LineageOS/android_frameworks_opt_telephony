@@ -111,6 +111,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected static final int EVENT_APP_READY = 1;
     private static final int EVENT_AKA_AUTHENTICATE_DONE          = 90;
 
+    public static final int DEFAULT_VOICE_MESSAGE_COUNT = -2;
+    public static final int UNKNOWN_VOICE_MESSAGE_COUNT = -1;
+
     @Override
     public String toString() {
         return "mDestroyed=" + mDestroyed
