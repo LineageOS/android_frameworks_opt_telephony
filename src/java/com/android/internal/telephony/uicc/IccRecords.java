@@ -137,7 +137,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " adnCache=" + mAdnCache
                 + " recordsRequested=" + mRecordsRequested
                 + " iccid=" + mIccId
-                + " msisdn=" + mMsisdn
                 + " msisdnTag=" + mMsisdnTag
                 + " voiceMailNum=" + mVoiceMailNum
                 + " voiceMailTag=" + mVoiceMailTag
