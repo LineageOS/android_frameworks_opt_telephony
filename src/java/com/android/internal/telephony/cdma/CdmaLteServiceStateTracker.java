@@ -459,7 +459,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
                 if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF) &&
                     isInHomeSidNid(mSS.getSystemId(), mSS.getNetworkId()) &&
-                    mIccRecords != null) {
+                    mIccRecords != null &&
+                    !TextUtils.isEmpty(mIccRecords.getServiceProviderName())) {
                     mSS.setOperatorAlphaLong(mIccRecords.getServiceProviderName());
                 }
             }
