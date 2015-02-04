@@ -106,19 +106,40 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
                     boolean isUnknown = intent.getBooleanExtra(ImsManager.EXTRA_IS_UNKNOWN_CALL,
                             false);
+                    int phantomState = intent.getIntExtra(ImsManager.EXTRA_UNKNOWN_CALL_STATE, 0);
+                    String address = intent.getStringExtra(ImsManager.EXTRA_UNKNOWN_CALL_ADDRESS);
+
                     if (DBG) {
                         log("onReceive : isUnknown = " + isUnknown +
+                                " state = " + phantomState +
                                 " fg = " + mForegroundCall.getState() +
-                                " bg = " + mBackgroundCall.getState());
+                                " bg = " + mBackgroundCall.getState() +
+                                " address = " + address);
                     }
 
                     // Normal MT/Unknown call
                     ImsCall imsCall = mImsManager.takeCall(mServiceId, intent, mImsCallListener);
+                    ImsPhoneCall.State state = convertIntToCallState(phantomState);
+
+                    ImsPhoneCall call = null;
+
+                    if (!isUnknown) {
+                        call = mRingingCall;
+                    } else if ((isUnknown) && (state == ImsPhoneCall.State.HOLDING)) {
+                        call = mBackgroundCall;
+                    } else {
+                        call = mForegroundCall;
+                    }
+
                     ImsPhoneConnection conn = new ImsPhoneConnection(mPhone.getContext(), imsCall,
-                            ImsPhoneCallTracker.this,
-                            (isUnknown? mForegroundCall: mRingingCall), isUnknown);
+                            ImsPhoneCallTracker.this, call, isUnknown, state, address);
+
                     addConnection(conn);
 
+                    // Updates mHold value in ImsCall for phantom held call scenario
+                    if (isUnknown && (state == ImsPhoneCall.State.HOLDING)) {
+                        imsCall.updateHoldValues();
+                    }
                     setVideoCallProvider(conn, imsCall);
 
                     if (isUnknown) {
@@ -142,6 +163,22 @@ public final class ImsPhoneCallTracker extends CallTracker {
             }
         }
     };
+
+    private ImsPhoneCall.State convertIntToCallState(int state) {
+        switch (state) {
+            case ImsManager.CALL_ACTIVE:        return ImsPhoneCall.State.ACTIVE;
+            case ImsManager.CALL_HOLD:          return ImsPhoneCall.State.HOLDING;
+            case ImsManager.CALL_DIALING:       return ImsPhoneCall.State.DIALING;
+            case ImsManager.CALL_ALERTING:      return ImsPhoneCall.State.ALERTING;
+            case ImsManager.CALL_INCOMING:      return ImsPhoneCall.State.INCOMING;
+            case ImsManager.CALL_WAITING:       return ImsPhoneCall.State.WAITING;
+            default:
+                {
+                    log("convertIntToCallState: illegal call state:" + state);
+                    return ImsPhoneCall.State.INCOMING;
+                }
+        }
+    }
 
     //***** Constants
 
