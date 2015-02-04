@@ -68,6 +68,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -195,6 +196,8 @@ public abstract class DcTrackerBase extends Handler {
     protected PhoneBase mPhone;
     protected UiccController mUiccController;
     protected AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
+    // 3GPP records to use for LTE initial attach apn
+    protected AtomicReference<IccRecords> mSimRecords = new AtomicReference<IccRecords>();
     protected DctConstants.Activity mActivity = DctConstants.Activity.NONE;
     protected DctConstants.State mState = DctConstants.State.IDLE;
     protected Handler mDataConnectionTracker = null;
@@ -1797,19 +1800,20 @@ public abstract class DcTrackerBase extends Handler {
         startDataStallAlarm(DATA_STALL_NOT_SUSPECTED);
     }
 
-    protected void setInitialAttachApn() {
+    protected void setInitialAttachApn(ArrayList <ApnSetting> apnList, IccRecords r) {
         ApnSetting iaApnSetting = null;
         ApnSetting defaultApnSetting = null;
         ApnSetting firstApnSetting = null;
+        String operator = (r != null) ? r.getOperatorNumeric(): "";
 
         log("setInitialApn: E mPreferredApn=" + mPreferredApn);
 
-        if (mAllApnSettings != null && !mAllApnSettings.isEmpty()) {
-            firstApnSetting = mAllApnSettings.get(0);
+        if (apnList != null && !apnList.isEmpty()) {
+            firstApnSetting = apnList.get(0);
             log("setInitialApn: firstApnSetting=" + firstApnSetting);
 
             // Search for Initial APN setting and the first apn that can handle default
-            for (ApnSetting apn : mAllApnSettings) {
+            for (ApnSetting apn : apnList) {
                 // Can't use apn.canHandleType(), as that returns true for APNs that have no type.
                 if (ArrayUtils.contains(apn.types, PhoneConstants.APN_TYPE_IA) &&
                         apn.carrierEnabled) {
@@ -1836,7 +1840,7 @@ public abstract class DcTrackerBase extends Handler {
         if (iaApnSetting != null) {
             if (DBG) log("setInitialAttachApn: using iaApnSetting");
             initialAttachApnSetting = iaApnSetting;
-        } else if (mPreferredApn != null) {
+        } else if (mPreferredApn != null && Objects.equals(mPreferredApn.numeric, operator)) {
             if (DBG) log("setInitialAttachApn: using mPreferredApn");
             initialAttachApnSetting = mPreferredApn;
         } else if (defaultApnSetting != null) {
@@ -1856,6 +1860,10 @@ public abstract class DcTrackerBase extends Handler {
                     initialAttachApnSetting.protocol, initialAttachApnSetting.authType,
                     initialAttachApnSetting.user, initialAttachApnSetting.password, null);
         }
+    }
+
+    protected void setInitialAttachApn() {
+        setInitialAttachApn(mAllApnSettings, mIccRecords.get());
     }
 
     protected void setDataProfilesAsNeeded() {
