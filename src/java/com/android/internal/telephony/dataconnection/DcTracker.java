@@ -186,6 +186,11 @@ public final class DcTracker extends DcTrackerBase {
                DctConstants.EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
         mPhone.mCi.registerForDataNetworkStateChanged(this,
                DctConstants.EVENT_DATA_STATE_CHANGED, null);
+        // Note, this is fragile - the Phone is now presenting a merged picture
+        // of PS (volte) & CS and by diving into its internals you're just seeing
+        // the CS data.  This works well for the purposes this is currently used for
+        // but that may not always be the case.  Should probably be redesigned to
+        // accurately reflect what we're really interested in (registerForCSVoiceCallEnded).
         mPhone.getCallTracker().registerForVoiceCallEnded (this,
                DctConstants.EVENT_VOICE_CALL_ENDED, null);
         mPhone.getCallTracker().registerForVoiceCallStarted (this,
@@ -719,6 +724,13 @@ public final class DcTracker extends DcTrackerBase {
         int dataSub = SubscriptionManager.getDefaultDataSubId();
         boolean defaultDataSelected = SubscriptionManager.isValidSubscriptionId(dataSub);
         PhoneConstants.State state = PhoneConstants.State.IDLE;
+        // Note this is explicitly not using mPhone.getState.  See b/19090488.
+        // mPhone.getState reports the merge of CS and PS (volte) voice call state
+        // but we only care about CS calls here for data/voice concurrency issues.
+        // Calling getCallTracker currently gives you just the CS side where the
+        // ImsCallTracker is held internally where applicable.
+        // This should be redesigned to ask explicitly what we want:
+        // voiceCallStateAllowDataCall, or dataCallAllowed or something similar.
         if (mPhone.getCallTracker() != null) {
             state = mPhone.getCallTracker().getState();
         }
