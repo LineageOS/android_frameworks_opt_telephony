@@ -61,6 +61,7 @@ public class SubInfoRecordUpdater extends Handler {
     private static final int EVENT_ICC_CHANGED = 2;
     private static final int EVENT_STACK_READY = 3;
     private static final String ICCID_STRING_FOR_NO_SIM = "";
+    private static final String ICCID_STRING_FOR_NV = "DUMMY_NV_ID";
     /**
      *  int[] sInsertSimState maintains all slots' SIM inserted status currently,
      *  it may contain 4 kinds of values:
@@ -95,6 +96,7 @@ public class SubInfoRecordUpdater extends Handler {
     private static TelephonyManager sTelephonyMgr = null;
     // To prevent repeatedly update flow every time receiver SIM_STATE_CHANGE
     private static boolean sNeedUpdate = true;
+    private boolean isNVSubAvailable = false;
 
     public SubInfoRecordUpdater(Context context, Phone[] phoneProxy, CommandsInterface[] ci) {
         logd("Constructor invoked");
@@ -362,6 +364,17 @@ public class SubInfoRecordUpdater extends Handler {
             //Reset to CardState to ABSENT so that on next EVENT_ICC_CHANGED, ICCID can be read.
             sCardState[slotId] = CardState.CARDSTATE_ABSENT;
             logd("sFh[" + slotId + "] is null, SIM not inserted");
+        }
+    }
+
+    public void updateSubIdForNV(int slotId) {
+        sIccId[slotId] = ICCID_STRING_FOR_NV;
+        sNeedUpdate = true;
+        logd("[updateSubIdForNV]+ Start");
+        if (isAllIccIdQueryDone()) {
+            logd("[updateSubIdForNV]+ updating");
+            updateSimInfoByIccId();
+            isNVSubAvailable = true;
         }
     }
 
