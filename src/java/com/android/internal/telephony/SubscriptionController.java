@@ -143,6 +143,7 @@ public class SubscriptionController extends ISub.Stub {
     private static int mDefaultPhoneId = 0;
 
     private static final int EVENT_WRITE_MSISDN_DONE = 1;
+    private boolean mCFUpdated = false;
 
     protected Handler mHandler = new Handler() {
         @Override
@@ -1687,6 +1688,15 @@ public class SubscriptionController extends ISub.Stub {
         logd("updateUserPrefs: after currentDds = " + getDefaultDataSubId() + " voice = " +
                  getDefaultVoiceSubId() + " sms = " + getDefaultSmsSubId() +
                  " newDds = " + ddsSubId);
+
+        int len = sProxyPhones.length;
+        if(mCFUpdated == false) {
+            logd("updateUserPrefs:  notifyCF indication, ProxyPhones.length=" + len);
+            for (int phoneId = 0; phoneId < len; phoneId++) {
+                sProxyPhones[phoneId].notifyCallForwardingIndicator();
+                mCFUpdated= true;
+            }
+        }
 
     }
 

@@ -1476,4 +1476,9 @@ public class PhoneProxy extends Handler implements Phone {
             throws CallStateException {
         return mActivePhone.dial(dialString, videoState, extras);
     }
+
+    @Override
+    public void notifyCallForwardingIndicator() {
+        mActivePhone.notifyCallForwardingIndicator();
+    }
 }
