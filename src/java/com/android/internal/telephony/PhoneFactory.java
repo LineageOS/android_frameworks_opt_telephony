@@ -527,4 +527,8 @@ public class PhoneFactory {
         pw.flush();
         pw.decreaseIndent();
     }
+
+    public static SubscriptionInfoUpdater getSubscriptionInfoUpdater() {
+        return sSubInfoRecordUpdater;
+    }
 }
