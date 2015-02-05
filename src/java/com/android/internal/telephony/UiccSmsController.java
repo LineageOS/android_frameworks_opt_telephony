@@ -2,6 +2,7 @@
  * Copyright (C) 2008 The Android Open Source Project
  * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  * Not a Contribution.
+ * Copyright (c) 2015 The CyanogenMod Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +19,27 @@
 
 package com.android.internal.telephony;
 
+import android.Manifest;
+import android.app.Activity;
 import android.app.ActivityThread;
+import android.app.AppOpsManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Binder;
+import android.os.Handler;
+import android.os.PowerManager;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.UserHandle;
+import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
+import android.telephony.SmsMessage;
 import android.telephony.SubscriptionInfo;
+import android.util.Log;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
@@ -42,12 +55,151 @@ public class UiccSmsController extends ISms.Stub {
 
     protected Phone[] mPhone;
 
-    protected UiccSmsController(Phone[] phone){
+    protected UiccSmsController(Phone[] phone, Context context){
         mPhone = phone;
-
+        mContext = context;
         if (ServiceManager.getService("isms") == null) {
             ServiceManager.addService("isms", this);
         }
+
+        createWakelock();
+    }
+
+    private void createWakelock() {
+        PowerManager pm = (PowerManager)mContext.getSystemService(Context.POWER_SERVICE);
+        mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "IccSmsInterfaceManager");
+        mWakeLock.setReferenceCounted(true);
+    }
+
+    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            // check if the message was aborted
+            if (getResultCode() != Activity.RESULT_OK) {
+                return;
+            }
+            String destAddr = getResultData();
+            String scAddr = intent.getStringExtra("scAddr");
+            long subId = intent.getLongExtra("subId", getDefaultSmsSubId());
+            String callingPackage = intent.getStringExtra("callingPackage");
+            ArrayList<String> parts = intent.getStringArrayListExtra("parts");
+            ArrayList<PendingIntent> sentIntents = intent.getParcelableArrayListExtra("sentIntents");
+            ArrayList<PendingIntent> deliveryIntents = intent.getParcelableArrayListExtra("deliveryIntents");
+
+            if (intent.getIntExtra("callingUid", 0) != 0) {
+                callingPackage = callingPackage + "\\" + intent.getIntExtra("callingUid", 0);
+            }
+
+            if (intent.getBooleanExtra("multipart", false)) {
+                if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
+                    log("ProxiedMultiPartSms destAddr: " + destAddr +
+                            "\n scAddr= " + scAddr +
+                            "\n subId= " + subId +
+                            "\n callingPackage= " + callingPackage +
+                            "\n partsSize= " + parts.size());
+                }
+                getIccSmsInterfaceManager(subId)
+                        .sendMultipartText(callingPackage, destAddr, scAddr, parts,
+                                sentIntents, deliveryIntents);
+                return;
+            }
+
+            PendingIntent sentIntent = null;
+            if (sentIntents != null && sentIntents.size() > 0) {
+                sentIntent = sentIntents.get(0);
+            }
+            PendingIntent deliveryIntent = null;
+            if (deliveryIntents != null && deliveryIntents.size() > 0) {
+                deliveryIntent = deliveryIntents.get(0);
+            }
+            String text = null;
+            if (parts != null && parts.size() > 0) {
+                text = parts.get(0);
+            }
+            if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
+                log("ProxiedSms destAddr: " + destAddr +
+                        "\n scAddr=" + scAddr +
+                        "\n subId= " + subId +
+                        "\n callingPackage=" + callingPackage);
+            }
+            getIccSmsInterfaceManager(subId).sendText(callingPackage, destAddr,
+                    scAddr, text, sentIntent, deliveryIntent);
+        }
+    };
+
+    private Context mContext;
+    private PowerManager.WakeLock mWakeLock;
+    private static final int WAKE_LOCK_TIMEOUT = 5000;
+    private final Handler mHandler = new Handler();
+    private void dispatchPdus(byte[][] pdus) {
+        Intent intent = new Intent(Intents.SMS_DELIVER_ACTION);
+        // Direct the intent to only the default SMS app. If we can't find a default SMS app
+        // then send it to all broadcast receivers.
+        ComponentName componentName = SmsApplication.getDefaultSmsApplication(mContext, true);
+        if (componentName == null)
+            return;
+
+        if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
+            log("dispatchPdu pdus: " + pdus +
+                    "\n componentName=" + componentName +
+                    "\n format=" + SmsMessage.FORMAT_SYNTHETIC);
+        }
+
+        // Deliver SMS message only to this receiver
+        intent.setComponent(componentName);
+        intent.putExtra("pdus", pdus);
+        intent.putExtra("format", SmsMessage.FORMAT_SYNTHETIC);
+        dispatch(intent, Manifest.permission.RECEIVE_SMS);
+
+        intent.setAction(Intents.SMS_RECEIVED_ACTION);
+        intent.setComponent(null);
+        dispatch(intent, Manifest.permission.RECEIVE_SMS);
+    }
+
+    private void dispatch(Intent intent, String permission) {
+        // Hold a wake lock for WAKE_LOCK_TIMEOUT seconds, enough to give any
+        // receivers time to take their own wake locks.
+        mWakeLock.acquire(WAKE_LOCK_TIMEOUT);
+        intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
+        mContext.sendOrderedBroadcast(intent, permission, AppOpsManager.OP_RECEIVE_SMS, null,
+                mHandler, Activity.RESULT_OK, null, null);
+    }
+
+    private void broadcastOutgoingSms(
+            long subId, String callingPackage, String destAddr, String scAddr, boolean multipart,
+            ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
+            ArrayList<PendingIntent> deliveryIntents, int priority, boolean isExpectMore,
+            int validityPeriod) {
+        Intent broadcast = new Intent(Intent.ACTION_NEW_OUTGOING_SMS);
+        broadcast.putExtra("destAddr", destAddr);
+        broadcast.putExtra("scAddr", scAddr);
+        broadcast.putExtra("subId", subId);
+        broadcast.putExtra("multipart", multipart);
+        broadcast.putExtra("callingPackage", callingPackage);
+        broadcast.putExtra("callingUid", android.os.Binder.getCallingUid());
+        broadcast.putStringArrayListExtra("parts", parts);
+        broadcast.putParcelableArrayListExtra("sentIntents", sentIntents);
+        broadcast.putParcelableArrayListExtra("deliveryIntents", deliveryIntents);
+        broadcast.putExtra("priority", priority);
+        broadcast.putExtra("isExpectMore", isExpectMore);
+        broadcast.putExtra("validityPeriod", validityPeriod);
+
+        if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
+            log("Broadcasting sms destAddr: " + destAddr +
+                    "\n scAddr= " + scAddr +
+                    "\n subId= " + subId +
+                    "\n multipart= " + multipart +
+                    "\n callingPackager= " + callingPackage +
+                    "\n callingUid= " + android.os.Binder.getCallingUid() +
+                    "\n parts= " + parts.size() +
+                    "\n sentIntents= " + sentIntents.size() +
+                    "\n deliveryIntents= " + deliveryIntents.size() +
+                    "\n priority= " + priority +
+                    "\n isExpectMore= " + isExpectMore +
+                    "\n validityPeriod= " + validityPeriod);
+        }
+        mContext.sendOrderedBroadcastAsUser(broadcast, UserHandle.OWNER,
+                android.Manifest.permission.INTERCEPT_SMS,
+                mReceiver, null, Activity.RESULT_OK, destAddr, null);
     }
 
     public boolean
@@ -152,29 +304,33 @@ public class UiccSmsController extends ISms.Stub {
 
     public void sendTextForSubscriber(int subId, String callingPackage, String destAddr,
             String scAddr, String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
-        if (iccSmsIntMgr != null) {
-            iccSmsIntMgr.sendText(callingPackage, destAddr, scAddr, text, sentIntent,
-                    deliveryIntent);
-        } else {
-            Rlog.e(LOG_TAG,"sendText iccSmsIntMgr is null for" +
-                          " Subscription: " + subId);
-        }
+        sendTextWithOptionsUsingSubscriber(subId, callingPackage, destAddr, scAddr, text,
+                sentIntent, deliveryIntent, -1, false, -1);
     }
 
     public void sendTextWithOptionsUsingSubscriber(int subId, String callingPackage,
-            String destAddr, String scAddr, String parts, PendingIntent sentIntents,
-            PendingIntent deliveryIntents, int priority, boolean isExpectMore,
+            String destAddr, String scAddr, String text, PendingIntent sentIntent,
+            PendingIntent deliveryIntent, int priority, boolean isExpectMore,
             int validityPeriod) {
+        mContext.enforceCallingPermission(
+                android.Manifest.permission.SEND_SMS,
+                "Sending SMS message");
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
-        if (iccSmsIntMgr != null ) {
-            iccSmsIntMgr.sendTextWithOptions(callingPackage, destAddr, scAddr, parts, sentIntents,
-                    deliveryIntents, priority, isExpectMore, validityPeriod);
-        } else {
-            Rlog.e(LOG_TAG,"sendTextWithOptions iccSmsIntMgr is null for" +
-                          " Subscription: " + subId);
+        if (iccSmsIntMgr.isShortSMSCode(destAddr)) {
+            iccSmsIntMgr.sendTextWithOptions(callingPackage, destAddr, scAddr, text,
+                    sentIntent, deliveryIntent, priority, isExpectMore, validityPeriod);
+            return;
         }
+        ArrayList<String> parts = new ArrayList<String>();
+        parts.add(text);
+        ArrayList<PendingIntent> sentIntents = new ArrayList<PendingIntent>();
+        sentIntents.add(sentIntent);
+        ArrayList<PendingIntent> deliveryIntents = new ArrayList<PendingIntent>();
+        deliveryIntents.add(deliveryIntent);
+        broadcastOutgoingSms(subId, callingPackage, destAddr, scAddr, false, parts, sentIntents,
+                deliveryIntents, priority, isExpectMore, validityPeriod);
     }
+
     public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
             List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents) throws android.os.RemoteException {
@@ -186,28 +342,28 @@ public class UiccSmsController extends ISms.Stub {
             String scAddr, List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents)
             throws android.os.RemoteException {
-        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
-        if (iccSmsIntMgr != null ) {
-            iccSmsIntMgr.sendMultipartText(callingPackage, destAddr, scAddr, parts, sentIntents,
-                    deliveryIntents);
-        } else {
-            Rlog.e(LOG_TAG,"sendMultipartText iccSmsIntMgr is null for" +
-                          " Subscription: " + subId);
-        }
+        sendMultipartTextWithOptionsUsingSubscriber(subId, callingPackage, destAddr,
+                scAddr, parts, sentIntents, deliveryIntents, -1, false, -1);
     }
 
     public void sendMultipartTextWithOptionsUsingSubscriber(int subId, String callingPackage,
             String destAddr, String scAddr, List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents, int priority, boolean isExpectMore,
             int validityPeriod) {
+        mContext.enforceCallingPermission(
+                android.Manifest.permission.SEND_SMS,
+                "Sending SMS message");
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
-        if (iccSmsIntMgr != null ) {
-            iccSmsIntMgr.sendMultipartTextWithOptions(callingPackage, destAddr, scAddr, parts,
-                    sentIntents, deliveryIntents, priority, isExpectMore, validityPeriod);
-        } else {
-            Rlog.e(LOG_TAG,"sendMultipartTextWithOptions iccSmsIntMgr is null for" +
-                          " Subscription: " + subId);
+        if (iccSmsIntMgr.isShortSMSCode(destAddr)) {
+            iccSmsIntMgr.sendMultipartTextWithOptions(callingPackage, destAddr,
+                    scAddr, parts, sentIntents, deliveryIntents, -1, false, -1);
+            return;
         }
+        broadcastOutgoingSms(subId, callingPackage, destAddr, scAddr, true,
+                parts != null ? new ArrayList<String>(parts) : null,
+                sentIntents != null ? new ArrayList<PendingIntent>(sentIntents) : null,
+                deliveryIntents != null ? new ArrayList<PendingIntent>(deliveryIntents) : null,
+                -1, false, -1);
     }
 
     public boolean enableCellBroadcast(int messageIdentifier, int ranType)
@@ -375,8 +531,16 @@ public class UiccSmsController extends ISms.Stub {
 
     @Override
     public void synthesizeMessages(String originatingAddress,
-                                   String scAddress, List<String> messages,
-                                   long timestampMillis) throws RemoteException {
+            String scAddress, List<String> messages, long timestampMillis) throws RemoteException {
+        mContext.enforceCallingPermission(
+                android.Manifest.permission.BROADCAST_SMS, "");
+        byte[][] pdus = new byte[messages.size()][];
+        for (int i = 0; i < messages.size(); i++) {
+            SyntheticSmsMessage message = new SyntheticSmsMessage(originatingAddress,
+                    scAddress, messages.get(i), timestampMillis);
+            pdus[i] = message.getPdu();
+        }
+        dispatchPdus(pdus);
     }
 
     /**
@@ -484,5 +648,9 @@ public class UiccSmsController extends ISms.Stub {
             Rlog.e(LOG_TAG, "iccSmsIntMgr is null for " + " subId: " + subId);
             return false;
         }
+    }
+
+    protected void log(String msg) {
+        Log.d(LOG_TAG, "[UiccSmsController] " + msg);
     }
 }
