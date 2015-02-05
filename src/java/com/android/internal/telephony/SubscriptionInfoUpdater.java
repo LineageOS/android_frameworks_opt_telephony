@@ -97,6 +97,8 @@ public class SubscriptionInfoUpdater extends Handler {
     private static final ParcelUuid REMOVE_GROUP_UUID =
             ParcelUuid.fromString(CarrierConfigManager.REMOVE_GROUP_UUID_STRING);
 
+    private static final String ICCID_STRING_FOR_NV = "DUMMY_NV_ID";
+
     // Key used to read/write the current IMSI. Updated on SIM_STATE_CHANGED - LOADED.
     public static final String CURR_SUBID = "curr_subid";
 
@@ -598,6 +600,15 @@ public class SubscriptionInfoUpdater extends Handler {
         broadcastSimApplicationStateChanged(slotId, TelephonyManager.SIM_STATE_NOT_READY);
         updateSubscriptionCarrierId(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
         updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
+    }
+
+    public void updateSubIdForNV(int slotId) {
+        mIccId[slotId] = ICCID_STRING_FOR_NV;
+        logd("[updateSubIdForNV]+ Start");
+        if (isAllIccIdQueryDone()) {
+            logd("[updateSubIdForNV]+ updating");
+            updateSubscriptionInfoByIccId(slotId, true /* updateEmbeddedSubs */);
+        }
     }
 
     protected synchronized void updateSubscriptionInfoByIccId(int slotIndex,
