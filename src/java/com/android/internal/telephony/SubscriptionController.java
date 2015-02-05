@@ -300,7 +300,7 @@ public class SubscriptionController extends ISub.Stub {
         if (phoneId < 0) {
             return "";
         }
-        return mTelephonyManager.getSimOperatorNumericForPhone(phoneId);
+        return mTelephonyManager.getSimCountryIsoForPhone(phoneId);
     }
 
     /**
