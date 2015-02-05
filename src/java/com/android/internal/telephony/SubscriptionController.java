@@ -861,7 +861,7 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public int setDisplayNumber(String number, int subId) {
-        if (DBG) logd("[setDisplayNumber]+ number:" + number + " subId:" + subId);
+        if (DBG) logd("[setDisplayNumber]+ subId:" + subId);
         enforceSubscriptionPermission();
 
         validateSubId(subId);
@@ -883,7 +883,7 @@ public class SubscriptionController extends ISub.Stub {
         result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
                     + "=" + Long.toString(subId), null);
-        if (DBG) logd("[setDisplayNumber]- number: " + number + " update result :" + result);
+        if (DBG) logd("[setDisplayNumber]- update result :" + result);
         notifySubscriptionInfoChanged();
 
         return result;
