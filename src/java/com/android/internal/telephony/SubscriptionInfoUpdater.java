@@ -97,6 +97,32 @@ public class SubscriptionInfoUpdater extends Handler {
     private static final ParcelUuid REMOVE_GROUP_UUID =
             ParcelUuid.fromString(CarrierConfigManager.REMOVE_GROUP_UUID_STRING);
 
+    private static final String ICCID_STRING_FOR_NV = "DUMMY_NV_ID";
+
+    /**
+     *  int[] sInsertSimState maintains all slots' SIM inserted status currently,
+     *  it may contain 4 kinds of values:
+     *    SIM_NOT_INSERT : no SIM inserted in slot i now
+     *    SIM_CHANGED    : a valid SIM insert in slot i and is different SIM from last time
+     *                     it will later become SIM_NEW or SIM_REPOSITION during update procedure
+     *    SIM_NOT_CHANGE : a valid SIM insert in slot i and is the same SIM as last time
+     *    SIM_NEW        : a valid SIM insert in slot i and is a new SIM
+     *    SIM_REPOSITION : a valid SIM insert in slot i and is inserted in different slot last time
+     *    positive integer #: index to distinguish SIM cards with the same IccId
+     */
+    public static final int SIM_NOT_CHANGE = 0;
+    public static final int SIM_CHANGED    = -1;
+    public static final int SIM_NEW        = -2;
+    public static final int SIM_REPOSITION = -3;
+    public static final int SIM_NOT_INSERT = -99;
+
+    public static final int STATUS_NO_SIM_INSERTED = 0x00;
+    public static final int STATUS_SIM1_INSERTED = 0x01;
+    public static final int STATUS_SIM2_INSERTED = 0x02;
+    public static final int STATUS_SIM3_INSERTED = 0x04;
+    public static final int STATUS_SIM4_INSERTED = 0x08;
+>>>>>>> 278f9db78... Add dummy SUB record in CDMA NV mode
+
     // Key used to read/write the current IMSI. Updated on SIM_STATE_CHANGED - LOADED.
     public static final String CURR_SUBID = "curr_subid";
 
@@ -598,6 +624,15 @@ public class SubscriptionInfoUpdater extends Handler {
         broadcastSimApplicationStateChanged(slotId, TelephonyManager.SIM_STATE_NOT_READY);
         updateSubscriptionCarrierId(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
         updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
+    }
+
+    public void updateSubIdForNV(int slotId) {
+        mIccId[slotId] = ICCID_STRING_FOR_NV;
+        logd("[updateSubIdForNV]+ Start");
+        if (isAllIccIdQueryDone()) {
+            logd("[updateSubIdForNV]+ updating");
+            updateSubscriptionInfoByIccId();
+        }
     }
 
     protected synchronized void updateSubscriptionInfoByIccId(int slotIndex,
