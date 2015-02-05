@@ -57,10 +57,12 @@ import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.ServiceStateTracker;
+import com.android.internal.telephony.SubInfoRecordUpdater;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
@@ -1371,6 +1373,10 @@ public class CDMAPhone extends PhoneBase {
                 log("notifyMessageWaitingChanged");
                 mNotifier.notifyMessageWaitingChanged(this);
                 updateVoiceMail();
+                SubInfoRecordUpdater subInfoRecordUpdater = PhoneFactory.getSubInfoRecordUpdater();
+                if (subInfoRecordUpdater != null) {
+                    subInfoRecordUpdater.updateSubIdForNV (mPhoneId);
+                }
             }
             break;
 
