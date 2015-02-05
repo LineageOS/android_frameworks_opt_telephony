@@ -817,7 +817,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
 
         List<String> regAddresses = Settings.Secure.getDelimitedStringAsList(mContext.getContentResolver(),
-                Settings.Secure.PROTECTED_SMS_ADDRESSES , "\\|");
+                Settings.Secure.PROTECTED_SMS_ADDRESSES , "|");
 
         List<String> allAddresses = Intents
                 .getNormalizedAddressesFromPdus(pdus, tracker.getFormat());
