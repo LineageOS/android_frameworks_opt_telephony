@@ -2385,6 +2385,10 @@ public class GsmCdmaPhone extends Phone {
 
             case EVENT_NV_READY:
                 Rlog.d(LOG_TAG, "Event EVENT_NV_READY Received");
+                SubscriptionInfoUpdater subscriptionInfoUpdater = PhoneFactory.getSubscriptionInfoUpdater();
+                if (subscriptionInfoUpdater != null) {
+                    subscriptionInfoUpdater.updateSubIdForNV(mPhoneId);
+                }
                 break;
 
             case EVENT_SET_VM_NUMBER_DONE:
