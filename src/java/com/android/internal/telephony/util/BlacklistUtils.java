@@ -39,6 +39,9 @@ public class BlacklistUtils {
     private static final String TAG = "BlacklistUtils";
     private static final boolean DEBUG = false;
 
+    // CM blacklist is disabled in CAF
+    private static final boolean CM_BLACKLIST_FEATURE_PRESENT = false;
+
     // Blacklist matching type
     public final static int MATCH_NONE = 0;
     public final static int MATCH_PRIVATE = 1;
@@ -152,10 +155,24 @@ public class BlacklistUtils {
         return result;
     }
 
+    /**
+     * Flag that can be set by the user in blacklist settings.  When disabled
+     * we do not show blacklist menu items or check the blacklist for calls
+     * or messages.
+     */
     public static boolean isBlacklistEnabled(Context context) {
-        return Settings.System.getIntForUser(context.getContentResolver(),
+        return isBlacklistFeaturePresent(context) &&
+                Settings.System.getIntForUser(context.getContentResolver(),
                 Settings.System.PHONE_BLACKLIST_ENABLED, 1,
                 UserHandle.USER_CURRENT_OR_SELF) != 0;
+    }
+
+    /**
+     * Build time flag that can be used to disable blacklist and remove all
+     * access to blacklist settings.
+     */
+    public static boolean isBlacklistFeaturePresent(Context context) {
+        return CM_BLACKLIST_FEATURE_PRESENT;
     }
 
     public static boolean isBlacklistNotifyEnabled(Context context) {
