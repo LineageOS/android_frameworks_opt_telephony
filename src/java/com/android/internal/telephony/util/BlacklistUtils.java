@@ -21,6 +21,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.UserHandle;
+import android.os.SystemProperties;
 import android.provider.Settings;
 import android.provider.Telephony.Blacklist;
 import android.text.TextUtils;
@@ -38,6 +39,9 @@ import com.android.internal.telephony.CallerInfo;
 public class BlacklistUtils {
     private static final String TAG = "BlacklistUtils";
     private static final boolean DEBUG = false;
+
+    private static final String CM_BLACKLIST_FEATURE_PRESENT =
+            "ro.telphony.cm_blklst_on";
 
     // Blacklist matching type
     public final static int MATCH_NONE = 0;
@@ -152,10 +156,24 @@ public class BlacklistUtils {
         return result;
     }
 
+    /**
+     * Flag that can be set by the user in blacklist settings.  When disabled
+     * we do not show blacklist menu items or check the blacklist for calls
+     * or messages.
+     */
     public static boolean isBlacklistEnabled(Context context) {
-        return Settings.System.getIntForUser(context.getContentResolver(),
+        return isBlacklistFeaturePresent(context) &&
+                Settings.System.getIntForUser(context.getContentResolver(),
                 Settings.System.PHONE_BLACKLIST_ENABLED, 1,
                 UserHandle.USER_CURRENT_OR_SELF) != 0;
+    }
+
+    /**
+     * Build time flag that can be used to disable blacklist and remove all
+     * access to blacklist settings.
+     */
+    public static boolean isBlacklistFeaturePresent(Context context) {
+        return SystemProperties.getInt(CM_BLACKLIST_FEATURE_PRESENT, 1) != 0;
     }
 
     public static boolean isBlacklistNotifyEnabled(Context context) {
