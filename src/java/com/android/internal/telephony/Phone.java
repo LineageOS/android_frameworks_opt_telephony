@@ -1992,4 +1992,6 @@ public interface Phone {
     public void setLocalCallHold(int lchStatus);
 
     public boolean isImsVtCallPresent();
+
+    public void notifyCallForwardingIndicator();
 }
