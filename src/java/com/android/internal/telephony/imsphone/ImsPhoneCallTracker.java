@@ -1083,6 +1083,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
             case ImsReasonInfo.CODE_LOCAL_POWER_OFF:
                 return DisconnectCause.POWER_OFF;
 
+            case ImsReasonInfo.CODE_FDN_BLOCKED:
+                return DisconnectCause.FDN_BLOCKED;
             default:
         }
 
