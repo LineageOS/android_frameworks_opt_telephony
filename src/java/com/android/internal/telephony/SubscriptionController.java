@@ -1406,32 +1406,26 @@ public class SubscriptionController extends ISub.Stub {
         }
         if (DBG) logdl("[setDefaultDataSubId] subId=" + subId);
 
+        ProxyController proxyController = ProxyController.getInstance();
         int len = sProxyPhones.length;
         logdl("[setDefaultDataSubId] num phones=" + len);
 
         RadioAccessFamily[] rafs = new RadioAccessFamily[len];
         for (int phoneId = 0; phoneId < len; phoneId++) {
             PhoneProxy phone = sProxyPhones[phoneId];
-            int raf = phone.getRadioAccessFamily();
+            int raf;
             int id = phone.getSubId();
-            logdl("[setDefaultDataSubId] phoneId=" + phoneId + " subId=" + id + " RAF=" + raf);
-            raf |= RadioAccessFamily.RAF_GSM;
             if (id == subId) {
-                raf |= RadioAccessFamily.RAF_UMTS;
+                // TODO Handle the general case of N modems and M subscriptions.
+                raf = proxyController.getMaxRafSupported();
             } else {
-                raf &= ~RadioAccessFamily.RAF_UMTS;
+                // TODO Handle the general case of N modems and M subscriptions.
+                raf = proxyController.getMinRafSupported();
             }
-            logdl("[setDefaultDataSubId] reqRAF=" + raf);
-
-            // Set the raf to the maximum of the requested and the user's preferred.
-            int networkType = PhoneFactory.calculatePreferredNetworkType(mContext, id);
-            logdl("[setDefaultDataSubId] networkType=" + networkType);
-            raf &= RadioAccessFamily.getRafFromNetworkType(networkType);
-
-            logdl("[setDefaultDataSubId] newRAF=" + raf);
+            logdl("[setDefaultDataSubId] phoneId=" + phoneId + " subId=" + id + " RAF=" + raf);
             rafs[phoneId] = new RadioAccessFamily(phoneId, raf);
         }
-        ProxyController.getInstance().setRadioCapability(rafs);
+        proxyController.setRadioCapability(rafs);
 
         // FIXME is this still needed?
         updateAllDataConnectionTrackers();
