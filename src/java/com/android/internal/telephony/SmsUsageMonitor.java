@@ -540,7 +540,7 @@ public class SmsUsageMonitor {
      * @throws SecurityException if the caller is not a system process
      */
     public int getPremiumSmsPermission(String packageName) {
-        checkCallerIsSystemOrSameApp(packageName);
+        checkCallerIsSystemOrPhoneOrSameApp(packageName);
         synchronized (mPremiumSmsPolicy) {
             Integer policy = mPremiumSmsPolicy.get(packageName);
             if (policy == null) {
@@ -578,9 +578,10 @@ public class SmsUsageMonitor {
         }).start();
     }
 
-    private static void checkCallerIsSystemOrSameApp(String pkg) {
+    private static void checkCallerIsSystemOrPhoneOrSameApp(String pkg) {
         int uid = Binder.getCallingUid();
-        if (UserHandle.getAppId(uid) == Process.SYSTEM_UID || uid == 0) {
+        int appId = UserHandle.getAppId(uid);
+        if (appId == Process.SYSTEM_UID || appId == Process.PHONE_UID || uid == 0) {
             return;
         }
         try {
