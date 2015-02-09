@@ -581,7 +581,12 @@ public class ImsPhone extends ImsPhoneBase {
 
     @Override
     public void addParticipant(String dialString) throws CallStateException {
-        mCT.addParticipant(dialString);
+        addParticipant(dialString, null);
+    }
+
+    @Override
+    public void addParticipant(String dialString, Message onComplete) throws CallStateException {
+        mCT.addParticipant(dialString, onComplete);
     }
 
     @Override

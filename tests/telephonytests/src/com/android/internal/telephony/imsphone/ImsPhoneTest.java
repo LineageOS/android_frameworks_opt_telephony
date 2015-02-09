@@ -385,6 +385,15 @@ public class ImsPhoneTest extends TelephonyTest {
 
     @Test
     @SmallTest
+    public void testAddParticipant() throws Exception {
+        String dialString = "1234567890";
+
+        mImsPhoneUT.addParticipant(dialString, null);
+        verify(mImsCT).addParticipant(dialString, null);
+    }
+
+    @Test
+    @SmallTest
     public void testDtmf() {
         // case 1
         doReturn(PhoneConstants.State.IDLE).when(mImsCT).getState();
