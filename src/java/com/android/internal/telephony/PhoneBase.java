@@ -2138,4 +2138,10 @@ public abstract class PhoneBase extends Handler implements Phone {
         throw new CallStateException("addParticipant is not supported in this phone "
                 + this);
     }
+
+    @Override
+    public void addParticipant(String dialString, Message onComplete) throws CallStateException {
+        throw new CallStateException("addParticipant is not supported in this phone "
+                + this);
+    }
 }
