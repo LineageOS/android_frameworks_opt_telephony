@@ -1508,6 +1508,16 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public String getModemUuId() {
+        return mActivePhone.getModemUuId();
+    }
+
+    @Override
+    public void updateCachedRadioCapability(RadioCapability rc) {
+        mActivePhone.updateCachedRadioCapability(rc);
+    }
+
+    @Override
     public int getSupportedRadioAccessFamily() {
         return mCommandsInterface.getSupportedRadioAccessFamily();
     }

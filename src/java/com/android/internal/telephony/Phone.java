@@ -1979,6 +1979,23 @@ public interface Phone {
     public int getSupportedRadioAccessFamily();
 
     /**
+     *  Get the associated data modems Id.
+     *
+     *  @return a String containing the id of the data modem
+     */
+    public String getModemUuId();
+
+    /**
+     *  Update the cached local copy of the RadioCapability.
+     *  This comes up from the RIL.  The flow is we use setRadioCapability
+     *  to request a change with the RIL and get an UNSOL response with the
+     *  new data which gets set here.
+     *
+     *  @param rc the phone radio capability currently in effect for this phone.
+     */
+    public void updateCachedRadioCapability(RadioCapability rc);
+
+    /**
      * Registers the handler when phone radio  capability is changed.
      *
      * @param h Handler for notification message.

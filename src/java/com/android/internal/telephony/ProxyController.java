@@ -91,7 +91,8 @@ public class ProxyController {
     private int[] mSetRadioAccessFamilyStatus;
     private int mRadioAccessFamilyStatusCounter;
 
-    private String[] mLogicalModemIds;
+    private String[] mCurrentLogicalModemIds;
+    private String[] mNewLogicalModemIds;
 
     // Allows the generation of unique Id's for radio capability request session  id
     private AtomicInteger mUniqueIdGenerator = new AtomicInteger(new Random().nextInt());
@@ -137,12 +138,8 @@ public class ProxyController {
         mSetRadioAccessFamilyStatus = new int[mProxyPhones.length];
         mNewRadioAccessFamily = new int[mProxyPhones.length];
         mOldRadioAccessFamily = new int[mProxyPhones.length];
-        mLogicalModemIds = new String[mProxyPhones.length];
-
-        // TODO Get logical modem ids assume its just the phoneId as a string for now
-        for (int i = 0; i < mProxyPhones.length; i++) {
-            mLogicalModemIds[i] = Integer.toString(i);
-        }
+        mCurrentLogicalModemIds = new String[mProxyPhones.length];
+        mNewLogicalModemIds = new String[mProxyPhones.length];
 
         mSetRadioCapabilityRunnable = new RadioCapabilityRunnable();
 
@@ -272,6 +269,12 @@ public class ProxyController {
                 // int supportedRaf = mProxyPhones[i].getSupportedRadioAccessFamily();
                 // mNewRadioAccessFamily[phoneId] = requestedRaf & supportedRaf;
                 mNewRadioAccessFamily[phoneId] = requestedRaf;
+
+                mCurrentLogicalModemIds[phoneId] = mProxyPhones[phoneId].getModemUuId();
+                // get the logical mode corresponds to new raf requested and pass the
+                // same as part of SET_RADIO_CAP APPLY phase
+                mNewLogicalModemIds[phoneId] = getLogicalModemIdFromRaf(requestedRaf);
+
                 logd("setRadioCapability: mOldRadioAccessFamily[" + phoneId + "]="
                         + mOldRadioAccessFamily[phoneId]);
                 logd("setRadioCapability: mNewRadioAccessFamily[" + phoneId + "]="
@@ -281,7 +284,7 @@ public class ProxyController {
                         mRadioCapabilitySessionId,
                         RadioCapability.RC_PHASE_START,
                         mOldRadioAccessFamily[phoneId],
-                        mLogicalModemIds[phoneId],
+                        mCurrentLogicalModemIds[phoneId],
                         RadioCapability.RC_STATUS_NONE,
                         EVENT_START_RC_RESPONSE);
             }
@@ -355,7 +358,7 @@ public class ProxyController {
                             mRadioCapabilitySessionId,
                             RadioCapability.RC_PHASE_APPLY,
                             mNewRadioAccessFamily[i],
-                            mLogicalModemIds[i],
+                            mNewLogicalModemIds[i],
                             RadioCapability.RC_STATUS_NONE,
                             EVENT_APPLY_RC_RESPONSE);
 
@@ -419,6 +422,7 @@ public class ProxyController {
             } else {
                 logd("onNotificationRadioCapabilityChanged: phoneId=" + id + " status=SUCCESS");
                 mSetRadioAccessFamilyStatus[id] = SET_RC_STATUS_SUCCESS;
+                mProxyPhones[id].updateCachedRadioCapability(rc);
             }
 
             mRadioAccessFamilyStatusCounter--;
@@ -472,7 +476,7 @@ public class ProxyController {
                         sessionId,
                         RadioCapability.RC_PHASE_FINISH,
                         mOldRadioAccessFamily[i],
-                        mLogicalModemIds[i],
+                        mCurrentLogicalModemIds[i],
                         status,
                         EVENT_FINISH_RC_RESPONSE);
                     if (status == RadioCapability.RC_STATUS_FAIL) {
@@ -596,6 +600,57 @@ public class ProxyController {
                 completeRadioCapabilityTransaction();
             }
         }
+    }
+
+    // This method will return max number of raf bits supported from the raf
+    // values currently stored in all phone objects
+    public int getMaxRafSupported() {
+        int[] numRafSupported = new int[mProxyPhones.length];
+        int maxNumRafBit = 0;
+        int maxRaf = RadioAccessFamily.RAF_UNKNOWN;
+
+        int number;
+        for (int len = 0; len < mProxyPhones.length; len++) {
+            numRafSupported[len] = Integer.bitCount(mProxyPhones[len].getRadioAccessFamily());
+            if (maxNumRafBit < numRafSupported[len]) {
+                maxNumRafBit = numRafSupported[len];
+                maxRaf = mProxyPhones[len].getRadioAccessFamily();
+            }
+        }
+
+        return maxRaf;
+    }
+
+    // This method will return minimum number of raf bits supported from the raf
+    // values currently stored in all phone objects
+    public int getMinRafSupported() {
+        int[] numRafSupported = new int[mProxyPhones.length];
+        int minNumRafBit = 0;
+        int minRaf = RadioAccessFamily.RAF_UNKNOWN;
+
+        int number;
+        for (int len = 0; len < mProxyPhones.length; len++) {
+            numRafSupported[len] = Integer.bitCount(mProxyPhones[len].getRadioAccessFamily());
+            if ((minNumRafBit == 0) || (minNumRafBit > numRafSupported[len])) {
+                minNumRafBit = numRafSupported[len];
+                minRaf = mProxyPhones[len].getRadioAccessFamily();
+            }
+        }
+        return minRaf;
+    }
+
+    // This method checks current raf values stored in all phones and
+    // whicheve phone raf matches with input raf, returns modemId from that phone
+    private String getLogicalModemIdFromRaf(int raf) {
+        String modemUuid = null;
+
+        for (int phoneId = 0; phoneId < mProxyPhones.length; phoneId++) {
+            if (mProxyPhones[phoneId].getRadioAccessFamily() == raf) {
+                modemUuid = mProxyPhones[phoneId].getModemUuId();
+                break;
+            }
+        }
+        return modemUuid;
     }
 
     private void logd(String string) {
