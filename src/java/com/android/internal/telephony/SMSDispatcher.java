@@ -35,8 +35,10 @@ import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Process;
 import android.os.RemoteException;
 import android.os.SystemProperties;
+import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms;
@@ -431,8 +433,14 @@ public abstract class SMSDispatcher extends Handler {
          */
         @Override
         public void onSendSmsComplete(int result, int messageRef) {
-            mSmsSender.disposeConnection(mContext);
-            processSendSmsResponse(mSmsSender.mTracker, result, messageRef);
+            checkCallerIsPhoneOrCarrierApp();
+            final long identity = Binder.clearCallingIdentity();
+            try {
+                mSmsSender.disposeConnection(mContext);
+                processSendSmsResponse(mSmsSender.mTracker, result, messageRef);
+            } finally {
+                Binder.restoreCallingIdentity(identity);
+            }
         }
 
         @Override
@@ -558,12 +566,18 @@ public abstract class SMSDispatcher extends Handler {
                 return;
             }
 
-            for (int i = 0; i < mSmsSender.mTrackers.length; i++) {
-                int messageRef = 0;
-                if (messageRefs != null && messageRefs.length > i) {
-                    messageRef = messageRefs[i];
+            checkCallerIsPhoneOrCarrierApp();
+            final long identity = Binder.clearCallingIdentity();
+            try {
+                for (int i = 0; i < mSmsSender.mTrackers.length; i++) {
+                    int messageRef = 0;
+                    if (messageRefs != null && messageRefs.length > i) {
+                        messageRef = messageRefs[i];
+                    }
+                    processSendSmsResponse(mSmsSender.mTrackers[i], result, messageRef);
                 }
-                processSendSmsResponse(mSmsSender.mTrackers[i], result, messageRef);
+            } finally {
+                Binder.restoreCallingIdentity(identity);
             }
         }
 
@@ -1695,5 +1709,22 @@ public abstract class SMSDispatcher extends Handler {
 
     protected int getSubId() {
         return SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhone.mPhoneId);
+    }
+
+    private void checkCallerIsPhoneOrCarrierApp() {
+        int uid = Binder.getCallingUid();
+        int appId = UserHandle.getAppId(uid);
+        if (appId == Process.PHONE_UID || uid == 0) {
+            return;
+        }
+        try {
+            PackageManager pm = mContext.getPackageManager();
+            ApplicationInfo ai = pm.getApplicationInfo(getCarrierAppPackageName(), 0);
+            if (!UserHandle.isSameApp(ai.uid, Binder.getCallingUid())) {
+                throw new SecurityException("Caller is not phone or carrier app!");
+            }
+        } catch (PackageManager.NameNotFoundException re) {
+            throw new SecurityException("Caller is not phone or carrier app!");
+        }
     }
 }
