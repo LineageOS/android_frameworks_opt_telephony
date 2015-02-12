@@ -463,7 +463,7 @@ public class SIMRecords extends IccRecords {
 
     public int getVoiceMessageCount() {
         boolean voiceMailWaiting = false;
-        int countVoiceMessages = -1;
+        int countVoiceMessages = DEFAULT_VOICE_MESSAGE_COUNT;
         if (mEfMWIS != null) {
             // Use this data if the EF[MWIS] exists and
             // has been loaded
@@ -473,7 +473,7 @@ public class SIMRecords extends IccRecords {
 
             if (voiceMailWaiting && countVoiceMessages == 0) {
                 // Unknown count = -1
-                countVoiceMessages = -1;
+                countVoiceMessages = UNKNOWN_VOICE_MESSAGE_COUNT;
             }
             if(DBG) log(" VoiceMessageCount from SIM MWIS = " + countVoiceMessages);
         } else if (mEfCPHS_MWI != null) {
@@ -483,7 +483,7 @@ public class SIMRecords extends IccRecords {
             // Refer CPHS4_2.WW6 B4.2.3
             if (indicator == 0xA) {
                 // Unknown count = -1
-                countVoiceMessages = -1;
+                countVoiceMessages = UNKNOWN_VOICE_MESSAGE_COUNT;
             } else if (indicator == 0x5) {
                 countVoiceMessages = 0;
             }
