@@ -315,6 +315,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 break;
 
             case EVENT_SIM_READY:
+                // Reset the mPreviousSubId so we treat a SIM power bounce
+                // as a first boot.  See b/19194287
+                mOnSubscriptionsChangedListener.mPreviousSubId.set(-1);
                 pollState();
                 // Signal strength polling stops when radio is off
                 queueNextSignalStrengthPoll();
