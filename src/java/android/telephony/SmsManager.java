@@ -199,6 +199,12 @@ public final class SmsManager {
      * The suffix to append to the NAI header value for MMS HTTP request (String type)
      */
     public static final String MMS_CONFIG_NAI_SUFFIX = "naiSuffix";
+    /**
+     * If true, show the cell broadcast (amber alert) in the SMS settings. Some carriers
+     * don't want this shown. (Boolean type)
+     */
+    public static final String MMS_CONFIG_SHOW_CELL_BROADCAST_APP_LINKS =
+            "config_cellBroadcastAppLinks";
 
     /**
      * Send a text based SMS.
@@ -339,8 +345,7 @@ public final class SmsManager {
      *  android application framework. This intent is broadcasted at
      *  the same time an SMS received from radio is acknowledged back.
      *
-     *  @throws IllegalArgumentException if format is not one of 3gpp and 3gpp2.
-     *  {@hide}
+     *  @throws IllegalArgumentException if format is not one of 3gpp and 3gpp2
      */
     public void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent) {
         if (!format.equals(SmsMessage.FORMAT_3GPP) && !format.equals(SmsMessage.FORMAT_3GPP2)) {
@@ -688,6 +693,17 @@ public final class SmsManager {
     }
 
     /**
+     * Get the the instance of the SmsManager associated with a particular subscription id
+     *
+     * @param subId an SMS subscription id, typically accessed using
+     *   {@link android.telephony.SubscriptionManager}
+     * @return the instance of the SmsManager associated with subId
+     */
+    public static SmsManager getSmsManagerForSubscriptionId(long subId) {
+        return null;
+    }
+
+    /**
      * Get the the instance of the SmsManager associated with a particular subId
      *
      * @param subId a SMS subscription id, typically accessed using SubscriptionManager
@@ -709,6 +725,25 @@ public final class SmsManager {
 
     private SmsManager(long subId) {
         mSubId = subId;
+    }
+
+    /**
+     * Get the associated subscription id. If the instance was returned by {@link #getDefault()},
+     * then this method may return different values at different points in time (if the user
+     * changes the default subscription id). It will return < 0 if the default subscription id
+     * cannot be determined.
+     *
+     * Additionally, to support legacy applications that are not multi-SIM aware,
+     * if the following are true:
+     *     - We are using a multi-SIM device
+     *     - A default SMS SIM has not been selected
+     *     - At least one SIM subscription is available
+     * then ask the user to set the default SMS SIM.
+     *
+     * @return associated subscription id
+     */
+    public int getSubscriptionId() {
+        return 0;
     }
 
     /**
@@ -1076,6 +1111,15 @@ public final class SmsManager {
     }
 
     /**
+     * Get default sms subscription id
+     *
+     * @return the default SMS subscription id
+     */
+    public static int getDefaultSmsSubscriptionId() {
+        return -1;
+    }
+
+    /**
      * Get the default sms subId
      *
      * @return the default sms subId
@@ -1272,77 +1316,13 @@ public final class SmsManager {
     public static final int MMS_ERROR_IO_ERROR = 5;
     public static final int MMS_ERROR_RETRY = 6;
     public static final int MMS_ERROR_CONFIGURATION_ERROR = 7;
+    public static final int MMS_ERROR_NO_DATA_NETWORK = 8;
 
     // Intent extra name for result data
     public static final String EXTRA_MMS_DATA = "android.telephony.extra.MMS_DATA";
+    /** Intent extra name for HTTP status code for MMS HTTP failure in integer type */
+    public static final String EXTRA_MMS_HTTP_STATUS = "android.telephony.extra.MMS_HTTP_STATUS";
 
-    /**
-     * Update the status of a pending (send-by-IP) MMS message handled by the carrier app.
-     * If the carrier app fails to send this message, it may be resent via carrier network
-     * depending on the status code.
-     *
-     * The caller should have carrier privileges.
-     * @see android.telephony.TelephonyManager.hasCarrierPrivileges
-     *
-     * @param context application context
-     * @param messageRef the reference number of the MMS message.
-     * @param pdu non-empty (contains the SendConf PDU) if the message was sent successfully,
-     *   otherwise, this param should be null.
-     * @param status send status. It can be Activity.RESULT_OK or one of the MMS error codes.
-     *   If status is Activity.RESULT_OK, the MMS was sent successfully.
-     *   If status is MMS_ERROR_RETRY, this message would be resent via carrier
-     *   network. The message will not be resent for other MMS error statuses.
-     * @param contentUri the URI of the sent message
-     * {@hide}
-     */
-    public void updateMmsSendStatus(Context context, int messageRef, byte[] pdu, int status,
-            Uri contentUri) {
-        try {
-            IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
-            if (iMms == null) {
-                return;
-            }
-            iMms.updateMmsSendStatus(messageRef, pdu, status);
-        } catch (RemoteException ex) {
-            // ignore it
-        }
-        if (contentUri != null) {
-            context.revokeUriPermission(contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        }
-    }
-
-    /**
-     * Update the status of a pending (download-by-IP) MMS message handled by the carrier app.
-     * If the carrier app fails to download this message, it may be re-downloaded via carrier
-     * network depending on the status code.
-     *
-     * The caller should have carrier privileges.
-     * @see android.telephony.TelephonyManager.hasCarrierPrivileges
-     *
-     * @param context application context
-     * @param messageRef the reference number of the MMS message.
-     * @param status download status.  It can be Activity.RESULT_OK or one of the MMS error codes.
-     *   If status is Activity.RESULT_OK, the MMS was downloaded successfully.
-     *   If status is MMS_ERROR_RETRY, this message would be re-downloaded via carrier
-     *   network. The message will not be re-downloaded for other MMS error statuses.
-     * @param contentUri the URI of the downloaded message
-     * {@hide}
-     */
-    public void updateMmsDownloadStatus(Context context, int messageRef, int status,
-            Uri contentUri) {
-        try {
-            IMms iMms = IMms.Stub.asInterface(ServiceManager.getService("imms"));
-            if (iMms == null) {
-                return;
-            }
-            iMms.updateMmsDownloadStatus(messageRef, status);
-        } catch (RemoteException ex) {
-            // ignore it
-        }
-        if (contentUri != null) {
-            context.revokeUriPermission(contentUri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-        }
-    }
 
     /**
      * Import a text message into system's SMS store

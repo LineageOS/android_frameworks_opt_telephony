@@ -240,6 +240,13 @@ public final class Telephony {
         public static final String LOCKED = "locked";
 
         /**
+         * The subscription to which the message belongs to. Its value will be
+         * < 0 if the sub id cannot be determined.
+         * <p>Type: INTEGER (long) </p>
+         */
+        public static final String SUBSCRIPTION_ID = "sub_id";
+
+        /**
          * The phone id to which the message belongs to
          * <p>Type: INTEGER (long) </p>
          * @hide
@@ -1725,6 +1732,13 @@ public final class Telephony {
         public static final String LOCKED = "locked";
 
         /**
+         * The subscription to which the message belongs to. Its value will be
+         * < 0 if the sub id cannot be determined.
+         * <p>Type: INTEGER (long)</p>
+         */
+        public static final String SUBSCRIPTION_ID = "sub_id";
+
+        /**
          * The phone id to which message belongs to
          * <p>Type: INTEGER</p>
          * @hide
@@ -2566,6 +2580,13 @@ public final class Telephony {
             public static final String LAST_TRY = "last_try";
 
             /**
+             * The subscription to which the message belongs to. Its value will be
+             * < 0 if the sub id cannot be determined.
+             * <p>Type: INTEGER (long) </p>
+             */
+            public static final String SUBSCRIPTION_ID = "pending_sub_id";
+
+            /**
              * The phone id to which the pending message belongs to
              * <p>Type: INTEGER (long) </p>
              * @hide
@@ -2777,6 +2798,12 @@ public final class Telephony {
          * <P>Type: TEXT</P>
          */
         public static final String MVNO_MATCH_DATA = "mvno_match_data";
+
+        /**
+         * The subscription to which the APN belongs to
+         * <p>Type: INTEGER (long) </p>
+         */
+        public static final String SUBSCRIPTION_ID = "sub_id";
 
         /**
          * The sub_id to which the APN belongs to
