@@ -354,7 +354,7 @@ public class GSMPhone extends PhoneBase {
             // get voice mail count from SIM
             countVoiceMessages = r.getVoiceMessageCount();
         }
-        if (countVoiceMessages == -1) {
+        if (countVoiceMessages == IccRecords.DEFAULT_VOICE_MESSAGE_COUNT) {
             countVoiceMessages = getStoredVoiceMessageCount();
         }
         Rlog.d(LOG_TAG, "updateVoiceMail countVoiceMessages = " + countVoiceMessages
