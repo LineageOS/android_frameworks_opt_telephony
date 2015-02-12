@@ -44,6 +44,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -236,9 +237,11 @@ public abstract class ServiceStateTracker extends Handler {
 
     protected SubscriptionManager mSubscriptionManager;
     protected SubscriptionController mSubscriptionController;
-    protected final OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
-            new OnSubscriptionsChangedListener() {
-        private int previousSubId = -1; // < 0 is invalid subId
+    protected final SstSubscriptionsChangedListener mOnSubscriptionsChangedListener =
+        new SstSubscriptionsChangedListener();
+
+    protected class SstSubscriptionsChangedListener extends OnSubscriptionsChangedListener {
+        public final AtomicInteger mPreviousSubId = new AtomicInteger(-1); // < 0 is invalid subId
         /**
          * Callback invoked when there is any change to any SubscriptionInfo. Typically
          * this method would invoke {@link SubscriptionManager#getActiveSubscriptionInfoList}
@@ -248,8 +251,7 @@ public abstract class ServiceStateTracker extends Handler {
             if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
             // Set the network type, in case the radio does not restore it.
             int subId = mPhoneBase.getSubId();
-            if (previousSubId != subId) {
-                previousSubId = subId;
+            if (mPreviousSubId.getAndSet(subId) != subId) {
                 if (SubscriptionManager.isValidSubscriptionId(subId)) {
                     Context context = mPhoneBase.getContext();
                     int networkType = PhoneFactory.calculatePreferredNetworkType(context, subId);
