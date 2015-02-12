@@ -300,9 +300,9 @@ public class WapPushOverSms implements ServiceConnection {
                 if (DBG) Rlog.v(TAG, "Delivering MMS to: " + componentName.getPackageName() +
                         " " + componentName.getClassName());
             }
-            if (handler.isBlockedByFirewall(intent)) {
+            if (handler.isMmsBlockedByFirewall(intent, address)) {
                 // send firewall block sms intent
-                handler.sendBlockRecordBroadcast(mContext, intent, false, receiver);
+                // handler.sendBlockRecordBroadcast(mContext, intent, false, receiver);
             } else {
                 handler.dispatchIntent(intent, permission, appOp, receiver, UserHandle.OWNER);
             }
