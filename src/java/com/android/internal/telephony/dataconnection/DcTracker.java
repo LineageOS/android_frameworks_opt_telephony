@@ -2803,8 +2803,8 @@ public final class DcTracker extends DcTrackerBase {
         String operator = getOperatorNumeric();
         int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
 
-        if (mOmhApt != null && ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD !=
-                radioTech && !ServiceState.isGsm(radioTech)) {
+        if (mOmhApt != null && (ServiceState.isCdma(radioTech) &&
+                ServiceState.RIL_RADIO_TECHNOLOGY_EHRPD != radioTech)) {
             ArrayList<ApnSetting> mOmhApnsList = new ArrayList<ApnSetting>();
             mOmhApnsList = mOmhApt.getOmhApnProfilesList();
             if (!mOmhApnsList.isEmpty()) {
