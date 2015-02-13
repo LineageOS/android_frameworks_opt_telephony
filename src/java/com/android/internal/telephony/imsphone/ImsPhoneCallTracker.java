@@ -82,6 +82,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
     private boolean mIsVolteEnabled = false;
     private boolean mIsVtEnabled = false;
     private boolean mIsUtEnabled = false;
+    private boolean mIsSrvccCompleted = false;
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -92,6 +93,11 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 if (mImsManager == null) return;
 
                 if (mServiceId < 0) return;
+
+                // Very rare case, something wrong here. Most probably, it's Incoming call
+                // indication from lower layer after SRVCC call successfully transfered to CS.
+                // Ignore the call indication.
+                if (mIsSrvccCompleted) return;
 
                 try {
                     // Network initiated USSD will be treated by mImsUssdListener
@@ -1531,12 +1537,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
                         enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI] ==
                         ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI) {
                     mIsVolteEnabled = true;
+                    mIsSrvccCompleted = false;
                 }
                 if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE] ==
                         ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE ||
                         enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI] ==
                         ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI) {
                     mIsVtEnabled = true;
+                    mIsSrvccCompleted = false;
                 }
                 if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_LTE] ==
                         ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_LTE ||
@@ -1614,6 +1622,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
             if (con != null) {
                 con.releaseWakeLock();
             }
+            // Make mIsSrvccCompleted flag to true after SRVCC complete.
+            // After SRVCC complete sometimes SRV_STATUS_UPDATE come late.
+            mIsSrvccCompleted = true;
         }
     }
 
