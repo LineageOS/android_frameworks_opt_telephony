@@ -45,6 +45,7 @@ public class DcRetryAlarmController {
     private static final String INTENT_RETRY_ALARM_WHAT = "what";
     private static final String INTENT_RETRY_ALARM_TAG = "tag";
 
+    private PendingIntent mRetryIntent = null;
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
             @Override
         public void onReceive(Context context, Intent intent) {
@@ -146,10 +147,17 @@ public class DcRetryAlarmController {
                     " what=" + what + " tag=" + tag);
         }
 
-        PendingIntent retryIntent = PendingIntent.getBroadcast (mPhone.getContext(), 0,
+        mRetryIntent = PendingIntent.getBroadcast (mPhone.getContext(), 0,
                                         intent, PendingIntent.FLAG_UPDATE_CURRENT);
         mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                SystemClock.elapsedRealtime() + delay, retryIntent);
+                SystemClock.elapsedRealtime() + delay, mRetryIntent);
+    }
+
+    public void cancel(){
+        if(mRetryIntent != null) {
+            if (DBG) log("cancel event: "+mRetryIntent);
+            mAlarmManager.cancel(mRetryIntent);
+        }
     }
 
     @Override

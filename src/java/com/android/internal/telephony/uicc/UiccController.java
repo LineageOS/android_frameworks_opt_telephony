@@ -143,6 +143,7 @@ public class UiccController extends Handler {
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, index);
             // TODO remove this once modem correctly notifies the unsols
             mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
+            mCis[i].registerForOn(this, EVENT_ICC_STATUS_CHANGED, index);
             mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, index);
             if (mOEMHookSimRefresh) {
                 mCis[i].registerForSimRefreshEvent(this, EVENT_REFRESH_OEM, index);

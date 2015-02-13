@@ -300,8 +300,12 @@ public class WapPushOverSms implements ServiceConnection {
                 if (DBG) Rlog.v(TAG, "Delivering MMS to: " + componentName.getPackageName() +
                         " " + componentName.getClassName());
             }
-
-            handler.dispatchIntent(intent, permission, appOp, receiver, UserHandle.OWNER);
+            if (handler.isBlockedByFirewall(intent)) {
+                // send firewall block sms intent
+                handler.sendBlockRecordBroadcast(mContext, intent, false, receiver);
+            } else {
+                handler.dispatchIntent(intent, permission, appOp, receiver, UserHandle.OWNER);
+            }
             return Activity.RESULT_OK;
         } catch (ArrayIndexOutOfBoundsException aie) {
             // 0-byte WAP PDU or other unexpected WAP PDU contents can easily throw this;
