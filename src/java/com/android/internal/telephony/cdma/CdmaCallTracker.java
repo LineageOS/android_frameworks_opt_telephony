@@ -589,6 +589,7 @@ public final class CdmaCallTracker extends CallTracker {
                         newRinging = checkMtFindNewRinging(dc,i);
                         if (newRinging == null) {
                             unknownConnectionAppeared = true;
+                            newUnknown = mConnections[i];
                         }
                     }
                     checkAndEnableDataCallAfterEmergencyCallDropped();
