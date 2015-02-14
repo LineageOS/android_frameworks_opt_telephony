@@ -227,6 +227,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
     private int mPendingCallVideoState;
     private boolean pendingCallInEcm = false;
 
+    private Object mAddParticipantLock = new Object();
+    private Message mAddPartResp;
+
     //***** Events
 
 
@@ -428,7 +431,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
     }
 
     public void
-    addParticipant(String dialString) throws CallStateException {
+    addParticipant(String dialString, Message onComplete) throws CallStateException {
+        boolean isSuccess = false;
         if (mForegroundCall != null) {
             ImsCall imsCall = mForegroundCall.getImsCall();
             if (imsCall == null) {
@@ -436,8 +440,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
             } else {
                 ImsCallSession imsCallSession = imsCall.getCallSession();
                 if (imsCallSession != null) {
-                    String[] callees = new String[] { dialString };
-                    imsCallSession.inviteParticipants(callees);
+                    synchronized (mAddParticipantLock) {
+                        mAddPartResp = onComplete;
+                        String[] callees = new String[] { dialString };
+                        imsCallSession.inviteParticipants(callees);
+                        isSuccess = true;
+                    }
                 } else {
                     loge("addParticipant : ImsCallSession does not exist");
                 }
@@ -445,6 +453,23 @@ public final class ImsPhoneCallTracker extends CallTracker {
         } else {
             loge("addParticipant : Foreground call does not exist");
         }
+        if (!isSuccess && onComplete != null) {
+            sendAddParticipantResponse(false, onComplete);
+            mAddPartResp = null;
+        }
+    }
+
+    private void sendAddParticipantResponse(boolean success, Message onComplete) {
+        loge("sendAddParticipantResponse : success = " + success);
+        if (onComplete == null) return;
+
+        Exception ex = null;
+        if (!success) {
+            ex = new Exception("Add participant failed");
+        }
+
+        AsyncResult.forMessage(onComplete, null, ex);
+        onComplete.sendToTarget();
     }
 
     private void handleEcmTimer(int action) {
@@ -1348,6 +1373,25 @@ public final class ImsPhoneCallTracker extends CallTracker {
             ImsPhoneConnection conn = findConnection(call);
             if (conn != null) {
                 conn.updateConferenceParticipants(participants);
+            }
+        }
+
+        @Override
+        public void onCallInviteParticipantsRequestDelivered(ImsCall call) {
+            if (DBG) log("invite participants delivered");
+            synchronized(mAddParticipantLock) {
+                sendAddParticipantResponse(true, mAddPartResp);
+                mAddPartResp = null;
+            }
+        }
+
+        @Override
+        public void onCallInviteParticipantsRequestFailed(ImsCall call,
+                ImsReasonInfo reasonInfo) {
+            if (DBG) log("invite participants failed.");
+            synchronized(mAddParticipantLock) {
+                sendAddParticipantResponse(false, mAddPartResp);
+                mAddPartResp = null;
             }
         }
     };
