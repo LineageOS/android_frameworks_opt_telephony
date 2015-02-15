@@ -17,6 +17,7 @@ public class UiccTlvData {
     private static final int TAG_FILE_SIZE = 0x80;
     private static final int TAG_TOTAL_FILE_SIZE = 0x81;
     private static final int TAG_SHORT_FILE_IDENTIFIER = 0x88;
+    private static final int TAG_F1 = 0xF1;
 
     private static final int TYPE_5 = 5;
     private static final int TYPE_2 = 2;
@@ -78,6 +79,7 @@ public class UiccTlvData {
                     case TAG_SECURITY_ATTR_3:
                     case TAG_TOTAL_FILE_SIZE:
                     case TAG_SHORT_FILE_IDENTIFIER:
+                    case TAG_F1:
                         currentLocation = parsedData.parseSomeTag(data, currentLocation);
                         break;
 
