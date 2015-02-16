@@ -179,6 +179,10 @@ public abstract class Connection {
         return mConnectTime;
     }
 
+    public void setConnectTime(long oldConnectTime) {
+        mConnectTime = oldConnectTime;
+    }
+
     /**
      * Connection connect time in elapsedRealtime() format.
      * For outgoing calls: Begins at (DIALING|ALERTING) -> ACTIVE transition.
