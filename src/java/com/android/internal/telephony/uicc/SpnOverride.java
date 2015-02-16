@@ -39,16 +39,16 @@ public class SpnOverride {
     static final String PARTNER_SPN_OVERRIDE_PATH ="etc/spn-conf.xml";
     static final String OEM_SPN_OVERRIDE_PATH = "telephony/spn-conf.xml";
 
-    public SpnOverride () {
+    SpnOverride () {
         mCarrierSpnMap = new HashMap<String, String>();
         loadSpnOverrides();
     }
 
-    public boolean containsCarrier(String carrier) {
+    boolean containsCarrier(String carrier) {
         return mCarrierSpnMap.containsKey(carrier);
     }
 
-    public String getSpn(String carrier) {
+    String getSpn(String carrier) {
         return mCarrierSpnMap.get(carrier);
     }
 
