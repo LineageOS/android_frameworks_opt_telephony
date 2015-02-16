@@ -256,7 +256,10 @@ public class ImsPhoneCall extends Call {
     }
 
     /* package */ void
-    merge(ImsPhoneCall that, State state) {
+    merge(ImsPhoneCall that, State state, long oldConnectTime) {
+        if (getFirstConnection() != null) {
+           getFirstConnection().setConnectTime(oldConnectTime);
+        }
         ImsPhoneConnection[] cc = that.mConnections.toArray(
                 new ImsPhoneConnection[that.mConnections.size()]);
         for (ImsPhoneConnection c : cc) {
