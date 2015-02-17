@@ -41,7 +41,7 @@ public class BlacklistUtils {
     private static final boolean DEBUG = false;
 
     private static final String CM_BLACKLIST_FEATURE_PRESENT =
-            "ro.telphony.cm_blklst_on";
+            "ro.telephony.cm_blklst_on";
 
     // Blacklist matching type
     public final static int MATCH_NONE = 0;
