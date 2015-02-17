@@ -64,7 +64,6 @@ import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.uicc.IccRefreshResponse;
 import com.android.internal.telephony.uicc.IccUtils;
-import com.android.internal.telephony.uicc.SpnOverride;
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -3608,9 +3607,6 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         String strings[] = (String [])responseStrings(p);
         ArrayList<OperatorInfo> ret;
 
-        // FIXME: What is this really doing
-        SpnOverride spnOverride = new SpnOverride();
-
         if (strings.length % 4 != 0) {
             throw new RuntimeException(
                 "RIL_REQUEST_QUERY_AVAILABLE_NETWORKS: invalid response. Got "
@@ -3620,15 +3616,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         ret = new ArrayList<OperatorInfo>(strings.length / 4);
 
         for (int i = 0 ; i < strings.length ; i += 4) {
-            String strOperatorLong = null;
-            if (spnOverride.containsCarrier(strings[i+2])) {
-                strOperatorLong = spnOverride.getSpn(strings[i+2]);
-            } else {
-                strOperatorLong = strings[i+0];
-            }
             ret.add (
                 new OperatorInfo(
-                    strOperatorLong,
+                    strings[i+0],
                     strings[i+1],
                     strings[i+2],
                     strings[i+3]));

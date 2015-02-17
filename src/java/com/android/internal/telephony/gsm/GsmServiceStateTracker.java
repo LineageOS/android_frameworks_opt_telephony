@@ -73,7 +73,6 @@ import com.android.internal.telephony.dataconnection.DcTrackerBase;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
-import com.android.internal.telephony.uicc.SpnOverride;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
@@ -98,7 +97,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     private GSMPhone mPhone;
     GsmCellLocation mCellLoc;
     GsmCellLocation mNewCellLoc;
-    SpnOverride mSpnOverride;
     int mPreferredNetworkType;
 
     private int mMaxDataCalls = 1;
@@ -226,7 +224,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         mPhone = phone;
         mCellLoc = new GsmCellLocation();
         mNewCellLoc = new GsmCellLocation();
-        mSpnOverride = new SpnOverride();
 
         PowerManager powerManager =
                 (PowerManager)phone.getContext().getSystemService(Context.POWER_SERVICE);
@@ -816,16 +813,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                             log("EVENT_POLL_STATE_OPERATOR: use brandOverride=" + brandOverride);
                             mNewSS.setOperatorName(brandOverride, brandOverride, opNames[2]);
                         } else {
-                            String strOperatorLong = null;
-                            if (mSpnOverride.containsCarrier(opNames[2])) {
-                                log("EVENT_POLL_STATE_OPERATOR: use spnOverride");
-                                strOperatorLong = mSpnOverride.getSpn(opNames[2]);
-                            } else {
-                                log("EVENT_POLL_STATE_OPERATOR: use value from ril");
-                                strOperatorLong = opNames[0];
-                            }
-                            log("EVENT_POLL_STATE_OPERATOR: " + strOperatorLong);
-                            mNewSS.setOperatorName (strOperatorLong, opNames[1], opNames[2]);
+                            mNewSS.setOperatorName (opNames[0], opNames[1], opNames[2]);
                         }
                     }
                     break;
