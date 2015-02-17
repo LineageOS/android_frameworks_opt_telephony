@@ -1923,6 +1923,11 @@ public interface Phone {
     public boolean isRadioAvailable();
 
     /**
+     * Is Radio turned on
+     */
+    public boolean isRadioOn();
+
+    /**
      * shutdown Radio gracefully
      */
     public void shutdownRadio();

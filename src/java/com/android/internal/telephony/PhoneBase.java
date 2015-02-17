@@ -2100,6 +2100,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
+    public boolean isRadioOn() {
+        return mCi.getRadioState().isOn();
+    }
+
+    @Override
     public void shutdownRadio() {
         getServiceStateTracker().requestShutdown();
     }

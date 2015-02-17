@@ -1470,6 +1470,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public boolean isRadioOn() {
+        return mCommandsInterface.getRadioState().isOn();
+    }
+
+    @Override
     public void shutdownRadio() {
         mActivePhone.shutdownRadio();
     }
