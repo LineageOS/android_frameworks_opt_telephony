@@ -16,6 +16,24 @@
       "revId": "9bc545c78d5c8230ce999b16cf58736c0de18c98",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bacf61ea_9e124961",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccTlvData.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 5678
+      },
+      "writtenOn": "2015-02-18T23:28:17Z",
+      "side": 1,
+      "message": "Yeah, should be added for consistency",
+      "parentUuid": "bacf61ea_1e9499e0",
+      "revId": "9bc545c78d5c8230ce999b16cf58736c0de18c98",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
