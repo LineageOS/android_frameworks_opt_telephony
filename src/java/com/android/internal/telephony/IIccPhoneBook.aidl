@@ -119,7 +119,7 @@ interface IIccPhoneBook {
     boolean updateAdnRecordsWithContentValuesInEfBySearch(int efid,
             in ContentValues values, String pin2);
 
-    boolean updateAdnRecordsWithContentValuesInEfBySearchUsingSubId(long subId,
+    boolean updateAdnRecordsWithContentValuesInEfBySearchUsingSubId(int subId,
             int efid, in ContentValues values, String pin2);
 
     /**
@@ -190,7 +190,7 @@ interface IIccPhoneBook {
      * @return the adn count of sim card
      */
     int getAdnCount();
-    int getAdnCountUsingSubId(long subId);
+    int getAdnCountUsingSubId(int subId);
 
     /**
      * Get the anr count of sim card
@@ -198,7 +198,7 @@ interface IIccPhoneBook {
      * @return the anr count of sim card
      */
     int getAnrCount();
-    int getAnrCountUsingSubId(long subId);
+    int getAnrCountUsingSubId(int subId);
 
     /**
      * Get the email count of sim card
@@ -206,7 +206,7 @@ interface IIccPhoneBook {
      * @return the email count of sim card
      */
     int getEmailCount();
-    int getEmailCountUsingSubId(long subId);
+    int getEmailCountUsingSubId(int subId);
 
     /**
      * Get the spare anr count of sim card
@@ -214,7 +214,7 @@ interface IIccPhoneBook {
      * @return the spare anr count of sim card
      */
     int getSpareAnrCount();
-    int getSpareAnrCountUsingSubId(long subId);
+    int getSpareAnrCountUsingSubId(int subId);
 
     /**
      * Get the spare email count of sim card
@@ -222,5 +222,5 @@ interface IIccPhoneBook {
      * @return the spare email count of sim card
      */
     int getSpareEmailCount();
-    int getSpareEmailCountUsingSubId(long subId);
+    int getSpareEmailCountUsingSubId(int subId);
 }

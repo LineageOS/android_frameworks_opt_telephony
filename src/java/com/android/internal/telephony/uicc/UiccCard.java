@@ -413,12 +413,6 @@ public class UiccCard {
         }
     }
 
-    public int getSlotId() {
-        synchronized (mLock) {
-            return mSlotId;
-        }
-    }
-
     public UiccCardApplication getApplication(int family) {
         synchronized (mLock) {
             int index = IccCardStatus.CARD_MAX_APPS;

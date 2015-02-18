@@ -118,7 +118,7 @@ public final class CallManager {
 
     // Holds the current active SUB, all actions would be
     // taken on this sub.
-    private static long mActiveSub = SubscriptionManager.INVALID_SUB_ID;
+    private static int mActiveSub = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     // state registrants
     protected final RegistrantList mPreciseCallStateRegistrants
@@ -1788,7 +1788,7 @@ public final class CallManager {
         mActiveSubChangeRegistrants.remove(h);
     }
 
-    public void setActiveSubscription(long subscription) {
+    public void setActiveSubscription(int subscription) {
         Rlog.d(LOG_TAG, "setActiveSubscription existing:" + mActiveSub + "new = " + subscription);
         mActiveSub = subscription;
         mActiveSubChangeRegistrants.notifyRegistrants(new AsyncResult (null, mActiveSub, null));

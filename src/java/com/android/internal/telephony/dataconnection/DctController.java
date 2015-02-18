@@ -32,6 +32,8 @@ import android.os.AsyncResult;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
+import android.os.Registrant;
+import android.os.RegistrantList;
 import android.provider.Settings;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
@@ -47,6 +49,7 @@ import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.RequestInfo;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.telephony.dataconnection.DdsScheduler;
+import com.android.internal.telephony.TelephonyIntents;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -103,8 +106,6 @@ public class DctController extends Handler {
     private NetworkFactory[] mNetworkFactory;
     private NetworkCapabilities[] mNetworkFilter;
 
-    private SubscriptionController mSubController = SubscriptionController.getInstance();
-
     private SubscriptionManager mSubMgr;
 
     private BroadcastReceiver defaultDdsBroadcastReceiver = new BroadcastReceiver() {
@@ -126,17 +127,17 @@ public class DctController extends Handler {
     //FIXME L_MR1 internal
     private void processPendingNetworkRequests(NetworkRequest n) {
 	    int phoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
-        ((TelephonyNetworkFactory[])mNetworkFactory)[phoneId].processPendingNetworkRequests(n);
+        ((TelephonyNetworkFactory)mNetworkFactory[phoneId]).processPendingNetworkRequests(n);
     }
 
     private void updateSubIdAndCapability() {
         int phoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
-        ((TelephonyNetworkFactory[])mNetworkFactory)[phoneId].updateNetworkCapability();
+        ((TelephonyNetworkFactory)mNetworkFactory[phoneId]).updateNetworkCapability();
     }
 
     private void releaseAllNetworkRequests() {
         int phoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
-        ((TelephonyNetworkFactory[])mNetworkFactory)[phoneId].releaseAllNetworkRequests();
+        ((TelephonyNetworkFactory)mNetworkFactory[phoneId]).releaseAllNetworkRequests();
     }
 
     private OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
@@ -155,8 +156,8 @@ public class DctController extends Handler {
         }
     };
 
-    boolean isActiveSubId(long subId) {
-        long[] activeSubs = mSubController.getActiveSubIdList();
+    boolean isActiveSubId(int subId) {
+        int[] activeSubs = mSubController.getActiveSubIdList();
         for (int i = 0; i < activeSubs.length; i++) {
             if (subId == activeSubs[i]) {
                 return true;
@@ -650,7 +651,7 @@ public class DctController extends Handler {
 
     private void onSettingsChange() {
         //Sub Selection
-        long dataSubId = mSubController.getDefaultDataSubId();
+        int dataSubId = mSubController.getDefaultDataSubId();
 
         int activePhoneId = -1;
         for (int i=0; i<mDcSwitchStateMachine.length; i++) {
@@ -777,8 +778,8 @@ public class DctController extends Handler {
 
     public void setDefaultDataSubId(int reqSubId) {
         int reqPhoneId = mSubController.getPhoneId(reqSubId);
-        long currentDds = mSubController.getCurrentDds();
-        long defaultDds = mSubController.getDefaultDataSubId();
+        int currentDds = mSubController.getCurrentDds();
+        int defaultDds = mSubController.getDefaultDataSubId();
         SwitchInfo s = new SwitchInfo(new Integer(reqPhoneId), true);
         int currentDdsPhoneId = mSubController.getPhoneId(currentDds);
         if (currentDdsPhoneId < 0 || currentDdsPhoneId >= mPhoneNum) {
@@ -822,7 +823,7 @@ public class DctController extends Handler {
     public void doPsAttach(NetworkRequest n) {
         Rlog.d(LOG_TAG, "doPsAttach for :" + n);
 
-        long subId = mSubController.getSubIdFromNetworkRequest(n);
+        int subId = mSubController.getSubIdFromNetworkRequest(n);
 
         int phoneId = mSubController.getPhoneId(subId);
         Phone phone = mPhones[phoneId].getActivePhone();
@@ -845,8 +846,8 @@ public class DctController extends Handler {
     // Ignore if thats the case.
     //
     public void doPsDetach() {
-        long currentDds = mSubController.getCurrentDds();
-        long defaultDds = mSubController.getDefaultDataSubId();
+        int currentDds = mSubController.getCurrentDds();
+        int defaultDds = mSubController.getDefaultDataSubId();
 
         if (currentDds == defaultDds) {
             Rlog.d(LOG_TAG, "PS DETACH on DDS sub is not allowed.");
@@ -945,7 +946,7 @@ public class DctController extends Handler {
                     NetworkRequest n = (NetworkRequest)msg.obj;
 
                     Rlog.d(TAG, "start the DDS switch for req " + n);
-                    long subId = mSubController.getSubIdFromNetworkRequest(n);
+                    int subId = mSubController.getSubIdFromNetworkRequest(n);
 
                     if(subId == mSubController.getCurrentDds()) {
                         Rlog.d(TAG, "No change in DDS, respond back");

@@ -873,9 +873,11 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             if (!isSidsAllZeros() && isHomeSid(mNewSS.getSystemId())) {
                 namMatch = true;
             }
+            /*  FIXME LMR1_INTERNAL
             mCdmaRoaming =
                     (mCdmaRoaming || mDataRoaming) &&
                             !isRoamIndForHomeSystem(String.valueOf(mRoamingIndicator));
+            */
             // Setting SS Roaming (general)
             if (mIsSubscriptionFromRuim) {
                 mNewSS.setRoaming(isRoamingBetweenOperators(mCdmaRoaming, mNewSS));

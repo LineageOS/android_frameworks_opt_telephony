@@ -21,6 +21,7 @@ package com.android.internal.telephony;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
 import java.lang.NullPointerException;
@@ -94,7 +95,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     public String getSubscriberId() {
-        return getSubscriberIdForSubscriber(getDefaultSubId());
+        return getSubscriberIdForSubscriber(getDefaultSubscription());
     }
 
     public String getSubscriberIdForSubscriber(int subId) {
@@ -112,7 +113,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
      * Retrieves the serial number of the ICC, if applicable.
      */
     public String getIccSerialNumber() {
-        return getIccSerialNumberForSubscriber(getDefaultSubId());
+        return getIccSerialNumberForSubscriber(getDefaultSubscription());
     }
 
     public String getIccSerialNumberForSubscriber(int subId) {
@@ -127,7 +128,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     public String getLine1Number() {
-        return getLine1NumberForSubscriber(getDefaultSubId());
+        return getLine1NumberForSubscriber(getDefaultSubscription());
     }
 
     public String getLine1NumberForSubscriber(int subId) {
@@ -142,7 +143,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     public String getLine1AlphaTag() {
-        return getLine1AlphaTagForSubscriber(getDefaultSubId());
+        return getLine1AlphaTagForSubscriber(getDefaultSubscription());
     }
 
     public String getLine1AlphaTagForSubscriber(int subId) {
@@ -157,7 +158,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     public String getMsisdn() {
-        return getMsisdnForSubscriber(getDefaultSubId());
+        return getMsisdnForSubscriber(getDefaultSubscription());
     }
 
     public String getMsisdnForSubscriber(int subId) {
@@ -243,43 +244,43 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         return  SubscriptionController.getInstance().getDefaultSubId();
     }
 
-    private long getDefaultVoiceSubId() {
+    private int getDefaultVoiceSubId() {
         return  SubscriptionController.getInstance().getDefaultVoiceSubId();
     }
 
-    private long getFirstPhoneSubId() {
+    private int getFirstPhoneSubId() {
         // get subId from first Phone/slot Id(i.e 0)
-        long[] subId = SubscriptionController.getInstance().getSubId(PhoneConstants.PHONE_ID1);
+        int[] subId = SubscriptionController.getInstance().getSubId(PhoneConstants.PHONE_ID1);
         return  subId[0];
     }
 
     public String getIsimImpi() {
-        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(getDefaultSubId());
+        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(getDefaultSubscription());
         return phoneSubInfoProxy.getIsimImpi();
     }
 
     public String getIsimDomain() {
-        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(getDefaultSubId());
+        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(getDefaultSubscription());
         return phoneSubInfoProxy.getIsimDomain();
     }
 
     public String[] getIsimImpu() {
-        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(getDefaultSubId());
+        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(getDefaultSubscription());
         return phoneSubInfoProxy.getIsimImpu();
     }
 
     public String getIsimIst() throws RemoteException {
-        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(getDefaultSubId());
+        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(getDefaultSubscription());
         return phoneSubInfoProxy.getIsimIst();
     }
 
     public String[] getIsimPcscf() throws RemoteException {
-        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(getDefaultSubId());
+        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(getDefaultSubscription());
         return phoneSubInfoProxy.getIsimPcscf();
     }
 
     public String getIsimChallengeResponse(String nonce) throws RemoteException {
-        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(getDefaultSubId());
+        PhoneSubInfoProxy phoneSubInfoProxy = getPhoneSubInfoProxy(getDefaultSubscription());
         return phoneSubInfoProxy.getIsimChallengeResponse(nonce);
     }
 
@@ -290,7 +291,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
      public String getGroupIdLevel1() {
-         return getGroupIdLevel1ForSubscriber(getDefaultSubId());
+         return getGroupIdLevel1ForSubscriber(getDefaultSubscription());
      }
 
      public String getGroupIdLevel1ForSubscriber(int subId) {

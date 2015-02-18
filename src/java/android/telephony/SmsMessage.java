@@ -266,7 +266,7 @@ public class SmsMessage {
      *
      * @hide
      */
-    public static SmsMessage createFromEfRecord(int index, byte[] data, long subId) {
+    public static SmsMessage createFromEfRecord(int index, byte[] data, int subId) {
         SmsMessageBase wrappedMessage;
 
         if (isCdmaVoice(subId)) {
@@ -502,7 +502,7 @@ public class SmsMessage {
      * @hide
      */
     public static SubmitPdu getSubmitPdu(String scAddress,
-            String destinationAddress, String message, boolean statusReportRequested, long subId) {
+            String destinationAddress, String message, boolean statusReportRequested, int subId) {
         SubmitPduBase spb;
         if (useCdmaFormatForMoSms(subId)) {
             spb = com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(scAddress,
@@ -797,7 +797,7 @@ public class SmsMessage {
      * @return true if Cdma format should be used for MO SMS, false otherwise.
      */
     private static boolean useCdmaFormatForMoSms() {
-        SmsManager smsManager = SmsManager.getSmsManagerForSubscriber(
+        SmsManager smsManager = SmsManager.getSmsManagerForSubscriptionId(
                 SubscriptionManager.getDefaultSmsSubId());
         if (!smsManager.isImsSmsSupported()) {
             // use Voice technology to determine SMS format.
@@ -816,8 +816,8 @@ public class SmsMessage {
      *
      * @return true if Cdma format should be used for MO SMS, false otherwise.
      */
-    private static boolean useCdmaFormatForMoSms(long subId) {
-        SmsManager smsManager = SmsManager.getSmsManagerForSubscriber(subId);
+    private static boolean useCdmaFormatForMoSms(int subId) {
+        SmsManager smsManager = SmsManager.getSmsManagerForSubscriptionId(subId);
         if (!smsManager.isImsSmsSupported()) {
             // use Voice technology to determine SMS format.
             return isCdmaVoice(subId);
@@ -842,7 +842,7 @@ public class SmsMessage {
      * @param subId Subscription Id of the SMS
      * @return true if current phone type is cdma, false otherwise.
      */
-    private static boolean isCdmaVoice(long subId) {
+    private static boolean isCdmaVoice(int subId) {
         int activePhone = TelephonyManager.getDefault().getCurrentPhoneType(subId);
         return (PHONE_TYPE_CDMA == activePhone);
     }

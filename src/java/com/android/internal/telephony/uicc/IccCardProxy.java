@@ -245,7 +245,6 @@ public class IccCardProxy extends Handler implements IccCard {
                 if (DBG) {
                     log("updateQuietMode: cdmaSource=" + cdmaSource
                             + " mCurrentAppType=" + mCurrentAppType
-                            + " isLteOnCdmaMode=" + isLteOnCdmaMode
                             + " newQuietMode=" + newQuietMode);
                 }
             }

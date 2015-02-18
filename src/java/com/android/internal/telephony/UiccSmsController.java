@@ -130,7 +130,7 @@ public class UiccSmsController extends ISms.Stub {
                  scAddr, destPort, origPort, data, sentIntent, deliveryIntent);
     }
 
-    public void sendDataWithOrigPortUsingSubscriber(long subId, String callingPackage,
+    public void sendDataWithOrigPortUsingSubscriber(int subId, String callingPackage,
             String destAddr, String scAddr, int destPort, int origPort, byte[] data,
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
@@ -161,7 +161,7 @@ public class UiccSmsController extends ISms.Stub {
         }
     }
 
-    public void sendTextWithOptionsUsingSubscriber(long subId, String callingPackage,
+    public void sendTextWithOptionsUsingSubscriber(int subId, String callingPackage,
             String destAddr, String scAddr, String parts, PendingIntent sentIntents,
             PendingIntent deliveryIntents, int priority, boolean isExpectMore,
             int validityPeriod) {
@@ -195,7 +195,7 @@ public class UiccSmsController extends ISms.Stub {
         }
     }
 
-    public void sendMultipartTextWithOptionsUsingSubscriber(long subId, String callingPackage,
+    public void sendMultipartTextWithOptionsUsingSubscriber(int subId, String callingPackage,
             String destAddr, String scAddr, List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents, int priority, boolean isExpectMore,
             int validityPeriod) {
@@ -364,7 +364,7 @@ public class UiccSmsController extends ISms.Stub {
         }
     }
 
-    private long getDefaultSmsSubId() {
+    private int getDefaultSmsSubId() {
         return  SubscriptionController.getInstance().getDefaultSmsSubId();
     }
 
@@ -410,7 +410,7 @@ public class UiccSmsController extends ISms.Stub {
     /**
      * Get the capacity count of sms on Icc card.
      **/
-    public int getSmsCapacityOnIccForSubscriber(long subId)
+    public int getSmsCapacityOnIccForSubscriber(int subId)
             throws android.os.RemoteException {
        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
 
@@ -422,7 +422,7 @@ public class UiccSmsController extends ISms.Stub {
         }
     }
 
-    public String getSmscAddressFromIccForSubscriber(long subId)
+    public String getSmscAddressFromIccForSubscriber(int subId)
             throws RemoteException {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
 
@@ -434,7 +434,7 @@ public class UiccSmsController extends ISms.Stub {
         }
     }
 
-    public boolean setSmscAddressToIccForSubscriber(long subId, String scAdress)
+    public boolean setSmscAddressToIccForSubscriber(int subId, String scAdress)
             throws RemoteException {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
 

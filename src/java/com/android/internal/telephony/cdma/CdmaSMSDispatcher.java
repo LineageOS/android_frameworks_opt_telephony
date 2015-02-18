@@ -202,7 +202,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                 message, submitPdu);
         return getSmsTracker(map, sentIntent, deliveryIntent,
                 getFormat(), unsentPartCount, anyPartFailed, messageUri, smsHeader,
-                (!lastPart || isExpectMore), validityPeriod, fullMessageText);
+                (!lastPart || isExpectMore), fullMessageText, validityPeriod);
     }
 
     @Override

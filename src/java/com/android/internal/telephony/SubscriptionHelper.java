@@ -131,7 +131,7 @@ class SubscriptionHelper extends Handler {
     private void updateNwModesInSubIdTable(boolean override) {
         SubscriptionController subCtrlr = SubscriptionController.getInstance();
         for (int i=0; i < sNumPhones; i++ ) {
-            long[] subIdList = subCtrlr.getSubId(i);
+            int[] subIdList = subCtrlr.getSubId(i);
             if (subIdList != null && subIdList[0] > 0) {
                 int nwModeInDb;
                 try {
@@ -192,7 +192,7 @@ class SubscriptionHelper extends Handler {
                 logd(" Sim not inserted in slot [" + slotId + "] simStatus= " + simStatus[slotId]);
                 continue;
             }
-            long[] subId = subCtrlr.getSubId(slotId);
+            int[] subId = subCtrlr.getSubId(slotId);
             int subState = subCtrlr.getSubState(subId[0]);
 
             logd("setUicc for [" + slotId + "] = " + subState + "subId = " + subId[0] +
@@ -258,7 +258,7 @@ class SubscriptionHelper extends Handler {
         AsyncResult ar = (AsyncResult)msg.obj;
         int slotId = msg.arg1;
         int newSubState = msg.arg2;
-        long[] subId = subCtrlr.getSubIdUsingSlotId(slotId);
+        int[] subId = subCtrlr.getSubIdUsingSlotId(slotId);
 
         if (ar.exception != null) {
             loge("Exception in SET_UICC_SUBSCRIPTION, slotId = " + slotId
@@ -303,7 +303,7 @@ class SubscriptionHelper extends Handler {
     }
 
     private void broadcastSetUiccResult(int slotId, int newSubState, int result) {
-        long[] subId = SubscriptionController.getInstance().getSubIdUsingSlotId(slotId);
+        int[] subId = SubscriptionController.getInstance().getSubIdUsingSlotId(slotId);
         Intent intent = new Intent(TelephonyIntents.ACTION_SUBSCRIPTION_SET_UICC_RESULT);
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, slotId, subId[0]);

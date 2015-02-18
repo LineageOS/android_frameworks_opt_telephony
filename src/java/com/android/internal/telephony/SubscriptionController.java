@@ -38,6 +38,7 @@ import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.net.NetworkRequest;
 import android.preference.PreferenceManager;
+import android.provider.Settings.SettingNotFoundException;
 
 import com.android.internal.telephony.dataconnection.DctController;
 import com.android.internal.telephony.dataconnection.DdsScheduler;
@@ -143,7 +144,7 @@ public class SubscriptionController extends ISub.Stub {
 
     // FIXME: Does not allow for multiple subs in a slot and change to SparseArray
     private static HashMap<Integer, Integer> mSlotIdxToSubId = new HashMap<Integer, Integer>();
-    private static int mDefaultVoiceSubId = SubscriptionManager.DEFAULT_SUB_ID;
+    private static int mDefaultVoiceSubId = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
     private static int mDefaultPhoneId = 0;
 
     private static final int EVENT_WRITE_MSISDN_DONE = 1;
@@ -173,16 +174,14 @@ public class SubscriptionController extends ISub.Stub {
     private DataConnectionHandler mDataConnectionHandler;
     private  DctController mDctController;
 
-    private HashMap<Long, OnDemandDdsLockNotifier> mOnDemandDdsLockNotificationRegistrants =
-        new HashMap<Long, OnDemandDdsLockNotifier>();
+    private HashMap<Integer, OnDemandDdsLockNotifier> mOnDemandDdsLockNotificationRegistrants =
+        new HashMap<Integer, OnDemandDdsLockNotifier>();
 
     private DdsScheduler mScheduler;
     private DdsSchedulerAc mSchedulerAc;
 
-    // Dummy subId is used when no SIMs present on device
-    // with MSIM configuration and this is corresponds
-    // to phoneId 0.
-    private static final int DUMMY_SUB_ID = -1;
+    // Dummy subIds are used when no SIMs present on device
+    private static final int DUMMY_SUB_ID_BASE = 5000;
 
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -263,15 +262,15 @@ public class SubscriptionController extends ISub.Stub {
 
     }
 
-    public long getSubIdFromNetworkRequest(NetworkRequest n) {
-        long subId;
+    public int getSubIdFromNetworkRequest(NetworkRequest n) {
+        int subId;
         if (n == null) {
             return getDefaultDataSubId();
         }
 
         String str = n.networkCapabilities.getNetworkSpecifier();
         try {
-            subId = Long.parseLong(str);
+            subId = Integer.parseInt(str);
         } catch(NumberFormatException e) {
             loge("Exception e = " + e);
             subId = getDefaultDataSubId();
@@ -764,7 +763,7 @@ public class SubscriptionController extends ISub.Stub {
                     value.put(SubscriptionManager.SIM_SLOT_INDEX, slotId);
                 }
 
-                if (nameSource != SubscriptionManager.USER_INPUT) {
+                if (nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
                     value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
                 }
 
@@ -775,7 +774,7 @@ public class SubscriptionController extends ISub.Stub {
                 if (value.size() > 0) {
                     resolver.update(SubscriptionManager.CONTENT_URI, value,
                             SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID +
-                            "=" + Long.toString(subId), null);
+                            "=" + Integer.toString(subId), null);
                 }
 
                 if (DBG) logdl("[addSubInfoRecord] Record already exists");
@@ -863,7 +862,8 @@ public class SubscriptionController extends ISub.Stub {
         value.put(SubscriptionManager.CARRIER_NAME, text);
 
         int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
+                Integer.toString(subId), null);
         notifySubscriptionInfoChanged();
 
         return result;
@@ -886,7 +886,8 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logd("[setIconTint]- tint:" + tint + " set");
 
         int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
+                Integer.toString(subId), null);
         notifySubscriptionInfoChanged();
 
         return result;
@@ -936,7 +937,8 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logd("[setDisplayName]- mDisplayName:" + nameToSet + " set");
 
         int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
+                + Integer.toString(subId), null);
         notifySubscriptionInfoChanged();
 
         return result;
@@ -968,7 +970,7 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logd("[setDisplayNumber]- number:" + number + " set");
 
         Phone phone = sProxyPhones[phoneId];
-        String alphaTag = TelephonyManager.getDefault().getLine1AlphaTag(subId);
+        String alphaTag = TelephonyManager.getDefault().getLine1AlphaTagForSubscriber(subId);
 
         synchronized(mLock) {
             mSuccess = false;
@@ -986,7 +988,7 @@ public class SubscriptionController extends ISub.Stub {
         if (mSuccess) {
             result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                     SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                        + "=" + Long.toString(subId), null);
+                        + "=" + Integer.toString(subId), null);
             if (DBG) logd("[setDisplayNumber]- update result :" + result);
             notifySubscriptionInfoChanged();
         }
@@ -1016,7 +1018,8 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logd("[setDataRoaming]- roaming:" + roaming + " set");
 
         int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
+                Integer.toString(subId), null);
         notifySubscriptionInfoChanged();
 
         return result;
@@ -1043,7 +1046,8 @@ public class SubscriptionController extends ISub.Stub {
         value.put(SubscriptionManager.MNC, mnc);
 
         int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
+                Integer.toString(subId), null);
         notifySubscriptionInfoChanged();
 
         return result;
@@ -1059,6 +1063,11 @@ public class SubscriptionController extends ISub.Stub {
         if (!SubscriptionManager.isValidSubId(subId)) {
             if (DBG) logd("[getSlotId]- subId invalid");
             return SubscriptionManager.INVALID_SIM_SLOT_INDEX;
+        }
+
+        if (subId >= DUMMY_SUB_ID_BASE) {
+            logd("getPhoneId,  received summy subId " + subId);
+            return subId - DUMMY_SUB_ID_BASE;
         }
 
         int size = mSlotIdxToSubId.size();
@@ -1161,13 +1170,9 @@ public class SubscriptionController extends ISub.Stub {
             return SubscriptionManager.INVALID_PHONE_INDEX;
         }
 
-        //FIXME remove this
-        if (subId == -1) {
-            logd("[getPhoneId]- subId == -1, return dummy data");
-            return 0;
-        } else if (subId == -2) {
-            logd("[getPhoneId]- subId == -2, return dummy data");
-            return 1;
+        if (subId >= DUMMY_SUB_ID_BASE) {
+            logd("getPhoneId,  received summy subId " + subId);
+            return subId - DUMMY_SUB_ID_BASE;
         }
 
         int size = mSlotIdxToSubId.size();
@@ -1205,7 +1210,7 @@ public class SubscriptionController extends ISub.Stub {
         if (numSubs > 0) {
             int[] dummyValues = new int[numSubs];
             for (int i = 0; i < numSubs; i++) {
-                dummyValues[i] = SubscriptionManager.DUMMY_SUBSCRIPTION_ID_BASE - slotIdx;
+                dummyValues[i] = DUMMY_SUB_ID_BASE + slotIdx;
             }
             if (DBG) {
                 logd("getDummySubIds: slotIdx=" + slotIdx
@@ -1370,7 +1375,6 @@ public class SubscriptionController extends ISub.Stub {
         return subId;
     }
 
-    @Override
     public int getCurrentDds() {
         return mScheduler.getCurrentDds();
     }
@@ -1431,7 +1435,6 @@ public class SubscriptionController extends ISub.Stub {
         Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED);
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
         intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, getDefaultDataSubId());
-        intent.putExtra(TelephonyIntents.EXTRA_RESULT, status);
         mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
     }
 
@@ -1481,7 +1484,7 @@ public class SubscriptionController extends ISub.Stub {
             switch (msg.what) {
                 case EVENT_SET_DEFAULT_DATA_DONE:{
                     AsyncResult ar = (AsyncResult) msg.obj;
-                    logd("EVENT_SET_DEFAULT_DATA_DONE subId:" + (Long)ar.result);
+                    logd("EVENT_SET_DEFAULT_DATA_DONE subId:" + (Integer)ar.result);
                     updateDataSubId(ar);
                     break;
                 }
@@ -1623,7 +1626,7 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public void activateSubId(long subId) {
+    public void activateSubId(int subId) {
         if (getSubState(subId) == SubscriptionManager.ACTIVE) {
             logd("activateSubId: subscription already active, subId = " + subId);
             return;
@@ -1634,7 +1637,7 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public void deactivateSubId(long subId) {
+    public void deactivateSubId(int subId) {
         if (getSubState(subId) == SubscriptionManager.INACTIVE) {
             logd("activateSubId: subscription already deactivated, subId = " + subId);
             return;
@@ -1644,16 +1647,16 @@ public class SubscriptionController extends ISub.Stub {
         SubscriptionHelper.getInstance().setUiccSubscription(slotId, SubscriptionManager.INACTIVE);
     }
 
-    public void setNwMode(long subId, int nwMode) {
+    public void setNwMode(int subId, int nwMode) {
         logd("setNwMode, nwMode: " + nwMode + " subId: " + subId);
         ContentValues value = new ContentValues(1);
         value.put(SubscriptionManager.NETWORK_MODE, nwMode);
         mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
-                value, BaseColumns._ID + "=" + Long.toString(subId), null);
+                value, BaseColumns._ID + "=" + Integer.toString(subId), null);
     }
 
-    public int getNwMode(long subId) {
-        SubInfoRecord subInfo = getSubInfoForSubscriber(subId);
+    public int getNwMode(int subId) {
+        SubscriptionInfo subInfo = getActiveSubscriptionInfo(subId);
         if (subInfo != null)  {
             return subInfo.mNwMode;
         } else {
@@ -1663,29 +1666,36 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public int setSubState(long subId, int subStatus) {
+    public int setSubState(int subId, int subStatus) {
         int result = 0;
         logd("setSubState, subStatus: " + subStatus + " subId: " + subId);
         if (ModemStackController.getInstance().isStackReady()) {
             ContentValues value = new ContentValues(1);
             value.put(SubscriptionManager.SUB_STATE, subStatus);
             result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
-                    value, BaseColumns._ID + "=" + Long.toString(subId), null);
+                    value, BaseColumns._ID + "=" + Integer.toString(subId), null);
 
         }
-        broadcastSimInfoContentChanged(subId,
-                SubscriptionManager.SUB_STATE, subStatus, SubscriptionManager.DEFAULT_STRING_VALUE);
+        Intent intent = new Intent(TelephonyIntents.ACTION_SUBINFO_CONTENT_CHANGE);
+        intent.putExtra(BaseColumns._ID, subId);
+        intent.putExtra(TelephonyIntents.EXTRA_COLUMN_NAME, SubscriptionManager.SUB_STATE);
+        intent.putExtra(TelephonyIntents.EXTRA_INT_CONTENT, subStatus);
+        intent.putExtra(TelephonyIntents.EXTRA_STRING_CONTENT, "None");
+        mContext.sendBroadcast(intent);
+        intent = new Intent(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED);
+        mContext.sendBroadcast(intent);
+
         return result;
     }
 
     @Override
-    public int getSubState(long subId) {
-        SubInfoRecord subInfo = getSubInfoForSubscriber(subId);
+    public int getSubState(int subId) {
+        SubscriptionInfo subInfo = getActiveSubscriptionInfo(subId);
         int subStatus = SubscriptionManager.INACTIVE;
 
         // Consider the subStatus from subInfo record only if the
         //  record is associated with a valid slot Id.
-        if ((subInfo != null) && (subInfo.slotId >= 0)) {
+        if ((subInfo != null) && (subInfo.getSimSlotIndex() >= 0)) {
             subStatus = subInfo.mStatus;
         }
         return subStatus;
@@ -1694,26 +1704,27 @@ public class SubscriptionController extends ISub.Stub {
     /* setDds flag is used to trigger DDS switch request during
       device powerUp and when flex map performed */
     public void updateUserPrefs(boolean setDds) {
-        List<SubInfoRecord> subInfoList = getActiveSubInfoList();
+        List<SubscriptionInfo> subInfoList = getActiveSubscriptionInfoList();
         int mActCount = 0;
-        SubInfoRecord mNextActivatedSub = null;
+        SubscriptionInfo mNextActivatedSub = null;
 
         if (subInfoList == null) {
+            int[] dummySubId = getDummySubIds(mDefaultPhoneId);
             logd("updateUserPrefs: subscription are not avaiable dds = " + getDefaultDataSubId()
                      + " voice = " + getDefaultVoiceSubId() + " sms = " + getDefaultSmsSubId() +
                      " setDDs = " + setDds);
             // If no SIM cards present on device, set dummy subId
             // as data/sms/voice preferred subId.
-            setDefaultSubId(DUMMY_SUB_ID);
-            setDefaultVoiceSubId(DUMMY_SUB_ID);
-            setDefaultSmsSubId(DUMMY_SUB_ID);
-            setDataSubId(DUMMY_SUB_ID);
+            setDefaultSubId(dummySubId[0]);
+            setDefaultVoiceSubId(dummySubId[0]);
+            setDefaultSmsSubId(dummySubId[0]);
+            setDataSubId(dummySubId[0]);
             return;
         }
 
         //Get num of activated Subs and next available activated sub info.
-        for (SubInfoRecord subInfo : subInfoList) {
-            if (getSubState(subInfo.subId) == SubscriptionManager.ACTIVE) {
+        for (SubscriptionInfo subInfo : subInfoList) {
+            if (getSubState(subInfo.getSubscriptionId()) == SubscriptionManager.ACTIVE) {
                 mActCount++;
                 if (mNextActivatedSub == null) mNextActivatedSub = subInfo;
             }
@@ -1733,25 +1744,26 @@ public class SubscriptionController extends ISub.Stub {
 
         //if current default sub is not active, fallback to next active sub.
         if (getSubState(getDefaultSubId()) == SubscriptionManager.INACTIVE) {
-            setDefaultSubId(mNextActivatedSub.subId);
+            setDefaultSubId(mNextActivatedSub.getSubscriptionId());
         }
 
-        long ddsSubId = getDefaultDataSubId();
+        int ddsSubId = getDefaultDataSubId();
         int ddsSubState = getSubState(ddsSubId);
         //if current data sub is not active, fallback to next active sub.
         if (setDds || (ddsSubState == SubscriptionManager.INACTIVE)) {
-            if (ddsSubState == SubscriptionManager.INACTIVE) ddsSubId = mNextActivatedSub.subId;
+            if (ddsSubState == SubscriptionManager.INACTIVE) ddsSubId
+                    = mNextActivatedSub.getSubscriptionId();
             setDefaultDataSubId(ddsSubId);
         }
         //if current voice sub is not active and prompt not enabled, fallback to next active sub.
         if (getSubState(getDefaultVoiceSubId()) == SubscriptionManager.INACTIVE &&
             !isVoicePromptEnabled()) {
-            setDefaultVoiceSubId(mNextActivatedSub.subId);
+            setDefaultVoiceSubId(mNextActivatedSub.getSubscriptionId());
         }
         //if current sms sub is not active and prompt not enabled, fallback to next active sub.
         if (getSubState(getDefaultSmsSubId()) == SubscriptionManager.INACTIVE &&
             !isSMSPromptEnabled()) {
-            setDefaultSmsSubId(mNextActivatedSub.subId);
+            setDefaultSmsSubId(mNextActivatedSub.getSubscriptionId());
         }
         logd("updateUserPrefs: after currentDds = " + getDefaultDataSubId() + " voice = " +
                  getDefaultVoiceSubId() + " sms = " + getDefaultSmsSubId() +
@@ -1795,11 +1807,11 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public long getOnDemandDataSubId() {
+    public int getOnDemandDataSubId() {
         return getCurrentDds();
     }
 
-    public void registerForOnDemandDdsLockNotification(long clientSubId,
+    public void registerForOnDemandDdsLockNotification(int clientSubId,
             OnDemandDdsLockNotifier callback) {
         logd("registerForOnDemandDdsLockNotification for client=" + clientSubId);
         mOnDemandDdsLockNotificationRegistrants.put(clientSubId, callback);
@@ -1821,11 +1833,11 @@ public class SubscriptionController extends ISub.Stub {
         public void notifyOnDemandDdsLockGranted(NetworkRequest n);
     }
     public void removeStaleSubPreferences(String prefKey) {
-        List<SubInfoRecord> subInfoList = getAllSubInfoList();
+        List<SubscriptionInfo> subInfoList = getAllSubInfoList();
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        for (SubInfoRecord subInfo : subInfoList) {
-            if (subInfo.slotId == -1) {
-                sp.edit().remove(prefKey+subInfo.subId).commit();
+        for (SubscriptionInfo subInfo : subInfoList) {
+            if (subInfo.getSimSlotIndex() == -1) {
+                sp.edit().remove(prefKey+subInfo.getSubscriptionId()).commit();
             }
         }
     }
@@ -1880,14 +1892,14 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * @return the list of subId's that are activated, is never null but the length maybe 0.
      */
-    public long[] getActivatedSubIdList() {
-        Set<Entry<Integer, Long>> simInfoSet = mSimInfo.entrySet();
+    public int[] getActivatedSubIdList() {
+        Set<Entry<Integer, Integer>> simInfoSet = mSlotIdxToSubId.entrySet();
         logd("getActivatedSubIdList: simInfoSet=" + simInfoSet);
 
-        long[] subIdArr = new long[simInfoSet.size()];
+        int[] subIdArr = new int[simInfoSet.size()];
         int i = 0;
-        for (Entry<Integer, Long> entry: simInfoSet) {
-            long sub = entry.getValue();
+        for (Entry<Integer, Integer> entry: simInfoSet) {
+            int sub = entry.getValue();
             subIdArr[i] = sub;
             i++;
         }

@@ -1126,12 +1126,7 @@ public class ImsPhone extends ImsPhoneBase {
         return mDefaultPhone.getPhoneId();
     }
 
-    @Override
-    public Subscription getSubscriptionInfo() {
-        return mDefaultPhone.getSubscriptionInfo();
-    }
-
-    private IccRecords getIccRecords() {
+    public IccRecords getIccRecords() {
         return mDefaultPhone.mIccRecords.get();
     }
 
