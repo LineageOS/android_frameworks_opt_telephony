@@ -932,7 +932,6 @@ public abstract class SMSDispatcher extends Handler {
                     Rlog.e(TAG, "Null tracker.");
                 }
             }
->>>>>>> 8215559... Use the AIDL based API to communicate with the carrier app.
         }
     }
 

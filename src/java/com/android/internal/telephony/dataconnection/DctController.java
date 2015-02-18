@@ -16,7 +16,10 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.ContentObserver;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
@@ -25,9 +28,12 @@ import android.net.NetworkRequest;
 import android.os.Handler;
 import android.os.HandlerThread;
 
+import android.os.AsyncResult;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
+import android.os.Registrant;
+import android.os.RegistrantList;
 import android.provider.Settings;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
@@ -43,6 +49,7 @@ import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.RequestInfo;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.telephony.dataconnection.DdsScheduler;
+import com.android.internal.telephony.TelephonyIntents;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -64,9 +71,12 @@ public class DctController extends Handler {
     private static final int EVENT_DATA_ATTACHED = 500;
     private static final int EVENT_DATA_DETACHED = 600;
 
-    private static final int EVENT_DELAYED_RETRY = 1;
-    private static final int EVENT_LEGACY_SET_DATA_SUBSCRIPTION = 2;
-    private static final int EVENT_SET_DATA_ALLOW_FALSE = 3;
+    private static final int EVENT_ALL_DATA_DISCONNECTED = 1;
+    private static final int EVENT_SET_DATA_ALLOW_DONE = 2;
+    private static final int EVENT_DELAYED_RETRY = 3;
+    private static final int EVENT_LEGACY_SET_DATA_SUBSCRIPTION = 4;
+    private static final int EVENT_SET_DATA_ALLOW_TRUE_DONE = 5;
+    private static final int EVENT_SET_DATA_ALLOW_FALSE_DONE = 6;
 
     private RegistrantList mNotifyDefaultDataSwitchInfo = new RegistrantList();
     private RegistrantList mNotifyOnDemandDataSwitchInfo = new RegistrantList();
@@ -96,9 +106,39 @@ public class DctController extends Handler {
     private NetworkFactory[] mNetworkFactory;
     private NetworkCapabilities[] mNetworkFilter;
 
-    private SubscriptionController mSubController = SubscriptionController.getInstance();
-
     private SubscriptionManager mSubMgr;
+
+    private BroadcastReceiver defaultDdsBroadcastReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            logd("got ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED, new DDS = "
+                    + intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                            SubscriptionManager.INVALID_SUBSCRIPTION_ID));
+            updateSubIdAndCapability();
+        }
+    };
+
+    private BroadcastReceiver subInfoBroadcastReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            logd("got ACTION_SUBINFO_RECORD_UPDATED");
+            updateSubIdAndCapability();
+        }
+    };
+
+/*FIXME L_MR1 internal
+    private void processPendingNetworkRequests(NetworkRequest n) {
+	    int phoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
+        ((TelephonyNetworkFactory)mNetworkFactory[phoneId]).processPendingNetworkRequests(n);
+    }
+*/
+    private void updateSubIdAndCapability() {
+        int phoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
+//        ((TelephonyNetworkFactory)mNetworkFactory[phoneId]).updateNetworkCapability();
+    }
+
+    private void releaseAllNetworkRequests() {
+        int phoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
+//        ((TelephonyNetworkFactory)mNetworkFactory[phoneId]).releaseAllNetworkRequests();
+    }
 
     private OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
             new OnSubscriptionsChangedListener() {
@@ -116,8 +156,8 @@ public class DctController extends Handler {
         }
     };
 
-    boolean isActiveSubId(long subId) {
-        long[] activeSubs = mSubController.getActiveSubIdList();
+    boolean isActiveSubId(int subId) {
+        int[] activeSubs = mSubController.getActiveSubIdList();
         for (int i = 0; i < activeSubs.length; i++) {
             if (subId == activeSubs[i]) {
                 return true;
@@ -274,9 +314,9 @@ public class DctController extends Handler {
 
         IntentFilter filter = new IntentFilter();
         filter.addAction(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED);
-        mContext.registerReceiver(mIntentReceiver, filter);
+        //mContext.registerReceiver(mIntentReceiver, filter);
         mSubMgr = SubscriptionManager.from(mContext);
-        mSubMgr.registerOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+        mSubMgr.addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
 
         //Register for settings change.
         mContext.getContentResolver().registerContentObserver(
@@ -294,32 +334,8 @@ public class DctController extends Handler {
             mNetworkFactoryMessenger[i] = null;
         }
 
-        mSubMgr.unregisterOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+        mSubMgr.removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
         mContext.getContentResolver().unregisterContentObserver(mObserver);
-    }
-
-    @Override
-    public void handleMessage (Message msg) {
-        logd("handleMessage msg=" + msg);
-        switch (msg.what) {
-            case EVENT_PROCESS_REQUESTS:
-                onProcessRequest();
-                break;
-            case EVENT_EXECUTE_REQUEST:
-                onExecuteRequest((RequestInfo)msg.obj);
-                break;
-            case EVENT_EXECUTE_ALL_REQUESTS:
-                onExecuteAllRequests(msg.arg1);
-                break;
-            case EVENT_RELEASE_REQUEST:
-                onReleaseRequest((RequestInfo)msg.obj);
-                break;
-            case EVENT_RELEASE_ALL_REQUESTS:
-                onReleaseAllRequests(msg.arg1);
-                break;
-            default:
-                loge("Un-handled message [" + msg.what + "]");
-        }
     }
 
     private int requestNetwork(NetworkRequest request, int priority) {
@@ -451,7 +467,7 @@ public class DctController extends Handler {
 
     private void onSettingsChange() {
         //Sub Selection
-        long dataSubId = mSubController.getDefaultDataSubId();
+        int dataSubId = mSubController.getDefaultDataSubId();
 
         int activePhoneId = -1;
         for (int i=0; i<mDcSwitchStateMachine.length; i++) {
@@ -530,19 +546,12 @@ public class DctController extends Handler {
         Rlog.v(LOG_TAG, "[DctController] " + s);
     }
 
-    private static void logd(String s) {
-        Rlog.d(LOG_TAG, "[DctController] " + s);
-    }
 
     private static void logw(String s) {
         Rlog.w(LOG_TAG, "[DctController] " + s);
     }
 
-    private static void loge(String s) {
-        Rlog.e(LOG_TAG, "[DctController] " + s);
-    }
-
-/* FIXME - LMR1_INTERNAL Dds switch, On demand PS Attach/Detach proprietary logic
+// FIXME - LMR1_INTERNAL Dds switch, On demand PS Attach/Detach proprietary logic
     private class SwitchInfo {
         private int mRetryCount = 0;
 
@@ -591,10 +600,10 @@ public class DctController extends Handler {
             dcTracker.cleanUpAllConnections("DDS switch");
         }
     }
-    public void setDefaultDataSubId(long reqSubId) {
+    public void setDefaultDataSubId(int reqSubId) {
         int reqPhoneId = mSubController.getPhoneId(reqSubId);
-        long currentDds = mSubController.getCurrentDds();
-        long defaultDds = mSubController.getDefaultDataSubId();
+        int currentDds = mSubController.getCurrentDds();
+        int defaultDds = mSubController.getDefaultDataSubId();
         SwitchInfo s = new SwitchInfo(new Integer(reqPhoneId), true);
         int currentDdsPhoneId = mSubController.getPhoneId(currentDds);
         if (currentDdsPhoneId < 0 || currentDdsPhoneId >= mPhoneNum) {
@@ -638,7 +647,7 @@ public class DctController extends Handler {
     public void doPsAttach(NetworkRequest n) {
         Rlog.d(LOG_TAG, "doPsAttach for :" + n);
 
-        long subId = mSubController.getSubIdFromNetworkRequest(n);
+        int subId = mSubController.getSubIdFromNetworkRequest(n);
 
         int phoneId = mSubController.getPhoneId(subId);
         Phone phone = mPhones[phoneId].getActivePhone();
@@ -651,9 +660,10 @@ public class DctController extends Handler {
         Message psAttachDone = Message.obtain(this,
                 EVENT_SET_DATA_ALLOW_TRUE_DONE, s);
 
-        int defDdsPhoneId = getDataConnectionFromSetting();
+/*        int defDdsPhoneId = getDataConnectionFromSetting();
         informDefaultDdsToPropServ(defDdsPhoneId);
         dcTracker.setDataAllowed(true, psAttachDone);
+*/
     }
 
     //
@@ -661,8 +671,8 @@ public class DctController extends Handler {
     // Ignore if thats the case.
     //
     public void doPsDetach() {
-        long currentDds = mSubController.getCurrentDds();
-        long defaultDds = mSubController.getDefaultDataSubId();
+        int currentDds = mSubController.getCurrentDds();
+        int defaultDds = mSubController.getDefaultDataSubId();
 
         if (currentDds == defaultDds) {
             Rlog.d(LOG_TAG, "PS DETACH on DDS sub is not allowed.");
@@ -751,7 +761,7 @@ public class DctController extends Handler {
                     Rlog.d(LOG_TAG, " Retry, switchInfo = " + s);
 
                     Integer phoneId = s.mPhoneId;
-                    long[] subId = mSubController.getSubId(phoneId);
+                    int[] subId = mSubController.getSubId(phoneId);
 
                     Message psAttachDone = Message.obtain(this,
                             EVENT_SET_DATA_ALLOW_TRUE_DONE, s);
@@ -768,7 +778,7 @@ public class DctController extends Handler {
                     Exception errorEx = null;
 
                     Integer phoneId = s.mPhoneId;
-                    long[] subId = mSubController.getSubId(phoneId);
+                    int[] subId = mSubController.getSubId(phoneId);
                     Rlog.d(LOG_TAG, "EVENT_SET_DATA_ALLOW_TRUE_DONE  subId :" + subId[0]
                             + ", switchInfo = " + s);
 
@@ -807,7 +817,7 @@ public class DctController extends Handler {
                     AsyncResult ar = (AsyncResult)msg.obj;
                     SwitchInfo s = (SwitchInfo)ar.userObj;
                     Exception errorEx = null;
-                    long[] subId = mSubController.getSubId(s.mPhoneId);
+                    int[] subId = mSubController.getSubId(s.mPhoneId);
                     Rlog.d(LOG_TAG, "EVENT_SET_DATA_ALLOW_FALSE_DONE  subId :" + subId[0]
                             + ", switchInfo = " + s);
 
@@ -840,6 +850,23 @@ public class DctController extends Handler {
                     mDdsSwitchPropService = null;
                     break;
                 }
+                case EVENT_PROCESS_REQUESTS:
+                    onProcessRequest();
+                    break;
+                case EVENT_EXECUTE_REQUEST:
+                    onExecuteRequest((RequestInfo)msg.obj);
+                    break;
+                case EVENT_EXECUTE_ALL_REQUESTS:
+                    onExecuteAllRequests(msg.arg1);
+                    break;
+                case EVENT_RELEASE_REQUEST:
+                    onReleaseRequest((RequestInfo)msg.obj);
+                    break;
+                case EVENT_RELEASE_ALL_REQUESTS:
+                    onReleaseAllRequests(msg.arg1);
+                    break;
+                default:
+                    loge("Un-handled message [" + msg.what + "]");
         }
     }
 
@@ -893,7 +920,7 @@ public class DctController extends Handler {
                     NetworkRequest n = (NetworkRequest)msg.obj;
 
                     Rlog.d(TAG, "start the DDS switch for req " + n);
-                    long subId = mSubController.getSubIdFromNetworkRequest(n);
+                    int subId = mSubController.getSubIdFromNetworkRequest(n);
 
                     if(subId == mSubController.getCurrentDds()) {
                         Rlog.d(TAG, "No change in DDS, respond back");
@@ -928,7 +955,6 @@ public class DctController extends Handler {
     public boolean isDctControllerLocked() {
         return mDdsSwitchSerializer.isLocked();
     }
-*/
 
     private void onSubInfoReady() {
         logd("onSubInfoReady mPhoneNum=" + mPhoneNum);

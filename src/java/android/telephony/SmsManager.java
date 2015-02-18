@@ -261,9 +261,9 @@ public final class SmsManager {
 
         try {
             ISms iccISms = getISmsServiceOrThrow();
-            // use sub based apis
-            iccISms.sendTextForSubscriber(getSubId(), ActivityThread.currentPackageName(),
-                    destinationAddress, scAddress, text, sentIntent, deliveryIntent);
+            iccISms.sendTextForSubscriber(getSubscriptionId(), ActivityThread.currentPackageName(),
+                    destinationAddress,
+                    scAddress, text, sentIntent, deliveryIntent);
         } catch (RemoteException ex) {
             // ignore it
         }
@@ -325,12 +325,10 @@ public final class SmsManager {
         }
 
         try {
-             ISms iccISms = getISmsServiceOrThrow();
-            if (iccISms != null) {
-                iccISms.sendTextWithOptionsUsingSubscriber(getSubId(),
-                        ActivityThread.currentPackageName(), destinationAddress, scAddress, text,
-                        sentIntent, deliveryIntent, priority, isExpectMore, validityPeriod);
-            }
+            ISms iccISms = getISmsServiceOrThrow();
+            iccISms.sendTextWithOptionsUsingSubscriber(getSubscriptionId(),
+                    ActivityThread.currentPackageName(), destinationAddress, scAddress, text,
+                    sentIntent, deliveryIntent, priority, isExpectMore, validityPeriod);
         } catch (RemoteException ex) {
             // ignore it
         }
@@ -364,7 +362,7 @@ public final class SmsManager {
         try {
             ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
-                iccISms.injectSmsPduForSubscriber(getSubId(), pdu, format, receivedIntent);
+                iccISms.injectSmsPdu(pdu, format, receivedIntent);
             }
         } catch (RemoteException ex) {
           // ignore it
@@ -374,6 +372,7 @@ public final class SmsManager {
     /**
      * TODO: remove this method.
      */
+    /** @hide */
     public void updateSmsSendStatus(int messageRef, boolean success) {
     }
 
@@ -449,9 +448,9 @@ public final class SmsManager {
             try {
                 ISms iccISms = getISmsServiceOrThrow();
 
-                iccISms.sendMultipartTextForSubscriber(getSubId(),
-                        ActivityThread.currentPackageName(), destinationAddress, scAddress, parts,
-
+                iccISms.sendMultipartTextForSubscriber(getSubscriptionId(),
+                        ActivityThread.currentPackageName(),
+                        destinationAddress, scAddress, parts,
                         sentIntents, deliveryIntents);
             } catch (RemoteException ex) {
                 // ignore it
@@ -469,6 +468,7 @@ public final class SmsManager {
                     sentIntent, deliveryIntent);
         }
     }
+
 
     /**
      * Send a multi-part text based SMS with messaging options. The callee should have already
@@ -544,7 +544,7 @@ public final class SmsManager {
             try {
                  ISms iccISms = getISmsServiceOrThrow();
                 if (iccISms != null) {
-                    iccISms.sendMultipartTextWithOptionsUsingSubscriber(getSubId(),
+                    iccISms.sendMultipartTextWithOptionsUsingSubscriber(getSubscriptionId(),
                             ActivityThread.currentPackageName(), destinationAddress, scAddress,
                             parts, sentIntents, deliveryIntents, priority, isExpectMore,
                             validityPeriod);
@@ -566,7 +566,7 @@ public final class SmsManager {
         }
     }
 
-    /**
+   /**
      * Send a data based SMS to a specific application port.
      *
      * <p class="note"><strong>Note:</strong> Using this method requires that your app has the
@@ -609,7 +609,7 @@ public final class SmsManager {
 
         try {
             ISms iccISms = getISmsServiceOrThrow();
-            iccISms.sendDataForSubscriber(getSubId(), ActivityThread.currentPackageName(),
+            iccISms.sendDataForSubscriber(getSubscriptionId(), ActivityThread.currentPackageName(),
                     destinationAddress, scAddress, destinationPort & 0xFFFF,
                     data, sentIntent, deliveryIntent);
         } catch (RemoteException ex) {
@@ -661,13 +661,11 @@ public final class SmsManager {
             throw new IllegalArgumentException("Invalid message data");
         }
         try {
-            ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
-            if (iccISms != null) {
-                iccISms.sendDataWithOrigPortUsingSubscriber(getSubId(),
-                        ActivityThread.currentPackageName(),
-                        destinationAddress, scAddress, destinationPort & 0xFFFF,
-                        originatorPort & 0xFFFF, data, sentIntent, deliveryIntent);
-            }
+            ISms iccISms = getISmsServiceOrThrow();
+            iccISms.sendDataWithOrigPortUsingSubscriber(getSubscriptionId(),
+                    ActivityThread.currentPackageName(),
+                    destinationAddress, scAddress, destinationPort & 0xFFFF,
+                    originatorPort & 0xFFFF, data, sentIntent, deliveryIntent);
         } catch (RemoteException ex) {
             // ignore it
         }
@@ -689,8 +687,6 @@ public final class SmsManager {
      * @param subId an SMS subscription id, typically accessed using
      *   {@link android.telephony.SubscriptionManager}
      * @return the instance of the SmsManager associated with subId
-     *
-     * {@hide}
      */
     public static SmsManager getSmsManagerForSubscriptionId(int subId) {
         // TODO(shri): Add javadoc link once SubscriptionManager is made public api
@@ -1034,7 +1030,7 @@ public final class SmsManager {
                 // List contains all records, including "free" records (null)
                 if (data != null) {
                     SmsMessage sms = SmsMessage.createFromEfRecord(i+1, data.getBytes(),
-                            getSubId());
+                            getSubscriptionId());
                     if (sms != null) {
                         messages.add(sms);
                     }
@@ -1054,7 +1050,7 @@ public final class SmsManager {
      *
      * @hide
      */
-    boolean isImsSmsSupported() {
+    public boolean isImsSmsSupported() {
         boolean boSupported = false;
         try {
             ISms iccISms = getISmsService();
@@ -1079,7 +1075,7 @@ public final class SmsManager {
      *
      * @hide
      */
-    String getImsSmsFormat() {
+    public String getImsSmsFormat() {
         String format = com.android.internal.telephony.SmsConstants.FORMAT_UNKNOWN;
         try {
             ISms iccISms = getISmsService();
@@ -1103,7 +1099,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                ret = iccISms.getSmsCapacityOnIccForSubscriber(getSubId());
+                ret = iccISms.getSmsCapacityOnIccForSubscriber(getSubscriptionId());
             }
         } catch (RemoteException ex) {
             //ignore it
@@ -1122,7 +1118,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                ret = iccISms.getSmscAddressFromIccForSubscriber(getSubId());
+                ret = iccISms.getSmscAddressFromIccForSubscriber(getSubscriptionId());
             }
         } catch (RemoteException ex) {
             //ignore it
@@ -1160,7 +1156,7 @@ public final class SmsManager {
         try {
             ISms iccISms = getISmsService();
             if (iccISms != null) {
-                ret = iccISms.setSmscAddressToIccForSubscriber(getSubId(), scAddress);
+                ret = iccISms.setSmscAddressToIccForSubscriber(getSubscriptionId(), scAddress);
             }
         } catch (RemoteException ex) {
             //ignore it
@@ -1284,6 +1280,7 @@ public final class SmsManager {
     /**
      * TODO: remove this method.
      */
+    /** @hide */
     public void updateMmsSendStatus(Context context, int messageRef, byte[] pdu, int status,
             Uri contentUri) {
     }
@@ -1291,6 +1288,7 @@ public final class SmsManager {
     /**
      * TODO: remove this method.
      */
+    /** @hide */
     public void updateMmsDownloadStatus(Context context, int messageRef, int status,
             Uri contentUri) {
     }
@@ -1605,7 +1603,8 @@ public final class SmsManager {
      *
      * @param messageUri the URI of the stored message
      * @param configOverrides the carrier-specific messaging configuration values to override for
-     *  sending the message.
+     *  sending the message. See {@link android.telephony.MessagingConfigurationManager} for the
+     *  value names and types.
      * @param sentIntent if not NULL this <code>PendingIntent</code> is
      *  broadcast when the message is successfully sent, or failed
      * @throws IllegalArgumentException if messageUri is empty

@@ -54,7 +54,7 @@ public class ProxyController {
     //***** Class Variables
     private static ProxyController sProxyController;
 
-    private Phone[] mProxyPhones;
+    private PhoneProxy[] mProxyPhones;
 
     private UiccController mUiccController;
 
@@ -74,7 +74,7 @@ public class ProxyController {
     private UiccSmsController mUiccSmsController;
 
     //***** Class Methods
-    public static ProxyController getInstance(Context context, Phone[] phoneProxy,
+    public static ProxyController getInstance(Context context, PhoneProxy[] phoneProxy,
             UiccController uiccController, CommandsInterface[] ci) {
         if (sProxyController == null) {
             sProxyController = new ProxyController(context, phoneProxy, uiccController, ci);
@@ -86,7 +86,7 @@ public class ProxyController {
         return sProxyController;
     }
 
-    private ProxyController(Context context, Phone[] phoneProxy, UiccController uiccController,
+    private ProxyController(Context context, PhoneProxy[] phoneProxy, UiccController uiccController,
             CommandsInterface[] ci) {
         logd("Constructor - Enter");
 

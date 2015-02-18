@@ -277,6 +277,10 @@ public class PhoneFactory {
         }
     }
 
+    public static Context getContext() {
+        return sContext;
+    }
+
     /**
      * Makes a {@link SipPhone} object.
      * @param sipUri the local SIP URI the phone runs on
@@ -426,7 +430,7 @@ public class PhoneFactory {
     }
 
     /* Gets User preferred Data subscription setting*/
-    public static long getDataSubscription() {
+    public static int getDataSubscription() {
         int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
         try {
@@ -531,7 +535,7 @@ public class PhoneFactory {
         return phoneId;
     }
 
-    public static SubInfoRecordUpdater getSubInfoRecordUpdater() {
+    public static SubscriptionInfoUpdater getSubscriptionInfoUpdater() {
         return sSubInfoRecordUpdater;
     }
 

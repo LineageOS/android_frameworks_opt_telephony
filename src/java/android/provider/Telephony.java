@@ -244,10 +244,19 @@ public final class Telephony {
          * {@link android.telephony.SubscriptionManager#INVALID_SUBSCRIPTION_ID} if
          * the sub id cannot be determined.
          * <p>Type: INTEGER (long) </p>
-         * @hide
          */
         public static final String SUBSCRIPTION_ID = "sub_id";
 
+        /**
+         * The phoneId to which the message belongs to. Its value will be
+         * {@link android.telephony.SubscriptionManager#INVALID_SUBSCRIPTION_ID} if
+         * the sub id cannot be determined.
+         * <p>Type: INTEGER (long)</p>
+         * @hide
+         */
+         // FIXME LMR1_INTERNAL
+
+        public static final String PHONE_ID = "phone_id";
         /**
          * The MTU size of the mobile interface to which the APN connected
          * @hide
@@ -436,14 +445,15 @@ public final class Telephony {
          * @return the URI for the new message
          * @hide
          */
-        public static Uri addMessageToUri(long subId, ContentResolver resolver,
+        public static Uri addMessageToUri(int subId, ContentResolver resolver,
                 Uri uri, String address, String body, String subject,
                 Long date, boolean read, boolean deliveryReport, long threadId,
                 int priority) {
             ContentValues values = new ContentValues(8);
             Rlog.v(TAG,"Telephony addMessageToUri sub id: " + subId);
 
-            values.put(SUBSCRIPTION_ID, subId);
+            int phoneId = SubscriptionManager.getPhoneId(subId);
+            values.put(PHONE_ID, phoneId);
             values.put(ADDRESS, address);
             if (date != null) {
                 values.put(DATE, date);
@@ -1758,9 +1768,19 @@ public final class Telephony {
          * {@link android.telephony.SubscriptionManager#INVALID_SUBSCRIPTION_ID} if
          * the sub id cannot be determined.
          * <p>Type: INTEGER (long)</p>
-         * @hide
          */
         public static final String SUBSCRIPTION_ID = "sub_id";
+
+
+        /**
+         * The phoneId to which the message belongs to. Its value will be
+         * {@link android.telephony.SubscriptionManager#INVALID_SUBSCRIPTION_ID} if
+         * the sub id cannot be determined.
+         * <p>Type: INTEGER (long)</p>
+         * @hide
+         */
+         // FIXME LMR1_INTERNAL
+        public static final String PHONE_ID = "phone_id";
 
         /**
          * The identity of the sender of a sent message. It is
@@ -2603,9 +2623,15 @@ public final class Telephony {
              * {@link android.telephony.SubscriptionManager#INVALID_SUBSCRIPTION_ID} if
              * the sub id cannot be determined.
              * <p>Type: INTEGER (long) </p>
-             * @hide
              */
             public static final String SUBSCRIPTION_ID = "pending_sub_id";
+            /**
+             * The phone id to which the pending message belongs to
+             * <p>Type: INTEGER (long) </p>
+             * @hide
+             */
+            public static final String PHONE_ID = "pending_phone_id";
+
         }
 
         /**
@@ -2816,9 +2842,18 @@ public final class Telephony {
         /**
          * The subscription to which the APN belongs to
          * <p>Type: INTEGER (long) </p>
-         * @hide
          */
         public static final String SUBSCRIPTION_ID = "sub_id";
+
+        /**
+         * The phoneId to which the message belongs to. Its value will be
+         * {@link android.telephony.SubscriptionManager#INVALID_SUBSCRIPTION_ID} if
+         * the sub id cannot be determined.
+         * <p>Type: INTEGER (long)</p>
+         * @hide
+         */
+         // FIXME LMR1_INTERNAL
+        public static final String PHONE_ID = "phone_id";
 
         /**
          * The profile_id to which the APN saved in modem

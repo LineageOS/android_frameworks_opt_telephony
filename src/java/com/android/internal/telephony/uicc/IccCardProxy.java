@@ -21,6 +21,8 @@ import static android.Manifest.permission.READ_PHONE_STATE;
 import android.app.ActivityManagerNative;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.BroadcastReceiver;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -242,7 +244,6 @@ public class IccCardProxy extends Handler implements IccCard {
                 if (DBG) {
                     log("updateQuietMode: cdmaSource=" + cdmaSource
                             + " mCurrentAppType=" + mCurrentAppType
-                            + " isLteOnCdmaMode=" + isLteOnCdmaMode
                             + " newQuietMode=" + newQuietMode);
                 }
             }

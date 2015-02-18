@@ -908,19 +908,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 com.android.internal.R.bool.skip_radio_power_off_on_sim_refresh_reset);
     }
 
-    protected void setSystemProperty(String property, String value) {
-        if (mParentApp == null) return;
-        int slotId = mParentApp.getUiccCard().getSlotId();
-
-        SubscriptionController subController = SubscriptionController.getInstance();
-        long subId = subController.getSubIdUsingSlotId(slotId)[0];
-
-        TelephonyManager.setTelephonyProperty(property, subId, value);
-    }
-
     protected boolean isAppStateReady() {
         AppState appState = mParentApp.getState();
         if (DBG) log("isAppStateReady : appState = " + appState);
         return (appState == AppState.APPSTATE_READY);
     }
+
 }

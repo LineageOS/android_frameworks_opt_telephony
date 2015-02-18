@@ -35,7 +35,9 @@ import android.net.ConnectivityManager;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkConfig;
+import android.net.NetworkFactory;
 import android.net.NetworkUtils;
+import android.net.NetworkRequest;
 import android.net.ProxyInfo;
 import android.net.Uri;
 import android.os.AsyncResult;
@@ -53,6 +55,7 @@ import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.telephony.CellLocation;
+import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.cdma.CdmaCellLocation;
@@ -194,7 +197,7 @@ public final class DcTracker extends DcTrackerBase {
             mSubId = mPhone.getSubId();
             log("got ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED, new DDS = "
                     + intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY,
-                            SubscriptionManager.INVALID_SUB_ID));
+                            SubscriptionManager.INVALID_SUBSCRIPTION_ID));
             updateSubIdAndCapability();
 
             if (mSubId == SubscriptionController.getInstance().getDefaultDataSubId()) {
@@ -267,15 +270,15 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private void processPendingNetworkRequests(NetworkRequest n) {
-        ((TelephonyNetworkFactory)mNetworkFactory).processPendingNetworkRequests(n);
+//        ((TelephonyNetworkFactory)mNetworkFactory).processPendingNetworkRequests(n);
     }
 
     private void updateSubIdAndCapability() {
-        ((TelephonyNetworkFactory)mNetworkFactory).updateNetworkCapability(mSubId);
+//        ((TelephonyNetworkFactory)mNetworkFactory).updateNetworkCapability(mSubId);
     }
 
     private void releaseAllNetworkRequests() {
-        ((TelephonyNetworkFactory)mNetworkFactory).releaseAllNetworkRequests();
+//        ((TelephonyNetworkFactory)mNetworkFactory).releaseAllNetworkRequests();
     }
 
     protected void registerForAllEvents() {
@@ -334,8 +337,8 @@ public final class DcTracker extends DcTrackerBase {
 
         ConnectivityManager cm = (ConnectivityManager)mPhone.getContext().getSystemService(
                 Context.CONNECTIVITY_SERVICE);
-        cm.unregisterNetworkFactory(mNetworkFactoryMessenger);
-        mNetworkFactoryMessenger = null;
+//        cm.unregisterNetworkFactory(mNetworkFactoryMessenger);
+//        mNetworkFactoryMessenger = null;
 
         cleanUpAllConnections(true, null);
 
@@ -1095,8 +1098,7 @@ public final class DcTracker extends DcTrackerBase {
                      mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
                     internalDataEnabled &&
                     (!mPhone.getServiceState().getDataRoaming() || getDataOnRoamingEnabled()) &&
-                    //!mIsPsRestricted &&
-                    !psRestricted &&
+                    !mIsPsRestricted &&
                     desiredPowerState;
         if (!allowed && DBG) {
             String reason = "";
@@ -3224,14 +3226,6 @@ public final class DcTracker extends DcTrackerBase {
 
             case DctConstants.EVENT_MODEM_DATA_PROFILE_READY:
                 onModemApnProfileReady();
-                break;
-
-            case DctConstants.CMD_CLEAR_PROVISIONING_SPINNER:
-                // Check message sender intended to clear the current spinner.
-                if (mProvisioningSpinner == msg.obj) {
-                    mProvisioningSpinner.dismiss();
-                    mProvisioningSpinner = null;
-                }
                 break;
 
             default:
