@@ -160,7 +160,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
     @Override
     protected GsmAlphabet.TextEncodingDetails calculateLength(CharSequence messageBody,
             boolean use7bitOnly) {
-        return SmsMessage.calculateLength(messageBody, use7bitOnly);
+        return SmsMessage.calculateLength(messageBody, use7bitOnly, false);
     }
 
     /** {@inheritDoc} */

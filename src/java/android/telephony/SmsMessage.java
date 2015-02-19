@@ -297,7 +297,8 @@ public class SmsMessage {
     public static int[] calculateLength(CharSequence msgBody, boolean use7bitOnly) {
         // this function is for MO SMS
         TextEncodingDetails ted = (useCdmaFormatForMoSms()) ?
-            com.android.internal.telephony.cdma.SmsMessage.calculateLength(msgBody, use7bitOnly) :
+            com.android.internal.telephony.cdma.SmsMessage.calculateLength(msgBody, use7bitOnly,
+                    true) :
             com.android.internal.telephony.gsm.SmsMessage.calculateLength(msgBody, use7bitOnly);
         int ret[] = new int[4];
         ret[0] = ted.msgCount;
@@ -320,7 +321,7 @@ public class SmsMessage {
     public static ArrayList<String> fragmentText(String text) {
         // This function is for MO SMS
         TextEncodingDetails ted = (useCdmaFormatForMoSms()) ?
-            com.android.internal.telephony.cdma.SmsMessage.calculateLength(text, false) :
+            com.android.internal.telephony.cdma.SmsMessage.calculateLength(text, false, true) :
             com.android.internal.telephony.gsm.SmsMessage.calculateLength(text, false);
 
         // TODO(cleanup): The code here could be rolled into the logic
