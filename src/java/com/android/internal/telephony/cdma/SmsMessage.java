@@ -458,10 +458,11 @@ public class SmsMessage extends SmsMessageBase {
      *
      * @param messageBody the message to encode
      * @param use7bitOnly ignore (but still count) illegal characters if true
+     * @param isEntireMsg indicates if this is entire msg or a segment in multipart msg
      * @return TextEncodingDetails
      */
     public static TextEncodingDetails calculateLength(CharSequence messageBody,
-            boolean use7bitOnly) {
+            boolean use7bitOnly, boolean isEntireMsg) {
         CharSequence newMsgBody = null;
         Resources r = Resources.getSystem();
         if (r.getBoolean(com.android.internal.R.bool.config_sms_force_7bit_encoding)) {
@@ -470,7 +471,7 @@ public class SmsMessage extends SmsMessageBase {
         if (TextUtils.isEmpty(newMsgBody)) {
             newMsgBody = messageBody;
         }
-        return BearerData.calcTextEncodingDetails(newMsgBody, use7bitOnly);
+        return BearerData.calcTextEncodingDetails(newMsgBody, use7bitOnly, isEntireMsg);
     }
 
     /**
