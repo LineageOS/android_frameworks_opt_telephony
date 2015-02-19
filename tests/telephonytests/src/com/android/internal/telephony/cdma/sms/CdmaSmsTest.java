@@ -917,7 +917,7 @@ public class CdmaSmsTest extends AndroidTestCase {
         String text1 = "123456789012345678901234567890123456789012345678901234567890" +
                 "1234567890123456789012345678901234567890123456789012345678901234567890" +
                 "12345678901234567890123456789[";
-        TextEncodingDetails ted = SmsMessage.calculateLength(text1, false);
+        TextEncodingDetails ted = SmsMessage.calculateLength(text1, false, true);
         assertEquals(ted.msgCount, 1);
         assertEquals(ted.codeUnitCount, 160);
         assertEquals(ted.codeUnitSize, 1);
@@ -953,7 +953,7 @@ public class CdmaSmsTest extends AndroidTestCase {
         String text2 = "123456789012345678901234567890123456789012345678901234567890" +
                 "1234567890123456789012345678901234567890123456789012345678901234567890" +
                 "12345678901234567890123456789\u00a3";  // Trailing pound-currency sign.
-        ted = SmsMessage.calculateLength(text2, false);
+        ted = SmsMessage.calculateLength(text2, false, true);
         assertEquals(3, ted.msgCount);
         assertEquals(160, ted.codeUnitCount);
         assertEquals(3, ted.codeUnitSize);
@@ -971,7 +971,7 @@ public class CdmaSmsTest extends AndroidTestCase {
 
         // Test case for multi-part UTF-16 message.
         String text3 = sUnicodeChars + sUnicodeChars + sUnicodeChars;
-        ted = SmsMessage.calculateLength(text3, false);
+        ted = SmsMessage.calculateLength(text3, false, true);
         assertEquals(3, ted.msgCount);
         assertEquals(189, ted.codeUnitCount);
         assertEquals(3, ted.codeUnitSize);
