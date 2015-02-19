@@ -783,7 +783,8 @@ public abstract class SMSDispatcher extends Handler {
     protected abstract void injectSmsPdu(byte[] pdu, String format, PendingIntent receivedIntent);
 
     /**
-     * Calculate the number of septets needed to encode the message.
+     * Calculate the number of septets needed to encode the message. This function should only be
+     * called for individual segments of multipart message.
      *
      * @param messageBody the message to encode
      * @param use7bitOnly ignore (but still count) illegal characters if true
