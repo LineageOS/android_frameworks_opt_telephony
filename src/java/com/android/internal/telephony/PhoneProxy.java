@@ -1513,13 +1513,13 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
-    public void updateCachedRadioCapability(RadioCapability rc) {
-        mActivePhone.updateCachedRadioCapability(rc);
+    public RadioCapability getRadioCapability() {
+        return mActivePhone.getRadioCapability();
     }
 
     @Override
-    public int getSupportedRadioAccessFamily() {
-        return mCommandsInterface.getSupportedRadioAccessFamily();
+    public void radioCapabilityUpdated(RadioCapability rc) {
+        mActivePhone.radioCapabilityUpdated(rc);
     }
 
     @Override
