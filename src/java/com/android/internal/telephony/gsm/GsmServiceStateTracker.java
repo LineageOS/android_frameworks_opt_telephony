@@ -45,7 +45,6 @@ import android.telephony.CellInfoGsm;
 import android.telephony.CellInfoLte;
 import android.telephony.CellInfoWcdma;
 import android.telephony.CellLocation;
-import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -181,21 +180,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 mAlarmSwitch = false;
                 DcTrackerBase dcTracker = mPhone.mDcTracker;
                 powerOffRadioSafely(dcTracker);
-            } else if (intent.getAction().equals(
-                    TelephonyIntents.ACTION_SET_RADIO_CAPABILITY_DONE)) {
-                if (DBG) {
-                    log("Received Intent ACTION_SET_RADIO_CAPABILITY_DONE");
-                }
-                ArrayList<RadioAccessFamily> newPhoneRcList =
-                        intent.getParcelableArrayListExtra(
-                        TelephonyIntents.EXTRA_RADIO_ACCESS_FAMILY);
-                if (newPhoneRcList == null || newPhoneRcList.size() == 0) {
-                    if (DBG) {
-                        log("EXTRA_RADIO_ACCESS_FAMILY not present.");
-                    }
-                } else {
-                    onSetPhoneRCDone(newPhoneRcList);
-                }
             }
         }
     };
@@ -258,7 +242,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         filter = new IntentFilter();
         Context context = phone.getContext();
         filter.addAction(ACTION_RADIO_OFF);
-        filter.addAction(TelephonyIntents.ACTION_SET_RADIO_CAPABILITY_DONE);
         context.registerReceiver(mIntentReceiver, filter);
     }
 
@@ -2179,54 +2162,4 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     public void onImsCapabilityChanged() {
         sendMessage(obtainMessage(EVENT_IMS_CAPABILITY_CHANGED));
     }
-
-    public void onSetPhoneRCDone(ArrayList<RadioAccessFamily> phoneRcs) {
-        int INVALID = -1;
-        int size = 0;
-        boolean needToChangeNetworkMode = false;
-        RadioAccessFamily phoneRaf = null;
-        int myPhoneId = mPhone.getPhoneId();
-        int newCapability = 0;
-        int networkMode = INVALID;
-
-        if (phoneRcs == null) return;
-        size = phoneRcs.size();
-        for (int i = 0; i < size; i++) {
-            phoneRaf = phoneRcs.get(i);
-            if (myPhoneId == phoneRaf.getPhoneId()) {
-                needToChangeNetworkMode = true;
-                newCapability = phoneRaf.getRadioAccessFamily();
-                break;
-            }
-        }
-
-        if (needToChangeNetworkMode) {
-            if ((newCapability & RadioAccessFamily.RAF_LTE)
-                    == RadioAccessFamily.RAF_LTE) {
-                networkMode = RILConstants.NETWORK_MODE_LTE_GSM_WCDMA;
-            } else if ((newCapability & RadioAccessFamily.RAF_UMTS)
-                    == RadioAccessFamily.RAF_UMTS) {
-                networkMode = RILConstants.NETWORK_MODE_WCDMA_PREF;
-            } else if ((newCapability & RadioAccessFamily.RAF_GSM)
-                    == RadioAccessFamily.RAF_GSM) {
-                networkMode = RILConstants.NETWORK_MODE_GSM_ONLY;
-            } else {
-                networkMode = INVALID;
-                log("Error: capability is not define");
-            }
-
-            if (DBG) log("myPhoneId=" + myPhoneId + " newCapability=" + newCapability
-                    + " networkMode=" + networkMode);
-
-            if (networkMode != INVALID) {
-                //FIXME : update preferred network mode
-                //TelephonyManager.putIntAtIndex(mPhone.getContext().getContentResolver(),
-                //        Settings.Global.PREFERRED_NETWORK_MODE, myPhoneId, networkMode);
-                //networkMode = PhoneFactory.calculatePreferredNetworkType(mPhone.getContext());
-                //FIXME : update preferred network mode
-
-                mCi.setPreferredNetworkType(networkMode, null);
-            }
-        }
-     }
 }

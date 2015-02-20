@@ -1965,18 +1965,18 @@ public interface Phone {
     public void setRadioCapability(RadioCapability rc, Message response);
 
     /**
+     *  Get phone radio capability
+     *
+     *  @return the capability of the radio defined in RadioCapability
+     */
+    public RadioCapability getRadioCapability();
+
+    /**
      *  Get phone radio access family
      *
      *  @return a bit mask to identify the radio access family.
      */
     public int getRadioAccessFamily();
-
-    /**
-     *  Get supported phone radio access family
-     *
-     *  @return a bit mask to identify the radio access family.
-     */
-    public int getSupportedRadioAccessFamily();
 
     /**
      *  Get the associated data modems Id.
@@ -1986,14 +1986,14 @@ public interface Phone {
     public String getModemUuId();
 
     /**
-     *  Update the cached local copy of the RadioCapability.
-     *  This comes up from the RIL.  The flow is we use setRadioCapability
-     *  to request a change with the RIL and get an UNSOL response with the
-     *  new data which gets set here.
+     *  The RadioCapability has changed. This comes up from the RIL and is called when radios first
+     *  become available or after a capability switch.  The flow is we use setRadioCapability to
+     *  request a change with the RIL and get an UNSOL response with the new data which gets set
+     *  here.
      *
      *  @param rc the phone radio capability currently in effect for this phone.
      */
-    public void updateCachedRadioCapability(RadioCapability rc);
+    public void radioCapabilityUpdated(RadioCapability rc);
 
     /**
      * Registers the handler when phone radio  capability is changed.

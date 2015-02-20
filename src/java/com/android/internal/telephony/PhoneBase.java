@@ -119,6 +119,8 @@ public abstract class PhoneBase extends Handler implements Phone {
     public static final String NETWORK_SELECTION_KEY = "network_selection_key";
     // Key used to read and write the saved network selection operator name
     public static final String NETWORK_SELECTION_NAME_KEY = "network_selection_name_key";
+    // Key used to read and write the saved network selection operator short name
+    public static final String NETWORK_SELECTION_SHORT_KEY = "network_selection_short_key";
 
 
     // Key used to read/write "disable data connection on boot" pref (used for testing)
@@ -198,6 +200,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         public Message message;
         public String operatorNumeric;
         public String operatorAlphaLong;
+        public String operatorAlphaShort;
     }
 
     /* Instance Variables */
@@ -231,7 +234,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     private boolean mImsServiceReady = false;
     protected ImsPhone mImsPhone = null;
 
-    protected final AtomicReference<RadioCapability> mRadioCapability =
+    private final AtomicReference<RadioCapability> mRadioCapability =
             new AtomicReference<RadioCapability>();
 
     protected static final int DEFAULT_REPORT_INTERVAL_MS = 200;
@@ -613,9 +616,9 @@ public abstract class PhoneBase extends Handler implements Phone {
                 RadioCapability rc = (RadioCapability) ar.result;
                 if (ar.exception != null) {
                     Rlog.d(LOG_TAG, "get phone radio capability fail,"
-                            + "no need to change mRadioAccessFamily");
+                            + "no need to change mRadioCapability");
                 } else {
-                    mRadioCapability.set(rc);
+                    radioCapabilityUpdated(rc);
                 }
                 Rlog.d(LOG_TAG, "EVENT_GET_RADIO_CAPABILITY :"
                         + "phone rc : " + rc);
@@ -945,6 +948,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         nsm.message = response;
         nsm.operatorNumeric = "";
         nsm.operatorAlphaLong = "";
+        nsm.operatorAlphaShort = "";
 
         Message msg = obtainMessage(EVENT_SET_NETWORK_AUTOMATIC_COMPLETE, nsm);
         mCi.setNetworkSelectionModeAutomatic(msg);
@@ -965,6 +969,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         nsm.message = response;
         nsm.operatorNumeric = network.getOperatorNumeric();
         nsm.operatorAlphaLong = network.getOperatorAlphaLong();
+        nsm.operatorAlphaShort = network.getOperatorAlphaShort();
 
         Message msg = obtainMessage(EVENT_SET_NETWORK_MANUAL_COMPLETE, nsm);
         mCi.setNetworkSelectionModeManual(network.getOperatorNumeric(), msg);
@@ -981,6 +986,7 @@ public abstract class PhoneBase extends Handler implements Phone {
             SharedPreferences.Editor editor = sp.edit();
             editor.putString(NETWORK_SELECTION_KEY + subId, nsm.operatorNumeric);
             editor.putString(NETWORK_SELECTION_NAME_KEY + subId, nsm.operatorAlphaLong);
+            editor.putString(NETWORK_SELECTION_SHORT_KEY + subId, nsm.operatorAlphaShort);
 
             // commit and log the result.
             if (!editor.commit()) {
@@ -1014,12 +1020,15 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     /**
-     * Method to retrieve the saved operator id from the Shared Preferences
+     * Method to retrieve the saved operator from the Shared Preferences
      */
-    private String getSavedNetworkSelection() {
+    private OperatorInfo getSavedNetworkSelection() {
         // open the shared preferences and search with our key.
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-        return sp.getString(NETWORK_SELECTION_KEY + getSubId(), "");
+        String numeric = sp.getString(NETWORK_SELECTION_KEY + getSubId(), "");
+        String name = sp.getString(NETWORK_SELECTION_NAME_KEY + getSubId(), "");
+        String shrt = sp.getString(NETWORK_SELECTION_SHORT_KEY + getSubId(), "");
+        return new OperatorInfo(numeric, name, shrt, "");
     }
 
     /**
@@ -1028,14 +1037,14 @@ public abstract class PhoneBase extends Handler implements Phone {
      * preferences.
      */
     public void restoreSavedNetworkSelection(Message response) {
-        // retrieve the operator id
-        String networkSelection = getSavedNetworkSelection();
+        // retrieve the operator
+        OperatorInfo networkSelection = getSavedNetworkSelection();
 
         // set to auto if the id is empty, otherwise select the network.
-        if (TextUtils.isEmpty(networkSelection)) {
-            mCi.setNetworkSelectionModeAutomatic(response);
+        if (networkSelection == null || TextUtils.isEmpty(networkSelection.getOperatorNumeric())) {
+            setNetworkSelectionModeAutomatic(response);
         } else {
-            mCi.setNetworkSelectionModeManual(networkSelection, response);
+            selectNetworkManually(networkSelection, response);
         }
     }
 
@@ -1365,7 +1374,9 @@ public abstract class PhoneBase extends Handler implements Phone {
      */
     @Override
     public void setPreferredNetworkType(int networkType, Message response) {
-        mCi.setPreferredNetworkType(networkType, response);
+        // Only set preferred network types to that which the modem supports
+        int raf = getRadioAccessFamily();
+        mCi.setPreferredNetworkType(networkType & raf, response);
     }
 
     @Override
@@ -2261,14 +2272,32 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
-    public void updateCachedRadioCapability(RadioCapability rc) {
-        mRadioCapability.set(rc);
+    public RadioCapability getRadioCapability() {
+        return mRadioCapability.get();
     }
 
     @Override
-    public int getSupportedRadioAccessFamily() {
-        return mCi.getSupportedRadioAccessFamily();
+    public void radioCapabilityUpdated(RadioCapability rc) {
+        // Called when radios first become available or after a capability switch
+        // Update the cached value
+        mRadioCapability.set(rc);
+
+        if (SubscriptionManager.isValidSubscriptionId(getSubId())) {
+            sendSubscriptionSettings(true);
+        }
     }
+
+    public void sendSubscriptionSettings(boolean restoreNetworkSelection) {
+        // Send settings down
+        int type = PhoneFactory.calculatePreferredNetworkType(mContext, getSubId());
+        setPreferredNetworkType(type, null);
+
+        if (restoreNetworkSelection) {
+            restoreSavedNetworkSelection(null);
+        }
+        mDcTracker.setDataEnabled(getDataEnabled());
+    }
+
 
     @Override
     public void registerForRadioCapabilityChanged(Handler h, int what, Object obj) {

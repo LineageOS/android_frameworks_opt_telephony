@@ -268,7 +268,7 @@ public class ProxyController {
                 mOldRadioAccessFamily[phoneId] = mProxyPhones[phoneId].getRadioAccessFamily();
                 int requestedRaf = rafs[i].getRadioAccessFamily();
                 // TODO Set the new radio access family to the maximum of the requested & supported
-                // int supportedRaf = mProxyPhones[i].getSupportedRadioAccessFamily();
+                // int supportedRaf = mProxyPhones[i].getRadioAccessFamily();
                 // mNewRadioAccessFamily[phoneId] = requestedRaf & supportedRaf;
                 mNewRadioAccessFamily[phoneId] = requestedRaf;
 
@@ -427,7 +427,7 @@ public class ProxyController {
             } else {
                 logd("onNotificationRadioCapabilityChanged: phoneId=" + id + " status=SUCCESS");
                 mSetRadioAccessFamilyStatus[id] = SET_RC_STATUS_SUCCESS;
-                mProxyPhones[id].updateCachedRadioCapability(rc);
+                mProxyPhones[id].radioCapabilityUpdated(rc);
             }
 
             mRadioAccessFamilyStatusCounter--;
