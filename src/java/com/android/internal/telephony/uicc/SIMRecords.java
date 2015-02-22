@@ -1,7 +1,6 @@
 /*
- * Copyright (c) 2014, Linux Foundation. All rights reserved.
- * Not a Contribution, Apache license notifications and license are retained
- * for attribution purposes only.
+ * Copyright (c) 2014-2015, Linux Foundation. All rights reserved.
+ * Not a Contribution.
  *
  * Copyright (C) 2006 The Android Open Source Project
  *
@@ -686,7 +685,12 @@ public class SIMRecords extends IccRecords {
                     MccTable.updateMccMncConfiguration(mContext,
                             mImsi.substring(0, 3 + mMncLength), false);
                 }
-                mImsiReadyRegistrants.notifyRegistrants();
+                if (isAppStateReady()) {
+                    mImsiReadyRegistrants.notifyRegistrants();
+                } else {
+                    log("EVENT_GET_IMSI_DONE:" +
+                            "App state is not ready; not notifying the registrants");
+                }
             break;
 
             case EVENT_GET_MBI_DONE:
@@ -1466,8 +1470,12 @@ public class SIMRecords extends IccRecords {
         setVoiceMailByCountry(operator);
         setSpnFromConfig(operator);
 
-        mRecordsLoadedRegistrants.notifyRegistrants(
-            new AsyncResult(null, null, null));
+        if (isAppStateReady()) {
+            mRecordsLoadedRegistrants.notifyRegistrants(
+                    new AsyncResult(null, null, null));
+        } else {
+            log("onAllRecordsLoaded: AppState is not ready; not notifying the registrants");
+        }
     }
 
     //***** Private methods

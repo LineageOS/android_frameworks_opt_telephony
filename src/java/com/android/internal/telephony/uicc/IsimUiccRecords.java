@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2015, Linux Foundation. All rights reserved.
+ * Not a Contribution.
+ *
  * Copyright (C) 2011 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -286,8 +289,12 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     @Override
     protected void onAllRecordsLoaded() {
        if (DBG) log("record load complete");
-        mRecordsLoadedRegistrants.notifyRegistrants(
-                new AsyncResult(null, null, null));
+       if (isAppStateReady()) {
+            mRecordsLoadedRegistrants.notifyRegistrants(
+                    new AsyncResult(null, null, null));
+       } else {
+           log("onAllRecordsLoaded: AppState is not ready; not notifying the registrants");
+       }
     }
 
     @Override
