@@ -173,6 +173,7 @@ public abstract class SMSDispatcher extends Handler {
     /* Flags indicating whether the current device allows sms service */
     protected boolean mSmsCapable = true;
     protected boolean mSmsSendDisabled;
+    private boolean mSmsPseudoMultipart;
 
     protected static int getNextConcatenatedRef() {
         sConcatenatedRef += 1;
@@ -201,6 +202,7 @@ public abstract class SMSDispatcher extends Handler {
                 com.android.internal.R.bool.config_sms_capable);
         mSmsSendDisabled = !SystemProperties.getBoolean(
                                 TelephonyProperties.PROPERTY_SMS_SEND, mSmsCapable);
+        mSmsPseudoMultipart = SystemProperties.getBoolean("telephony.sms.pseudo_multipart", false);
         Rlog.d(TAG, "SMSDispatcher: ctor mSmsCapable=" + mSmsCapable + " format=" + getFormat()
                 + " mSmsSendDisabled=" + mSmsSendDisabled);
     }
@@ -860,7 +862,17 @@ public abstract class SMSDispatcher extends Handler {
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
             int priority, boolean isExpectMore, int validityPeriod) {
+
+        if (mSmsPseudoMultipart) {
+            // Send as individual messages as the combination of device and
+            // carrier behavior may not process concatenated messages correctly.
+            sendPseudoMultipartText(destAddr, scAddr, parts, sentIntents, deliveryIntents,
+                    messageUri, callingPkg, priority, isExpectMore, validityPeriod);
+            return;
+        }
+
         final String fullMessageText = getMultipartMessageText(parts);
+
         int refNumber = getNextConcatenatedRef() & 0x00FF;
         int msgCount = parts.size();
         int encoding = SmsConstants.ENCODING_UNKNOWN;
@@ -940,6 +952,72 @@ public abstract class SMSDispatcher extends Handler {
                     Rlog.e(TAG, "Null tracker.");
                 }
             }
+        }
+    }
+
+    /**
+     * Send a multi-part text based SMS as individual messages
+     * (i.e., without User Data Headers).
+     *
+     * @param destAddr the address to send the message to
+     * @param scAddr is the service center address or null to use
+     * the current default SMSC
+     * @param parts an <code>ArrayList</code> of strings that, in order,
+     * comprise the original message
+     * @param sentIntents if not null, an <code>ArrayList</code> of
+     * <code>PendingIntent</code>s (one for each message part) that is
+     * broadcast when the corresponding message part has been sent.
+     * The result code will be <code>Activity.RESULT_OK<code> for success,
+     * or one of these errors:
+     * <code>RESULT_ERROR_GENERIC_FAILURE</code>
+     * <code>RESULT_ERROR_RADIO_OFF</code>
+     * <code>RESULT_ERROR_NULL_PDU</code>
+     * <code>RESULT_ERROR_NO_SERVICE</code>.
+     * The per-application based SMS control checks sentIntent. If sentIntent
+     * is NULL the caller will be checked against all unknown applications,
+     * which cause smaller number of SMS to be sent in checking period.
+     * @param deliveryIntents if not null, an <code>ArrayList</code> of
+     * <code>PendingIntent</code>s (one for each message part) that is
+     * broadcast when the corresponding message part has been delivered
+     * to the recipient. The raw pdu of the status report is in the
+     * extended data ("pdu").
+     * @param messageUri optional URI of the message if it is already stored in the system
+     * @param callingPkg the calling package name
+     * @param priority Priority level of the message
+     *  Refer specification See 3GPP2 C.S0015-B, v2.0, table 4.5.9-1
+     *  ---------------------------------
+     *  PRIORITY      | Level of Priority
+     *  ---------------------------------
+     *      '00'      |     Normal
+     *      '01'      |     Interactive
+     *      '10'      |     Urgent
+     *      '11'      |     Emergency
+     *  ----------------------------------
+     *  Any Other values included Negative considered as Invalid Priority Indicator of the message.
+     * @param isExpectMore is a boolean to indicate the sending message is multi segmented or not.
+     * @param validityPeriod Validity Period of the message in mins.
+     *  Refer specification 3GPP TS 23.040 V6.8.1 section 9.2.3.12.1.
+     *  Validity Period(Minimum) -> 5 mins
+     *  Validity Period(Maximum) -> 635040 mins(i.e.63 weeks).
+     *  Any Other values included Negative considered as Invalid Validity Period of the message.
+     */
+    private void sendPseudoMultipartText(String destAddr, String scAddr,
+            ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
+            ArrayList<PendingIntent> deliveryIntents,
+            Uri messageUri, String callingPkg,
+            int priority, boolean isExpectMore, int validityPeriod) {
+        int msgCount = parts.size();
+        for (int i = 0; i < msgCount; i++) {
+            PendingIntent sentIntent = null;
+            if (sentIntents != null && sentIntents.size() > i) {
+                sentIntent = sentIntents.get(i);
+            }
+            PendingIntent deliveryIntent = null;
+            if (deliveryIntents != null && deliveryIntents.size() > i) {
+                deliveryIntent = deliveryIntents.get(i);
+            }
+            sendText(destAddr, scAddr, parts.get(i), sentIntent, deliveryIntent,
+                     messageUri, callingPkg, priority, isExpectMore, validityPeriod);
         }
     }
 
