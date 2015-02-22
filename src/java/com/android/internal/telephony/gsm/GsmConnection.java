@@ -339,6 +339,12 @@ public class GsmConnection extends Connection {
             case CallFailCause.DIAL_MODIFIED_TO_DIAL:
                 return DisconnectCause.DIAL_MODIFIED_TO_DIAL;
 
+            case CallFailCause.EMERGENCY_TEMP_FAILURE:
+                return DisconnectCause.EMERGENCY_TEMP_FAILURE;
+
+            case CallFailCause.EMERGENCY_PERM_FAILURE:
+                return DisconnectCause.EMERGENCY_PERM_FAILURE;
+
             case CallFailCause.ERROR_UNSPECIFIED:
             case CallFailCause.NORMAL_CLEARING:
             default:
