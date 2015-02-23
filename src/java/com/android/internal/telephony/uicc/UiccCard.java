@@ -458,19 +458,25 @@ public class UiccCard {
 
     /**
      * Resets the application with the input AID. Returns true if any changes were made.
+     *
+     * A null aid implies a card level reset - all applications must be reset.
      */
     public boolean resetAppWithAid(String aid) {
         synchronized (mLock) {
+            boolean changed = false;
             for (int i = 0; i < mUiccApplications.length; i++) {
-                if (mUiccApplications[i] != null && aid.equals(mUiccApplications[i].getAid())) {
+                if (mUiccApplications[i] != null &&
+                    (aid == null || aid.equals(mUiccApplications[i].getAid()))) {
                     // Delete removed applications
                     mUiccApplications[i].dispose();
                     mUiccApplications[i] = null;
-                    return true;
+                    changed = true;
                 }
             }
-            return false;
+            return changed;
         }
+        // TODO: For a card level notification, we should delete the CarrierPrivilegeRules and the
+        // CAT service.
     }
 
     /**
