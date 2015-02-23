@@ -25,8 +25,10 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.RequestInfo;
+import com.android.internal.telephony.SubscriptionController;
 
 import android.os.Message;
+import android.os.SystemProperties;
 import android.telephony.Rlog;
 
 public class DcSwitchStateMachine extends StateMachine {
@@ -95,6 +97,18 @@ public class DcSwitchStateMachine extends StateMachine {
 
                     PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
                     pb.mCi.setDataAllowed(true, null);
+                    boolean isPrimarySubFeatureEnable =
+                            SystemProperties.getBoolean("persist.radio.primarycard", false);
+                    int subId = pb.getSubId();
+                    log("Setting default DDS on " + subId + " primary Sub feature"
+                            + isPrimarySubFeatureEnable);
+                    // When isPrimarySubFeatureEnable is enabled apps will take care
+                    // of sending DDS request during device power-up.
+                    if (!isPrimarySubFeatureEnable) {
+                        SubscriptionController subscriptionController
+                                = SubscriptionController.getInstance();
+                        subscriptionController.setDefaultDataSubId(subId);
+                    }
 
                     mAc.replyToMessage(msg, DcSwitchAsyncChannel.RSP_CONNECT,
                             PhoneConstants.APN_REQUEST_STARTED);
