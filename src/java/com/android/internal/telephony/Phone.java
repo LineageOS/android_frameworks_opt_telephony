@@ -109,6 +109,7 @@ public interface Phone {
     static final String REASON_CONNECTED = "connected";
     static final String REASON_SINGLE_PDN_ARBITRATION = "SinglePdnArbitration";
     static final String REASON_DATA_SPECIFIC_DISABLED = "specificDisabled";
+    static final String REASON_SIM_NOT_READY = "simNotReady";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = 0; // selected by baseband automatically
