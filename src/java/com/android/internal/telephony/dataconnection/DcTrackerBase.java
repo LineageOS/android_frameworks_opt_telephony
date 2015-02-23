@@ -638,7 +638,7 @@ public abstract class DcTrackerBase extends Handler {
         mDcTesterFailBringUpAll.dispose();
     }
 
-    public long getSubId() {
+    public int getSubId() {
         return mPhone.getSubId();
     }
 
@@ -773,6 +773,7 @@ public abstract class DcTrackerBase extends Handler {
     public void setDataOnRoamingEnabled(boolean enabled) {
         if (getDataOnRoamingEnabled() != enabled) {
             final ContentResolver resolver = mPhone.getContext().getContentResolver();
+
             Settings.Global.putInt(resolver,
                     Settings.Global.DATA_ROAMING + mPhone.getPhoneId(), enabled ? 1 : 0);
             // will trigger handleDataOnRoamingChange() through observer

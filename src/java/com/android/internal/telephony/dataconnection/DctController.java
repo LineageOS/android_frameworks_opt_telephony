@@ -75,8 +75,7 @@ public class DctController extends Handler {
     private static final int EVENT_SET_DATA_ALLOW_DONE = 2;
     private static final int EVENT_DELAYED_RETRY = 3;
     private static final int EVENT_LEGACY_SET_DATA_SUBSCRIPTION = 4;
-    private static final int EVENT_SET_DATA_ALLOW_TRUE_DONE = 5;
-    private static final int EVENT_SET_DATA_ALLOW_FALSE_DONE = 6;
+    private static final int EVENT_SET_DATA_ALLOW_FALSE = 5;
 
     private RegistrantList mNotifyDefaultDataSwitchInfo = new RegistrantList();
     private RegistrantList mNotifyOnDemandDataSwitchInfo = new RegistrantList();
@@ -124,20 +123,16 @@ public class DctController extends Handler {
         }
     };
 
-/*FIXME L_MR1 internal
-    private void processPendingNetworkRequests(NetworkRequest n) {
-	    int phoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
-        ((TelephonyNetworkFactory)mNetworkFactory[phoneId]).processPendingNetworkRequests(n);
-    }
-*/
     private void updateSubIdAndCapability() {
-        int phoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
-//        ((TelephonyNetworkFactory)mNetworkFactory[phoneId]).updateNetworkCapability();
+        for (int i = 0; i < mPhoneNum; i++) {
+           ((TelephonyNetworkFactory)mNetworkFactory[i]).updateNetworkCapability();
+        }
     }
 
     private void releaseAllNetworkRequests() {
-        int phoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
-//        ((TelephonyNetworkFactory)mNetworkFactory[phoneId]).releaseAllNetworkRequests();
+        for (int i = 0; i < mPhoneNum; i++) {
+            ((TelephonyNetworkFactory)mNetworkFactory[i]).releaseAllNetworkRequests();
+        }
     }
 
     private OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
@@ -299,24 +294,25 @@ public class DctController extends Handler {
             } else {
                 loge("DctController(phones): Could not connect to " + i);
             }
-        }
 
-        mContext = mPhones[0].getContext();
-
-        for (int i = 0; i < mPhoneNum; ++i) {
             // Register for radio state change
             PhoneBase phoneBase = (PhoneBase)mPhones[i].getActivePhone();
             updatePhoneBaseForIndex(i, phoneBase);
         }
+
+        mContext = mPhones[0].getContext();
 
         HandlerThread t = new HandlerThread("DdsSwitchSerializer");
         t.start();
 
         mDdsSwitchSerializer = new DdsSwitchSerializerHandler(t.getLooper());
 
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED);
-        //mContext.registerReceiver(mIntentReceiver, filter);
+        mContext.registerReceiver(subInfoBroadcastReceiver,
+                new IntentFilter(TelephonyIntents.ACTION_SUBINFO_RECORD_UPDATED));
+
+        mContext.registerReceiver(defaultDdsBroadcastReceiver,
+                new IntentFilter(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED));
+
         mSubMgr = SubscriptionManager.from(mContext);
         mSubMgr.addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
 
@@ -335,12 +331,190 @@ public class DctController extends Handler {
             cm.unregisterNetworkFactory(mNetworkFactoryMessenger[i]);
             mNetworkFactoryMessenger[i] = null;
         }
+        releaseAllNetworkRequests();
 
         mContext.unregisterReceiver(defaultDdsBroadcastReceiver);
         mContext.unregisterReceiver(subInfoBroadcastReceiver);
 
         mSubMgr.removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
         mContext.getContentResolver().unregisterContentObserver(mObserver);
+    }
+
+    @Override
+    public void handleMessage (Message msg) {
+        logd("handleMessage msg=" + msg);
+        boolean isLegacySetDds = false;
+        switch (msg.what) {
+            case EVENT_LEGACY_SET_DATA_SUBSCRIPTION:
+                isLegacySetDds = true;
+                    //intentional fall through, no break.
+            case EVENT_ALL_DATA_DISCONNECTED: {
+                AsyncResult ar = (AsyncResult)msg.obj;
+                SwitchInfo s = (SwitchInfo)ar.userObj;
+                Integer phoneId = s.mPhoneId;
+                Rlog.d(LOG_TAG, "EVENT_ALL_DATA_DISCONNECTED switchInfo :" + s +
+                        " isLegacySetDds = " + isLegacySetDds);
+                // In this case prefPhoneId points to the newDds we are trying to
+                // set, hence we do not need to call unregister for data disconnected
+                if (!isLegacySetDds) {
+                    int prefPhoneId = mSubController.getPhoneId(
+                             mSubController.getCurrentDds());
+                    mPhones[prefPhoneId].unregisterForAllDataDisconnected(this);
+                }
+                Message allowedDataDone = Message.obtain(this,
+                        EVENT_SET_DATA_ALLOW_DONE, s);
+                Phone phone = mPhones[phoneId].getActivePhone();
+
+                informDefaultDdsToPropServ(phoneId);
+                DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
+                dcTracker.setDataAllowed(true, allowedDataDone);
+
+               break;
+            }
+
+            case EVENT_DELAYED_RETRY: {
+                Rlog.d(LOG_TAG, "EVENT_DELAYED_RETRY");
+                SomeArgs args = (SomeArgs)msg.obj;
+                try {
+                    SwitchInfo s = (SwitchInfo)args.arg1;
+                    boolean psAttach = (boolean)args.arg2;
+                    Rlog.d(LOG_TAG, " Retry, switchInfo = " + s);
+
+                    Integer phoneId = s.mPhoneId;
+                    int[] subId = mSubController.getSubId(phoneId);
+                    Phone phone = mPhones[phoneId].getActivePhone();
+                    DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
+
+                    if(psAttach) {
+                        Message psAttachDone = Message.obtain(this,
+                                EVENT_SET_DATA_ALLOW_DONE, s);
+                        dcTracker.setDataAllowed(true, psAttachDone);
+                    } else {
+                        Message psDetachDone = Message.obtain(this,
+                                EVENT_SET_DATA_ALLOW_FALSE, s);
+                        dcTracker.setDataAllowed(false, psDetachDone);
+                    }
+                } finally {
+                    args.recycle();
+                }
+                break;
+            }
+
+            case EVENT_SET_DATA_ALLOW_DONE: {
+                AsyncResult ar = (AsyncResult)msg.obj;
+                SwitchInfo s = (SwitchInfo)ar.userObj;
+
+                Exception errorEx = null;
+
+                Integer phoneId = s.mPhoneId;
+                int[] subId = mSubController.getSubId(phoneId);
+                Rlog.d(LOG_TAG, "EVENT_SET_DATA_ALLOWED_DONE  phoneId :" + subId[0]
+                        + ", switchInfo = " + s);
+
+                if (ar.exception != null) {
+                    Rlog.d(LOG_TAG, "Failed, switchInfo = " + s
+                            + " attempt delayed retry");
+                    s.incRetryCount();
+                    if ( s.isRetryPossible()) {
+                        SomeArgs args = SomeArgs.obtain();
+                        args.arg1 = s;
+                        args.arg2 = true;
+                        sendMessageDelayed(obtainMessage(EVENT_DELAYED_RETRY, args),
+                                ATTACH_RETRY_DELAY);
+                        return;
+                    } else {
+                        Rlog.d(LOG_TAG, "Already did max retries, notify failure");
+                        errorEx = new RuntimeException("PS ATTACH failed");
+                   }
+                } else {
+                    Rlog.d(LOG_TAG, "PS ATTACH success = " + s);
+                }
+
+                mDdsSwitchSerializer.unLock();
+
+                if (s.mIsDefaultDataSwitchRequested) {
+                    mNotifyDefaultDataSwitchInfo.notifyRegistrants(
+                            new AsyncResult(null, subId[0], errorEx));
+                } else if (s.mIsOnDemandPsAttachRequested) {
+                    mNotifyOnDemandPsAttach.notifyRegistrants(
+                            new AsyncResult(null, s.mNetworkRequest, errorEx));
+                } else {
+                    mNotifyOnDemandDataSwitchInfo.notifyRegistrants(
+                            new AsyncResult(null, s.mNetworkRequest, errorEx));
+                }
+                break;
+            }
+
+            case EVENT_SET_DATA_ALLOW_FALSE: {
+                AsyncResult ar = (AsyncResult)msg.obj;
+                SwitchInfo s = (SwitchInfo)ar.userObj;
+
+                Exception errorEx = null;
+
+                Integer phoneId = s.mPhoneId;
+                int[] subId = mSubController.getSubId(phoneId);
+                Rlog.d(LOG_TAG, "EVENT_SET_DATA_FALSE  phoneId :" + subId[0]
+                        + ", switchInfo = " + s);
+
+                if (ar.exception != null) {
+                    Rlog.d(LOG_TAG, "Failed, switchInfo = " + s
+                            + " attempt delayed retry");
+                    s.incRetryCount();
+                    if (s.isRetryPossible()) {
+                        SomeArgs args = SomeArgs.obtain();
+                        args.arg1 = s;
+                        args.arg2 = false;
+                        sendMessageDelayed(obtainMessage(EVENT_DELAYED_RETRY, args),
+                                ATTACH_RETRY_DELAY);
+                        return;
+                    } else {
+                        Rlog.d(LOG_TAG, "Already did max retries, notify failure");
+                        errorEx = new RuntimeException("PS DETACH failed");
+                        mNotifyOnDemandDataSwitchInfo.notifyRegistrants(
+                                new AsyncResult(null, s.mNetworkRequest, errorEx));
+                   }
+                } else {
+                    Rlog.d(LOG_TAG, "PS DETACH success = " + s);
+                }
+                break;
+            }
+
+            case AsyncChannel.CMD_CHANNEL_HALF_CONNECTED: {
+                if(msg.arg1 == AsyncChannel.STATUS_SUCCESSFUL) {
+                    logd("HALF_CONNECTED: Connection successful with DDS switch"
+                            + " service");
+                    mDdsSwitchPropService = (AsyncChannel) msg.obj;
+                } else {
+                    logd("HALF_CONNECTED: Connection failed with"
+                            +" DDS switch service, err = " + msg.arg1);
+                }
+                   break;
+            }
+
+            case AsyncChannel.CMD_CHANNEL_DISCONNECTED: {
+                logd("Connection disconnected with DDS switch service");
+                mDdsSwitchPropService = null;
+                break;
+            }
+
+            case EVENT_PROCESS_REQUESTS:
+                onProcessRequest();
+                break;
+            case EVENT_EXECUTE_REQUEST:
+                onExecuteRequest((RequestInfo)msg.obj);
+                break;
+            case EVENT_EXECUTE_ALL_REQUESTS:
+                onExecuteAllRequests(msg.arg1);
+                break;
+            case EVENT_RELEASE_REQUEST:
+                onReleaseRequest((RequestInfo)msg.obj);
+                break;
+            case EVENT_RELEASE_ALL_REQUESTS:
+                onReleaseAllRequests(msg.arg1);
+                break;
+            default:
+                loge("Un-handled message [" + msg.what + "]");
+        }
     }
 
     private int requestNetwork(NetworkRequest request, int priority) {
@@ -401,7 +575,7 @@ public class DctController extends Handler {
         int phoneId = getTopPriorityRequestPhoneId();
         int activePhoneId = -1;
 
-        for (int i=0; i<mDcSwitchAsyncChannel.length; i++) {
+        for (int i=0; i<mDcSwitchStateMachine.length; i++) {
             if (!mDcSwitchAsyncChannel[i].isIdleSync()) {
                 activePhoneId = i;
                 break;
@@ -449,7 +623,7 @@ public class DctController extends Handler {
 
     private void onReleaseRequest(RequestInfo requestInfo) {
         logd("onReleaseRequest request=" + requestInfo);
-        if (requestInfo.executed) {
+        if (requestInfo != null && requestInfo.executed) {
             String apn = apnForNetworkRequest(requestInfo.request);
             int phoneId = getRequestPhoneId(requestInfo.request);
             PhoneBase phoneBase = (PhoneBase)mPhones[phoneId].getActivePhone();
@@ -547,16 +721,6 @@ public class DctController extends Handler {
         return phoneId;
     }
 
-    private static void logv(String s) {
-        Rlog.v(LOG_TAG, "[DctController] " + s);
-    }
-
-
-    private static void logw(String s) {
-        Rlog.w(LOG_TAG, "[DctController] " + s);
-    }
-
-// FIXME - LMR1_INTERNAL Dds switch, On demand PS Attach/Detach proprietary logic
     private class SwitchInfo {
         private int mRetryCount = 0;
 
@@ -605,6 +769,7 @@ public class DctController extends Handler {
             dcTracker.cleanUpAllConnections("DDS switch");
         }
     }
+
     public void setDefaultDataSubId(int reqSubId) {
         int reqPhoneId = mSubController.getPhoneId(reqSubId);
         int currentDds = mSubController.getCurrentDds();
@@ -663,12 +828,11 @@ public class DctController extends Handler {
         SwitchInfo s = new SwitchInfo(new Integer(phoneId), n, false, true);
 
         Message psAttachDone = Message.obtain(this,
-                EVENT_SET_DATA_ALLOW_TRUE_DONE, s);
+                EVENT_SET_DATA_ALLOW_DONE, s);
 
-/*        int defDdsPhoneId = getDataConnectionFromSetting();
+        int defDdsPhoneId = getDataConnectionFromSetting();
         informDefaultDdsToPropServ(defDdsPhoneId);
         dcTracker.setDataAllowed(true, psAttachDone);
-*/
     }
 
     //
@@ -724,155 +888,6 @@ public class DctController extends Handler {
         logd("Got messenger from DDS switch service, messenger = " + messenger);
         AsyncChannel ac = new AsyncChannel();
         ac.connect(mContext, sDctController, messenger);
-    }
-
-    @Override
-        public void handleMessage (Message msg) {
-            boolean isLegacySetDds = false;
-            Rlog.d(LOG_TAG, "handleMessage msg=" + msg);
-
-            switch (msg.what) {
-                case EVENT_LEGACY_SET_DATA_SUBSCRIPTION:
-                    isLegacySetDds = true;
-                    //intentional fall through, no break.
-                case EVENT_ALL_DATA_DISCONNECTED: {
-                    AsyncResult ar = (AsyncResult)msg.obj;
-                    SwitchInfo s = (SwitchInfo)ar.userObj;
-                    Integer phoneId = s.mPhoneId;
-                    Rlog.d(LOG_TAG, "EVENT_ALL_DATA_DISCONNECTED switchInfo :" + s +
-                            " isLegacySetDds = " + isLegacySetDds);
-                    // In this case prefPhoneId points to the newDds we are trying to
-                    // set, hence we do not need to call unregister for data disconnected
-                    if (!isLegacySetDds) {
-                        int prefPhoneId = mSubController.getPhoneId(
-                                 mSubController.getCurrentDds());
-                        mPhones[prefPhoneId].unregisterForAllDataDisconnected(this);
-                    }
-                    Message allowedDataDone = Message.obtain(this,
-                            EVENT_SET_DATA_ALLOW_TRUE_DONE, s);
-                    Phone phone = mPhones[phoneId].getActivePhone();
-
-                    informDefaultDdsToPropServ(phoneId);
-
-                    DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
-                    dcTracker.setDataAllowed(true, allowedDataDone);
-
-                   break;
-                }
-
-                case EVENT_DELAYED_RETRY: {
-                    Rlog.d(LOG_TAG, "EVENT_DELAYED_RETRY");
-                    SwitchInfo s = (SwitchInfo)msg.obj;
-                    Rlog.d(LOG_TAG, " Retry, switchInfo = " + s);
-
-                    Integer phoneId = s.mPhoneId;
-                    int[] subId = mSubController.getSubId(phoneId);
-
-                    Message psAttachDone = Message.obtain(this,
-                            EVENT_SET_DATA_ALLOW_TRUE_DONE, s);
-                    Phone phone = mPhones[phoneId].getActivePhone();
-                    DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
-                    dcTracker.setDataAllowed(true, psAttachDone);
-                    break;
-                }
-
-                case EVENT_SET_DATA_ALLOW_TRUE_DONE: {
-                    AsyncResult ar = (AsyncResult)msg.obj;
-                    SwitchInfo s = (SwitchInfo)ar.userObj;
-
-                    Exception errorEx = null;
-
-                    Integer phoneId = s.mPhoneId;
-                    int[] subId = mSubController.getSubId(phoneId);
-                    Rlog.d(LOG_TAG, "EVENT_SET_DATA_ALLOW_TRUE_DONE  subId :" + subId[0]
-                            + ", switchInfo = " + s);
-
-                    if (ar.exception != null) {
-                        Rlog.d(LOG_TAG, "Failed, switchInfo = " + s
-                                + " attempt delayed retry");
-                        s.incRetryCount();
-                        if ( s.isRetryPossible()) {
-                            sendMessageDelayed(obtainMessage(EVENT_DELAYED_RETRY, s),
-                                    ATTACH_RETRY_DELAY);
-                            return;
-                        } else {
-                            Rlog.d(LOG_TAG, "Already did max retries, notify failure");
-                            errorEx = new RuntimeException("PS ATTACH failed");
-                       }
-                    } else {
-                        Rlog.d(LOG_TAG, "PS ATTACH success = " + s);
-                    }
-
-                    mDdsSwitchSerializer.unLock();
-
-                    if (s.mIsDefaultDataSwitchRequested) {
-                        mNotifyDefaultDataSwitchInfo.notifyRegistrants(
-                                new AsyncResult(null, subId[0], errorEx));
-                    } else if (s.mIsOnDemandPsAttachRequested) {
-                        mNotifyOnDemandPsAttach.notifyRegistrants(
-                                new AsyncResult(null, s.mNetworkRequest, errorEx));
-                    } else {
-                        mNotifyOnDemandDataSwitchInfo.notifyRegistrants(
-                                new AsyncResult(null, s.mNetworkRequest, errorEx));
-                    }
-                    break;
-                }
-
-                case EVENT_SET_DATA_ALLOW_FALSE_DONE: {
-                    AsyncResult ar = (AsyncResult)msg.obj;
-                    SwitchInfo s = (SwitchInfo)ar.userObj;
-                    Exception errorEx = null;
-                    int[] subId = mSubController.getSubId(s.mPhoneId);
-                    Rlog.d(LOG_TAG, "EVENT_SET_DATA_ALLOW_FALSE_DONE  subId :" + subId[0]
-                            + ", switchInfo = " + s);
-
-                    if (ar.exception != null) {
-                        Rlog.d(LOG_TAG, "PS DETACH Failed, switchInfo = " + s);
-                        errorEx = new RuntimeException("PS DETACH failed");
-                        mDdsSwitchSerializer.unLock();
-                        mNotifyOnDemandDataSwitchInfo.notifyRegistrants(
-                                new AsyncResult(null, s.mNetworkRequest, errorEx));
-                    } else {
-                        Rlog.d(LOG_TAG, "PS DETACH success = " + s);
-                    }
-                    break;
-                }
-
-                case AsyncChannel.CMD_CHANNEL_HALF_CONNECTED: {
-                    if(msg.arg1 == AsyncChannel.STATUS_SUCCESSFUL) {
-                        logd("HALF_CONNECTED: Connection successful with DDS switch"
-                                + " service");
-                        mDdsSwitchPropService = (AsyncChannel) msg.obj;
-                    } else {
-                        logd("HALF_CONNECTED: Connection failed with"
-                                +" DDS switch service, err = " + msg.arg1);
-                    }
-                       break;
-                }
-
-                case AsyncChannel.CMD_CHANNEL_DISCONNECTED: {
-                    logd("Connection disconnected with DDS switch service");
-                    mDdsSwitchPropService = null;
-                    break;
-                }
-                case EVENT_PROCESS_REQUESTS:
-                    onProcessRequest();
-                    break;
-                case EVENT_EXECUTE_REQUEST:
-                    onExecuteRequest((RequestInfo)msg.obj);
-                    break;
-                case EVENT_EXECUTE_ALL_REQUESTS:
-                    onExecuteAllRequests(msg.arg1);
-                    break;
-                case EVENT_RELEASE_REQUEST:
-                    onReleaseRequest((RequestInfo)msg.obj);
-                    break;
-                case EVENT_RELEASE_ALL_REQUESTS:
-                    onReleaseAllRequests(msg.arg1);
-                    break;
-                default:
-                    loge("Un-handled message [" + msg.what + "]");
-        }
     }
 
     class DdsSwitchSerializerHandler extends Handler {
@@ -939,17 +954,14 @@ public class DctController extends Handler {
                             mSubController.getCurrentDds());
                     Phone phone = mPhones[prefPhoneId].getActivePhone();
                     DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
-                    SwitchInfo prefSwitchInfo = new SwitchInfo(new Integer(prefPhoneId), n, false,
-                            false);
+                    SwitchInfo s = new SwitchInfo(new Integer(phoneId), n, false, false);
                     Message dataAllowFalse = Message.obtain(DctController.this,
-                            EVENT_SET_DATA_ALLOW_FALSE_DONE, prefSwitchInfo);
+                            EVENT_SET_DATA_ALLOW_FALSE, s);
                     dcTracker.setDataAllowed(false, dataAllowFalse);
-
                     if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
                         //cleanup data from apss as there is no detach procedure for CDMA
                         dcTracker.cleanUpAllConnections("Ondemand DDS switch");
                     }
-                    SwitchInfo s = new SwitchInfo(new Integer(phoneId), n, false, false);
                     mPhones[prefPhoneId].registerForAllDataDisconnected(
                             sDctController, EVENT_ALL_DATA_DISCONNECTED, s);
                     break;
@@ -957,6 +969,7 @@ public class DctController extends Handler {
             }
         }
     }
+
     public boolean isDctControllerLocked() {
         return mDdsSwitchSerializer.isLocked();
     }
@@ -1069,6 +1082,12 @@ public class DctController extends Handler {
         return phoneId;
     }
 
+    private int getDataConnectionFromSetting(){
+        int subId = mSubController.getDefaultDataSubId();
+        int phoneId = SubscriptionManager.getPhoneId(subId);
+        return phoneId;
+    }
+
     private static void logd(String s) {
         if (DBG) Rlog.d(LOG_TAG, s);
     }
@@ -1078,62 +1097,229 @@ public class DctController extends Handler {
     }
 
     private class TelephonyNetworkFactory extends NetworkFactory {
+        //Thread safety not required as long as list operation are done by single thread.
+        private SparseArray<NetworkRequest> mDdsRequests = new SparseArray<NetworkRequest>();
         private final SparseArray<NetworkRequest> mPendingReq = new SparseArray<NetworkRequest>();
         private Phone mPhone;
+        private NetworkCapabilities mNetworkCapabilities;
 
         public TelephonyNetworkFactory(Looper l, Context c, String TAG, Phone phone,
                 NetworkCapabilities nc) {
             super(l, c, TAG, nc);
             mPhone = phone;
+            mNetworkCapabilities = nc;
             log("NetworkCapabilities: " + nc);
+        }
+
+        public void processPendingNetworkRequests(NetworkRequest n) {
+            for (int i = 0; i < mDdsRequests.size(); i++) {
+                NetworkRequest nr = mDdsRequests.valueAt(i);
+                if (nr.equals(n)) {
+                    log("Found pending request in ddsRequest list = " + nr);
+                    String apn = apnForNetworkRequest(nr);
+                    DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
+                    if (dcTracker.isApnSupported(apn)) {
+                        dcTracker.incApnRefCount(apn);
+                    } else {
+                        log("Unsupported APN");
+                    }
+                }
+            }
+        }
+
+        private void registerOnDemandDdsCallback() {
+            SubscriptionController subController = SubscriptionController.getInstance();
+
+            subController.registerForOnDemandDdsLockNotification(mPhone.getSubId(),
+                    new SubscriptionController.OnDemandDdsLockNotifier() {
+                        public void notifyOnDemandDdsLockGranted(NetworkRequest n) {
+                            log("Got the tempDds lock for the request = " + n);
+                            processPendingNetworkRequests(n);
+                        }
+                    });
+        }
+
+        public void updateNetworkCapability() {
+            int subId = mPhone.getSubId();
+            log("update networkCapabilites for subId = " + subId);
+
+            mNetworkCapabilities.setNetworkSpecifier(""+subId);
+            if ((subId > 0 && SubscriptionController.getInstance().
+                    getSubState(subId) == SubscriptionManager.ACTIVE) &&
+                    (subId == SubscriptionController.getInstance().getDefaultDataSubId())) {
+                log("INTERNET capability is with subId = " + subId);
+                //Only defaultDataSub provides INTERNET.
+                mNetworkCapabilities.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+            } else {
+                log("INTERNET capability is removed from subId = " + subId);
+                mNetworkCapabilities.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+
+            }
+            setScoreFilter(50);
+            registerOnDemandDdsCallback();
+
+            log("Ready to handle network requests");
         }
 
         @Override
         protected void needNetworkFor(NetworkRequest networkRequest, int score) {
             // figure out the apn type and enable it
-            log("Cellular needs Network for " + networkRequest);
+            if (DBG) log("Cellular needs Network for " + networkRequest);
 
-            if (!SubscriptionManager.isUsableSubIdValue(mPhone.getSubId())) {
+            int subId = mPhone.getSubId();
+            if (!SubscriptionManager.isUsableSubIdValue(subId) ||
+                    SubscriptionController.getInstance().getSubState(subId) !=
+                    SubscriptionManager.ACTIVE) {
                 log("Sub Info has not been ready, pending request.");
                 mPendingReq.put(networkRequest.requestId, networkRequest);
                 return;
             }
 
-            if (getRequestPhoneId(networkRequest) == mPhone.getPhoneId()) {
+            SubscriptionController subController = SubscriptionController.getInstance();
+            log("subController = " + subController);
+
+            int currentDds = subController.getDefaultDataSubId();
+            int requestedSpecifier = subController.getSubIdFromNetworkRequest(networkRequest);
+
+            log("CurrentDds = " + currentDds);
+            log("mySubId = " + subId);
+            log("Requested networkSpecifier = " + requestedSpecifier);
+            log("my networkSpecifier = " + mNetworkCapabilities.getNetworkSpecifier());
+
+            // For clients that do not send subId in NetworkCapabilities,
+            // Connectivity will send to all network factories. Accept only
+            // when requestedSpecifier is same as current factory's subId
+            if (requestedSpecifier != subId) {
+                log("requestedSpecifier is not same as mysubId. Bail out.");
+                mPendingReq.put(networkRequest.requestId, networkRequest);
+                return;
+            }
+
+            if (currentDds != requestedSpecifier) {
+                log("This request would result in DDS switch");
+                log("Requested DDS switch to subId = " + requestedSpecifier);
+
+                //Queue this request and initiate temp DDS switch.
+                //Once the DDS switch is done we will revist the pending requests.
+                mDdsRequests.put(networkRequest.requestId, networkRequest);
+                requestOnDemandDataSubscriptionLock(networkRequest);
+
+                return;
+            } else {
+                if(isNetworkRequestForInternet(networkRequest)) {
+                    log("Activating internet request on subId = " + subId);
+                    String apn = apnForNetworkRequest(networkRequest);
+                    DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
+                    if (dcTracker.isApnSupported(apn)) {
+                        requestNetwork(networkRequest, dcTracker.getApnPriority(apn));
+                    } else {
+                        log("Unsupported APN");
+                    }
+                } else {
+                    if(isValidRequest(networkRequest)) {
+                        //non-default APN requests for this subscription.
+                        mDdsRequests.put(networkRequest.requestId, networkRequest);
+                        requestOnDemandDataSubscriptionLock(networkRequest);
+                    } else {
+                        log("Bogus request req = " + networkRequest);
+                    }
+                }
+            }
+        }
+
+        private boolean isValidRequest(NetworkRequest n) {
+            int[] types = n.networkCapabilities.getCapabilities();
+            return (types.length > 0);
+        }
+
+        private boolean isNetworkRequestForInternet(NetworkRequest n) {
+            boolean flag = n.networkCapabilities.hasCapability
+                (NetworkCapabilities.NET_CAPABILITY_INTERNET);
+            log("Is the request for Internet = " + flag);
+            return flag;
+        }
+
+        private void requestOnDemandDataSubscriptionLock(NetworkRequest n) {
+            if(!isNetworkRequestForInternet(n)) {
+                //Request tempDDS lock only for non-default PDP requests
+                SubscriptionController subController = SubscriptionController.getInstance();
+                log("requestOnDemandDataSubscriptionLock for request = " + n);
+                subController.startOnDemandDataSubscriptionRequest(n);
+            }
+        }
+
+        private void removeRequestFromList(SparseArray<NetworkRequest> list, NetworkRequest n) {
+            NetworkRequest nr = list.get(n.requestId);
+            if (nr != null) {
+                log("Removing request = " + nr);
+                list.remove(n.requestId);
+                String apn = apnForNetworkRequest(nr);
                 DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
-                String apn = apnForNetworkRequest(networkRequest);
                 if (dcTracker.isApnSupported(apn)) {
-                    requestNetwork(networkRequest, dcTracker.getApnPriority(apn));
+                    dcTracker.decApnRefCount(apn);
                 } else {
                     log("Unsupported APN");
                 }
+            }
+        }
+
+        private void removeRequestIfFound(NetworkRequest n) {
+            log("Release the request from dds queue, if found");
+            removeRequestFromList(mDdsRequests, n);
+
+            if(!isNetworkRequestForInternet(n)) {
+                SubscriptionController subController = SubscriptionController.getInstance();
+                subController.stopOnDemandDataSubscriptionRequest(n);
             } else {
-                log("Request not send, put to pending");
-                mPendingReq.put(networkRequest.requestId, networkRequest);
+                // Internet requests are not queued in DDS list. So deactivate here explicitly.
+                String apn = apnForNetworkRequest(n);
+                DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
+                if (dcTracker.isApnSupported(apn)) {
+                    dcTracker.decApnRefCount(apn);
+                } else {
+                    log("Unsupported APN");
+                }
             }
         }
 
         @Override
         protected void releaseNetworkFor(NetworkRequest networkRequest) {
             log("Cellular releasing Network for " + networkRequest);
-
             if (!SubscriptionManager.isUsableSubIdValue(mPhone.getSubId())) {
                 log("Sub Info has not been ready, remove request.");
                 mPendingReq.remove(networkRequest.requestId);
                 return;
             }
 
-            if (getRequestPhoneId(networkRequest) == mPhone.getPhoneId()) {
-                DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
-                String apn = apnForNetworkRequest(networkRequest);
-                if (dcTracker.isApnSupported(apn)) {
-                    releaseNetwork(networkRequest);
-                } else {
-                    log("Unsupported APN");
-                }
-
+            NetworkRequest nr = mDdsRequests.get(networkRequest.requestId);
+            if (nr != null) {
+                removeRequestIfFound(networkRequest);
             } else {
-                log("Request not release");
+                if (getRequestPhoneId(networkRequest) == mPhone.getPhoneId()) {
+                    DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
+                    String apn = apnForNetworkRequest(networkRequest);
+                    if (dcTracker.isApnSupported(apn)) {
+                        releaseNetwork(networkRequest);
+                    } else {
+                        log("Unsupported APN");
+                    }
+
+                } else {
+                    log("Request not release");
+                }
+            }
+        }
+
+        public void releaseAllNetworkRequests() {
+            log("releaseAllNetworkRequests");
+            SubscriptionController subController = SubscriptionController.getInstance();
+            for (int i = 0; i < mDdsRequests.size(); i++) {
+                NetworkRequest nr = mDdsRequests.valueAt(i);
+                if (nr != null) {
+                    log("Removing request = " + nr);
+                    subController.stopOnDemandDataSubscriptionRequest(nr);
+                    mDdsRequests.remove(nr.requestId);
+                }
             }
         }
 
