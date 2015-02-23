@@ -45,6 +45,7 @@ public abstract class Connection {
         public void onVideoStateChanged(int videoState);
         public void onLocalVideoCapabilityChanged(boolean capable);
         public void onRemoteVideoCapabilityChanged(boolean capable);
+        public void onWifiChanged(boolean isWifi);
         public void onVideoProviderChanged(
                 android.telecom.Connection.VideoProvider videoProvider);
         public void onAudioQualityChanged(int audioQuality);
@@ -61,6 +62,8 @@ public abstract class Connection {
         public void onLocalVideoCapabilityChanged(boolean capable) {}
         @Override
         public void onRemoteVideoCapabilityChanged(boolean capable) {}
+        @Override
+        public void onWifiChanged(boolean isWifi) {}
         @Override
         public void onVideoProviderChanged(
                 android.telecom.Connection.VideoProvider videoProvider) {}
@@ -108,6 +111,7 @@ public abstract class Connection {
     private int mVideoState;
     private boolean mLocalVideoCapable;
     private boolean mRemoteVideoCapable;
+    private boolean mIsWifi;
     private int mAudioQuality;
     private android.telecom.Connection.VideoProvider mVideoProvider;
     public Call.State mPreHandoverState = Call.State.IDLE;
@@ -487,6 +491,15 @@ public abstract class Connection {
     }
 
     /**
+     * Returns whether the connection is using a wifi network.
+     *
+     * @return {@code True} if the connection is using a wifi network.
+     */
+    public boolean isWifi() {
+        return mIsWifi;
+    }
+
+    /**
      * Returns the {@link android.telecom.Connection.VideoProvider} for the connection.
      *
      * @return The {@link android.telecom.Connection.VideoProvider}.
@@ -538,6 +551,18 @@ public abstract class Connection {
         mRemoteVideoCapable = capable;
         for (Listener l : mListeners) {
             l.onRemoteVideoCapabilityChanged(mRemoteVideoCapable);
+        }
+    }
+
+    /**
+     * Sets whether a wifi network is used for the connection.
+     *
+     * @param isWifi {@code True} if wifi is being used.
+     */
+    public void setWifi(boolean isWifi) {
+        mIsWifi = isWifi;
+        for (Listener l : mListeners) {
+            l.onWifiChanged(mIsWifi);
         }
     }
 

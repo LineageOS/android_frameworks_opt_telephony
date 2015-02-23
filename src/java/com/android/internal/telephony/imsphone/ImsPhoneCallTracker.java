@@ -1303,17 +1303,37 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onFeatureCapabilityChanged(int serviceClass,
                 int[] enabledFeatures, int[] disabledFeatures) {
             if (serviceClass == ImsServiceClass.MMTEL) {
+                // Check enabledFeatures to determine capabilities. We ignore disabledFeatures.
                 for (int  i = ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE;
                         i <= ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI; i++) {
                     if (enabledFeatures[i] == i) {
+                        // If the feature is set to its own integer value it is enabled.
+                        if (DBG) log("onFeatureCapabilityChanged: i=" + i + ", value=true");
                         mImsFeatureEnabled[i] = true;
-                    }
-                    if (disabledFeatures[i] == i) {
+                    } else if (enabledFeatures[i]
+                            == ImsConfig.FeatureConstants.FEATURE_TYPE_UNKNOWN) {
+                        // FEATURE_TYPE_UNKNOWN indicates that a feature is disabled.
+                        if (DBG) log("onFeatureCapabilityChanged: i=" + i + ", value=false");
                         mImsFeatureEnabled[i] = false;
+                    } else {
+                        // Feature has unknown state; it is not its own value or -1.
+                        if (DBG) {
+                            loge("onFeatureCapabilityChanged: i=" + i + ", unexpectedValue="
+                                + enabledFeatures[i]);
+                        }
                     }
                 }
+
+                // TODO: Use the ImsCallSession or ImsCallProfile to tell the initial Wifi state and
+                // {@link ImsCallSession.Listener#callSessionHandover} to listen for changes to
+                // wifi capability caused by a handover.
+                if (DBG) log("onFeatureCapabilityChanged: isVowifiEnabled=" + isVowifiEnabled());
+                for (ImsPhoneConnection connection : mConnections) {
+                    connection.updateWifiState();
+                }
             }
-            if (DBG) log("onFeatureCapabilityChanged,  mImsFeatureEnabled=" +  mImsFeatureEnabled);
+
+            if (DBG) log("onFeatureCapabilityChanged: mImsFeatureEnabled=" +  mImsFeatureEnabled);
         }
     };
 
