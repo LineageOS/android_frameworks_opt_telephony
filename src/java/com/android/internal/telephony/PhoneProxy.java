@@ -724,6 +724,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public void addParticipant(String dialString, Message onComplete) throws CallStateException {
+        mActivePhone.addParticipant(dialString, onComplete);
+    }
+
+    @Override
     public boolean handlePinMmi(String dialString) {
         return mActivePhone.handlePinMmi(dialString);
     }
@@ -1475,5 +1480,10 @@ public class PhoneProxy extends Handler implements Phone {
     public Connection dial(String dialString, int videoState, Bundle extras)
             throws CallStateException {
         return mActivePhone.dial(dialString, videoState, extras);
+    }
+
+    @Override
+    public void notifyCallForwardingIndicator() {
+        mActivePhone.notifyCallForwardingIndicator();
     }
 }

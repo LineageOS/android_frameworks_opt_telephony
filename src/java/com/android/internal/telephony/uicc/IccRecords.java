@@ -112,6 +112,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     private boolean mOEMHookSimRefresh = false;
 
+    public static final int DEFAULT_VOICE_MESSAGE_COUNT = -2;
+    public static final int UNKNOWN_VOICE_MESSAGE_COUNT = -1;
+
     @Override
     public String toString() {
         return "mDestroyed=" + mDestroyed

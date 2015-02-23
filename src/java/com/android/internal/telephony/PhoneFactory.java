@@ -552,4 +552,8 @@ public class PhoneFactory {
         }
         return phoneId;
     }
+
+    public static SubInfoRecordUpdater getSubInfoRecordUpdater() {
+        return sSubInfoRecordUpdater;
+    }
 }

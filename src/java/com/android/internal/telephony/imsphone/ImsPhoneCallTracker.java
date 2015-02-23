@@ -107,19 +107,40 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
                     boolean isUnknown = intent.getBooleanExtra(ImsManager.EXTRA_IS_UNKNOWN_CALL,
                             false);
+                    int phantomState = intent.getIntExtra(ImsManager.EXTRA_UNKNOWN_CALL_STATE, 0);
+                    String address = intent.getStringExtra(ImsManager.EXTRA_UNKNOWN_CALL_ADDRESS);
+
                     if (DBG) {
                         log("onReceive : isUnknown = " + isUnknown +
+                                " state = " + phantomState +
                                 " fg = " + mForegroundCall.getState() +
-                                " bg = " + mBackgroundCall.getState());
+                                " bg = " + mBackgroundCall.getState() +
+                                " address = " + address);
                     }
 
                     // Normal MT/Unknown call
                     ImsCall imsCall = mImsManager.takeCall(mServiceId, intent, mImsCallListener);
+                    ImsPhoneCall.State state = convertIntToCallState(phantomState);
+
+                    ImsPhoneCall call = null;
+
+                    if (!isUnknown) {
+                        call = mRingingCall;
+                    } else if ((isUnknown) && (state == ImsPhoneCall.State.HOLDING)) {
+                        call = mBackgroundCall;
+                    } else {
+                        call = mForegroundCall;
+                    }
+
                     ImsPhoneConnection conn = new ImsPhoneConnection(mPhone.getContext(), imsCall,
-                            ImsPhoneCallTracker.this,
-                            (isUnknown? mForegroundCall: mRingingCall), isUnknown);
+                            ImsPhoneCallTracker.this, call, isUnknown, state, address);
+
                     addConnection(conn);
 
+                    // Updates mHold value in ImsCall for phantom held call scenario
+                    if (isUnknown && (state == ImsPhoneCall.State.HOLDING)) {
+                        imsCall.updateHoldValues();
+                    }
                     setVideoCallProvider(conn, imsCall);
 
                     if (isUnknown) {
@@ -143,6 +164,22 @@ public final class ImsPhoneCallTracker extends CallTracker {
             }
         }
     };
+
+    private ImsPhoneCall.State convertIntToCallState(int state) {
+        switch (state) {
+            case ImsManager.CALL_ACTIVE:        return ImsPhoneCall.State.ACTIVE;
+            case ImsManager.CALL_HOLD:          return ImsPhoneCall.State.HOLDING;
+            case ImsManager.CALL_DIALING:       return ImsPhoneCall.State.DIALING;
+            case ImsManager.CALL_ALERTING:      return ImsPhoneCall.State.ALERTING;
+            case ImsManager.CALL_INCOMING:      return ImsPhoneCall.State.INCOMING;
+            case ImsManager.CALL_WAITING:       return ImsPhoneCall.State.WAITING;
+            default:
+                {
+                    log("convertIntToCallState: illegal call state:" + state);
+                    return ImsPhoneCall.State.INCOMING;
+                }
+        }
+    }
 
     //***** Constants
 
@@ -189,6 +226,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
     private int pendingCallClirMode;
     private int mPendingCallVideoState;
     private boolean pendingCallInEcm = false;
+
+    private Object mAddParticipantLock = new Object();
+    private Message mAddPartResp;
 
     //***** Events
 
@@ -391,7 +431,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
     }
 
     public void
-    addParticipant(String dialString) throws CallStateException {
+    addParticipant(String dialString, Message onComplete) throws CallStateException {
+        boolean isSuccess = false;
         if (mForegroundCall != null) {
             ImsCall imsCall = mForegroundCall.getImsCall();
             if (imsCall == null) {
@@ -399,8 +440,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
             } else {
                 ImsCallSession imsCallSession = imsCall.getCallSession();
                 if (imsCallSession != null) {
-                    String[] callees = new String[] { dialString };
-                    imsCallSession.inviteParticipants(callees);
+                    synchronized (mAddParticipantLock) {
+                        mAddPartResp = onComplete;
+                        String[] callees = new String[] { dialString };
+                        imsCallSession.inviteParticipants(callees);
+                        isSuccess = true;
+                    }
                 } else {
                     loge("addParticipant : ImsCallSession does not exist");
                 }
@@ -408,6 +453,23 @@ public final class ImsPhoneCallTracker extends CallTracker {
         } else {
             loge("addParticipant : Foreground call does not exist");
         }
+        if (!isSuccess && onComplete != null) {
+            sendAddParticipantResponse(false, onComplete);
+            mAddPartResp = null;
+        }
+    }
+
+    private void sendAddParticipantResponse(boolean success, Message onComplete) {
+        loge("sendAddParticipantResponse : success = " + success);
+        if (onComplete == null) return;
+
+        Exception ex = null;
+        if (!success) {
+            ex = new Exception("Add participant failed");
+        }
+
+        AsyncResult.forMessage(onComplete, null, ex);
+        onComplete.sendToTarget();
     }
 
     private void handleEcmTimer(int action) {
@@ -1046,6 +1108,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
             case ImsReasonInfo.CODE_LOCAL_POWER_OFF:
                 return DisconnectCause.POWER_OFF;
 
+            case ImsReasonInfo.CODE_EMERGENCY_TEMP_FAILURE:
+                return DisconnectCause.EMERGENCY_TEMP_FAILURE;
+
+            case ImsReasonInfo.CODE_EMERGENCY_PERM_FAILURE:
+                return DisconnectCause.EMERGENCY_PERM_FAILURE;
+
             default:
         }
 
@@ -1305,6 +1373,25 @@ public final class ImsPhoneCallTracker extends CallTracker {
             ImsPhoneConnection conn = findConnection(call);
             if (conn != null) {
                 conn.updateConferenceParticipants(participants);
+            }
+        }
+
+        @Override
+        public void onCallInviteParticipantsRequestDelivered(ImsCall call) {
+            if (DBG) log("invite participants delivered");
+            synchronized(mAddParticipantLock) {
+                sendAddParticipantResponse(true, mAddPartResp);
+                mAddPartResp = null;
+            }
+        }
+
+        @Override
+        public void onCallInviteParticipantsRequestFailed(ImsCall call,
+                ImsReasonInfo reasonInfo) {
+            if (DBG) log("invite participants failed.");
+            synchronized(mAddParticipantLock) {
+                sendAddParticipantResponse(false, mAddPartResp);
+                mAddPartResp = null;
             }
         }
     };
