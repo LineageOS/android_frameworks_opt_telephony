@@ -76,6 +76,7 @@ import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+import com.android.internal.telephony.PhoneConstants;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -696,12 +697,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 return;
             }
 
-            if (!mCi.getRadioState().isOn()) {
-                // Radio has crashed or turned off
-                cancelPollState();
-                return;
-            }
-
             if (err != CommandException.Error.OP_NOT_ALLOWED_BEFORE_REG_NW) {
                 loge("RIL implementation has returned an error where it must succeed" +
                         ar.exception);
@@ -950,8 +945,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 setSignalStrengthDefaultValues();
                 mGotCountryCode = false;
                 mNitzUpdatedTime = false;
-                pollStateDone();
-            break;
+                if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                        != mSS.getRilDataRadioTechnology()) {
+                    pollStateDone();
+                }
 
             default:
                 // Issue all poll-related commands at once
@@ -1038,6 +1035,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         boolean hasLocationChanged = !mNewCellLoc.equals(mCellLoc);
 
+		resetServiceStateInIwlanMode();
+
         TelephonyManager tm =
                 (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
 
@@ -1092,6 +1091,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         if (hasRilDataRadioTechnologyChanged) {
             tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), mSS.getRilVoiceRadioTechnology());
+
+            if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                        == mSS.getRilDataRadioTechnology()) {
+                log("pollStateDone: IWLAN enabled");
+            }
         }
 
         if (hasRegistered) {
@@ -1250,7 +1254,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         if (hasDataRegStateChanged || hasRilDataRadioTechnologyChanged) {
             notifyDataRegStateRilRadioTechnologyChanged();
-            mPhone.notifyDataConnection(null);
+
+            if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
+                        == mSS.getRilDataRadioTechnology()) {
+                mPhone.notifyDataConnection(Phone.REASON_IWLAN_AVAILABLE);
+            } else {
+                mPhone.notifyDataConnection(null);
+            }
         }
 
         if (hasVoiceRoamingOn) {
