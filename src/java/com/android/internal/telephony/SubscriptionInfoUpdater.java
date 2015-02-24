@@ -400,10 +400,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
             SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
             String nameToSet;
-            String CarrierName = TelephonyManager.getDefault().getSimOperator(subId);
-            logd("CarrierName = " + CarrierName);
-            String simCarrierName = TelephonyManager.getDefault()
-                    .getSimOperatorNameForSubscription(subId);
+            String simCarrierName = mTelephonyMgr.getSimOperatorNameForSubscription(subId);
             ContentValues name = new ContentValues(1);
 
             if (subInfo != null && subInfo.getNameSource() !=
@@ -415,14 +412,10 @@ public class SubscriptionInfoUpdater extends Handler {
                 }
                 name.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
                 logd("sim name = " + nameToSet);
+                contentResolver.update(SubscriptionManager.CONTENT_URI, name,
+                        SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
+                        + "=" + Long.toString(subId), null);
             }
-            name.put(SubscriptionManager.CARRIER_NAME,
-                    !TextUtils.isEmpty(simCarrierName) ? simCarrierName :
-                    mContext.getString(com.android.internal.R.string.unknownName));
-            contentResolver.update(SubscriptionManager.CONTENT_URI, name,
-                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                    + "=" + Long.toString(subId), null);
-            logd("carrier name = " + simCarrierName);
 
         } else {
             logd("Invalid subId, could not update ContentResolver");
