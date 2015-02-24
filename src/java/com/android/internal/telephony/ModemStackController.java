@@ -429,6 +429,10 @@ public class ModemStackController extends Handler {
             //if any deact failed notify registrants to activate any deactivated subs
             //and stop binding process. No need to recover here.
             if (isAnyCmdFailed()) {
+                if (mUpdateStackMsg != null) {
+                    sendResponseToTarget(mUpdateStackMsg, RILConstants.GENERIC_FAILURE);
+                    mUpdateStackMsg = null;
+                }
                 notifyStackReady(false);
             } else {
                 mDeactivationInProgress = false;
@@ -625,7 +629,8 @@ public class ModemStackController extends Handler {
     private boolean isAnyCallsInProgress() {
         boolean isCallInProgress = false;
         for (int i = 0; i < mNumPhones; i++) {
-            if (TelephonyManager.getDefault().getCallState(i)
+            long subId = SubscriptionController.getInstance().getSubIdUsingPhoneId(i);
+            if (TelephonyManager.getDefault().getCallState(subId)
                     != TelephonyManager.CALL_STATE_IDLE) {
                 isCallInProgress = true;
                 break;
@@ -728,6 +733,10 @@ public class ModemStackController extends Handler {
         mActiveSubCount = 0;
         if (subInfoList == null) {
             //if getting sub info list is failed, abort cross mapping process.
+            if (mUpdateStackMsg != null) {
+                sendResponseToTarget(mUpdateStackMsg, RILConstants.GENERIC_FAILURE);
+                mUpdateStackMsg = null;
+            }
             notifyStackReady(false);
         }
         for (SubInfoRecord subInfo : subInfoList) {
