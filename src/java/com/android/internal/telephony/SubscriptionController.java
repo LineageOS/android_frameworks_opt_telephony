@@ -714,10 +714,7 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         String nameToSet;
-        String CarrierName = TelephonyManager.getDefault().getSimOperator(subIds[0]);
-        if (DBG) logdl("[addSubInfoRecord] CarrierName = " + CarrierName);
-        String simCarrierName =
-                TelephonyManager.getDefault().getSimOperatorNameForSubscription(subIds[0]);
+        String simCarrierName = mTelephonyManager.getSimOperatorNameForSubscription(subIds[0]);
 
         if (!TextUtils.isEmpty(simCarrierName)) {
             nameToSet = simCarrierName;
@@ -743,9 +740,7 @@ public class SubscriptionController extends ISub.Stub {
                 value.put(SubscriptionManager.COLOR, color);
                 value.put(SubscriptionManager.SIM_SLOT_INDEX, slotId);
                 value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
-                value.put(SubscriptionManager.CARRIER_NAME,
-                        !TextUtils.isEmpty(simCarrierName) ? simCarrierName :
-                        mContext.getString(com.android.internal.R.string.unknownName));
+                value.put(SubscriptionManager.CARRIER_NAME, "");
                 Uri uri = resolver.insert(SubscriptionManager.CONTENT_URI, value);
                 if (DBG) logdl("[addSubInfoRecord] New record created: " + uri);
             } else {
@@ -760,10 +755,6 @@ public class SubscriptionController extends ISub.Stub {
 
                 if (nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
                     value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
-                }
-
-                if (!TextUtils.isEmpty(simCarrierName)) {
-                    value.put(SubscriptionManager.CARRIER_NAME, simCarrierName);
                 }
 
                 if (value.size() > 0) {
