@@ -284,6 +284,16 @@ public class GSMPhone extends PhoneBase {
         }
     }
 
+    public ServiceState
+    getBaseServiceState() {
+        if (mSST != null) {
+            return mSST.mSS;
+        } else {
+            // avoid potential NPE in EmergencyCallHelper during Phone switch
+            return new ServiceState();
+        }
+    }
+
     @Override
     public CellLocation getCellLocation() {
         return mSST.getCellLocation();
