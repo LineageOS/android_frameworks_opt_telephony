@@ -71,6 +71,8 @@ import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 
+import android.widget.Toast;
+
 /**
  * {@hide}
  */
@@ -1351,6 +1353,29 @@ public final class ImsPhoneCallTracker extends CallTracker {
             ImsPhoneConnection conn = findConnection(call);
             if (conn != null) {
                 conn.updateConferenceParticipants(participants);
+            }
+        }
+
+        @Override
+        public void onCallHandover(ImsCall imsCall, int srcAccessTech, int targetAccessTech,
+            ImsReasonInfo reasonInfo) {
+            if (DBG) {
+                log("onCallHandover ::  srcAccessTech=" + srcAccessTech + ", targetAccessTech=" +
+                    targetAccessTech + ", reasonInfo=" + reasonInfo);
+            }
+        }
+
+        @Override
+        public void onCallHandoverFailed(ImsCall imsCall, int srcAccessTech, int targetAccessTech,
+            ImsReasonInfo reasonInfo) {
+            if (DBG) {
+                log("onCallHandoverFailed :: srcAccessTech=" + srcAccessTech +
+                    ", targetAccessTech=" + targetAccessTech + ", reasonInfo=" + reasonInfo);
+            }
+
+            String msg = reasonInfo.getExtraMessage();
+            if (mPhone != null && msg != null) {
+                Toast.makeText(mPhone.getContext(), msg, Toast.LENGTH_SHORT).show();
             }
         }
     };
