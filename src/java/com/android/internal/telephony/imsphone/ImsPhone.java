@@ -99,6 +99,8 @@ public class ImsPhone extends ImsPhoneBase {
     protected static final int EVENT_GET_CALL_BARRING_DONE          = EVENT_LAST + 2;
     protected static final int EVENT_SET_CALL_WAITING_DONE          = EVENT_LAST + 3;
     protected static final int EVENT_GET_CALL_WAITING_DONE          = EVENT_LAST + 4;
+    protected static final int EVENT_SET_CLIR_DONE                  = EVENT_LAST + 5;
+    protected static final int EVENT_GET_CLIR_DONE                  = EVENT_LAST + 6;
 
     public static final String CS_FALLBACK = "cs_fallback";
 
@@ -698,6 +700,33 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public void getOutgoingCallerIdDisplay(Message onComplete) {
+        if (DBG) Rlog.d(LOG_TAG, "getCLIR");
+        Message resp;
+        resp = obtainMessage(EVENT_GET_CLIR_DONE, onComplete);
+
+        try {
+            ImsUtInterface ut = mCT.getUtInterface();
+            ut.queryCLIR(resp);
+        } catch (ImsException e) {
+            sendErrorResponse(onComplete, e);
+        }
+    }
+
+    @Override
+    public void setOutgoingCallerIdDisplay(int clirMode, Message onComplete) {
+        if (DBG) Rlog.d(LOG_TAG, "setCLIR action= " + clirMode);
+        Message resp;
+        resp = obtainMessage(EVENT_SET_CLIR_DONE, onComplete);
+        try {
+            ImsUtInterface ut = mCT.getUtInterface();
+            ut.updateCLIR(clirMode, resp);
+        } catch (ImsException e) {
+            sendErrorResponse(onComplete, e);
+        }
+    }
+
+    @Override
     public void getCallForwardingOption(int commandInterfaceCFReason,
             Message onComplete) {
         if (DBG) Rlog.d(LOG_TAG, "getCallForwardingOption reason=" + commandInterfaceCFReason);
@@ -1226,6 +1255,16 @@ public class ImsPhone extends ImsPhoneBase {
                 sendResponse((Message) ar.userObj, ssInfos, ar.exception);
                 break;
 
+              case EVENT_GET_CLIR_DONE:
+                Bundle ssInfo = (Bundle) ar.result;
+                int[] clirInfo = null;
+                if (ssInfo != null) {
+                    clirInfo = ssInfo.getIntArray(ImsPhoneMmiCode.UT_BUNDLE_KEY_CLIR);
+                }
+                sendResponse((Message) ar.userObj, clirInfo, ar.exception);
+                break;
+
+             case EVENT_SET_CLIR_DONE:
              case EVENT_SET_CALL_BARRING_DONE:
              case EVENT_SET_CALL_WAITING_DONE:
                 sendResponse((Message) ar.userObj, null, ar.exception);

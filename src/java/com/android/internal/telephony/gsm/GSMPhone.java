@@ -1368,12 +1368,27 @@ public class GSMPhone extends PhoneBase {
 
     @Override
     public void getOutgoingCallerIdDisplay(Message onComplete) {
+        ImsPhone imsPhone = mImsPhone;
+        if ((imsPhone != null)
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+                || imsPhone.isUtEnabled())) {
+            imsPhone.getOutgoingCallerIdDisplay(onComplete);
+            return;
+        }
         mCi.getCLIR(onComplete);
     }
 
     @Override
     public void setOutgoingCallerIdDisplay(int commandInterfaceCLIRMode,
                                            Message onComplete) {
+        ImsPhone imsPhone = mImsPhone;
+        if ((imsPhone != null)
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+                || imsPhone.isUtEnabled())) {
+            imsPhone.setOutgoingCallerIdDisplay(commandInterfaceCLIRMode,
+            obtainMessage(EVENT_SET_CLIR_COMPLETE, commandInterfaceCLIRMode, 0, onComplete));
+            return;
+        }
         mCi.setCLIR(commandInterfaceCLIRMode,
                 obtainMessage(EVENT_SET_CLIR_COMPLETE, commandInterfaceCLIRMode, 0, onComplete));
     }
