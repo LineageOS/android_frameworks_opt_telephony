@@ -197,6 +197,13 @@ public interface Phone {
     ServiceState getServiceState();
 
     /**
+     * Get the current ServiceState. Use
+     * <code>registerForServiceStateChanged</code> to be informed of
+     * updates.
+     */
+    ServiceState getBaseServiceState();
+
+    /**
      * Get the current CellLocation.
      */
     CellLocation getCellLocation();

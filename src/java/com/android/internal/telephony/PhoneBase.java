@@ -1225,6 +1225,10 @@ public abstract class PhoneBase extends Handler implements Phone {
         return null;
     }
 
+    public ServiceState getBaseServiceState() {
+        return getServiceState();
+    }
+
     /**
     * Get call tracker
     */
