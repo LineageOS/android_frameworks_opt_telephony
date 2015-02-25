@@ -299,6 +299,15 @@ public class CDMAPhone extends PhoneBase {
         }
     }
 
+    public ServiceState
+    getBaseServiceState() {
+        if (mSST != null) {
+            return mSST.mSS;
+        } else {
+            // avoid potential NPE in EmergencyCallHelper during Phone switch
+            return new ServiceState();
+        }
+    }
 
     @Override
     public CallTracker getCallTracker() {
