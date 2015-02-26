@@ -1447,9 +1447,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     /**
-     * @return true if we are in the emergency call back mode. This is a period where
-     * the phone should be using as little power as possible and be ready to receive an
-     * incoming call from the emergency operator.
+     * @return {@code true} if we are in emergency call back mode. This is a period where the phone
+     * should be using as little power as possible and be ready to receive an incoming call from the
+     * emergency operator.
      */
     public boolean isInEcm() {
         return false;
