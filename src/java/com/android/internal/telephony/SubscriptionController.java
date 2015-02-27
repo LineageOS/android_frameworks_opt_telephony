@@ -21,13 +21,17 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.AsyncResult;
 import android.os.Binder;
+import android.os.Handler;
+import android.os.Message;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.UserHandle;
@@ -489,7 +493,7 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public SubscriptionInfo getActiveSubscriptionInfo(int subId) {
         enforceSubscriptionPermission();
-        if (!SubscriptionManager.isValidSubId(subId) || !isSubInfoReady()) {
+        if (!SubscriptionManager.isValidSubscriptionId(subId) || !isSubInfoReady()) {
             logd("[getSubInfoUsingSubIdx]- invalid subId or not ready = " + subId);
             return null;
         }
@@ -711,7 +715,7 @@ public class SubscriptionController extends ISub.Stub {
         String CarrierName = TelephonyManager.getDefault().getSimOperator(subIds[0]);
         if (DBG) logdl("[addSubInfoRecord] CarrierName = " + CarrierName);
         String simCarrierName =
-                TelephonyManager.getDefault().getSimOperatorName(subIds[0]);
+                TelephonyManager.getDefault().getSimOperatorNameForSubscription(subIds[0]);
 
         if (!TextUtils.isEmpty(simCarrierName)) {
             nameToSet = simCarrierName;
@@ -837,6 +841,45 @@ public class SubscriptionController extends ISub.Stub {
 
         if (DBG) logdl("[addSubInfoRecord]- info size=" + mSlotIdxToSubId.size());
         return 0;
+    }
+
+    /**
+     * Generate and set carrier text based on input parameters
+     * @param showPlmn flag to indicate if plmn should be included in carrier text
+     * @param plmn plmn to be included in carrier text
+     * @param showSpn flag to indicate if spn should be included in carrier text
+     * @param spn spn to be included in carrier text
+     * @return true if carrier text is set, false otherwise
+     */
+    public boolean setPlmnSpn(int slotId, boolean showPlmn, String plmn,
+            boolean showSpn, String spn) {
+        int[] subIds = getSubId(slotId);
+        if (mContext.getPackageManager().resolveContentProvider(
+                SubscriptionManager.CONTENT_URI.getAuthority(), 0) == null ||
+                subIds == null ||
+                !SubscriptionManager.isValidSubscriptionId(subIds[0])) {
+            // No place to store this info, we are done.
+            // TODO: This can be removed once SubscriptionController is not running on devices
+            // that don't need it, such as TVs.
+            return false;
+        }
+        String carrierText = "";
+        if (showPlmn) {
+            carrierText = plmn;
+            if (showSpn) {
+                // Need to show both plmn and spn.
+                String separator = mContext.getString(
+                        com.android.internal.R.string.kg_text_message_separator).toString();
+                carrierText = new StringBuilder().append(carrierText).append(separator).append(spn)
+                        .toString();
+            }
+        } else if (showSpn) {
+            carrierText = spn;
+        }
+        for (int i = 0; i < subIds.length; i++) {
+            setCarrierText(carrierText, subIds[i]);
+        }
+        return true;
     }
 
     /**
@@ -1700,7 +1743,7 @@ public class SubscriptionController extends ISub.Stub {
                      " setDDs = " + setDds);
             // If no SIM cards present on device, set dummy subId
             // as data/sms/voice preferred subId.
-            setDefaultSubId(dummySubId[0]);
+            setDefaultFallbackSubId(dummySubId[0]);
             setDefaultVoiceSubId(dummySubId[0]);
             setDefaultSmsSubId(dummySubId[0]);
             setDataSubId(dummySubId[0]);
@@ -1729,7 +1772,7 @@ public class SubscriptionController extends ISub.Stub {
 
         //if current default sub is not active, fallback to next active sub.
         if (getSubState(getDefaultSubId()) == SubscriptionManager.INACTIVE) {
-            setDefaultSubId(mNextActivatedSub.getSubscriptionId());
+            setDefaultFallbackSubId(mNextActivatedSub.getSubscriptionId());
         }
 
         int ddsSubId = getDefaultDataSubId();

@@ -35,6 +35,7 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.Rlog;
 import android.text.TextUtils;

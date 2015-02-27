@@ -1084,14 +1084,12 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         if (mPhone.isMccMncMarkedAsNonRoaming(mNewSS.getOperatorNumeric()) ||
                 mPhone.isSidMarkedAsNonRoaming(mNewSS.getSystemId())) {
             log("pollStateDone: override - marked as non-roaming.");
-            mNewSS.setVoiceRoaming(false);
-            mNewSS.setDataRoaming(false);
+            mNewSS.setRoaming(false);
             mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_OFF);
         } else if (mPhone.isMccMncMarkedAsRoaming(mNewSS.getOperatorNumeric()) ||
                 mPhone.isSidMarkedAsRoaming(mNewSS.getSystemId())) {
             log("pollStateDone: override - marked as roaming.");
-            mNewSS.setVoiceRoaming(true);
-            mNewSS.setDataRoaming(true);
+            mNewSS.setRoaming(true);
             mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_ON);
             mNewSS.setCdmaEriIconMode(EriInfo.ROAMING_ICON_MODE_NORMAL);
         }

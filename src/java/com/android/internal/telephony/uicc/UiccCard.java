@@ -111,7 +111,7 @@ public class UiccCard {
     public void dispose() {
         synchronized (mLock) {
             if (DBG) log("Disposing card");
-            if (mCatService != null) CatServiceFactory.disposeCatService(mSlotId);
+            if (mCatService != null) CatServiceFactory.disposeCatService(mPhoneId);
             for (UiccCardApplication app : mUiccApplications) {
                 if (app != null) {
                     app.dispose();
@@ -197,7 +197,7 @@ public class UiccCard {
             }
         } else {
             if (mCatService != null) {
-                CatServiceFactory.disposeCatService(mSlotId);
+                CatServiceFactory.disposeCatService(mPhoneId);
             }
             mCatService = null;
         }

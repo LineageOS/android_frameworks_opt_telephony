@@ -163,6 +163,10 @@ public class UiccController extends Handler {
         }
     }
 
+    public UiccCard getUiccCard() {
+        return getUiccCard(0);
+    }
+
     public UiccCard getUiccCard(int phoneId) {
         synchronized (mLock) {
             if (isValidCardIndex(phoneId)) {

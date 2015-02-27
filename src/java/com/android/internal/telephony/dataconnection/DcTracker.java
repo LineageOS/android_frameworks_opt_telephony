@@ -844,7 +844,7 @@ public final class DcTracker extends DcTrackerBase {
         boolean subscriptionFromNv = isNvSubscription();
 
         int dataSub = SubscriptionManager.getDefaultDataSubId();
-        boolean defaultDataSelected = SubscriptionManager.isValidSubId(dataSub);
+        boolean defaultDataSelected = SubscriptionManager.isValidSubscriptionId(dataSub);
 
         boolean allowed =
                     (attachedState || mAutoAttachOnCreation) &&
