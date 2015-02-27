@@ -1126,7 +1126,7 @@ public final class DcTracker extends DcTrackerBase {
                 reason += " - Concurrent voice and data not allowed";
             }
             if (!internalDataEnabled) reason += " - mInternalDataEnabled= false";
-            if (!defaultDataEnabled) reason += " - defaultDataEnabled= false";
+            if (!defaultDataSelected) reason += " - defaultDataSelected= false";
             if (mPhone.getServiceState().getDataRoaming() && !getDataOnRoamingEnabled()) {
                 reason += " - Roaming and data roaming not enabled";
             }

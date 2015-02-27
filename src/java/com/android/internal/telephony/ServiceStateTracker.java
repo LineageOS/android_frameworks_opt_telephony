@@ -228,6 +228,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected SubscriptionManager mSubscriptionManager;
     protected final OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
             new OnSubscriptionsChangedListener() {
+        private int previousSubId = -1; // < 0 is invalid subId
         /**
          * Callback invoked when there is any change to any SubscriptionInfo. Typically
          * this method would invoke {@link SubscriptionManager#getActiveSubscriptionInfoList}
@@ -237,17 +238,13 @@ public abstract class ServiceStateTracker extends Handler {
             if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
             // Set the network type, in case the radio does not restore it.
             int subId = mPhoneBase.getSubId();
+            int previousSubId = mPhoneBase.getSubId();
             if (previousSubId != subId) {
                 previousSubId = subId;
                 if (SubscriptionManager.isValidSubscriptionId(subId)) {
 
                     mPhoneBase.notifyCallForwardingIndicator();
-
-                    if (mSpnUpdatePending) {
-                        mSubscriptionController.setPlmnSpn(mPhoneBase.getPhoneId(), mCurShowPlmn,
-                                mCurPlmn, mCurShowSpn, mCurSpn);
-                        mSpnUpdatePending = false;
-                    }
+                    Context context = mPhoneBase.getContext();
 
                     // Remove old network selection sharedPreferences since SP key names are now
                     // changed to include subId. This will be done only once when upgrading from an

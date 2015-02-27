@@ -323,11 +323,11 @@ public class IccCardProxy extends Handler implements IccCard {
                         setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
                         if (mCurrentAppType == UiccController.APP_FAM_3GPP) {
                             setSystemProperty(PROPERTY_APN_SIM_OPERATOR_NUMERIC,
-                                     slotId, operator);
+                                     operator);
                             log("update sim_operator_numeric=" + operator);
                         } else if (mCurrentAppType == UiccController.APP_FAM_3GPP2) {
                             setSystemProperty(PROPERTY_APN_RUIM_OPERATOR_NUMERIC,
-                                     slotId, operator);
+                                     operator);
                             log("update ruim_operator_numeric=" + operator);
                         }
                         String countryCode = operator.substring(0,3);
