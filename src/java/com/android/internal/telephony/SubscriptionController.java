@@ -861,9 +861,12 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.CONTENT_URI.getAuthority(), 0) == null ||
                 subIds == null ||
                 !SubscriptionManager.isValidSubscriptionId(subIds[0])) {
-            // No place to store this info, we are done.
+            // No place to store this info. Notify registrants of the change anyway as they
+            // might retrieve the SPN/PLMN text from the SST sticky broadcast.
             // TODO: This can be removed once SubscriptionController is not running on devices
             // that don't need it, such as TVs.
+            if (DBG) logd("[setPlmnSpn] No valid subscription to store info");
+            notifySubscriptionInfoChanged();
             return false;
         }
         String carrierText = "";
