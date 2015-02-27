@@ -108,7 +108,9 @@ public class DcSwitchStateMachine extends StateMachine {
                     if (!isPrimarySubFeatureEnable) {
                         SubscriptionController subscriptionController
                                 = SubscriptionController.getInstance();
-                        subscriptionController.setDefaultDataSubId(subId);
+
+                        //FIXME: DctController runtime exception, Revert this later
+                        //subscriptionController.setDefaultDataSubId(subId);
                     }
 
                     mAc.replyToMessage(msg, DcSwitchAsyncChannel.RSP_CONNECT,
