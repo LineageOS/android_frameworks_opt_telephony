@@ -124,20 +124,16 @@ public class DctController extends Handler {
         }
     };
 
-    //FIXME L_MR1 internal
-    private void processPendingNetworkRequests(NetworkRequest n) {
-	    int phoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
-        ((TelephonyNetworkFactory)mNetworkFactory[phoneId]).processPendingNetworkRequests(n);
-    }
-
     private void updateSubIdAndCapability() {
-        int phoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
-        ((TelephonyNetworkFactory)mNetworkFactory[phoneId]).updateNetworkCapability();
+        for (int i = 0; i < mPhoneNum; i++) {
+           ((TelephonyNetworkFactory)mNetworkFactory[i]).updateNetworkCapability();
+        }
     }
 
     private void releaseAllNetworkRequests() {
-        int phoneId = mSubController.getPhoneId(mSubController.getDefaultDataSubId());
-        ((TelephonyNetworkFactory)mNetworkFactory[phoneId]).releaseAllNetworkRequests();
+        for (int i = 0; i < mPhoneNum; i++) {
+            ((TelephonyNetworkFactory)mNetworkFactory[i]).releaseAllNetworkRequests();
+        }
     }
 
     private OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
@@ -336,6 +332,7 @@ public class DctController extends Handler {
             cm.unregisterNetworkFactory(mNetworkFactoryMessenger[i]);
             mNetworkFactoryMessenger[i] = null;
         }
+        releaseAllNetworkRequests();
 
         mContext.unregisterReceiver(defaultDdsBroadcastReceiver);
         mContext.unregisterReceiver(subInfoBroadcastReceiver);
@@ -370,7 +367,6 @@ public class DctController extends Handler {
                 Phone phone = mPhones[phoneId].getActivePhone();
 
                 informDefaultDdsToPropServ(phoneId);
-
                 DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
                 dcTracker.setDataAllowed(true, allowedDataDone);
 
@@ -726,7 +722,6 @@ public class DctController extends Handler {
         return phoneId;
     }
 
-    // FIXME- LMR1_INTERNAL
     private class SwitchInfo {
         private int mRetryCount = 0;
 
@@ -1103,27 +1098,29 @@ public class DctController extends Handler {
     }
 
     private class TelephonyNetworkFactory extends NetworkFactory {
+        //Thread safety not required as long as list operation are done by single thread.
+        private SparseArray<NetworkRequest> mDdsRequests = new SparseArray<NetworkRequest>();
         private final SparseArray<NetworkRequest> mPendingReq = new SparseArray<NetworkRequest>();
         private Phone mPhone;
-		private NetworkCapabilities mNetworkCapabilities;
+        private NetworkCapabilities mNetworkCapabilities;
 
         public TelephonyNetworkFactory(Looper l, Context c, String TAG, Phone phone,
                 NetworkCapabilities nc) {
             super(l, c, TAG, nc);
             mPhone = phone;
-			mNetworkCapabilities = nc;
+            mNetworkCapabilities = nc;
             log("NetworkCapabilities: " + nc);
         }
 
-		public void processPendingNetworkRequests(NetworkRequest n) {
-            for (int i = 0; i < mPendingReq.size(); i++) {
-                NetworkRequest nr = mPendingReq.valueAt(i);
+        public void processPendingNetworkRequests(NetworkRequest n) {
+            for (int i = 0; i < mDdsRequests.size(); i++) {
+                NetworkRequest nr = mDdsRequests.valueAt(i);
                 if (nr.equals(n)) {
                     log("Found pending request in ddsRequest list = " + nr);
                     String apn = apnForNetworkRequest(nr);
-	            DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
+                    DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
                     if (dcTracker.isApnSupported(apn)) {
-                        requestNetwork(nr, dcTracker.getApnPriority(apn));
+                        dcTracker.incApnRefCount(apn);
                     } else {
                         log("Unsupported APN");
                     }
@@ -1144,7 +1141,7 @@ public class DctController extends Handler {
         }
 
         public void updateNetworkCapability() {
-		    int subId = mPhone.getSubId();
+            int subId = mPhone.getSubId();
             log("update networkCapabilites for subId = " + subId);
 
             mNetworkCapabilities.setNetworkSpecifier(""+subId);
@@ -1170,7 +1167,10 @@ public class DctController extends Handler {
             // figure out the apn type and enable it
             if (DBG) log("Cellular needs Network for " + networkRequest);
 
-			if (!SubscriptionManager.isUsableSubIdValue(mPhone.getSubId())) {
+            int subId = mPhone.getSubId();
+            if (!SubscriptionManager.isUsableSubIdValue(subId) ||
+                    SubscriptionController.getInstance().getSubState(subId) !=
+                    SubscriptionManager.ACTIVE) {
                 log("Sub Info has not been ready, pending request.");
                 mPendingReq.put(networkRequest.requestId, networkRequest);
                 return;
@@ -1180,7 +1180,6 @@ public class DctController extends Handler {
             log("subController = " + subController);
 
             int currentDds = subController.getDefaultDataSubId();
-            int subId = mPhone.getSubId();
             int requestedSpecifier = subController.getSubIdFromNetworkRequest(networkRequest);
 
             log("CurrentDds = " + currentDds);
@@ -1188,16 +1187,12 @@ public class DctController extends Handler {
             log("Requested networkSpecifier = " + requestedSpecifier);
             log("my networkSpecifier = " + mNetworkCapabilities.getNetworkSpecifier());
 
-            if (subId < 0) {
-                log("Can't handle any network request now, subId not ready.");
-                return;
-            }
-
             // For clients that do not send subId in NetworkCapabilities,
             // Connectivity will send to all network factories. Accept only
             // when requestedSpecifier is same as current factory's subId
             if (requestedSpecifier != subId) {
                 log("requestedSpecifier is not same as mysubId. Bail out.");
+                mPendingReq.put(networkRequest.requestId, networkRequest);
                 return;
             }
 
@@ -1207,7 +1202,7 @@ public class DctController extends Handler {
 
                 //Queue this request and initiate temp DDS switch.
                 //Once the DDS switch is done we will revist the pending requests.
-                mPendingReq.put(networkRequest.requestId, networkRequest);
+                mDdsRequests.put(networkRequest.requestId, networkRequest);
                 requestOnDemandDataSubscriptionLock(networkRequest);
 
                 return;
@@ -1224,7 +1219,7 @@ public class DctController extends Handler {
                 } else {
                     if(isValidRequest(networkRequest)) {
                         //non-default APN requests for this subscription.
-                        mPendingReq.put(networkRequest.requestId, networkRequest);
+                        mDdsRequests.put(networkRequest.requestId, networkRequest);
                         requestOnDemandDataSubscriptionLock(networkRequest);
                     } else {
                         log("Bogus request req = " + networkRequest);
@@ -1260,9 +1255,9 @@ public class DctController extends Handler {
                 log("Removing request = " + nr);
                 list.remove(n.requestId);
                 String apn = apnForNetworkRequest(nr);
-				DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
+                DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
                 if (dcTracker.isApnSupported(apn)) {
-                    releaseNetwork(nr);
+                    dcTracker.decApnRefCount(apn);
                 } else {
                     log("Unsupported APN");
                 }
@@ -1271,34 +1266,60 @@ public class DctController extends Handler {
 
         private void removeRequestIfFound(NetworkRequest n) {
             log("Release the request from dds queue, if found");
-            if (!SubscriptionManager.isUsableSubIdValue(mPhone.getSubId())) {
-                log("Sub Info has not been ready, remove request.");
-                mPendingReq.remove(n.requestId);
-                return;
-            }
-            removeRequestFromList(mPendingReq, n);
+            removeRequestFromList(mDdsRequests, n);
 
             if(!isNetworkRequestForInternet(n)) {
                 SubscriptionController subController = SubscriptionController.getInstance();
                 subController.stopOnDemandDataSubscriptionRequest(n);
+            } else {
+                // Internet requests are not queued in DDS list. So deactivate here explicitly.
+                String apn = apnForNetworkRequest(n);
+                DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
+                if (dcTracker.isApnSupported(apn)) {
+                    dcTracker.decApnRefCount(apn);
+                } else {
+                    log("Unsupported APN");
+                }
             }
         }
 
         @Override
         protected void releaseNetworkFor(NetworkRequest networkRequest) {
-            if (DBG) log("Cellular releasing Network for " + networkRequest);
-            removeRequestIfFound(networkRequest);
+            log("Cellular releasing Network for " + networkRequest);
+            if (!SubscriptionManager.isUsableSubIdValue(mPhone.getSubId())) {
+                log("Sub Info has not been ready, remove request.");
+                mPendingReq.remove(networkRequest.requestId);
+                return;
+            }
+
+            NetworkRequest nr = mDdsRequests.get(networkRequest.requestId);
+            if (nr != null) {
+                removeRequestIfFound(networkRequest);
+            } else {
+                if (getRequestPhoneId(networkRequest) == mPhone.getPhoneId()) {
+                    DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
+                    String apn = apnForNetworkRequest(networkRequest);
+                    if (dcTracker.isApnSupported(apn)) {
+                        releaseNetwork(networkRequest);
+                    } else {
+                        log("Unsupported APN");
+                    }
+
+                } else {
+                    log("Request not release");
+                }
+            }
         }
 
         public void releaseAllNetworkRequests() {
             log("releaseAllNetworkRequests");
             SubscriptionController subController = SubscriptionController.getInstance();
-            for (int i = 0; i < mPendingReq.size(); i++) {
-                NetworkRequest nr = mPendingReq.valueAt(i);
+            for (int i = 0; i < mDdsRequests.size(); i++) {
+                NetworkRequest nr = mDdsRequests.valueAt(i);
                 if (nr != null) {
                     log("Removing request = " + nr);
                     subController.stopOnDemandDataSubscriptionRequest(nr);
-                    mPendingReq.remove(nr.requestId);
+                    mDdsRequests.remove(nr.requestId);
                 }
             }
         }
