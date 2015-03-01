@@ -475,8 +475,8 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     public void updateSubIdForNV(int slotId) {
-        sIccId[slotId] = ICCID_STRING_FOR_NV;
-        sNeedUpdate = true;
+        mIccId[slotId] = ICCID_STRING_FOR_NV;
+        mNeedUpdate = true;
         logd("[updateSubIdForNV]+ Start");
         if (isAllIccIdQueryDone()) {
             logd("[updateSubIdForNV]+ updating");

@@ -42,6 +42,7 @@ import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.RemoteException;
@@ -1249,7 +1250,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 isForbidden = extras.getBoolean(IS_FORBIDDEN);
             }
         }
-        Log.d("RCS_UI", "isBlocked: address=" + address + ", isForbidden=" + isForbidden);
+        Rlog.d("RCS_UI", "isBlocked: address=" + address + ", isForbidden=" + isForbidden);
         return isForbidden;
     }
 

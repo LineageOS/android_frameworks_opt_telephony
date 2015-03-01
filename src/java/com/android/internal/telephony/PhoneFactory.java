@@ -535,7 +535,7 @@ public class PhoneFactory {
         return phoneId;
     }
 
-    public static SubInfoRecordUpdater getSubInfoRecordUpdater() {
+    public static SubscriptionInfoUpdater getSubInfoRecordUpdater() {
         return sSubInfoRecordUpdater;
     }
 
