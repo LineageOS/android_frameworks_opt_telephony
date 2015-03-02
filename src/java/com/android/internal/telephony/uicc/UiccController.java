@@ -312,11 +312,12 @@ public class UiccController extends Handler {
             return;
         }
 
-        if (resp.refreshResult != IccRefreshResponse.REFRESH_RESULT_RESET ||
-            resp.aid == null) {
-            Rlog.d(LOG_TAG, "Ignoring reset: " + resp);
-            return;
+        if (resp.refreshResult != IccRefreshResponse.REFRESH_RESULT_RESET) {
+          Rlog.d(LOG_TAG, "Ignoring non reset refresh: " + resp);
+          return;
         }
+
+        Rlog.d(LOG_TAG, "Handling refresh reset: " + resp);
 
         boolean changed = mUiccCards[index].resetAppWithAid(resp.aid);
         if (changed) {
@@ -329,8 +330,6 @@ public class UiccController extends Handler {
             }
             mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, index, null));
         }
-        // TODO: For a card level notification, we should delete the CarrierPrivilegeRules and the
-        // CAT service.
     }
 
     private boolean isValidCardIndex(int index) {
