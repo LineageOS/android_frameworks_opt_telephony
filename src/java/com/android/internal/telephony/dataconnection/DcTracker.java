@@ -196,7 +196,7 @@ public final class DcTracker extends DcTrackerBase {
         public void onReceive(Context context, Intent intent) {
             mSubId = mPhone.getSubId();
             log("got ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED, new DDS = "
-                    + intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                    + intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
                             SubscriptionManager.INVALID_SUBSCRIPTION_ID));
             updateSubIdAndCapability();
 
