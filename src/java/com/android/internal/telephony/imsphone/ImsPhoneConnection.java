@@ -139,14 +139,9 @@ public class ImsPhoneConnection extends Connection {
             ImsCallProfile imsCallProfile = imsCall.getCallProfile();
             if (imsCallProfile != null) {
                 setVideoState(ImsCallProfile.getVideoStateFromImsCallProfile(imsCallProfile));
-
-                ImsStreamMediaProfile mediaProfile = imsCallProfile.mMediaProfile;
-                if (mediaProfile != null) {
-                    setAudioQuality(getAudioQualityFromMediaProfile(mediaProfile));
-                }
             }
 
-            // Determine if the current call have video capabilities.
+            // Determine if the current call has HD audio and video capabilities.
             try {
                 ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
                 if (localCallProfile != null) {
@@ -161,6 +156,10 @@ public class ImsPhoneConnection extends Connection {
                             == ImsCallProfile.CALL_TYPE_VT;
 
                     setRemoteVideoCapable(isRemoteVideoCapable);
+                }
+                if (localCallProfile != null && remoteCallProfile != null) {
+                    setAudioQuality(getAudioQualityFromCallProfile(
+                            localCallProfile, remoteCallProfile));
                 }
             } catch (ImsException e) {
                 // No session, so cannot get local capabilities.
@@ -756,10 +755,12 @@ public class ImsPhoneConnection extends Connection {
                     changed = true;
                 }
 
-                ImsStreamMediaProfile mediaProfile = callProfile.mMediaProfile;
-                if (mediaProfile != null) {
+                ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
+                ImsCallProfile remoteCallProfile = imsCall.getRemoteCallProfile();
+                if (localCallProfile != null && remoteCallProfile != null) {
                     int oldAudioQuality = getAudioQuality();
-                    int newAudioQuality = getAudioQualityFromMediaProfile(mediaProfile);
+                    int newAudioQuality = getAudioQualityFromCallProfile(
+                            localCallProfile, remoteCallProfile);
 
                     if (oldAudioQuality != newAudioQuality) {
                         setAudioQuality(newAudioQuality);
@@ -807,6 +808,8 @@ public class ImsPhoneConnection extends Connection {
         }
     }
 
+    // NOTE: This method is not being used, but is part of AOSP. This may be used in
+    //       subsequent QC updates.
     /**
      * Check for a change in the video capabilities and audio quality for the {@link ImsCall}, and
      * update the {@link ImsPhoneConnection} with this information.
