@@ -719,6 +719,8 @@ public abstract class DcTrackerBase extends Handler {
 
         Context c = mPhone.getContext();
         String[] apnArrayData = c.getResources().getStringArray(R.array.config_tether_apndata);
+        if (apnArrayData == null) return null;
+
         for (String apn : apnArrayData) {
             ApnSetting dunSetting = ApnSetting.fromString(apn);
             if (dunSetting != null) {
