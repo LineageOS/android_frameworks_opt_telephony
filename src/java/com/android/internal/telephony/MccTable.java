@@ -24,6 +24,7 @@ import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.RemoteException;
 import android.os.SystemProperties;
+import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Slog;
@@ -223,6 +224,29 @@ public final class MccTable {
         }
     }
 
+    // Bug 19232829: It is possible to get through provisioning without setting up a persistent
+    // locale value. We don't modify the locale if the device has completed "provisioning" because
+    // we don't want to change the locale if the user inserts a new SIM or a new version of Android
+    // is better at recognizing MCC values than an older version.
+    private static boolean canUpdateLocale(Context context) {
+        return !(userHasPersistedLocale() || isDeviceProvisioned(context));
+    }
+
+    private static boolean userHasPersistedLocale() {
+        String persistSysLanguage = SystemProperties.get("persist.sys.language", "");
+        String persistSysCountry = SystemProperties.get("persist.sys.country", "");
+        return !(persistSysLanguage.isEmpty() && persistSysCountry.isEmpty());
+    }
+
+    private static boolean isDeviceProvisioned(Context context) {
+        try {
+            return Settings.Global.getInt(
+                    context.getContentResolver(), Settings.Global.DEVICE_PROVISIONED) != 0;
+        } catch (Settings.SettingNotFoundException e) {
+            return false;
+        }
+    }
+
     /**
      * Return Locale for the language and country or null if no good match.
      *
@@ -243,22 +267,12 @@ public final class MccTable {
         }
 
         // Check whether a developer is trying to test an arbitrary MCC.
-        boolean debuggingMccOverride = false;
-        if (Build.IS_DEBUGGABLE) {
-            String overrideMcc = SystemProperties.get("persist.sys.override_mcc", "");
-            if (!overrideMcc.isEmpty()) {
-                debuggingMccOverride = true;
-            }
-        }
+        boolean debuggingMccOverride = isDebuggingMccOverride();
 
         // If this is a regular user and they already have a persisted locale, we're done.
-        if (!debuggingMccOverride) {
-            String persistSysLanguage = SystemProperties.get("persist.sys.language", "");
-            String persistSysCountry = SystemProperties.get("persist.sys.country", "");
-            if (!(persistSysLanguage.isEmpty() && persistSysCountry.isEmpty())) {
-                Slog.d(LOG_TAG, "getLocaleForLanguageCountry: skipping already persisted");
-                return null;
-            }
+        if (!(debuggingMccOverride || canUpdateLocale(context))) {
+            Slog.d(LOG_TAG, "getLocaleForLanguageCountry: not permitted to update locale");
+            return null;
         }
 
         // Find the best match we actually have a localization for.
@@ -313,6 +327,16 @@ public final class MccTable {
         }
 
         return null;
+    }
+
+    private static boolean isDebuggingMccOverride() {
+        if (Build.IS_DEBUGGABLE) {
+            String overrideMcc = SystemProperties.get("persist.sys.override_mcc", "");
+            if (!overrideMcc.isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
