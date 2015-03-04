@@ -417,7 +417,8 @@ public class CDMAPhone extends PhoneBase {
 
         boolean imsUseEnabled =
                 ImsManager.isVolteEnabledByPlatform(mContext) &&
-                ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext);
+                ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext) &&
+                ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext);
         if (!imsUseEnabled) {
             Rlog.w(LOG_TAG, "IMS is disabled: forced to CS");
         }

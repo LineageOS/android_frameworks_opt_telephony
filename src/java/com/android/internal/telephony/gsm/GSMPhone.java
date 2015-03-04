@@ -850,7 +850,8 @@ public class GSMPhone extends PhoneBase {
 
         boolean imsUseEnabled =
                 ImsManager.isVolteEnabledByPlatform(mContext) &&
-                ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext);
+                ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext) &&
+                ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext);
         if (!imsUseEnabled) {
             Rlog.w(LOG_TAG, "IMS is disabled: forced to CS");
         }
@@ -931,12 +932,15 @@ public class GSMPhone extends PhoneBase {
     public void addParticipant(String dialString) throws CallStateException {
         ImsPhone imsPhone = mImsPhone;
         boolean imsUseEnabled =
-                ImsManager.isEnhanced4gLteModeSettingEnabledByPlatform(mContext) &&
+                ImsManager.isVolteEnabledByPlatform(mContext) &&
                 ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext);
+        if (!imsUseEnabled) {
+            Rlog.w(LOG_TAG, "IMS is disabled: forced to CS");
+        }
 
-        if (imsUseEnabled && imsPhone != null
-                && imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
-                ) {
+        if (imsUseEnabled && imsPhone != null && imsPhone.isVolteEnabled()
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
+                )) {
             try {
                 if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Trying to add participant in IMS call");
                 imsPhone.addParticipant(dialString);

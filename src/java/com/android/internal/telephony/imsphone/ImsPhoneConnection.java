@@ -635,6 +635,8 @@ public class ImsPhoneConnection extends Connection {
      *     changed, and {@code false} otherwise.
      */
     /*package*/ boolean update(ImsCall imsCall, ImsPhoneCall.State state) {
+        boolean changed = false;
+
         if (state == ImsPhoneCall.State.ACTIVE) {
             if (mParent.getState().isRinging() || mParent.getState().isDialing()) {
                 onConnectedInOrOut();
@@ -755,17 +757,21 @@ public class ImsPhoneConnection extends Connection {
                     changed = true;
                 }
 
-                ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
-                ImsCallProfile remoteCallProfile = imsCall.getRemoteCallProfile();
-                if (localCallProfile != null && remoteCallProfile != null) {
-                    int oldAudioQuality = getAudioQuality();
-                    int newAudioQuality = getAudioQualityFromCallProfile(
-                            localCallProfile, remoteCallProfile);
+                try {
+                    ImsCallProfile localCallProfile = imsCall.getLocalCallProfile();
+                    ImsCallProfile remoteCallProfile = imsCall.getRemoteCallProfile();
+                    if (localCallProfile != null && remoteCallProfile != null) {
+                        int oldAudioQuality = getAudioQuality();
+                        int newAudioQuality = getAudioQualityFromCallProfile(
+                                localCallProfile, remoteCallProfile);
 
-                    if (oldAudioQuality != newAudioQuality) {
-                        setAudioQuality(newAudioQuality);
-                        changed = true;
+                        if (oldAudioQuality != newAudioQuality) {
+                            setAudioQuality(newAudioQuality);
+                            changed = true;
+                        }
                     }
+                } catch (ImsException imsEx) {
+                    //TODO: Handle exception.
                 }
             }
 
@@ -837,11 +843,15 @@ public class ImsPhoneConnection extends Connection {
                     changed = true;
                 }
 
+                // Method getVideoStateFromCallType is part of AOSP. We need to refactor
+                // it to internal implementation when moving to updateMediaCapabilities.
+                /*
                 int newVideoState = ImsCallProfile.getVideoStateFromCallType(callType);
                 if (getVideoState() != newVideoState) {
                     setVideoState(newVideoState);
                     changed = true;
                 }
+                */
             }
 
             int newAudioQuality =

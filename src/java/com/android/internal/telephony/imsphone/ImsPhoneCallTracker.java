@@ -278,7 +278,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 mPhone.getContext().getContentResolver(),
                 Settings.Secure.PREFERRED_TTY_MODE,
                 Phone.TTY_MODE_OFF);
-           mImsManager.setUiTTYMode(mServiceId, mPreferredTtyMode, null);
+           mImsManager.setUiTTYMode(mPhone.getContext(), mServiceId, mPreferredTtyMode, null);
 
         } catch (ImsException e) {
             loge("getImsService: " + e);
@@ -779,7 +779,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     void setUiTTYMode(int uiTtyMode, Message onComplete) {
         try {
-            mImsManager.setUiTTYMode(mServiceId, uiTtyMode, onComplete);
+            mImsManager.setUiTTYMode(mPhone.getContext(), mServiceId, uiTtyMode, onComplete);
         } catch (ImsException e) {
             loge("setTTYMode : " + e);
             mPhone.sendErrorResponse(onComplete, e);
