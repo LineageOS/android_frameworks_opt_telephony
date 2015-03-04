@@ -714,9 +714,9 @@ public abstract class DcTrackerBase extends Handler {
             }
         }
 
-        //FIXME - LMR1_INTERNAL
-        //String[] apnArrayData = c.getResources().getStringArray(R.array.config_tether_apndata);
-        String[] apnArrayData = null;
+        String[] apnArrayData = c.getResources().getStringArray(R.array.config_tether_apndata);
+        if (apnArrayData == null) return null;
+
         for (String apn : apnArrayData) {
             ApnSetting dunSetting = ApnSetting.fromString(apn);
             if (dunSetting != null) {
