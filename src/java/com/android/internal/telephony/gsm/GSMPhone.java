@@ -966,7 +966,7 @@ public class GSMPhone extends PhoneBase {
     public void addParticipant(String dialString) throws CallStateException {
         ImsPhone imsPhone = mImsPhone;
         boolean imsUseEnabled =
-                ImsManager.isEnhanced4gLteModeSettingEnabledByPlatform(mContext) &&
+                ImsManager.isVolteEnabledByPlatform(mContext) &&
                 ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext);
 
         if (imsUseEnabled && imsPhone != null
