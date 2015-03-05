@@ -639,7 +639,7 @@ public class ModemStackController extends Handler {
     private boolean isAnyCallsInProgress() {
         boolean isCallInProgress = false;
         for (int i = 0; i < mNumPhones; i++) {
-            long subId = SubscriptionController.getInstance().getSubIdUsingPhoneId(i);
+            int subId = SubscriptionController.getInstance().getSubIdUsingPhoneId(i);
             if (TelephonyManager.getDefault().getCallState(subId)
                     != TelephonyManager.CALL_STATE_IDLE) {
                 isCallInProgress = true;
