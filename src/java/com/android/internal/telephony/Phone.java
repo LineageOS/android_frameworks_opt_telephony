@@ -152,6 +152,7 @@ public interface Phone {
             RILConstants.NETWORK_MODE_TD_SCDMA_CDMA_EVDO_GSM_WCDMA;
     int NT_MODE_TD_SCDMA_LTE_CDMA_EVDO_GSM_WCDMA =
             RILConstants.NETWORK_MODE_TD_SCDMA_LTE_CDMA_EVDO_GSM_WCDMA;
+    int NT_MODE_LTE_CDMA_EVDO_GSM = RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM;
 
     // Used for CDMA roaming mode
     static final int CDMA_RM_HOME        = 0;  // Home Networks only, as defined in PRL
