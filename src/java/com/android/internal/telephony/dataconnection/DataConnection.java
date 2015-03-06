@@ -1836,6 +1836,14 @@ public final class DataConnection extends StateMachine {
                     .getResources()
                     .getInteger(com.android.internal.R.integer.data_retry_delay);
 
+            /* If previously rejected code is not same as current data reject cause,
+             * then reset the count and reset the reject cause.
+             */
+            if (mPdpRejectCause != result.mFailCause) {
+                if (DBG) log("reset data reject count and data reject cause");
+                mPdpRejectCount = 0;
+                mPdpRejectCause = DcFailCause.UNKNOWN;
+            }
             /* If failure reason is USER_AUTHENTICATION or
              * SERVICE_OPTION_NOT_SUBSCRIBED, increment counter and store cause
              */
