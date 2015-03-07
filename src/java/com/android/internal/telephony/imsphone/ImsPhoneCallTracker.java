@@ -1203,6 +1203,24 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onCallSessionTtyModeReceived(ImsCall call, int mode) {
             mPhone.onTtyModeReceived(mode);
         }
+
+        @Override
+        public void onCallHandover(ImsCall imsCall, int srcAccessTech, int targetAccessTech,
+            ImsReasonInfo reasonInfo) {
+            if (DBG) {
+                log("onCallHandover ::  srcAccessTech=" + srcAccessTech + ", targetAccessTech=" +
+                    targetAccessTech + ", reasonInfo=" + reasonInfo);
+            }
+        }
+
+        @Override
+        public void onCallHandoverFailed(ImsCall imsCall, int srcAccessTech, int targetAccessTech,
+            ImsReasonInfo reasonInfo) {
+            if (DBG) {
+                log("onCallHandoverFailed :: srcAccessTech=" + srcAccessTech +
+                    ", targetAccessTech=" + targetAccessTech + ", reasonInfo=" + reasonInfo);
+            }
+        }
     };
 
     /**
@@ -1281,10 +1299,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
 
         @Override
-        public void onImsDisconnected() {
-            if (DBG) log("onImsDisconnected");
+        public void onImsDisconnected(ImsReasonInfo imsReasonInfo) {
+            if (DBG) log("onImsDisconnected imsReasonInfo=" + imsReasonInfo);
             mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
             mPhone.setImsRegistered(false);
+        }
+
+        @Override
+        public void onImsProgressing() {
+            if (DBG) log("onImsProgressing");
         }
 
         @Override
