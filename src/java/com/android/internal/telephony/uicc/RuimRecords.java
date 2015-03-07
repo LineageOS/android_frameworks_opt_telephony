@@ -923,6 +923,13 @@ public final class RuimRecords extends IccRecords {
         }
 
         setLocaleFromCsim();
+        if (isAppStateReady()) {
+            mRecordsLoadedRegistrants.notifyRegistrants(
+                    new AsyncResult(null, null, null));
+        } else {
+            log("onAllRecordsLoaded: AppState is not ready; not notifying the registrants");
+        }
+
         // TODO: The below is hacky since the SubscriptionController may not be ready at this time.
         if (!TextUtils.isEmpty(mMdn)) {
             int phoneId = mParentApp.getUiccCard().getPhoneId();
