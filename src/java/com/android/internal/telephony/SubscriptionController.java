@@ -761,6 +761,14 @@ public class SubscriptionController extends ISub.Stub {
                                     || defaultSubId == subId
                                     || defaultSubId == SubscriptionManager.DUMMY_SUBSCRIPTION_ID_BASE) {
                                 setDefaultFallbackSubId(subId);
+
+                                if (getDefaultDataSubId() == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                                    setDefaultDataSubId(subId);
+                                }
+
+                                if (getDefaultSmsSubId() == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                                    setDefaultSmsSubId(subId);
+                                }
                             }
                             // If single sim device, set this subscription as the default for everything
                             if (subIdCountMax == 1) {
