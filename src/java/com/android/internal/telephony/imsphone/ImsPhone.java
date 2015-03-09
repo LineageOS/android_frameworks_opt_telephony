@@ -101,6 +101,7 @@ public class ImsPhone extends ImsPhoneBase {
     protected static final int EVENT_GET_CALL_WAITING_DONE          = EVENT_LAST + 4;
     protected static final int EVENT_SET_CLIR_DONE                  = EVENT_LAST + 5;
     protected static final int EVENT_GET_CLIR_DONE                  = EVENT_LAST + 6;
+    private static final int EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED  = EVENT_LAST + 7;
 
     public static final String CS_FALLBACK = "cs_fallback";
 
@@ -180,12 +181,29 @@ public class ImsPhone extends ImsPhoneBase {
         PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
         mWakeLock.setReferenceCounted(false);
+
+        if (mDefaultPhone.getServiceStateTracker() != null) {
+            mDefaultPhone.getServiceStateTracker()
+                    .registerForDataRegStateOrRatChanged(this,
+                    EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED, null);
+        }
+        updateDataServiceState();
     }
 
     public void updateParentPhone(PhoneBase parentPhone) {
         // synchronization is managed at the PhoneBase scope (which calls this function)
+        if (mDefaultPhone != null && mDefaultPhone.getServiceStateTracker() != null) {
+            mDefaultPhone.getServiceStateTracker().
+                    unregisterForDataRegStateOrRatChanged(this);
+        }
         mDefaultPhone = parentPhone;
         mPhoneId = mDefaultPhone.getPhoneId();
+        if (mDefaultPhone.getServiceStateTracker() != null) {
+            mDefaultPhone.getServiceStateTracker()
+                    .registerForDataRegStateOrRatChanged(this,
+                    EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED, null);
+        }
+        updateDataServiceState();
 
         // When the parent phone is updated, we need to notify listeners of the cached video
         // capability.
@@ -202,6 +220,10 @@ public class ImsPhone extends ImsPhoneBase {
         mCT.dispose();
 
         //Force all referenced classes to unregister their former registered events
+        if (mDefaultPhone != null && mDefaultPhone.getServiceStateTracker() != null) {
+            mDefaultPhone.getServiceStateTracker().
+                    unregisterForDataRegStateOrRatChanged(this);
+        }
     }
 
     @Override
@@ -221,6 +243,7 @@ public class ImsPhone extends ImsPhoneBase {
 
     /* package */ void setServiceState(int state) {
         mSS.setState(state);
+        updateDataServiceState();
     }
 
     @Override
@@ -1247,6 +1270,16 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    private void updateDataServiceState() {
+        if (mSS != null && mDefaultPhone.getServiceStateTracker() != null
+                && mDefaultPhone.getServiceStateTracker().mSS != null) {
+            ServiceState ss = mDefaultPhone.getServiceStateTracker().mSS;
+            mSS.setDataRegState(ss.getDataRegState());
+            mSS.setRilDataRadioTechnology(ss.getRilDataRadioTechnology());
+            Rlog.d(LOG_TAG, "updateDataServiceState: defSs = " + ss + " imsSs = " + mSS);
+        }
+    }
+
     @Override
     public void handleMessage (Message msg) {
         AsyncResult ar = (AsyncResult) msg.obj;
@@ -1309,6 +1342,11 @@ public class ImsPhone extends ImsPhoneBase {
                 if (DBG) Rlog.d(LOG_TAG, "Callforwarding is " + cfEnabled);
                 notifyCallForwardingIndicator();
                 break;
+
+             case EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED:
+                 if (DBG) Rlog.d(LOG_TAG, "EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED");
+                 updateDataServiceState();
+                 break;
 
              default:
                  super.handleMessage(msg);
