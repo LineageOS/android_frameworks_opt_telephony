@@ -362,6 +362,14 @@ public class CatService extends Handler implements AppInterface {
     private void handleCommand(CommandParams cmdParams, boolean isProactiveCmd) {
         CatLog.d(this, cmdParams.getCommandType().name());
 
+        // Log all proactive commands.
+        if (isProactiveCmd) {
+            if (mUiccController != null) {
+                mUiccController.addCardLog("ProactiveCommand mSlotId=" + mSlotId +
+                        " cmdParams=" + cmdParams);
+            }
+        }
+
         CharSequence message;
         CatCmdMessage cmdMsg = new CatCmdMessage(cmdParams);
         switch (cmdParams.getCommandType()) {
