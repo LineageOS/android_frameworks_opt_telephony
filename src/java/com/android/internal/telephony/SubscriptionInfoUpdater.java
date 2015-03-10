@@ -345,7 +345,8 @@ public class SubscriptionInfoUpdater extends Handler {
                 (subHelper.needSubActivationAfterRefresh(slotId))) {
             logd("SIM" + (slotId + 1) + " refresh happened, need sub activation");
             if (isAllIccIdQueryDone()) {
-                updateSimInfoByIccId();
+                //updateSimInfoByIccId();
+                updateSubscriptionInfoByIccId();
             }
         }
     }
