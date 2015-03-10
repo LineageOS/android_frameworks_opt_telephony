@@ -17,19 +17,17 @@
 package com.android.internal.telephony;
 
 import android.Manifest.permission;
-import android.app.AppGlobals;
 import android.app.AppOpsManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
-import android.content.pm.IPackageManager;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
-import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Binder;
@@ -735,24 +733,36 @@ public final class SmsApplication {
      * Caller must pass in the correct user context if calling from a singleton service.
      */
     public static boolean shouldWriteMessageForPackage(String packageName, Context context) {
-        if (packageName == null) return true;
-
         if (SmsManager.getDefault().getAutoPersisting()) {
             return true;
         }
+        return !isDefaultSmsApplication(context, packageName);
+    }
 
-        String defaultSmsPackage = null;
-        ComponentName component = getDefaultSmsApplication(context, false);
-        if (component != null) {
-            defaultSmsPackage = component.getPackageName();
+    /**
+     * Check if a package is default sms app (or equivalent, like bluetooth)
+     *
+     * @param context context from the calling app
+     * @param packageName the name of the package to be checked
+     * @return true if the package is default sms app or bluetooth
+     */
+    public static boolean isDefaultSmsApplication(Context context, String packageName) {
+        if (packageName == null) {
+            return false;
         }
-
-        if ((defaultSmsPackage == null || !defaultSmsPackage.equals(packageName)) &&
-                !packageName.equals(BLUETOOTH_PACKAGE_NAME)) {
-            // To write the message for someone other than the default SMS and BT app
+        final String defaultSmsPackage = getDefaultSmsApplicationPackageName(context);
+        if ((defaultSmsPackage != null && defaultSmsPackage.equals(packageName))
+                || BLUETOOTH_PACKAGE_NAME.equals(packageName)) {
             return true;
         }
-
         return false;
+    }
+
+    private static String getDefaultSmsApplicationPackageName(Context context) {
+        final ComponentName component = getDefaultSmsApplication(context, false);
+        if (component != null) {
+            return component.getPackageName();
+        }
+        return null;
     }
 }
