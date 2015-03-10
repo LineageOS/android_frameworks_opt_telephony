@@ -72,4 +72,12 @@ public class TextMessage implements Parcelable {
             return new TextMessage[size];
         }
     };
+
+    @Override
+    public String toString() {
+        return "title=" + title + " text=" + text + " icon=" + icon +
+            " iconSelfExplanatory=" + iconSelfExplanatory + " isHighPriority=" +
+            isHighPriority + " responseNeeded=" + responseNeeded + " userClear=" +
+            userClear + " duration=" + duration;
+    }
 }
