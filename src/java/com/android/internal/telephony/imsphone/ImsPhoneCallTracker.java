@@ -235,6 +235,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
     private int pendingCallClirMode;
     private int mPendingCallVideoState;
     private boolean pendingCallInEcm = false;
+    private long mConferenceTime = 0;
 
     //***** Events
 
@@ -641,7 +642,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
             log("conference no background ims call");
             return;
         }
-
+        mConferenceTime = Math.min(mBackgroundCall.getEarliestConnectTime(),
+                mForegroundCall.getEarliestConnectTime());
         try {
             fgImsCall.merge(bgImsCall);
         } catch (ImsException e) {
@@ -1311,14 +1313,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onCallMerged(final ImsCall call) {
             if (DBG) log("onCallMerged");
 
-            mForegroundCall.merge(mBackgroundCall, mForegroundCall.getState());
-
+            mForegroundCall.merge(mBackgroundCall, mForegroundCall.getState(), mConferenceTime);
+            mConferenceTime = 0;
             Runnable r = new Runnable() {
                 @Override
                 public void run() {
                     try {
                         final ImsPhoneConnection conn = findConnection(call);
                         log("onCallMerged: ImsPhoneConnection=" + conn);
+                        log("onCallMerged: mConferenceTime=" + mConferenceTime);
                         log("onCallMerged: CurrentVideoProvider=" + conn.getVideoProvider());
                         setVideoCallProvider(conn, call);
                         log("onCallMerged: CurrentVideoProvider=" + conn.getVideoProvider());
