@@ -1303,6 +1303,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             if (DBG) log("onImsDisconnected imsReasonInfo=" + imsReasonInfo);
             mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
             mPhone.setImsRegistered(false);
+            mPhone.processDisconnectReason(imsReasonInfo);
         }
 
         @Override
