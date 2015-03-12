@@ -431,6 +431,13 @@ public abstract class Connection {
     public abstract UUSInfo getUUSInfo();
 
     /**
+     * @return indication whether this connection is allowed to be merged into conference
+     */
+    public boolean isMergeAllowed() {
+        return true;
+    };
+
+    /**
      * Returns the CallFail reason provided by the RIL with the result of
      * RIL_REQUEST_LAST_CALL_FAIL_CAUSE
      */
