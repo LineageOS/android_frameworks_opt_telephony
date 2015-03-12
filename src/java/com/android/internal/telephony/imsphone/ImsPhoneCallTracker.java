@@ -1355,6 +1355,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 for (ImsPhoneConnection connection : mConnections) {
                     connection.updateWifiState();
                 }
+
+                mPhone.onFeatureCapabilityChanged();
             }
 
             if (DBG) log("onFeatureCapabilityChanged: mImsFeatureEnabled=" +  mImsFeatureEnabled);
