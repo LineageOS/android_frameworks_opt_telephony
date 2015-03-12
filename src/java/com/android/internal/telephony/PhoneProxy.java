@@ -1512,6 +1512,14 @@ public class PhoneProxy extends Handler implements Phone {
         return mActivePhone.isImsRegistered();
     }
 
+    public boolean isVolteEnabled() {
+        return mActivePhone.isVolteEnabled();
+    }
+
+    public boolean isWifiCallingEnabled() {
+        return mActivePhone.isWifiCallingEnabled();
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         try {
             ((PhoneBase)mActivePhone).dump(fd, pw, args);
