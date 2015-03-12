@@ -1993,4 +1993,16 @@ public interface Phone {
      * emergency operator.
      */
     public boolean isInEcm();
+
+    /**
+     * Returns the Status of Wi-Fi Calling
+     *@hide
+     */
+    public boolean isWifiCallingEnabled();
+
+     /**
+     * Returns the Status of Volte
+     *@hide
+     */
+    public boolean isVolteEnabled();
 }
