@@ -214,6 +214,7 @@ public abstract class CallTracker extends Handler {
         String[] entry;
         String[] tmpArray;
         String outNumber = "";
+        boolean needConvert = false;
         for(String convertMap : convertMaps) {
             log("convertNumberIfNecessary: " + convertMap);
             entry = convertMap.split(":");
@@ -222,25 +223,35 @@ public abstract class CallTracker extends Handler {
                 if (!TextUtils.isEmpty(entry[0]) && dialNumber.equals(entry[0])) {
                     if (tmpArray.length >= 2 && !TextUtils.isEmpty(tmpArray[1])) {
                         if (compareGid1(phoneBase, tmpArray[1])) {
-                            mNumberConverted = true;
+                            needConvert = true;
                         }
                     } else if (outNumber.isEmpty()) {
-                        mNumberConverted = true;
+                        needConvert = true;
                     }
-                    if (mNumberConverted) {
+
+                    if (needConvert) {
                         if(!TextUtils.isEmpty(tmpArray[0]) && tmpArray[0].endsWith("MDN")) {
-                            String prefix = tmpArray[0].substring(0, tmpArray[0].length() -3);
-                            outNumber = prefix + phoneBase.getLine1Number();
+                            String mdn = phoneBase.getLine1Number();
+                            if (!TextUtils.isEmpty(mdn) ) {
+                                if (mdn.startsWith("+")) {
+                                    outNumber = mdn;
+                                } else {
+                                    outNumber = tmpArray[0].substring(0, tmpArray[0].length() -3)
+                                            + mdn;
+                                }
+                            }
                         } else {
                             outNumber = tmpArray[0];
                         }
+                        needConvert = false;
                     }
                 }
             }
         }
 
-        if (mNumberConverted) {
+        if (!TextUtils.isEmpty(outNumber)) {
             log("convertNumberIfNecessary: convert service number");
+            mNumberConverted = true;
             return outNumber;
         }
 
@@ -274,7 +285,7 @@ public abstract class CallTracker extends Handler {
     public abstract void unregisterForVoiceCallStarted(Handler h);
     public abstract void registerForVoiceCallEnded(Handler h, int what, Object obj);
     public abstract void unregisterForVoiceCallEnded(Handler h);
-
+    public abstract PhoneConstants.State getState();
     protected abstract void log(String msg);
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

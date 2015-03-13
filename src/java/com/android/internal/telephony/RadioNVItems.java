@@ -77,4 +77,8 @@ public interface RadioNVItems {
     int RIL_NV_LTE_HIDDEN_BAND_PRIORITY_25 = 77;    // LTE hidden band 25 priority
     int RIL_NV_LTE_HIDDEN_BAND_PRIORITY_26 = 78;    // LTE hidden band 26 priority
     int RIL_NV_LTE_HIDDEN_BAND_PRIORITY_41 = 79;    // LTE hidden band 41 priority
+
+    int RIL_NV_LTE_NEXT_SCAN = 80;              // LTE next scan
+    int RIL_NV_LTE_BSR_TIMER = 81;              // LTE BSR timer
+    int RIL_NV_LTE_BSR_MAX_TIME = 82;           // LTE BSR max time
 }

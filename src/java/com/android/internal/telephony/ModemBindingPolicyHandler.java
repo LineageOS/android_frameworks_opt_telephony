@@ -263,9 +263,9 @@ public class ModemBindingPolicyHandler extends Handler {
         syncPreferredNwModeFromDB();
         SubscriptionController subCtrlr = SubscriptionController.getInstance();
         for (int i=0; i < mNumPhones; i++ ) {
-            long[] subIdList = subCtrlr.getSubId(i);
+            int[] subIdList = subCtrlr.getSubId(i);
             if (subIdList != null && subIdList[0] > 0) {
-                long subId = subIdList[0];
+                int subId = subIdList[0];
                 nwModeinSubIdTable[i] = subCtrlr.getNwMode(subId);
                 if (nwModeinSubIdTable[i] == SubscriptionManager.DEFAULT_NW_MODE){
                     updateRequired = false;

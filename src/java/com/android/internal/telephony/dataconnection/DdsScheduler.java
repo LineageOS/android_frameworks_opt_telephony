@@ -62,7 +62,7 @@ public class DdsScheduler extends StateMachine {
     private DdsSwitchState mDdsSwitchState = new DdsSwitchState();
     private DdsAutoRevertState mDdsAutoRevertState = new DdsAutoRevertState();
 
-    private long mCurrentDds = SubscriptionManager.INVALID_SUB_ID;
+    private int mCurrentDds = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     private DctController mDctController;
     private static DdsScheduler sDdsScheduler;
 
@@ -218,9 +218,9 @@ public class DdsScheduler extends StateMachine {
         }
     }
 
-    public long getCurrentDds() {
+    public int getCurrentDds() {
         SubscriptionController subController = SubscriptionController.getInstance();
-        if(mCurrentDds == SubscriptionManager.INVALID_SUB_ID) {
+        if(mCurrentDds == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
             mCurrentDds = subController.getDefaultDataSubId();
         }
 
@@ -233,7 +233,7 @@ public class DdsScheduler extends StateMachine {
         Rlog.d(TAG, "mCurrentDds = " + mCurrentDds);
     }
 
-    long getSubIdFromNetworkRequest(NetworkRequest n) {
+    int getSubIdFromNetworkRequest(NetworkRequest n) {
         SubscriptionController subController = SubscriptionController.getInstance();
         return subController.getSubIdFromNetworkRequest(n);
     }

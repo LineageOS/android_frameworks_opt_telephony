@@ -16,15 +16,9 @@
 
 package com.android.internal.telephony;
 
-import com.google.android.mms.MmsException;
-import com.google.android.mms.pdu.DeliveryInd;
-import com.google.android.mms.pdu.GenericPdu;
-import com.google.android.mms.pdu.NotificationInd;
-import com.google.android.mms.pdu.PduHeaders;
-import com.google.android.mms.pdu.PduParser;
-import com.google.android.mms.pdu.PduPersister;
-import com.google.android.mms.pdu.ReadOrigInd;
-
+import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_DELIVERY_IND;
+import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND;
+import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_READ_ORIG_IND;
 import android.app.Activity;
 import android.app.AppOpsManager;
 import android.content.BroadcastReceiver;
@@ -44,17 +38,21 @@ import android.os.RemoteException;
 import android.os.UserHandle;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
+import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SubscriptionManager;
-import android.telephony.Rlog;
 import android.text.TextUtils;
 import android.util.Log;
 
 import com.android.internal.telephony.uicc.IccUtils;
-
-import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_DELIVERY_IND;
-import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_NOTIFICATION_IND;
-import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_READ_ORIG_IND;
+import com.google.android.mms.MmsException;
+import com.google.android.mms.pdu.DeliveryInd;
+import com.google.android.mms.pdu.GenericPdu;
+import com.google.android.mms.pdu.NotificationInd;
+import com.google.android.mms.pdu.PduHeaders;
+import com.google.android.mms.pdu.PduParser;
+import com.google.android.mms.pdu.PduPersister;
+import com.google.android.mms.pdu.ReadOrigInd;
 
 /**
  * WAP push handler class.
@@ -202,11 +200,11 @@ public class WapPushOverSms implements ServiceConnection {
 
             if (SmsManager.getDefault().getAutoPersisting()) {
                 // Store the wap push data in telephony
-                long [] subIds = SubscriptionManager.getSubId(phoneId);
+                int [] subIds = SubscriptionManager.getSubId(phoneId);
                 // FIXME (tomtaylor) - when we've updated SubscriptionManager, change
                 // SubscriptionManager.DEFAULT_SUB_ID to SubscriptionManager.getDefaultSmsSubId()
-                long subId = (subIds != null) && (subIds.length > 0) ? subIds[0] :
-                    SmsManager.getDefaultSmsSubId();
+                int subId = (subIds != null) && (subIds.length > 0) ? subIds[0] :
+                    SmsManager.getDefaultSmsSubscriptionId();
                 writeInboxMessage(subId, intentData);
             }
 
@@ -311,8 +309,16 @@ public class WapPushOverSms implements ServiceConnection {
         }
     }
 
-    private void writeInboxMessage(long subId, byte[] pushData) {
-        final GenericPdu pdu = new PduParser(pushData).parse();
+    private static boolean shouldParseContentDisposition(int subId) {
+        return SmsManager
+                .getSmsManagerForSubscriptionId(subId)
+                .getCarrierConfigValues()
+                .getBoolean(SmsManager.MMS_CONFIG_SUPPORT_MMS_CONTENT_DISPOSITION, true);
+    }
+
+    private void writeInboxMessage(int subId, byte[] pushData) {
+        final GenericPdu pdu =
+                new PduParser(pushData, shouldParseContentDisposition(subId)).parse();
         if (pdu == null) {
             Rlog.e(TAG, "Invalid PUSH PDU");
         }
@@ -356,7 +362,7 @@ public class WapPushOverSms implements ServiceConnection {
                 case MESSAGE_TYPE_NOTIFICATION_IND: {
                     final NotificationInd nInd = (NotificationInd) pdu;
 
-                    Bundle configs = SmsManager.getSmsManagerForSubscriber(subId)
+                    Bundle configs = SmsManager.getSmsManagerForSubscriptionId(subId)
                             .getCarrierConfigValues();
                     if (configs != null && configs.getBoolean(
                         SmsManager.MMS_CONFIG_APPEND_TRANSACTION_ID, false)) {
