@@ -1226,6 +1226,7 @@ public class ImsPhone extends ImsPhoneBase {
             for (int i = 0, s = infos.length; i < s; i++) {
                 if (infos[i].mCondition == ImsUtInterface.CDIV_CF_UNCONDITIONAL) {
                     if (r != null) {
+                        setCallForwardingPreference(infos[i].mStatus == 1);
                         r.setVoiceCallForwardingFlag(1, (infos[i].mStatus == 1),
                             infos[i].mNumber);
                     }
@@ -1295,9 +1296,11 @@ public class ImsPhone extends ImsPhoneBase {
                 IccRecords r = getIccRecords();
                 Cf cf = (Cf) ar.userObj;
                 if (cf.mIsCfu && ar.exception == null && r != null) {
+                    setCallForwardingPreference(msg.arg1 == 1);
                     r.setVoiceCallForwardingFlag(1, msg.arg1 == 1, cf.mSetCfNumber);
                 }
                 sendResponse(cf.mOnComplete, null, ar.exception);
+                updateCallForwardStatus();
                 break;
 
             case EVENT_GET_CALL_FORWARD_DONE:
@@ -1306,6 +1309,7 @@ public class ImsPhone extends ImsPhoneBase {
                     cfInfos = handleCfQueryResult((ImsCallForwardInfo[])ar.result);
                 }
                 sendResponse((Message) ar.userObj, cfInfos, ar.exception);
+                updateCallForwardStatus();
                 break;
 
              case EVENT_SET_CALL_FORWARD_TIMER_DONE:
