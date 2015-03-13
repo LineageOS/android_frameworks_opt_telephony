@@ -16,8 +16,8 @@
 
 package android.telephony;
 
+import android.os.Binder;
 import android.os.Parcel;
-import android.telephony.Rlog;
 import android.content.res.Resources;
 import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
@@ -104,13 +104,13 @@ public class SmsMessage {
      *
      * @hide
      */
-    private long mSubId = 0;
+    private int mSubId = 0;
 
     /** set Subscription information
      *
      * @hide
      */
-    public void setSubId(long subId) {
+    public void setSubId(int subId) {
         mSubId = subId;
     }
 
@@ -118,7 +118,7 @@ public class SmsMessage {
      *
      * @hide
      */
-    public long getSubId() {
+    public int getSubId() {
         return mSubId;
     }
 
@@ -266,7 +266,7 @@ public class SmsMessage {
      *
      * @hide
      */
-    public static SmsMessage createFromEfRecord(int index, byte[] data, long subId) {
+    public static SmsMessage createFromEfRecord(int index, byte[] data, int subId) {
         SmsMessageBase wrappedMessage;
 
         if (isCdmaVoice(subId)) {
@@ -502,7 +502,7 @@ public class SmsMessage {
      * @hide
      */
     public static SubmitPdu getSubmitPdu(String scAddress,
-            String destinationAddress, String message, boolean statusReportRequested, long subId) {
+            String destinationAddress, String message, boolean statusReportRequested, int subId) {
         SubmitPduBase spb;
         if (useCdmaFormatForMoSms(subId)) {
             spb = com.android.internal.telephony.cdma.SmsMessage.getSubmitPdu(scAddress,
@@ -797,7 +797,7 @@ public class SmsMessage {
      * @return true if Cdma format should be used for MO SMS, false otherwise.
      */
     private static boolean useCdmaFormatForMoSms() {
-        SmsManager smsManager = SmsManager.getSmsManagerForSubscriber(
+        SmsManager smsManager = SmsManager.getSmsManagerForSubscriptionId(
                 SubscriptionManager.getDefaultSmsSubId());
         if (!smsManager.isImsSmsSupported()) {
             // use Voice technology to determine SMS format.
@@ -816,8 +816,8 @@ public class SmsMessage {
      *
      * @return true if Cdma format should be used for MO SMS, false otherwise.
      */
-    private static boolean useCdmaFormatForMoSms(long subId) {
-        SmsManager smsManager = SmsManager.getSmsManagerForSubscriber(subId);
+    private static boolean useCdmaFormatForMoSms(int subId) {
+        SmsManager smsManager = SmsManager.getSmsManagerForSubscriptionId(subId);
         if (!smsManager.isImsSmsSupported()) {
             // use Voice technology to determine SMS format.
             return isCdmaVoice(subId);
@@ -842,7 +842,7 @@ public class SmsMessage {
      * @param subId Subscription Id of the SMS
      * @return true if current phone type is cdma, false otherwise.
      */
-    private static boolean isCdmaVoice(long subId) {
+    private static boolean isCdmaVoice(int subId) {
         int activePhone = TelephonyManager.getDefault().getCurrentPhoneType(subId);
         return (PHONE_TYPE_CDMA == activePhone);
     }
@@ -856,8 +856,15 @@ public class SmsMessage {
             return true;
         }
 
-        String simOperator = TelephonyManager.getDefault().getSimOperator();
-        String gid = TelephonyManager.getDefault().getGroupIdLevel1();
+        String simOperator;
+        String gid;
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            simOperator = TelephonyManager.getDefault().getSimOperator();
+            gid = TelephonyManager.getDefault().getGroupIdLevel1();
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
 
         for (NoEmsSupportConfig currentConfig : mNoEmsSupportConfigList) {
             if (simOperator.startsWith(currentConfig.mOperatorNumber) &&
@@ -879,8 +886,15 @@ public class SmsMessage {
             return false;
         }
 
-        String simOperator = TelephonyManager.getDefault().getSimOperator();
-        String gid = TelephonyManager.getDefault().getGroupIdLevel1();
+        String simOperator;
+        String gid;
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            simOperator = TelephonyManager.getDefault().getSimOperator();
+            gid = TelephonyManager.getDefault().getGroupIdLevel1();
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
         for (NoEmsSupportConfig currentConfig : mNoEmsSupportConfigList) {
             if (simOperator.startsWith(currentConfig.mOperatorNumber) &&
                 (TextUtils.isEmpty(currentConfig.mGid1) ||

@@ -71,6 +71,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected String mIccId;
     protected String mMsisdn = null;  // My mobile number
     protected String mMsisdnTag = null;
+    protected String mNewMsisdn = null;
+    protected String mNewMsisdnTag = null;
     protected String mVoiceMailNum = null;
     protected String mVoiceMailTag = null;
     protected String mNewVoiceMailNum = null;
@@ -135,7 +137,6 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " adnCache=" + mAdnCache
                 + " recordsRequested=" + mRecordsRequested
                 + " iccid=" + mIccId
-                + " msisdn=" + mMsisdn
                 + " msisdnTag=" + mMsisdnTag
                 + " voiceMailNum=" + mVoiceMailNum
                 + " voiceMailTag=" + mVoiceMailTag
@@ -341,6 +342,16 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public void setImsi(String imsi) {
         mImsi = imsi;
         mImsiReadyRegistrants.notifyRegistrants();
+    }
+
+    /**
+     * Get the Network Access ID (NAI) on a CSIM for CDMA like networks. Default is null if IMSI is
+     * not supported or unavailable.
+     *
+     * @return null if NAI is not yet ready or unavailable
+     */
+    public String getNAI() {
+        return null;
     }
 
     public String getMsisdnNumber() {
@@ -777,6 +788,12 @@ public abstract class IccRecords extends Handler implements IccConstants {
         return null;
     }
 
+    protected void setSystemProperty(String key, String val) {
+        TelephonyManager.getDefault().setTelephonyProperty(mParentApp.getPhoneId(), key, val);
+
+        log("[key, value]=" + key + ", " +  val);
+    }
+
     /**
      * Returns the response of the SIM application on the UICC to authentication
      * challenge/response algorithm. The data string and challenge response are
@@ -890,19 +907,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 com.android.internal.R.bool.skip_radio_power_off_on_sim_refresh_reset);
     }
 
-    protected void setSystemProperty(String property, String value) {
-        if (mParentApp == null) return;
-        int slotId = mParentApp.getUiccCard().getSlotId();
-
-        SubscriptionController subController = SubscriptionController.getInstance();
-        long subId = subController.getSubIdUsingSlotId(slotId)[0];
-
-        TelephonyManager.setTelephonyProperty(property, subId, value);
-    }
-
     protected boolean isAppStateReady() {
         AppState appState = mParentApp.getState();
         if (DBG) log("isAppStateReady : appState = " + appState);
         return (appState == AppState.APPSTATE_READY);
     }
+
 }

@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.uicc;
 
+import android.annotation.Nullable;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -32,7 +33,10 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccUtils;
 
 import java.io.ByteArrayInputStream;
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.lang.IllegalArgumentException;
+import java.lang.IndexOutOfBoundsException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
@@ -70,6 +74,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
     private static final int COMMAND = 0xCA;
     private static final int P1 = 0xFF;
     private static final int P2 = 0x40;
+    private static final int P2_EXTENDED_DATA = 0x60;
     private static final int P3 = 0x00;
     private static final String DATA = "";
 
@@ -131,19 +136,41 @@ public class UiccCarrierPrivilegeRules extends Handler {
 
         @Override
         public String toString() {
-            return "cert: " + certificateHash + " pkg: " + packageName +
-                " access: " + accessType;
+            return "cert: " + IccUtils.bytesToHexString(certificateHash) + " pkg: " +
+                packageName + " access: " + accessType;
         }
     }
 
     // Used for parsing the data from the UICC.
     private static class TLV {
+        private static final int SINGLE_BYTE_MAX_LENGTH = 0x80;
         private String tag;
+        // Length encoding is in GPC_Specification_2.2.1: 11.1.5 APDU Message and Data Length.
+        // Length field could be either 1 byte if length < 128, or multiple bytes with first byte
+        // specifying how many bytes are used for length, followed by length bytes.
+        // Bytes for the length field, in ASCII HEX string form.
+        private String lengthBytes;
+        // Decoded length as integer.
         private Integer length;
         private String value;
 
         public TLV(String tag) {
             this.tag = tag;
+        }
+
+        public String parseLength(String data) {
+            int offset = tag.length();
+            int firstByte = Integer.parseInt(data.substring(offset, offset + 2), 16);
+            if (firstByte < SINGLE_BYTE_MAX_LENGTH) {
+                length = firstByte * 2;
+                lengthBytes = data.substring(offset, offset + 2);
+            } else {
+                int numBytes = firstByte - SINGLE_BYTE_MAX_LENGTH;
+                length = Integer.parseInt(data.substring(offset + 2, offset + 2 + numBytes * 2), 16) * 2;
+                lengthBytes = data.substring(offset, offset + 2 + numBytes * 2);
+            }
+            Rlog.d(LOG_TAG, "TLV parseLength length=" + length + "lenghtBytes: " + lengthBytes);
+            return lengthBytes;
         }
 
         public String parse(String data, boolean shouldConsumeAll) {
@@ -155,10 +182,11 @@ public class UiccCarrierPrivilegeRules extends Handler {
             if (index + 2 > data.length()) {
                 throw new IllegalArgumentException("No length.");
             }
-            length = new Integer(2 * Integer.parseInt(
-                    data.substring(index, index + 2), 16));
-            index += 2;
 
+            parseLength(data);
+            index += lengthBytes.length();
+
+            Rlog.d(LOG_TAG, "index="+index+" length="+length+"data.length="+data.length());
             int remainingLength = data.length() - (index + length);
             if (remainingLength < 0) {
                 throw new IllegalArgumentException("Not enough data.");
@@ -177,13 +205,18 @@ public class UiccCarrierPrivilegeRules extends Handler {
     private UiccCard mUiccCard;  // Parent
     private AtomicInteger mState;
     private List<AccessRule> mAccessRules;
+    private String mRules;
     private Message mLoadedCallback;
+    private String mStatusMessage;  // Only used for debugging.
+    private int mChannelId; // Channel Id for communicating with UICC.
 
     public UiccCarrierPrivilegeRules(UiccCard uiccCard, Message loadedCallback) {
         Rlog.d(LOG_TAG, "Creating UiccCarrierPrivilegeRules");
         mUiccCard = uiccCard;
         mState = new AtomicInteger(STATE_LOADING);
+        mStatusMessage = "Not loaded.";
         mLoadedCallback = loadedCallback;
+        mRules = "";
 
         // Start loading the rules.
         mUiccCard.iccOpenLogicalChannel(AID,
@@ -293,10 +326,11 @@ public class UiccCarrierPrivilegeRules extends Handler {
         receivers.addAll(packageManager.queryIntentServices(intent, 0));
 
         for (ResolveInfo resolveInfo : receivers) {
-            if (resolveInfo.activityInfo == null) {
+            String packageName = getPackageName(resolveInfo);
+            if (packageName == null) {
                 continue;
             }
-            String packageName = resolveInfo.activityInfo.packageName;
+
             int status = getCarrierPrivilegeStatus(packageManager, packageName);
             if (status == TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
                 packages.add(packageName);
@@ -309,6 +343,18 @@ public class UiccCarrierPrivilegeRules extends Handler {
         return packages;
     }
 
+    @Nullable
+    private String getPackageName(ResolveInfo resolveInfo) {
+        if (resolveInfo.activityInfo != null) {
+            return resolveInfo.activityInfo.packageName;
+        } else if (resolveInfo.serviceInfo != null) {
+            return resolveInfo.serviceInfo.packageName;
+        } else if (resolveInfo.providerInfo != null) {
+            return resolveInfo.providerInfo.packageName;
+        }
+        return null;
+    }
+
     @Override
     public void handleMessage(Message msg) {
         AsyncResult ar;
@@ -319,12 +365,11 @@ public class UiccCarrierPrivilegeRules extends Handler {
               Rlog.d(LOG_TAG, "EVENT_OPEN_LOGICAL_CHANNEL_DONE");
               ar = (AsyncResult) msg.obj;
               if (ar.exception == null && ar.result != null) {
-                  int channelId = ((int[]) ar.result)[0];
-                  mUiccCard.iccTransmitApduLogicalChannel(channelId, CLA, COMMAND, P1, P2, P3, DATA,
-                      obtainMessage(EVENT_TRANSMIT_LOGICAL_CHANNEL_DONE, new Integer(channelId)));
+                  mChannelId = ((int[]) ar.result)[0];
+                  mUiccCard.iccTransmitApduLogicalChannel(mChannelId, CLA, COMMAND, P1, P2, P3, DATA,
+                      obtainMessage(EVENT_TRANSMIT_LOGICAL_CHANNEL_DONE, new Integer(mChannelId)));
               } else {
-                  Rlog.e(LOG_TAG, "Error opening channel");
-                  updateState(STATE_ERROR);
+                  updateState(STATE_ERROR, "Error opening channel");
               }
               break;
 
@@ -333,27 +378,35 @@ public class UiccCarrierPrivilegeRules extends Handler {
               ar = (AsyncResult) msg.obj;
               if (ar.exception == null && ar.result != null) {
                   IccIoResult response = (IccIoResult) ar.result;
-                  if (response.payload != null && response.sw1 == 0x90 && response.sw2 == 0x00) {
+                  if (response.sw1 == 0x90 && response.sw2 == 0x00 &&
+                      response.payload != null && response.payload.length > 0) {
                       try {
-                          mAccessRules = parseRules(IccUtils.bytesToHexString(response.payload));
-                          updateState(STATE_LOADED);
+                          mRules += IccUtils.bytesToHexString(response.payload).toUpperCase(Locale.US);
+                          if (isDataComplete()) {
+                              mAccessRules = parseRules(mRules);
+                              updateState(STATE_LOADED, "Success!");
+                          } else {
+                              mUiccCard.iccTransmitApduLogicalChannel(mChannelId, CLA, COMMAND, P1, P2_EXTENDED_DATA, P3, DATA,
+                                  obtainMessage(EVENT_TRANSMIT_LOGICAL_CHANNEL_DONE, new Integer(mChannelId)));
+                              break;
+                          }
                       } catch (IllegalArgumentException ex) {
-                          Rlog.e(LOG_TAG, "Error parsing rules: " + ex);
-                          updateState(STATE_ERROR);
+                          updateState(STATE_ERROR, "Error parsing rules: " + ex);
+                      } catch (IndexOutOfBoundsException ex) {
+                          updateState(STATE_ERROR, "Error parsing rules: " + ex);
                       }
                    } else {
-                      Rlog.e(LOG_TAG, "Invalid response: payload=" + response.payload +
-                              " sw1=" + response.sw1 + " sw2=" + response.sw2);
-                      updateState(STATE_ERROR);
+                      String errorMsg = "Invalid response: payload=" + response.payload +
+                              " sw1=" + response.sw1 + " sw2=" + response.sw2;
+                      updateState(STATE_ERROR, errorMsg);
                    }
               } else {
-                  Rlog.e(LOG_TAG, "Error reading value from SIM.");
-                  updateState(STATE_ERROR);
+                  updateState(STATE_ERROR, "Error reading value from SIM.");
               }
 
-              int channelId = (Integer) ar.userObj;
-              mUiccCard.iccCloseLogicalChannel(channelId, obtainMessage(
+              mUiccCard.iccCloseLogicalChannel(mChannelId, obtainMessage(
                       EVENT_CLOSE_LOGICAL_CHANNEL_DONE));
+              mChannelId = -1;
               break;
 
           case EVENT_CLOSE_LOGICAL_CHANNEL_DONE:
@@ -366,10 +419,32 @@ public class UiccCarrierPrivilegeRules extends Handler {
     }
 
     /*
+     * Check if all rule bytes have been read from UICC.
+     * For long payload, we need to fetch it repeatly before start parsing it.
+     */
+    private boolean isDataComplete() {
+        Rlog.d(LOG_TAG, "isDataComplete mRules:" + mRules);
+        if (mRules.startsWith(TAG_ALL_REF_AR_DO)) {
+            TLV allRules = new TLV(TAG_ALL_REF_AR_DO);
+            String lengthBytes = allRules.parseLength(mRules);
+            Rlog.d(LOG_TAG, "isDataComplete lengthBytes: " + lengthBytes);
+            if (mRules.length() == TAG_ALL_REF_AR_DO.length() + lengthBytes.length() +
+                                   allRules.length) {
+                Rlog.d(LOG_TAG, "isDataComplete yes");
+                return true;
+            } else {
+                Rlog.d(LOG_TAG, "isDataComplete no");
+                return false;
+            }
+        } else {
+            throw new IllegalArgumentException("Tags don't match.");
+        }
+    }
+
+    /*
      * Parses the rules from the input string.
      */
     private static List<AccessRule> parseRules(String rules) {
-        rules = rules.toUpperCase(Locale.US);
         Rlog.d(LOG_TAG, "Got rules: " + rules);
 
         TLV allRefArDo = new TLV(TAG_ALL_REF_AR_DO); //FF40
@@ -476,10 +551,47 @@ public class UiccCarrierPrivilegeRules extends Handler {
     /*
      * Updates the state and notifies the UiccCard that the rules have finished loading.
      */
-    private void updateState(int newState) {
+    private void updateState(int newState, String statusMessage) {
         mState.set(newState);
         if (mLoadedCallback != null) {
             mLoadedCallback.sendToTarget();
         }
+
+        mStatusMessage = statusMessage;
+        Rlog.e(LOG_TAG, mStatusMessage);
+    }
+
+    /**
+     * Dumps info to Dumpsys - useful for debugging.
+     */
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("UiccCarrierPrivilegeRules: " + this);
+        pw.println(" mState=" + getStateString(mState.get()));
+        pw.println(" mStatusMessage='" + mStatusMessage + "'");
+        if (mAccessRules != null) {
+            pw.println(" mAccessRules: ");
+            for (AccessRule ar : mAccessRules) {
+                pw.println("  rule='" + ar + "'");
+            }
+        } else {
+            pw.println(" mAccessRules: null");
+        }
+        pw.flush();
+    }
+
+    /*
+     * Converts state into human readable format.
+     */
+    private String getStateString(int state) {
+      switch (state) {
+        case STATE_LOADING:
+            return "STATE_LOADING";
+        case STATE_LOADED:
+            return "STATE_LOADED";
+        case STATE_ERROR:
+            return "STATE_ERROR";
+        default:
+            return "UNKNOWN";
+      }
     }
 }

@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.IccCardProxy;
@@ -44,85 +45,7 @@ public class DebugService {
      */
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         log("dump: +");
-        PhoneProxy phoneProxy = null;
-        PhoneBase phoneBase = null;
-
-        try {
-            phoneProxy = (PhoneProxy) PhoneFactory.getDefaultPhone();
-        } catch (Exception e) {
-            pw.println("Telephony DebugService: Could not getDefaultPhone e=" + e);
-            return;
-        }
-        try {
-            phoneBase = (PhoneBase)phoneProxy.getActivePhone();
-        } catch (Exception e) {
-            pw.println("Telephony DebugService: Could not PhoneBase e=" + e);
-            return;
-        }
-
-        /**
-         * Surround each of the sub dump's with try/catch so even
-         * if one fails we'll be able to dump the next ones.
-         */
-        pw.println();
-        pw.println("++++++++++++++++++++++++++++++++");
-        pw.flush();
-        try {
-            phoneBase.dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
-        try {
-            phoneBase.mDcTracker.dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
-        try {
-            phoneBase.getServiceStateTracker().dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
-        try {
-            phoneBase.getCallTracker().dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
-        try {
-            ((RIL)phoneBase.mCi).dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
-        try {
-            UiccController.getInstance().dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
-        try {
-            ((IccCardProxy)phoneProxy.getIccCard()).dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
-
-        try {
-            SubscriptionController.getInstance().dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        pw.flush();
+        PhoneFactory.dump(fd, pw, args);
         log("dump: -");
     }
 

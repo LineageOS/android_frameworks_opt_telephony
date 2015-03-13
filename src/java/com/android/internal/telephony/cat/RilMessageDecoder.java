@@ -16,15 +16,16 @@
 
 package com.android.internal.telephony.cat;
 
+import android.os.Handler;
+import android.os.Message;
+import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
+
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccUtils;
-import com.android.internal.telephony.PhoneConstants;
-
-import android.os.Handler;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
-import android.os.Message;
-import android.telephony.TelephonyManager;
 
 /**
  * Class used for queuing raw ril messages, decoding them into CommanParams
@@ -64,7 +65,7 @@ class RilMessageDecoder extends StateMachine {
             }
         }
 
-        if (slotId < mSimCount) {
+        if (slotId != SubscriptionManager.INVALID_SIM_SLOT_INDEX && slotId < mSimCount) {
             if (null == mInstance[slotId]) {
                 mInstance[slotId] = new RilMessageDecoder(caller, fh);
             }

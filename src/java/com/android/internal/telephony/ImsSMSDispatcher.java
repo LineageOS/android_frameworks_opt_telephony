@@ -17,13 +17,6 @@
 package com.android.internal.telephony;
 
 import static android.telephony.SmsManager.RESULT_ERROR_GENERIC_FAILURE;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
 import android.net.Uri;
@@ -34,10 +27,16 @@ import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.R;
-import com.android.internal.telephony.cdma.CdmaSMSDispatcher;
-import com.android.internal.telephony.gsm.GsmSMSDispatcher;
-import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
+import com.android.internal.telephony.cdma.CdmaSMSDispatcher;
+import com.android.internal.telephony.gsm.GsmInboundSmsHandler;
+import com.android.internal.telephony.gsm.GsmSMSDispatcher;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class ImsSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "RIL_ImsSms";
@@ -209,60 +208,6 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected void updateSmsSendStatus(int messageRef, boolean success) {
-        if (isCdmaMo()) {
-            updateSmsSendStatusHelper(messageRef, mCdmaDispatcher.sendPendingList,
-                                      mCdmaDispatcher, success);
-            updateSmsSendStatusHelper(messageRef, mGsmDispatcher.sendPendingList,
-                                      null, success);
-        } else {
-            updateSmsSendStatusHelper(messageRef, mGsmDispatcher.sendPendingList,
-                                      mGsmDispatcher, success);
-            updateSmsSendStatusHelper(messageRef, mCdmaDispatcher.sendPendingList,
-                                      null, success);
-        }
-    }
-
-    /**
-     * Find a tracker in a list to update its status. If the status is successful,
-     * send an EVENT_SEND_SMS_COMPLETE message. Otherwise, resend the message by PSTN if
-     * feasible.
-     *
-     * @param messageRef the reference number of the tracker.
-     * @param sendPendingList the list of trackers to look into.
-     * @param smsDispatcher the dispatcher for resending the message by PSTN.
-     * @param success true iff the message was sent successfully.
-     */
-    private void updateSmsSendStatusHelper(int messageRef,
-                                           List<SmsTracker> sendPendingList,
-                                           SMSDispatcher smsDispatcher,
-                                           boolean success) {
-        synchronized (sendPendingList) {
-            for (int i = 0, count = sendPendingList.size(); i < count; i++) {
-                SmsTracker tracker = sendPendingList.get(i);
-                if (tracker.mMessageRef == messageRef) {
-                    // Found it.  Remove from list and broadcast.
-                    sendPendingList.remove(i);
-                    if (success) {
-                        Rlog.d(TAG, "Sending SMS by IP succeeded.");
-                        sendMessage(obtainMessage(EVENT_SEND_SMS_COMPLETE,
-                                                  new AsyncResult(tracker, null, null)));
-                    } else {
-                        Rlog.d(TAG, "Sending SMS by IP failed.");
-                        if (smsDispatcher != null) {
-                            smsDispatcher.sendSmsByPstn(tracker);
-                        } else {
-                            Rlog.e(TAG, "No feasible way to send this SMS.");
-                        }
-                    }
-                    // Only expect to see one tracker matching this messageref.
-                    break;
-                }
-            }
-        }
-    }
-
-    @Override
     protected void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
             PendingIntent deliveryIntent, Uri messageUri, String callingPkg,
             int priority, boolean isExpectMore, int validityPeriod ) {
@@ -407,6 +352,11 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
+    protected void sendSubmitPdu(SmsTracker tracker) {
+        sendRawPdu(tracker);
+    }
+
+    @Override
     protected String getFormat() {
         // this function should be defined in Gsm/CdmaDispatcher.
         Rlog.e(TAG, "getFormat should never be called from here!");
@@ -421,12 +371,13 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected void sendNewSubmitPdu(String destinationAddress, String scAddress, String message,
-            SmsHeader smsHeader, int format, PendingIntent sentIntent,
+    protected SmsTracker getNewSubmitPduTracker(String destinationAddress, String scAddress,
+            String message, SmsHeader smsHeader, int format, PendingIntent sentIntent,
             PendingIntent deliveryIntent, boolean lastPart, int priority, boolean isExpectMore,
             int validityPeriod, AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed,
-            Uri messageUri) {
+            Uri messageUri, String fullMessageText) {
         Rlog.e(TAG, "Error! Not implemented for IMS.");
+        return null;
     }
 
     @Override

@@ -76,7 +76,6 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
-import com.android.internal.telephony.Subscription;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.cdma.CDMAPhone;
@@ -137,6 +136,7 @@ public class ImsPhone extends ImsPhoneBase {
     // this information is getting lost.
     private boolean mIsVideoCapable = false;
 
+    private boolean mImsRegistered = false;
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
         @Override
@@ -1141,8 +1141,7 @@ public class ImsPhone extends ImsPhoneBase {
         mSsnRegistrants.remove(h);
     }
 
-    @Override
-    public long getSubId() {
+    public int getSubId() {
         return mDefaultPhone.getSubId();
     }
 
@@ -1155,11 +1154,6 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public int getPhoneId() {
         return mDefaultPhone.getPhoneId();
-    }
-
-    @Override
-    public Subscription getSubscriptionInfo() {
-        return mDefaultPhone.getSubscriptionInfo();
     }
 
     public IccRecords getIccRecords() {
@@ -1457,5 +1451,12 @@ public class ImsPhone extends ImsPhoneBase {
 
     public boolean isUtEnabled() {
         return mCT.isUtEnabled();
+    }
+
+    public boolean isImsRegistered() {
+        return mImsRegistered;
+    }
+    public void setImsRegistered(boolean value) {
+        mImsRegistered = value;
     }
 }

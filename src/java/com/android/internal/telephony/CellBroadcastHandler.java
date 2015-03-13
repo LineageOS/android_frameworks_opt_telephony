@@ -22,6 +22,7 @@ import android.app.AppOpsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Message;
+import android.os.UserHandle;
 import android.provider.Telephony;
 import android.telephony.SubscriptionManager;
 import android.telephony.SmsCbMessage;
@@ -76,21 +77,22 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
     protected void handleBroadcastSms(SmsCbMessage message) {
         String receiverPermission;
         int appOp;
+
         Intent intent;
         if (message.isEmergencyMessage()) {
-            log("Dispatching emergency SMS CB");
+            log("Dispatching emergency SMS CB, SmsCbMessage is: " + message);
             intent = new Intent(Telephony.Sms.Intents.SMS_EMERGENCY_CB_RECEIVED_ACTION);
             receiverPermission = Manifest.permission.RECEIVE_EMERGENCY_BROADCAST;
             appOp = AppOpsManager.OP_RECEIVE_EMERGECY_SMS;
         } else {
-            log("Dispatching SMS CB");
+            log("Dispatching SMS CB, SmsCbMessage is: " + message);
             intent = new Intent(Telephony.Sms.Intents.SMS_CB_RECEIVED_ACTION);
             receiverPermission = Manifest.permission.RECEIVE_SMS;
             appOp = AppOpsManager.OP_RECEIVE_SMS;
         }
         intent.putExtra("message", message);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
-        mContext.sendOrderedBroadcast(intent, receiverPermission, appOp, mReceiver,
-                getHandler(), Activity.RESULT_OK, null, null);
+        mContext.sendOrderedBroadcastAsUser(intent, UserHandle.ALL, receiverPermission, appOp,
+                mReceiver, getHandler(), Activity.RESULT_OK, null, null);
     }
 }
