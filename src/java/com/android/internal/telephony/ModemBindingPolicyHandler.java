@@ -213,6 +213,9 @@ public class ModemBindingPolicyHandler extends Handler {
         for (int i = 0; i < mNumPhones; i++) {
             mPreferredStackId[i] = i;
             mCurrentStackId[i] = i;
+            // Initializing network mode to GSM, which is the least common denominator
+            // supported by both primary and secondary stack.
+            mNwModeinSubIdTable[i] = RILConstants.NETWORK_MODE_GSM_ONLY;
             mStoredResponse.put(i, null);
         }
 
@@ -295,7 +298,11 @@ public class ModemBindingPolicyHandler extends Handler {
             int[] subIdList = subCtrlr.getSubId(i);
             if (subIdList != null && subIdList[0] > 0) {
                 int subId = subIdList[0];
-                mNwModeinSubIdTable[i] = subCtrlr.getNwMode(subId);
+                if (!SubscriptionManager.isValidSubscriptionId(subId)) {
+                    mNwModeinSubIdTable[i] = RILConstants.NETWORK_MODE_GSM_ONLY;
+                } else {
+                    mNwModeinSubIdTable[i] = subCtrlr.getNwMode(subId);
+                }
                 if (mNwModeinSubIdTable[i] == SubscriptionManager.DEFAULT_NW_MODE){
                     updateRequired = false;
                     break;
