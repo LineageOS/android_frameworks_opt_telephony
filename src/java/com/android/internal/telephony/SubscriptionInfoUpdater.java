@@ -566,6 +566,9 @@ public class SubscriptionInfoUpdater extends Handler {
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             if (mInsertSimState[i] == SIM_NOT_INSERT) {
                 logd("updateSubscriptionInfoByIccId: No SIM inserted in slot " + i + " this time");
+                if (PROJECT_SIM_NUM == 1) {
+                    SubscriptionController.getInstance().updateUserPrefs(false);
+                }
             } else {
                 if (mInsertSimState[i] > 0) {
                     //some special SIMs may have the same IccIds, add suffix to distinguish them
