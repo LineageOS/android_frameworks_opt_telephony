@@ -74,8 +74,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     private static final boolean DBG = true;
 
-    private boolean mIsVolteEnabled = false;
-    private boolean mIsVtEnabled = false;
+    private boolean[] mImsFeatureEnabled = {false, false, false, false};
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -1204,6 +1203,24 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onCallSessionTtyModeReceived(ImsCall call, int mode) {
             mPhone.onTtyModeReceived(mode);
         }
+
+        @Override
+        public void onCallHandover(ImsCall imsCall, int srcAccessTech, int targetAccessTech,
+            ImsReasonInfo reasonInfo) {
+            if (DBG) {
+                log("onCallHandover ::  srcAccessTech=" + srcAccessTech + ", targetAccessTech=" +
+                    targetAccessTech + ", reasonInfo=" + reasonInfo);
+            }
+        }
+
+        @Override
+        public void onCallHandoverFailed(ImsCall imsCall, int srcAccessTech, int targetAccessTech,
+            ImsReasonInfo reasonInfo) {
+            if (DBG) {
+                log("onCallHandoverFailed :: srcAccessTech=" + srcAccessTech +
+                    ", targetAccessTech=" + targetAccessTech + ", reasonInfo=" + reasonInfo);
+            }
+        }
     };
 
     /**
@@ -1282,10 +1299,16 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
 
         @Override
-        public void onImsDisconnected() {
-            if (DBG) log("onImsDisconnected");
+        public void onImsDisconnected(ImsReasonInfo imsReasonInfo) {
+            if (DBG) log("onImsDisconnected imsReasonInfo=" + imsReasonInfo);
             mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
             mPhone.setImsRegistered(false);
+            mPhone.processDisconnectReason(imsReasonInfo);
+        }
+
+        @Override
+        public void onImsProgressing() {
+            if (DBG) log("onImsProgressing");
         }
 
         @Override
@@ -1304,25 +1327,37 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onFeatureCapabilityChanged(int serviceClass,
                 int[] enabledFeatures, int[] disabledFeatures) {
             if (serviceClass == ImsServiceClass.MMTEL) {
-                if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE] ==
-                        ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE) {
-                    mIsVolteEnabled = true;
+                // Check enabledFeatures to determine capabilities. We ignore disabledFeatures.
+                for (int  i = ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE;
+                        i <= ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI; i++) {
+                    if (enabledFeatures[i] == i) {
+                        // If the feature is set to its own integer value it is enabled.
+                        if (DBG) log("onFeatureCapabilityChanged: i=" + i + ", value=true");
+                        mImsFeatureEnabled[i] = true;
+                    } else if (enabledFeatures[i]
+                            == ImsConfig.FeatureConstants.FEATURE_TYPE_UNKNOWN) {
+                        // FEATURE_TYPE_UNKNOWN indicates that a feature is disabled.
+                        if (DBG) log("onFeatureCapabilityChanged: i=" + i + ", value=false");
+                        mImsFeatureEnabled[i] = false;
+                    } else {
+                        // Feature has unknown state; it is not its own value or -1.
+                        if (DBG) {
+                            loge("onFeatureCapabilityChanged: i=" + i + ", unexpectedValue="
+                                + enabledFeatures[i]);
+                        }
+                    }
                 }
-                if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE] ==
-                        ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE) {
-                    mIsVtEnabled = true;
-                }
-                if (disabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE] ==
-                        ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE) {
-                    mIsVolteEnabled = false;
-                }
-                if (disabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE] ==
-                        ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE) {
-                    mIsVtEnabled = false;
+
+                // TODO: Use the ImsCallSession or ImsCallProfile to tell the initial Wifi state and
+                // {@link ImsCallSession.Listener#callSessionHandover} to listen for changes to
+                // wifi capability caused by a handover.
+                if (DBG) log("onFeatureCapabilityChanged: isVowifiEnabled=" + isVowifiEnabled());
+                for (ImsPhoneConnection connection : mConnections) {
+                    connection.updateWifiState();
                 }
             }
-            if (DBG) log("onFeatureCapabilityChanged, mIsVolteEnabled = " +  mIsVolteEnabled
-                    + " mIsVtEnabled = " + mIsVtEnabled);
+
+            if (DBG) log("onFeatureCapabilityChanged: mImsFeatureEnabled=" +  mImsFeatureEnabled);
         }
     };
 
@@ -1466,11 +1501,16 @@ public final class ImsPhoneCallTracker extends CallTracker {
     }
 
     public boolean isVolteEnabled() {
-        return mIsVolteEnabled;
+        return mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE];
+    }
+
+    public boolean isVowifiEnabled() {
+        return mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI];
     }
 
     public boolean isVtEnabled() {
-        return mIsVtEnabled;
+        return (mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE]
+                || mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI]);
     }
     @Override
     public PhoneConstants.State getState() {

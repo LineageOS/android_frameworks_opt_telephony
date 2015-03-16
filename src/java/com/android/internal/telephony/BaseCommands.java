@@ -748,14 +748,14 @@ public abstract class BaseCommands implements CommandsInterface {
         mRilConnectedRegistrants.remove(h);
     }
 
-     public void registerForSubscriptionStatusChanged(Handler h, int what, Object obj) {
-         Registrant r = new Registrant (h, what, obj);
-         mSubscriptionStatusRegistrants.add(r);
-     }
+    public void registerForSubscriptionStatusChanged(Handler h, int what, Object obj) {
+        Registrant r = new Registrant (h, what, obj);
+        mSubscriptionStatusRegistrants.add(r);
+    }
 
-     public void unregisterForSubscriptionStatusChanged(Handler h) {
-         mSubscriptionStatusRegistrants.remove(h);
-     }
+    public void unregisterForSubscriptionStatusChanged(Handler h) {
+        mSubscriptionStatusRegistrants.remove(h);
+    }
 
     //***** Protected Methods
     /**

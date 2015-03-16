@@ -1447,9 +1447,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     /**
-     * @return true if we are in the emergency call back mode. This is a period where
-     * the phone should be using as little power as possible and be ready to receive an
-     * incoming call from the emergency operator.
+     * @return {@code true} if we are in emergency call back mode. This is a period where the phone
+     * should be using as little power as possible and be ready to receive an incoming call from the
+     * emergency operator.
      */
     public boolean isInEcm() {
         return false;
@@ -2106,6 +2106,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
+    public boolean isRadioOn() {
+        return mCi.getRadioState().isOn();
+    }
+
+    @Override
     public void shutdownRadio() {
         getServiceStateTracker().requestShutdown();
     }
@@ -2133,6 +2138,36 @@ public abstract class PhoneBase extends Handler implements Phone {
     @Override
     public void unregisterForRadioCapabilityChanged(Handler h) {
         mCi.unregisterForRadioCapabilityChanged(this);
+    }
+
+    /**
+     * Determines if  IMS is enabled for call.
+     *
+     * @return {@code true} if IMS calling is enabled.
+     */
+    public boolean isImsUseEnabled() {
+        boolean imsUseEnabled =
+                ((ImsManager.isVolteEnabledByPlatform(mContext) &&
+                ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext)) ||
+                (ImsManager.isWfcEnabledByPlatform(mContext) &&
+                ImsManager.isWfcEnabledByUser(mContext)) &&
+                ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext));
+        return imsUseEnabled;
+    }
+
+    /**
+     * Determines if video calling is enabled for the IMS phone.
+     *
+     * @return {@code true} if video calling is enabled.
+     */
+    @Override
+    public boolean isVideoEnabled() {
+        ImsPhone imsPhone = mImsPhone;
+        if ((imsPhone != null)
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
+            return imsPhone.isVideoEnabled();
+        }
+        return false;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

@@ -144,6 +144,8 @@ public class ImsPhoneConnection extends Connection {
 
         //mIndex = index;
 
+        updateWifiState();
+
         mParent = parent;
         mParent.attach(this, ImsPhoneCall.State.INCOMING);
     }
@@ -572,7 +574,8 @@ public class ImsPhoneConnection extends Connection {
 
         boolean updateParent = mParent.update(this, imsCall, state);
         boolean updateMediaCapabilities = updateMediaCapabilities(imsCall);
-        return updateParent || updateMediaCapabilities;
+        boolean updateWifiState = updateWifiState();
+        return updateParent || updateMediaCapabilities || updateWifiState;
     }
 
     @Override
@@ -671,6 +674,21 @@ public class ImsPhoneConnection extends Connection {
         }
 
         return changed;
+    }
+
+    /**
+     * Check for a change in the wifi state of the ImsPhoneCallTracker and update the
+     * {@link ImsPhoneConnection} with this information.
+     *
+     * @return Whether the ImsPhoneCallTracker's usage of wifi has been changed.
+     */
+    public boolean updateWifiState() {
+        Rlog.d(LOG_TAG, "updateWifiState: " + mOwner.isVowifiEnabled());
+        if (isWifi() != mOwner.isVowifiEnabled()) {
+            setWifi(mOwner.isVowifiEnabled());
+            return true;
+        }
+        return false;
     }
 
     /**

@@ -110,6 +110,7 @@ public interface Phone {
     static final String REASON_SINGLE_PDN_ARBITRATION = "SinglePdnArbitration";
     static final String REASON_DATA_SPECIFIC_DISABLED = "specificDisabled";
     static final String REASON_SIM_NOT_READY = "simNotReady";
+    static final String REASON_IWLAN_AVAILABLE = "iwlanAvailable";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = 0; // selected by baseband automatically
@@ -1924,6 +1925,11 @@ public interface Phone {
     public boolean isRadioAvailable();
 
     /**
+     * Is Radio turned on
+     */
+    public boolean isRadioOn();
+
+    /**
      * shutdown Radio gracefully
      */
     public void shutdownRadio();
@@ -1973,4 +1979,18 @@ public interface Phone {
      * @return true if IMS is Registered
      */
     public boolean isImsRegistered();
+
+    /**
+     * Determines if video calling is enabled for the phone.
+     *
+     * @return {@code true} if video calling is enabled, {@code false} otherwise.
+     */
+    public boolean isVideoEnabled();
+
+    /**
+     * @return {@code true} if we are in emergency call back mode. This is a period where the phone
+     * should be using as little power as possible and be ready to receive an incoming call from the
+     * emergency operator.
+     */
+    public boolean isInEcm();
 }

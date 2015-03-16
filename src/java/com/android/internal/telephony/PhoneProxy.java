@@ -1470,6 +1470,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public boolean isRadioOn() {
+        return mCommandsInterface.getRadioState().isOn();
+    }
+
+    @Override
     public void shutdownRadio() {
         mActivePhone.shutdownRadio();
     }
@@ -1505,6 +1510,26 @@ public class PhoneProxy extends Handler implements Phone {
 
     public boolean isImsRegistered() {
         return mActivePhone.isImsRegistered();
+    }
+
+    /**
+     * Determines if video calling is enabled for the IMS phone.
+     *
+     * @return {@code true} if video calling is enabled.
+     */
+    @Override
+    public boolean isVideoEnabled() {
+        return mActivePhone.isVideoEnabled();
+    }
+
+    /**
+     * @return true if we are in the emergency call back mode. This is a period where
+     * the phone should be using as little power as possible and be ready to receive an
+     * incoming call from the emergency operator.
+     */
+    @Override
+    public boolean isInEcm() {
+        return mActivePhone.isInEcm();
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

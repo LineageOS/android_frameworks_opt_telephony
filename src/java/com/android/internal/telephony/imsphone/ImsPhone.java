@@ -16,7 +16,12 @@
 
 package com.android.internal.telephony.imsphone;
 
+import android.app.Activity;
 import android.app.ActivityManagerNative;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
@@ -100,6 +105,11 @@ public class ImsPhone extends ImsPhoneBase {
     protected static final int EVENT_GET_CALL_WAITING_DONE          = EVENT_LAST + 4;
 
     public static final String CS_FALLBACK = "cs_fallback";
+
+    public static final String REGISTRATION_ERROR = "android.telephony.ims.REGISTRATION_ERROR";
+    public static final String EXTRA_KEY_ALERT_TITLE = "alertTitle";
+    public static final String EXTRA_KEY_ALERT_MESSAGE = "alertMessage";
+    public static final String EXTRA_KEY_ALERT_SHOW = "alertShow";
 
     static final int RESTART_ECM_TIMER = 0; // restart Ecm timer
     static final int CANCEL_ECM_TIMER = 1; // cancel Ecm timer
@@ -1238,6 +1248,10 @@ public class ImsPhone extends ImsPhoneBase {
         return mCT.isVolteEnabled();
     }
 
+    public boolean isVowifiEnabled() {
+        return mCT.isVowifiEnabled();
+    }
+
     public boolean isVtEnabled() {
         return mCT.isVtEnabled();
     }
@@ -1256,5 +1270,109 @@ public class ImsPhone extends ImsPhoneBase {
 
     public void callEndCleanupHandOverCallIfAny() {
         mCT.callEndCleanupHandOverCallIfAny();
+    }
+
+    private BroadcastReceiver mResultReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Add notification only if alert was not shown by WfcSettings
+            if (getResultCode() == Activity.RESULT_OK) {
+                // Default result code (as passed to sendOrderedBroadcast)
+                // means that intent was not received by WfcSettings.
+
+                CharSequence title = intent.getCharSequenceExtra(EXTRA_KEY_ALERT_TITLE);
+                CharSequence message = intent.getCharSequenceExtra(EXTRA_KEY_ALERT_MESSAGE);
+
+                Intent resultIntent = new Intent(Intent.ACTION_MAIN);
+                resultIntent.setClassName("com.android.settings",
+                        "com.android.settings.Settings$WifiCallingSettingsActivity");
+                resultIntent.putExtra(EXTRA_KEY_ALERT_SHOW, true);
+                resultIntent.putExtra(EXTRA_KEY_ALERT_TITLE, title);
+                resultIntent.putExtra(EXTRA_KEY_ALERT_MESSAGE, message);
+                PendingIntent resultPendingIntent =
+                        PendingIntent.getActivity(
+                                mContext,
+                                0,
+                                resultIntent,
+                                PendingIntent.FLAG_UPDATE_CURRENT
+                        );
+
+                final Notification notification =
+                        new Notification.Builder(mContext)
+                                .setSmallIcon(android.R.drawable.stat_sys_warning)
+                                .setContentTitle(title)
+                                .setContentText(message)
+                                .setAutoCancel(true)
+                                .setContentIntent(resultPendingIntent)
+                                .setStyle(new Notification.BigTextStyle().bigText(message))
+                                .build();
+                final String notificationTag = "wifi_calling";
+                final int notificationId = 1;
+
+                NotificationManager notificationManager =
+                        (NotificationManager) mContext.getSystemService(
+                                Context.NOTIFICATION_SERVICE);
+                notificationManager.notify(notificationTag, notificationId,
+                        notification);
+            }
+        }
+    };
+
+    /**
+     * Show notification in case of some error codes.
+     */
+    public void processDisconnectReason(ImsReasonInfo imsReasonInfo) {
+        if (imsReasonInfo.mCode == imsReasonInfo.CODE_REGISTRATION_ERROR
+                && imsReasonInfo.mExtraMessage != null) {
+
+            final String[] wfcOperatorErrorCodes =
+                    mContext.getResources().getStringArray(
+                            com.android.internal.R.array.wfcOperatorErrorCodes);
+            final String[] wfcOperatorErrorMessages =
+                    mContext.getResources().getStringArray(
+                            com.android.internal.R.array.wfcOperatorErrorMessages);
+
+            for (int i = 0; i < wfcOperatorErrorCodes.length; i++) {
+                // Match error code.
+                if (!imsReasonInfo.mExtraMessage.startsWith(
+                        wfcOperatorErrorCodes[i])) {
+                    continue;
+                }
+                // If there is no delimiter at the end of error code string
+                // then we need to verify that we are not matching partial code.
+                // EXAMPLE: "REG9" must not match "REG99".
+                // NOTE: Error code must not be empty.
+                int codeStringLength = wfcOperatorErrorCodes[i].length();
+                char lastChar = wfcOperatorErrorCodes[i].charAt(codeStringLength-1);
+                if (Character.isLetterOrDigit(lastChar)) {
+                    if (imsReasonInfo.mExtraMessage.length() > codeStringLength) {
+                        char nextChar = imsReasonInfo.mExtraMessage.charAt(codeStringLength);
+                        if (Character.isLetterOrDigit(nextChar)) {
+                            continue;
+                        }
+                    }
+                }
+
+                final CharSequence title = mContext.getText(
+                        com.android.internal.R.string.wfcRegErrorTitle);
+
+                CharSequence message = imsReasonInfo.mExtraMessage;
+                if (!wfcOperatorErrorMessages[i].isEmpty()) {
+                    message = wfcOperatorErrorMessages[i];
+                }
+
+                // If WfcSettings are active then alert will be shown
+                // otherwise notification will be added.
+                Intent intent = new Intent(REGISTRATION_ERROR);
+                intent.putExtra(EXTRA_KEY_ALERT_TITLE, title);
+                intent.putExtra(EXTRA_KEY_ALERT_MESSAGE, message);
+                mContext.sendOrderedBroadcast(intent, null, mResultReceiver,
+                        null, Activity.RESULT_OK, null, null);
+
+                // We can only match a single error code
+                // so should break the loop after a successful match.
+                break;
+            }
+        }
     }
 }

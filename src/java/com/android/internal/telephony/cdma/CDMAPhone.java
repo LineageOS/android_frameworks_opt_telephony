@@ -46,6 +46,7 @@ import android.util.Log;
 
 import android.telephony.TelephonyManager;
 
+import com.android.ims.ImsConfig;
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -409,10 +410,8 @@ public class CDMAPhone extends PhoneBase {
     dial (String dialString, int videoState) throws CallStateException {
         ImsPhone imsPhone = mImsPhone;
 
-        boolean imsUseEnabled =
-                ImsManager.isVolteEnabledByPlatform(mContext) &&
-                ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext) &&
-                ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext);
+        boolean imsUseEnabled = isImsUseEnabled();
+
         if (!imsUseEnabled) {
             Rlog.w(LOG_TAG, "IMS is disabled: forced to CS");
         }
@@ -421,11 +420,28 @@ public class CDMAPhone extends PhoneBase {
             Rlog.d(LOG_TAG, "imsUseEnabled=" + imsUseEnabled + ", imsPhone=" + imsPhone
                     + ", imsPhone.isVolteEnabled()="
                     + ((imsPhone != null) ? imsPhone.isVolteEnabled() : "N/A")
+                    + ", imsPhone.isVowifiEnabled()="
+                    + ((imsPhone != null) ? imsPhone.isVowifiEnabled() : "N/A")
                     + ", imsPhone.getServiceState().getState()="
                     + ((imsPhone != null) ? imsPhone.getServiceState().getState() : "N/A"));
         }
 
-        if (imsUseEnabled && imsPhone != null && imsPhone.isVolteEnabled()
+        if (imsPhone == null ||
+                (imsPhone != null && !imsPhone.isVowifiEnabled())) {
+            boolean wfcWiFiOnly = (ImsManager.isWfcEnabledByPlatform(mContext) &&
+                    ImsManager.isWfcEnabledByUser(mContext) &&
+                    (ImsManager.getWfcMode(mContext) ==
+                    ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY));
+            if (wfcWiFiOnly == true) {
+                if (DBG) Rlog.d(LOG_TAG, "WIFI only mode, but no VoWIFI enabled");
+                CallStateException ce = new CallStateException(
+                        "WFC Wi-Fi Only Mode: IMS stack on WIFI not available");
+                throw ce;
+            }
+        }
+
+        if (imsUseEnabled && imsPhone != null
+                && (imsPhone.isVolteEnabled() || imsPhone.isVowifiEnabled())
                 && ((imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
                 && !PhoneNumberUtils.isEmergencyNumber(dialString))
                 || (PhoneNumberUtils.isEmergencyNumber(dialString)
