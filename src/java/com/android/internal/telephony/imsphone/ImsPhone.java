@@ -45,6 +45,7 @@ import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsException;
+import com.android.ims.ImsManager;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.ImsSsInfo;
 import com.android.ims.ImsUtInterface;
@@ -106,7 +107,6 @@ public class ImsPhone extends ImsPhoneBase {
 
     public static final String CS_FALLBACK = "cs_fallback";
 
-    public static final String REGISTRATION_ERROR = "android.telephony.ims.REGISTRATION_ERROR";
     public static final String EXTRA_KEY_ALERT_TITLE = "alertTitle";
     public static final String EXTRA_KEY_ALERT_MESSAGE = "alertMessage";
     public static final String EXTRA_KEY_ALERT_SHOW = "alertShow";
@@ -1361,9 +1361,12 @@ public class ImsPhone extends ImsPhoneBase {
                     message = wfcOperatorErrorMessages[i];
                 }
 
+                // UX requirement is to disable WFC in case of "permanent" registration failures.
+                ImsManager.setWfcSetting(mContext, false);
+
                 // If WfcSettings are active then alert will be shown
                 // otherwise notification will be added.
-                Intent intent = new Intent(REGISTRATION_ERROR);
+                Intent intent = new Intent(ImsManager.ACTION_IMS_REGISTRATION_ERROR);
                 intent.putExtra(EXTRA_KEY_ALERT_TITLE, title);
                 intent.putExtra(EXTRA_KEY_ALERT_MESSAGE, message);
                 mContext.sendOrderedBroadcast(intent, null, mResultReceiver,
