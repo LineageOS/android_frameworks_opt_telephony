@@ -254,8 +254,6 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                         + " dataRadioTechnology=" + type);
             }
             mDataRoaming = regCodeIsRoaming(regState);
-
-            if (mDataRoaming) mNewSS.setRoaming(true);
         } else {
             super.handlePollStateResultMessage(what, ar);
         }

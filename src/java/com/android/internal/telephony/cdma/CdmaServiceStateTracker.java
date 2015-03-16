@@ -767,9 +767,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                         regCodeIsRoaming(registrationState) && !isRoamIndForHomeSystem(states[10]);
                 mNewSS.setVoiceRoaming(cdmaRoaming);
                 mNewSS.setState (regCodeToServiceState(registrationState));
-
                 mNewSS.setRilVoiceRadioTechnology(radioTechnology);
-
                 mNewSS.setCssIndicator(cssIndicator);
                 mNewSS.setSystemAndNetworkId(systemId, networkId);
                 mRoamingIndicator = roamingIndicator;
