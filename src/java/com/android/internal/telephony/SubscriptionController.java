@@ -139,9 +139,14 @@ public class SubscriptionController extends ISub.Stub {
     protected TelephonyManager mTelephonyManager;
     protected CallManager mCM;
 
+    // When no valid SIM cards present on device, framework returns DUMMY subIds
+    // with range starting from DUMMY_SUB_ID_BASE.
+    private static final int DUMMY_SUB_ID_BASE = SubscriptionManager.MAX_SUBSCRIPTION_ID_VALUE
+        - PhoneConstants.MAX_PHONE_COUNT_TRI_SIM;
+
     // FIXME: Does not allow for multiple subs in a slot and change to SparseArray
     private static HashMap<Integer, Integer> mSlotIdxToSubId = new HashMap<Integer, Integer>();
-    private static int mDefaultFallbackSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    private static int mDefaultFallbackSubId = DUMMY_SUB_ID_BASE;
     private static int mDefaultPhoneId = 0;
     private boolean mSubInfoReady = false;
 
@@ -156,9 +161,6 @@ public class SubscriptionController extends ISub.Stub {
 
     private DdsScheduler mScheduler;
     private DdsSchedulerAc mSchedulerAc;
-
-    // Dummy subIds are used when no SIMs present on device
-    private static final int DUMMY_SUB_ID_BASE = 5000;
 
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -1095,7 +1097,7 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         if (subId >= DUMMY_SUB_ID_BASE) {
-            logd("getPhoneId,  received summy subId " + subId);
+            logd("getSlotId,  received dummy subId " + subId);
             return subId - DUMMY_SUB_ID_BASE;
         }
 
