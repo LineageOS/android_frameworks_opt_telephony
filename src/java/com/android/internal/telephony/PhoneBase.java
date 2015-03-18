@@ -2086,34 +2086,6 @@ public abstract class PhoneBase extends Handler implements Phone {
         return isImsRegistered;
     }
 
-    /**
-     * Get Wifi Calling Feature Availability
-     */
-    @Override
-    public boolean isWifiCallingEnabled() {
-        ImsPhone imsPhone = mImsPhone;
-        boolean isWifiCallingEnabled = false;
-        if (imsPhone != null) {
-            isWifiCallingEnabled = imsPhone.isVowifiEnabled();
-        }
-        Rlog.d(LOG_TAG, "isWifiCallingEnabled =" + isWifiCallingEnabled);
-        return isWifiCallingEnabled;
-    }
-
-    /**
-     * Get Volte Feature Availability
-     */
-    @Override
-    public boolean isVolteEnabled() {
-        ImsPhone imsPhone = mImsPhone;
-        boolean isVolteEnabled = false;
-        if (imsPhone != null) {
-            isVolteEnabled = imsPhone.isVolteEnabled();
-        }
-        Rlog.d(LOG_TAG, "isImsRegistered =" + isVolteEnabled);
-        return isVolteEnabled;
-    }
-
     private boolean getRoamingOverrideHelper(String prefix, String key) {
         String iccId = getIccSerialNumber();
         if (TextUtils.isEmpty(iccId) || TextUtils.isEmpty(key)) {
