@@ -402,20 +402,6 @@ public final class DcTracker extends DcTrackerBase {
         if(DBG) log("finalize");
     }
 
-    protected void supplyMessenger() {
-        ConnectivityManager cm = (ConnectivityManager)mPhone.getContext().getSystemService(
-                Context.CONNECTIVITY_SERVICE);
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_MMS, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_SUPL, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_DUN, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_HIPRI, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_FOTA, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_IMS, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_CBS, new Messenger(this));
-        cm.supplyMessenger(ConnectivityManager.TYPE_MOBILE_EMERGENCY, new Messenger(this));
-    }
-
     private ApnContext addApnContext(String type, NetworkConfig networkConfig) {
         ApnContext apnContext = new ApnContext(mPhone.getContext(), type, LOG_TAG, networkConfig,
                 this);
@@ -2818,10 +2804,8 @@ public final class DcTracker extends DcTrackerBase {
 
         if (mPhone instanceof CDMALTEPhone) {
             ((CDMALTEPhone)mPhone).updateCurrentCarrierInProvider();
-            supplyMessenger();
         } else if (mPhone instanceof GSMPhone) {
             ((GSMPhone)mPhone).updateCurrentCarrierInProvider();
-            supplyMessenger();
         } else {
             log("Phone object is not MultiSim. This should not hit!!!!");
         }
