@@ -497,6 +497,7 @@ public final class GsmCallTracker extends CallTracker {
                     if (hoConnection != null) {
                         // Single Radio Voice Call Continuity (SRVCC) completed
                         mConnections[i].migrateFrom(hoConnection);
+                        mHandoverConnections.remove(hoConnection);
                         for (Iterator<Connection> it = mHandoverConnections.iterator();
                             it.hasNext();) {
                             Connection c = it.next();
@@ -625,10 +626,12 @@ public final class GsmCallTracker extends CallTracker {
         }
 
         /* Disconnect any pending Handover connections */
-        for (Connection hoConnection : mHandoverConnections) {
-            log("handlePollCalls - disconnect hoConn= " + hoConnection.toString());
+        for (Iterator<Connection> it = mHandoverConnections.iterator();
+                it.hasNext();) {
+            Connection hoConnection = it.next();
+            log("handlePollCalls - disconnect hoConn= " + hoConnection);
             ((ImsPhoneConnection)hoConnection).onDisconnect(DisconnectCause.NOT_VALID);
-            mHandoverConnections.remove(hoConnection);
+            it.remove();
         }
 
         // Any non-local disconnects: determine cause
