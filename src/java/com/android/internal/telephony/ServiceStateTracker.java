@@ -180,6 +180,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final int EVENT_CHANGE_IMS_STATE                  = 45;
     protected static final int EVENT_IMS_STATE_CHANGED                 = 46;
     protected static final int EVENT_IMS_STATE_DONE                    = 47;
+    protected static final int EVENT_IMS_CAPABILITY_CHANGED            = 48;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -638,6 +639,7 @@ public abstract class ServiceStateTracker extends Handler {
     public abstract boolean isConcurrentVoiceAndDataAllowed();
 
     public abstract void setImsRegistrationState(boolean registered);
+    public void onImsCapabilityChanged() {}
     public abstract void pollState();
 
     /**
