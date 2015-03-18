@@ -1994,6 +1994,7 @@ public interface Phone {
      */
     public boolean isInEcm();
 
+    /**
      * Returns the Status of Wi-Fi Calling
      *@hide
      */

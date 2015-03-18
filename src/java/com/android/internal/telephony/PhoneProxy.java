@@ -1530,6 +1530,7 @@ public class PhoneProxy extends Handler implements Phone {
     @Override
     public boolean isInEcm() {
         return mActivePhone.isInEcm();
+    }
 
     public boolean isVolteEnabled() {
         return mActivePhone.isVolteEnabled();
