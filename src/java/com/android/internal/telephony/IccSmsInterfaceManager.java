@@ -61,7 +61,7 @@ import android.telephony.TelephonyManager;
  */
 public class IccSmsInterfaceManager {
     static final String LOG_TAG = "IccSmsInterfaceManager";
-    static final boolean DBG = true;
+    static final boolean DBG = false;
 
     protected final Object mLock = new Object();
     protected boolean mSuccess;
