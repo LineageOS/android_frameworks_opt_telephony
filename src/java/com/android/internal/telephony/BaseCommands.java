@@ -93,6 +93,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected Registrant mGsmBroadcastSmsRegistrant;
     protected Registrant mCatCcAlphaRegistrant;
     protected Registrant mSsRegistrant;
+    protected Registrant mLceInfoRegistrant;
 
     // Preferred network type received from PhoneFactory.
     // This is used when establishing a connection to the
@@ -880,5 +881,30 @@ public abstract class BaseCommands implements CommandsInterface {
     @Override
     public void unregisterForRadioCapabilityChanged(Handler h) {
         mPhoneRadioCapabilityChangedRegistrants.remove(h);
+    }
+
+    @Override
+    public void startLceService(int reportIntervalMs, boolean pullMode, Message result) {
+    }
+
+    @Override
+    public void stopLceService(Message result) {
+    }
+
+    @Override
+    public void pullLceData(Message result) {
+    }
+
+    @Override
+    public void registerForLceInfo(Handler h, int what, Object obj) {
+      mLceInfoRegistrant = new Registrant(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForLceInfo(Handler h) {
+      if (mLceInfoRegistrant != null && mLceInfoRegistrant.getHandler() == h) {
+          mLceInfoRegistrant.clear();
+          mLceInfoRegistrant = null;
+      }
     }
 }
