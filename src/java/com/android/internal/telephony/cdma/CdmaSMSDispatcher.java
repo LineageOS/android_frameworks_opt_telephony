@@ -247,6 +247,14 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
         byte[] pdu = (byte[]) tracker.mData.get("pdu");
 
+        int currentDataNetwork = mPhone.getServiceState().getDataNetworkType();
+        boolean imsSmsDisabled = (currentDataNetwork == TelephonyManager.NETWORK_TYPE_EHRPD
+                    || (currentDataNetwork == TelephonyManager.NETWORK_TYPE_LTE
+                    && !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()))
+                    && mPhone.getServiceState().getVoiceNetworkType()
+                    == TelephonyManager.NETWORK_TYPE_1xRTT
+                    && ((CDMAPhone) mPhone).mCT.mState != PhoneConstants.State.IDLE;
+
         // sms over cdma is used:
         //   if sms over IMS is not supported AND
         //   this is not a retry case after sms over IMS failed
