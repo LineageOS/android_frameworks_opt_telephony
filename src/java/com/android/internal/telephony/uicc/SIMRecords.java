@@ -283,6 +283,23 @@ public class SIMRecords extends IccRecords {
         return mUsimServiceTable;
     }
 
+    private int getExtFromEf(int ef) {
+        int ext;
+        switch (ef) {
+            case EF_MSISDN:
+                /* For USIM apps use EXT5. (TS 31.102 Section 4.2.37) */
+                if (mParentApp.getType() == AppType.APPTYPE_USIM) {
+                    ext = EF_EXT5;
+                } else {
+                    ext = EF_EXT1;
+                }
+                break;
+            default:
+                ext = EF_EXT1;
+        }
+        return ext;
+    }
+
     /**
      * Set subscriber number to SIM record
      *
@@ -309,10 +326,9 @@ public class SIMRecords extends IccRecords {
 
         if(DBG) log("Set MSISDN: " + mNewMsisdnTag + " " + /*mNewMsisdn*/ "xxxxxxx");
 
-
         AdnRecord adn = new AdnRecord(mNewMsisdnTag, mNewMsisdn);
 
-        new AdnRecordLoader(mFh).updateEF(adn, EF_MSISDN, EF_EXT1, 1, null,
+        new AdnRecordLoader(mFh).updateEF(adn, EF_MSISDN, getExtFromEf(EF_MSISDN), 1, null,
                 obtainMessage(EVENT_SET_MSISDN_DONE, onComplete));
     }
 
@@ -1533,7 +1549,7 @@ public class SIMRecords extends IccRecords {
 
         // FIXME should examine EF[MSISDN]'s capability configuration
         // to determine which is the voice/data/fax line
-        new AdnRecordLoader(mFh).loadFromEF(EF_MSISDN, EF_EXT1, 1,
+        new AdnRecordLoader(mFh).loadFromEF(EF_MSISDN, getExtFromEf(EF_MSISDN), 1,
                     obtainMessage(EVENT_GET_MSISDN_DONE));
         mRecordsToLoad++;
 
