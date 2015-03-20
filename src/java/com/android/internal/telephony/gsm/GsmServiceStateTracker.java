@@ -648,7 +648,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     com.android.internal.R.string.wfcSpnFormat).toString();
             showPlmn = false;
             showSpn = true;
-            spn = String.format(format, spn);
+            spn = String.format(format, spn.trim());
         } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF
                 || (showPlmn && TextUtils.equals(spn, plmn))) {
             // airplane mode or spn equals plmn, do not show spn
