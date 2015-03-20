@@ -1971,4 +1971,48 @@ public interface CommandsInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForRadioCapabilityChanged(Handler h);
+
+    /**
+     * Start LCE (Link Capacity Estimation) service with a desired reporting interval.
+     *
+     * @param reportIntervalMs
+     *        LCE info reporting interval (ms).
+     *
+     * @param result Callback message contains the current LCE status.
+     * {byte status, int actualIntervalMs}
+     */
+    public void startLceService(int reportIntervalMs, boolean pullMode, Message result);
+
+    /**
+     * Stop LCE service.
+     *
+     * @param result Callback message contains the current LCE status:
+     * {byte status, int actualIntervalMs}
+     *
+     */
+    public void stopLceService(Message result);
+
+    /**
+     * Pull LCE service for capacity data.
+     *
+     * @param result Callback message contains the capacity info:
+     * {int capacityKbps, byte confidenceLevel, byte lceSuspendedTemporarily}
+     */
+    public void pullLceData(Message result);
+
+    /**
+     * Register a LCE info listener.
+     *
+     * @param h Handler for notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    void registerForLceInfo(Handler h, int what, Object obj);
+
+    /**
+     * Unregister the LCE Info listener.
+     *
+     * @param h handle to be removed.
+     */
+    void unregisterForLceInfo(Handler h);
 }

@@ -2554,6 +2554,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_SHUTDOWN: ret = responseVoid(p); break;
             case RIL_REQUEST_GET_RADIO_CAPABILITY: ret =  responseRadioCapability(p); break;
             case RIL_REQUEST_SET_RADIO_CAPABILITY: ret =  responseRadioCapability(p); break;
+            case RIL_REQUEST_START_LCE: ret = responseLceStatus(p); break;
+            case RIL_REQUEST_STOP_LCE: ret = responseLceStatus(p); break;
+            case RIL_REQUEST_PULL_LCEDATA: ret = responseLceData(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -2759,6 +2762,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     ret = responseRadioCapability(p); break;
             case RIL_UNSOL_ON_SS: ret =  responseSsData(p); break;
             case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: ret =  responseString(p); break;
+            case RIL_UNSOL_LCEDATA_RECV: ret = responseLceData(p); break;
 
             default:
                 throw new RuntimeException("Unrecognized unsol response: " + response);
@@ -3182,6 +3186,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 if (mCatCcAlphaRegistrant != null) {
                     mCatCcAlphaRegistrant.notifyRegistrant(
                                         new AsyncResult (null, ret, null));
+                }
+                break;
+            case RIL_UNSOL_LCEDATA_RECV:
+                if (RILJ_LOGD) unsljLogRet(response, ret);
+
+                if (mLceInfoRegistrant != null) {
+                    mLceInfoRegistrant.notifyRegistrant(new AsyncResult(null, ret, null));
                 }
                 break;
         }
@@ -3912,6 +3923,36 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return rc;
     }
 
+    private Object responseLceData(Parcel p) {
+        final ArrayList<Integer> capacityResponse = new ArrayList<Integer>();
+        final int capacityDownBps = p.readInt();
+        final int confidenceLevel = p.readByte();
+        final int lceSuspended = p.readByte();
+
+        riljLog("LCE capacity information received:" +
+                " capacity=" + capacityDownBps +
+                " confidence=" + confidenceLevel +
+                " lceSuspended=" + lceSuspended);
+
+        capacityResponse.add(capacityDownBps);
+        capacityResponse.add(confidenceLevel);
+        capacityResponse.add(lceSuspended);
+        return capacityResponse;
+    }
+
+    private Object responseLceStatus(Parcel p) {
+        final ArrayList<Integer> statusResponse = new ArrayList<Integer>();
+        final int lceStatus = (int)p.readByte();
+        final int actualInterval = p.readInt();
+
+        riljLog("LCE status information received:" +
+                " lceStatus=" + lceStatus +
+                " actualInterval=" + actualInterval);
+        statusResponse.add(lceStatus);
+        statusResponse.add(actualInterval);
+        return statusResponse;
+    }
+
     static String
     requestToString(int request) {
 /*
@@ -4051,6 +4092,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     return "RIL_REQUEST_SET_RADIO_CAPABILITY";
             case RIL_REQUEST_GET_RADIO_CAPABILITY:
                     return "RIL_REQUEST_GET_RADIO_CAPABILITY";
+            case RIL_REQUEST_START_LCE: return "RIL_REQUEST_START_LCE";
+            case RIL_REQUEST_STOP_LCE: return "RIL_REQUEST_STOP_LCE";
+            case RIL_REQUEST_PULL_LCEDATA: return "RIL_REQUEST_PULL_LCEDATA";
             default: return "<unknown request>";
         }
     }
@@ -4112,6 +4156,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     return "RIL_UNSOL_RADIO_CAPABILITY";
             case RIL_UNSOL_ON_SS: return "UNSOL_ON_SS";
             case RIL_UNSOL_STK_CC_ALPHA_NOTIFY: return "UNSOL_STK_CC_ALPHA_NOTIFY";
+            case RIL_UNSOL_LCEDATA_RECV: return "UNSOL_LCE_INFO_RECV";
             default: return "<unknown response>";
         }
     }
@@ -4654,6 +4699,39 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
+        send(rr);
+    }
+
+    @Override
+    public void startLceService(int reportIntervalMs, boolean pullMode, Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_START_LCE, response);
+        /** solicited command argument: reportIntervalMs, pullMode. */
+        rr.mParcel.writeInt(2);
+        rr.mParcel.writeInt(reportIntervalMs);
+        rr.mParcel.writeInt(pullMode ? 1: 0);  // PULL mode: 1; PUSH mode: 0;
+
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        }
+
+        send(rr);
+    }
+
+    @Override
+    public void stopLceService(Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_STOP_LCE, response);
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        }
+        send(rr);
+    }
+
+    @Override
+    public void pullLceData(Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_PULL_LCEDATA, response);
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        }
         send(rr);
     }
 }

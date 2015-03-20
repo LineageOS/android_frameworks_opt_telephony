@@ -237,7 +237,6 @@ public abstract class ServiceStateTracker extends Handler {
     protected boolean mCurShowPlmn = false;
     protected boolean mCurShowSpn = false;
 
-
     private boolean mImsRegistered = false;
 
     protected SubscriptionManager mSubscriptionManager;

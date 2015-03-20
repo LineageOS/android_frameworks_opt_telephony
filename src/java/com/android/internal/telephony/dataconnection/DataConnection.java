@@ -210,8 +210,9 @@ public final class DataConnection extends StateMachine {
     static final int EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED = BASE + 11;
     static final int EVENT_DATA_CONNECTION_ROAM_ON = BASE + 12;
     static final int EVENT_DATA_CONNECTION_ROAM_OFF = BASE + 13;
+    static final int EVENT_BW_REFRESH_RESPONSE = BASE + 14;
 
-    private static final int CMD_TO_STRING_COUNT = EVENT_DATA_CONNECTION_ROAM_OFF - BASE + 1;
+    private static final int CMD_TO_STRING_COUNT = EVENT_BW_REFRESH_RESPONSE - BASE + 1;
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
         sCmdToString[EVENT_CONNECT - BASE] = "EVENT_CONNECT";
@@ -230,6 +231,7 @@ public final class DataConnection extends StateMachine {
                 "EVENT_DATA_CONNECTION_DRS_OR_RAT_CHANGED";
         sCmdToString[EVENT_DATA_CONNECTION_ROAM_ON - BASE] = "EVENT_DATA_CONNECTION_ROAM_ON";
         sCmdToString[EVENT_DATA_CONNECTION_ROAM_OFF - BASE] = "EVENT_DATA_CONNECTION_ROAM_OFF";
+        sCmdToString[EVENT_BW_REFRESH_RESPONSE - BASE] = "EVENT_BW_REFRESH_RESPONSE";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
@@ -1849,6 +1851,24 @@ public final class DataConnection extends StateMachine {
                     retVal = HANDLED;
                     break;
                 }
+                case EVENT_BW_REFRESH_RESPONSE: {
+                    AsyncResult ar = (AsyncResult)msg.obj;
+                    if (ar.exception != null) {
+                        log("EVENT_BW_REFRESH_RESPONSE: error ignoring, e=" + ar.exception);
+                    } else {
+                        final ArrayList<Integer> capInfo = (ArrayList<Integer>)ar.result;
+                        final int lceBwDownKbps = capInfo.get(0);
+                        NetworkCapabilities nc = makeNetworkCapabilities();
+                        if (mPhone.getLceStatus() == RILConstants.LCE_ACTIVE) {
+                            nc.setLinkDownstreamBandwidthKbps(lceBwDownKbps);
+                            if (mNetworkAgent != null) {
+                                mNetworkAgent.sendNetworkCapabilities(nc);
+                            }
+                        }
+                    }
+                    retVal = HANDLED;
+                    break;
+                }
                 default:
                     if (VDBG) {
                         log("DcActiveState not handled msg.what=" + getWhatToString(msg.what));
@@ -1975,6 +1995,13 @@ public final class DataConnection extends StateMachine {
                 DisconnectParams dp = new DisconnectParams(apnContext, apnContext.getReason(), msg);
                 DataConnection.this.sendMessage(DataConnection.this.
                         obtainMessage(EVENT_DISCONNECT, dp));
+            }
+        }
+
+        @Override
+        protected void pollLceData() {
+            if(mPhone.getLceStatus() == RILConstants.LCE_ACTIVE) {  // active LCE service
+                mPhone.mCi.pullLceData(DataConnection.this.obtainMessage(EVENT_BW_REFRESH_RESPONSE));
             }
         }
     }
