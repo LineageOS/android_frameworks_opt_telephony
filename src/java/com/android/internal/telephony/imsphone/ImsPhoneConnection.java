@@ -510,8 +510,7 @@ public class ImsPhoneConnection extends Connection {
             return;
         }
 
-        if (mPostDialString == null ||
-                mPostDialString.length() <= mNextPostDialChar) {
+        if (mPostDialString == null || mPostDialString.length() <= mNextPostDialChar) {
             setPostDialState(PostDialState.COMPLETE);
 
             // notifyMessage.arg1 is 0 on complete
