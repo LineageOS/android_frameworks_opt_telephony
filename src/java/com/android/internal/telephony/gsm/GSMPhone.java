@@ -169,7 +169,7 @@ public class GSMPhone extends PhoneBase {
         public void onReceive(Context context, Intent intent) {
             if (TelephonyIntents.ACTION_SUBSCRIPTION_SET_UICC_RESULT.
                     equals(intent.getAction())) {
-                long subId = intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
                         SubscriptionManager.INVALID_SUBSCRIPTION_ID);
                 int phoneId = intent.getIntExtra(PhoneConstants.PHONE_KEY,
                         PhoneConstants.PHONE_ID1);
