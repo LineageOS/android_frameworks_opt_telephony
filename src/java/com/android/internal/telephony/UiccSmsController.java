@@ -44,6 +44,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * UiccSmsController to provide an inter-process communication to
@@ -79,7 +80,7 @@ public class UiccSmsController extends ISms.Stub {
             }
             String destAddr = getResultData();
             String scAddr = intent.getStringExtra("scAddr");
-            long subId = intent.getLongExtra("subId", getDefaultSmsSubId());
+            int subId = intent.getIntExtra("subId", getDefaultSmsSubId());
             String callingPackage = intent.getStringExtra("callingPackage");
             ArrayList<String> parts = intent.getStringArrayListExtra("parts");
             ArrayList<PendingIntent> sentIntents = intent.getParcelableArrayListExtra("sentIntents");
