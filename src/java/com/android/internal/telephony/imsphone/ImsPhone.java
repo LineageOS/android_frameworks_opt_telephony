@@ -111,6 +111,7 @@ public class ImsPhone extends ImsPhoneBase {
     public static final String EXTRA_KEY_ALERT_TITLE = "alertTitle";
     public static final String EXTRA_KEY_ALERT_MESSAGE = "alertMessage";
     public static final String EXTRA_KEY_ALERT_SHOW = "alertShow";
+    public static final String EXTRA_KEY_NOTIFICATION_MESSAGE = "notificationMessage";
 
     static final int RESTART_ECM_TIMER = 0; // restart Ecm timer
     static final int CANCEL_ECM_TIMER = 1; // cancel Ecm timer
@@ -1286,14 +1287,15 @@ public class ImsPhone extends ImsPhoneBase {
                 // means that intent was not received by WfcSettings.
 
                 CharSequence title = intent.getCharSequenceExtra(EXTRA_KEY_ALERT_TITLE);
-                CharSequence message = intent.getCharSequenceExtra(EXTRA_KEY_ALERT_MESSAGE);
+                CharSequence messageAlert = intent.getCharSequenceExtra(EXTRA_KEY_ALERT_MESSAGE);
+                CharSequence messageNotification = intent.getCharSequenceExtra(EXTRA_KEY_NOTIFICATION_MESSAGE);
 
                 Intent resultIntent = new Intent(Intent.ACTION_MAIN);
                 resultIntent.setClassName("com.android.settings",
                         "com.android.settings.Settings$WifiCallingSettingsActivity");
                 resultIntent.putExtra(EXTRA_KEY_ALERT_SHOW, true);
                 resultIntent.putExtra(EXTRA_KEY_ALERT_TITLE, title);
-                resultIntent.putExtra(EXTRA_KEY_ALERT_MESSAGE, message);
+                resultIntent.putExtra(EXTRA_KEY_ALERT_MESSAGE, messageAlert);
                 PendingIntent resultPendingIntent =
                         PendingIntent.getActivity(
                                 mContext,
@@ -1306,10 +1308,10 @@ public class ImsPhone extends ImsPhoneBase {
                         new Notification.Builder(mContext)
                                 .setSmallIcon(android.R.drawable.stat_sys_warning)
                                 .setContentTitle(title)
-                                .setContentText(message)
+                                .setContentText(messageNotification)
                                 .setAutoCancel(true)
                                 .setContentIntent(resultPendingIntent)
-                                .setStyle(new Notification.BigTextStyle().bigText(message))
+                                .setStyle(new Notification.BigTextStyle().bigText(messageNotification))
                                 .build();
                 final String notificationTag = "wifi_calling";
                 final int notificationId = 1;
@@ -1333,9 +1335,12 @@ public class ImsPhone extends ImsPhoneBase {
             final String[] wfcOperatorErrorCodes =
                     mContext.getResources().getStringArray(
                             com.android.internal.R.array.wfcOperatorErrorCodes);
-            final String[] wfcOperatorErrorMessages =
+            final String[] wfcOperatorErrorAlertMessages =
                     mContext.getResources().getStringArray(
-                            com.android.internal.R.array.wfcOperatorErrorMessages);
+                            com.android.internal.R.array.wfcOperatorErrorAlertMessages);
+            final String[] wfcOperatorErrorNotificationMessages =
+                    mContext.getResources().getStringArray(
+                            com.android.internal.R.array.wfcOperatorErrorNotificationMessages);
 
             for (int i = 0; i < wfcOperatorErrorCodes.length; i++) {
                 // Match error code.
@@ -1361,9 +1366,13 @@ public class ImsPhone extends ImsPhoneBase {
                 final CharSequence title = mContext.getText(
                         com.android.internal.R.string.wfcRegErrorTitle);
 
-                CharSequence message = imsReasonInfo.mExtraMessage;
-                if (!wfcOperatorErrorMessages[i].isEmpty()) {
-                    message = wfcOperatorErrorMessages[i];
+                CharSequence messageAlert = imsReasonInfo.mExtraMessage;
+                CharSequence messageNotification = imsReasonInfo.mExtraMessage;
+                if (!wfcOperatorErrorAlertMessages[i].isEmpty()) {
+                    messageAlert = wfcOperatorErrorAlertMessages[i];
+                }
+                if (!wfcOperatorErrorNotificationMessages[i].isEmpty()) {
+                    messageNotification = wfcOperatorErrorNotificationMessages[i];
                 }
 
                 // UX requirement is to disable WFC in case of "permanent" registration failures.
@@ -1373,7 +1382,8 @@ public class ImsPhone extends ImsPhoneBase {
                 // otherwise notification will be added.
                 Intent intent = new Intent(ImsManager.ACTION_IMS_REGISTRATION_ERROR);
                 intent.putExtra(EXTRA_KEY_ALERT_TITLE, title);
-                intent.putExtra(EXTRA_KEY_ALERT_MESSAGE, message);
+                intent.putExtra(EXTRA_KEY_ALERT_MESSAGE, messageAlert);
+                intent.putExtra(EXTRA_KEY_NOTIFICATION_MESSAGE, messageNotification);
                 mContext.sendOrderedBroadcast(intent, null, mResultReceiver,
                         null, Activity.RESULT_OK, null, null);
 
