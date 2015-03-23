@@ -136,9 +136,10 @@ public class CdmaConnection extends Connection {
         mHandler = new MyHandler(mOwner.getLooper());
 
         mDialString = dialString;
-        Rlog.d(LOG_TAG, "[CDMAConn] CdmaConnection: dialString=" + dialString);
+        Rlog.d(LOG_TAG, "[CDMAConn] CdmaConnection: dialString=" + maskDialString(dialString));
         dialString = formatDialString(dialString);
-        Rlog.d(LOG_TAG, "[CDMAConn] CdmaConnection:formated dialString=" + dialString);
+        Rlog.d(LOG_TAG,
+                "[CDMAConn] CdmaConnection:formated dialString=" + maskDialString(dialString));
 
         mAddress = PhoneNumberUtils.extractNetworkPortionAlt(dialString);
         mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
@@ -909,6 +910,14 @@ public class CdmaConnection extends Connection {
 
     private void log(String msg) {
         Rlog.d(LOG_TAG, "[CDMAConn] " + msg);
+    }
+
+    private String maskDialString(String dialString) {
+        if (VDBG) {
+            return dialString;
+        }
+
+        return "<MASKED>";
     }
 
     @Override
