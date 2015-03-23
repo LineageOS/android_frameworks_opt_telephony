@@ -1246,13 +1246,14 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             mState = State.FAILED;
 
             if (ar.exception instanceof CommandException) {
-                CommandException.Error err = ((CommandException)(ar.exception)).getCommandError();
-                if (err == CommandException.Error.PASSWORD_INCORRECT) {
+                CommandException err = (CommandException) ar.exception;
+                if (err.getCommandError() == CommandException.Error.PASSWORD_INCORRECT) {
                     sb.append(mContext.getText(
                             com.android.internal.R.string.passwordIncorrect));
+                } else if (err.getMessage() != null) {
+                    sb.append(err.getMessage());
                 } else {
-                    sb.append(mContext.getText(
-                            com.android.internal.R.string.mmiError));
+                    sb.append(mContext.getText(com.android.internal.R.string.mmiError));
                 }
             } else {
                 ImsException error = (ImsException) ar.exception;
