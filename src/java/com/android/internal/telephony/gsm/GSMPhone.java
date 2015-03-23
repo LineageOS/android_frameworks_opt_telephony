@@ -1852,7 +1852,7 @@ public class GSMPhone extends PhoneBase {
      * @return true for success; false otherwise.
      */
     public boolean updateCurrentCarrierInProvider() {
-        long currentDds = SubscriptionManager.getDefaultDataSubId();
+        int currentDds = SubscriptionManager.getDefaultDataSubId();
         String operatorNumeric = getOperatorNumeric();
 
         log("updateCurrentCarrierInProvider: mSubId = " + getSubId()

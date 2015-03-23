@@ -157,7 +157,7 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     private void doNotifyDataConnection(Phone sender, String reason, String apnType,
             PhoneConstants.DataState state) {
         int subId = sender.getSubId();
-        long dds = SubscriptionManager.getDefaultDataSubId();
+        int dds = SubscriptionManager.getDefaultDataSubId();
         if (DBG) log("subId = " + subId + ", DDS = " + dds);
 
         // TODO

@@ -1014,7 +1014,7 @@ public class SubscriptionController extends ISub.Stub {
 
         result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                    + "=" + Long.toString(subId), null);
+                    + "=" + Integer.toString(subId), null);
         if (DBG) logd("[setDisplayNumber]- number: " + number + " update result :" + result);
         notifySubscriptionInfoChanged();
 
