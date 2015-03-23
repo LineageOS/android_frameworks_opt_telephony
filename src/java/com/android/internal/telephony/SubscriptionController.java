@@ -1008,7 +1008,7 @@ public class SubscriptionController extends ISub.Stub {
 
         result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                    + "=" + Long.toString(subId), null);
+                    + "=" + Integer.toString(subId), null);
         if (DBG) logd("[setDisplayNumber]- number: " + number + " update result :" + result);
         notifySubscriptionInfoChanged();
 
@@ -1483,7 +1483,7 @@ public class SubscriptionController extends ISub.Stub {
                     || TelephonyManager.getDefault().getSimCount() == 1)) {
                 if (DBG) logdl("[setDefaultFallbackSubId] set mDefaultFallbackSubId=" + subId);
                 mDefaultFallbackSubId = subId;
-                Settings.Global.putLong(mContext.getContentResolver(),
+                Settings.Global.putInt(mContext.getContentResolver(),
                          Settings.Global.MULTI_SIM_DEFAULT_SUBSCRIPTION, subId);
                 // Update MCC MNC device configuration information
                 String defaultMccMnc = TelephonyManager.getDefault().getSimOperator(phoneId);
