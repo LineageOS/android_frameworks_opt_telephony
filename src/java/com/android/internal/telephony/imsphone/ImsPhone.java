@@ -141,6 +141,7 @@ public class ImsPhone extends ImsPhoneBase {
     private final RegistrantList mSilentRedialRegistrants = new RegistrantList();
 
     private boolean mImsRegistered = false;
+
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
         @Override
@@ -190,6 +191,11 @@ public class ImsPhone extends ImsPhoneBase {
         // synchronization is managed at the PhoneBase scope (which calls this function)
         mDefaultPhone = parentPhone;
         mPhoneId = mDefaultPhone.getPhoneId();
+
+        // When the parent phone is updated, we need to notify listeners of the cached video
+        // capability.
+        Rlog.d(LOG_TAG, "updateParentPhone - Notify video capability changed " + mIsVideoCapable);
+        notifyForVideoCapabilityChanged(mIsVideoCapable);
     }
 
     @Override
@@ -490,6 +496,11 @@ public class ImsPhone extends ImsPhoneBase {
                         "WFC Wi-Fi Only Mode: IMS not registered");
             }
         }
+    }
+
+    public void notifyForVideoCapabilityChanged(boolean isVideoCapable) {
+        mIsVideoCapable = isVideoCapable;
+        mDefaultPhone.notifyForVideoCapabilityChanged(isVideoCapable);
     }
 
     @Override
@@ -1289,8 +1300,8 @@ public class ImsPhone extends ImsPhoneBase {
         return mCT.isVowifiEnabled();
     }
 
-    public boolean isVtEnabled() {
-        return mCT.isVtEnabled();
+    public boolean isVideoCallEnabled() {
+        return mCT.isVideoCallEnabled();
     }
 
     public Phone getDefaultPhone() {

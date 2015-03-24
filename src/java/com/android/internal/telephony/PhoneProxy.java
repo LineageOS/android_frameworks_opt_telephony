@@ -333,6 +333,11 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
+    public boolean isVideoCallPresent() {
+        return mActivePhone.isVideoCallPresent();
+    }
+
+    @Override
     public void updatePhoneObject(int voiceRadioTech) {
         logd("updatePhoneObject: radioTechnology=" + voiceRadioTech);
         sendMessage(obtainMessage(EVENT_UPDATE_PHONE_OBJECT, voiceRadioTech, 0, null));
@@ -477,6 +482,17 @@ public class PhoneProxy extends Handler implements Phone {
     @Override
     public void unregisterForNewRingingConnection(Handler h) {
         mActivePhone.unregisterForNewRingingConnection(h);
+    }
+
+    @Override
+    public void registerForVideoCapabilityChanged(
+            Handler h, int what, Object obj) {
+        mActivePhone.registerForVideoCapabilityChanged(h, what, obj);
+    }
+
+    @Override
+    public void unregisterForVideoCapabilityChanged(Handler h) {
+        mActivePhone.unregisterForVideoCapabilityChanged(h);
     }
 
     @Override
