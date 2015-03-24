@@ -70,6 +70,7 @@ import android.telephony.SubscriptionManager;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
@@ -504,6 +505,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 setPowerStateToDesired();
                 break;
 
+            case EVENT_IMS_CAPABILITY_CHANGED:
+                if (DBG) log("EVENT_IMS_CAPABILITY_CHANGED");
+                updateSpnDisplay();
+                break;
+
             default:
                 super.handleMessage(msg);
             break;
@@ -634,9 +640,18 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 && ((rule & SIMRecords.SPN_RULE_SHOW_SPN)
                         == SIMRecords.SPN_RULE_SHOW_SPN);
 
-        // airplane mode or spn equals plmn, do not show spn
-        if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF
+        if (!TextUtils.isEmpty(spn)
+                && mPhone.getImsPhone() != null
+                && ((ImsPhone) mPhone.getImsPhone()).isVowifiEnabled()) {
+            // In Wi-Fi Calling mode show SPN+WiFi
+            String format = mPhone.getContext().getText(
+                    com.android.internal.R.string.wfcSpnFormat).toString();
+            showPlmn = false;
+            showSpn = true;
+            spn = String.format(format, spn.trim());
+        } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF
                 || (showPlmn && TextUtils.equals(spn, plmn))) {
+            // airplane mode or spn equals plmn, do not show spn
             spn = null;
             showSpn = false;
         }
@@ -2154,6 +2169,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             }
         }
         mImsRegistrationOnOff = registered;
+    }
+
+    public void onImsCapabilityChanged() {
+        sendMessage(obtainMessage(EVENT_IMS_CAPABILITY_CHANGED));
     }
 
     public void onSetPhoneRCDone(ArrayList<RadioAccessFamily> phoneRcs) {
