@@ -724,10 +724,13 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logdl("[addSubInfoRecord] carrier name = " + simCarrierName);
 
         ContentResolver resolver = mContext.getContentResolver();
-        Cursor cursor = resolver.query(SubscriptionManager.CONTENT_URI,
-                new String[] {SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID,
-                SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.NAME_SOURCE},
-                SubscriptionManager.ICC_ID + "=?", new String[] {iccId}, null);
+        Cursor cursor = resolver.query(SubscriptionManager.CONTENT_URI, new String[] {
+                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID,
+                    SubscriptionManager.SIM_SLOT_INDEX,
+                    SubscriptionManager.DISPLAY_NAME,
+                    SubscriptionManager.NAME_SOURCE,
+                    SubscriptionManager.COLOR
+                }, SubscriptionManager.ICC_ID + "=?", new String[] {iccId}, null);
 
         int color = getUnusedColor();
 
@@ -747,15 +750,26 @@ public class SubscriptionController extends ISub.Stub {
             } else {
                 int subId = cursor.getInt(0);
                 int oldSimInfoId = cursor.getInt(1);
-                int nameSource = cursor.getInt(2);
+                String oldDisplayName = cursor.getString(2);
+                int nameSource = cursor.getInt(3);
+                int oldColor = cursor.getInt(4);
                 ContentValues value = new ContentValues();
 
                 if (slotId != oldSimInfoId) {
                     value.put(SubscriptionManager.SIM_SLOT_INDEX, slotId);
                 }
 
+                if (oldColor == 0) {
+                    // make sure a meaningful color is set, e.g. after upgrade
+                    value.put(SubscriptionManager.COLOR, color);
+                }
+
                 if (nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
-                    value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
+                    // Only overwrite existing names if we have something meaningful
+                    // to overwrite them with
+                    if (!TextUtils.isEmpty(simCarrierName) || TextUtils.isEmpty(oldDisplayName)) {
+                        value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
+                    }
                 }
 
                 if (!TextUtils.isEmpty(simCarrierName)) {
