@@ -1244,7 +1244,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         if (cr.acquireProvider(FIREWALL_PROVIDER_URI) != null && null != address) {
             Bundle extras = new Bundle();
             extras.putString(EXTRA_NUMBER, address);
-            extras.putLong(PhoneConstants.SUBSCRIPTION_KEY, mPhone.getSubId());
+            extras.putInt(PhoneConstants.SUBSCRIPTION_KEY, mPhone.getSubId());
             extras = cr.call(FIREWALL_PROVIDER_URI, IS_FORBIDDEN, null, extras);
             if (extras != null) {
                 isForbidden = extras.getBoolean(IS_FORBIDDEN);
