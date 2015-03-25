@@ -46,8 +46,6 @@ import android.util.Log;
 
 import android.telephony.TelephonyManager;
 
-import com.android.ims.ImsConfig;
-import com.android.ims.ImsManager;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.CallTracker;
@@ -71,7 +69,6 @@ import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.uicc.IccException;
 import com.android.internal.telephony.uicc.IccRecords;
-import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
@@ -426,19 +423,7 @@ public class CDMAPhone extends PhoneBase {
                     + ((imsPhone != null) ? imsPhone.getServiceState().getState() : "N/A"));
         }
 
-        if (imsPhone == null ||
-                (imsPhone != null && !imsPhone.isVowifiEnabled())) {
-            boolean wfcWiFiOnly = (ImsManager.isWfcEnabledByPlatform(mContext) &&
-                    ImsManager.isWfcEnabledByUser(mContext) &&
-                    (ImsManager.getWfcMode(mContext) ==
-                    ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY));
-            if (wfcWiFiOnly == true) {
-                if (DBG) Rlog.d(LOG_TAG, "WIFI only mode, but no VoWIFI enabled");
-                CallStateException ce = new CallStateException(
-                        "WFC Wi-Fi Only Mode: IMS stack on WIFI not available");
-                throw ce;
-            }
-        }
+        ImsPhone.checkWfcWifiOnlyModeBeforeDial(mImsPhone, mContext);
 
         if (imsUseEnabled && imsPhone != null
                 && (imsPhone.isVolteEnabled() || imsPhone.isVowifiEnabled())

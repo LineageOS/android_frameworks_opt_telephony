@@ -42,6 +42,7 @@ import android.text.TextUtils;
 
 import com.android.ims.ImsCallForwardInfo;
 import com.android.ims.ImsCallProfile;
+import com.android.ims.ImsConfig;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsException;
@@ -475,6 +476,21 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone.notifyNewRingingConnectionP(c);
     }
 
+    public static void checkWfcWifiOnlyModeBeforeDial(ImsPhone imsPhone, Context context)
+            throws CallStateException {
+        if (imsPhone == null ||
+                !imsPhone.isVowifiEnabled()) {
+            boolean wfcWiFiOnly = (ImsManager.isWfcEnabledByPlatform(context) &&
+                    ImsManager.isWfcEnabledByUser(context) &&
+                    (ImsManager.getWfcMode(context) ==
+                            ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY));
+            if (wfcWiFiOnly) {
+                throw new CallStateException(
+                        CallStateException.ERROR_DISCONNECTED,
+                        "WFC Wi-Fi Only Mode: IMS not registered");
+            }
+        }
+    }
 
     @Override
     public Connection
