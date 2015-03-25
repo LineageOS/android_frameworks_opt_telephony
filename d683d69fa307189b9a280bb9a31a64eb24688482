@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5ac665da_19b04df4",
+        "filename": "src/java/com/android/internal/telephony/ModemStackController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 725,
+      "author": {
+        "id": 11501
+      },
+      "writtenOn": "2015-03-25T07:10:04Z",
+      "side": 1,
+      "message": "yeah, this fixes the crash I saw when toggling the preferred network mode on slot 1",
+      "revId": "d683d69fa307189b9a280bb9a31a64eb24688482",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
