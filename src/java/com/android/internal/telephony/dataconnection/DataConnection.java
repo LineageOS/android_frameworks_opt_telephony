@@ -41,6 +41,7 @@ import android.net.LinkProperties;
 import android.net.NetworkAgent;
 import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
+import android.net.NetworkMisc;
 import android.net.ProxyInfo;
 import android.os.AsyncResult;
 import android.os.Build;
@@ -65,7 +66,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import java.net.InetAddress;
 import java.util.Collection;
 
@@ -1068,9 +1068,8 @@ public final class DataConnection extends StateMachine {
             // Only change apn setting if it isn't set, it will
             // only NOT be set only if we're in DcInactiveState.
             mApnSetting = apnContext.getApnSetting();
-        } else if (mApnSetting.canHandleType(apnContext.getApnType())) {
-            // All is good.
-        } else {
+        }
+        if (mApnSetting == null || !mApnSetting.canHandleType(apnContext.getApnType())) {
             if (DBG) {
                 log("initConnection: incompatible apnSetting in ConnectionParams cp=" + cp
                         + " dc=" + DataConnection.this);
@@ -1912,10 +1911,12 @@ public final class DataConnection extends StateMachine {
                     mNetworkInfo.getReason(), null);
             mNetworkInfo.setExtraInfo(mApnSetting.apn);
             updateTcpBufferSizes(mRilRat);
+            final NetworkMisc misc = new NetworkMisc();
+            misc.subscriberId = mPhone.getSubscriberId();
             mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(),
                     mPhone.getContext(),
                     "DcNetworkAgent" + mPhone.getSubId(), mNetworkInfo,
-                    makeNetworkCapabilities(), mLinkProperties, 50);
+                    makeNetworkCapabilities(), mLinkProperties, 50, misc);
         }
 
         @Override
@@ -2135,8 +2136,8 @@ public final class DataConnection extends StateMachine {
 
     private class DcNetworkAgent extends NetworkAgent {
         public DcNetworkAgent(Looper l, Context c, String TAG, NetworkInfo ni,
-                NetworkCapabilities nc, LinkProperties lp, int score) {
-            super(l, c, TAG, ni, nc, lp, score);
+                NetworkCapabilities nc, LinkProperties lp, int score, NetworkMisc misc) {
+            super(l, c, TAG, ni, nc, lp, score, misc);
         }
 
         protected void unwanted() {

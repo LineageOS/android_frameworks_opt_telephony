@@ -320,12 +320,15 @@ public class SIMRecords extends IccRecords {
     public void setMsisdnNumber(String alphaTag, String number,
             Message onComplete) {
 
-        mMsisdn = number;
-        mMsisdnTag = alphaTag;
+        // If the SIM card is locked by PIN, we will set EF_MSISDN fail.
+        // In that case, msisdn and msisdnTag should not be update.
+        mNewMsisdn = number;
+        mNewMsisdnTag = alphaTag;
 
-        if(DBG) log("Set MSISDN: " + mMsisdnTag + " " + /*mMsisdn*/ "xxxxxxx");
+        if(DBG) log("Set MSISDN: " + mNewMsisdnTag + " " + /*mNewMsisdn*/ "xxxxxxx");
 
-        AdnRecord adn = new AdnRecord(mMsisdnTag, mMsisdn);
+
+        AdnRecord adn = new AdnRecord(mNewMsisdnTag, mNewMsisdn);
 
         new AdnRecordLoader(mFh).updateEF(adn, EF_MSISDN, getExtFromEf(EF_MSISDN), 1, null,
                 obtainMessage(EVENT_SET_MSISDN_DONE, onComplete));
@@ -802,6 +805,12 @@ public class SIMRecords extends IccRecords {
             case EVENT_SET_MSISDN_DONE:
                 isRecordLoadResponse = false;
                 ar = (AsyncResult)msg.obj;
+
+                if (ar.exception == null) {
+                    mMsisdn = mNewMsisdn;
+                    mMsisdnTag = mNewMsisdnTag;
+                    log("Success to update EF[MSISDN]");
+                }
 
                 if (ar.userObj != null) {
                     AsyncResult.forMessage(((Message) ar.userObj)).exception
@@ -1499,6 +1508,12 @@ public class SIMRecords extends IccRecords {
     }
 
     private void loadEfLiAndEfPl() {
+        Resources resource = Resources.getSystem();
+        if (!resource.getBoolean(com.android.internal.R.bool.config_use_sim_language_file)) {
+            if (DBG) log ("Not using EF LI/EF PL");
+            return;
+        }
+
         if (mParentApp.getType() == AppType.APPTYPE_USIM) {
             mRecordsRequested = true;
             mFh.loadEFTransparent(EF_LI,
@@ -1916,5 +1931,4 @@ public class SIMRecords extends IccRecords {
         pw.println(" mGid1=" + mGid1);
         pw.flush();
     }
-
 }

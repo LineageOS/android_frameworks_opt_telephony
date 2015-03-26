@@ -19,15 +19,19 @@ package com.android.internal.telephony;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.telephony.CellInfo;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.SubscriptionManager;
+import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Pair;
@@ -169,6 +173,8 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final int EVENT_GET_CELL_INFO_LIST                = 43;
     protected static final int EVENT_UNSOL_CELL_INFO_LIST              = 44;
     protected static final int EVENT_CHANGE_IMS_STATE                  = 45;
+    protected static final int EVENT_IMS_STATE_CHANGED                 = 46;
+    protected static final int EVENT_IMS_STATE_DONE                    = 47;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -217,7 +223,53 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final String ACTION_RADIO_OFF = "android.intent.action.ACTION_RADIO_OFF";
     protected boolean mPowerOffDelayNeed = true;
     protected boolean mDeviceShuttingDown = false;
+    private boolean mImsRegistered = false;
 
+    protected SubscriptionManager mSubscriptionManager;
+    protected final OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
+            new OnSubscriptionsChangedListener() {
+        private int previousSubId = -1; // < 0 is invalid subId
+        /**
+         * Callback invoked when there is any change to any SubscriptionInfo. Typically
+         * this method would invoke {@link SubscriptionManager#getActiveSubscriptionInfoList}
+         */
+        @Override
+        public void onSubscriptionsChanged() {
+            if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
+            // Set the network type, in case the radio does not restore it.
+            int subId = mPhoneBase.getSubId();
+            int previousSubId = mPhoneBase.getSubId();
+            if (previousSubId != subId) {
+                previousSubId = subId;
+                if (SubscriptionManager.isValidSubscriptionId(subId)) {
+
+                    mPhoneBase.notifyCallForwardingIndicator();
+                    Context context = mPhoneBase.getContext();
+
+                    // Remove old network selection sharedPreferences since SP key names are now
+                    // changed to include subId. This will be done only once when upgrading from an
+                    // older build that did not include subId in the names.
+                    SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
+                            context);
+                    String oldNetworkSelectionName = sp.getString(PhoneBase.
+                            NETWORK_SELECTION_NAME_KEY, "");
+                    String oldNetworkSelection = sp.getString(PhoneBase.NETWORK_SELECTION_KEY,
+                            "");
+                    if (!TextUtils.isEmpty(oldNetworkSelectionName) ||
+                            !TextUtils.isEmpty(oldNetworkSelection)) {
+                        SharedPreferences.Editor editor = sp.edit();
+                        editor.putString(PhoneBase.NETWORK_SELECTION_NAME_KEY + subId,
+                                oldNetworkSelectionName);
+                        editor.putString(PhoneBase.NETWORK_SELECTION_KEY + subId,
+                                oldNetworkSelection);
+                        editor.remove(PhoneBase.NETWORK_SELECTION_NAME_KEY);
+                        editor.remove(PhoneBase.NETWORK_SELECTION_KEY);
+                        editor.commit();
+                    }
+                }
+            }
+        }
+    };
 
     protected ServiceStateTracker(PhoneBase phoneBase, CommandsInterface ci, CellInfo cellInfo) {
         mPhoneBase = phoneBase;
@@ -230,8 +282,13 @@ public abstract class ServiceStateTracker extends Handler {
         mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
         mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
 
+        mSubscriptionManager = SubscriptionManager.from(phoneBase.getContext());
+        mSubscriptionManager
+            .addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+
         mPhoneBase.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
             ServiceState.rilRadioTechnologyToString(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN));
+        mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);
     }
 
     void requestShutdown() {
@@ -245,6 +302,8 @@ public abstract class ServiceStateTracker extends Handler {
         mCi.unSetOnSignalStrengthUpdate(this);
         mUiccController.unregisterForIccChanged(this);
         mCi.unregisterForCellInfoList(this);
+        mSubscriptionManager
+            .removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
     }
 
     public boolean getDesiredPowerState() {
@@ -466,6 +525,18 @@ public abstract class ServiceStateTracker extends Handler {
                 }
                 break;
             }
+
+            case  EVENT_IMS_STATE_CHANGED: // received unsol
+                mCi.getImsRegistrationState(this.obtainMessage(EVENT_IMS_STATE_DONE));
+                break;
+
+            case EVENT_IMS_STATE_DONE:
+                AsyncResult ar = (AsyncResult) msg.obj;
+                if (ar.exception == null) {
+                    int[] responseArray = (int[])ar.result;
+                    mImsRegistered = (responseArray[0] == 1) ? true : false;
+                }
+                break;
 
             default:
                 log("Unhandled message with number: " + msg.what);
@@ -758,7 +829,7 @@ public abstract class ServiceStateTracker extends Handler {
     }
 
     public String getSystemProperty(String property, String defValue) {
-        return TelephonyManager.getTelephonyProperty(property, mPhoneBase.getSubId(), defValue);
+        return TelephonyManager.getTelephonyProperty(mPhoneBase.getPhoneId(), property, defValue);
     }
 
     /**
@@ -826,8 +897,12 @@ public abstract class ServiceStateTracker extends Handler {
         pw.println(" mDontPollSignalStrength=" + mDontPollSignalStrength);
         pw.println(" mPendingRadioPowerOffAfterDataOff=" + mPendingRadioPowerOffAfterDataOff);
         pw.println(" mPendingRadioPowerOffAfterDataOffTag=" + mPendingRadioPowerOffAfterDataOffTag);
+        pw.flush();
     }
 
+    public boolean isImsRegistered() {
+        return mImsRegistered;
+    }
     /**
      * Verifies the current thread is the same as the thread originally
      * used in the initialization of this instance. Throws RuntimeException
@@ -935,5 +1010,9 @@ public abstract class ServiceStateTracker extends Handler {
                 resetIwlanRatVal = false;
             }
         }
+    }
+
+    protected int getPhoneId() {
+        return mPhoneBase.getPhoneId();
     }
 }

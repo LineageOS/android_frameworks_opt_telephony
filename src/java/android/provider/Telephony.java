@@ -240,12 +240,22 @@ public final class Telephony {
         public static final String LOCKED = "locked";
 
         /**
-         * The phone id to which the message belongs to
+         * The subscription to which the message belongs to. Its value will be
+         * < 0 if the sub id cannot be determined.
          * <p>Type: INTEGER (long) </p>
+         */
+        public static final String SUBSCRIPTION_ID = "sub_id";
+
+        /**
+         * The phoneId to which the message belongs to. Its value will be
+         * {@link android.telephony.SubscriptionManager#INVALID_SUBSCRIPTION_ID} if
+         * the sub id cannot be determined.
+         * <p>Type: INTEGER (long)</p>
          * @hide
          */
-        public static final String PHONE_ID = "phone_id";
+         // FIXME LMR1_INTERNAL
 
+        public static final String PHONE_ID = "phone_id";
         /**
          * The MTU size of the mobile interface to which the APN connected
          * @hide
@@ -261,6 +271,8 @@ public final class Telephony {
         /**
          * The identity of the sender of a sent message. It is
          * usually the package name of the app which sends the message.
+         * <p class="note"><strong>Note:</strong>
+         * This column is read-only. It is set by the provider and can not be changed by apps.
          * <p>Type: TEXT</p>
          */
         public static final String CREATOR = "creator";
@@ -358,11 +370,11 @@ public final class Telephony {
          * @param date the timestamp for the message
          * @param read true if the message has been read, false if not
          * @param deliveryReport true if a delivery report was requested, false if not
-         * @param subId the sub_id which the message belongs to
+         * @param subId the subscription which the message belongs to
          * @return the URI for the new message
          * @hide
          */
-        public static Uri addMessageToUri(long subId, ContentResolver resolver,
+        public static Uri addMessageToUri(int subId, ContentResolver resolver,
                 Uri uri, String address, String body, String subject,
                 Long date, boolean read, boolean deliveryReport) {
             return addMessageToUri(subId, resolver, uri, address, body, subject,
@@ -404,11 +416,11 @@ public final class Telephony {
          * @param read true if the message has been read, false if not
          * @param deliveryReport true if a delivery report was requested, false if not
          * @param threadId the thread_id of the message
-         * @param subId the sub_id which the message belongs to
+         * @param subId the subscription which the message belongs to
          * @return the URI for the new message
          * @hide
          */
-        public static Uri addMessageToUri(long subId, ContentResolver resolver,
+        public static Uri addMessageToUri(int subId, ContentResolver resolver,
                 Uri uri, String address, String body, String subject,
                 Long date, boolean read, boolean deliveryReport, long threadId) {
             return addMessageToUri(subId, resolver, uri, address, body, subject,
@@ -432,7 +444,7 @@ public final class Telephony {
          * @return the URI for the new message
          * @hide
          */
-        public static Uri addMessageToUri(long subId, ContentResolver resolver,
+        public static Uri addMessageToUri(int subId, ContentResolver resolver,
                 Uri uri, String address, String body, String subject,
                 Long date, boolean read, boolean deliveryReport, long threadId,
                 int priority) {
@@ -567,11 +579,11 @@ public final class Telephony {
              * @param subject the psuedo-subject of the message
              * @param date the timestamp for the message
              * @param read true if the message has been read, false if not
-             * @param subId the sub_id which the message belongs to
+             * @param subId the subscription which the message belongs to
              * @return the URI for the new message
              * @hide
              */
-            public static Uri addMessage(long subId, ContentResolver resolver,
+            public static Uri addMessage(int subId, ContentResolver resolver,
                     String address, String body, String subject, Long date, boolean read) {
                 return addMessageToUri(subId, resolver, CONTENT_URI, address, body,
                         subject, date, read, false);
@@ -625,11 +637,11 @@ public final class Telephony {
              * @param body the body of the message
              * @param subject the psuedo-subject of the message
              * @param date the timestamp for the message
-             * @param subId the sub_id which the message belongs to
+             * @param subId the subscription which the message belongs to
              * @return the URI for the new message
              * @hide
              */
-            public static Uri addMessage(long subId, ContentResolver resolver,
+            public static Uri addMessage(int subId, ContentResolver resolver,
                     String address, String body, String subject, Long date) {
                 return addMessageToUri(subId, resolver, CONTENT_URI, address, body,
                         subject, date, true, false);
@@ -670,11 +682,11 @@ public final class Telephony {
              * @param body the body of the message
              * @param subject the psuedo-subject of the message
              * @param date the timestamp for the message
-             * @param subId the sub_id which the message belongs to
+             * @param subId the subscription which the message belongs to
              * @return the URI for the new message
              * @hide
              */
-            public static Uri addMessage(long subId, ContentResolver resolver,
+            public static Uri addMessage(int subId, ContentResolver resolver,
                     String address, String body, String subject, Long date) {
                 return addMessageToUri(subId, resolver, CONTENT_URI, address, body,
                         subject, date, true, false);
@@ -737,11 +749,11 @@ public final class Telephony {
              * @param subject the psuedo-subject of the message
              * @param date the timestamp for the message
              * @param deliveryReport whether a delivery report was requested for the message
-             * @param subId the sub_id which the message belongs to
+             * @param subId the subscription which the message belongs to
              * @return the URI for the new message
              * @hide
              */
-            public static Uri addMessage(long subId, ContentResolver resolver,
+            public static Uri addMessage(int subId, ContentResolver resolver,
                     String address, String body, String subject, Long date,
                     boolean deliveryReport, long threadId) {
                 return addMessageToUri(subId, resolver, CONTENT_URI, address, body,
@@ -876,6 +888,16 @@ public final class Telephony {
              * <ul>
              *   <li><em>"pdus"</em> - An Object[] of byte[]s containing the PDUs
              *   that make up the message.</li>
+             *   <li><em>"format"</em> - A String describing the format of the PDUs. It can
+             *   be either "3gpp" or "3gpp2".</li>
+             *   <li><em>"subscription"</em> - An optional long value of the subscription id which
+             *   received the message.</li>
+             *   <li><em>"slot"</em> - An optional int value of the SIM slot containing the
+             *   subscription.</li>
+             *   <li><em>"phone"</em> - An optional int value of the phone id associated with the
+             *   subscription.</li>
+             *   <li><em>"errorCode"</em> - An optional int error code associated with receiving
+             *   the message.</li>
              * </ul>
              *
              * <p>The extra values can be extracted using
@@ -984,6 +1006,12 @@ public final class Telephony {
              *   <li><em>"contentTypeParameters" </em>
              *   -(HashMap&lt;String,String&gt;) Any parameters associated with the content type
              *   (decoded from the WSP Content-Type header)</li>
+             *   <li><em>"subscription"</em> - An optional long value of the subscription id which
+             *   received the message.</li>
+             *   <li><em>"slot"</em> - An optional int value of the SIM slot containing the
+             *   subscription.</li>
+             *   <li><em>"phone"</em> - An optional int value of the phone id associated with the
+             *   subscription.</li>
              * </ul>
              *
              * <p>If a BroadcastReceiver encounters an error while processing
@@ -1122,6 +1150,16 @@ public final class Telephony {
                 "android.provider.Telephony.SMS_REJECTED";
 
             /**
+             * Broadcast Action: An incoming MMS has been downloaded. The intent is sent to all
+             * users, except for secondary users where SMS has been disabled and to managed
+             * profiles.
+             * @hide
+             */
+            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+            public static final String MMS_DOWNLOADED_ACTION =
+                "android.provider.Telephony.MMS_DOWNLOADED";
+
+            /**
              * Broadcast Action: A new SMS PDU needs to be sent from
              * the device. This intent will only be delivered to a
              * carrier app. That app is responsible for sending the PDU.
@@ -1173,7 +1211,7 @@ public final class Telephony {
             public static SmsMessage[] getMessagesFromIntent(Intent intent) {
                 Object[] messages = (Object[]) intent.getSerializableExtra("pdus");
                 String format = intent.getStringExtra("format");
-                long subId = intent.getLongExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
                         SubscriptionManager.getDefaultSmsSubId());
 
                 Rlog.v(TAG, " getMessagesFromIntent sub_id : " + subId);
@@ -1746,15 +1784,28 @@ public final class Telephony {
         public static final String LOCKED = "locked";
 
         /**
-         * The phone id to which message belongs to
-         * <p>Type: INTEGER</p>
+         * The subscription to which the message belongs to. Its value will be
+         * < 0 if the sub id cannot be determined.
+         * <p>Type: INTEGER (long)</p>
+         */
+        public static final String SUBSCRIPTION_ID = "sub_id";
+
+
+        /**
+         * The phoneId to which the message belongs to. Its value will be
+         * {@link android.telephony.SubscriptionManager#INVALID_SUBSCRIPTION_ID} if
+         * the sub id cannot be determined.
+         * <p>Type: INTEGER (long)</p>
          * @hide
          */
+         // FIXME LMR1_INTERNAL
         public static final String PHONE_ID = "phone_id";
 
         /**
          * The identity of the sender of a sent message. It is
          * usually the package name of the app which sends the message.
+         * <p class="note"><strong>Note:</strong>
+         * This column is read-only. It is set by the provider and can not be changed by apps.
          * <p>Type: TEXT</p>
          */
         public static final String CREATOR = "creator";
@@ -1935,7 +1986,7 @@ public final class Telephony {
                 }
             }
 
-            Rlog.e(TAG, "getOrCreateThreadId failed with uri " + uri.toString());
+            Rlog.e(TAG, "getOrCreateThreadId failed with " + recipients.size() + " recipients");
             throw new IllegalArgumentException("Unable to find or allocate a thread ID.");
         }
     }
@@ -2594,11 +2645,18 @@ public final class Telephony {
             public static final String LAST_TRY = "last_try";
 
             /**
+             * The subscription to which the message belongs to. Its value will be
+             * < 0 if the sub id cannot be determined.
+             * <p>Type: INTEGER (long) </p>
+             */
+            public static final String SUBSCRIPTION_ID = "pending_sub_id";
+            /**
              * The phone id to which the pending message belongs to
              * <p>Type: INTEGER (long) </p>
              * @hide
              */
             public static final String PHONE_ID = "pending_phone_id";
+
         }
 
         /**
@@ -2807,11 +2865,20 @@ public final class Telephony {
         public static final String MVNO_MATCH_DATA = "mvno_match_data";
 
         /**
-         * The sub_id to which the APN belongs to
+         * The subscription to which the APN belongs to
          * <p>Type: INTEGER (long) </p>
+         */
+        public static final String SUBSCRIPTION_ID = "sub_id";
+
+        /**
+         * The phoneId to which the message belongs to. Its value will be
+         * {@link android.telephony.SubscriptionManager#INVALID_SUBSCRIPTION_ID} if
+         * the sub id cannot be determined.
+         * <p>Type: INTEGER (long)</p>
          * @hide
          */
-        public static final String SUB_ID = "sub_id";
+         // FIXME LMR1_INTERNAL
+        public static final String PHONE_ID = "phone_id";
 
         /**
          * The profile_id to which the APN saved in modem

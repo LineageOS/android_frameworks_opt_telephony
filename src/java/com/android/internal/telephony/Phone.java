@@ -291,6 +291,13 @@ public interface Phone {
     String[] getActiveApnTypes();
 
     /**
+     * Check if TETHER_DUN_APN setting or config_tether_apndata includes APN that matches
+     * current operator.
+     * @return true if there is a matching DUN APN.
+     */
+    boolean hasMatchedTetherApnSetting();
+
+    /**
      * Returns string for the active APN host.
      *  @return type as a string or null if none.
      */
@@ -664,6 +671,25 @@ public interface Phone {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForSimRecordsLoaded(Handler h);
+
+    /**
+     * Register for TTY mode change notifications from the network.
+     * Message.obj will contain an AsyncResult.
+     * AsyncResult.result will be an Integer containing new mode.
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForTtyModeReceived(Handler h, int what, Object obj);
+
+    /**
+     * Unregisters for TTY mode change notifications.
+     * Extraneous calls are tolerated silently
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForTtyModeReceived(Handler h);
 
     /**
      * Returns SIM record load state. Use
@@ -1207,6 +1233,15 @@ public interface Phone {
                             Message response);
 
     /**
+     * Query the radio for the current network selection mode.
+     *
+     * Return values:
+     *     0 - automatic.
+     *     1 - manual.
+     */
+    void getNetworkSelectionMode(Message response);
+
+    /**
      *  Requests to set the preferred network type for searching and registering
      * (CS/PS domain, RAT, and operation mode)
      * @param networkType one of  NT_*_TYPE
@@ -1532,6 +1567,11 @@ public interface Phone {
     String getImei();
 
     /**
+     * Retrieves Nai for phones. Returns null if Nai is not set.
+     */
+    String getNai();
+
+    /**
      * Retrieves the PhoneSubInfo of the Phone
      */
     public PhoneSubInfo getPhoneSubInfo();
@@ -1798,6 +1838,22 @@ public interface Phone {
     void unregisterForT53AudioControlInfo(Handler h);
 
     /**
+     * Register for radio off or not available
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForRadioOffOrNotAvailable(Handler h, int what, Object obj);
+
+    /**
+     * Unregisters for radio off or not available
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForRadioOffOrNotAvailable(Handler h);
+
+    /**
      * registers for exit emergency call back mode request response
      *
      * @param h Handler that receives the notification message.
@@ -1935,7 +1991,7 @@ public interface Phone {
     /*
      * Returns the subscription id.
      */
-    public long getSubId();
+    public int getSubId();
 
     /*
      * Returns the phone id.
@@ -1984,6 +2040,13 @@ public interface Phone {
     public boolean setOperatorBrandOverride(String brand);
 
     /**
+     * Override the roaming indicator for the current ICCID.
+     */
+    public boolean setRoamingOverride(List<String> gsmRoamingList,
+            List<String> gsmNonRoamingList, List<String> cdmaRoamingList,
+            List<String> cdmaNonRoamingList);
+
+    /**
      * Is Radio Present on the device and is it accessible
      */
     public boolean isRadioAvailable();
@@ -2001,4 +2064,11 @@ public interface Phone {
     public boolean isImsVtCallPresent();
 
     public void notifyCallForwardingIndicator();
+
+    /**
+     * Query the IMS Registration Status.
+     *
+     * @return true if IMS is Registered
+     */
+    public boolean isImsRegistered();
 }

@@ -97,11 +97,11 @@ public class UiccCard {
     private static final int EVENT_CARRIER_PRIVILIGES_LOADED = 20;
     private static final int EVENT_SIM_GET_ATR_DONE = 21;
 
-    int mSlotId;
+    private int mPhoneId;
 
-    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int slotId) {
+    public UiccCard(Context c, CommandsInterface ci, IccCardStatus ics, int phoneId) {
         mCardState = ics.mCardState;
-        mSlotId = slotId;
+        mPhoneId = phoneId;
         update(c, ci, ics);
     }
 
@@ -111,7 +111,7 @@ public class UiccCard {
     public void dispose() {
         synchronized (mLock) {
             if (DBG) log("Disposing card");
-            if (mCatService != null) CatServiceFactory.disposeCatService(mSlotId);
+            if (mCatService != null) CatServiceFactory.disposeCatService(mPhoneId);
             for (UiccCardApplication app : mUiccApplications) {
                 if (app != null) {
                     app.dispose();
@@ -193,11 +193,11 @@ public class UiccCard {
         if (mUiccApplications.length > 0 && mUiccApplications[0] != null) {
             // Initialize or Reinitialize CatService
             if (mCatService == null) {
-                mCatService = CatServiceFactory.makeCatService(mCi, mContext, this, mSlotId);
+                mCatService = CatServiceFactory.makeCatService(mCi, mContext, this, mPhoneId);
             }
         } else {
             if (mCatService != null) {
-                CatServiceFactory.disposeCatService(mSlotId);
+                CatServiceFactory.disposeCatService(mPhoneId);
             }
             mCatService = null;
         }
@@ -413,12 +413,6 @@ public class UiccCard {
         }
     }
 
-    public int getSlotId() {
-        synchronized (mLock) {
-            return mSlotId;
-        }
-    }
-
     public UiccCardApplication getApplication(int family) {
         synchronized (mLock) {
             int index = IccCardStatus.CARD_MAX_APPS;
@@ -533,6 +527,10 @@ public class UiccCard {
             }
         }
         return count;
+    }
+
+    public int getPhoneId() {
+        return mPhoneId;
     }
 
     /**

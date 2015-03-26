@@ -298,8 +298,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             break;
 
         case EVENT_RUIM_READY:
-            int networkType = PhoneFactory.calculatePreferredNetworkType(mPhone.getContext(),
-                    mPhone.getPhoneId());
+            int networkType = PhoneFactory.calculatePreferredNetworkType(
+                    mPhone.getContext(), mPhone.getPhoneId());
             mCi.setPreferredNetworkType(networkType, null);
 
             if (DBG) log("Receive EVENT_RUIM_READY");
@@ -309,7 +309,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     com.android.internal.R.bool.skip_restoring_network_selection);
             if (!skipRestoringSelection) {
                  // Only support automatic selection mode in CDMA.
-                 mPhone.setNetworkSelectionModeAutomatic(null);
+                 mCi.getNetworkSelectionMode(obtainMessage(EVENT_POLL_STATE_NETWORK_SELECTION_MODE));
             }
 
             mPhone.prepareEri();
@@ -319,7 +319,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             updatePhoneObject();
 
             // Only support automatic selection mode in CDMA.
-            mPhone.setNetworkSelectionModeAutomatic(null);
+            mCi.getNetworkSelectionMode(obtainMessage(EVENT_POLL_STATE_NETWORK_SELECTION_MODE));
 
             // For Non-RUIM phones, the subscription information is stored in
             // Non Volatile. Here when Non-Volatile is ready, we can poll the CDMA
@@ -539,13 +539,24 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             setPowerStateToDesired();
             break;
 
+        case EVENT_POLL_STATE_NETWORK_SELECTION_MODE:
+            if (DBG) log("EVENT_POLL_STATE_NETWORK_SELECTION_MODE");
+            ar = (AsyncResult) msg.obj;
+            if (ar.exception == null && ar.result != null) {
+                ints = (int[])ar.result;
+                if (ints[0] == 1) {  // Manual selection.
+                    mPhone.setNetworkSelectionModeAutomatic(null);
+                }
+            } else {
+                log("Unable to getNetworkSelectionMode");
+            }
+            break;
+
         default:
             super.handleMessage(msg);
         break;
         }
     }
-
-    //***** Private Instance Methods
 
     private void handleCdmaSubscriptionSource(int newSubscriptionSource) {
         log("Subscription Source : " + newSubscriptionSource);
@@ -798,12 +809,11 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     }
 
                     if (!mIsSubscriptionFromRuim) {
-                        // In CDMA in case on NV, the ss.mOperatorAlphaLong is set later with the
-                        // ERI text, so here it is ignored what is coming from the modem.
-                        mNewSS.setOperatorName(null, opNames[1], opNames[2]);
+                        // NV device (as opposed to CSIM)
+                        mNewSS.setOperatorName(opNames[0], opNames[1], opNames[2]);
                     } else {
-                        String brandOverride = mUiccController.getUiccCard() != null ?
-                            mUiccController.getUiccCard().getOperatorBrandOverride() : null;
+                        String brandOverride = mUiccController.getUiccCard(getPhoneId()) != null ?
+                            mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() : null;
                         if (brandOverride != null) {
                             mNewSS.setOperatorName(brandOverride, brandOverride, opNames[2]);
                         } else {
@@ -862,9 +872,11 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             if (!isSidsAllZeros() && isHomeSid(mNewSS.getSystemId())) {
                 namMatch = true;
             }
+            /*  FIXME LMR1_INTERNAL
             mCdmaRoaming =
                     (mCdmaRoaming || mDataRoaming) &&
                             !isRoamIndForHomeSystem(String.valueOf(mRoamingIndicator));
+            */
             // Setting SS Roaming (general)
             if (mIsSubscriptionFromRuim) {
                 mNewSS.setRoaming(isRoamingBetweenOperators(mCdmaRoaming, mNewSS));
@@ -1068,6 +1080,19 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
     protected void pollStateDone() {
         if (DBG) log("pollStateDone: cdma oldSS=[" + mSS + "] newSS=[" + mNewSS + "]");
+
+        if (mPhone.isMccMncMarkedAsNonRoaming(mNewSS.getOperatorNumeric()) ||
+                mPhone.isSidMarkedAsNonRoaming(mNewSS.getSystemId())) {
+            log("pollStateDone: override - marked as non-roaming.");
+            mNewSS.setRoaming(false);
+            mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_OFF);
+        } else if (mPhone.isMccMncMarkedAsRoaming(mNewSS.getOperatorNumeric()) ||
+                mPhone.isSidMarkedAsRoaming(mNewSS.getSystemId())) {
+            log("pollStateDone: override - marked as roaming.");
+            mNewSS.setRoaming(true);
+            mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_ON);
+            mNewSS.setCdmaEriIconMode(EriInfo.ROAMING_ICON_MODE_NORMAL);
+        }
 
         if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
             mNewSS.setRoaming(true);
@@ -1967,6 +1992,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("CdmaServiceStateTracker extends:");
         super.dump(fd, pw, args);
+        pw.flush();
         pw.println(" mPhone=" + mPhone);
         pw.println(" mSS=" + mSS);
         pw.println(" mNewSS=" + mNewSS);
@@ -1979,6 +2005,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         pw.println(" mDefaultRoamingIndicator=" + mDefaultRoamingIndicator);
         pw.println(" mRegistrationState=" + mRegistrationState);
         pw.println(" mNeedFixZone=" + mNeedFixZone);
+        pw.flush();
         pw.println(" mZoneOffset=" + mZoneOffset);
         pw.println(" mZoneDst=" + mZoneDst);
         pw.println(" mZoneTime=" + mZoneTime);
@@ -1999,6 +2026,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         pw.println(" mCdmaSSM=" + mCdmaSSM);
         pw.println(" mRegistrationDeniedReason=" + mRegistrationDeniedReason);
         pw.println(" mCurrentCarrier=" + mCurrentCarrier);
+        pw.flush();
     }
 
     @Override

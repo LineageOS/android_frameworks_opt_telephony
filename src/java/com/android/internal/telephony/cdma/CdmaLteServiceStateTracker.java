@@ -39,6 +39,7 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Message;
 import android.os.UserHandle;
 import android.os.SystemClock;
@@ -70,12 +71,19 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     public CdmaLteServiceStateTracker(CDMALTEPhone phone) {
         super(phone, new CellInfoLte());
         mCdmaLtePhone = phone;
+        mCdmaLtePhone.registerForSimRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
         mCellInfoLte = (CellInfoLte) mCellInfo;
 
         ((CellInfoLte)mCellInfo).setCellSignalStrength(new CellSignalStrengthLte());
         ((CellInfoLte)mCellInfo).setCellIdentity(new CellIdentityLte());
 
         if (DBG) log("CdmaLteServiceStateTracker Constructors");
+    }
+
+    @Override
+    public void dispose() {
+        mPhone.unregisterForSimRecordsLoaded(this);
+        super.dispose();
     }
 
     @Override
@@ -118,8 +126,11 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             // the latest variables.
             pollState();
             break;
+        case EVENT_SIM_RECORDS_LOADED:
+            updatePhoneObject();
+            break;
         case EVENT_ALL_DATA_DISCONNECTED:
-            long dds = SubscriptionManager.getDefaultDataSubId();
+            int dds = SubscriptionManager.getDefaultDataSubId();
             ProxyController.getInstance().unregisterForAllDataDisconnected(dds, this);
             synchronized(this) {
                 if (mPendingRadioPowerOffAfterDataOff) {
@@ -312,6 +323,23 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     protected void pollStateDone() {
         log("pollStateDone: lte 1 ss=[" + mSS + "] newSS=[" + mNewSS + "]");
 
+        if (mPhone.isMccMncMarkedAsNonRoaming(mNewSS.getOperatorNumeric()) ||
+                mPhone.isSidMarkedAsNonRoaming(mNewSS.getSystemId())) {
+            log("pollStateDone: override - marked as non-roaming.");
+            mNewSS.setRoaming(false);
+            mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_OFF);
+        } else if (mPhone.isMccMncMarkedAsRoaming(mNewSS.getOperatorNumeric()) ||
+                mPhone.isSidMarkedAsRoaming(mNewSS.getSystemId())) {
+            log("pollStateDone: override - marked as roaming.");
+            mNewSS.setRoaming(true);
+            mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_ON);
+            mNewSS.setCdmaEriIconMode(EriInfo.ROAMING_ICON_MODE_NORMAL);
+        }
+
+        if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
+            mNewSS.setRoaming(true);
+        }
+
         useDataRegStateForDataOnlyDevices();
 
         boolean hasRegistered = mSS.getVoiceRegState() != ServiceState.STATE_IN_SERVICE
@@ -423,11 +451,14 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
         }
 
         if (hasChanged) {
-            boolean hasBrandOverride = mUiccController.getUiccCard() == null ? false :
-                    (mUiccController.getUiccCard().getOperatorBrandOverride() != null);
-            if (!hasBrandOverride && (mCi.getRadioState().isOn()) && (mPhone.isEriFileLoaded())
-                && !mIsSubscriptionFromRuim) {
-                String eriText;
+            boolean hasBrandOverride = mUiccController.getUiccCard(getPhoneId()) == null ? false :
+                    (mUiccController.getUiccCard(getPhoneId()).getOperatorBrandOverride() != null);
+            if (!hasBrandOverride && (mCi.getRadioState().isOn()) && (mPhone.isEriFileLoaded()) &&
+                    (mSS.getRilVoiceRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_LTE ||
+                     mPhone.getContext().getResources().getBoolean(com.android.internal.R.
+                     bool.config_LTE_eri_for_network_name))&& !mIsSubscriptionFromRuim) {
+                // Only when CDMA is in service, ERI will take effect
+                String eriText = mSS.getOperatorAlphaLong();
                 // Now the CDMAPhone sees the new ServiceState so it can get the
                 // new ERI text
                 if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE ||
@@ -440,7 +471,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                         // build-time system property
                         eriText = SystemProperties.get("ro.cdma.home.operator.alpha");
                     }
-                } else {
+                } else if (mSS.getDataRegState() != ServiceState.STATE_IN_SERVICE) {
                     // Note that ServiceState.STATE_OUT_OF_SERVICE is valid used
                     // for mRegistrationState 0,2,3 and 4
                     eriText = mPhone.getContext()
@@ -450,9 +481,9 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             }
 
             if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY &&
-                    mIccRecords != null) {
+                    mIccRecords != null && (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE)) {
                 // SIM is found on the device. If ERI roaming is OFF, and SID/NID matches
-                // one configured in SIM, use operator name  from CSIM record.
+                // one configured in SIM, use operator name from CSIM record.
                 boolean showSpn =
                     ((RuimRecords)mIccRecords).getCsimSpnDisplayCondition();
                 int iconIndex = mSS.getCdmaEriIconIndex();
@@ -683,7 +714,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     public void powerOffRadioSafely(DcTrackerBase dcTracker) {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
-                long dds = SubscriptionManager.getDefaultDataSubId();
+                int dds = SubscriptionManager.getDefaultDataSubId();
                 // To minimize race conditions we call cleanUpAllConnections on
                 // both if else paths instead of before this isDisconnected test.
                 if (dcTracker.isDisconnected()

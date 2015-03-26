@@ -79,6 +79,14 @@ public class PhoneSubInfo {
     }
 
     /**
+     * Retrieves the NAI.
+     */
+    public String getNai() {
+        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+        return mPhone.getNai();
+    }
+
+    /**
      * Retrieves the software version number for the device, e.g., IMEI/SV
      * for GSM phones.
      */
@@ -269,7 +277,7 @@ public class PhoneSubInfo {
      * @param data authentication challenge data
      * @return challenge response
      */
-    public String getIccSimChallengeResponse(long subId, int appType, String data) {
+    public String getIccSimChallengeResponse(int subId, int appType, String data) {
         // FIXME: use subId!!
         mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
                 "Requires READ_PRIVILEGED_PHONE_STATE");

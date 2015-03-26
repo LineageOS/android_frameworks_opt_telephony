@@ -563,21 +563,6 @@ public class IccSmsInterfaceManager {
     }
 
     /**
-     * Update the status of a pending (send-by-IP) SMS message and resend by PSTN if necessary.
-     * This outbound message was handled by the carrier app. If the carrier app fails to send
-     * this message, it would be resent by PSTN.
-     *
-     * @param messageRef the reference number of the SMS message.
-     * @param success True if and only if the message was sent successfully. If its value is
-     *  false, this message should be resent via PSTN.
-     * {@hide}
-     */
-    public void updateSmsSendStatus(int messageRef, boolean success) {
-        enforceCarrierPrivilege();
-        mDispatcher.updateSmsSendStatus(messageRef, success);
-    }
-
-    /**
      * Send a multi-part text based SMS.
      *
      * @param destAddr the address to send the message to
@@ -620,6 +605,8 @@ public class IccSmsInterfaceManager {
                 callingPackage) != AppOpsManager.MODE_ALLOWED) {
             return;
         }
+
+        destAddr = filterDestAddress(destAddr);
 
         if (parts.size() > 1 && parts.size() < 10 && !SmsMessage.hasEmsSupport()) {
             for (int i = 0; i < parts.size(); i++) {
@@ -785,27 +772,31 @@ public class IccSmsInterfaceManager {
         return data;
     }
 
-    public boolean enableCellBroadcast(int messageIdentifier) {
-        return enableCellBroadcastRange(messageIdentifier, messageIdentifier);
+    public boolean enableCellBroadcast(int messageIdentifier, int ranType) {
+        return enableCellBroadcastRange(messageIdentifier, messageIdentifier, ranType);
     }
 
-    public boolean disableCellBroadcast(int messageIdentifier) {
-        return disableCellBroadcastRange(messageIdentifier, messageIdentifier);
+    public boolean disableCellBroadcast(int messageIdentifier, int ranType) {
+        return disableCellBroadcastRange(messageIdentifier, messageIdentifier, ranType);
     }
 
-    public boolean enableCellBroadcastRange(int startMessageId, int endMessageId) {
-        if (PhoneConstants.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+    public boolean enableCellBroadcastRange(int startMessageId, int endMessageId, int ranType) {
+        if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_GSM) {
             return enableGsmBroadcastRange(startMessageId, endMessageId);
-        } else {
+        } else if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_CDMA) {
             return enableCdmaBroadcastRange(startMessageId, endMessageId);
+        } else {
+            throw new IllegalArgumentException("Not a supportted RAN Type");
         }
     }
 
-    public boolean disableCellBroadcastRange(int startMessageId, int endMessageId) {
-        if (PhoneConstants.PHONE_TYPE_GSM == mPhone.getPhoneType()) {
+    public boolean disableCellBroadcastRange(int startMessageId, int endMessageId, int ranType) {
+        if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_GSM ) {
             return disableGsmBroadcastRange(startMessageId, endMessageId);
-        } else {
+        } else if (ranType == SmsManager.CELL_BROADCAST_RAN_TYPE_CDMA)  {
             return disableCdmaBroadcastRange(startMessageId, endMessageId);
+        } else {
+            throw new IllegalArgumentException("Not a supportted RAN Type");
         }
     }
 
@@ -822,13 +813,13 @@ public class IccSmsInterfaceManager {
                 Binder.getCallingUid());
 
         if (!mCellBroadcastRangeManager.enableRange(startMessageId, endMessageId, client)) {
-            log("Failed to add cell broadcast subscription for MID range " + startMessageId
+            log("Failed to add GSM cell broadcast subscription for MID range " + startMessageId
                     + " to " + endMessageId + " from client " + client);
             return false;
         }
 
         if (DBG)
-            log("Added cell broadcast subscription for MID range " + startMessageId
+            log("Added GSM cell broadcast subscription for MID range " + startMessageId
                     + " to " + endMessageId + " from client " + client);
 
         setCellBroadcastActivation(!mCellBroadcastRangeManager.isEmpty());
@@ -849,13 +840,13 @@ public class IccSmsInterfaceManager {
                 Binder.getCallingUid());
 
         if (!mCellBroadcastRangeManager.disableRange(startMessageId, endMessageId, client)) {
-            log("Failed to remove cell broadcast subscription for MID range " + startMessageId
+            log("Failed to remove GSM cell broadcast subscription for MID range " + startMessageId
                     + " to " + endMessageId + " from client " + client);
             return false;
         }
 
         if (DBG)
-            log("Removed cell broadcast subscription for MID range " + startMessageId
+            log("Removed GSM cell broadcast subscription for MID range " + startMessageId
                     + " to " + endMessageId + " from client " + client);
 
         setCellBroadcastActivation(!mCellBroadcastRangeManager.isEmpty());
@@ -1146,6 +1137,8 @@ public class IccSmsInterfaceManager {
             return;
         }
 
+        textAndAddress[1] = filterDestAddress(textAndAddress[1]);
+
         if (parts.size() > 1 && parts.size() < 10 && !SmsMessage.hasEmsSupport()) {
             for (int i = 0; i < parts.size(); i++) {
                 // If EMS is not supported, we have to break down EMS into single segment SMS
@@ -1174,7 +1167,6 @@ public class IccSmsInterfaceManager {
             return;
         }
 
-        textAndAddress[1] = filterDestAddress(textAndAddress[1]);
         mDispatcher.sendMultipartText(
                 textAndAddress[1], // destAddress
                 scAddress,
@@ -1266,10 +1258,10 @@ public class IccSmsInterfaceManager {
 
     private void enforceCarrierPrivilege() {
         UiccController controller = UiccController.getInstance();
-        if (controller == null || controller.getUiccCard() == null) {
+        if (controller == null || controller.getUiccCard(mPhone.getPhoneId()) == null) {
             throw new SecurityException("No Carrier Privilege: No UICC");
         }
-        if (controller.getUiccCard().getCarrierPrivilegeStatusForCurrentTransaction(
+        if (controller.getUiccCard(mPhone.getPhoneId()).getCarrierPrivilegeStatusForCurrentTransaction(
                 mContext.getPackageManager()) !=
                     TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
             throw new SecurityException("No Carrier Privilege.");

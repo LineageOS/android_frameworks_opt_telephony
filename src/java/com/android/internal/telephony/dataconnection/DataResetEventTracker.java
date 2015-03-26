@@ -122,7 +122,7 @@ public class DataResetEventTracker {
             mPreviousLocation = (GsmCellLocation) mPhone.getCellLocation();
             if (DBG) log("DataConnection mPreviousLocation : " + mPreviousLocation);
         }
-        long subId = SubscriptionManager.getDefaultDataSubId();
+        int subId = SubscriptionManager.getDefaultDataSubId();
 
         if (mPhoneStateListener == null) {
             mPhoneStateListener = new PhoneStateListener(subId) {

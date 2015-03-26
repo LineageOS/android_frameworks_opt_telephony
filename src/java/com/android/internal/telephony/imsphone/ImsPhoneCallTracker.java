@@ -82,6 +82,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
     private boolean mIsVolteEnabled = false;
     private boolean mIsVtEnabled = false;
     private boolean mIsUtEnabled = false;
+    private boolean mIsSrvccCompleted = false;
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -92,6 +93,11 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 if (mImsManager == null) return;
 
                 if (mServiceId < 0) return;
+
+                // Very rare case, something wrong here. Most probably, it's Incoming call
+                // indication from lower layer after SRVCC call successfully transfered to CS.
+                // Ignore the call indication.
+                if (mIsSrvccCompleted) return;
 
                 try {
                     // Network initiated USSD will be treated by mImsUssdListener
@@ -226,6 +232,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
     private int pendingCallClirMode;
     private int mPendingCallVideoState;
     private boolean pendingCallInEcm = false;
+    private long mConferenceTime = 0;
 
     private Object mAddParticipantLock = new Object();
     private Message mAddPartResp;
@@ -259,7 +266,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     private void getImsService() {
         if (DBG) log("getImsService");
-        mImsManager = ImsManager.getInstance(mPhone.getContext(), mPhone.getSubId());
+        mImsManager = ImsManager.getInstance(mPhone.getContext(), mPhone.getPhoneId());
         try {
             mServiceId = mImsManager.open(ImsServiceClass.MMTEL,
                     createIncomingCallPendingIntent(),
@@ -657,7 +664,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
             log("conference no background ims call");
             return;
         }
-
+        mConferenceTime = Math.min(mBackgroundCall.getEarliestConnectTime(),
+                mForegroundCall.getEarliestConnectTime());
         try {
             fgImsCall.merge(bgImsCall);
         } catch (ImsException e) {
@@ -1332,14 +1340,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onCallMerged(final ImsCall call) {
             if (DBG) log("onCallMerged");
 
-            mForegroundCall.merge(mBackgroundCall, mForegroundCall.getState());
-
+            mForegroundCall.merge(mBackgroundCall, mForegroundCall.getState(), mConferenceTime);
+            mConferenceTime = 0;
             Runnable r = new Runnable() {
                 @Override
                 public void run() {
                     try {
                         final ImsPhoneConnection conn = findConnection(call);
                         log("onCallMerged: ImsPhoneConnection=" + conn);
+                        log("onCallMerged: mConferenceTime=" + mConferenceTime);
                         log("onCallMerged: CurrentVideoProvider=" + conn.getVideoProvider());
                         setVideoCallProvider(conn, call);
                         log("onCallMerged: CurrentVideoProvider=" + conn.getVideoProvider());
@@ -1357,7 +1366,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
         @Override
         public void onCallMergeFailed(ImsCall call, ImsReasonInfo reasonInfo) {
-            if (DBG) log("onCallMergeFailed reasonCode=" + reasonInfo.getCode());
+            if (DBG) log("onCallMergeFailed reasonInfo=" + reasonInfo);
             mPhone.notifySuppServiceFailed(Phone.SuppService.CONFERENCE);
         }
 
@@ -1395,6 +1404,11 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 sendAddParticipantResponse(false, mAddPartResp);
                 mAddPartResp = null;
             }
+        }
+
+        @Override
+        public void onCallSessionTtyModeReceived(ImsCall call, int mode) {
+            mPhone.onTtyModeReceived(mode);
         }
     };
 
@@ -1472,6 +1486,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             mPhone.setServiceState(ServiceState.STATE_IN_SERVICE);
             mPhone.notifyVoLteServiceStateChanged(new VoLteServiceState(
                 VoLteServiceState.IMS_REGISTERED));
+            mPhone.setImsRegistered(true);
         }
 
         @Override
@@ -1480,6 +1495,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
             mPhone.notifyVoLteServiceStateChanged(new VoLteServiceState(
                 VoLteServiceState.IMS_UNREGISTERED));
+            mPhone.setImsRegistered(false);
         }
 
         @Override
@@ -1528,12 +1544,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
                         enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI] ==
                         ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI) {
                     mIsVolteEnabled = true;
+                    mIsSrvccCompleted = false;
                 }
                 if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE] ==
                         ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE ||
                         enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI] ==
                         ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI) {
                     mIsVtEnabled = true;
+                    mIsSrvccCompleted = false;
                 }
                 if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_LTE] ==
                         ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_LTE ||
@@ -1586,6 +1604,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             }
             for (Connection c : mHandoverCall.mConnections) {
                 ((ImsPhoneConnection)c).changeParent(mHandoverCall);
+                ((ImsPhoneConnection)c).releaseWakeLock();
             }
         }
         if (call.getState().isAlive()) {
@@ -1606,11 +1625,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
             transferHandoverConnections(mForegroundCall);
             transferHandoverConnections(mBackgroundCall);
             transferHandoverConnections(mRingingCall);
-            // release wake lock hold
-            ImsPhoneConnection con = mHandoverCall.getHandoverConnection();
-            if (con != null) {
-                con.releaseWakeLock();
-            }
+            // Make mIsSrvccCompleted flag to true after SRVCC complete.
+            // After SRVCC complete sometimes SRV_STATUS_UPDATE come late.
+            mIsSrvccCompleted = true;
         }
     }
 
