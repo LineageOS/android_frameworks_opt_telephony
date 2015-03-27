@@ -59,10 +59,8 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.MccTable;
-import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.ProxyController;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RestrictedState;
 import com.android.internal.telephony.ServiceStateTracker;
@@ -74,10 +72,8 @@ import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
-import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.PhoneConstants;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -633,9 +629,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
 
         // The value of spn/showSpn are same in different scenarios.
-        //    EXTRA_SHOW_SPN = depending on IccRecords rule
+        //    EXTRA_SHOW_SPN = depending on IccRecords rule and radio/IMS state
         //    EXTRA_SPN = spn
+        //    EXTRA_DATA_SPN = dataSpn
         String spn = (iccRecords != null) ? iccRecords.getServiceProviderName() : "";
+        String dataSpn = spn;
         boolean showSpn = !TextUtils.isEmpty(spn)
                 && ((rule & SIMRecords.SPN_RULE_SHOW_SPN)
                         == SIMRecords.SPN_RULE_SHOW_SPN);
@@ -644,11 +642,15 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 && mPhone.getImsPhone() != null
                 && ((ImsPhone) mPhone.getImsPhone()).isVowifiEnabled()) {
             // In Wi-Fi Calling mode show SPN+WiFi
-            String format = mPhone.getContext().getText(
+            String formatVoice = mPhone.getContext().getText(
                     com.android.internal.R.string.wfcSpnFormat).toString();
-            showPlmn = false;
+            String formatData = mPhone.getContext().getText(
+                    com.android.internal.R.string.wfcDataSpnFormat).toString();
+            String originalSpn = spn.trim();
+            spn = String.format(formatVoice, originalSpn);
+            dataSpn = String.format(formatData, originalSpn);
             showSpn = true;
-            spn = String.format(format, spn.trim());
+            showPlmn = false;
         } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF
                 || (showPlmn && TextUtils.equals(spn, plmn))) {
             // airplane mode or spn equals plmn, do not show spn
@@ -660,17 +662,19 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         if (showPlmn != mCurShowPlmn
                 || showSpn != mCurShowSpn
                 || !TextUtils.equals(spn, mCurSpn)
+                || !TextUtils.equals(dataSpn, mCurDataSpn)
                 || !TextUtils.equals(plmn, mCurPlmn)) {
             if (DBG) {
                 log(String.format("updateSpnDisplay: changed" +
                         " sending intent rule=" + rule +
-                        " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s'",
-                        showPlmn, plmn, showSpn, spn));
+                        " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s' dataSpn='%s'",
+                        showPlmn, plmn, showSpn, spn, dataSpn));
             }
             Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
             intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
             intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, showSpn);
             intent.putExtra(TelephonyIntents.EXTRA_SPN, spn);
+            intent.putExtra(TelephonyIntents.EXTRA_DATA_SPN, dataSpn);
             intent.putExtra(TelephonyIntents.EXTRA_SHOW_PLMN, showPlmn);
             intent.putExtra(TelephonyIntents.EXTRA_PLMN, plmn);
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
@@ -685,6 +689,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         mCurShowSpn = showSpn;
         mCurShowPlmn = showPlmn;
         mCurSpn = spn;
+        mCurDataSpn = dataSpn;
         mCurPlmn = plmn;
     }
 
@@ -2093,6 +2098,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         pw.println(" mNotification=" + mNotification);
         pw.println(" mWakeLock=" + mWakeLock);
         pw.println(" mCurSpn=" + mCurSpn);
+        pw.println(" mCurDataSpn=" + mCurDataSpn);
         pw.println(" mCurShowSpn=" + mCurShowSpn);
         pw.println(" mCurPlmn=" + mCurPlmn);
         pw.println(" mCurShowPlmn=" + mCurShowPlmn);
