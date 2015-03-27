@@ -811,8 +811,11 @@ public class SubscriptionController extends ISub.Stub {
                         }
 
                         // Set the default sub if not set or if single sim device
+                        // If subId equal with defaultSubId for adding the first SUB record
+                        // This sub is active so that the default fall back sub is not set
                         if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
-                                || subIdCountMax == 1) {
+                                || subIdCountMax == 1 || defaultSubId == subId
+                                || defaultSubId == DUMMY_SUB_ID_BASE) {
                             setDefaultFallbackSubId(subId);
                         }
                         // If single sim device, set this subscription as the default for everything
