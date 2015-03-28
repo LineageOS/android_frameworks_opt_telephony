@@ -1467,6 +1467,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
 
         @Override
+        public void onImsDisconnected() {
+            if (DBG) log("onImsDisconnected");
+            mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
+        }
+
+        @Override
         public void onImsProgressing() {
             if (DBG) log("onImsProgressing");
             mPhone.setServiceState(ServiceState.STATE_OUT_OF_SERVICE);
