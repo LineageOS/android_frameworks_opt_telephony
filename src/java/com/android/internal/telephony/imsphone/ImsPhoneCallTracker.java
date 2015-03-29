@@ -1509,7 +1509,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
                         ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI) {
                     mIsVtEnabled = false;
                 }
-                if (disabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_LTE] ==
+                if ((disabledFeatures.length > 5) &&
+                         disabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_LTE] ==
                          ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_LTE ||
                          disabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_WIFI] ==
                          ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_WIFI) {
@@ -1529,7 +1530,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     mIsVtEnabled = true;
                     mIsSrvccCompleted = false;
                 }
-                if (enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_LTE] ==
+                if ((disabledFeatures.length > 5) &&
+                        enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_LTE] ==
                         ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_LTE ||
                         enabledFeatures[ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_WIFI] ==
                         ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_WIFI) {
