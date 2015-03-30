@@ -2654,6 +2654,16 @@ public final class Telephony {
          * @hide
          */
         public static final String MTU = "mtu";
+
+        /**
+         * Is this APN added/edited/deleted by a user or app?
+         * TelephonyProvider.USER_EDITED_UNTOUCHED (0) indicates untouched by user/app
+         * TelephonyProvider.USER_EDITED_EDITED (1) indicates added/edited by user/app
+         * TelephonyProvider.USER_EDITED_DELETED (2) indicates deleted by user/app
+         * <p>Type: INTEGER </p>
+         * @hide
+         */
+        public static final String USER_EDITED = "user_edited";
     }
 
     /**
