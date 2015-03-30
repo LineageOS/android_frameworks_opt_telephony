@@ -21,6 +21,13 @@ package com.android.internal.telephony;
  */
 public class CallStateException extends Exception
 {
+    private int mError = ERROR_INVALID;
+
+    /** The error code is not valid (Not received a disconnect cause) */
+    public static final int ERROR_INVALID = -1;
+
+    public static final int ERROR_DISCONNECTED = 1;
+
     public
     CallStateException()
     {
@@ -30,5 +37,16 @@ public class CallStateException extends Exception
     CallStateException(String string)
     {
         super(string);
+    }
+
+    public
+    CallStateException(int error, String string)
+    {
+        super(string);
+        mError = error;
+    }
+
+    public int getError() {
+        return mError;
     }
 }
