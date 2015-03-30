@@ -1612,7 +1612,6 @@ public class SIMRecords extends IccRecords {
             mAdnCache.requestLoadAllAdnLike(IccConstants.EF_FDN,
                     mAdnCache.extensionEfForEf(IccConstants.EF_FDN), null,
                     obtainMessage(EVENT_READ_FDN_DONE));
-            mRecordsToLoad++;
         }
 
         if (CRASH_RIL) {
