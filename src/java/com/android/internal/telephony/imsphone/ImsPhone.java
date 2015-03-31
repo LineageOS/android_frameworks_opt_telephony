@@ -803,18 +803,8 @@ public class ImsPhone extends ImsPhoneBase {
             String dialingNumber,
             int timerSeconds,
             Message onComplete) {
-        setCallForwardingOption(commandInterfaceCFAction, commandInterfaceCFReason, dialingNumber,
-                CommandsInterface.SERVICE_CLASS_VOICE, timerSeconds, onComplete);
-    }
-
-    public void setCallForwardingOption(int commandInterfaceCFAction,
-            int commandInterfaceCFReason,
-            String dialingNumber,
-            int serviceClass,
-            int timerSeconds,
-            Message onComplete) {
         if (DBG) Rlog.d(LOG_TAG, "setCallForwardingOption action=" + commandInterfaceCFAction
-                + ", reason=" + commandInterfaceCFReason + " serviceClass=" + serviceClass);
+                + ", reason=" + commandInterfaceCFReason);
         if ((isValidCommandInterfaceCFAction(commandInterfaceCFAction)) &&
                 (isValidCommandInterfaceCFReason(commandInterfaceCFReason))) {
             Message resp;
@@ -829,7 +819,6 @@ public class ImsPhone extends ImsPhoneBase {
                 ut.updateCallForward(getActionFromCFAction(commandInterfaceCFAction),
                         getConditionFromCFReason(commandInterfaceCFReason),
                         dialingNumber,
-                        serviceClass,
                         timerSeconds,
                         onComplete);
              } catch (ImsException e) {
@@ -888,17 +877,13 @@ public class ImsPhone extends ImsPhoneBase {
 
     @Override
     public void setCallWaiting(boolean enable, Message onComplete) {
-        setCallWaiting(enable, CommandsInterface.SERVICE_CLASS_VOICE, onComplete);
-    }
-
-    public void setCallWaiting(boolean enable, int serviceClass, Message onComplete) {
         if (DBG) Rlog.d(LOG_TAG, "setCallWaiting enable=" + enable);
         Message resp;
         resp = obtainMessage(EVENT_SET_CALL_WAITING_DONE, onComplete);
 
         try {
             ImsUtInterface ut = mCT.getUtInterface();
-            ut.updateCallWaiting(enable, serviceClass, resp);
+            ut.updateCallWaiting(enable, resp);
         } catch (ImsException e) {
             sendErrorResponse(onComplete, e);
         }

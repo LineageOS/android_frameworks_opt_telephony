@@ -782,10 +782,10 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 throw new CallStateException(ImsPhone.CS_FALLBACK);
             } else if (isServiceCodeCallForwarding(mSc)) {
                 Rlog.d(LOG_TAG, "is CF");
+                // service group is not supported
 
                 String dialingNumber = mSia;
                 int reason = scToCallForwardReason(mSc);
-                int serviceClass = siToServiceClass(mSib);
                 int time = siToTime(mSic);
 
                 if (isInterrogate()) {
@@ -806,7 +806,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
                     Rlog.d(LOG_TAG, "is CF setCallForward");
                     mPhone.setCallForwardingOption(cfAction, reason,
-                            dialingNumber, serviceClass, time, obtainMessage(
+                            dialingNumber, time, obtainMessage(
                                     EVENT_SET_CFF_COMPLETE,
                                     isSettingUnconditional,
                                     isEnableDesired, this));
@@ -1007,10 +1007,9 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 }
             } else if (mSc != null && mSc.equals(SC_WAIT)) {
                 // sia = basic service group
-                int serviceClass = siToServiceClass(mSib);
-
+                // service group is not supported
                 if (isActivate() || isDeactivate()) {
-                    mPhone.setCallWaiting(isActivate(), serviceClass,
+                    mPhone.setCallWaiting(isActivate(),
                             obtainMessage(EVENT_SET_COMPLETE, this));
                 } else if (isInterrogate()) {
                     mPhone.getCallWaiting(obtainMessage(EVENT_QUERY_COMPLETE, this));
