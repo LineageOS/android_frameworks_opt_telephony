@@ -166,7 +166,7 @@ public class UiccSmsController extends ISms.Stub {
     }
 
     private void broadcastOutgoingSms(
-            long subId, String callingPackage, String destAddr, String scAddr, boolean multipart,
+            int subId, String callingPackage, String destAddr, String scAddr, boolean multipart,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents, int priority, boolean isExpectMore,
             int validityPeriod) {
