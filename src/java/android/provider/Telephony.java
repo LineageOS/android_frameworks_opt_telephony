@@ -448,10 +448,11 @@ public final class Telephony {
                 Uri uri, String address, String body, String subject,
                 Long date, boolean read, boolean deliveryReport, long threadId,
                 int priority) {
-            ContentValues values = new ContentValues(8);
+            ContentValues values = new ContentValues(9);
             Rlog.v(TAG,"Telephony addMessageToUri sub id: " + subId);
 
             int phoneId = SubscriptionManager.getPhoneId(subId);
+            values.put(SUBSCRIPTION_ID, subId);
             values.put(PHONE_ID, phoneId);
             values.put(ADDRESS, address);
             if (date != null) {
