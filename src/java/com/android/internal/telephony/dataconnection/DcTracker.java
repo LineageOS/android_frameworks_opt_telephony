@@ -1196,7 +1196,10 @@ public final class DcTracker extends DcTrackerBase {
 
                 ArrayList<ApnSetting> waitingApns = buildWaitingApns(apnContext.getApnType(),
                         radioTech);
-                if (waitingApns.isEmpty()) {
+                boolean isLegacyCdma =
+                        UiccController.getFamilyFromRadioTechnology(radioTech) ==
+                                                            UiccController.APP_FAM_3GPP2;
+                if (waitingApns.isEmpty() || isLegacyCdma) {
                     notifyOffApnsOfAvailability(apnContext.getReason());
                     retValue = setupData(apnContext, radioTech);
                     if(!retValue) {
@@ -1641,8 +1644,6 @@ public final class DcTracker extends DcTrackerBase {
                     PhoneConstants.APN_TYPE_FOTA,
                     PhoneConstants.APN_TYPE_IMS,
                     PhoneConstants.APN_TYPE_CBS};
-
-
                 String[] types;
                 int apnId;
                 if (mRequestedApnType.equals(PhoneConstants.APN_TYPE_DUN)) {
