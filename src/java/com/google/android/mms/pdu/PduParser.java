@@ -1774,6 +1774,9 @@ public class PduParser {
                     return THE_FIRST_PART;
                 }
             }
+            // This is not the first part, so append to end (keeping the original order)
+            // Check b/19607294 for details of this change
+            return THE_LAST_PART;
         }
 
         /* check part's content-type */
