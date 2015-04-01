@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.cat;
 
+import android.telephony.SubscriptionManager;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.PhoneConstants;
@@ -64,7 +65,7 @@ class RilMessageDecoder extends StateMachine {
             }
         }
 
-        if (slotId < mSimCount) {
+        if (slotId != SubscriptionManager.INVALID_SLOT_ID && slotId < mSimCount) {
             if (null == mInstance[slotId]) {
                 mInstance[slotId] = new RilMessageDecoder(caller, fh);
             }
