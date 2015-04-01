@@ -39,7 +39,7 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.text.format.Time;
 import android.util.Log;
-
+import java.util.Objects;
 import com.android.internal.telephony.IccCardConstants.State;
 
 import java.io.FileDescriptor;
@@ -843,11 +843,13 @@ public class SubscriptionController extends ISub.Stub {
             if (showPlmn) {
                 carrierText = plmn;
                 if (showSpn) {
-                    // Need to show both plmn and spn.
-                    String separator = mContext.getString(
-                            com.android.internal.R.string.kg_text_message_separator).toString();
-                    carrierText = new StringBuilder().append(carrierText).append(separator)
-                            .append(spn).toString();
+                    // Need to show both plmn and spn if both are not same.
+                    if(!Objects.equals(spn, plmn)) {
+                        String separator = mContext.getString(
+                                com.android.internal.R.string.kg_text_message_separator).toString();
+                        carrierText = new StringBuilder().append(carrierText).append(separator)
+                                .append(spn).toString();
+                    }
                 }
             } else if (showSpn) {
                 carrierText = spn;
