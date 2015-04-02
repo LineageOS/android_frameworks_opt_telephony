@@ -722,7 +722,9 @@ public class SubscriptionController extends ISub.Stub {
         if (!TextUtils.isEmpty(simCarrierName)) {
             nameToSet = simCarrierName;
         } else {
-            nameToSet = "CARD " + Integer.toString(slotId + 1);
+            nameToSet = mContext.getString(
+                    com.android.internal.R.string.card_string,
+                    Integer.toString(slotId + 1)).toString();
         }
         if (DBG) logdl("[addSubInfoRecord] sim name = " + nameToSet);
         if (DBG) logdl("[addSubInfoRecord] carrier name = " + simCarrierName);
