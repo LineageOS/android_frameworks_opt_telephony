@@ -31,6 +31,7 @@ import com.android.internal.telephony.SubscriptionController;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 
 public class DcSwitchStateMachine extends StateMachine {
     private static final boolean DBG = true;
@@ -151,6 +152,11 @@ public class DcSwitchStateMachine extends StateMachine {
         @Override
         public void enter() {
             log("AttachingState: enter");
+            if (mPhone.getServiceState() != null &&
+                    mPhone.getServiceState().getDataRegState() == ServiceState.STATE_IN_SERVICE) {
+                log("AttachingState: Data already registered. Move to Attached");
+                transitionTo(mAttachedState);
+            }
         }
 
         @Override
@@ -162,9 +168,6 @@ public class DcSwitchStateMachine extends StateMachine {
                     if (DBG) {
                         log("AttachingState: REQ_CONNECT");
                     }
-
-                    PhoneBase pb = (PhoneBase) ((PhoneProxy) mPhone).getActivePhone();
-                    pb.mCi.setDataAllowed(true, null);
 
                     mAc.replyToMessage(msg, DcSwitchAsyncChannel.RSP_CONNECT,
                             PhoneConstants.APN_REQUEST_STARTED);
