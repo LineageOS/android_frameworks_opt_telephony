@@ -106,24 +106,6 @@ public class CDMALTEPhone extends CDMAPhone {
     }
 
     @Override
-    public void handleMessage (Message msg) {
-        switch (msg.what) {
-            case EVENT_SUBSCRIPTION_ACTIVATED:
-                log("EVENT_SUBSCRIPTION_ACTIVATED");
-                onSubscriptionActivated();
-                break;
-
-            case EVENT_SUBSCRIPTION_DEACTIVATED:
-                log("EVENT_SUBSCRIPTION_DEACTIVATED");
-                onSubscriptionDeactivated();
-                break;
-
-            default:
-                super.handleMessage(msg);
-        }
-    }
-
-    @Override
     protected void initSstIcc() {
         mSST = new CdmaLteServiceStateTracker(this);
     }
@@ -167,6 +149,16 @@ public class CDMALTEPhone extends CDMAPhone {
         switch(msg.what) {
             case EVENT_SIM_RECORDS_LOADED:
                 mSimRecordsLoadedRegistrants.notifyRegistrants();
+                break;
+
+            case EVENT_SUBSCRIPTION_ACTIVATED:
+                log("EVENT_SUBSCRIPTION_ACTIVATED");
+                onSubscriptionActivated();
+                break;
+
+            case EVENT_SUBSCRIPTION_DEACTIVATED:
+                log("EVENT_SUBSCRIPTION_DEACTIVATED");
+                onSubscriptionDeactivated();
                 break;
 
             default:
