@@ -40,7 +40,6 @@ import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.cdma.CDMALTEPhone;
-import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IsimRecords;
@@ -50,7 +49,6 @@ import com.android.internal.telephony.uicc.UsimServiceTable;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.List;
-import java.util.Set;
 
 import com.android.internal.telephony.dataconnection.DctController;
 
@@ -301,6 +299,7 @@ public class PhoneProxy extends Handler implements Phone {
             if (imsPhone != null) {
                 mActivePhone.acquireOwnershipOfImsPhone(imsPhone);
             }
+            mActivePhone.startMonitoringImsService();
             mActivePhone.registerForSimRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
         }
 
@@ -1442,6 +1441,9 @@ public class PhoneProxy extends Handler implements Phone {
 
     @Override
     public ImsPhone relinquishOwnershipOfImsPhone() { return null; }
+
+    @Override
+    public void startMonitoringImsService() {}
 
     @Override
     public void acquireOwnershipOfImsPhone(ImsPhone imsPhone) { }
