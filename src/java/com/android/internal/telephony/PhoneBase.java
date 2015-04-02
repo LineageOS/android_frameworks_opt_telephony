@@ -2263,12 +2263,14 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public int getRadioAccessFamily() {
-        return mRadioCapability.get().getRadioAccessFamily();
+        final RadioCapability rc = getRadioCapability();
+        return (rc == null ? RadioAccessFamily.RAF_UNKNOWN : rc.getRadioAccessFamily());
     }
 
     @Override
     public String getModemUuId() {
-        return mRadioCapability.get().getLogicalModemUuid();
+        final RadioCapability rc = getRadioCapability();
+        return (rc == null ? "" : rc.getLogicalModemUuid());
     }
 
     @Override
