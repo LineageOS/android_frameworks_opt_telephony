@@ -131,9 +131,6 @@ public class CDMALTEPhone extends CDMAPhone {
     @Override
     public void dispose() {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
-            if (mSimRecords != null) {
-                mSimRecords.unregisterForRecordsLoaded(this);
-            }
             super.dispose();
         }
     }
@@ -143,25 +140,6 @@ public class CDMALTEPhone extends CDMAPhone {
         super.removeReferences();
     }
 
-    @Override
-    public void handleMessage(Message msg) {
-        AsyncResult ar;
-        Message onComplete;
-
-        if (!mIsTheCurrentActivePhone) {
-            Rlog.e(LOG_TAG, "Received message " + msg +
-                    "[" + msg.what + "] while being destroyed. Ignoring.");
-            return;
-        }
-        switch(msg.what) {
-            case EVENT_SIM_RECORDS_LOADED:
-                mSimRecordsLoadedRegistrants.notifyRegistrants();
-                break;
-
-            default:
-                super.handleMessage(msg);
-        }
-    }
     @Override
     public PhoneConstants.DataState getDataConnectionState(String apnType) {
         PhoneConstants.DataState ret = PhoneConstants.DataState.DISCONNECTED;
@@ -287,10 +265,6 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     protected void onUpdateIccAvailability() {
-        if (mSimRecords != null) {
-            mSimRecords.unregisterForRecordsLoaded(this);
-        }
-
         if (mUiccController == null ) {
             return;
         }
@@ -313,9 +287,6 @@ public class CDMALTEPhone extends CDMAPhone {
             newSimRecords = (SIMRecords) newUiccApplication.getIccRecords();
         }
         mSimRecords = newSimRecords;
-        if (mSimRecords != null) {
-            mSimRecords.registerForRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
-        }
 
         super.onUpdateIccAvailability();
     }
@@ -478,17 +449,6 @@ public class CDMALTEPhone extends CDMAPhone {
         ((DcTracker)mDcTracker)
                 .unregisterForAllDataDisconnected(h);
     }
-
-    @Override
-    public void registerForSimRecordsLoaded(Handler h, int what, Object obj) {
-        mSimRecordsLoadedRegistrants.addUnique(h, what, obj);
-    }
-
-    @Override
-    public void unregisterForSimRecordsLoaded(Handler h) {
-        mSimRecordsLoadedRegistrants.remove(h);
-    }
-
 
     @Override
     protected void log(String s) {
