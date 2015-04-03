@@ -1375,8 +1375,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     @Override
     public void setPreferredNetworkType(int networkType, Message response) {
         // Only set preferred network types to that which the modem supports
-        int raf = getRadioAccessFamily();
-        mCi.setPreferredNetworkType(networkType & raf, response);
+        final int raf = getRadioAccessFamily();
+
+        if (raf != RadioAccessFamily.RAF_UNKNOWN) {
+            mCi.setPreferredNetworkType(networkType & raf, response);
+        }
     }
 
     @Override
