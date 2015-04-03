@@ -754,7 +754,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 if (dcTracker.isDisconnected()
                         && (dds == mPhone.getSubId()
                             || (dds != mPhone.getSubId()
-                                && ProxyController.getInstance().isDataDisconnected(dds)))) {
+                                && ProxyController.getInstance().isDataDisconnected(dds))
+                            || !SubscriptionManager.isValidSubscriptionId(dds))) {
                     // To minimize race conditions we do this after isDisconnected
                     dcTracker.cleanUpAllConnections(Phone.REASON_RADIO_TURNED_OFF);
                     if (DBG) log("Data disconnected, turn off radio right away.");
