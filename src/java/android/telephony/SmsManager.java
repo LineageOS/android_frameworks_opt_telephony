@@ -301,7 +301,8 @@ public final class SmsManager {
         try {
             ISms iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
             if (iccISms != null) {
-                iccISms.injectSmsPdu(pdu, format, receivedIntent);
+                iccISms.injectSmsPduForSubscriber(
+                        getSubscriptionId(), pdu, format, receivedIntent);
             }
         } catch (RemoteException ex) {
           // ignore it

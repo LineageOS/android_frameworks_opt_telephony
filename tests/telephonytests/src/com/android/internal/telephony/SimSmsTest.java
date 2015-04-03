@@ -34,7 +34,9 @@ public class SimSmsTest extends TestCase {
         ISms sms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
         assertNotNull(sms);
 
-        List<SmsRawData> records = sms.getAllMessagesFromIccEf(ActivityThread.currentPackageName());
+        int preferredSmsSubscription = sms.getPreferredSmsSubscription();
+        List<SmsRawData> records = sms.getAllMessagesFromIccEfForSubscriber(
+                preferredSmsSubscription, ActivityThread.currentPackageName());
         assertNotNull(records);
         assertTrue(records.size() >= 0);
 
