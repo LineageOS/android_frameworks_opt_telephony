@@ -78,6 +78,12 @@ public class OperatorInfo implements Parcelable {
                 operatorNumeric, rilStateToState(stateString));
     }
 
+    public OperatorInfo(String operatorAlphaLong,
+            String operatorAlphaShort,
+            String operatorNumeric) {
+        this(operatorAlphaLong, operatorAlphaShort, operatorNumeric, State.UNKNOWN);
+    }
+
     /**
      * See state strings defined in ril.h RIL_REQUEST_QUERY_AVAILABLE_NETWORKS
      */
