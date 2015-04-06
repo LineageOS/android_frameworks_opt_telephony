@@ -448,10 +448,11 @@ public final class CallManager {
                         phone.getPhoneName() + " " + phone + ")");
             }
 
-            Phone vPhone = basePhone.getImsPhone();
-            if (vPhone != null) {
-               unregisterPhone(vPhone);
-            }
+            // ImsPhone is unregistered in PhoneBase.updateImsPhone()
+            //Phone vPhone = basePhone.getImsPhone();
+            //if (vPhone != null) {
+            //   unregisterPhone(vPhone);
+            //}
 
             mPhones.remove(basePhone);
             mRingingCalls.remove(basePhone.getRingingCall());

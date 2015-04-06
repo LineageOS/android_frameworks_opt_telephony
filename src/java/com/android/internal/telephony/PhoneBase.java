@@ -244,7 +244,7 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     private final Object mImsLock = new Object();
     private boolean mImsServiceReady = false;
-    protected ImsPhone mImsPhone = null;
+    protected static ImsPhone mImsPhone = null;
 
     @Override
     public String getPhoneName() {
@@ -491,11 +491,12 @@ public abstract class PhoneBase extends Handler implements Phone {
                 mTelephonyTester.dispose();
             }
 
-            ImsPhone imsPhone = mImsPhone;
-            if (imsPhone != null) {
-                imsPhone.unregisterForSilentRedial(this);
-                imsPhone.dispose();
-            }
+            // No deed to dispose static object
+            //ImsPhone imsPhone = mImsPhone;
+            //if (imsPhone != null) {
+            //    imsPhone.unregisterForSilentRedial(this);
+            //    imsPhone.dispose();
+            //}
         }
     }
 
