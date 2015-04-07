@@ -1905,6 +1905,11 @@ public interface Phone {
     public Phone getImsPhone();
 
     /**
+     * Start listening for IMS service UP/DOWN events.
+     */
+    public void startMonitoringImsService();
+
+    /**
      * Release the local instance of the ImsPhone and disconnect from
      * the phone.
      * @return the instance of the ImsPhone phone previously owned
