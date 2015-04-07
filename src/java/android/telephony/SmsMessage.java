@@ -391,7 +391,7 @@ public class SmsMessage {
                             ted.languageTable, ted.languageShiftTable);
                 }
             } else {  // Assume unicode.
-                nextPos = pos + Math.min(limit / 2, textLen - pos);
+                nextPos = SmsMessageBase.findNextUnicodePosition(pos, limit, newMsgBody);
             }
             if ((nextPos <= pos) || (nextPos > textLen)) {
                 Rlog.e(LOG_TAG, "fragmentText failed (" + pos + " >= " + nextPos + " or " +
