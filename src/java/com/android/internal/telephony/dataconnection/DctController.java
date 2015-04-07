@@ -55,6 +55,7 @@ public class DctController extends Handler {
     private static final int EVENT_EXECUTE_ALL_REQUESTS = 102;
     private static final int EVENT_RELEASE_REQUEST = 103;
     private static final int EVENT_RELEASE_ALL_REQUESTS = 104;
+    private static final int EVENT_RETRY_ATTACH = 105;
 
     private static final int EVENT_DATA_ATTACHED = 500;
     private static final int EVENT_DATA_DETACHED = 600;
@@ -276,6 +277,9 @@ public class DctController extends Handler {
             case EVENT_RELEASE_ALL_REQUESTS:
                 onReleaseAllRequests(msg.arg1);
                 break;
+            case EVENT_RETRY_ATTACH:
+                onRetryAttach(msg.arg1);
+                break;
             default:
                 loge("Un-handled message [" + msg.what + "]");
         }
@@ -327,6 +331,11 @@ public class DctController extends Handler {
         sendMessage(obtainMessage(EVENT_RELEASE_ALL_REQUESTS, phoneId, 0));
     }
 
+    public void retryAttach(int phoneId) {
+        logd("retryAttach, phone:" + phoneId);
+        sendMessage(obtainMessage(EVENT_RETRY_ATTACH, phoneId, 0));
+    }
+
     private void onProcessRequest() {
         //process all requests
         //1. Check all requests and find subscription of the top priority
@@ -354,11 +363,11 @@ public class DctController extends Handler {
             while (iterator.hasNext()) {
                 RequestInfo requestInfo = mRequestInfos.get(iterator.next());
                 if (getRequestPhoneId(requestInfo.request) == phoneId && !requestInfo.executed) {
-                    mDcSwitchAsyncChannel[phoneId].connectSync(requestInfo);
+                    mDcSwitchAsyncChannel[phoneId].connect(requestInfo);
                 }
             }
         } else {
-            mDcSwitchAsyncChannel[activePhoneId].disconnectAllSync();
+            mDcSwitchAsyncChannel[activePhoneId].disconnectAll();
         }
     }
 
@@ -405,6 +414,15 @@ public class DctController extends Handler {
             if (getRequestPhoneId(requestInfo.request) == phoneId) {
                 onReleaseRequest(requestInfo);
             }
+        }
+    }
+
+    private void onRetryAttach(int phoneId) {
+        final int topPriPhone = getTopPriorityRequestPhoneId();
+        logd("onRetryAttach phoneId=" + phoneId + " topPri phone = " + topPriPhone);
+
+        if (phoneId != -1 && phoneId == topPriPhone) {
+            mDcSwitchAsyncChannel[phoneId].retryConnect();
         }
     }
 
