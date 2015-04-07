@@ -725,6 +725,7 @@ public class ModemStackController extends Handler {
         if (subInfoList == null) {
             //if getting sub info list is failed, abort cross mapping process.
             notifyStackReady(false);
+            return;
         }
         for (SubInfoRecord subInfo : subInfoList) {
             int subStatus = subCtrlr.getSubState(subInfo.subId);
