@@ -30,6 +30,7 @@ import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Phone;
@@ -43,6 +44,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.HashSet;
 
 public class ProxyController {
     static final String LOG_TAG = "ProxyController";
@@ -277,7 +279,6 @@ public class ProxyController {
                 // get the logical mode corresponds to new raf requested and pass the
                 // same as part of SET_RADIO_CAP APPLY phase
                 mNewLogicalModemIds[phoneId] = getLogicalModemIdFromRaf(requestedRaf);
-
                 logd("setRadioCapability: mOldRadioAccessFamily[" + phoneId + "]="
                         + mOldRadioAccessFamily[phoneId]);
                 logd("setRadioCapability: mNewRadioAccessFamily[" + phoneId + "]="
@@ -348,6 +349,13 @@ public class ProxyController {
             }
 
             if (mRadioAccessFamilyStatusCounter == 0) {
+                HashSet<String> modemsInUse = new HashSet<String>(mNewLogicalModemIds.length);
+                for (String modemId : mNewLogicalModemIds) {
+                    if (!modemsInUse.add(modemId)) {
+                        mTransactionFailed = true;
+                        Log.wtf(LOG_TAG, "ERROR: sending down the same id for different phones");
+                    }
+                }
                 logd("onStartRadioCapabilityResponse: success=" + !mTransactionFailed);
                 if (mTransactionFailed) {
                     // Sends a variable number of requests, so don't resetRadioAccessFamilyCounter
