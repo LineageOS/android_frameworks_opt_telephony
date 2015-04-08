@@ -477,6 +477,11 @@ public class DctController extends Handler {
 
         if (retRequestInfo != null) {
             phoneId = getRequestPhoneId(retRequestInfo.request);
+        } else {
+            int defaultDds = mSubController.getDefaultDataSubId();
+            phoneId = mSubController.getPhoneId(defaultDds);
+            logd("getTopPriorityRequestPhoneId: RequestInfo list is empty, " +
+                    "use Dds sub phone id");
         }
 
         logd("getTopPriorityRequestPhoneId = " + phoneId
