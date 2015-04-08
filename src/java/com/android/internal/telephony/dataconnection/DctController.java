@@ -83,6 +83,7 @@ public class DctController extends Handler {
     private SubscriptionController mSubController = SubscriptionController.getInstance();
 
     private static DctController sDctController;
+    private static boolean isOnDemandDdsSwitchInProgress = false;
 
     private int mPhoneNum;
     private PhoneProxy[] mPhones;
@@ -383,8 +384,14 @@ public class DctController extends Handler {
                 Message allowedDataDone = Message.obtain(this,
                         EVENT_SET_DATA_ALLOW_DONE, s);
                 Phone phone = mPhones[phoneId].getActivePhone();
+                if (!isOnDemandDdsSwitchInProgress) {
+                    informDefaultDdsToPropServ(phoneId);
+                } else {
+                    int defPhoneId = getDataConnectionFromSetting();
+                    informDefaultDdsToPropServ(defPhoneId);
+                    isOnDemandDdsSwitchInProgress = false;
+               }
 
-                informDefaultDdsToPropServ(phoneId);
                 DcTrackerBase dcTracker =((PhoneBase)phone).mDcTracker;
                 dcTracker.setDataAllowed(true, allowedDataDone);
 
@@ -501,6 +508,7 @@ public class DctController extends Handler {
                    }
                 } else {
                     Rlog.d(LOG_TAG, "PS DETACH success = " + s);
+                    isOnDemandDdsSwitchInProgress = true;
                 }
                 break;
             }
