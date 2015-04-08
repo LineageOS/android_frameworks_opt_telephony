@@ -1221,6 +1221,24 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     ", targetAccessTech=" + targetAccessTech + ", reasonInfo=" + reasonInfo);
             }
         }
+
+        /**
+         * Handles a change to the multiparty state for an {@code ImsCall}.  Notifies the associated
+         * {@link ImsPhoneConnection} of the change.
+         *
+         * @param imsCall The IMS call.
+         * @param isMultiParty {@code true} if the call became multiparty, {@code false}
+         *      otherwise.
+         */
+        @Override
+        public void onMultipartyStateChanged(ImsCall imsCall, boolean isMultiParty) {
+            if (DBG) log("onMultipartyStateChanged to " + (isMultiParty ? "Y" : "N"));
+
+            ImsPhoneConnection conn = findConnection(imsCall);
+            if (conn != null) {
+                conn.updateMultipartyState(isMultiParty);
+            }
+        }
     };
 
     /**
