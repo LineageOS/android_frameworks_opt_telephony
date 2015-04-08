@@ -336,8 +336,12 @@ public class SubscriptionInfoUpdater extends Handler {
             }
             queryIccId(slotId);
         } else if (oldState.isCardPresent() && newState.isCardPresent() &&
-                (!subHelper.isApmSIMNotPwdn()) && (mIccId[slotId] == null)) {
+                (((!subHelper.isApmSIMNotPwdn()) && (mIccId[slotId] == null)) ||
+                (mIccId[slotId] != null && mIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)))) {
+            // If old and new card state is present and ICCID is "", query the ICCID again
+            // to process SET_UICC request
             logd("SIM" + (slotId + 1) + " powered up from APM ");
+            mIccId[slotId] = null;
             mFh[slotId] = null;
             mNeedUpdate = true;
             queryIccId(slotId);
