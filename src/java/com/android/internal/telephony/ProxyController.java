@@ -466,11 +466,10 @@ public class ProxyController {
         // Issue FINISH
         synchronized(mSetRadioAccessFamilyStatus) {
             for (int i = 0; i < mProxyPhones.length; i++) {
-                if (mSetRadioAccessFamilyStatus[i] != SET_RC_STATUS_FAIL) {
-                    logd("issueFinish: phoneId=" + i + " sessionId=" + sessionId
-                            + " mTransactionFailed=" + mTransactionFailed);
-                    mRadioAccessFamilyStatusCounter++;
-                    sendRadioCapabilityRequest(
+                logd("issueFinish: phoneId=" + i + " sessionId=" + sessionId
+                        + " mTransactionFailed=" + mTransactionFailed);
+                mRadioAccessFamilyStatusCounter++;
+                sendRadioCapabilityRequest(
                         i,
                         sessionId,
                         RadioCapability.RC_PHASE_FINISH,
@@ -479,14 +478,10 @@ public class ProxyController {
                         (mTransactionFailed ? RadioCapability.RC_STATUS_FAIL :
                         RadioCapability.RC_STATUS_SUCCESS),
                         EVENT_FINISH_RC_RESPONSE);
-                    if (mTransactionFailed) {
-                        logd("issueFinish: phoneId: " + i + " status: FAIL");
-                        // At least one failed, mark them all failed.
-                        mSetRadioAccessFamilyStatus[i] = SET_RC_STATUS_FAIL;
-                    }
-                } else {
-                    logd("issueFinish: Ignore already FAIL, Phone" + i + " sessionId=" + sessionId
-                            + " mTransactionFailed =" + mTransactionFailed);
+                if (mTransactionFailed) {
+                    logd("issueFinish: phoneId: " + i + " status: FAIL");
+                    // At least one failed, mark them all failed.
+                    mSetRadioAccessFamilyStatus[i] = SET_RC_STATUS_FAIL;
                 }
             }
         }
