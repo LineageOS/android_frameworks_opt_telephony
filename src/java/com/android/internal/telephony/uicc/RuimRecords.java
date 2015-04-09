@@ -1174,13 +1174,51 @@ public final class RuimRecords extends IccRecords {
 
     /**
      * {@inheritDoc}
-     *
-     * No Display rule for RUIMs yet.
      */
     @Override
-    public int getDisplayRule(String plmn) {
-        // TODO together with spn
-        return 0;
+    public int getDisplayRule(String plmnNumeric) {
+        int rule = 0;
+
+        if ((mContext != null) && mContext.getResources().getBoolean(
+            com.android.internal.R.bool.def_telephony_spn_spec_enabled)) {
+            // Always display the SPN only from RUIM
+            rule = SPN_RULE_SHOW_SPN;
+        } else if (mParentApp != null && mParentApp.getUiccCard() != null &&
+                mParentApp.getUiccCard().getOperatorBrandOverride() != null) {
+            // use operator brand override
+            rule = SPN_RULE_SHOW_PLMN;
+        } else if (TextUtils.isEmpty(getServiceProviderName())) {
+            // EF_SPN content not found on this RUIM, or not yet loaded
+            rule = SPN_RULE_SHOW_PLMN;
+        } else if (isOnMatchingPlmn(plmnNumeric)) {
+            // on home network
+            if (mCsimSpnDisplayCondition && !TextUtils.isEmpty(getServiceProviderName())) {
+                // check CSIM SPN Display Condition (applicable on home network),
+                // but only if SPN was found on this RUIM
+                rule = SPN_RULE_SHOW_SPN;
+            } else {
+                // CSIM SPN Display does not require a SPN display, or SPN not found on RUIM,
+                // then revert to currently registered network
+                rule = SPN_RULE_SHOW_PLMN;
+            }
+        } else {
+            // roaming, use the currently registered network
+            rule = SPN_RULE_SHOW_PLMN;
+        }
+
+        return rule;
+    }
+
+    /**
+    * Checks if currently registered PLMN is home PLMN
+    * (PLMN numeric matches the one reported in CSIM)
+    */
+    private boolean isOnMatchingPlmn(String plmnNumeric) {
+        if (plmnNumeric == null) return false;
+        if (plmnNumeric.equals(getOperatorNumeric())) {
+            return true;
+        }
+        return false;
     }
 
     @Override

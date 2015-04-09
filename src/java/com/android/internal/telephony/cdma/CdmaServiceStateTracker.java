@@ -132,6 +132,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
     /** Contains the name of the registered network in CDMA (either ONS or ERI text). */
     protected String mCurPlmn = null;
+    protected String mCurSpn = null;
+    protected boolean mCurShowPlmn = false;
+    protected boolean mCurShowSpn = false;
 
     protected String mMdn;
     protected int mHomeSystemId[] = null;
@@ -593,36 +596,58 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     @Override
     protected void updateSpnDisplay() {
         // mOperatorAlphaLong contains the ERI text
-        String plmn = mSS.getOperatorAlphaLong();
+        String plmn = null;
+        String spn = null;
+        boolean showPlmn = false;
+        boolean showSpn = false;
+        int rule = 0;
+        int combinedRegState;
 
-        int combinedRegState = getCombinedRegState();
+        rule = (mIccRecords != null) ? mIccRecords.getDisplayRule(mSS.getOperatorNumeric()) : 0;
+        combinedRegState = getCombinedRegState();
+
         if (combinedRegState == ServiceState.STATE_OUT_OF_SERVICE) {
+            // display out of service
+            showPlmn = true;
             plmn = Resources.getSystem().getText(com.android.internal.
                     R.string.lockscreen_carrier_default).toString();
             if (DBG) log("updateSpnDisplay: radio is on but out " +
                     "of service, set plmn='" + plmn + "'");
+        } else if (combinedRegState == ServiceState.STATE_IN_SERVICE) {
+            // depends on the rule and whether plmn or spn is null
+            plmn = mSS.getOperatorAlphaLong();
+            showPlmn = ( !TextUtils.isEmpty(plmn)) &&
+                    ((rule & RuimRecords.SPN_RULE_SHOW_PLMN) == RuimRecords.SPN_RULE_SHOW_PLMN);
+            spn = (mIccRecords != null) ? mIccRecords.getServiceProviderName() : "";
+            showSpn = (!TextUtils.isEmpty(spn)) &&
+                    ((rule & RuimRecords.SPN_RULE_SHOW_SPN) == RuimRecords.SPN_RULE_SHOW_SPN);
+        } else {
+            // power off state (airplane mode), show nothing
         }
 
-        if (!TextUtils.equals(plmn, mCurPlmn)) {
-            // Allow A blank plmn, "" to set showPlmn to true. Previously, we
-            // would set showPlmn to true only if plmn was not empty, i.e. was not
-            // null and not blank. But this would cause us to incorrectly display
-            // "No Service". Now showPlmn is set to true for any non null string.
-            boolean showPlmn = plmn != null;
+        // Update if any value changes
+        if (showPlmn != mCurShowPlmn
+                || showSpn != mCurShowSpn
+                || !TextUtils.equals(spn, mCurSpn)
+                || !TextUtils.equals(plmn, mCurPlmn)) {
+
             if (DBG) {
                 log(String.format("updateSpnDisplay: changed sending intent" +
                             " showPlmn='%b' plmn='%s'", showPlmn, plmn));
             }
             Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
             intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-            intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, false);
-            intent.putExtra(TelephonyIntents.EXTRA_SPN, "");
+            intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, showSpn);
+            intent.putExtra(TelephonyIntents.EXTRA_SPN, spn);
             intent.putExtra(TelephonyIntents.EXTRA_SHOW_PLMN, showPlmn);
             intent.putExtra(TelephonyIntents.EXTRA_PLMN, plmn);
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
             mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
         }
 
+        mCurShowSpn = showSpn;
+        mCurShowPlmn = showPlmn;
+        mCurSpn = spn;
         mCurPlmn = plmn;
     }
 
@@ -2111,6 +2136,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         pw.println(" mSavedAtTime=" + mSavedAtTime);
         pw.println(" mWakeLock=" + mWakeLock);
         pw.println(" mCurPlmn=" + mCurPlmn);
+        pw.println(" mCurShowPmn=" + mCurShowPlmn);
+        pw.println(" mCurSpn=" + mCurSpn);
+        pw.println(" mCurShowSpn=" + mCurShowSpn);
         pw.println(" mMdn=" + mMdn);
         pw.println(" mHomeSystemId=" + mHomeSystemId);
         pw.println(" mHomeNetworkId=" + mHomeNetworkId);
