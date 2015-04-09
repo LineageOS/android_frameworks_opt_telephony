@@ -334,7 +334,7 @@ public class PhoneFactory {
     // TODO: Fix when we "properly" have TelephonyDevController/SubscriptionController ..
     public static int calculatePreferredNetworkType(Context context, int phoneId) {
         int preferredNetworkType = RILConstants.PREFERRED_NETWORK_MODE;
-        if (TelephonyManager.getLteOnCdmaModeStatic(phoneId) == PhoneConstants.LTE_ON_CDMA_TRUE) {
+        if (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE) {
             preferredNetworkType = Phone.NT_MODE_GLOBAL;
         }
         int networkType = preferredNetworkType;
