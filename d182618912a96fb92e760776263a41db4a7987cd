@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3ac371cc_24924758",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 611,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2015-04-10T10:12:14Z",
+      "side": 1,
+      "message": "please line wrap at 100 characters",
+      "revId": "d182618912a96fb92e760776263a41db4a7987cd",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3ac371cc_849fbb5e",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 1032,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2015-04-10T10:12:14Z",
+      "side": 1,
+      "message": "100chars",
+      "revId": "d182618912a96fb92e760776263a41db4a7987cd",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
