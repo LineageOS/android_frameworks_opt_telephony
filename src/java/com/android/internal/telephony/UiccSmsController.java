@@ -123,6 +123,19 @@ public class UiccSmsController extends ISms.Stub {
         }
     }
 
+    public void sendDataForSubscriberWithSelfPermissions(int subId, String callingPackage,
+            String destAddr, String scAddr, int destPort, byte[] data, PendingIntent sentIntent,
+            PendingIntent deliveryIntent) {
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+        if (iccSmsIntMgr != null) {
+            iccSmsIntMgr.sendDataWithSelfPermissions(callingPackage, destAddr, scAddr, destPort, data,
+                    sentIntent, deliveryIntent);
+        } else {
+            Rlog.e(LOG_TAG,"sendText iccSmsIntMgr is null for" +
+                          " Subscription: " + subId);
+        }
+    }
+
     public void sendText(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         sendTextForSubscriber(getPreferredSmsSubscription(), callingPackage, destAddr, scAddr,
@@ -135,6 +148,19 @@ public class UiccSmsController extends ISms.Stub {
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendText(callingPackage, destAddr, scAddr, text, sentIntent,
                     deliveryIntent);
+        } else {
+            Rlog.e(LOG_TAG,"sendText iccSmsIntMgr is null for" +
+                          " Subscription: " + subId);
+        }
+    }
+
+    public void sendTextForSubscriberWithSelfPermissions(int subId, String callingPackage,
+            String destAddr, String scAddr, String text, PendingIntent sentIntent,
+            PendingIntent deliveryIntent) {
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+        if (iccSmsIntMgr != null) {
+            iccSmsIntMgr.sendTextWithSelfPermissions(callingPackage, destAddr, scAddr, text,
+                    sentIntent, deliveryIntent);
         } else {
             Rlog.e(LOG_TAG,"sendText iccSmsIntMgr is null for" +
                           " Subscription: " + subId);

@@ -276,6 +276,34 @@ public final class SmsManager {
     }
 
     /**
+     * A variant of {@link SmsManager#sendTextMessage} that allows self to be the caller. This is
+     * for internal use only.
+     *
+     * @hide
+     */
+    public void sendTextMessageWithSelfPermissions(
+            String destinationAddress, String scAddress, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        if (TextUtils.isEmpty(destinationAddress)) {
+            throw new IllegalArgumentException("Invalid destinationAddress");
+        }
+
+        if (TextUtils.isEmpty(text)) {
+            throw new IllegalArgumentException("Invalid message body");
+        }
+
+        try {
+            ISms iccISms = getISmsServiceOrThrow();
+            iccISms.sendTextForSubscriberWithSelfPermissions(getSubscriptionId(),
+                    ActivityThread.currentPackageName(),
+                    destinationAddress,
+                    scAddress, text, sentIntent, deliveryIntent);
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+    }
+
+    /**
      * Inject an SMS PDU into the android application framework.
      *
      * The caller should have carrier privileges.
@@ -450,6 +478,35 @@ public final class SmsManager {
             // ignore it
         }
     }
+
+    /**
+     * A variant of {@link SmsManager#sendDataMessage} that allows self to be the caller. This is
+     * for internal use only.
+     *
+     * @hide
+     */
+    public void sendDataMessageWithSelfPermissions(
+            String destinationAddress, String scAddress, short destinationPort,
+            byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        if (TextUtils.isEmpty(destinationAddress)) {
+            throw new IllegalArgumentException("Invalid destinationAddress");
+        }
+
+        if (data == null || data.length == 0) {
+            throw new IllegalArgumentException("Invalid message data");
+        }
+
+        try {
+            ISms iccISms = getISmsServiceOrThrow();
+            iccISms.sendDataForSubscriberWithSelfPermissions(getSubscriptionId(),
+                    ActivityThread.currentPackageName(), destinationAddress, scAddress,
+                    destinationPort & 0xFFFF, data, sentIntent, deliveryIntent);
+        } catch (RemoteException ex) {
+            // ignore it
+        }
+    }
+
+
 
     /**
      * Get the SmsManager associated with the default subscription id. The instance will always be
