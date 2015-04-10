@@ -51,6 +51,7 @@ import com.android.ims.ImsManager;
 import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
 import com.android.internal.telephony.imsphone.ImsPhone;
+import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
@@ -86,6 +87,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public abstract class PhoneBase extends Handler implements Phone {
     private static final String LOG_TAG = "PhoneBase";
 
+    private boolean mImsIntentReceiverRegistered = false;
     private BroadcastReceiver mImsIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -100,12 +102,14 @@ public abstract class PhoneBase extends Handler implements Phone {
                 }
             }
 
-            if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_UP)) {
-                mImsServiceReady = true;
-                updateImsPhone();
-            } else if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_DOWN)) {
-                mImsServiceReady = false;
-                updateImsPhone();
+            synchronized (PhoneProxy.lockForRadioTechnologyChange) {
+                if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_UP)) {
+                    mImsServiceReady = true;
+                    updateImsPhone();
+                } else if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_DOWN)) {
+                    mImsServiceReady = false;
+                    updateImsPhone();
+                }
             }
         }
     };
@@ -204,6 +208,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     int mCallRingDelay;
     public boolean mIsTheCurrentActivePhone = true;
     boolean mIsVoiceCapable = true;
+
+    // Variable to cache the video capability. When RAT changes, we lose this info and are unable
+    // to recover from the state. We cache it and notify listeners when they register.
+    protected boolean mIsVideoCapable = false;
     protected UiccController mUiccController = null;
     public AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
     public SmsStorageMonitor mSmsStorageMonitor;
@@ -218,7 +226,6 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     protected int mPhoneId;
 
-    private final Object mImsLock = new Object();
     private boolean mImsServiceReady = false;
     protected ImsPhone mImsPhone = null;
 
@@ -313,6 +320,10 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     protected final RegistrantList mSimRecordsLoadedRegistrants
             = new RegistrantList();
+
+    protected final RegistrantList mVideoCapabilityChangedRegistrants
+            = new RegistrantList();
+
 
     protected Looper mLooper; /* to insure registrants are in correct thread*/
 
@@ -425,26 +436,36 @@ public abstract class PhoneBase extends Handler implements Phone {
         mUiccController = UiccController.getInstance();
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
 
-        // Monitor IMS service - but first poll to see if already up (could miss
-        // intent)
-        ImsManager imsManager = ImsManager.getInstance(mContext, getPhoneId());
-        if (imsManager != null && imsManager.isServiceAvailable()) {
-            mImsServiceReady = true;
-            updateImsPhone();
-        }
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(ImsManager.ACTION_IMS_SERVICE_UP);
-        filter.addAction(ImsManager.ACTION_IMS_SERVICE_DOWN);
-        mContext.registerReceiver(mImsIntentReceiver, filter);
-
         mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
         mCi.setOnUnsolOemHookRaw(this, EVENT_UNSOL_OEM_HOOK_RAW, null);
     }
 
     @Override
+    public void startMonitoringImsService() {
+        synchronized(PhoneProxy.lockForRadioTechnologyChange) {
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(ImsManager.ACTION_IMS_SERVICE_UP);
+            filter.addAction(ImsManager.ACTION_IMS_SERVICE_DOWN);
+            mContext.registerReceiver(mImsIntentReceiver, filter);
+            mImsIntentReceiverRegistered = true;
+
+            // Monitor IMS service - but first poll to see if already up (could miss
+            // intent)
+            ImsManager imsManager = ImsManager.getInstance(mContext, getPhoneId());
+            if (imsManager != null && imsManager.isServiceAvailable()) {
+                mImsServiceReady = true;
+                updateImsPhone();
+            }
+        }
+    }
+
+    @Override
     public void dispose() {
         synchronized(PhoneProxy.lockForRadioTechnologyChange) {
-            mContext.unregisterReceiver(mImsIntentReceiver);
+            if (mImsIntentReceiverRegistered) {
+                mContext.unregisterReceiver(mImsIntentReceiver);
+                mImsIntentReceiverRegistered = false;
+            }
             mCi.unSetOnCallRing(this);
             // Must cleanup all connectionS and needs to use sendMessage!
             mDcTracker.cleanUpAllConnections(null);
@@ -760,6 +781,24 @@ public abstract class PhoneBase extends Handler implements Phone {
     @Override
     public void unregisterForNewRingingConnection(Handler h) {
         mNewRingingConnectionRegistrants.remove(h);
+    }
+
+    // Inherited documentation suffices.
+    @Override
+    public void registerForVideoCapabilityChanged(
+            Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+
+        mVideoCapabilityChangedRegistrants.addUnique(h, what, obj);
+
+        // Notify any registrants of the cached video capability as soon as they register.
+        notifyForVideoCapabilityChanged(mIsVideoCapable);
+    }
+
+    // Inherited documentation suffices.
+    @Override
+    public void unregisterForVideoCapabilityChanged(Handler h) {
+        mVideoCapabilityChangedRegistrants.remove(h);
     }
 
     // Inherited documentation suffices.
@@ -1455,6 +1494,32 @@ public abstract class PhoneBase extends Handler implements Phone {
         return false;
     }
 
+    private static int getVideoState(Call call) {
+        int videoState = VideoProfile.VideoState.AUDIO_ONLY;
+        ImsPhoneConnection conn = (ImsPhoneConnection) call.getEarliestConnection();
+        if (conn != null) {
+            videoState = conn.getVideoState();
+        }
+        return videoState;
+    }
+
+    private boolean isVideoCall(Call call) {
+        int videoState = getVideoState(call);
+        return (VideoProfile.VideoState.isVideo(videoState));
+    }
+
+    @Override
+    public boolean isVideoCallPresent() {
+        boolean isVideoCallActive = false;
+        if (mImsPhone != null) {
+            isVideoCallActive = isVideoCall(mImsPhone.getForegroundCall()) ||
+                    isVideoCall(mImsPhone.getBackgroundCall()) ||
+                    isVideoCall(mImsPhone.getRingingCall());
+        }
+        Rlog.d(LOG_TAG, "isVideoCallActive: " + isVideoCallActive);
+        return isVideoCallActive;
+    }
+
     @Override
     public abstract int getPhoneType();
 
@@ -1759,6 +1824,18 @@ public abstract class PhoneBase extends Handler implements Phone {
         mNewRingingConnectionRegistrants.notifyRegistrants(ar);
     }
 
+
+    /**
+     * Notify registrants if phone is video capable.
+     */
+    public void notifyForVideoCapabilityChanged(boolean isVideoCallCapable) {
+        // Cache the current video capability so that we don't lose the information.
+        mIsVideoCapable = isVideoCallCapable;
+
+        AsyncResult ar = new AsyncResult(null, isVideoCallCapable, null);
+        mVideoCapabilityChangedRegistrants.notifyRegistrants(ar);
+    }
+
     /**
      * Notify registrants of a RING event.
      */
@@ -1904,9 +1981,14 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public ImsPhone relinquishOwnershipOfImsPhone() {
-        synchronized (mImsLock) {
+        synchronized (PhoneProxy.lockForRadioTechnologyChange) {
             if (mImsPhone == null)
                 return null;
+
+            if (mImsIntentReceiverRegistered) {
+                mContext.unregisterReceiver(mImsIntentReceiver);
+                mImsIntentReceiverRegistered = false;
+            }
 
             ImsPhone imsPhone = mImsPhone;
             mImsPhone = null;
@@ -1920,7 +2002,7 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public void acquireOwnershipOfImsPhone(ImsPhone imsPhone) {
-        synchronized (mImsLock) {
+        synchronized (PhoneProxy.lockForRadioTechnologyChange) {
             if (imsPhone == null)
                 return;
 
@@ -1945,26 +2027,24 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     protected void updateImsPhone() {
-        synchronized (mImsLock) {
-            Rlog.d(LOG_TAG, "updateImsPhone"
-                    + " mImsServiceReady=" + mImsServiceReady);
+        Rlog.d(LOG_TAG, "updateImsPhone"
+                + " mImsServiceReady=" + mImsServiceReady);
 
-            if (mImsServiceReady && (mImsPhone == null)) {
-                mImsPhone = PhoneFactory.makeImsPhone(mNotifier, this);
-                CallManager.getInstance().registerPhone(mImsPhone);
-                mImsPhone.registerForSilentRedial(
-                        this, EVENT_INITIATE_SILENT_REDIAL, null);
-            } else if (!mImsServiceReady && (mImsPhone != null)) {
-                CallManager.getInstance().unregisterPhone(mImsPhone);
-                mImsPhone.unregisterForSilentRedial(this);
+        if (mImsServiceReady && (mImsPhone == null)) {
+            mImsPhone = PhoneFactory.makeImsPhone(mNotifier, this);
+            CallManager.getInstance().registerPhone(mImsPhone);
+            mImsPhone.registerForSilentRedial(
+                    this, EVENT_INITIATE_SILENT_REDIAL, null);
+        } else if (!mImsServiceReady && (mImsPhone != null)) {
+            CallManager.getInstance().unregisterPhone(mImsPhone);
+            mImsPhone.unregisterForSilentRedial(this);
 
-                mImsPhone.dispose();
-                // Potential GC issue if someone keeps a reference to ImsPhone.
-                // However: this change will make sure that such a reference does
-                // not access functions through NULL pointer.
-                //mImsPhone.removeReferences();
-                mImsPhone = null;
-            }
+            mImsPhone.dispose();
+            // Potential GC issue if someone keeps a reference to ImsPhone.
+            // However: this change will make sure that such a reference does
+            // not access functions through NULL pointer.
+            //mImsPhone.removeReferences();
+            mImsPhone = null;
         }
     }
 

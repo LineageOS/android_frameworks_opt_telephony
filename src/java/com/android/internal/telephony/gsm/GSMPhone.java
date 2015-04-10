@@ -26,7 +26,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
-import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Telephony;
 import android.telecom.VideoProfile;
@@ -36,8 +35,6 @@ import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 
-import com.android.ims.ImsConfig;
-import com.android.ims.ImsManager;
 import com.android.internal.telephony.CallTracker;
 
 import android.text.TextUtils;
@@ -64,14 +61,12 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
 import com.android.internal.telephony.MmiCode;
-import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.PhoneSubInfo;
-import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
@@ -822,19 +817,7 @@ public class GSMPhone extends PhoneBase {
                     + ((imsPhone != null) ? imsPhone.getServiceState().getState() : "N/A"));
         }
 
-        if (imsPhone == null ||
-                (imsPhone != null && !imsPhone.isVowifiEnabled())) {
-            boolean wfcWiFiOnly = (ImsManager.isWfcEnabledByPlatform(mContext) &&
-                    ImsManager.isWfcEnabledByUser(mContext) &&
-                    (ImsManager.getWfcMode(mContext) ==
-                    ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY));
-            if (wfcWiFiOnly == true) {
-                if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "WIFI only mode, but no VoWIFI enabled");
-                CallStateException ce = new CallStateException(
-                        "WFC Wi-Fi Only Mode: IMS stack on WIFI not available");
-                throw ce;
-            }
-        }
+        ImsPhone.checkWfcWifiOnlyModeBeforeDial(mImsPhone, mContext);
 
         if (imsUseEnabled && imsPhone != null
                 && (imsPhone.isVolteEnabled() || imsPhone.isVowifiEnabled())

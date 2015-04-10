@@ -151,9 +151,11 @@ public class PhoneFactory {
                     if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
                         phone = new GSMPhone(context,
                                 sCommandsInterfaces[i], sPhoneNotifier, i);
+                        phone.startMonitoringImsService();
                     } else if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
                         phone = new CDMALTEPhone(context,
                                 sCommandsInterfaces[i], sPhoneNotifier, i);
+                        phone.startMonitoringImsService();
                     }
                     Rlog.i(LOG_TAG, "Creating Phone with type = " + phoneType + " sub = " + i);
 

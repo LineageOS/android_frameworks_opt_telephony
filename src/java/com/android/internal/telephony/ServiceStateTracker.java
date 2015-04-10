@@ -232,6 +232,7 @@ public abstract class ServiceStateTracker extends Handler {
     /** Keep track of SPN display rules, so we only broadcast intent if something changes. */
     protected boolean mSpnUpdatePending = false;
     protected String mCurSpn = null;
+    protected String mCurDataSpn = null;
     protected String mCurPlmn = null;
     protected boolean mCurShowPlmn = false;
     protected boolean mCurShowSpn = false;
