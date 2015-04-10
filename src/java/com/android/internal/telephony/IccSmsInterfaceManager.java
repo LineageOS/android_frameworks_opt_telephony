@@ -317,6 +317,32 @@ public class IccSmsInterfaceManager {
     }
 
     /**
+     * A permissions check before passing to {@link IccSmsInterfaceManager#sendDataInternal}.
+     * This method checks if the calling package or itself has the permission to send the data sms.
+     */
+    public void sendDataWithSelfPermissions(String callingPackage, String destAddr, String scAddr,
+            int destPort, byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        mPhone.getContext().enforceCallingOrSelfPermission(
+                Manifest.permission.SEND_SMS,
+                "Sending SMS message");
+        sendDataInternal(callingPackage, destAddr, scAddr, destPort, data, sentIntent,
+                deliveryIntent);
+    }
+
+    /**
+     * A permissions check before passing to {@link IccSmsInterfaceManager#sendDataInternal}.
+     * This method checks only if the calling package has the permission to send the data sms.
+     */
+    public void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
+            byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        mPhone.getContext().enforceCallingPermission(
+                Manifest.permission.SEND_SMS,
+                "Sending SMS message");
+        sendDataInternal(callingPackage, destAddr, scAddr, destPort, data, sentIntent,
+                deliveryIntent);
+    }
+
+    /**
      * Send a data based SMS to a specific application port.
      *
      * @param destAddr the address to send the message to
@@ -342,11 +368,8 @@ public class IccSmsInterfaceManager {
      *  raw pdu of the status report is in the extended data ("pdu").
      */
 
-    public void sendData(String callingPackage, String destAddr, String scAddr, int destPort,
-            byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        mPhone.getContext().enforceCallingPermission(
-                Manifest.permission.SEND_SMS,
-                "Sending SMS message");
+    private void sendDataInternal(String callingPackage, String destAddr, String scAddr,
+            int destPort, byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("sendData: destAddr=" + destAddr + " scAddr=" + scAddr + " destPort=" +
                 destPort + " data='"+ HexDump.toHexString(data)  + "' sentIntent=" +
@@ -358,6 +381,30 @@ public class IccSmsInterfaceManager {
         }
         destAddr = filterDestAddress(destAddr);
         mDispatcher.sendData(destAddr, scAddr, destPort, data, sentIntent, deliveryIntent);
+    }
+
+    /**
+     * A permissions check before passing to {@link IccSmsInterfaceManager#sendTextInternal}.
+     * This method checks only if the calling package has the permission to send the sms.
+     */
+    public void sendText(String callingPackage, String destAddr, String scAddr,
+            String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        mPhone.getContext().enforceCallingPermission(
+                Manifest.permission.SEND_SMS,
+                "Sending SMS message");
+        sendTextInternal(callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent);
+    }
+
+    /**
+     * A permissions check before passing to {@link IccSmsInterfaceManager#sendTextInternal}.
+     * This method checks if the calling package or itself has the permission to send the sms.
+     */
+    public void sendTextWithSelfPermissions(String callingPackage, String destAddr, String scAddr,
+            String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        mPhone.getContext().enforceCallingOrSelfPermission(
+                Manifest.permission.SEND_SMS,
+                "Sending SMS message");
+        sendTextInternal(callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent);
     }
 
     /**
@@ -385,11 +432,9 @@ public class IccSmsInterfaceManager {
      *  raw pdu of the status report is in the extended data ("pdu").
      */
 
-    public void sendText(String callingPackage, String destAddr, String scAddr,
+    private void sendTextInternal(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-        mPhone.getContext().enforceCallingPermission(
-                Manifest.permission.SEND_SMS,
-                "Sending SMS message");
+
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("sendText: destAddr=" + destAddr + " scAddr=" + scAddr +
                 " text='"+ text + "' sentIntent=" +
