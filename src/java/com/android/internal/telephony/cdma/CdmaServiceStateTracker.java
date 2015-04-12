@@ -592,8 +592,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
     @Override
     protected void updateSpnDisplay() {
-        // mOperatorAlphaLong contains the ERI text
-        String plmn = mSS.getOperatorAlphaLong();
+        // getOperatorAlphaLong() returns differently for CDMA, pull from init set prop instead.
+        String plmn = SystemProperties.get("ro.cdma.home.operator.alpha");
 
         int combinedRegState = getCombinedRegState();
         if (combinedRegState == ServiceState.STATE_OUT_OF_SERVICE) {
