@@ -42,6 +42,7 @@ import android.text.TextUtils;
 
 import com.android.ims.ImsCallForwardInfo;
 import com.android.ims.ImsCallProfile;
+import com.android.ims.ImsConfig;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsException;
@@ -140,6 +141,7 @@ public class ImsPhone extends ImsPhoneBase {
     private final RegistrantList mSilentRedialRegistrants = new RegistrantList();
 
     private boolean mImsRegistered = false;
+
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
         @Override
@@ -189,6 +191,11 @@ public class ImsPhone extends ImsPhoneBase {
         // synchronization is managed at the PhoneBase scope (which calls this function)
         mDefaultPhone = parentPhone;
         mPhoneId = mDefaultPhone.getPhoneId();
+
+        // When the parent phone is updated, we need to notify listeners of the cached video
+        // capability.
+        Rlog.d(LOG_TAG, "updateParentPhone - Notify video capability changed " + mIsVideoCapable);
+        notifyForVideoCapabilityChanged(mIsVideoCapable);
     }
 
     @Override
@@ -475,6 +482,26 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone.notifyNewRingingConnectionP(c);
     }
 
+    public static void checkWfcWifiOnlyModeBeforeDial(ImsPhone imsPhone, Context context)
+            throws CallStateException {
+        if (imsPhone == null ||
+                !imsPhone.isVowifiEnabled()) {
+            boolean wfcWiFiOnly = (ImsManager.isWfcEnabledByPlatform(context) &&
+                    ImsManager.isWfcEnabledByUser(context) &&
+                    (ImsManager.getWfcMode(context) ==
+                            ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY));
+            if (wfcWiFiOnly) {
+                throw new CallStateException(
+                        CallStateException.ERROR_DISCONNECTED,
+                        "WFC Wi-Fi Only Mode: IMS not registered");
+            }
+        }
+    }
+
+    public void notifyForVideoCapabilityChanged(boolean isVideoCapable) {
+        mIsVideoCapable = isVideoCapable;
+        mDefaultPhone.notifyForVideoCapabilityChanged(isVideoCapable);
+    }
 
     @Override
     public Connection
@@ -1273,8 +1300,8 @@ public class ImsPhone extends ImsPhoneBase {
         return mCT.isVowifiEnabled();
     }
 
-    public boolean isVtEnabled() {
-        return mCT.isVtEnabled();
+    public boolean isVideoCallEnabled() {
+        return mCT.isVideoCallEnabled();
     }
 
     public Phone getDefaultPhone() {

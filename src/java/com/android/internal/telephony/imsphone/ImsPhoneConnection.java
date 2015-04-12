@@ -644,10 +644,11 @@ public class ImsPhoneConnection extends Connection {
             ImsCallProfile remoteCallProfile = imsCall.getRemoteCallProfile();
 
             if (negotiatedCallProfile != null) {
-                int callType = negotiatedCallProfile.mCallType;
+                int oldVideoState = getVideoState();
+                int newVideoState = ImsCallProfile
+                        .getVideoStateFromImsCallProfile(negotiatedCallProfile);
 
-                int newVideoState = ImsCallProfile.getVideoStateFromCallType(callType);
-                if (getVideoState() != newVideoState) {
+                if (oldVideoState != newVideoState) {
                     setVideoState(newVideoState);
                     changed = true;
                 }
@@ -663,10 +664,29 @@ public class ImsPhoneConnection extends Connection {
                 }
             }
 
+            if (remoteCallProfile != null) {
+                    boolean newRemoteVideoCapable = remoteCallProfile.mCallType
+                            == ImsCallProfile.CALL_TYPE_VT;
+
+                    if (isRemoteVideoCapable() != newRemoteVideoCapable) {
+                        setRemoteVideoCapable(newRemoteVideoCapable);
+                        changed = true;
+                    }
+            }
+
             int newAudioQuality =
                     getAudioQualityFromCallProfile(localCallProfile, remoteCallProfile);
             if (getAudioQuality() != newAudioQuality) {
                 setAudioQuality(newAudioQuality);
+                changed = true;
+            }
+
+            // Check if call substate has changed. If so notify listeners of call state changed.
+            int callSubstate = getCallSubstate();
+            int newCallSubstate = imsCall.getCallSubstate();
+
+            if (callSubstate != newCallSubstate) {
+                setCallSubstate(newCallSubstate);
                 changed = true;
             }
         } catch (ImsException e) {
