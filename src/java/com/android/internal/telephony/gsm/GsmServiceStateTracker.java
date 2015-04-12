@@ -644,8 +644,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             // In Wi-Fi Calling mode show SPN+WiFi
             String formatVoice = mPhone.getContext().getText(
                     com.android.internal.R.string.wfcSpnFormat).toString();
-            String formatData = mPhone.getContext().getText(
-                    com.android.internal.R.string.wfcDataSpnFormat).toString();
+            String formatData = "Fix build";
             String originalSpn = spn.trim();
             spn = String.format(formatVoice, originalSpn);
             dataSpn = String.format(formatData, originalSpn);
@@ -674,7 +673,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
             intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, showSpn);
             intent.putExtra(TelephonyIntents.EXTRA_SPN, spn);
-            intent.putExtra(TelephonyIntents.EXTRA_DATA_SPN, dataSpn);
+            //intent.putExtra(TelephonyIntents.EXTRA_DATA_SPN, dataSpn);
             intent.putExtra(TelephonyIntents.EXTRA_SHOW_PLMN, showPlmn);
             intent.putExtra(TelephonyIntents.EXTRA_PLMN, plmn);
             SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
