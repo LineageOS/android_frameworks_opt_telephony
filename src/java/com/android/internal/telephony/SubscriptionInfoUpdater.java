@@ -428,9 +428,6 @@ public class SubscriptionInfoUpdater extends Handler {
                         SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
                         + "=" + Integer.toString(subId), null);
             }
-            contentResolver.update(SubscriptionManager.CONTENT_URI, name,
-                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                    + "=" + Integer.toString(subId), null);
         } else {
             logd("Invalid subId, could not update ContentResolver");
         }
