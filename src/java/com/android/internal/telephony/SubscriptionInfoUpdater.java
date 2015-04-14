@@ -34,6 +34,7 @@ import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.Rlog;
+import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.TelephonyManager;
@@ -58,6 +59,8 @@ public class SubscriptionInfoUpdater extends Handler {
     private static final int EVENT_SIM_LOADED = 3;
     private static final int EVENT_SIM_ABSENT = 4;
     private static final int EVENT_SIM_LOCKED = 5;
+    private static final int EVENT_SIM_IO_ERROR = 6;
+    private static final int EVENT_SIM_UNKNOWN = 7;
 
     private static final String ICCID_STRING_FOR_NO_SIM = "";
     /**
@@ -100,8 +103,7 @@ public class SubscriptionInfoUpdater extends Handler {
         mSubscriptionManager = SubscriptionManager.from(mContext);
 
         IntentFilter intentFilter = new IntentFilter(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
-        mContext.registerReceiver(sReceiver, intentFilter);
-        intentFilter = new IntentFilter(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
+        intentFilter.addAction(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
         mContext.registerReceiver(sReceiver, intentFilter);
     }
 
@@ -130,6 +132,10 @@ public class SubscriptionInfoUpdater extends Handler {
             if (action.equals(TelephonyIntents.ACTION_SIM_STATE_CHANGED)) {
                 if (IccCardConstants.INTENT_VALUE_ICC_ABSENT.equals(simStatus)) {
                     sendMessage(obtainMessage(EVENT_SIM_ABSENT, slotId, -1));
+                } else if (IccCardConstants.INTENT_VALUE_ICC_UNKNOWN.equals(simStatus)) {
+                    sendMessage(obtainMessage(EVENT_SIM_UNKNOWN, slotId, -1));
+                } else if (IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR.equals(simStatus)) {
+                    sendMessage(obtainMessage(EVENT_SIM_IO_ERROR, slotId, -1));
                 } else {
                     logd("Ignoring simStatus: " + simStatus);
                 }
@@ -208,6 +214,9 @@ public class SubscriptionInfoUpdater extends Handler {
                 }
                 broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED,
                                          uObj.reason);
+                if (!ICCID_STRING_FOR_NO_SIM.equals(mIccId[slotId])) {
+                    updateCarrierConfig(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
+                }
                 break;
             }
 
@@ -235,6 +244,14 @@ public class SubscriptionInfoUpdater extends Handler {
 
             case EVENT_SIM_LOCKED:
                 handleSimLocked(msg.arg1, (String) msg.obj);
+                break;
+
+            case EVENT_SIM_UNKNOWN:
+                updateCarrierConfig(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN);
+                break;
+
+            case EVENT_SIM_IO_ERROR:
+                updateCarrierConfig(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
                 break;
 
             default:
@@ -271,6 +288,7 @@ public class SubscriptionInfoUpdater extends Handler {
                                 new QueryIccIdUserObj(reason, slotId)));
             } else {
                 logd("NOT Querying IccId its already set sIccid[" + slotId + "]=" + iccId);
+                updateCarrierConfig(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
             }
         } else {
             logd("sFh[" + slotId + "] is null, ignore");
@@ -374,6 +392,13 @@ public class SubscriptionInfoUpdater extends Handler {
         }
 
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
+        updateCarrierConfig(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
+    }
+
+    private void updateCarrierConfig(int slotId, String simState) {
+        CarrierConfigManager configManager = (CarrierConfigManager)
+                mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        configManager.updateConfigForPhoneId(slotId, simState);
     }
 
     private void handleSimAbsent(int slotId) {
@@ -384,6 +409,7 @@ public class SubscriptionInfoUpdater extends Handler {
         if (isAllIccIdQueryDone()) {
             updateSubscriptionInfoByIccId();
         }
+        updateCarrierConfig(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
     }
 
     /**
