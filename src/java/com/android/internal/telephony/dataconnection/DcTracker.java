@@ -40,9 +40,7 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.Message;
-import android.os.Messenger;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.os.SystemClock;
@@ -58,7 +56,6 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
-import android.util.SparseArray;
 import android.view.WindowManager;
 import android.telephony.Rlog;
 
@@ -84,8 +81,6 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Objects;
 import java.lang.StringBuilder;
-
-import android.provider.Settings;
 
 import com.android.internal.telephony.ServiceStateTracker;
 /**
@@ -1198,6 +1193,7 @@ public final class DcTracker extends DcTrackerBase {
                 cursor.getInt(cursor.getColumnIndexOrThrow(
                         Telephony.Carriers.CARRIER_ENABLED)) == 1,
                 cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.BEARER)),
+                cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.BEARER_BITMASK)),
                 cursor.getInt(cursor.getColumnIndexOrThrow(Telephony.Carriers.PROFILE_ID)),
                 cursor.getInt(cursor.getColumnIndexOrThrow(
                         Telephony.Carriers.MODEM_COGNITIVE)) == 1,
@@ -2373,7 +2369,7 @@ public final class DcTracker extends DcTrackerBase {
                 xorEquals(first.proxy, second.proxy) &&
                 xorEquals(first.port, second.port) &&
                 first.carrierEnabled == second.carrierEnabled &&
-                first.bearer == second.bearer &&
+                first.bearerBitmask == second.bearerBitmask &&
                 first.profileId == second.profileId &&
                 Objects.equals(first.mvnoType, second.mvnoType) &&
                 Objects.equals(first.mvnoMatchData, second.mvnoMatchData) &&
@@ -2403,11 +2399,13 @@ public final class DcTracker extends DcTrackerBase {
         String protocol = src.protocol.equals("IPV4V6") ? src.protocol : dest.protocol;
         String roamingProtocol = src.roamingProtocol.equals("IPV4V6") ? src.roamingProtocol :
                 dest.roamingProtocol;
+        int bearerBitmask = (dest.bearerBitmask == 0 || src.bearerBitmask == 0) ?
+                0 : (dest.bearerBitmask | src.bearerBitmask);
 
         return new ApnSetting(dest.id, dest.numeric, dest.carrier, dest.apn,
                 proxy, port, mmsc, mmsProxy, mmsPort, dest.user, dest.password,
                 dest.authType, resultTypes.toArray(new String[0]), protocol,
-                roamingProtocol, dest.carrierEnabled, dest.bearer, dest.profileId,
+                roamingProtocol, dest.carrierEnabled, 0, bearerBitmask, dest.profileId,
                 (dest.modemCognitive || src.modemCognitive), dest.maxConns, dest.waitTime,
                 dest.maxConnsTime, dest.mtu, dest.mvnoType, dest.mvnoMatchData);
     }
@@ -2492,7 +2490,7 @@ public final class DcTracker extends DcTrackerBase {
                         + mPreferredApn.numeric + ":" + mPreferredApn);
             }
             if (mPreferredApn.numeric.equals(operator)) {
-                if (mPreferredApn.bearer == 0 || mPreferredApn.bearer == radioTech) {
+                if (ServiceState.bitmaskHasTech(mPreferredApn.bearerBitmask, radioTech)) {
                     apnList.add(mPreferredApn);
                     if (DBG) log("buildWaitingApns: X added preferred apnList=" + apnList);
                     return apnList;
@@ -2512,13 +2510,13 @@ public final class DcTracker extends DcTrackerBase {
             for (ApnSetting apn : mAllApnSettings) {
                 if (DBG) log("buildWaitingApns: apn=" + apn);
                 if (apn.canHandleType(requestedApnType)) {
-                    if (apn.bearer == 0 || apn.bearer == radioTech) {
+                    if (ServiceState.bitmaskHasTech(apn.bearerBitmask, radioTech)) {
                         if (DBG) log("buildWaitingApns: adding apn=" + apn.toString());
                         apnList.add(apn);
                     } else {
                         if (DBG) {
-                            log("buildWaitingApns: bearer:" + apn.bearer + " != "
-                                    + "radioTech:" + radioTech);
+                            log("buildWaitingApns: bearerBitmask:" + apn.bearerBitmask + " does " +
+                                    "not include radioTech:" + radioTech);
                         }
                     }
                 } else {
