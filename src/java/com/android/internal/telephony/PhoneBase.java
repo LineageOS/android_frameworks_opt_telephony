@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import static com.android.internal.telephony.RILConstants.*;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -167,7 +168,8 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_UNSOL_OEM_HOOK_RAW             = 34;
     protected static final int EVENT_GET_RADIO_CAPABILITY           = 35;
     protected static final int EVENT_SS                             = 36;
-    protected static final int EVENT_LAST                           = EVENT_SS;
+    protected static final int EVENT_CONFIG_LCE                     = 37;
+    protected static final int EVENT_LAST                           = EVENT_CONFIG_LCE;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -230,6 +232,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected ImsPhone mImsPhone = null;
 
     protected int mRadioAccessFamily = RadioAccessFamily.RAF_UNKNOWN;
+
+    protected static final int DEFAULT_REPORT_INTERVAL_MS = 200;
+    protected static final boolean LCE_PULL_MODE = true;
+    protected int mReportInterval = 0;  // ms
+    protected int mLceStatus = RILConstants.LCE_NOT_AVAILABLE;
 
     @Override
     public String getPhoneName() {
@@ -438,6 +445,8 @@ public abstract class PhoneBase extends Handler implements Phone {
 
         mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
         mCi.setOnUnsolOemHookRaw(this, EVENT_UNSOL_OEM_HOOK_RAW, null);
+        mCi.startLceService(DEFAULT_REPORT_INTERVAL_MS, LCE_PULL_MODE,
+            obtainMessage(EVENT_CONFIG_LCE));
     }
 
     @Override
@@ -476,6 +485,7 @@ public abstract class PhoneBase extends Handler implements Phone {
             mUiccController.unregisterForIccChanged(this);
             mCi.unregisterForSrvccStateChanged(this);
             mCi.unSetOnUnsolOemHookRaw(this);
+            mCi.stopLceService(obtainMessage(EVENT_CONFIG_LCE));
 
             if (mTelephonyTester != null) {
                 mTelephonyTester.dispose();
@@ -608,6 +618,17 @@ public abstract class PhoneBase extends Handler implements Phone {
                 }
                 Rlog.d(LOG_TAG, "EVENT_GET_RADIO_CAPABILITY :"
                         + "phone RAF : " + mRadioAccessFamily);
+                break;
+
+            case EVENT_CONFIG_LCE:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception != null) {
+                    Rlog.d(LOG_TAG, "config LCE service failed: " + ar.exception);
+                } else {
+                    final ArrayList<Integer> statusInfo = (ArrayList<Integer>)ar.result;
+                    mLceStatus = statusInfo.get(0);
+                    mReportInterval = statusInfo.get(1);
+                }
                 break;
 
             default:
@@ -2276,6 +2297,10 @@ public abstract class PhoneBase extends Handler implements Phone {
             return imsPhone.isVideoEnabled();
         }
         return false;
+    }
+
+    public int getLceStatus() {
+        return mLceStatus;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
