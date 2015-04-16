@@ -1412,22 +1412,25 @@ public class SubscriptionController extends ISub.Stub {
         int len = sProxyPhones.length;
         logdl("[setDefaultDataSubId] num phones=" + len);
 
-        RadioAccessFamily[] rafs = new RadioAccessFamily[len];
-        for (int phoneId = 0; phoneId < len; phoneId++) {
-            PhoneProxy phone = sProxyPhones[phoneId];
-            int raf;
-            int id = phone.getSubId();
-            if (id == subId) {
-                // TODO Handle the general case of N modems and M subscriptions.
-                raf = proxyController.getMaxRafSupported();
-            } else {
-                // TODO Handle the general case of N modems and M subscriptions.
-                raf = proxyController.getMinRafSupported();
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+            // Only re-map modems if the new default data sub is valid
+            RadioAccessFamily[] rafs = new RadioAccessFamily[len];
+            for (int phoneId = 0; phoneId < len; phoneId++) {
+                PhoneProxy phone = sProxyPhones[phoneId];
+                int raf;
+                int id = phone.getSubId();
+                if (id == subId) {
+                    // TODO Handle the general case of N modems and M subscriptions.
+                    raf = proxyController.getMaxRafSupported();
+                } else {
+                    // TODO Handle the general case of N modems and M subscriptions.
+                    raf = proxyController.getMinRafSupported();
+                }
+                logdl("[setDefaultDataSubId] phoneId=" + phoneId + " subId=" + id + " RAF=" + raf);
+                rafs[phoneId] = new RadioAccessFamily(phoneId, raf);
             }
-            logdl("[setDefaultDataSubId] phoneId=" + phoneId + " subId=" + id + " RAF=" + raf);
-            rafs[phoneId] = new RadioAccessFamily(phoneId, raf);
+            proxyController.setRadioCapability(rafs);
         }
-        proxyController.setRadioCapability(rafs);
 
         // FIXME is this still needed?
         updateAllDataConnectionTrackers();
