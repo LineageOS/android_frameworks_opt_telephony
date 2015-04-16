@@ -2585,8 +2585,20 @@ public final class Telephony {
          * This should be spread to other technologies,
          * but is currently only used for LTE (14) and eHRPD (13).
          * <P>Type: INTEGER</P>
+         * @deprecated Use {@link #BEARER_BITMASK} instead.
          */
+        @Deprecated
         public static final String BEARER = "bearer";
+
+        /**
+         * Radio Access Technology bitmask.
+         * To check what values can be contained, refer to {@link android.telephony.ServiceState}.
+         * 0 indicates all techs otherwise first bit refers to RAT/bearer 1, second bit refers to
+         * RAT/bearer 2 and so on.
+         * Bitmask for a radio tech R is (1 << (R - 1))
+         * <P>Type: INTEGER</P>
+         */
+        public static final String BEARER_BITMASK = "bearer_bitmask";
 
         /**
          * MVNO type:
@@ -2660,7 +2672,7 @@ public final class Telephony {
          * <p>Type: INTEGER </p>
          * @hide
          */
-        public static final String EDITED = "user_edited";
+        public static final String EDITED = "edited";
 
         /**
          * Following are possible values for the EDITED field

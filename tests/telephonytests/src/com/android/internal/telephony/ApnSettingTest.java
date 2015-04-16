@@ -58,7 +58,7 @@ public class ApnSettingTest extends TestCase {
             assertEquals(a1.types[i], a2.types[i]);
         }
         assertEquals(a1.carrierEnabled, a2.carrierEnabled);
-        assertEquals(a1.bearer, a2.bearer);
+        assertEquals(a1.bearerBitmask, a2.bearerBitmask);
         assertEquals(a1.profileId, a2.profileId);
         assertEquals(a1.modemCognitive, a2.modemCognitive);
         assertEquals(a1.maxConns, a2.maxConns);
@@ -81,7 +81,7 @@ public class ApnSettingTest extends TestCase {
         testString = "Vodafone IT,web.omnitel.it,,,,,,,,,222,10,,DUN";
         expectedApn = new ApnSetting(
                 -1, "22210", "Vodafone IT", "web.omnitel.it", "", "",
-                "", "", "", "", "", 0, dunTypes, "IP", "IP",true, 0,
+                "", "", "", "", "", 0, dunTypes, "IP", "IP",true, 0, 0,
                 0, false, 0, 0, 0, 0, "", "");
         assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
 
@@ -89,7 +89,7 @@ public class ApnSettingTest extends TestCase {
         testString = "[ApnSettingV2] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,14";
         expectedApn = new ApnSetting(
                 -1, "12345", "Name", "apn", "", "",
-                "", "", "", "", "", 0, mmsTypes, "IPV6", "IP", true, 14,
+                "", "", "", "", "", 0, mmsTypes, "IPV6", "IP", true, 14, 0,
                 0, false, 0, 0, 0, 0, "", "");
         assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
 
@@ -97,7 +97,7 @@ public class ApnSettingTest extends TestCase {
         testString = "[ApnSettingV2] Name,apn, ,,,,,,,,123,45,,mms|*,IPV4V6, IP,true,14";
         expectedApn = new ApnSetting(
                 -1, "12345", "Name", "apn", "", "",
-                "", "", "", "", "", 0, mmsTypes, "IPV4V6", "IP", true, 14,
+                "", "", "", "", "", 0, mmsTypes, "IPV4V6", "IP", true, 14, 0,
                 0, false, 0, 0, 0, 0, "", "");
         assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
 
@@ -105,7 +105,7 @@ public class ApnSettingTest extends TestCase {
         testString = "[ApnSettingV3] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,14,,,,,,,spn,testspn";
         expectedApn = new ApnSetting(
                 -1, "12345", "Name", "apn", "", "", "", "", "", "", "", 0, mmsTypes, "IPV4V6",
-                "IP",true, 14, 0, false, 0, 0, 0, 0, "spn", "testSpn");
+                "IP",true, 14, 0, 0, false, 0, 0, 0, 0, "spn", "testSpn");
         assertApnSettingEqual(expectedApn, ApnSetting.fromString(testString));
 
         // Return no apn if insufficient fields given.
@@ -141,7 +141,7 @@ public class ApnSettingTest extends TestCase {
         ApnSetting apn =  new ApnSetting(
                 99, "12345", "Name", "apn", "proxy", "port",
                 "mmsc", "mmsproxy", "mmsport", "user", "password", 0,
-                types, "IPV4V6", "IP", true, 14, 0, false, 0, 0, 0, 0, "", "");
+                types, "IPV4V6", "IP", true, 14, 0, 0, false, 0, 0, 0, 0, "", "");
         String expected = "[ApnSettingV2] Name, 99, 12345, apn, proxy, " +
                 "mmsc, mmsproxy, mmsport, port, 0, default | *, " +
                 "IPV4V6, IP, true, 14, 0, false, 0, 0, 0, 0, , ";

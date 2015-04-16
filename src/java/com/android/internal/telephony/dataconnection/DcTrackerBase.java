@@ -42,6 +42,7 @@ import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
+import android.telephony.ServiceState;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
@@ -693,17 +694,14 @@ public abstract class DcTrackerBase extends Handler {
             log("fetchDunApn: net.tethering.noprovisioning=true ret: null");
             return null;
         }
-        int bearer = -1;
+        int bearer = mPhone.getServiceState().getRilDataRadioTechnology();
         ApnSetting retDunSetting = null;
         String apnData = Settings.Global.getString(mResolver, Settings.Global.TETHER_DUN_APN);
         List<ApnSetting> dunSettings = ApnSetting.arrayFromString(apnData);
         IccRecords r = mIccRecords.get();
         for (ApnSetting dunSetting : dunSettings) {
             String operator = (r != null) ? r.getOperatorNumeric() : "";
-            if (dunSetting.bearer != 0) {
-                if (bearer == -1) bearer = mPhone.getServiceState().getRilDataRadioTechnology();
-                if (dunSetting.bearer != bearer) continue;
-            }
+            if (!ServiceState.bitmaskHasTech(dunSetting.bearerBitmask, bearer)) continue;
             if (dunSetting.numeric.equals(operator)) {
                 if (dunSetting.hasMvnoParams()) {
                     if (r != null &&
@@ -725,10 +723,7 @@ public abstract class DcTrackerBase extends Handler {
         for (String apn : apnArrayData) {
             ApnSetting dunSetting = ApnSetting.fromString(apn);
             if (dunSetting != null) {
-                if (dunSetting.bearer != 0) {
-                    if (bearer == -1) bearer = mPhone.getServiceState().getRilDataRadioTechnology();
-                    if (dunSetting.bearer != bearer) continue;
-                }
+                if (!ServiceState.bitmaskHasTech(dunSetting.bearerBitmask, bearer)) continue;
                 if (dunSetting.hasMvnoParams()) {
                     if (r != null &&
                             mvnoMatches(r, dunSetting.mvnoType, dunSetting.mvnoMatchData)) {
