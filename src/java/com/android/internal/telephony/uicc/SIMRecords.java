@@ -1419,56 +1419,6 @@ public class SIMRecords extends IccRecords {
         }
     }
 
-    private String findBestLanguage(byte[] languages) {
-        String bestMatch = null;
-        String[] locales = mContext.getAssets().getLocales();
-
-        if ((languages == null) || (locales == null)) return null;
-
-        // Each 2-bytes consists of one language
-        for (int i = 0; (i + 1) < languages.length; i += 2) {
-            try {
-                String lang = new String(languages, i, 2, "ISO-8859-1");
-                if (DBG) log ("languages from sim = " + lang);
-                for (int j = 0; j < locales.length; j++) {
-                    if (locales[j] != null && locales[j].length() >= 2 &&
-                            locales[j].substring(0, 2).equalsIgnoreCase(lang)) {
-                        return lang;
-                    }
-                }
-                if (bestMatch != null) break;
-            } catch(java.io.UnsupportedEncodingException e) {
-                log ("Failed to parse USIM language records" + e);
-            }
-        }
-        // no match found. return null
-        return null;
-    }
-
-    private void setLocaleFromUsim() {
-        String prefLang = null;
-        // check EFli then EFpl
-        prefLang = findBestLanguage(mEfLi);
-
-        if (prefLang == null) {
-            prefLang = findBestLanguage(mEfPl);
-        }
-
-        if (prefLang != null) {
-            // check country code from SIM
-            String imsi = getIMSI();
-            String country = null;
-            if (imsi != null) {
-                country = MccTable.countryCodeForMcc(
-                                    Integer.parseInt(imsi.substring(0,3)));
-            }
-            if (DBG) log("Setting locale to " + prefLang + "_" + country);
-            MccTable.setSystemLocale(mContext, prefLang, country);
-        } else {
-            if (DBG) log ("No suitable USIM selected locale");
-        }
-    }
-
     @Override
     protected void onRecordLoaded() {
         // One record loaded successfully or failed, In either case
@@ -1488,7 +1438,7 @@ public class SIMRecords extends IccRecords {
     protected void onAllRecordsLoaded() {
         if (DBG) log("record load complete");
 
-        setLocaleFromUsim();
+        setSimLanguage(mEfLi, mEfPl);
 
         if (mParentApp.getState() == AppState.APPSTATE_PIN ||
                mParentApp.getState() == AppState.APPSTATE_PUK) {
