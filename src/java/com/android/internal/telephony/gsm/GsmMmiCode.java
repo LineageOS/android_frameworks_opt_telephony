@@ -1134,6 +1134,9 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             break;
 
             case EVENT_USSD_CANCEL_COMPLETE:
+                if (mState != State.CANCELLED) {
+                    mState = State.CANCELLED;
+                }
                 mPhone.onMMIDone(this);
             break;
         }
