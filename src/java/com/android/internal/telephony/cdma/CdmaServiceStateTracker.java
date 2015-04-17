@@ -62,6 +62,7 @@ import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.HbpcdUtils;
 import com.android.internal.telephony.uicc.RuimRecords;
+import com.android.internal.telephony.Operators;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -594,7 +595,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
         rule = (mIccRecords != null) ? mIccRecords.getDisplayRule(mSS.getOperatorNumeric()) : 0;
         combinedRegState = getCombinedRegState();
-
         if (combinedRegState == ServiceState.STATE_OUT_OF_SERVICE) {
             // display out of service
             showPlmn = true;
@@ -603,8 +603,18 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             if (DBG) log("updateSpnDisplay: radio is on but out " +
                     "of service, set plmn='" + plmn + "'");
         } else if (combinedRegState == ServiceState.STATE_IN_SERVICE) {
+            if (SystemProperties.getBoolean("ro.ril.force_plmn_lookup", false)) {
+                String spnOverride = Operators.operatorReplace(mSS.getOperatorNumeric());
+                if (!TextUtils.equals(spnOverride, mSS.getOperatorNumeric())) {
+                    // If the entry exists, it returns a valid SPN name
+                    // else returns the orignally passed in value
+                    plmn = spnOverride;
+                }
+            } else {
+                plmn = TextUtils.isEmpty(mSS.getOperatorAlphaLong()) ? SystemProperties.get(
+                            "ro.cdma.home.operator.alpha", "") : mSS.getOperatorAlphaLong();
+            }
             // depends on the rule and whether plmn or spn is null
-            plmn = mSS.getOperatorAlphaLong();
             showPlmn = ( !TextUtils.isEmpty(plmn)) &&
                     ((rule & RuimRecords.SPN_RULE_SHOW_PLMN) == RuimRecords.SPN_RULE_SHOW_PLMN);
             spn = (mIccRecords != null) ? mIccRecords.getServiceProviderName() : "";
