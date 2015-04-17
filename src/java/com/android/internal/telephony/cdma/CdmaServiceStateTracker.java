@@ -591,6 +591,18 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         boolean showSpn = false;
         int rule = 0;
         int combinedRegState;
+        String ruimNumeric =  (mIccRecords != null) ? mIccRecords.getOperatorNumeric(): "00000";
+        String ruimSpn = (mIccRecords !=null) ? mIccRecords.getServiceProviderName(): "";
+        // If this system prop does not exist, use RUIM SPN instead
+        String operator = SystemProperties.get(
+                            CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_ALPHA, ruimSpn);
+        // Primary operator numeric
+        String opNum = SystemProperties.get(
+                        CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC, "");
+        // Some operators provide multiple operator numerics as home
+        String opNumList = SystemProperties.get(
+                        CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC_LIST, "");
+        String[] opNumArray = !TextUtils.isEmpty(opNumList) ? opNumList.split(",") : null;
 
         rule = (mIccRecords != null) ? mIccRecords.getDisplayRule(mSS.getOperatorNumeric()) : 0;
         combinedRegState = getCombinedRegState();
@@ -603,11 +615,24 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             if (DBG) log("updateSpnDisplay: radio is on but out " +
                     "of service, set plmn='" + plmn + "'");
         } else if (combinedRegState == ServiceState.STATE_IN_SERVICE) {
+            // Use system property (or fallback to Ruim SPN) if one of the following conditions is true
+            // -Ruim numeric or modem reported numeric is in the home numeric list property
+            // -modem reported numeric is in the home numeric list property
+            // -modem reported numeric is the same as the home numeric property
+            // -modem reported plmn is null or empty
+            // -modem reported plmn is the same as the numeric
+            if (isInHomeList(opNumArray, ruimNumeric) || isInHomeList(opNumArray, mSS.getOperatorNumeric())
+                    || TextUtils.equals(mSS.getOperatorNumeric(), opNum)
+                    || TextUtils.isEmpty(mSS.getOperatorAlphaLong())
+                    || TextUtils.equals(mSS.getOperatorAlphaLong(), mSS.getOperatorNumeric())) {
+                plmn = operator;
+            } else {
+                plmn = mSS.getOperatorAlphaLong();
+            }
             // depends on the rule and whether plmn or spn is null
-            plmn = mSS.getOperatorAlphaLong();
             showPlmn = ( !TextUtils.isEmpty(plmn)) &&
                     ((rule & RuimRecords.SPN_RULE_SHOW_PLMN) == RuimRecords.SPN_RULE_SHOW_PLMN);
-            spn = (mIccRecords != null) ? mIccRecords.getServiceProviderName() : "";
+            spn = ruimSpn;
             showSpn = (!TextUtils.isEmpty(spn)) &&
                     ((rule & RuimRecords.SPN_RULE_SHOW_SPN) == RuimRecords.SPN_RULE_SHOW_SPN);
         } else {
@@ -2062,4 +2087,23 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         }
         mImsRegistrationOnOff = registered;
     }
+      /**
+     * Check if a given operator numeric is in the home numeric list
+     * @param list the home numeric list
+     * @param numeric the give operator numeric
+     * @return true if the value is found; false if list or numeric is null, or numeric is not found in the list
+     */
+    private boolean isInHomeList(final String[] list, final String numeric) {
+        int i ;
+        if (list == null || TextUtils.isEmpty(numeric)) {
+            return false;
+        }
+        for (i = 0; i < list.length; i++) {
+            if (numeric.equals(list[i])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }

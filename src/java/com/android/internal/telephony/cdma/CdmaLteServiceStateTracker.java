@@ -478,7 +478,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                     if (TextUtils.isEmpty(eriText)) {
                         // Sets operator alpha property by retrieving from
                         // build-time system property
-                        eriText = SystemProperties.get("ro.cdma.home.operator.alpha");
+                        eriText = SystemProperties.get(CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_ALPHA);
                     }
                 } else {
                     // Note that ServiceState.STATE_OUT_OF_SERVICE is valid used
