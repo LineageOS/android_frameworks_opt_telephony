@@ -390,13 +390,14 @@ public class CDMALTEPhone extends CDMAPhone {
         setSystemProperty(TelephonyProperties.CURRENT_ACTIVE_PHONE,
                 new Integer(PhoneConstants.PHONE_TYPE_CDMA).toString());
         // Sets operator alpha property by retrieving from build-time system property
-        String operatorAlpha = SystemProperties.get("ro.cdma.home.operator.alpha");
+        String operatorAlpha = SystemProperties.get(PROPERTY_CDMA_HOME_OPERATOR_ALPHA);
         if (!TextUtils.isEmpty(operatorAlpha)) {
             setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, operatorAlpha);
         }
 
         // Sets operator numeric property by retrieving from build-time system property
         String operatorNumeric = SystemProperties.get(PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
+
         log("update icc_operator_numeric=" + operatorNumeric);
         if (!TextUtils.isEmpty(operatorNumeric)) {
             setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operatorNumeric);
@@ -448,7 +449,7 @@ public class CDMALTEPhone extends CDMAPhone {
         String operatorNumeric = null;
         IccRecords curIccRecords = null;
         if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
-            operatorNumeric = SystemProperties.get("ro.cdma.home.operator.numeric");
+            operatorNumeric = SystemProperties.get(CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
         } else if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_RUIM_SIM) {
             curIccRecords = mSimRecords;
             if (curIccRecords != null) {
