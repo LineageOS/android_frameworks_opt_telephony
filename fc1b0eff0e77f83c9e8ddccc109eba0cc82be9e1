@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa7ab95a_7c9319fb",
+        "filename": "src/java/com/android/internal/telephony/cdma/CDMAPhone.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 12941
+      },
+      "writtenOn": "2015-04-18T09:59:18Z",
+      "side": 1,
+      "message": "Cleaned up references to these CDMA system properties to use these consts only. Added a new NUMERIC_LIST as some operators may have multiple numeric values as home. They\u0027re needed to compare with the Ruim numeric to decide if the home alpha value should be used to display SPN on locked screen.",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa7ab95a_bcbbe174",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 619,
+      "author": {
+        "id": 12941
+      },
+      "writtenOn": "2015-04-18T09:59:18Z",
+      "side": 1,
+      "message": "Operators class uses selective-spn-conf.xml to look up valid numeric to SPN",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
