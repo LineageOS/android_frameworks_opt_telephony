@@ -548,6 +548,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         // email records, just to be sure.
 
         int len = mAdnLengthList.get(pbrIndex);
+        // Parse Type1 file if Email is not present in IAP.
         // Type 1 file, the number of records is the same as the number of
         // records in the ADN file.
         if (!mEmailPresentInIap) {
@@ -597,6 +598,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         // ICC cards can be made such that they have an IAP file but all
         // records are empty. So we read both type 1 and type 2 file
         // anr records, just to be sure.
+        // Parse Type1 file if ANR is not present in IAP.
 
         // Type 1 file, the number of records is the same as the number of
         // records in the ADN file.
@@ -777,6 +779,11 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                             log("getEmailRecNumber: Got empty record.Email record num is :" +
                                      (i + 1));
                             return i + 1;
+                        } else if (mEmailFlags.get(pbrIndex).get(i) == 0) {
+                            // This is to handle cases where the record is not used in any ADN,
+                            // but has some junk values.
+                            log("Unused but non empty record.Email record num is :" + (i + 1));
+                            return i + 1;
                         }
                     }
                 }
@@ -815,6 +822,11 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                         String anrRecord = readAnrRecord(i, pbrIndex, 0);
                         if (TextUtils.isEmpty(anrRecord)) {
                             log("getAnrRecNumber: Empty anr record. Anr record num is :" + (i + 1));
+                            return i + 1;
+                        } else if (mAnrFlags.get(pbrIndex).get(i) == 0) {
+                            // This is to handle cases where the record is not used in any ADN,
+                            // but has some junk values.
+                            log("Unused but non empty record.Anr record num is :" + (i + 1));
                             return i + 1;
                         }
                     }
