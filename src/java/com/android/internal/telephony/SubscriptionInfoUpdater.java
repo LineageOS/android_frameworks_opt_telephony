@@ -454,7 +454,8 @@ public class SubscriptionInfoUpdater extends Handler {
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             oldIccId[i] = null;
             List<SubscriptionInfo> oldSubInfo =
-                    SubscriptionController.getInstance().getSubInfoUsingSlotIdWithCheck(i, false);
+                    SubscriptionController.getInstance().getSubInfoUsingSlotIdWithCheck(i, false,
+                    mContext.getOpPackageName());
             if (oldSubInfo != null) {
                 oldIccId[i] = oldSubInfo.get(0).getIccId();
                 logd("updateSubscriptionInfoByIccId: oldSubId = "

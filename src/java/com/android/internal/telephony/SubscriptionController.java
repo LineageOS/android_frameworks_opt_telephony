@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.app.AppOpsManager;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
@@ -124,6 +125,8 @@ public class SubscriptionController extends ISub.Stub {
     protected TelephonyManager mTelephonyManager;
     protected CallManager mCM;
 
+    private final AppOpsManager mAppOps;
+
     // FIXME: Does not allow for multiple subs in a slot and change to SparseArray
     private static HashMap<Integer, Integer> mSlotIdxToSubId = new HashMap<Integer, Integer>();
     private static int mDefaultFallbackSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
@@ -166,6 +169,7 @@ public class SubscriptionController extends ISub.Stub {
         mContext = c;
         mCM = CallManager.getInstance();
         mTelephonyManager = TelephonyManager.from(mContext);
+        mAppOps = mContext.getSystemService(AppOpsManager.class);
 
         if(ServiceManager.getService("isub") == null) {
                 ServiceManager.addService("isub", this);
@@ -181,6 +185,7 @@ public class SubscriptionController extends ISub.Stub {
     private SubscriptionController(Phone phone) {
         mContext = phone.getContext();
         mCM = CallManager.getInstance();
+        mAppOps = mContext.getSystemService(AppOpsManager.class);
 
         if(ServiceManager.getService("isub") == null) {
                 ServiceManager.addService("isub", this);
@@ -190,13 +195,21 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
-     * Make sure the caller has the READ_PHONE_STATE permission.
+     * Make sure the caller can read phone state which requires holding the
+     * READ_PHONE_STATE permission and the OP_READ_PHONE_STATE app op being
+     * set to MODE_ALLOWED.
      *
-     * @throws SecurityException if the caller does not have the required permission
+     * @param callingPackage The package claiming to make the IPC.
+     * @param message The name of the access protected method.
+     *
+     * @throws SecurityException if the caller does not have READ_PHONE_STATE permission.
      */
-    private void enforceSubscriptionPermission() {
-        mContext.enforceCallingOrSelfPermission(android.Manifest.permission.READ_PHONE_STATE,
-                "Requires READ_PHONE_STATE");
+    private boolean canReadPhoneState(String callingPackage, String message) {
+        mContext.enforceCallingOrSelfPermission(
+                android.Manifest.permission.READ_PHONE_STATE, message);
+
+        return mAppOps.noteOp(AppOpsManager.OP_READ_PHONE_STATE, Binder.getCallingUid(),
+                callingPackage) == AppOpsManager.MODE_ALLOWED;
     }
 
     /**
@@ -345,10 +358,11 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Find unused color to be set for new SubInfoRecord
+     * @param callingPackage The package making the IPC.
      * @return RGB integer value of color
      */
-    private int getUnusedColor() {
-        List<SubscriptionInfo> availableSubInfos = getActiveSubscriptionInfoList();
+    private int getUnusedColor(String callingPackage) {
+        List<SubscriptionInfo> availableSubInfos = getActiveSubscriptionInfoList(callingPackage);
         colorArr = mContext.getResources().getIntArray(com.android.internal.R.array.sim_colors);
         int colorIdx = 0;
 
@@ -372,13 +386,16 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * Get the active SubscriptionInfo with the subId key
      * @param subId The unique SubscriptionInfo key in database
+     * @param callingPackage The package making the IPC.
      * @return SubscriptionInfo, maybe null if its not active
      */
     @Override
-    public SubscriptionInfo getActiveSubscriptionInfo(int subId) {
-        enforceSubscriptionPermission();
+    public SubscriptionInfo getActiveSubscriptionInfo(int subId, String callingPackage) {
+        if (!canReadPhoneState(callingPackage, "getActiveSubscriptionInfo")) {
+            return null;
+        }
 
-        List<SubscriptionInfo> subList = getActiveSubscriptionInfoList();
+        List<SubscriptionInfo> subList = getActiveSubscriptionInfoList(callingPackage);
         if (subList != null) {
             for (SubscriptionInfo si : subList) {
                 if (si.getSubscriptionId() == subId) {
@@ -397,13 +414,16 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * Get the active SubscriptionInfo associated with the iccId
      * @param iccId the IccId of SIM card
+     * @param callingPackage The package making the IPC.
      * @return SubscriptionInfo, maybe null if its not active
      */
     @Override
-    public SubscriptionInfo getActiveSubscriptionInfoForIccId(String iccId) {
-        enforceSubscriptionPermission();
+    public SubscriptionInfo getActiveSubscriptionInfoForIccId(String iccId, String callingPackage) {
+        if (!canReadPhoneState(callingPackage, "getActiveSubscriptionInfoForIccId")) {
+            return null;
+        }
 
-        List<SubscriptionInfo> subList = getActiveSubscriptionInfoList();
+        List<SubscriptionInfo> subList = getActiveSubscriptionInfoList(callingPackage);
         if (subList != null) {
             for (SubscriptionInfo si : subList) {
                 if (si.getIccId() == iccId) {
@@ -422,13 +442,17 @@ public class SubscriptionController extends ISub.Stub {
     /**
      * Get the active SubscriptionInfo associated with the slotIdx
      * @param slotIdx the slot which the subscription is inserted
+     * @param callingPackage The package making the IPC.
      * @return SubscriptionInfo, maybe null if its not active
      */
     @Override
-    public SubscriptionInfo getActiveSubscriptionInfoForSimSlotIndex(int slotIdx) {
-        enforceSubscriptionPermission();
+    public SubscriptionInfo getActiveSubscriptionInfoForSimSlotIndex(int slotIdx,
+            String callingPackage) {
+        if (!canReadPhoneState(callingPackage, "getActiveSubscriptionInfoForSimSlotIndex")) {
+            return null;
+        }
 
-        List<SubscriptionInfo> subList = getActiveSubscriptionInfoList();
+        List<SubscriptionInfo> subList = getActiveSubscriptionInfoList(callingPackage);
         if (subList != null) {
             for (SubscriptionInfo si : subList) {
                 if (si.getSimSlotIndex() == slotIdx) {
@@ -452,14 +476,18 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
+     * @param callingPackage The package making the IPC.
      * @return List of all SubscriptionInfo records in database,
      * include those that were inserted before, maybe empty but not null.
      * @hide
      */
     @Override
-    public List<SubscriptionInfo> getAllSubInfoList() {
+    public List<SubscriptionInfo> getAllSubInfoList(String callingPackage) {
         if (DBG) logd("[getAllSubInfoList]+");
-        enforceSubscriptionPermission();
+
+        if (!canReadPhoneState(callingPackage, "getAllSubInfoList")) {
+            return null;
+        }
 
         List<SubscriptionInfo> subList = null;
         subList = getSubInfo(null, null);
@@ -474,12 +502,16 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Get the SubInfoRecord(s) of the currently inserted SIM(s)
+     * @param callingPackage The package making the IPC.
      * @return Array list of currently inserted SubInfoRecord(s)
      */
     @Override
-    public List<SubscriptionInfo> getActiveSubscriptionInfoList() {
-        enforceSubscriptionPermission();
+    public List<SubscriptionInfo> getActiveSubscriptionInfoList(String callingPackage) {
         if (DBG) logdl("[getActiveSubInfoList]+");
+
+        if (!canReadPhoneState(callingPackage, "getActiveSubscriptionInfoList")) {
+            return null;
+        }
 
         List<SubscriptionInfo> subList = null;
 
@@ -520,12 +552,18 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Get the SUB count of active SUB(s)
+     * @param callingPackage The package making the IPC.
      * @return active SIM count
      */
     @Override
-    public int getActiveSubInfoCount() {
+    public int getActiveSubInfoCount(String callingPackage) {
         if (DBG) logd("[getActiveSubInfoCount]+");
-        List<SubscriptionInfo> records = getActiveSubscriptionInfoList();
+
+        if (!canReadPhoneState(callingPackage, "getActiveSubInfoCount")) {
+            return 0;
+        }
+
+        List<SubscriptionInfo> records = getActiveSubscriptionInfoList(callingPackage);
         if (records == null) {
             if (DBG) logd("[getActiveSubInfoCount] records null");
             return 0;
@@ -536,12 +574,16 @@ public class SubscriptionController extends ISub.Stub {
 
     /**
      * Get the SUB count of all SUB(s) in SubscriptoinInfo database
+     * @param callingPackage The package making the IPC.
      * @return all SIM count in database, include what was inserted before
      */
     @Override
-    public int getAllSubInfoCount() {
+    public int getAllSubInfoCount(String callingPackage) {
         if (DBG) logd("[getAllSubInfoCount]+");
-        enforceSubscriptionPermission();
+
+        if (!canReadPhoneState(callingPackage, "getAllSubInfoCount")) {
+            return 0;
+        }
 
         Cursor cursor = mContext.getContentResolver().query(SubscriptionManager.CONTENT_URI,
                 null, null, null, null);
@@ -574,12 +616,16 @@ public class SubscriptionController extends ISub.Stub {
      * Add a new SubInfoRecord to subinfo database if needed
      * @param iccId the IccId of the SIM card
      * @param slotId the slot which the SIM is inserted
+     * @param callingPackage The package making the IPC.
      * @return 0 if success, < 0 on error.
      */
     @Override
-    public int addSubInfoRecord(String iccId, int slotId) {
+    public int addSubInfoRecord(String iccId, int slotId, String callingPackage) {
         if (DBG) logdl("[addSubInfoRecord]+ iccId:" + iccId + " slotId:" + slotId);
-        enforceSubscriptionPermission();
+
+        if (!canReadPhoneState(callingPackage, "addSubInfoRecord")) {
+            return -1;
+        }
 
         if (iccId == null) {
             if (DBG) logdl("[addSubInfoRecord]- null iccId");
@@ -612,7 +658,7 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.NAME_SOURCE},
                 SubscriptionManager.ICC_ID + "=?", new String[] {iccId}, null);
 
-        int color = getUnusedColor();
+        int color = getUnusedColor(callingPackage);
 
         try {
             if (cursor == null || !cursor.moveToFirst()) {
@@ -770,7 +816,11 @@ public class SubscriptionController extends ISub.Stub {
      */
     private int setCarrierText(String text, int subId) {
         if (DBG) logd("[setCarrierText]+ text:" + text + " subId:" + subId);
-        enforceSubscriptionPermission();
+
+        // Not called from an IPC.
+        if (!canReadPhoneState(mContext.getOpPackageName(), "setCarrierText")) {
+            return 0;
+        }
 
         ContentValues value = new ContentValues(1);
         value.put(SubscriptionManager.CARRIER_NAME, text);
@@ -789,9 +839,12 @@ public class SubscriptionController extends ISub.Stub {
      * @return the number of records updated
      */
     @Override
-    public int setIconTint(int tint, int subId) {
+    public int setIconTint(int tint, int subId, String callingPackage) {
         if (DBG) logd("[setIconTint]+ tint:" + tint + " subId:" + subId);
-        enforceSubscriptionPermission();
+
+        if (!canReadPhoneState(callingPackage, "setIconTint")) {
+            return 0;
+        }
 
         validateSubId(subId);
         ContentValues value = new ContentValues(1);
@@ -812,8 +865,8 @@ public class SubscriptionController extends ISub.Stub {
      * @return the number of records updated
      */
     @Override
-    public int setDisplayName(String displayName, int subId) {
-        return setDisplayNameUsingSrc(displayName, subId, -1);
+    public int setDisplayName(String displayName, int subId, String callingPackage) {
+        return setDisplayNameUsingSrc(displayName, subId, -1, callingPackage);
     }
 
     /**
@@ -825,12 +878,16 @@ public class SubscriptionController extends ISub.Stub {
      * @return the number of records updated
      */
     @Override
-    public int setDisplayNameUsingSrc(String displayName, int subId, long nameSource) {
+    public int setDisplayNameUsingSrc(String displayName, int subId, long nameSource,
+            String callingPackage) {
         if (DBG) {
             logd("[setDisplayName]+  displayName:" + displayName + " subId:" + subId
                 + " nameSource:" + nameSource);
         }
-        enforceSubscriptionPermission();
+
+        if (!canReadPhoneState(callingPackage, "setDisplayNameUsingSrc")) {
+            return 0;
+        }
 
         validateSubId(subId);
         String nameToSet;
@@ -858,12 +915,16 @@ public class SubscriptionController extends ISub.Stub {
      * Set phone number by subId
      * @param number the phone number of the SIM
      * @param subId the unique SubInfoRecord index in database
+     * @param callingPackage The package making the IPC.
      * @return the number of records updated
      */
     @Override
-    public int setDisplayNumber(String number, int subId) {
+    public int setDisplayNumber(String number, int subId, String callingPackage) {
         if (DBG) logd("[setDisplayNumber]+ subId:" + subId);
-        enforceSubscriptionPermission();
+
+        if (!canReadPhoneState(callingPackage, "setDisplayNumber")) {
+            return -1;
+        }
 
         validateSubId(subId);
         int result;
@@ -894,12 +955,16 @@ public class SubscriptionController extends ISub.Stub {
      * Set data roaming by simInfo index
      * @param roaming 0:Don't allow data when roaming, 1:Allow data when roaming
      * @param subId the unique SubInfoRecord index in database
+     * @param callingPackage The package making the IPC.
      * @return the number of records updated
      */
     @Override
-    public int setDataRoaming(int roaming, int subId) {
+    public int setDataRoaming(int roaming, int subId, String callingPackage) {
         if (DBG) logd("[setDataRoaming]+ roaming:" + roaming + " subId:" + subId);
-        enforceSubscriptionPermission();
+
+        if (!canReadPhoneState(callingPackage, "setDataRoaming")) {
+            return -1;
+        }
 
         validateSubId(subId);
         if (roaming < 0) {
@@ -1106,11 +1171,15 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
+     * @param callingPackage The package making the IPC.
      * @return the number of records cleared
      */
     @Override
-    public int clearSubInfo() {
-        enforceSubscriptionPermission();
+    public int clearSubInfo(String callingPackage) {
+        if (!canReadPhoneState(callingPackage, "clearSubInfo")) {
+            return 0;
+        }
+
         if (DBG) logd("[clearSubInfo]+");
 
         int size = mSlotIdxToSubId.size();
@@ -1342,8 +1411,12 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public void clearDefaultsForInactiveSubIds() {
-        final List<SubscriptionInfo> records = getActiveSubscriptionInfoList();
+    public void clearDefaultsForInactiveSubIds(String callingPackage) {
+        if (!canReadPhoneState(callingPackage, "clearDefaultsForInactiveSubIds")) {
+            return;
+        }
+
+        final List<SubscriptionInfo> records = getActiveSubscriptionInfoList(callingPackage);
         if (DBG) logdl("[clearDefaultsForInactiveSubIds] records: " + records);
         if (shouldDefaultBeCleared(records, getDefaultDataSubId())) {
             if (DBG) logd("[clearDefaultsForInactiveSubIds] clearing default data sub id");
@@ -1396,9 +1469,13 @@ public class SubscriptionController extends ISub.Stub {
         return getSubId(slotId);
     }
 
-    public List<SubscriptionInfo> getSubInfoUsingSlotIdWithCheck(int slotId, boolean needCheck) {
+    public List<SubscriptionInfo> getSubInfoUsingSlotIdWithCheck(int slotId, boolean needCheck,
+            String callingPackage) {
         if (DBG) logd("[getSubInfoUsingSlotIdWithCheck]+ slotId:" + slotId);
-        enforceSubscriptionPermission();
+
+        if (!canReadPhoneState(callingPackage, "getSubInfoUsingSlotIdWithCheck")) {
+            return null;
+        }
 
         if (slotId == SubscriptionManager.DEFAULT_SIM_SLOT_INDEX) {
             slotId = getSlotId(getDefaultSubId());
@@ -1565,7 +1642,8 @@ public class SubscriptionController extends ISub.Stub {
             pw.flush();
             pw.println("++++++++++++++++++++++++++++++++");
 
-            List<SubscriptionInfo> sirl = getActiveSubscriptionInfoList();
+            List<SubscriptionInfo> sirl = getActiveSubscriptionInfoList(
+                    mContext.getOpPackageName());
             if (sirl != null) {
                 pw.println(" ActiveSubInfoList:");
                 for (SubscriptionInfo entry : sirl) {
@@ -1577,7 +1655,7 @@ public class SubscriptionController extends ISub.Stub {
             pw.flush();
             pw.println("++++++++++++++++++++++++++++++++");
 
-            sirl = getAllSubInfoList();
+            sirl = getAllSubInfoList(mContext.getOpPackageName());
             if (sirl != null) {
                 pw.println(" AllSubInfoList:");
                 for (SubscriptionInfo entry : sirl) {
