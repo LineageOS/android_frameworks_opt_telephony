@@ -68,6 +68,24 @@
       "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa7ab95a_22bb2374",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 2107,
+      "author": {
+        "id": 12941
+      },
+      "writtenOn": "2015-04-20T09:57:28Z",
+      "side": 1,
+      "message": "Yes but there wouldn\u0027t be null and empty string checking, which  will have to go into the if statement and made it longer.",
+      "parentUuid": "fa7ab95a_c2ed1790",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
