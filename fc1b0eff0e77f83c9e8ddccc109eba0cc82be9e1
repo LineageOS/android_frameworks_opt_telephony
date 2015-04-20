@@ -51,6 +51,23 @@
       "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa7ab95a_c2ed1790",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 2107,
+      "author": {
+        "id": 11501
+      },
+      "writtenOn": "2015-04-20T09:45:48Z",
+      "side": 1,
+      "message": "Can this function be replaced with \n\nArrays.asList(list).contains(numeric);",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
