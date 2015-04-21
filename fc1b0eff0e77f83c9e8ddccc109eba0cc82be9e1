@@ -71,6 +71,24 @@
     },
     {
       "key": {
+        "uuid": "fa7ab95a_6ec7d445",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 12941
+      },
+      "writtenOn": "2015-04-21T12:45:27Z",
+      "side": 1,
+      "message": "opNum corresponds to sys prop PROPERTY_CDMA_HOME_OPERATOR_NUMERIC entry which is widely used by locked CDMA phones. That\u0027s why I thought separating out the logic between NUMERIC and NUMERIC_LIST may preserve some backwards compatibility.",
+      "parentUuid": "fa7ab95a_73d89ff0",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa7ab95a_bcbbe174",
         "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
         "patchSetId": 5
@@ -105,6 +123,24 @@
     },
     {
       "key": {
+        "uuid": "fa7ab95a_4eca1051",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 622,
+      "author": {
+        "id": 12941
+      },
+      "writtenOn": "2015-04-21T12:45:27Z",
+      "side": 1,
+      "message": "no reason, just making the if shorter",
+      "parentUuid": "fa7ab95a_33ed378c",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa7ab95a_93e523aa",
         "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
         "patchSetId": 5
@@ -122,6 +158,24 @@
     },
     {
       "key": {
+        "uuid": "fa7ab95a_ceb540d1",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 624,
+      "author": {
+        "id": 12941
+      },
+      "writtenOn": "2015-04-21T12:45:27Z",
+      "side": 1,
+      "message": "TextUtils checks for null value.",
+      "parentUuid": "fa7ab95a_93e523aa",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa7ab95a_f3990f21",
         "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
         "patchSetId": 5
@@ -133,6 +187,24 @@
       "writtenOn": "2015-04-21T10:32:03Z",
       "side": 1,
       "message": "The complexity of this logic makes my brain hurt. I\u0027m not sure I understand what this is doing, since there are other implicit comparisons made when using the opNumArray, ruimNumeric, and opNum variables.",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa7ab95a_aec1dc30",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 628,
+      "author": {
+        "id": 12941
+      },
+      "writtenOn": "2015-04-21T12:45:27Z",
+      "side": 1,
+      "message": "I\u0027m still waiting for Adnan\u0027s review to see if all this extensive lookup and checking is necessary. If mSS.getOperatorNumeric(), which is set by modem, is never valid, wether in home or roaming, locked cdma or unlocked cdma phones, the logic in this function can simply always set plmn value to sys prop PROPERTY_CDMA_HOME_ALPHA.",
+      "parentUuid": "fa7ab95a_f3990f21",
       "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
