@@ -37,6 +37,40 @@
     },
     {
       "key": {
+        "uuid": "fa7ab95a_d3c6cb15",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 596,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2015-04-21T10:32:03Z",
+      "side": 1,
+      "message": "!\u003d null",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa7ab95a_73d89ff0",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 606,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2015-04-21T10:32:03Z",
+      "side": 1,
+      "message": "Would it make sense to parse opNum and opNumList into opNumArray and operate only on that?",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa7ab95a_bcbbe174",
         "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
         "patchSetId": 5
@@ -48,6 +82,57 @@
       "writtenOn": "2015-04-18T09:59:18Z",
       "side": 1,
       "message": "Operators class uses selective-spn-conf.xml to look up valid numeric to SPN",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa7ab95a_33ed378c",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 622,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2015-04-21T10:32:03Z",
+      "side": 1,
+      "message": "Why is isValidOpNumeric it\u0027s own variable when no other comparison is?",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa7ab95a_93e523aa",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 624,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2015-04-21T10:32:03Z",
+      "side": 1,
+      "message": "Is there something TextUtils.equals does that regular String .equals doesn\u0027t do?",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa7ab95a_f3990f21",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 628,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2015-04-21T10:32:03Z",
+      "side": 1,
+      "message": "The complexity of this logic makes my brain hurt. I\u0027m not sure I understand what this is doing, since there are other implicit comparisons made when using the opNumArray, ruimNumeric, and opNum variables.",
       "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
