@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "fa7ab95a_8edb381b",
+        "filename": "src/java/com/android/internal/telephony/cdma/CDMAPhone.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2015-04-21T14:06:34Z",
+      "side": 1,
+      "message": "Going to have to agree with Ethan here.",
+      "parentUuid": "fa7ab95a_37952a40",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa7ab95a_d3c6cb15",
         "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
         "patchSetId": 5
@@ -205,6 +223,24 @@
       "side": 1,
       "message": "I\u0027m still waiting for Adnan\u0027s review to see if all this extensive lookup and checking is necessary. If mSS.getOperatorNumeric(), which is set by modem, is never valid, wether in home or roaming, locked cdma or unlocked cdma phones, the logic in this function can simply always set plmn value to sys prop PROPERTY_CDMA_HOME_ALPHA.",
       "parentUuid": "fa7ab95a_f3990f21",
+      "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa7ab95a_eef2046f",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 628,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2015-04-21T14:06:34Z",
+      "side": 1,
+      "message": "I don\u0027t think that the extensive lookup is necessary. The Operators class was created because a lot of the CDMA devices maintained by the community often times would have NV data that was in a bad state or the parcels data fields retrieved from the operator modem request were read incorrectly. (Bad device RILs)\n\nI think you\u0027re better off looking at the data being sent to you in the current CdmaServiceStateTracker which is updated via EVENT_POLL_STATE_OPERATOR_CDMA after a RIL_REQUEST_OPERATOR is sent out to the modem.\n\n     /**\n     * response.obj.result is a String[3]\n     * response.obj.result[0] is long alpha or null if unregistered\n     * response.obj.result[1] is short alpha or null if unregistered\n     * response.obj.result[2] is numeric or null if unregistered\n     */\n    void getOperator(Message response);\n\nIf the numeric retrieved is \"bad\", that seems to be a modem issue? No?",
+      "parentUuid": "fa7ab95a_aec1dc30",
       "revId": "fc1b0eff0e77f83c9e8ddccc109eba0cc82be9e1",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
