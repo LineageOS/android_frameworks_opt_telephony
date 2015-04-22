@@ -2675,18 +2675,28 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             s = sb.toString();
         }else if (req == RIL_REQUEST_GET_CURRENT_CALLS) {
             ArrayList<DriverCall> calls = (ArrayList<DriverCall>) ret;
-            sb = new StringBuilder(" ");
+            sb = new StringBuilder("{");
             for (DriverCall dc : calls) {
                 sb.append("[").append(dc).append("] ");
             }
+            sb.append("}");
             s = sb.toString();
         } else if (req == RIL_REQUEST_GET_NEIGHBORING_CELL_IDS) {
-            ArrayList<NeighboringCellInfo> cells;
-            cells = (ArrayList<NeighboringCellInfo>) ret;
-            sb = new StringBuilder(" ");
+            ArrayList<NeighboringCellInfo> cells = (ArrayList<NeighboringCellInfo>) ret;
+            sb = new StringBuilder("{");
             for (NeighboringCellInfo cell : cells) {
-                sb.append(cell).append(" ");
+                sb.append("[").append(cell).append("] ");
             }
+            sb.append("}");
+            s = sb.toString();
+        } else if (req == RIL_REQUEST_QUERY_CALL_FORWARD_STATUS) {
+            CallForwardInfo[] cinfo = (CallForwardInfo[]) ret;
+            length = cinfo.length;
+            sb = new StringBuilder("{");
+            for(int i = 0; i < length; i++) {
+                sb.append("[").append(cinfo[i]).append("] ");
+            }
+            sb.append("}");
             s = sb.toString();
         } else if (req == RIL_REQUEST_GET_HARDWARE_CONFIG) {
             ArrayList<HardwareConfig> hwcfgs = (ArrayList<HardwareConfig>) ret;
