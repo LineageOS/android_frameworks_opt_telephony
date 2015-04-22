@@ -395,19 +395,29 @@ public class SubscriptionController extends ISub.Stub {
             return null;
         }
 
-        List<SubscriptionInfo> subList = getActiveSubscriptionInfoList(callingPackage);
-        if (subList != null) {
-            for (SubscriptionInfo si : subList) {
-                if (si.getSubscriptionId() == subId) {
-                    if (DBG) logd("[getActiveSubInfoForSubscriber]+ subId=" + subId + " subInfo=" + si);
-                    return si;
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            List<SubscriptionInfo> subList = getActiveSubscriptionInfoList(
+                    mContext.getOpPackageName());
+            if (subList != null) {
+                for (SubscriptionInfo si : subList) {
+                    if (si.getSubscriptionId() == subId) {
+                        if (DBG)
+                            logd("[getActiveSubInfoForSubscriber]+ subId=" + subId
+                                    + " subInfo=" + si);
+                        return si;
+                    }
                 }
             }
+            if (DBG) {
+                logd("[getActiveSubInfoForSubscriber]- subId=" + subId
+                        + " subList=" + subList + " subInfo=null");
+            }
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
-        if (DBG) {
-            logd("[getActiveSubInfoForSubscriber]- subId=" + subId
-                    + " subList=" + subList + " subInfo=null");
-        }
+
         return null;
     }
 
@@ -423,19 +433,28 @@ public class SubscriptionController extends ISub.Stub {
             return null;
         }
 
-        List<SubscriptionInfo> subList = getActiveSubscriptionInfoList(callingPackage);
-        if (subList != null) {
-            for (SubscriptionInfo si : subList) {
-                if (si.getIccId() == iccId) {
-                    if (DBG) logd("[getActiveSubInfoUsingIccId]+ iccId=" + iccId + " subInfo=" + si);
-                    return si;
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            List<SubscriptionInfo> subList = getActiveSubscriptionInfoList(
+                    mContext.getOpPackageName());
+            if (subList != null) {
+                for (SubscriptionInfo si : subList) {
+                    if (si.getIccId() == iccId) {
+                        if (DBG)
+                            logd("[getActiveSubInfoUsingIccId]+ iccId=" + iccId + " subInfo=" + si);
+                        return si;
+                    }
                 }
             }
+            if (DBG) {
+                logd("[getActiveSubInfoUsingIccId]+ iccId=" + iccId
+                        + " subList=" + subList + " subInfo=null");
+            }
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
-        if (DBG) {
-            logd("[getActiveSubInfoUsingIccId]+ iccId=" + iccId
-                    + " subList=" + subList + " subInfo=null");
-        }
+
         return null;
     }
 
@@ -452,26 +471,34 @@ public class SubscriptionController extends ISub.Stub {
             return null;
         }
 
-        List<SubscriptionInfo> subList = getActiveSubscriptionInfoList(callingPackage);
-        if (subList != null) {
-            for (SubscriptionInfo si : subList) {
-                if (si.getSimSlotIndex() == slotIdx) {
-                    if (DBG) {
-                        logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIdx=" + slotIdx
-                            + " subId=" + si);
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            List<SubscriptionInfo> subList = getActiveSubscriptionInfoList(
+                    mContext.getOpPackageName());
+            if (subList != null) {
+                for (SubscriptionInfo si : subList) {
+                    if (si.getSimSlotIndex() == slotIdx) {
+                        if (DBG) {
+                            logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIdx=" + slotIdx
+                                    + " subId=" + si);
+                        }
+                        return si;
                     }
-                    return si;
+                }
+                if (DBG) {
+                    logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIdx=" + slotIdx
+                            + " subId=null");
+                }
+            } else {
+                if (DBG) {
+                    logd("[getActiveSubscriptionInfoForSimSlotIndex]+ subList=null");
                 }
             }
-            if (DBG) {
-                logd("[getActiveSubscriptionInfoForSimSlotIndex]+ slotIdx=" + slotIdx
-                    + " subId=null");
-            }
-        } else {
-            if (DBG) {
-                logd("[getActiveSubscriptionInfoForSimSlotIndex]+ subList=null");
-            }
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
+
         return null;
     }
 
@@ -489,15 +516,20 @@ public class SubscriptionController extends ISub.Stub {
             return null;
         }
 
-        List<SubscriptionInfo> subList = null;
-        subList = getSubInfo(null, null);
-        if (subList != null) {
-            if (DBG) logd("[getAllSubInfoList]- " + subList.size() + " infos return");
-        } else {
-            if (DBG) logd("[getAllSubInfoList]- no info return");
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            List<SubscriptionInfo> subList = null;
+            subList = getSubInfo(null, null);
+            if (subList != null) {
+                if (DBG) logd("[getAllSubInfoList]- " + subList.size() + " infos return");
+            } else {
+                if (DBG) logd("[getAllSubInfoList]- no info return");
+            }
+            return subList;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
-
-        return subList;
     }
 
     /**
@@ -513,41 +545,41 @@ public class SubscriptionController extends ISub.Stub {
             return null;
         }
 
-        List<SubscriptionInfo> subList = null;
-
-        if (!isSubInfoReady()) {
-            if (DBG) logdl("[getActiveSubInfoList] Sub Controller not ready");
-            return subList;
-        }
-
+        // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
         try {
-            subList = getSubInfo(SubscriptionManager.SIM_SLOT_INDEX + ">=0", null);
+            if (!isSubInfoReady()) {
+                if (DBG) logdl("[getActiveSubInfoList] Sub Controller not ready");
+                return null;
+            }
+
+            List<SubscriptionInfo> subList = getSubInfo(
+                    SubscriptionManager.SIM_SLOT_INDEX + ">=0", null);
+
+            if (subList != null) {
+                // FIXME: Unnecessary when an insertion sort is used!
+                Collections.sort(subList, new Comparator<SubscriptionInfo>() {
+                    @Override
+                    public int compare(SubscriptionInfo arg0, SubscriptionInfo arg1) {
+                        // Primary sort key on SimSlotIndex
+                        int flag = arg0.getSimSlotIndex() - arg1.getSimSlotIndex();
+                        if (flag == 0) {
+                            // Secondary sort on SubscriptionId
+                            return arg0.getSubscriptionId() - arg1.getSubscriptionId();
+                        }
+                        return flag;
+                    }
+                });
+
+                if (DBG) logdl("[getActiveSubInfoList]- " + subList.size() + " infos return");
+            } else {
+                if (DBG) logdl("[getActiveSubInfoList]- no info return");
+            }
+
+            return subList;
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
-
-        if (subList != null) {
-            // FIXME: Unnecessary when an insertion sort is used!
-            Collections.sort(subList, new Comparator<SubscriptionInfo>() {
-                @Override
-                public int compare(SubscriptionInfo arg0, SubscriptionInfo arg1) {
-                    // Primary sort key on SimSlotIndex
-                    int flag = arg0.getSimSlotIndex() - arg1.getSimSlotIndex();
-                    if (flag == 0) {
-                        // Secondary sort on SubscriptionId
-                        return arg0.getSubscriptionId() - arg1.getSubscriptionId();
-                    }
-                    return flag;
-                }
-            });
-
-            if (DBG) logdl("[getActiveSubInfoList]- " + subList.size() + " infos return");
-        } else {
-            if (DBG) logdl("[getActiveSubInfoList]- no info return");
-        }
-
-        return subList;
     }
 
     /**
@@ -563,13 +595,20 @@ public class SubscriptionController extends ISub.Stub {
             return 0;
         }
 
-        List<SubscriptionInfo> records = getActiveSubscriptionInfoList(callingPackage);
-        if (records == null) {
-            if (DBG) logd("[getActiveSubInfoCount] records null");
-            return 0;
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            List<SubscriptionInfo> records = getActiveSubscriptionInfoList(
+                    mContext.getOpPackageName());
+            if (records == null) {
+                if (DBG) logd("[getActiveSubInfoCount] records null");
+                return 0;
+            }
+            if (DBG) logd("[getActiveSubInfoCount]- count: " + records.size());
+            return records.size();
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
-        if (DBG) logd("[getActiveSubInfoCount]- count: " + records.size());
-        return records.size();
     }
 
     /**
@@ -585,22 +624,28 @@ public class SubscriptionController extends ISub.Stub {
             return 0;
         }
 
-        Cursor cursor = mContext.getContentResolver().query(SubscriptionManager.CONTENT_URI,
-                null, null, null, null);
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
         try {
-            if (cursor != null) {
-                int count = cursor.getCount();
-                if (DBG) logd("[getAllSubInfoCount]- " + count + " SUB(s) in DB");
-                return count;
+            Cursor cursor = mContext.getContentResolver().query(SubscriptionManager.CONTENT_URI,
+                    null, null, null, null);
+            try {
+                if (cursor != null) {
+                    int count = cursor.getCount();
+                    if (DBG) logd("[getAllSubInfoCount]- " + count + " SUB(s) in DB");
+                    return count;
+                }
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
             }
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-        if (DBG) logd("[getAllSubInfoCount]- no SUB in DB");
+            if (DBG) logd("[getAllSubInfoCount]- no SUB in DB");
 
-        return 0;
+            return 0;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /**
@@ -627,141 +672,147 @@ public class SubscriptionController extends ISub.Stub {
             return -1;
         }
 
-        if (iccId == null) {
-            if (DBG) logdl("[addSubInfoRecord]- null iccId");
-            return -1;
-        }
-
-        int[] subIds = getSubId(slotId);
-        if (subIds == null || subIds.length == 0) {
-            if (DBG) {
-                logdl("[addSubInfoRecord]- getSubId failed subIds == null || length == 0 subIds="
-                    + subIds);
-            }
-            return -1;
-        }
-
-        String nameToSet;
-        String simCarrierName = mTelephonyManager.getSimOperatorNameForSubscription(subIds[0]);
-
-        if (!TextUtils.isEmpty(simCarrierName)) {
-            nameToSet = simCarrierName;
-        } else {
-            nameToSet = "CARD " + Integer.toString(slotId + 1);
-        }
-        if (DBG) logdl("[addSubInfoRecord] sim name = " + nameToSet);
-        if (DBG) logdl("[addSubInfoRecord] carrier name = " + simCarrierName);
-
-        ContentResolver resolver = mContext.getContentResolver();
-        Cursor cursor = resolver.query(SubscriptionManager.CONTENT_URI,
-                new String[] {SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID,
-                SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.NAME_SOURCE},
-                SubscriptionManager.ICC_ID + "=?", new String[] {iccId}, null);
-
-        int color = getUnusedColor(callingPackage);
-
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
         try {
-            if (cursor == null || !cursor.moveToFirst()) {
-                ContentValues value = new ContentValues();
-                value.put(SubscriptionManager.ICC_ID, iccId);
-                // default SIM color differs between slots
-                value.put(SubscriptionManager.COLOR, color);
-                value.put(SubscriptionManager.SIM_SLOT_INDEX, slotId);
-                value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
-                value.put(SubscriptionManager.CARRIER_NAME, "");
-                Uri uri = resolver.insert(SubscriptionManager.CONTENT_URI, value);
-                if (DBG) logdl("[addSubInfoRecord] New record created: " + uri);
+            if (iccId == null) {
+                if (DBG) logdl("[addSubInfoRecord]- null iccId");
+                return -1;
+            }
+
+            int[] subIds = getSubId(slotId);
+            if (subIds == null || subIds.length == 0) {
+                if (DBG) {
+                    logdl("[addSubInfoRecord]- getSubId failed subIds == null " +
+                            "|| length == 0 subIds=" + subIds);
+                }
+                return -1;
+            }
+
+            String nameToSet;
+            String simCarrierName = mTelephonyManager.getSimOperatorNameForSubscription(subIds[0]);
+
+            if (!TextUtils.isEmpty(simCarrierName)) {
+                nameToSet = simCarrierName;
             } else {
-                int subId = cursor.getInt(0);
-                int oldSimInfoId = cursor.getInt(1);
-                int nameSource = cursor.getInt(2);
-                ContentValues value = new ContentValues();
+                nameToSet = "CARD " + Integer.toString(slotId + 1);
+            }
+            if (DBG) logdl("[addSubInfoRecord] sim name = " + nameToSet);
+            if (DBG) logdl("[addSubInfoRecord] carrier name = " + simCarrierName);
 
-                if (slotId != oldSimInfoId) {
+            ContentResolver resolver = mContext.getContentResolver();
+            Cursor cursor = resolver.query(SubscriptionManager.CONTENT_URI,
+                    new String[]{SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID,
+                            SubscriptionManager.SIM_SLOT_INDEX, SubscriptionManager.NAME_SOURCE},
+                    SubscriptionManager.ICC_ID + "=?", new String[]{iccId}, null);
+
+            int color = getUnusedColor(mContext.getOpPackageName());
+
+            try {
+                if (cursor == null || !cursor.moveToFirst()) {
+                    ContentValues value = new ContentValues();
+                    value.put(SubscriptionManager.ICC_ID, iccId);
+                    // default SIM color differs between slots
+                    value.put(SubscriptionManager.COLOR, color);
                     value.put(SubscriptionManager.SIM_SLOT_INDEX, slotId);
-                }
-
-                if (nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
                     value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
-                }
+                    value.put(SubscriptionManager.CARRIER_NAME, "");
+                    Uri uri = resolver.insert(SubscriptionManager.CONTENT_URI, value);
+                    if (DBG) logdl("[addSubInfoRecord] New record created: " + uri);
+                } else {
+                    int subId = cursor.getInt(0);
+                    int oldSimInfoId = cursor.getInt(1);
+                    int nameSource = cursor.getInt(2);
+                    ContentValues value = new ContentValues();
 
-                if (value.size() > 0) {
-                    resolver.update(SubscriptionManager.CONTENT_URI, value,
-                            SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID +
-                            "=" + Long.toString(subId), null);
-                }
-
-                if (DBG) logdl("[addSubInfoRecord] Record already exists");
-            }
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-
-        cursor = resolver.query(SubscriptionManager.CONTENT_URI, null,
-                SubscriptionManager.SIM_SLOT_INDEX + "=?",
-                new String[] {String.valueOf(slotId)}, null);
-        try {
-            if (cursor != null && cursor.moveToFirst()) {
-                do {
-                    int subId = cursor.getInt(cursor.getColumnIndexOrThrow(
-                            SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID));
-                    // If mSlotIdToSubIdMap already has a valid subId for a slotId/phoneId,
-                    // do not add another subId for same slotId/phoneId.
-                    Integer currentSubId = mSlotIdxToSubId.get(slotId);
-                    if (currentSubId == null
-                            || !SubscriptionManager.isValidSubscriptionId(currentSubId)) {
-                        // TODO While two subs active, if user deactivats first
-                        // one, need to update the default subId with second one.
-
-                        // FIXME: Currently we assume phoneId == slotId which in the future
-                        // may not be true, for instance with multiple subs per slot.
-                        // But is true at the moment.
-                        mSlotIdxToSubId.put(slotId, subId);
-                        int subIdCountMax = getActiveSubInfoCountMax();
-                        int defaultSubId = getDefaultSubId();
-                        if (DBG) {
-                            logdl("[addSubInfoRecord]"
-                                + " mSlotIdxToSubId.size=" + mSlotIdxToSubId.size()
-                                + " slotId=" + slotId + " subId=" + subId
-                                + " defaultSubId=" + defaultSubId + " simCount=" + subIdCountMax);
-                        }
-
-                        // Set the default sub if not set or if single sim device
-                        if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
-                                || subIdCountMax == 1) {
-                            setDefaultFallbackSubId(subId);
-                        }
-                        // If single sim device, set this subscription as the default for everything
-                        if (subIdCountMax == 1) {
-                            if (DBG) {
-                                logdl("[addSubInfoRecord] one sim set defaults to subId=" + subId);
-                            }
-                            setDefaultDataSubId(subId);
-                            setDefaultSmsSubId(subId);
-                            setDefaultVoiceSubId(subId);
-                        }
-                    } else {
-                        if (DBG) {
-                            logdl("[addSubInfoRecord] currentSubId != null"
-                                + " && currentSubId is valid, IGNORE");
-                        }
+                    if (slotId != oldSimInfoId) {
+                        value.put(SubscriptionManager.SIM_SLOT_INDEX, slotId);
                     }
-                    if (DBG) logdl("[addSubInfoRecord] hashmap(" + slotId + "," + subId + ")");
-                } while (cursor.moveToNext());
+
+                    if (nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
+                        value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
+                    }
+
+                    if (value.size() > 0) {
+                        resolver.update(SubscriptionManager.CONTENT_URI, value,
+                                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID +
+                                        "=" + Long.toString(subId), null);
+                    }
+
+                    if (DBG) logdl("[addSubInfoRecord] Record already exists");
+                }
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
             }
+
+            cursor = resolver.query(SubscriptionManager.CONTENT_URI, null,
+                    SubscriptionManager.SIM_SLOT_INDEX + "=?",
+                    new String[]{String.valueOf(slotId)}, null);
+            try {
+                if (cursor != null && cursor.moveToFirst()) {
+                    do {
+                        int subId = cursor.getInt(cursor.getColumnIndexOrThrow(
+                                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID));
+                        // If mSlotIdToSubIdMap already has a valid subId for a slotId/phoneId,
+                        // do not add another subId for same slotId/phoneId.
+                        Integer currentSubId = mSlotIdxToSubId.get(slotId);
+                        if (currentSubId == null
+                                || !SubscriptionManager.isValidSubscriptionId(currentSubId)) {
+                            // TODO While two subs active, if user deactivats first
+                            // one, need to update the default subId with second one.
+
+                            // FIXME: Currently we assume phoneId == slotId which in the future
+                            // may not be true, for instance with multiple subs per slot.
+                            // But is true at the moment.
+                            mSlotIdxToSubId.put(slotId, subId);
+                            int subIdCountMax = getActiveSubInfoCountMax();
+                            int defaultSubId = getDefaultSubId();
+                            if (DBG) {
+                                logdl("[addSubInfoRecord]"
+                                        + " mSlotIdxToSubId.size=" + mSlotIdxToSubId.size()
+                                        + " slotId=" + slotId + " subId=" + subId
+                                        + " defaultSubId=" + defaultSubId + " simCount=" + subIdCountMax);
+                            }
+
+                            // Set the default sub if not set or if single sim device
+                            if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
+                                    || subIdCountMax == 1) {
+                                setDefaultFallbackSubId(subId);
+                            }
+                            // If single sim device, set this subscription as the default for everything
+                            if (subIdCountMax == 1) {
+                                if (DBG) {
+                                    logdl("[addSubInfoRecord] one sim set defaults to subId=" + subId);
+                                }
+                                setDefaultDataSubId(subId);
+                                setDefaultSmsSubId(subId);
+                                setDefaultVoiceSubId(subId);
+                            }
+                        } else {
+                            if (DBG) {
+                                logdl("[addSubInfoRecord] currentSubId != null"
+                                        + " && currentSubId is valid, IGNORE");
+                            }
+                        }
+                        if (DBG) logdl("[addSubInfoRecord] hashmap(" + slotId + "," + subId + ")");
+                    } while (cursor.moveToNext());
+                }
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
+            }
+
+            // Once the records are loaded, notify DcTracker
+            updateAllDataConnectionTrackers();
+
+            if (DBG) logdl("[addSubInfoRecord]- info size=" + mSlotIdxToSubId.size());
+            return 0;
         } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
+            Binder.restoreCallingIdentity(identity);
         }
-
-        // Once the records are loaded, notify DcTracker
-        updateAllDataConnectionTrackers();
-
-        if (DBG) logdl("[addSubInfoRecord]- info size=" + mSlotIdxToSubId.size());
-        return 0;
     }
 
     /**
@@ -822,14 +873,20 @@ public class SubscriptionController extends ISub.Stub {
             return 0;
         }
 
-        ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.CARRIER_NAME, text);
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            ContentValues value = new ContentValues(1);
+            value.put(SubscriptionManager.CARRIER_NAME, text);
 
-        int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
-        notifySubscriptionInfoChanged();
+            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
+                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+            notifySubscriptionInfoChanged();
 
-        return result;
+            return result;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /**
@@ -846,16 +903,22 @@ public class SubscriptionController extends ISub.Stub {
             return 0;
         }
 
-        validateSubId(subId);
-        ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.COLOR, tint);
-        if (DBG) logd("[setIconTint]- tint:" + tint + " set");
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            validateSubId(subId);
+            ContentValues value = new ContentValues(1);
+            value.put(SubscriptionManager.COLOR, tint);
+            if (DBG) logd("[setIconTint]- tint:" + tint + " set");
 
-        int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
-        notifySubscriptionInfoChanged();
+            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
+                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+            notifySubscriptionInfoChanged();
 
-        return result;
+            return result;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /**
@@ -889,26 +952,32 @@ public class SubscriptionController extends ISub.Stub {
             return 0;
         }
 
-        validateSubId(subId);
-        String nameToSet;
-        if (displayName == null) {
-            nameToSet = mContext.getString(SubscriptionManager.DEFAULT_NAME_RES);
-        } else {
-            nameToSet = displayName;
-        }
-        ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
-        if (nameSource >= SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE) {
-            if (DBG) logd("Set nameSource=" + nameSource);
-            value.put(SubscriptionManager.NAME_SOURCE, nameSource);
-        }
-        if (DBG) logd("[setDisplayName]- mDisplayName:" + nameToSet + " set");
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            validateSubId(subId);
+            String nameToSet;
+            if (displayName == null) {
+                nameToSet = mContext.getString(SubscriptionManager.DEFAULT_NAME_RES);
+            } else {
+                nameToSet = displayName;
+            }
+            ContentValues value = new ContentValues(1);
+            value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
+            if (nameSource >= SubscriptionManager.NAME_SOURCE_DEFAULT_SOURCE) {
+                if (DBG) logd("Set nameSource=" + nameSource);
+                value.put(SubscriptionManager.NAME_SOURCE, nameSource);
+            }
+            if (DBG) logd("[setDisplayName]- mDisplayName:" + nameToSet + " set");
 
-        int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
-        notifySubscriptionInfoChanged();
+            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
+                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+            notifySubscriptionInfoChanged();
 
-        return result;
+            return result;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     /**
@@ -926,29 +995,35 @@ public class SubscriptionController extends ISub.Stub {
             return -1;
         }
 
-        validateSubId(subId);
-        int result;
-        int phoneId = getPhoneId(subId);
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            validateSubId(subId);
+            int result;
+            int phoneId = getPhoneId(subId);
 
-        if (number == null || phoneId < 0 ||
-                phoneId >= mTelephonyManager.getPhoneCount()) {
-            if (DBG) logd("[setDispalyNumber]- fail");
-            return -1;
+            if (number == null || phoneId < 0 ||
+                    phoneId >= mTelephonyManager.getPhoneCount()) {
+                if (DBG) logd("[setDispalyNumber]- fail");
+                return -1;
+            }
+            ContentValues value = new ContentValues(1);
+            value.put(SubscriptionManager.NUMBER, number);
+
+            // This function had a call to update number on the SIM (Phone.setLine1Number()) but that
+            // was removed as there doesn't seem to be a reason for that. If it is added back, watch out
+            // for deadlocks.
+
+            result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
+                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
+                            + "=" + Long.toString(subId), null);
+            if (DBG) logd("[setDisplayNumber]- update result :" + result);
+            notifySubscriptionInfoChanged();
+
+            return result;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
-        ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.NUMBER, number);
-
-        // This function had a call to update number on the SIM (Phone.setLine1Number()) but that
-        // was removed as there doesn't seem to be a reason for that. If it is added back, watch out
-        // for deadlocks.
-
-        result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                    + "=" + Long.toString(subId), null);
-        if (DBG) logd("[setDisplayNumber]- update result :" + result);
-        notifySubscriptionInfoChanged();
-
-        return result;
     }
 
     /**
@@ -966,20 +1041,26 @@ public class SubscriptionController extends ISub.Stub {
             return -1;
         }
 
-        validateSubId(subId);
-        if (roaming < 0) {
-            if (DBG) logd("[setDataRoaming]- fail");
-            return -1;
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            validateSubId(subId);
+            if (roaming < 0) {
+                if (DBG) logd("[setDataRoaming]- fail");
+                return -1;
+            }
+            ContentValues value = new ContentValues(1);
+            value.put(SubscriptionManager.DATA_ROAMING, roaming);
+            if (DBG) logd("[setDataRoaming]- roaming:" + roaming + " set");
+
+            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
+                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+            notifySubscriptionInfoChanged();
+
+            return result;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
-        ContentValues value = new ContentValues(1);
-        value.put(SubscriptionManager.DATA_ROAMING, roaming);
-        if (DBG) logd("[setDataRoaming]- roaming:" + roaming + " set");
-
-        int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
-        notifySubscriptionInfoChanged();
-
-        return result;
     }
 
     /**
@@ -1180,18 +1261,24 @@ public class SubscriptionController extends ISub.Stub {
             return 0;
         }
 
-        if (DBG) logd("[clearSubInfo]+");
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            if (DBG) logd("[clearSubInfo]+");
 
-        int size = mSlotIdxToSubId.size();
+            int size = mSlotIdxToSubId.size();
 
-        if (size == 0) {
-            if (DBG) logdl("[clearSubInfo]- no simInfo size=" + size);
-            return 0;
+            if (size == 0) {
+                if (DBG) logdl("[clearSubInfo]- no simInfo size=" + size);
+                return 0;
+            }
+
+            mSlotIdxToSubId.clear();
+            if (DBG) logdl("[clearSubInfo]- clear size=" + size);
+            return size;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
-
-        mSlotIdxToSubId.clear();
-        if (DBG) logdl("[clearSubInfo]- clear size=" + size);
-        return size;
     }
 
     private void logvl(String msg) {
@@ -1416,19 +1503,26 @@ public class SubscriptionController extends ISub.Stub {
             return;
         }
 
-        final List<SubscriptionInfo> records = getActiveSubscriptionInfoList(callingPackage);
-        if (DBG) logdl("[clearDefaultsForInactiveSubIds] records: " + records);
-        if (shouldDefaultBeCleared(records, getDefaultDataSubId())) {
-            if (DBG) logd("[clearDefaultsForInactiveSubIds] clearing default data sub id");
-            setDefaultDataSubId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-        }
-        if (shouldDefaultBeCleared(records, getDefaultSmsSubId())) {
-            if (DBG) logdl("[clearDefaultsForInactiveSubIds] clearing default sms sub id");
-            setDefaultSmsSubId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
-        }
-        if (shouldDefaultBeCleared(records, getDefaultVoiceSubId())) {
-            if (DBG) logdl("[clearDefaultsForInactiveSubIds] clearing default voice sub id");
-            setDefaultVoiceSubId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
+        try {
+            final List<SubscriptionInfo> records = getActiveSubscriptionInfoList(
+                    mContext.getOpPackageName());
+            if (DBG) logdl("[clearDefaultsForInactiveSubIds] records: " + records);
+            if (shouldDefaultBeCleared(records, getDefaultDataSubId())) {
+                if (DBG) logd("[clearDefaultsForInactiveSubIds] clearing default data sub id");
+                setDefaultDataSubId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+            }
+            if (shouldDefaultBeCleared(records, getDefaultSmsSubId())) {
+                if (DBG) logdl("[clearDefaultsForInactiveSubIds] clearing default sms sub id");
+                setDefaultSmsSubId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+            }
+            if (shouldDefaultBeCleared(records, getDefaultVoiceSubId())) {
+                if (DBG) logdl("[clearDefaultsForInactiveSubIds] clearing default voice sub id");
+                setDefaultVoiceSubId(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+            }
+        } finally {
+            Binder.restoreCallingIdentity(identity);
         }
     }
 
@@ -1477,45 +1571,49 @@ public class SubscriptionController extends ISub.Stub {
             return null;
         }
 
-        if (slotId == SubscriptionManager.DEFAULT_SIM_SLOT_INDEX) {
-            slotId = getSlotId(getDefaultSubId());
-        }
-        if (!SubscriptionManager.isValidSlotId(slotId)) {
-            if (DBG) logd("[getSubInfoUsingSlotIdWithCheck]- invalid slotId");
-            return null;
-        }
-
-        if (needCheck && !isSubInfoReady()) {
-            if (DBG) logd("[getSubInfoUsingSlotIdWithCheck]- not ready");
-            return null;
-        }
-
-        Cursor cursor = mContext.getContentResolver().query(SubscriptionManager.CONTENT_URI,
-                null, SubscriptionManager.SIM_SLOT_INDEX + "=?",
-                new String[] {String.valueOf(slotId)}, null);
-        ArrayList<SubscriptionInfo> subList = null;
+        // Now that all security checks passes, perform the operation as ourselves.
+        final long identity = Binder.clearCallingIdentity();
         try {
-            if (cursor != null) {
-                while (cursor.moveToNext()) {
-                    SubscriptionInfo subInfo = getSubInfoRecord(cursor);
-                    if (subInfo != null)
-                    {
-                        if (subList == null)
-                        {
-                            subList = new ArrayList<SubscriptionInfo>();
+            if (slotId == SubscriptionManager.DEFAULT_SIM_SLOT_INDEX) {
+                slotId = getSlotId(getDefaultSubId());
+            }
+            if (!SubscriptionManager.isValidSlotId(slotId)) {
+                if (DBG) logd("[getSubInfoUsingSlotIdWithCheck]- invalid slotId");
+                return null;
+            }
+
+            if (needCheck && !isSubInfoReady()) {
+                if (DBG) logd("[getSubInfoUsingSlotIdWithCheck]- not ready");
+                return null;
+            }
+
+            Cursor cursor = mContext.getContentResolver().query(SubscriptionManager.CONTENT_URI,
+                    null, SubscriptionManager.SIM_SLOT_INDEX + "=?",
+                    new String[]{String.valueOf(slotId)}, null);
+            ArrayList<SubscriptionInfo> subList = null;
+            try {
+                if (cursor != null) {
+                    while (cursor.moveToNext()) {
+                        SubscriptionInfo subInfo = getSubInfoRecord(cursor);
+                        if (subInfo != null) {
+                            if (subList == null) {
+                                subList = new ArrayList<SubscriptionInfo>();
+                            }
+                            subList.add(subInfo);
                         }
-                        subList.add(subInfo);
                     }
                 }
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
             }
-        } finally {
-            if (cursor != null) {
-                cursor.close();
-            }
-        }
-        if (DBG) logd("[getSubInfoUsingSlotId]- null info return");
+            if (DBG) logd("[getSubInfoUsingSlotId]- null info return");
 
-        return subList;
+            return subList;
+        } finally {
+            Binder.restoreCallingIdentity(identity);
+        }
     }
 
     private void validateSubId(int subId) {
