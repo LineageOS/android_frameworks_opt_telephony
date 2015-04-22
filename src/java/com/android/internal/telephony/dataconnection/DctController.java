@@ -294,13 +294,15 @@ public class DctController extends Handler {
             } else {
                 loge("DctController(phones): Could not connect to " + i);
             }
+        }
 
+        mContext = mPhones[0].getContext();
+
+        for (int i = 0; i < mPhoneNum; ++i) {
             // Register for radio state change
             PhoneBase phoneBase = (PhoneBase)mPhones[i].getActivePhone();
             updatePhoneBaseForIndex(i, phoneBase);
         }
-
-        mContext = mPhones[0].getContext();
 
         HandlerThread t = new HandlerThread("DdsSwitchSerializer");
         t.start();
@@ -575,7 +577,7 @@ public class DctController extends Handler {
         int phoneId = getTopPriorityRequestPhoneId();
         int activePhoneId = -1;
 
-        for (int i=0; i<mDcSwitchStateMachine.length; i++) {
+        for (int i=0; i<mDcSwitchAsyncChannel.length; i++) {
             if (!mDcSwitchAsyncChannel[i].isIdleSync()) {
                 activePhoneId = i;
                 break;
