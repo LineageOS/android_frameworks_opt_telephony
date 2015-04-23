@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da7fb54a_675546c5",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 593,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2015-04-23T06:58:02Z",
+      "side": 1,
+      "message": "This part of the change didn\u0027t actually do anything, did it? Best to not include it in this patchset if that\u0027s the case.",
+      "revId": "f39a559102c64047fdc8dbc13167a4961d775bbc",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
