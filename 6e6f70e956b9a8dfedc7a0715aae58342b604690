@@ -34,6 +34,24 @@
       "revId": "6e6f70e956b9a8dfedc7a0715aae58342b604690",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da7fb54a_bbeda790",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1196,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2015-04-24T23:52:26Z",
+      "side": 1,
+      "message": "Argh, I can\u0027t brain, apparently need more coffee. For INVALID_SUB_ID, _zero_ will be returned (-1 - -1 \u003d\u003d 0). That\u0027s the intention",
+      "parentUuid": "da7fb54a_fb59ef8f",
+      "revId": "6e6f70e956b9a8dfedc7a0715aae58342b604690",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
