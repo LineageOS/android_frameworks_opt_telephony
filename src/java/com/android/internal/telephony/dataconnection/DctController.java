@@ -354,6 +354,11 @@ public class DctController extends Handler {
                 AsyncResult ar = (AsyncResult)msg.obj;
                 SwitchInfo s = (SwitchInfo)ar.userObj;
                 Integer phoneId = s.mPhoneId;
+                if (phoneId < 0) {
+                    Rlog.d(LOG_TAG, "EVENT_ALL_DATA_DISCONNECTED switchInfo :" + s +
+                        " invalid phoneId");
+                  return;
+                }
                 Rlog.d(LOG_TAG, "EVENT_ALL_DATA_DISCONNECTED switchInfo :" + s +
                         " isLegacySetDds = " + isLegacySetDds);
                 // In this case prefPhoneId points to the newDds we are trying to
