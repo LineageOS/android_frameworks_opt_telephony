@@ -16,6 +16,24 @@
       "revId": "6e6f70e956b9a8dfedc7a0715aae58342b604690",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da7fb54a_fb59ef8f",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1196,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2015-04-24T22:30:51Z",
+      "side": 1,
+      "message": "isValidSubscription ((and manual checks) actually checks for \u003c\u003d INVALID_SUBSCRIPTION_ID. That\u0027s probably why",
+      "parentUuid": "da7fb54a_fb6d6fcd",
+      "revId": "6e6f70e956b9a8dfedc7a0715aae58342b604690",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
