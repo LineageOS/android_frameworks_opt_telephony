@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da7fb54a_fb6d6fcd",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1196,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2015-04-24T18:23:48Z",
+      "side": 1,
+      "message": "This means that for SubscriptionManager.INVALID_SUBSCRIPTION_ID (\u003d -1) -2 will be returned. I doubt that\u0027s intentional?",
+      "revId": "6e6f70e956b9a8dfedc7a0715aae58342b604690",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
