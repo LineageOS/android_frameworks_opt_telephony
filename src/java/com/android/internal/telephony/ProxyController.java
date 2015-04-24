@@ -330,6 +330,16 @@ public class ProxyController {
      */
     private void onStartRadioCapabilityResponse(Message msg) {
         synchronized (mSetRadioAccessFamilyStatus) {
+            AsyncResult ar = (AsyncResult)msg.obj;
+            if (ar.exception != null) {
+                // just abort now.  They didn't take our start so we don't have to revert
+                logd("onStartRadioCapabilityResponse got exception=" + ar.exception);
+                mRadioCapabilitySessionId = mUniqueIdGenerator.getAndIncrement();
+                Intent intent = new Intent(TelephonyIntents.ACTION_SET_RADIO_CAPABILITY_FAILED);
+                mContext.sendBroadcast(intent);
+                clearTransaction();
+                return;
+            }
             RadioCapability rc = (RadioCapability) ((AsyncResult) msg.obj).result;
             if ((rc == null) || (rc.getSession() != mRadioCapabilitySessionId)) {
                 logd("onStartRadioCapabilityResponse: Ignore session=" + mRadioCapabilitySessionId
