@@ -15,6 +15,7 @@
  */
 
 package com.android.internal.telephony;
+import android.annotation.Nullable;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
@@ -354,6 +355,13 @@ public abstract class SMSDispatcher extends Handler {
         }
     }
 
+    private static int getSendSmsFlag(@Nullable PendingIntent deliveryIntent) {
+        if (deliveryIntent == null) {
+            return 0;
+        }
+        return CarrierMessagingService.SEND_FLAG_REQUEST_DELIVERY_STATUS;
+    }
+
     /**
      * Use the carrier messaging service to send a text SMS.
      */
@@ -370,7 +378,8 @@ public abstract class SMSDispatcher extends Handler {
             if (text != null) {
                 try {
                     carrierMessagingService.sendTextSms(text, getSubId(),
-                            mTracker.mDestAddress, mSenderCallback);
+                            mTracker.mDestAddress, getSendSmsFlag(mTracker.mDeliveryIntent),
+                            mSenderCallback);
                 } catch (RemoteException e) {
                     Rlog.e(TAG, "Exception sending the SMS: " + e);
                     mSenderCallback.onSendSmsComplete(
@@ -402,7 +411,8 @@ public abstract class SMSDispatcher extends Handler {
             if (data != null) {
                 try {
                     carrierMessagingService.sendDataSms(data, getSubId(),
-                            mTracker.mDestAddress, destPort, mSenderCallback);
+                            mTracker.mDestAddress, destPort,
+                            getSendSmsFlag(mTracker.mDeliveryIntent), mSenderCallback);
                 } catch (RemoteException e) {
                     Rlog.e(TAG, "Exception sending the SMS: " + e);
                     mSenderCallback.onSendSmsComplete(
@@ -528,7 +538,8 @@ public abstract class SMSDispatcher extends Handler {
         protected void onServiceReady(ICarrierMessagingService carrierMessagingService) {
             try {
                 carrierMessagingService.sendMultipartTextSms(
-                        mParts, getSubId(), mTrackers[0].mDestAddress, mSenderCallback);
+                        mParts, getSubId(), mTrackers[0].mDestAddress,
+                        getSendSmsFlag(mTrackers[0].mDeliveryIntent), mSenderCallback);
             } catch (RemoteException e) {
                 Rlog.e(TAG, "Exception sending the SMS: " + e);
                 mSenderCallback.onSendMultipartSmsComplete(
