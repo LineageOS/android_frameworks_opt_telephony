@@ -51,6 +51,7 @@ public abstract class Connection {
         public void onAudioQualityChanged(int audioQuality);
         public void onConferenceParticipantsChanged(List<ConferenceParticipant> participants);
         public void onCallSubstateChanged(int callSubstate);
+        public void onMultipartyStateChanged(boolean isMultiParty);
     }
 
     /**
@@ -72,7 +73,10 @@ public abstract class Connection {
         public void onAudioQualityChanged(int audioQuality) {}
         @Override
         public void onConferenceParticipantsChanged(List<ConferenceParticipant> participants) {}
+        @Override
         public void onCallSubstateChanged(int callSubstate) {}
+        @Override
+        public void onMultipartyStateChanged(boolean isMultiParty) {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -632,6 +636,17 @@ public abstract class Connection {
     public void updateConferenceParticipants(List<ConferenceParticipant> conferenceParticipants) {
         for (Listener l : mListeners) {
             l.onConferenceParticipantsChanged(conferenceParticipants);
+        }
+    }
+
+    /**
+     * Notifies listeners of a change to the multiparty state of the connection..
+     *
+     * @param isMultiparty The participant(s).
+     */
+    public void updateMultipartyState(boolean isMultiparty) {
+        for (Listener l : mListeners) {
+            l.onMultipartyStateChanged(isMultiparty);
         }
     }
 

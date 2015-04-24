@@ -131,7 +131,6 @@ public class ImsPhoneConnection extends Connection {
                     imsCall.getCallProfile().getCallExtraInt(ImsCallProfile.EXTRA_OIR));
             mCnapNamePresentation = ImsCallProfile.OIRToPresentation(
                     imsCall.getCallProfile().getCallExtraInt(ImsCallProfile.EXTRA_CNAP));
-
             updateMediaCapabilities(imsCall);
         } else {
             mNumberPresentation = PhoneConstants.PRESENTATION_UNKNOWN;
@@ -537,6 +536,21 @@ public class ImsPhoneConnection extends Connection {
         return mImsCall != null && mImsCall.isMultiparty();
     }
 
+    /**
+     * Where {@link #isMultiparty()} is {@code true}, determines if this {@link ImsCall} is the
+     * origin of the conference call (i.e. {@code #isConferenceHost()} is {@code true}), or if this
+     * {@link ImsCall} is a member of a conference hosted on another device.
+     *
+     * @return {@code true} if this call is the origin of the conference call it is a member of,
+     *      {@code false} otherwise.
+     */
+    public boolean isConferenceHost() {
+        if (mImsCall == null) {
+            return false;
+        }
+        return mImsCall.isConferenceHost();
+    }
+
     /*package*/ ImsCall getImsCall() {
         return mImsCall;
     }
@@ -575,6 +589,7 @@ public class ImsPhoneConnection extends Connection {
         boolean updateParent = mParent.update(this, imsCall, state);
         boolean updateMediaCapabilities = updateMediaCapabilities(imsCall);
         boolean updateWifiState = updateWifiState();
+
         return updateParent || updateMediaCapabilities || updateWifiState;
     }
 

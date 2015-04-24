@@ -2654,14 +2654,46 @@ public final class Telephony {
         public static final String MTU = "mtu";
 
         /**
-         * Is this APN added/edited/deleted by a user or app?
-         * TelephonyProvider.USER_EDITED_UNTOUCHED (0) indicates untouched by user/app
-         * TelephonyProvider.USER_EDITED_EDITED (1) indicates added/edited by user/app
-         * TelephonyProvider.USER_EDITED_DELETED (2) indicates deleted by user/app
+         * Is this APN added/edited/deleted by a user or carrier?
          * <p>Type: INTEGER </p>
          * @hide
          */
-        public static final String USER_EDITED = "user_edited";
+        public static final String EDITED = "user_edited";
+
+        /**
+         * Following are possible values for the EDITED field
+         * @hide
+         */
+        public static final int UNEDITED = 0;
+        /**
+         *  @hide
+         */
+        public static final int USER_EDITED = 1;
+        /**
+         *  @hide
+         */
+        public static final int USER_DELETED = 2;
+        /**
+         * DELETED_BUT_PRESENT is an intermediate value used to indicate that an entry deleted
+         * by the user is still present in the new APN database and therefore must remain tagged
+         * as user deleted rather than completely removed from the database
+         * @hide
+         */
+        public static final int USER_DELETED_BUT_PRESENT_IN_XML = 3;
+        /**
+         *  @hide
+         */
+        public static final int CARRIER_EDITED = 4;
+        /**
+         * CARRIER_DELETED values are currently not used as there is no usecase. If they are used,
+         * delete() will have to change accordingly. Currently it is hardcoded to USER_DELETED.
+         * @hide
+         */
+        public static final int CARRIER_DELETED = 5;
+        /**
+         *  @hide
+         */
+        public static final int CARRIER_DELETED_BUT_PRESENT_IN_XML = 6;
     }
 
     /**
