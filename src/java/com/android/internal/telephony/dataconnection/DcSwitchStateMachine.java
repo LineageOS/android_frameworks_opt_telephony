@@ -20,6 +20,7 @@ import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneBase;
@@ -37,9 +38,10 @@ public class DcSwitchStateMachine extends StateMachine {
 
     // ***** Event codes for driving the state machine
     private static final int BASE = Protocol.BASE_DATA_CONNECTION_TRACKER + 0x00001000;
-    private static final int EVENT_CONNECTED    = BASE + 0;
-    private static final int EVENT_DATA_ALLOWED = BASE + 1;
-    private static final int CMD_RETRY_ATTACH   = BASE + 2;
+    private static final int EVENT_CONNECTED       = BASE + 0;
+    private static final int EVENT_DATA_ALLOWED    = BASE + 1;
+    private static final int CMD_RETRY_ATTACH      = BASE + 2;
+    private static final int EVENT_DATA_DISALLOWED = BASE + 3;
 
     private int mId;
     private Phone mPhone;
@@ -168,10 +170,20 @@ public class DcSwitchStateMachine extends StateMachine {
                 case EVENT_DATA_ALLOWED: {
                     AsyncResult ar = (AsyncResult)msg.obj;
                     if (mCurrentAllowedSequence != msg.arg1) {
-                        loge("EVENT_DATA_ATTACHED ignored arg1=" + msg.arg1 + ", seq=" +
+                        loge("EVENT_DATA_ALLOWED ignored arg1=" + msg.arg1 + ", seq=" +
                                 mCurrentAllowedSequence);
                     } else if (ar.exception != null) {
-                        loge("EVENT_DATA_ATTACHED failed, " + ar.exception);
+                        if (ar.exception instanceof CommandException) {
+                            CommandException e = (CommandException)ar.exception;
+                            if (e.getCommandError() ==
+                                    CommandException.Error.REQUEST_NOT_SUPPORTED) {
+                                // must be on a single-sim device so stay in Attaching
+                                // this is important to avoid an infinite loop
+                                retVal = HANDLED;
+                                break;
+                            }
+                        }
+                        loge("EVENT_DATA_ALLOWED failed, " + ar.exception);
                         transitionTo(mIdleState);
                     }
                     retVal = HANDLED;
@@ -272,12 +284,14 @@ public class DcSwitchStateMachine extends StateMachine {
     }
 
     private class DetachingState extends State {
+        private int mCurrentDisallowedSequence = 0;
+
         @Override
         public void enter() {
             if (DBG) log("DetachingState: enter");
             PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
-            pb.mCi.setDataAllowed(false, obtainMessage(
-                    DcSwitchAsyncChannel.EVENT_DATA_DETACHED));
+            pb.mCi.setDataAllowed(false, obtainMessage(EVENT_DATA_DISALLOWED,
+                    ++mCurrentDisallowedSequence, 0));
         }
 
         @Override
@@ -303,7 +317,21 @@ public class DcSwitchStateMachine extends StateMachine {
                     retVal = HANDLED;
                     break;
                 }
-
+                case EVENT_DATA_DISALLOWED: {
+                    AsyncResult ar = (AsyncResult)msg.obj;
+                    if (mCurrentDisallowedSequence != msg.arg1) {
+                        loge("EVENT_DATA_DISALLOWED ignored arg1=" + msg.arg1 + ", seq=" +
+                                mCurrentDisallowedSequence);
+                    } else if (ar.exception != null) {
+                        // go back to attached as we still think we are.  Notifications
+                        // from the ServiceStateTracker will kick us out of attached when
+                        // appropriate.
+                        loge("EVENT_DATA_DISALLOWED failed, " + ar.exception);
+                        transitionTo(mAttachedState);
+                    }
+                    retVal = HANDLED;
+                    break;
+                }
                 case DcSwitchAsyncChannel.REQ_DISCONNECT_ALL: {
                     if (DBG) {
                         log("DetachingState: REQ_DISCONNECT_ALL, already detaching" );
