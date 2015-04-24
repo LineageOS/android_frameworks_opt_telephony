@@ -1435,12 +1435,14 @@ public class SubscriptionController extends ISub.Stub {
             throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
         }
         if (DBG) logdl("[setDefaultDataSubId] subId=" + subId);
-        if (mDctController == null) {
-            mDctController = DctController.getInstance();
-            mDctController.registerForDefaultDataSwitchInfo(mDataConnectionHandler,
-                    EVENT_SET_DEFAULT_DATA_DONE, null);
+        if (subId >= 0) {
+            if (mDctController == null) {
+                mDctController = DctController.getInstance();
+                mDctController.registerForDefaultDataSwitchInfo(mDataConnectionHandler,
+                        EVENT_SET_DEFAULT_DATA_DONE, null);
+            }
+            mDctController.setDefaultDataSubId(subId);
         }
-        mDctController.setDefaultDataSubId(subId);
 
         Settings.Global.putInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
