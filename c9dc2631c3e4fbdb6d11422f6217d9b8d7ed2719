@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da7fb54a_90c1a231",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaServiceStateTracker.java",
+        "patchSetId": 7
+      },
+      "lineNbr": 609,
+      "author": {
+        "id": 883
+      },
+      "writtenOn": "2015-04-24T12:15:41Z",
+      "side": 1,
+      "message": "I think you should add a decision logic whether to use the spn override or not. \n\nI am thinking of something like this..\nif (!AvalidOperatorName(mSS.getOperatorAlphaLong()) \u0026\u0026 TextUtils.equals(spnOverride, mSS.getOperatorNumeric())){ \n ...  code here ...\n} else {\n... code here ...\n}\n\n private boolean AvalidOperatorName( string operatorname){\n ** decision logic here***\n \nif operatorname is valid\n return true\nelse\n return false\n}",
+      "revId": "c9dc2631c3e4fbdb6d11422f6217d9b8d7ed2719",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
