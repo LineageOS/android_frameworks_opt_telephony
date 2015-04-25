@@ -887,6 +887,8 @@ public class ImsPhone extends ImsPhoneBase {
             case ImsReasonInfo.CODE_UT_CB_PASSWORD_MISMATCH:
                 error = CommandException.Error.PASSWORD_INCORRECT;
                 break;
+            case ImsReasonInfo.CODE_UT_SERVICE_UNAVAILABLE:
+                error = CommandException.Error.RADIO_NOT_AVAILABLE;
             default:
                 break;
         }
@@ -1093,18 +1095,10 @@ public class ImsPhone extends ImsPhoneBase {
     sendResponse(Message onComplete, Object result, Throwable e) {
         if (onComplete != null) {
             CommandException ex = null;
-            ImsException imsEx = null;
             if (e != null) {
-                if (e instanceof ImsException) {
-                    imsEx = (ImsException) e;
-                    AsyncResult.forMessage(onComplete, result, imsEx);
-                } else {
-                    ex = getCommandException(e);
-                    AsyncResult.forMessage(onComplete, result, ex);
-                }
-            } else {
-                AsyncResult.forMessage(onComplete, result, null);
+                ex = getCommandException(e);
             }
+            AsyncResult.forMessage(onComplete, result, ex);
             onComplete.sendToTarget();
         }
     }
