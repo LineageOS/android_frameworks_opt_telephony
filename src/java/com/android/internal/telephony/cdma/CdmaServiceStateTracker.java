@@ -604,12 +604,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             if (DBG) log("updateSpnDisplay: radio is on but out " +
                     "of service, set plmn='" + plmn + "'");
         } else if (combinedRegState == ServiceState.STATE_IN_SERVICE) {
-            if (SystemProperties.getBoolean("ro.cdma.force_plmn_lookup", false)) {
-                plmn = Operators.operatorReplace(mSS.getOperatorNumeric());
-            } else {
-                plmn = TextUtils.isEmpty(mSS.getOperatorAlphaLong()) ? SystemProperties.get(
+            plmn = TextUtils.isEmpty(mSS.getOperatorAlphaLong()) ? SystemProperties.get(
                             "ro.cdma.home.operator.alpha", "") : mSS.getOperatorAlphaLong();
-            }
             // depends on the rule and whether plmn or spn is null
             showPlmn = ( !TextUtils.isEmpty(plmn)) &&
                     ((rule & RuimRecords.SPN_RULE_SHOW_PLMN) == RuimRecords.SPN_RULE_SHOW_PLMN);
@@ -841,6 +837,12 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                             mUiccController.getUiccCard().getOperatorBrandOverride() : null;
                         if (brandOverride != null) {
                             mNewSS.setOperatorName(brandOverride, brandOverride, opNames[2]);
+                        } else if (SystemProperties.getBoolean("ro.cdma.force_plmn_lookup",
+                                false)) {
+                            mNewSS.setOperatorName(
+                                Operators.operatorReplace(opNames[2]),
+                                opNames[1],
+                                opNames[2]);
                         } else {
                             mNewSS.setOperatorName(opNames[0], opNames[1], opNames[2]);
                         }
