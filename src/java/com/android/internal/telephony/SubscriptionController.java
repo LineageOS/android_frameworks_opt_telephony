@@ -1471,8 +1471,6 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     public boolean isActiveSubId(int subId) {
-        enforceSubscriptionPermission();
-
         boolean retVal = SubscriptionManager.isValidSubscriptionId(subId)
                 && sSlotIdxToSubId.containsValue(subId);
 
