@@ -64,7 +64,7 @@ import java.util.regex.Pattern;
  */
 public class SmsUsageMonitor {
     private static final String TAG = "SmsUsageMonitor";
-    private static final boolean DBG = false;
+    private static final boolean DBG = true; // intentionally enable DBG
     private static final boolean VDBG = false;
 
     private static final String SHORT_CODE_PATH = "/data/misc/sms/codes";
@@ -444,10 +444,14 @@ public class SmsUsageMonitor {
             if (countryIso != null) {
                 if (mCurrentCountry == null || !countryIso.equals(mCurrentCountry) ||
                         mPatternFile.lastModified() != mPatternFileLastModified) {
+                    mCurrentPatternMatcher = null;
                     if (mPatternFile.exists()) {
                         if (DBG) Rlog.d(TAG, "Loading SMS Short Code patterns from file");
                         mCurrentPatternMatcher = getPatternMatcherFromFile(countryIso);
-                    } else {
+                    }
+
+                    // if matcher not defined in file, fall back to xml
+                    if (mCurrentPatternMatcher == null) {
                         if (DBG) Rlog.d(TAG, "Loading SMS Short Code patterns from resource");
                         mCurrentPatternMatcher = getPatternMatcherFromResource(countryIso);
                     }
