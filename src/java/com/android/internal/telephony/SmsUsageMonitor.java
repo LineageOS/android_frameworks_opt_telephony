@@ -64,7 +64,7 @@ import java.util.regex.Pattern;
  */
 public class SmsUsageMonitor {
     private static final String TAG = "SmsUsageMonitor";
-    private static final boolean DBG = false;
+    private static final boolean DBG = true;
     private static final boolean VDBG = false;
 
     private static final String SHORT_CODE_PATH = "/data/misc/sms/codes";
@@ -429,6 +429,7 @@ public class SmsUsageMonitor {
      *  {@link #CATEGORY_POSSIBLE_PREMIUM_SHORT_CODE}, or {@link #CATEGORY_PREMIUM_SHORT_CODE}.
      */
     public int checkDestination(String destAddress, String countryIso) {
+        Rlog.d(TAG, "checkDestination destAddress=" + destAddress + ", countryIso=" + countryIso);
         synchronized (mSettingsObserverHandler) {
             // always allow emergency numbers
             if (PhoneNumberUtils.isEmergencyNumber(destAddress, countryIso)) {
