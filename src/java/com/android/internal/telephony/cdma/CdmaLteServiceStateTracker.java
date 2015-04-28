@@ -480,9 +480,11 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             }
 
             if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY &&
-                    mIccRecords != null) {
+                    mIccRecords != null &&
+                    !SystemProperties.getBoolean("ro.cdma.force_plmn_lookup", false)) {
                 // SIM is found on the device. If ERI roaming is OFF, and SID/NID matches
                 // one configured in SIM, use operator name  from CSIM record.
+                // If force plmn lookup, keep the lookup value instead
                 boolean showSpn =
                     ((RuimRecords)mIccRecords).getCsimSpnDisplayCondition();
                 int iconIndex = mSS.getCdmaEriIconIndex();

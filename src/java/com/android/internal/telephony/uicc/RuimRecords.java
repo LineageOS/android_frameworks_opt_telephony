@@ -1026,9 +1026,11 @@ public final class RuimRecords extends IccRecords {
             rule = SPN_RULE_SHOW_PLMN;
         } else if (isOnMatchingPlmn(plmnNumeric)) {
             // on home network
-            if (mCsimSpnDisplayCondition && !TextUtils.isEmpty(getServiceProviderName())) {
+            if (mCsimSpnDisplayCondition && !TextUtils.isEmpty(getServiceProviderName())
+                    && (!SystemProperties.getBoolean("ro.cdma.force_plmn_lookup", false))) {
                 // check CSIM SPN Display Condition (applicable on home network),
                 // but only if SPN was found on this RUIM
+                // if force plmn lookup then plmn should be used
                 rule = SPN_RULE_SHOW_SPN;
             } else {
                 // CSIM SPN Display does not require a SPN display, or SPN not found on RUIM,
