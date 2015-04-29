@@ -2489,6 +2489,8 @@ public final class DcTracker extends DcTrackerBase {
             }
         }
 
+        dedupeApnSettings();
+
         if (mAllApnSettings.isEmpty() && isDummyProfileNeeded()) {
             addDummyApnSettings(operator);
         }
@@ -2509,9 +2511,6 @@ public final class DcTracker extends DcTrackerBase {
             if (DBG) log("createAllApnList: mPreferredApn=" + mPreferredApn);
         }
         if (DBG) log("createAllApnList: X mAllApnSettings=" + mAllApnSettings);
-
-        //merge apns only after prefer apn is set
-        dedupeApnSettings();
 
         setDataProfilesAsNeeded();
     }
@@ -2614,14 +2613,8 @@ public final class DcTracker extends DcTrackerBase {
         String roamingProtocol = src.roamingProtocol.equals("IPV4V6") ? src.roamingProtocol :
                 dest.roamingProtocol;
         int apnId = dest.id;
-        if (mCanSetPreferApn && mPreferredApn != null) {
-            if (src.id == mPreferredApn.id) {
-                apnId = src.id;
-            }
-        } else {
-            if (src.canHandleType(PhoneConstants.APN_TYPE_DEFAULT)) {
-                apnId = src.id;
-            }
+        if (src.canHandleType(PhoneConstants.APN_TYPE_DEFAULT)) {
+            apnId = src.id;
         }
 
         return new ApnSetting(apnId, dest.numeric, dest.carrier, dest.apn,
@@ -3145,8 +3138,8 @@ public final class DcTracker extends DcTrackerBase {
     public void registerForAllDataDisconnected(Handler h, int what, Object obj) {
         mAllDataDisconnectedRegistrants.addUnique(h, what, obj);
 
-        if (isDisconnected()) {
-            log("notify All Data Disconnected");
+        if (!isConnected()) {
+            log("No Apncontext is connected, notify All Data Disconnected");
             notifyAllDataDisconnected();
         }
     }

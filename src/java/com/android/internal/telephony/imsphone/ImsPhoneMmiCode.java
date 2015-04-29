@@ -1111,10 +1111,12 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     boolean cffEnabled = (msg.arg2 == 1);
                     if (mIccRecords != null) {
                         mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled, mDialingNumber);
+                        mPhone.setCallForwardingPreference(cffEnabled);
                     }
                 }
 
                 onSetComplete(msg, ar);
+                mPhone.updateCallForwardStatus();
                 break;
 
             case EVENT_SET_CFF_TIMER_COMPLETE:
@@ -1244,13 +1246,14 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             mState = State.FAILED;
 
             if (ar.exception instanceof CommandException) {
-                CommandException.Error err = ((CommandException)(ar.exception)).getCommandError();
-                if (err == CommandException.Error.PASSWORD_INCORRECT) {
+                CommandException err = (CommandException) ar.exception;
+                if (err.getCommandError() == CommandException.Error.PASSWORD_INCORRECT) {
                     sb.append(mContext.getText(
                             com.android.internal.R.string.passwordIncorrect));
+                } else if (err.getMessage() != null) {
+                    sb.append(err.getMessage());
                 } else {
-                    sb.append(mContext.getText(
-                            com.android.internal.R.string.mmiError));
+                    sb.append(mContext.getText(com.android.internal.R.string.mmiError));
                 }
             } else {
                 ImsException error = (ImsException) ar.exception;
@@ -1374,6 +1377,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             boolean cffEnabled = (info.status == 1);
             if (mIccRecords != null) {
                 mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled, info.number);
+                Rlog.d(LOG_TAG, "makeCFQueryResultMessage cffEnabled  = "+cffEnabled);
+                mPhone.setCallForwardingPreference(cffEnabled);
             }
         }
 
@@ -1411,6 +1416,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
 
                 // Set unconditional CFF in SIM to false
                 if (mIccRecords != null) {
+                    mPhone.setCallForwardingPreference(false);
                     mIccRecords.setVoiceCallForwardingFlag(1, false, null);
                 }
             } else {

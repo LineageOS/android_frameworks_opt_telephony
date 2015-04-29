@@ -299,6 +299,15 @@ public class CDMAPhone extends PhoneBase {
         }
     }
 
+    public ServiceState
+    getBaseServiceState() {
+        if (mSST != null) {
+            return mSST.mSS;
+        } else {
+            // avoid potential NPE in EmergencyCallHelper during Phone switch
+            return new ServiceState();
+        }
+    }
 
     @Override
     public CallTracker getCallTracker() {
@@ -307,6 +316,13 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public PhoneConstants.State getState() {
+        if (mImsPhone != null) {
+            PhoneConstants.State imsState = mImsPhone.getState();
+            if (imsState != PhoneConstants.State.IDLE) {
+                return imsState;
+            }
+        }
+
         return mCT.mState;
     }
 
@@ -424,17 +440,23 @@ public class CDMAPhone extends PhoneBase {
 
         boolean imsUseEnabled =
                 ImsManager.isVolteEnabledByPlatform(mContext) &&
-                ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext);
-        if (!imsUseEnabled) {
-            Rlog.w(LOG_TAG, "IMS is disabled: forced to CS");
-        }
+                ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext) &&
+                ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext) &&
+                imsPhone != null &&
+                imsPhone.isVolteEnabled() &&
+                (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE);
 
-        if (imsUseEnabled && imsPhone != null && imsPhone.isVolteEnabled()
-                && ((imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE
-                && !PhoneNumberUtils.isEmergencyNumber(dialString))
-                || (PhoneNumberUtils.isEmergencyNumber(dialString)
-                && mContext.getResources().getBoolean(
-                        com.android.internal.R.bool.useImsAlwaysForEmergencyCall))) ) {
+        boolean useImsForEmergency = imsPhone != null &&
+                PhoneNumberUtils.isEmergencyNumber(dialString) &&
+                mContext.getResources().getBoolean(
+                        com.android.internal.R.bool.useImsAlwaysForEmergencyCall) &&
+                ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext) &&
+                (imsPhone.getServiceState().getState() != ServiceState.STATE_POWER_OFF);
+
+        Rlog.d(LOG_TAG,"imsUseEnabled = " + imsUseEnabled +
+                ", useImsForEmergency = " + useImsForEmergency);
+
+        if (imsUseEnabled || useImsForEmergency) {
             try {
                 if (DBG) Rlog.d(LOG_TAG, "Trying IMS PS call");
                 return imsPhone.dial(dialString, videoState, extras);

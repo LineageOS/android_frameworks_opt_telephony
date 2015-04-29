@@ -213,7 +213,7 @@ public class CDMALTEPhone extends CDMAPhone {
 
     @Override
     public boolean updateCurrentCarrierInProvider() {
-        long currentDds = SubscriptionManager.getDefaultDataSubId();
+        int currentDds = SubscriptionManager.getDefaultDataSubId();
         String operatorNumeric = getOperatorNumeric();
 
         Rlog.d(LOG_TAG, "updateCurrentCarrierInProvider: mSubscription = " + getSubId()

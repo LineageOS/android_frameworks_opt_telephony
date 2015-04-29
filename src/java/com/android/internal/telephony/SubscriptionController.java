@@ -139,9 +139,14 @@ public class SubscriptionController extends ISub.Stub {
     protected TelephonyManager mTelephonyManager;
     protected CallManager mCM;
 
+    // When no valid SIM cards present on device, framework returns DUMMY subIds
+    // with range starting from DUMMY_SUB_ID_BASE.
+    private static final int DUMMY_SUB_ID_BASE = SubscriptionManager.MAX_SUBSCRIPTION_ID_VALUE
+        - PhoneConstants.MAX_PHONE_COUNT_TRI_SIM;
+
     // FIXME: Does not allow for multiple subs in a slot and change to SparseArray
     private static HashMap<Integer, Integer> mSlotIdxToSubId = new HashMap<Integer, Integer>();
-    private static int mDefaultFallbackSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    private static int mDefaultFallbackSubId = DUMMY_SUB_ID_BASE;
     private static int mDefaultPhoneId = 0;
 
     private boolean mCFUpdated = false;
@@ -157,9 +162,6 @@ public class SubscriptionController extends ISub.Stub {
 
     private DdsScheduler mScheduler;
     private DdsSchedulerAc mSchedulerAc;
-
-    // Dummy subIds are used when no SIMs present on device
-    private static final int DUMMY_SUB_ID_BASE = 5000;
 
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -712,15 +714,14 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         String nameToSet;
-        String CarrierName = TelephonyManager.getDefault().getSimOperator(subIds[0]);
-        if (DBG) logdl("[addSubInfoRecord] CarrierName = " + CarrierName);
-        String simCarrierName =
-                TelephonyManager.getDefault().getSimOperatorNameForSubscription(subIds[0]);
+        String simCarrierName = mTelephonyManager.getSimOperatorNameForSubscription(subIds[0]);
 
         if (!TextUtils.isEmpty(simCarrierName)) {
             nameToSet = simCarrierName;
         } else {
-            nameToSet = "CARD " + Integer.toString(slotId + 1);
+            nameToSet = mContext.getString(
+                    com.android.internal.R.string.card_string,
+                    Integer.toString(slotId + 1)).toString();
         }
         if (DBG) logdl("[addSubInfoRecord] sim name = " + nameToSet);
         if (DBG) logdl("[addSubInfoRecord] carrier name = " + simCarrierName);
@@ -741,9 +742,7 @@ public class SubscriptionController extends ISub.Stub {
                 value.put(SubscriptionManager.COLOR, color);
                 value.put(SubscriptionManager.SIM_SLOT_INDEX, slotId);
                 value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
-                value.put(SubscriptionManager.CARRIER_NAME,
-                        !TextUtils.isEmpty(simCarrierName) ? simCarrierName :
-                        mContext.getString(com.android.internal.R.string.unknownName));
+                value.put(SubscriptionManager.CARRIER_NAME, "");
                 Uri uri = resolver.insert(SubscriptionManager.CONTENT_URI, value);
                 if (DBG) logdl("[addSubInfoRecord] New record created: " + uri);
             } else {
@@ -758,10 +757,6 @@ public class SubscriptionController extends ISub.Stub {
 
                 if (nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
                     value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
-                }
-
-                if (!TextUtils.isEmpty(simCarrierName)) {
-                    value.put(SubscriptionManager.CARRIER_NAME, simCarrierName);
                 }
 
                 if (value.size() > 0) {
@@ -807,8 +802,11 @@ public class SubscriptionController extends ISub.Stub {
                         }
 
                         // Set the default sub if not set or if single sim device
+                        // If subId equal with defaultSubId for adding the first SUB record
+                        // This sub is active so that the default fall back sub is not set
                         if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
-                                || subIdCountMax == 1) {
+                                || subIdCountMax == 1 || defaultSubId == subId
+                                || defaultSubId == DUMMY_SUB_ID_BASE) {
                             setDefaultFallbackSubId(subId);
                         }
                         // If single sim device, set this subscription as the default for everything
@@ -858,9 +856,12 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.CONTENT_URI.getAuthority(), 0) == null ||
                 subIds == null ||
                 !SubscriptionManager.isValidSubscriptionId(subIds[0])) {
-            // No place to store this info, we are done.
+            // No place to store this info. Notify registrants of the change anyway as they
+            // might retrieve the SPN/PLMN text from the SST sticky broadcast.
             // TODO: This can be removed once SubscriptionController is not running on devices
             // that don't need it, such as TVs.
+            if (DBG) logd("[setPlmnSpn] No valid subscription to store info");
+            notifySubscriptionInfoChanged();
             return false;
         }
         String carrierText = "";
@@ -1008,7 +1009,7 @@ public class SubscriptionController extends ISub.Stub {
 
         result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                    + "=" + Long.toString(subId), null);
+                    + "=" + Integer.toString(subId), null);
         if (DBG) logd("[setDisplayNumber]- number: " + number + " update result :" + result);
         notifySubscriptionInfoChanged();
 
@@ -1085,7 +1086,7 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         if (subId >= DUMMY_SUB_ID_BASE) {
-            logd("getPhoneId,  received summy subId " + subId);
+            logd("getSlotId,  received dummy subId " + subId);
             return subId - DUMMY_SUB_ID_BASE;
         }
 
@@ -1190,7 +1191,7 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         if (subId >= DUMMY_SUB_ID_BASE) {
-            logd("getPhoneId,  received summy subId " + subId);
+            logd("getPhoneId,  received dummy subId " + subId);
             return subId - DUMMY_SUB_ID_BASE;
         }
 
@@ -1421,7 +1422,9 @@ public class SubscriptionController extends ISub.Stub {
             reqStatus = PhoneConstants.SUCCESS;
         }
         mScheduler.updateCurrentDds(null);
-        broadcastDefaultDataSubIdChanged(reqStatus);
+        broadcastDefaultDataSubIdChanged(subId);
+
+        updateAllDataConnectionTrackers();
     }
 
     public void setDefaultDataSubId(int subId) {
@@ -1435,13 +1438,6 @@ public class SubscriptionController extends ISub.Stub {
                     EVENT_SET_DEFAULT_DATA_DONE, null);
         }
         mDctController.setDefaultDataSubId(subId);
-
-        Settings.Global.putInt(mContext.getContentResolver(),
-                Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
-        broadcastDefaultDataSubIdChanged(subId);
-
-        // FIXME is this still needed?
-        updateAllDataConnectionTrackers();
     }
 
     public void setDataSubId(int subId) {
@@ -1483,7 +1479,7 @@ public class SubscriptionController extends ISub.Stub {
                     || TelephonyManager.getDefault().getSimCount() == 1)) {
                 if (DBG) logdl("[setDefaultFallbackSubId] set mDefaultFallbackSubId=" + subId);
                 mDefaultFallbackSubId = subId;
-                Settings.Global.putLong(mContext.getContentResolver(),
+                Settings.Global.putInt(mContext.getContentResolver(),
                          Settings.Global.MULTI_SIM_DEFAULT_SUBSCRIPTION, subId);
                 // Update MCC MNC device configuration information
                 String defaultMccMnc = TelephonyManager.getDefault().getSimOperator(phoneId);

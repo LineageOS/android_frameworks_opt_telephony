@@ -336,8 +336,12 @@ public class SubscriptionInfoUpdater extends Handler {
             }
             queryIccId(slotId);
         } else if (oldState.isCardPresent() && newState.isCardPresent() &&
-                (!subHelper.isApmSIMNotPwdn()) && (mIccId[slotId] == null)) {
+                (((!subHelper.isApmSIMNotPwdn()) && (mIccId[slotId] == null)) ||
+                (mIccId[slotId] != null && mIccId[slotId].equals(ICCID_STRING_FOR_NO_SIM)))) {
+            // If old and new card state is present and ICCID is "", query the ICCID again
+            // to process SET_UICC request
             logd("SIM" + (slotId + 1) + " powered up from APM ");
+            mIccId[slotId] = null;
             mFh[slotId] = null;
             mNeedUpdate = true;
             queryIccId(slotId);
@@ -402,13 +406,11 @@ public class SubscriptionInfoUpdater extends Handler {
                 number.put(SubscriptionManager.NUMBER, msisdn);
                 contentResolver.update(SubscriptionManager.CONTENT_URI, number,
                         SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "="
-                        + Long.toString(subId), null);
+                        + Integer.toString(subId), null);
             }
 
             SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
             String nameToSet;
-            String CarrierName = TelephonyManager.getDefault().getSimOperator(subId);
-            logd("CarrierName = " + CarrierName);
             String simCarrierName = TelephonyManager.getDefault()
                     .getSimOperatorNameForSubscription(subId);
             ContentValues name = new ContentValues(1);
@@ -422,15 +424,10 @@ public class SubscriptionInfoUpdater extends Handler {
                 }
                 name.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
                 logd("sim name = " + nameToSet);
+                contentResolver.update(SubscriptionManager.CONTENT_URI, name,
+                        SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
+                        + "=" + Integer.toString(subId), null);
             }
-            name.put(SubscriptionManager.CARRIER_NAME,
-                    !TextUtils.isEmpty(simCarrierName) ? simCarrierName :
-                    mContext.getString(com.android.internal.R.string.unknownName));
-            contentResolver.update(SubscriptionManager.CONTENT_URI, name,
-                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
-                    + "=" + Long.toString(subId), null);
-            logd("carrier name = " + simCarrierName);
-
         } else {
             logd("Invalid subId, could not update ContentResolver");
         }
@@ -566,6 +563,9 @@ public class SubscriptionInfoUpdater extends Handler {
         for (int i = 0; i < PROJECT_SIM_NUM; i++) {
             if (mInsertSimState[i] == SIM_NOT_INSERT) {
                 logd("updateSubscriptionInfoByIccId: No SIM inserted in slot " + i + " this time");
+                if (PROJECT_SIM_NUM == 1) {
+                    SubscriptionController.getInstance().updateUserPrefs(false);
+                }
             } else {
                 if (mInsertSimState[i] > 0) {
                     //some special SIMs may have the same IccIds, add suffix to distinguish them

@@ -169,6 +169,7 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_GET_CSP_CPHS_DONE = 33;
     private static final int EVENT_GET_GID1_DONE = 34;
     private static final int EVENT_APP_LOCKED = 35;
+    private static final int EVENT_READ_FDN_DONE = 36;
 
     // Lookup table for carriers known to produce SIMs which incorrectly indicate MNC length.
 
@@ -1196,6 +1197,10 @@ public class SIMRecords extends IccRecords {
 
                 break;
 
+            case EVENT_READ_FDN_DONE:
+                if (DBG) log("FDN records loaded");
+                break;
+
             default:
                 super.handleMessage(msg);   // IccRecords handles generic record load responses
 
@@ -1599,6 +1604,14 @@ public class SIMRecords extends IccRecords {
         if (false) { // XXX
             mFh.loadEFLinearFixedAll(EF_SMS, obtainMessage(EVENT_GET_ALL_SMS_DONE));
             mRecordsToLoad++;
+        }
+
+        if (mContext.getResources()
+                    .getBoolean(com.android.internal.R.bool.config_fdn_contact_search)) {
+            if (DBG) log("read FDN");
+            mAdnCache.requestLoadAllAdnLike(IccConstants.EF_FDN,
+                    mAdnCache.extensionEfForEf(IccConstants.EF_FDN), null,
+                    obtainMessage(EVENT_READ_FDN_DONE));
         }
 
         if (CRASH_RIL) {
