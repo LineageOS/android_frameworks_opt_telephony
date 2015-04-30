@@ -1198,6 +1198,12 @@ public class DctController extends Handler {
             log("Requested networkSpecifier = " + requestedSpecifier);
             log("my networkSpecifier = " + mNetworkCapabilities.getNetworkSpecifier());
 
+
+            if (!SubscriptionManager.isValidSubscriptionId(currentDds)) {
+                log("Can't handle any network request now, currentDds not ready.");
+                return;
+            }
+
             // For clients that do not send subId in NetworkCapabilities,
             // Connectivity will send to all network factories. Accept only
             // when requestedSpecifier is same as current factory's subId
