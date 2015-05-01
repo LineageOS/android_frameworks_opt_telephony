@@ -827,22 +827,27 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                                     "'= " + opNames[2]);
                         }
                     }
-
+                    if (SystemProperties.getBoolean("ro.cdma.force_plmn_lookup", false)) {
+                        String opLookup = Operators.operatorReplace(opNames[2]);
+                        String opNumeric = opNames[2];
+                        if (TextUtils.equals(opLookup, opNumeric)) {
+                            // lookup failed, an invalid numeric, fallback to Ruim
+                            opNumeric = mPhone.getSystemProperty(
+                                    TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
+                            opLookup = Operators.operatorReplace(opNumeric);
+                        }
+                        opNames[0] = opLookup;
+                        opNames[2] = opNumeric;
+                    }
                     if (!mIsSubscriptionFromRuim) {
                         // In CDMA in case on NV, the ss.mOperatorAlphaLong is set later with the
                         // ERI text, so here it is ignored what is coming from the modem.
-                        mNewSS.setOperatorName(null, opNames[1], opNames[2]);
+                        mNewSS.setOperatorName(opNames[0], opNames[1], opNames[2]);
                     } else {
                         String brandOverride = mUiccController.getUiccCard() != null ?
                             mUiccController.getUiccCard().getOperatorBrandOverride() : null;
                         if (brandOverride != null) {
                             mNewSS.setOperatorName(brandOverride, brandOverride, opNames[2]);
-                        } else if (SystemProperties.getBoolean("ro.cdma.force_plmn_lookup",
-                                false)) {
-                            mNewSS.setOperatorName(
-                                Operators.operatorReplace(opNames[2]),
-                                opNames[1],
-                                opNames[2]);
                         } else {
                             mNewSS.setOperatorName(opNames[0], opNames[1], opNames[2]);
                         }

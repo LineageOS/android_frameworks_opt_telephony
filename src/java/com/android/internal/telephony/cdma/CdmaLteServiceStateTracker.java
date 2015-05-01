@@ -466,7 +466,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             boolean forceEriFromXml =
                            SystemProperties.getBoolean("ro.ril.force_eri_from_xml", false);
             if (!hasBrandOverride && (mCi.getRadioState().isOn()) && (mPhone.isEriFileLoaded())
-                && (!mIsSubscriptionFromRuim || forceEriFromXml)) {
+                && (!mIsSubscriptionFromRuim || forceEriFromXml) &&
+                !SystemProperties.getBoolean("ro.cdma.force_plmn_lookup", false)) {
                 String eriText;
                 // Now the CDMAPhone sees the new ServiceState so it can get the
                 // new ERI text
