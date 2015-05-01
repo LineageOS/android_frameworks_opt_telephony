@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da7fb54a_835b0c54",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 3031,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2015-05-01T23:57:52Z",
+      "side": 1,
+      "message": "100 chars.\n\nYou also can convert this into a constant:\n\nprivate static final int MMS_DATA_PROFILE \u003d\n       SystemProperties.getInt(...);\n\n(at the top of the file)\n\n\nAlso I think I\u0027d prefer a prop naming like ro.telephony.mms_data_profile",
+      "revId": "d64b2c3f388e1fd4e114e5a8b960a3fce46fb89b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
