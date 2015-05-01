@@ -839,10 +839,18 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                             mNewSS.setOperatorName(brandOverride, brandOverride, opNames[2]);
                         } else if (SystemProperties.getBoolean("ro.cdma.force_plmn_lookup",
                                 false)) {
+                            String opLookup = Operators.operatorReplace(opNames[2]);
+                            String opNumeric = opNames[2];
+                            if (TextUtils.equals(opLookup, opNumeric)) {
+                                // lookup failed, an invalid numeric, fallback to Ruim
+                                opNumeric = mPhone.getSystemProperty(
+                                        TelephonyProperties.PROPERTY_ICC_OPERATOR_NUMERIC, "");
+                                opLookup = Operators.operatorReplace(opNumeric);
+                            }
                             mNewSS.setOperatorName(
-                                Operators.operatorReplace(opNames[2]),
+                                opLookup,
                                 opNames[1],
-                                opNames[2]);
+                                opNumeric);
                         } else {
                             mNewSS.setOperatorName(opNames[0], opNames[1], opNames[2]);
                         }
