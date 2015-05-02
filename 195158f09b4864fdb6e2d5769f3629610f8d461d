@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da7fb54a_23124063",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2015-05-02T00:25:07Z",
+      "side": 1,
+      "message": "100 chars (as mentioned in previous PS ;) )",
+      "revId": "195158f09b4864fdb6e2d5769f3629610f8d461d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
