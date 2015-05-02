@@ -1556,6 +1556,14 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     /**
+     * Returns the status of Link Capacity Estimation (LCE) service.
+     */
+    @Override
+    public int getLceStatus() {
+        return mActivePhone.getLceStatus();
+    }
+
+    /**
      * @return true if we are in the emergency call back mode. This is a period where
      * the phone should be using as little power as possible and be ready to receive an
      * incoming call from the emergency operator.

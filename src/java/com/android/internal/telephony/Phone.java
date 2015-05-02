@@ -2053,4 +2053,9 @@ public interface Phone {
      * @return {@code true} if video call is present, false otherwise.
      */
     public boolean isVideoCallPresent();
+
+    /**
+     * Returns the status of Link Capacity Estimation (LCE) service.
+     */
+    public int getLceStatus();
 }
