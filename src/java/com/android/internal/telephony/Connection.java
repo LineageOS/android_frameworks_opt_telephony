@@ -52,6 +52,7 @@ public abstract class Connection {
         public void onConferenceParticipantsChanged(List<ConferenceParticipant> participants);
         public void onCallSubstateChanged(int callSubstate);
         public void onMultipartyStateChanged(boolean isMultiParty);
+        public void onConferenceMergedFailed();
     }
 
     /**
@@ -77,6 +78,8 @@ public abstract class Connection {
         public void onCallSubstateChanged(int callSubstate) {}
         @Override
         public void onMultipartyStateChanged(boolean isMultiParty) {}
+        @Override
+        public void onConferenceMergedFailed() {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -640,13 +643,22 @@ public abstract class Connection {
     }
 
     /**
-     * Notifies listeners of a change to the multiparty state of the connection..
+     * Notifies listeners of a change to the multiparty state of the connection.
      *
      * @param isMultiparty The participant(s).
      */
     public void updateMultipartyState(boolean isMultiparty) {
         for (Listener l : mListeners) {
             l.onMultipartyStateChanged(isMultiparty);
+        }
+    }
+
+    /**
+     * Notifies listeners of a failure in merging this connection with the background connection.
+     */
+    public void onConferenceMergeFailed() {
+        for (Listener l : mListeners) {
+            l.onConferenceMergedFailed();
         }
     }
 
