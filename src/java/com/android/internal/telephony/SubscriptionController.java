@@ -1270,14 +1270,14 @@ public class SubscriptionController extends ISub.Stub {
         try {
             if (DBG) logd("[clearSubInfo]+");
 
-            int size = mSlotIdxToSubId.size();
+            int size = sSlotIdxToSubId.size();
 
             if (size == 0) {
                 if (DBG) logdl("[clearSubInfo]- no simInfo size=" + size);
                 return 0;
             }
 
-            mSlotIdxToSubId.clear();
+            sSlotIdxToSubId.clear();
             if (DBG) logdl("[clearSubInfo]- clear size=" + size);
             return size;
         } finally {
