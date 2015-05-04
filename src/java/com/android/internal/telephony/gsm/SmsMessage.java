@@ -777,7 +777,8 @@ public class SmsMessage extends SmsMessageBase {
     }
 
     /**
-     * Calculate the number of septets needed to encode the message.
+     * Calculates the number of SMS's required to encode the message body and
+     * the number of characters remaining until the next message.
      *
      * @param msgBody the message to encode
      * @param use7bitOnly ignore (but still count) illegal characters if true
@@ -795,31 +796,7 @@ public class SmsMessage extends SmsMessageBase {
         }
         TextEncodingDetails ted = GsmAlphabet.countGsmSeptets(newMsgBody, use7bitOnly);
         if (ted == null) {
-            ted = new TextEncodingDetails();
-            int octets = newMsgBody.length() * 2;
-            ted.codeUnitCount = newMsgBody.length();
-            if (octets > MAX_USER_DATA_BYTES) {
-                // If EMS is not supported, break down EMS into single segment SMS
-                // and add page info " x/y".
-                // In the case of UCS2 encoding type, we need 8 bytes for this
-                // but we only have 6 bytes from UDH, so truncate the limit for
-                // each segment by 2 bytes (1 char).
-                int max_user_data_bytes_with_header = MAX_USER_DATA_BYTES_WITH_HEADER;
-                if (!android.telephony.SmsMessage.hasEmsSupport()) {
-                    // make sure total number of segments is less than 10
-                    if (octets <= 9 * (max_user_data_bytes_with_header - 2))
-                        max_user_data_bytes_with_header -= 2;
-                }
-
-                ted.msgCount = (octets + (max_user_data_bytes_with_header - 1)) /
-                        max_user_data_bytes_with_header;
-                ted.codeUnitsRemaining = ((ted.msgCount *
-                        max_user_data_bytes_with_header) - octets) / 2;
-            } else {
-                ted.msgCount = 1;
-                ted.codeUnitsRemaining = (MAX_USER_DATA_BYTES - octets)/2;
-            }
-            ted.codeUnitSize = ENCODING_16BIT;
+            return SmsMessageBase.calcUnicodeEncodingDetails(newMsgBody);
         }
         return ted;
     }

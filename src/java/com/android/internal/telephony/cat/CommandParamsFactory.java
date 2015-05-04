@@ -65,6 +65,22 @@ class CommandParamsFactory extends Handler {
     static final int DTTZ_SETTING                           = 0x03;
     static final int LANGUAGE_SETTING                       = 0x04;
 
+    // As per TS 102.223 Annex C, Structure of CAT communications,
+    // the APDU length can be max 255 bytes. This leaves only 239 bytes for user
+    // input string. CMD details TLV + Device IDs TLV + Result TLV + Other
+    // details of TextString TLV not including user input take 16 bytes.
+    //
+    // If UCS2 encoding is used, maximum 118 UCS2 chars can be encoded in 238 bytes.
+    // Each UCS2 char takes 2 bytes. Byte Order Mask(BOM), 0xFEFF takes 2 bytes.
+    //
+    // If GSM 7 bit default(use 8 bits to represent a 7 bit char) format is used,
+    // maximum 239 chars can be encoded in 239 bytes since each char takes 1 byte.
+    //
+    // No issues for GSM 7 bit packed format encoding.
+
+    private static final int MAX_GSM7_DEFAULT_CHARS = 239;
+    private static final int MAX_UCS2_CHARS = 118;
+
     static synchronized CommandParamsFactory getInstance(RilMessageDecoder caller,
             IccFileHandler fh) {
         if (sInstance != null) {
@@ -498,6 +514,18 @@ class CommandParamsFactory extends Handler {
         input.echo = (cmdDet.commandQualifier & 0x04) == 0;
         input.packed = (cmdDet.commandQualifier & 0x08) != 0;
         input.helpAvailable = (cmdDet.commandQualifier & 0x80) != 0;
+
+        // Truncate the maxLen if it exceeds the max number of chars that can
+        // be encoded. Limit depends on DCS in Command Qualifier.
+        if (input.ucs2 && input.maxLen > MAX_UCS2_CHARS) {
+            CatLog.d(this, "UCS2: received maxLen = " + input.maxLen +
+                  ", truncating to " + MAX_UCS2_CHARS);
+            input.maxLen = MAX_UCS2_CHARS;
+        } else if (!input.packed && input.maxLen > MAX_GSM7_DEFAULT_CHARS) {
+            CatLog.d(this, "GSM 7Bit Default: received maxLen = " + input.maxLen +
+                  ", truncating to " + MAX_GSM7_DEFAULT_CHARS);
+            input.maxLen = MAX_GSM7_DEFAULT_CHARS;
+        }
 
         mCmdParams = new GetInputParams(cmdDet, input);
 
