@@ -40,6 +40,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
 import android.os.PowerManager;
+import android.os.BatteryManager;
 import android.os.SystemProperties;
 import android.os.PowerManager.WakeLock;
 import android.provider.Settings.SettingNotFoundException;
@@ -227,6 +228,10 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     static final String RILJ_LOG_TAG = "RILJ";
     static final boolean RILJ_LOGD = true;
     static final boolean RILJ_LOGV = false; // STOPSHIP if true
+    static final int RADIO_SCREEN_UNSET = -1;
+    static final int RADIO_SCREEN_OFF = 0;
+    static final int RADIO_SCREEN_ON = 1;
+
 
     /**
      * Wake lock timeout should be longer than the longest timeout in
@@ -243,6 +248,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     RILReceiver mReceiver;
     Display mDefaultDisplay;
     int mDefaultDisplayState = Display.STATE_UNKNOWN;
+    int mRadioScreenState = RADIO_SCREEN_UNSET;
+    boolean mIsDevicePlugged = false;
     WakeLock mWakeLock;
     final int mWakeLockTimeout;
     // The number of wakelock requests currently active.  Don't release the lock
@@ -291,6 +298,22 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         @Override
         public void onDisplayChanged(int displayId) {
             if (displayId == Display.DEFAULT_DISPLAY) {
+                final int oldState = mDefaultDisplayState;
+                mDefaultDisplayState = mDefaultDisplay.getState();
+                if (mDefaultDisplayState != oldState) {
+                    updateScreenState();
+                }
+            }
+        }
+    };
+
+    private final BroadcastReceiver mBatteryStateListener = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            boolean oldState = mIsDevicePlugged;
+            // 0 means it's on battery
+            mIsDevicePlugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0;
+            if (mIsDevicePlugged != oldState) {
                 updateScreenState();
             }
         }
@@ -641,6 +664,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     Context.DISPLAY_SERVICE);
             mDefaultDisplay = dm.getDisplay(Display.DEFAULT_DISPLAY);
             dm.registerDisplayListener(mDisplayListener, null);
+
+            IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+            Intent batteryStatus = context.registerReceiver(mBatteryStateListener, filter);
+            if (batteryStatus != null) {
+                // 0 means it's on battery
+                mIsDevicePlugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0;
+            }
         }
 
         TelephonyDevController tdc = TelephonyDevController.getInstance();
@@ -2216,17 +2246,20 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     // message should be deleted and replaced with more precise messages to control
     // behavior such as signal strength reporting or power managements based on
     // more robust signals.
+    /**
+     * Update the screen state. Send screen state ON if the default display is ON or the device
+     * is plugged.
+     */
     private void updateScreenState() {
-        final int oldState = mDefaultDisplayState;
-        mDefaultDisplayState = mDefaultDisplay.getState();
-        if (mDefaultDisplayState != oldState) {
-            if (oldState != Display.STATE_ON
-                    && mDefaultDisplayState == Display.STATE_ON) {
-                sendScreenState(true);
-            } else if ((oldState == Display.STATE_ON || oldState == Display.STATE_UNKNOWN)
-                        && mDefaultDisplayState != Display.STATE_ON) {
-                sendScreenState(false);
+        final int oldState = mRadioScreenState;
+        mRadioScreenState = (mDefaultDisplayState == Display.STATE_ON || mIsDevicePlugged)
+                ? RADIO_SCREEN_ON : RADIO_SCREEN_OFF;
+        if (mRadioScreenState != oldState) {
+            if (RILJ_LOGV) {
+                riljLog("defaultDisplayState: " + mDefaultDisplayState
+                        + ", isDevicePlugged: " + mIsDevicePlugged);
             }
+            sendScreenState(mRadioScreenState == RADIO_SCREEN_ON);
         }
     }
 
