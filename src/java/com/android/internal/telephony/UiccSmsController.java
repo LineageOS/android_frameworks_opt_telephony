@@ -18,6 +18,7 @@
 
 package com.android.internal.telephony;
 
+import android.annotation.Nullable;
 import android.app.ActivityThread;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -25,7 +26,9 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
+import android.telephony.SmsManager;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
@@ -118,8 +121,10 @@ public class UiccSmsController extends ISms.Stub {
             iccSmsIntMgr.sendData(callingPackage, destAddr, scAddr, destPort, data,
                     sentIntent, deliveryIntent);
         } else {
-            Rlog.e(LOG_TAG,"sendText iccSmsIntMgr is null for" +
+            Rlog.e(LOG_TAG,"sendData iccSmsIntMgr is null for" +
                           " Subscription: " + subId);
+            // TODO: Use a more specific error code to replace RESULT_ERROR_GENERIC_FAILURE.
+            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
         }
     }
 
@@ -151,6 +156,7 @@ public class UiccSmsController extends ISms.Stub {
         } else {
             Rlog.e(LOG_TAG,"sendText iccSmsIntMgr is null for" +
                           " Subscription: " + subId);
+            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
         }
     }
 
@@ -185,6 +191,7 @@ public class UiccSmsController extends ISms.Stub {
         } else {
             Rlog.e(LOG_TAG,"sendMultipartText iccSmsIntMgr is null for" +
                           " Subscription: " + subId);
+            sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
         }
     }
 
@@ -348,13 +355,24 @@ public class UiccSmsController extends ISms.Stub {
 
     // FIXME: Add injectSmsPdu to ISms.aidl
     public void injectSmsPdu(int subId, byte[] pdu, String format, PendingIntent receivedIntent) {
-        getIccSmsInterfaceManager(subId).injectSmsPdu(pdu, format, receivedIntent);
+        IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
+        if (iccSmsIntMgr != null) {
+            iccSmsIntMgr.injectSmsPdu(pdu, format, receivedIntent);
+        } else {
+            // RESULT_SMS_GENERIC_ERROR is documented for injectSmsPdu
+            sendErrorInPendingIntent(receivedIntent, Intents.RESULT_SMS_GENERIC_ERROR);
+        }
     }
 
     /**
      * get sms interface manager object based on subscription.
      **/
-    private IccSmsInterfaceManager getIccSmsInterfaceManager(int subId) {
+    private @Nullable IccSmsInterfaceManager getIccSmsInterfaceManager(int subId) {
+        if (!isActiveSubId(subId)) {
+            Rlog.e(LOG_TAG, "Subscription " + subId + " is inactive.");
+            return null;
+        }
+
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId) ;
         //Fixme: for multi-subscription case
         if (!SubscriptionManager.isValidPhoneId(phoneId)
@@ -367,11 +385,11 @@ public class UiccSmsController extends ISms.Stub {
                 ((PhoneProxy)mPhone[(int)phoneId]).getIccSmsInterfaceManager();
         } catch (NullPointerException e) {
             Rlog.e(LOG_TAG, "Exception is :"+e.toString()+" For subscription :"+subId );
-            e.printStackTrace(); //This will print stact trace
+            e.printStackTrace();
             return null;
         } catch (ArrayIndexOutOfBoundsException e) {
             Rlog.e(LOG_TAG, "Exception is :"+e.toString()+" For subscription :"+subId );
-            e.printStackTrace(); //This will print stack trace
+            e.printStackTrace();
             return null;
         }
     }
@@ -379,7 +397,7 @@ public class UiccSmsController extends ISms.Stub {
     /**
        Gets User preferred SMS subscription */
     public int getPreferredSmsSubscription() {
-        return  SubscriptionController.getInstance().getDefaultSmsSubId();
+        return SubscriptionController.getInstance().getDefaultSmsSubId();
     }
 
     /**
@@ -398,6 +416,7 @@ public class UiccSmsController extends ISms.Stub {
                     deliveryIntent);
         } else {
             Rlog.e(LOG_TAG,"sendStoredText iccSmsIntMgr is null for subscription: " + subId);
+            sendErrorInPendingIntent(sentIntent, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
         }
     }
 
@@ -412,7 +431,29 @@ public class UiccSmsController extends ISms.Stub {
         } else {
             Rlog.e(LOG_TAG,"sendStoredMultipartText iccSmsIntMgr is null for subscription: "
                     + subId);
+            sendErrorInPendingIntents(sentIntents, SmsManager.RESULT_ERROR_GENERIC_FAILURE);
         }
     }
 
+    /*
+     * @return true if the subId is active.
+     */
+    private boolean isActiveSubId(int subId) {
+        return SubscriptionController.getInstance().isActiveSubId(subId);
+    }
+
+    private void sendErrorInPendingIntent(@Nullable PendingIntent intent, int errorCode) {
+        if (intent != null) {
+            try {
+                intent.send(errorCode);
+            } catch (PendingIntent.CanceledException ex) {
+            }
+        }
+    }
+
+    private void sendErrorInPendingIntents(List<PendingIntent> intents, int errorCode) {
+        for (PendingIntent intent : intents) {
+            sendErrorInPendingIntent(intent, errorCode);
+        }
+    }
 }
