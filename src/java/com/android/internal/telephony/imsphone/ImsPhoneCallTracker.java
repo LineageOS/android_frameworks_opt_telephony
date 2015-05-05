@@ -1206,7 +1206,18 @@ public final class ImsPhoneCallTracker extends CallTracker {
         @Override
         public void onCallMergeFailed(ImsCall call, ImsReasonInfo reasonInfo) {
             if (DBG) log("onCallMergeFailed reasonInfo=" + reasonInfo);
+
+            // TODO: the call to notifySuppServiceFailed throws up the "merge failed" dialog
+            // We should move this into the InCallService so that it is handled appropriately
+            // based on the user facing UI.
             mPhone.notifySuppServiceFailed(Phone.SuppService.CONFERENCE);
+
+            // Start plumbing this even through Telecom so other components can take
+            // appropriate action.
+            ImsPhoneConnection conn = findConnection(call);
+            if (conn != null) {
+                conn.onConferenceMergeFailed();
+            }
         }
 
         /**

@@ -47,12 +47,13 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * SubscriptionController to provide an inter-process communication to
@@ -128,7 +129,8 @@ public class SubscriptionController extends ISub.Stub {
     private final AppOpsManager mAppOps;
 
     // FIXME: Does not allow for multiple subs in a slot and change to SparseArray
-    private static HashMap<Integer, Integer> mSlotIdxToSubId = new HashMap<Integer, Integer>();
+    private static Map<Integer, Integer> sSlotIdxToSubId =
+            new ConcurrentHashMap<Integer, Integer>();
     private static int mDefaultFallbackSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     private static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
 
@@ -179,7 +181,7 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private boolean isSubInfoReady() {
-        return mSlotIdxToSubId.size() > 0;
+        return sSlotIdxToSubId.size() > 0;
     }
 
     private SubscriptionController(Phone phone) {
@@ -747,34 +749,34 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
 
-            cursor = resolver.query(SubscriptionManager.CONTENT_URI, null,
-                    SubscriptionManager.SIM_SLOT_INDEX + "=?",
-                    new String[]{String.valueOf(slotId)}, null);
-            try {
-                if (cursor != null && cursor.moveToFirst()) {
-                    do {
-                        int subId = cursor.getInt(cursor.getColumnIndexOrThrow(
-                                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID));
-                        // If mSlotIdToSubIdMap already has a valid subId for a slotId/phoneId,
-                        // do not add another subId for same slotId/phoneId.
-                        Integer currentSubId = mSlotIdxToSubId.get(slotId);
-                        if (currentSubId == null
-                                || !SubscriptionManager.isValidSubscriptionId(currentSubId)) {
-                            // TODO While two subs active, if user deactivats first
-                            // one, need to update the default subId with second one.
+        cursor = resolver.query(SubscriptionManager.CONTENT_URI, null,
+                SubscriptionManager.SIM_SLOT_INDEX + "=?",
+                new String[] {String.valueOf(slotId)}, null);
+        try {
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
+                    int subId = cursor.getInt(cursor.getColumnIndexOrThrow(
+                            SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID));
+                    // If sSlotIdxToSubId already has a valid subId for a slotId/phoneId,
+                    // do not add another subId for same slotId/phoneId.
+                    Integer currentSubId = sSlotIdxToSubId.get(slotId);
+                    if (currentSubId == null
+                            || !SubscriptionManager.isValidSubscriptionId(currentSubId)) {
+                        // TODO While two subs active, if user deactivats first
+                        // one, need to update the default subId with second one.
 
-                            // FIXME: Currently we assume phoneId == slotId which in the future
-                            // may not be true, for instance with multiple subs per slot.
-                            // But is true at the moment.
-                            mSlotIdxToSubId.put(slotId, subId);
-                            int subIdCountMax = getActiveSubInfoCountMax();
-                            int defaultSubId = getDefaultSubId();
-                            if (DBG) {
-                                logdl("[addSubInfoRecord]"
-                                        + " mSlotIdxToSubId.size=" + mSlotIdxToSubId.size()
-                                        + " slotId=" + slotId + " subId=" + subId
-                                        + " defaultSubId=" + defaultSubId + " simCount=" + subIdCountMax);
-                            }
+                        // FIXME: Currently we assume phoneId == slotId which in the future
+                        // may not be true, for instance with multiple subs per slot.
+                        // But is true at the moment.
+                        sSlotIdxToSubId.put(slotId, subId);
+                        int subIdCountMax = getActiveSubInfoCountMax();
+                        int defaultSubId = getDefaultSubId();
+                        if (DBG) {
+                            logdl("[addSubInfoRecord]"
+                                + " sSlotIdxToSubId.size=" + sSlotIdxToSubId.size()
+                                + " slotId=" + slotId + " subId=" + subId
+                                + " defaultSubId=" + defaultSubId + " simCount=" + subIdCountMax);
+                        }
 
                             // Set the default sub if not set or if single sim device
                             if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
@@ -808,8 +810,8 @@ public class SubscriptionController extends ISub.Stub {
             // Once the records are loaded, notify DcTracker
             updateAllDataConnectionTrackers();
 
-            if (DBG) logdl("[addSubInfoRecord]- info size=" + mSlotIdxToSubId.size());
-            return 0;
+        if (DBG) logdl("[addSubInfoRecord]- info size=" + sSlotIdxToSubId.size());
+        return 0;
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
@@ -1105,7 +1107,7 @@ public class SubscriptionController extends ISub.Stub {
             return SubscriptionManager.INVALID_SIM_SLOT_INDEX;
         }
 
-        int size = mSlotIdxToSubId.size();
+        int size = sSlotIdxToSubId.size();
 
         if (size == 0)
         {
@@ -1113,7 +1115,7 @@ public class SubscriptionController extends ISub.Stub {
             return SubscriptionManager.SIM_NOT_INSERTED;
         }
 
-        for (Entry<Integer, Integer> entry: mSlotIdxToSubId.entrySet()) {
+        for (Entry<Integer, Integer> entry: sSlotIdxToSubId.entrySet()) {
             int sim = entry.getKey();
             int sub = entry.getValue();
 
@@ -1154,10 +1156,10 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         // Check if we've got any SubscriptionInfo records using slotIdToSubId as a surrogate.
-        int size = mSlotIdxToSubId.size();
+        int size = sSlotIdxToSubId.size();
         if (size == 0) {
             if (DBG) {
-                logd("[getSubId]- mSlotIdToSubIdMap.size == 0, return DummySubIds slotIdx="
+                logd("[getSubId]- sSlotIdxToSubId.size == 0, return DummySubIds slotIdx="
                         + slotIdx);
             }
             return getDummySubIds(slotIdx);
@@ -1165,7 +1167,7 @@ public class SubscriptionController extends ISub.Stub {
 
         // Create an array of subIds that are in this slot?
         ArrayList<Integer> subIds = new ArrayList<Integer>();
-        for (Entry<Integer, Integer> entry: mSlotIdxToSubId.entrySet()) {
+        for (Entry<Integer, Integer> entry: sSlotIdxToSubId.entrySet()) {
             int slot = entry.getKey();
             int sub = entry.getValue();
             if (slotIdx == slot) {
@@ -1206,7 +1208,7 @@ public class SubscriptionController extends ISub.Stub {
             return SubscriptionManager.INVALID_PHONE_INDEX;
         }
 
-        int size = mSlotIdxToSubId.size();
+        int size = sSlotIdxToSubId.size();
         if (size == 0) {
             phoneId = mDefaultPhoneId;
             if (DBG) logdl("[getPhoneId]- no sims, returning default phoneId=" + phoneId);
@@ -1214,7 +1216,7 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         // FIXME: Assumes phoneId == slotId
-        for (Entry<Integer, Integer> entry: mSlotIdxToSubId.entrySet()) {
+        for (Entry<Integer, Integer> entry: sSlotIdxToSubId.entrySet()) {
             int sim = entry.getKey();
             int sub = entry.getValue();
 
@@ -1268,14 +1270,14 @@ public class SubscriptionController extends ISub.Stub {
         try {
             if (DBG) logd("[clearSubInfo]+");
 
-            int size = mSlotIdxToSubId.size();
+            int size = sSlotIdxToSubId.size();
 
             if (size == 0) {
                 if (DBG) logdl("[clearSubInfo]- no simInfo size=" + size);
                 return 0;
             }
 
-            mSlotIdxToSubId.clear();
+            sSlotIdxToSubId.clear();
             if (DBG) logdl("[clearSubInfo]- clear size=" + size);
             return size;
         } finally {
@@ -1326,7 +1328,7 @@ public class SubscriptionController extends ISub.Stub {
             subId = getDefaultDataSubId();
             if (VDBG) logdl("[getDefaultSubId] NOT VoiceCapable subId=" + subId);
         }
-        if ( ! isActiveSubId(subId)) {
+        if (!isActiveSubId(subId)) {
             subId = mDefaultFallbackSubId;
             if (VDBG) logdl("[getDefaultSubId] NOT active use fall back subId=" + subId);
         }
@@ -1633,7 +1635,7 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public int[] getActiveSubIdList() {
-        Set<Entry<Integer, Integer>> simInfoSet = mSlotIdxToSubId.entrySet();
+        Set<Entry<Integer, Integer>> simInfoSet = sSlotIdxToSubId.entrySet();
         if (DBG) logdl("[getActiveSubIdList] simInfoSet=" + simInfoSet);
 
         int[] subIdArr = new int[simInfoSet.size()];
@@ -1648,20 +1650,9 @@ public class SubscriptionController extends ISub.Stub {
         return subIdArr;
     }
 
-    private boolean isActiveSubId(int subId) {
-        boolean retVal = false;
-
-        if (SubscriptionManager.isValidSubscriptionId(subId)) {
-            Set<Entry<Integer, Integer>> simInfoSet = mSlotIdxToSubId.entrySet();
-            if (VDBG) logdl("[isActiveSubId] simInfoSet=" + simInfoSet);
-
-            for (Entry<Integer, Integer> entry: simInfoSet) {
-                if (subId == entry.getValue()) {
-                    retVal = true;
-                    break;
-                }
-            }
-        }
+    public boolean isActiveSubId(int subId) {
+        boolean retVal = SubscriptionManager.isValidSubscriptionId(subId)
+                && sSlotIdxToSubId.containsValue(subId);
 
         if (VDBG) logdl("[isActiveSubId]- " + retVal);
         return retVal;
@@ -1733,8 +1724,8 @@ public class SubscriptionController extends ISub.Stub {
                     .from(mContext).getDefaultSmsPhoneId());
             pw.flush();
 
-            for (Entry<Integer, Integer> entry : mSlotIdxToSubId.entrySet()) {
-                pw.println(" mSlotIdToSubIdMap[" + entry.getKey() + "]: subId=" + entry.getValue());
+            for (Entry<Integer, Integer> entry : sSlotIdxToSubId.entrySet()) {
+                pw.println(" sSlotIdxToSubId[" + entry.getKey() + "]: subId=" + entry.getValue());
             }
             pw.flush();
             pw.println("++++++++++++++++++++++++++++++++");
