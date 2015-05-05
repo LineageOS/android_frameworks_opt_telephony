@@ -752,8 +752,13 @@ public class PduPersister {
             value = toIsoString(part.getContentLocation());
             values.put(Part.CONTENT_LOCATION, (String) value);
         }
-
-        Uri res = SqliteWrapper.insert(mContext, mContentResolver, uri, values);
+        Uri res = null;
+        try {
+            res = SqliteWrapper.insert(mContext, mContentResolver, uri, values);
+        }catch (Exception ex){
+            Log.e(TAG,"Insert DB for part!" + uri.toString()+", Meet exception:"
+                    +ex.getMessage());
+        }
         if (res == null) {
             throw new MmsException("Failed to persist part, return null.");
         }
