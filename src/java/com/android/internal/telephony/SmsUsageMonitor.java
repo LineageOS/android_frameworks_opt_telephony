@@ -444,6 +444,7 @@ public class SmsUsageMonitor {
             if (countryIso != null) {
                 if (mCurrentCountry == null || !countryIso.equals(mCurrentCountry) ||
                         mPatternFile.lastModified() != mPatternFileLastModified) {
+                    mCurrentPatternMatcher = null;
                     if (mPatternFile.exists()) {
                         if (DBG) Rlog.d(TAG, "Loading SMS Short Code patterns from file");
                         mCurrentPatternMatcher = getPatternMatcherFromFile(countryIso);
