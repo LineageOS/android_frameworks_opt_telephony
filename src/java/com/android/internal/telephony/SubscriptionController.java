@@ -682,26 +682,6 @@ public class SubscriptionController extends ISub.Stub {
                 return -1;
             }
 
-            int[] subIds = getSubId(slotId);
-            if (subIds == null || subIds.length == 0) {
-                if (DBG) {
-                    logdl("[addSubInfoRecord]- getSubId failed subIds == null " +
-                            "|| length == 0 subIds=" + subIds);
-                }
-                return -1;
-            }
-
-            String nameToSet;
-            String simCarrierName = mTelephonyManager.getSimOperatorNameForSubscription(subIds[0]);
-
-            if (!TextUtils.isEmpty(simCarrierName)) {
-                nameToSet = simCarrierName;
-            } else {
-                nameToSet = "CARD " + Integer.toString(slotId + 1);
-            }
-            if (DBG) logdl("[addSubInfoRecord] sim name = " + nameToSet);
-            if (DBG) logdl("[addSubInfoRecord] carrier name = " + simCarrierName);
-
             ContentResolver resolver = mContext.getContentResolver();
             Cursor cursor = resolver.query(SubscriptionManager.CONTENT_URI,
                     new String[]{SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID,
@@ -709,15 +689,15 @@ public class SubscriptionController extends ISub.Stub {
                     SubscriptionManager.ICC_ID + "=?", new String[]{iccId}, null);
 
             int color = getUnusedColor(mContext.getOpPackageName());
-
+            boolean setDisplayName = false;
             try {
                 if (cursor == null || !cursor.moveToFirst()) {
+                    setDisplayName = true;
                     ContentValues value = new ContentValues();
                     value.put(SubscriptionManager.ICC_ID, iccId);
                     // default SIM color differs between slots
                     value.put(SubscriptionManager.COLOR, color);
                     value.put(SubscriptionManager.SIM_SLOT_INDEX, slotId);
-                    value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
                     value.put(SubscriptionManager.CARRIER_NAME, "");
                     Uri uri = resolver.insert(SubscriptionManager.CONTENT_URI, value);
                     if (DBG) logdl("[addSubInfoRecord] New record created: " + uri);
@@ -732,7 +712,7 @@ public class SubscriptionController extends ISub.Stub {
                     }
 
                     if (nameSource != SubscriptionManager.NAME_SOURCE_USER_INPUT) {
-                        value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
+                        setDisplayName = true;
                     }
 
                     if (value.size() > 0) {
@@ -749,34 +729,34 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
 
-        cursor = resolver.query(SubscriptionManager.CONTENT_URI, null,
-                SubscriptionManager.SIM_SLOT_INDEX + "=?",
-                new String[] {String.valueOf(slotId)}, null);
-        try {
-            if (cursor != null && cursor.moveToFirst()) {
-                do {
-                    int subId = cursor.getInt(cursor.getColumnIndexOrThrow(
-                            SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID));
-                    // If sSlotIdxToSubId already has a valid subId for a slotId/phoneId,
-                    // do not add another subId for same slotId/phoneId.
-                    Integer currentSubId = sSlotIdxToSubId.get(slotId);
-                    if (currentSubId == null
-                            || !SubscriptionManager.isValidSubscriptionId(currentSubId)) {
-                        // TODO While two subs active, if user deactivats first
-                        // one, need to update the default subId with second one.
+            cursor = resolver.query(SubscriptionManager.CONTENT_URI, null,
+                    SubscriptionManager.SIM_SLOT_INDEX + "=?",
+                    new String[] {String.valueOf(slotId)}, null);
+            try {
+                if (cursor != null && cursor.moveToFirst()) {
+                    do {
+                        int subId = cursor.getInt(cursor.getColumnIndexOrThrow(
+                                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID));
+                        // If sSlotIdxToSubId already has a valid subId for a slotId/phoneId,
+                        // do not add another subId for same slotId/phoneId.
+                        Integer currentSubId = sSlotIdxToSubId.get(slotId);
+                        if (currentSubId == null
+                                || !SubscriptionManager.isValidSubscriptionId(currentSubId)) {
+                            // TODO While two subs active, if user deactivats first
+                            // one, need to update the default subId with second one.
 
-                        // FIXME: Currently we assume phoneId == slotId which in the future
-                        // may not be true, for instance with multiple subs per slot.
-                        // But is true at the moment.
-                        sSlotIdxToSubId.put(slotId, subId);
-                        int subIdCountMax = getActiveSubInfoCountMax();
-                        int defaultSubId = getDefaultSubId();
-                        if (DBG) {
-                            logdl("[addSubInfoRecord]"
-                                + " sSlotIdxToSubId.size=" + sSlotIdxToSubId.size()
-                                + " slotId=" + slotId + " subId=" + subId
-                                + " defaultSubId=" + defaultSubId + " simCount=" + subIdCountMax);
-                        }
+                            // FIXME: Currently we assume phoneId == slotId which in the future
+                            // may not be true, for instance with multiple subs per slot.
+                            // But is true at the moment.
+                            sSlotIdxToSubId.put(slotId, subId);
+                            int subIdCountMax = getActiveSubInfoCountMax();
+                            int defaultSubId = getDefaultSubId();
+                            if (DBG) {
+                                logdl("[addSubInfoRecord]"
+                                        + " sSlotIdxToSubId.size=" + sSlotIdxToSubId.size()
+                                        + " slotId=" + slotId + " subId=" + subId
+                                        + " defaultSubId=" + defaultSubId + " simCount=" + subIdCountMax);
+                            }
 
                             // Set the default sub if not set or if single sim device
                             if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
@@ -807,14 +787,43 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
 
+            // Set Display name after sub id is set above so as to get valid simCarrierName
+            int[] subIds = getSubId(slotId);
+            if (subIds == null || subIds.length == 0) {
+                if (DBG) {
+                    logdl("[addSubInfoRecord]- getSubId failed subIds == null || length == 0 subIds="
+                            + subIds);
+                }
+                return -1;
+            }
+            if (setDisplayName) {
+                String simCarrierName = mTelephonyManager.getSimOperatorNameForSubscription(subIds[0]);
+                String nameToSet;
+
+                if (!TextUtils.isEmpty(simCarrierName)) {
+                    nameToSet = simCarrierName;
+                } else {
+                    nameToSet = "CARD " + Integer.toString(slotId + 1);
+                }
+
+                ContentValues value = new ContentValues();
+                value.put(SubscriptionManager.DISPLAY_NAME, nameToSet);
+                resolver.update(SubscriptionManager.CONTENT_URI, value,
+                        SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID +
+                                "=" + Long.toString(subIds[0]), null);
+
+                if (DBG) logdl("[addSubInfoRecord] sim name = " + nameToSet);
+            }
+
             // Once the records are loaded, notify DcTracker
             updateAllDataConnectionTrackers();
 
-        if (DBG) logdl("[addSubInfoRecord]- info size=" + sSlotIdxToSubId.size());
-        return 0;
+            if (DBG) logdl("[addSubInfoRecord]- info size=" + sSlotIdxToSubId.size());
+
         } finally {
             Binder.restoreCallingIdentity(identity);
         }
+        return 0;
     }
 
     /**
