@@ -82,6 +82,9 @@ public interface IccConstants {
     static final int EF_PCSCF = 0x6f09;
     static final int EF_PSI = 0x6fe5;
 
+    //plmnwact
+    static final int EF_PLMNWACT = 0x6F60;
+
     // SMS record length from TS 51.011 10.5.3
     static public final int SMS_RECORD_LENGTH = 176;
     // SMS record length from C.S0023 3.4.27
