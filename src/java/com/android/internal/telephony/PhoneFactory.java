@@ -275,22 +275,16 @@ public class PhoneFactory {
     }
 
     public static Phone getPhone(int phoneId) {
-        Phone phone;
         synchronized (sLockProxyPhones) {
             if (!sMadeDefaults) {
                 throw new IllegalStateException("Default phones haven't been made yet!");
                 // CAF_MSIM FIXME need to introduce default phone id ?
             } else if (phoneId == SubscriptionManager.DEFAULT_PHONE_INDEX) {
-                Rlog.d(LOG_TAG, "getPhone: phoneId == DEFAULT_PHONE_ID");
-                phone = sProxyPhone;
-            } else {
-                Rlog.d(LOG_TAG, "getPhone: phoneId != DEFAULT_PHONE_ID");
-                phone = (((phoneId >= 0)
-                                && (phoneId < TelephonyManager.getDefault().getPhoneCount()))
-                        ? sProxyPhones[phoneId] : null);
+                return sProxyPhone;
+            } else if (phoneId >= 0 && phoneId < TelephonyManager.getDefault().getPhoneCount()) {
+                return sProxyPhones[phoneId];
             }
-            Rlog.d(LOG_TAG, "getPhone:- phone=" + phone);
-            return phone;
+            return null;
         }
     }
 

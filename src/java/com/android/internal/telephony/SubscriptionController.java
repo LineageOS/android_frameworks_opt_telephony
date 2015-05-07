@@ -1180,37 +1180,21 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public int getPhoneId(int subId) {
         if (VDBG) printStackTrace("[getPhoneId] subId=" + subId);
-        int phoneId;
 
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             subId = getDefaultSubId();
-            if (DBG) logdl("[getPhoneId] asked for default subId=" + subId);
         }
 
         if (subId >= DUMMY_SUB_ID_BASE) {
-            logd("getPhoneId,  received summy subId " + subId);
             return subId - DUMMY_SUB_ID_BASE;
         } else if (subId < 0) {
-            phoneId = (int) (-1 - subId);
-            if (VDBG) logdl("[getPhoneId]- map subId=" + subId + " phoneId=" + phoneId);
-            return phoneId;
+            return (int) (-1 - subId);
         }
 
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
-            if (DBG) {
-                logdl("[getPhoneId]- invalid subId return="
-                        + SubscriptionManager.INVALID_PHONE_INDEX);
-            }
             return SubscriptionManager.INVALID_PHONE_INDEX;
         }
 
-
-        int size = mSlotIdxToSubId.size();
-        if (size == 0) {
-            phoneId = mDefaultPhoneId;
-            if (DBG) logdl("[getPhoneId]- no sims, returning default phoneId=" + phoneId);
-            return phoneId;
-        }
 
         // FIXME: Assumes phoneId == slotId
         for (Entry<Integer, Integer> entry: mSlotIdxToSubId.entrySet()) {
@@ -1218,16 +1202,11 @@ public class SubscriptionController extends ISub.Stub {
             int sub = entry.getValue();
 
             if (subId == sub) {
-                logd("[getPhoneId]- return ="+sim);
                 return sim;
             }
         }
 
-        phoneId = mDefaultPhoneId;
-        if (DBG) {
-            logdl("[getPhoneId]- subId=" + subId + " not found return default phoneId=" + phoneId);
-        }
-        return phoneId;
+        return mDefaultPhoneId;
 
     }
 
