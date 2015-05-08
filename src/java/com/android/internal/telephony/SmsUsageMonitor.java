@@ -46,6 +46,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.HashMap;
@@ -445,7 +446,7 @@ public class SmsUsageMonitor {
                 try {
                     infile = mPolicyFile.openRead();
                     final XmlPullParser parser = Xml.newPullParser();
-                    parser.setInput(infile, null);
+                    parser.setInput(infile, StandardCharsets.UTF_8.name());
 
                     XmlUtils.beginDocument(parser, TAG_SMS_POLICY_BODY);
 
@@ -502,7 +503,7 @@ public class SmsUsageMonitor {
                 outfile = mPolicyFile.startWrite();
 
                 XmlSerializer out = new FastXmlSerializer();
-                out.setOutput(outfile, "utf-8");
+                out.setOutput(outfile, StandardCharsets.UTF_8.name());
 
                 out.startDocument(null, true);
 
