@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a89bdaa_7406ce21",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 8
+      },
+      "lineNbr": 1386,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2015-05-09T09:27:19Z",
+      "side": 1,
+      "message": "This appears to be the only place that consumes this value. Where does this value go if you\u0027ve sent a non-standard one down the stack? I\u0027m kind of curious to know what\u0027s consuming this on the other end that makes this work.",
+      "revId": "24be915cd2c0572548971910c8496f2ee46bd41c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
