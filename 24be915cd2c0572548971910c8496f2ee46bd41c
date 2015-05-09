@@ -51,6 +51,24 @@
       "revId": "24be915cd2c0572548971910c8496f2ee46bd41c",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a89bdaa_08b006dd",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 8
+      },
+      "lineNbr": 1450,
+      "author": {
+        "id": 12116
+      },
+      "writtenOn": "2015-05-09T13:13:53Z",
+      "side": 1,
+      "message": "Apparently the Samsung ril picks that up in the apnsettings parcel passed in and uses that to determine the new connection also needs a new interface. Without the 5, the connection returned uses interface rmnet0. But that\u0027s already associated with the internet connection and thus caused routing setup errors. Passing in the 5 on Samsung hardware returns the right interface and allows both connections to exist.",
+      "parentUuid": "9a89bdaa_88f176d0",
+      "revId": "24be915cd2c0572548971910c8496f2ee46bd41c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
