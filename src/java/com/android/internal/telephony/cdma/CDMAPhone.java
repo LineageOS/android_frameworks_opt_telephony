@@ -574,6 +574,17 @@ public class CDMAPhone extends PhoneBase {
         return (r != null) ? r.getIccId() : null;
     }
 
+    private String getIccImsi() {
+        IccRecords r = mIccRecords.get();
+        if (r == null) {
+            r = mUiccController.getIccRecords(mPhoneId, UiccController.APP_FAM_3GPP2);
+        }
+        if (r == null) {
+            r = mUiccController.getIccRecords(mPhoneId, UiccController.APP_FAM_3GPP);
+        }
+        return (r != null) ? r.getIMSI() : null;
+    }
+
     @Override
     public String getLine1Number() {
         return mSST.getMdnNumber();
@@ -634,7 +645,14 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public String getSubscriberId() {
-        return mSST.getImsi();
+        String imsi = mSST.getImsi();
+        Rlog.d(LOG_TAG, "DBG CDMAPhone SST imsi = " + imsi);
+        if (imsi == null) {
+            // fall back to imsi from icc
+            imsi = getIccImsi();
+            Rlog.d(LOG_TAG, "DBG CDMAPhone set imsi from icc = " + imsi);
+        }
+        return imsi;
     }
 
     @Override
@@ -1401,6 +1419,7 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     protected void onUpdateIccAvailability() {
+        log("onUpdateIccAvailability called");
         if (mUiccController == null ) {
             return;
         }
