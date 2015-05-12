@@ -21,6 +21,7 @@ import android.text.TextUtils;
 
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.uicc.IccRecords;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -319,6 +320,52 @@ public class ApnSetting {
                     t.equalsIgnoreCase(PhoneConstants.APN_TYPE_ALL) ||
                     (t.equalsIgnoreCase(PhoneConstants.APN_TYPE_DEFAULT) &&
                     type.equalsIgnoreCase(PhoneConstants.APN_TYPE_HIPRI))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean imsiMatches(String imsiDB, String imsiSIM) {
+        // Note: imsiDB value has digit number or 'x' character for seperating USIM information
+        // for MVNO operator. And then digit number is matched at same order and 'x' character
+        // could replace by any digit number.
+        // ex) if imsiDB inserted '310260x10xxxxxx' for GG Operator,
+        //     that means first 6 digits, 8th and 9th digit
+        //     should be set in USIM for GG Operator.
+        int len = imsiDB.length();
+        int idxCompare = 0;
+
+        if (len <= 0) return false;
+        if (len > imsiSIM.length()) return false;
+
+        for (int idx=0; idx<len; idx++) {
+            char c = imsiDB.charAt(idx);
+            if ((c == 'x') || (c == 'X') || (c == imsiSIM.charAt(idx))) {
+                continue;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean mvnoMatches(IccRecords r, String mvnoType, String mvnoMatchData) {
+        if (mvnoType.equalsIgnoreCase("spn")) {
+            if ((r.getServiceProviderName() != null) &&
+                    r.getServiceProviderName().equalsIgnoreCase(mvnoMatchData)) {
+                return true;
+            }
+        } else if (mvnoType.equalsIgnoreCase("imsi")) {
+            String imsiSIM = r.getIMSI();
+            if ((imsiSIM != null) && imsiMatches(mvnoMatchData, imsiSIM)) {
+                return true;
+            }
+        } else if (mvnoType.equalsIgnoreCase("gid")) {
+            String gid1 = r.getGid1();
+            int mvno_match_data_length = mvnoMatchData.length();
+            if ((gid1 != null) && (gid1.length() >= mvno_match_data_length) &&
+                    gid1.substring(0, mvno_match_data_length).equalsIgnoreCase(mvnoMatchData)) {
                 return true;
             }
         }

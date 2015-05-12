@@ -704,8 +704,8 @@ public abstract class DcTrackerBase extends Handler {
             if (!ServiceState.bitmaskHasTech(dunSetting.bearerBitmask, bearer)) continue;
             if (dunSetting.numeric.equals(operator)) {
                 if (dunSetting.hasMvnoParams()) {
-                    if (r != null &&
-                            mvnoMatches(r, dunSetting.mvnoType, dunSetting.mvnoMatchData)) {
+                    if (r != null && ApnSetting.mvnoMatches(r, dunSetting.mvnoType,
+                            dunSetting.mvnoMatchData)) {
                         if (VDBG) {
                             log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
                         }
@@ -725,10 +725,11 @@ public abstract class DcTrackerBase extends Handler {
             if (dunSetting != null) {
                 if (!ServiceState.bitmaskHasTech(dunSetting.bearerBitmask, bearer)) continue;
                 if (dunSetting.hasMvnoParams()) {
-                    if (r != null &&
-                            mvnoMatches(r, dunSetting.mvnoType, dunSetting.mvnoMatchData)) {
-                        if (VDBG) log("fetchDunApn: config_tether_apndata mvno dunSetting="
-                                + dunSetting);
+                    if (r != null && ApnSetting.mvnoMatches(r, dunSetting.mvnoType,
+                            dunSetting.mvnoMatchData)) {
+                        if (VDBG) {
+                            log("fetchDunApn: config_tether_apndata mvno dunSetting=" + dunSetting);
+                        }
                         return dunSetting;
                     }
                 } else {
@@ -889,7 +890,6 @@ public abstract class DcTrackerBase extends Handler {
     public abstract void setDataAllowed(boolean enable, Message response);
     public abstract String[] getPcscfAddress(String apnType);
     public abstract void setImsRegistrationState(boolean registered);
-    protected abstract boolean mvnoMatches(IccRecords r, String mvno_type, String mvno_match_data);
     protected abstract boolean isPermanentFail(DcFailCause dcFailCause);
 
     @Override
