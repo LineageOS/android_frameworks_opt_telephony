@@ -1431,6 +1431,19 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 Toast.makeText(mPhone.getContext(), msg, Toast.LENGTH_SHORT).show();
             }
         }
+
+        @Override
+        public void onCallRetryErrorReceived(ImsCall imsCall, ImsReasonInfo reasonInfo) {
+            if (DBG) {
+                log("onCallRetryErrorReceived ::  reasonInfo=" + reasonInfo);
+            }
+
+            if (mPhone != null) {
+                String msg = "LTE HD voice is unavailable. 3G voice call will be connected." +
+                        "Server Error code: " + reasonInfo.getCode();
+                Toast.makeText(mPhone.getContext(), msg, Toast.LENGTH_SHORT).show();
+            }
+        }
     };
 
     /**
