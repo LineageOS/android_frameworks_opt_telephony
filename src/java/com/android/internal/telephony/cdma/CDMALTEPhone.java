@@ -254,7 +254,9 @@ public class CDMALTEPhone extends CDMAPhone {
     // return IMSI from USIM as subscriber ID.
     @Override
     public String getSubscriberId() {
-        return (mSimRecords != null) ? mSimRecords.getIMSI() : "";
+        String imsi = (mSimRecords != null) ? mSimRecords.getIMSI() : "";
+        Rlog.d(LOG_TAG, "DBG CDMALTEPhone imsi = " + imsi);
+        return imsi;
     }
 
     // return GID1 from USIM
