@@ -254,7 +254,33 @@ public class CDMALTEPhone extends CDMAPhone {
     // return IMSI from USIM as subscriber ID.
     @Override
     public String getSubscriberId() {
-        return (mSimRecords != null) ? mSimRecords.getIMSI() : "";
+        String imsi = (mSimRecords != null) ? mSimRecords.getIMSI() : "";
+        Rlog.d(LOG_TAG, "DBG CDMALTEPhone orig imsi = " + imsi);
+        if (imsi == null) {
+            UiccCardApplication app = mUiccController.getUiccCardApplication(mPhoneId,
+                    UiccController.APP_FAM_3GPP2);
+            IccRecords r = app.getIccRecords();
+            if (r != null) {
+                imsi = r.getIMSI();
+            }
+            Rlog.d(LOG_TAG, "DBG CDMALTEPhone imsi from 3GPP2 family = " + imsi);
+        }
+        if (imsi == null) {
+            int count = mUiccController.getUiccCard().getNumApplications();
+            int i;
+            for (i=0; i < count; ++i) {
+                UiccCardApplication app = mUiccController.getUiccCard().getApplicationIndex(i);
+                IccRecords r = app.getIccRecords();
+                if (r != null) {
+                    imsi = r.getIMSI();
+                    if (imsi != null)
+                        break;
+                }
+            }
+            Rlog.d(LOG_TAG, "DBG CDMALTEPhone imsi from iteration = " + imsi + ", i = " + i);
+        }
+
+        return imsi;
     }
 
     // return GID1 from USIM
@@ -311,6 +337,13 @@ public class CDMALTEPhone extends CDMAPhone {
         // Update UsimRecords
         newUiccApplication = mUiccController.getUiccCardApplication(mPhoneId,
                 UiccController.APP_FAM_3GPP);
+
+        int count = mUiccController.getUiccCard().getNumApplications();
+        for (int i=0; i < count; ++i) {
+            UiccCardApplication app = mUiccController.getUiccCard().getApplicationIndex(i);
+            log("app("+i+") = " + app + ", records = " + app.getIccRecords());
+        }
+
         SIMRecords newSimRecords = null;
         if (newUiccApplication != null) {
             newSimRecords = (SIMRecords) newUiccApplication.getIccRecords();
