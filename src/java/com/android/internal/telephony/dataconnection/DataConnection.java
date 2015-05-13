@@ -1740,8 +1740,14 @@ public final class DataConnection extends StateMachine {
         @Override
         public void exit() {
             if (DBG) log("DcActiveState: exit dc=" + this);
+            String reason = mNetworkInfo.getReason();
+            if (mDisconnectParams != null && mDisconnectParams.mReason != null) {
+                reason = mDisconnectParams.mReason;
+            } else if (mDcFailCause != null) {
+                reason = mDcFailCause.toString();
+            }
             mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.DISCONNECTED,
-                    mNetworkInfo.getReason(), mNetworkInfo.getExtraInfo());
+                    reason, mNetworkInfo.getExtraInfo());
             mNetworkAgent.sendNetworkInfo(mNetworkInfo);
             mNetworkAgent = null;
         }
