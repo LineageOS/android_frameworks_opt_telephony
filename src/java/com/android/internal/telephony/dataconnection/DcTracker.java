@@ -788,11 +788,13 @@ public final class DcTracker extends DcTrackerBase {
 
     private void setupDataOnConnectableApns(String reason, RetryFailures retryFailures) {
         if (DBG) log("setupDataOnConnectableApns: " + reason);
-        ArrayList<ApnSetting> waitingApns = null;
 
         for (ApnContext apnContext : mPrioritySortedApnContexts) {
+            ArrayList<ApnSetting> waitingApns = null;
+
             if (DBG) log("setupDataOnConnectableApns: apnContext " + apnContext);
-            if (apnContext.getState() == DctConstants.State.FAILED) {
+            if (apnContext.getState() == DctConstants.State.FAILED
+                    || apnContext.getState() == DctConstants.State.RETRYING) {
                 if (retryFailures == RetryFailures.ALWAYS) {
                     apnContext.setState(DctConstants.State.IDLE);
                 } else if (apnContext.isConcurrentVoiceAndDataAllowed() == false &&
