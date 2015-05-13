@@ -618,7 +618,7 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
 
-        SubscriptionController.getInstance().notifySubscriptionInfoChanged();
+        SubscriptionController.getInstance().handleSubscriptionInfoReady();
         logd("updateSubscriptionInfoByIccId:- SsubscriptionInfo update complete");
     }
 
