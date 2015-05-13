@@ -1423,6 +1423,11 @@ public interface Phone {
     String getGroupIdLevel1();
 
     /**
+     * Retrieves the Group Identifier Level2 for phones.
+     */
+    String getGroupIdLevel2();
+
+    /**
      * Retrieves the serial number of the ICC, if applicable.
      */
     String getIccSerialNumber();

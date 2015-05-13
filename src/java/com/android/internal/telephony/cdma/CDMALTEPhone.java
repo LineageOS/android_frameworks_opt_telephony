@@ -237,6 +237,12 @@ public class CDMALTEPhone extends CDMAPhone {
         return (mSimRecords != null) ? mSimRecords.getGid1() : "";
     }
 
+    // return GID2 from USIM
+    @Override
+    public String getGroupIdLevel2() {
+        return (mSimRecords != null) ? mSimRecords.getGid2() : "";
+    }
+
     @Override
     public String getImei() {
         return mImei;
