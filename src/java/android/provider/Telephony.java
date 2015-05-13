@@ -2983,7 +2983,7 @@ public final class Telephony {
          * <P>Type: INTEGER</P>
          */
         public static final String SERVICE_CATEGORY = "service_category";
-
+        public static final String MESSAGE_DELETED = "flag_is_deleted";
         /**
          * Message language code.
          * <P>Type: TEXT</P>
