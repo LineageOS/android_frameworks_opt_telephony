@@ -143,6 +143,7 @@ public class SubscriptionController extends ISub.Stub {
     private static HashMap<Integer, Integer> mSlotIdxToSubId = new HashMap<Integer, Integer>();
     private static int mDefaultFallbackSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
     private static int mDefaultPhoneId = 0;
+    private boolean mSubInfoReady = false;
 
     private int[] colorArr;
 
@@ -266,7 +267,7 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     private boolean isSubInfoReady() {
-        return mSlotIdxToSubId.size() > 0;
+        return mSubInfoReady || mSlotIdxToSubId.size() > 0;
     }
 
     private SubscriptionController(Phone phone) {
@@ -1267,6 +1268,8 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         mSlotIdxToSubId.clear();
+        mSubInfoReady = false;
+
         if (DBG) logdl("[clearSubInfo]- clear size=" + size);
         return size;
     }
@@ -1530,7 +1533,19 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
+    public void handleSubscriptionInfoReady() {
+        mSubInfoReady = true;
+        notifySubscriptionInfoChanged();
+    }
+
     public void clearDefaultsForInactiveSubIds() {
+        // Don't use isSubInfoReady() here, as we don't want to clear out anything
+        // before info of all SIMs is populated
+        if (!mSubInfoReady) {
+            if (DBG) logdl("[clearDefaultsForInactiveSubIds] SIM info not yet ready");
+            return;
+        }
+
         final List<SubscriptionInfo> records = getActiveSubscriptionInfoList();
         if (DBG) logdl("[clearDefaultsForInactiveSubIds] records: " + records);
         if (shouldDefaultBeCleared(records, getDefaultDataSubId())) {
