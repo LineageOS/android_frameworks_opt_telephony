@@ -233,10 +233,20 @@ public class CDMALTEPhone extends CDMAPhone {
         return false;
     }
 
-    // return IMSI from USIM as subscriber ID.
+    // return IMSI from CSIM as subscriber ID if available, otherwise reads from USIM
     @Override
     public String getSubscriberId() {
-        return (mSimRecords != null) ? mSimRecords.getIMSI() : "";
+        IccRecords r = (mIccRecords != null) ? mIccRecords.get() : null;
+        if (r != null) {
+            String imsi = r.getIMSI();
+            if (!TextUtils.isEmpty(imsi)) {
+                log("IMSI = " + imsi);
+                return imsi;
+            }
+        }
+
+        log("IMSI undefined");
+        return "";
     }
 
 
