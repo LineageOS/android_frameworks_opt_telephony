@@ -59,6 +59,7 @@ public final class UsimFileHandler extends IccFileHandler implements IccConstant
         case EF_INFO_CPHS:
         case EF_CSP_CPHS:
         case EF_GID1:
+        case EF_GID2:
         case EF_LI:
             return MF_SIM + DF_ADF;
 

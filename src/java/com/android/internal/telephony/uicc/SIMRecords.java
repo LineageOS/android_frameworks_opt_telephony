@@ -163,6 +163,7 @@ public class SIMRecords extends IccRecords {
     private static final int EVENT_GET_CSP_CPHS_DONE = 33;
     private static final int EVENT_GET_GID1_DONE = 34;
     private static final int EVENT_APP_LOCKED = 35;
+    private static final int EVENT_GET_GID2_DONE = 36;
 
     // Lookup table for carriers known to produce SIMs which incorrectly indicate MNC length.
 
@@ -242,6 +243,7 @@ public class SIMRecords extends IccRecords {
         mSpdiNetworks = null;
         mPnnHomeName = null;
         mGid1 = null;
+        mGid2 = null;
 
         mAdnCache.reset();
 
@@ -276,6 +278,11 @@ public class SIMRecords extends IccRecords {
     @Override
     public String getGid1() {
         return mGid1;
+    }
+
+    @Override
+    public String getGid2() {
+        return mGid2;
     }
 
     @Override
@@ -1212,6 +1219,22 @@ public class SIMRecords extends IccRecords {
 
                 break;
 
+            case EVENT_GET_GID2_DONE:
+                isRecordLoadResponse = true;
+
+                ar = (AsyncResult)msg.obj;
+                data =(byte[])ar.result;
+
+                if (ar.exception != null) {
+                    loge("Exception in get GID2 " + ar.exception);
+                    mGid2 = null;
+                    break;
+                }
+                mGid2 = IccUtils.bytesToHexString(data);
+                log("GID2: " + mGid2);
+
+                break;
+
             default:
                 super.handleMessage(msg);   // IccRecords handles generic record load responses
 
@@ -1620,6 +1643,9 @@ public class SIMRecords extends IccRecords {
         mFh.loadEFTransparent(EF_GID1, obtainMessage(EVENT_GET_GID1_DONE));
         mRecordsToLoad++;
 
+        mFh.loadEFTransparent(EF_GID2, obtainMessage(EVENT_GET_GID2_DONE));
+        mRecordsToLoad++;
+
         loadEfLiAndEfPl();
 
         // XXX should seek instead of examining them all
@@ -1954,6 +1980,7 @@ public class SIMRecords extends IccRecords {
         pw.println(" mPnnHomeName=" + mPnnHomeName);
         pw.println(" mUsimServiceTable=" + mUsimServiceTable);
         pw.println(" mGid1=" + mGid1);
+        pw.println(" mGid2=" + mGid2);
         pw.flush();
     }
 }

@@ -78,6 +78,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     private String mSpn;
 
     protected String mGid1;
+    protected String mGid2;
 
     private final Object mLock = new Object();
 
@@ -280,6 +281,14 @@ public abstract class IccRecords extends Handler implements IccConstants {
      * @return null if SIM is not yet ready
      */
     public String getGid1() {
+        return null;
+    }
+
+    /**
+     * Get the Group Identifier Level 2 (GID2) on a SIM.
+     * @return null if SIM is not yet ready
+     */
+    public String getGid2() {
         return null;
     }
 

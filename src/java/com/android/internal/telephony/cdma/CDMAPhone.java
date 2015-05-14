@@ -618,6 +618,12 @@ public class CDMAPhone extends PhoneBase {
     }
 
     @Override
+    public String getGroupIdLevel2() {
+        Rlog.e(LOG_TAG, "GID2 is not available in CDMA");
+        return null;
+    }
+
+    @Override
     public String getImei() {
         Rlog.e(LOG_TAG, "getImei() called for CDMAPhone");
         return mImei;

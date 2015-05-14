@@ -341,6 +341,11 @@ abstract class ImsPhoneBase extends PhoneBase {
     }
 
     @Override
+    public String getGroupIdLevel2() {
+        return null;
+    }
+
+    @Override
     public String getIccSerialNumber() {
         return null;
     }
