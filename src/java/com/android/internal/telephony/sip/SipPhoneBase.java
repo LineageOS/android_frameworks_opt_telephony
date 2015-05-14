@@ -304,6 +304,11 @@ abstract class SipPhoneBase extends PhoneBase {
     }
 
     @Override
+    public String getGroupIdLevel2() {
+        return null;
+    }
+
+    @Override
     public String getIccSerialNumber() {
         return null;
     }
