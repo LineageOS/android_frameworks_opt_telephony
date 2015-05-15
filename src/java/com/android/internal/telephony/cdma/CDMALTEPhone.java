@@ -239,6 +239,17 @@ public class CDMALTEPhone extends CDMAPhone {
         return (mSimRecords != null) ? mSimRecords.getIMSI() : "";
     }
 
+
+    // fix CTS test expecting IMEI to be used as device ID when in LteOnCdma mode
+    @Override
+    public String getDeviceId() {
+        if (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE) {
+            return mImei;
+        } else {
+            return super.getDeviceId();
+        }
+    }
+
     // return GID1 from USIM
     @Override
     public String getGroupIdLevel1() {
