@@ -232,9 +232,13 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     }
 
     private long getFirstPhoneSubId() {
-        // get subId from first Phone/slot Id(i.e 0)
-        long[] subId = SubscriptionController.getInstance().getSubId(PhoneConstants.PHONE_ID1);
-        return  subId[0];
+        if (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE) {
+            return getDefaultSubId();
+        } else {
+            // get subId from first Phone/slot Id(i.e 0)
+            long[] subId = SubscriptionController.getInstance().getSubId(PhoneConstants.PHONE_ID1);
+            return  subId[0];
+        }
     }
 
     public String getIsimImpi() {
