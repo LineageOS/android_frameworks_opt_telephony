@@ -502,10 +502,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return messageLength;
     }
 
-    class RILReceiver implements Runnable {
+    protected class RILReceiver implements Runnable {
         byte[] buffer;
 
-        RILReceiver() {
+        protected RILReceiver() {
             buffer = new byte[RIL_MAX_COMMAND_BYTES];
         }
 
@@ -678,7 +678,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
             riljLog("Not starting RILReceiver: wifi-only");
         } else {
             riljLog("Starting RILReceiver" + mInstanceId);
-            mReceiver = new RILReceiver();
+            mReceiver = createRILReceiver();
             mReceiverThread = new Thread(mReceiver, "RILReceiver" + mInstanceId);
             mReceiverThread.start();
 
@@ -690,6 +690,10 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
         TelephonyDevController tdc = TelephonyDevController.getInstance();
         tdc.registerRIL(this);
+    }
+
+    protected RILReceiver createRILReceiver() {
+        return new RILReceiver();
     }
 
     //***** CommandsInterface implementation
