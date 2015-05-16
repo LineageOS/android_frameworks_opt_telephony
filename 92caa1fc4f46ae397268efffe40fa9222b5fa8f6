@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a89bdaa_a06c869d",
+        "filename": "src/java/com/android/internal/telephony/PhoneSubInfoController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 236,
+      "author": {
+        "id": 12941
+      },
+      "writtenOn": "2015-05-16T09:25:59Z",
+      "side": 1,
+      "message": "I looked at the code getDefaultSubId is the id that has voice service on it. What about subId[0], is it just the hardcoded Ruim/SIM slot order of the slot 0 and 1?",
+      "revId": "92caa1fc4f46ae397268efffe40fa9222b5fa8f6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
