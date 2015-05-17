@@ -135,6 +135,12 @@ public class DctController extends Handler {
         }
     }
 
+    private void releasePendingRequest(NetworkRequest networkRequest) {
+        for (int i = 0; i < mPhoneNum; i++) {
+            ((TelephonyNetworkFactory)mNetworkFactory[i]).releasePendingRequest(networkRequest);
+        }
+    }
+
     private OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
             new OnSubscriptionsChangedListener() {
         @Override
@@ -536,6 +542,7 @@ public class DctController extends Handler {
         logd("releaseNetwork request=" + request + ", requestInfo=" + requestInfo);
 
         mRequestInfos.remove(request.requestId);
+        releasePendingRequest(request);
         releaseRequest(requestInfo);
         processRequests();
         return PhoneConstants.APN_REQUEST_STARTED;
@@ -1228,6 +1235,11 @@ public class DctController extends Handler {
                     }
                 }
             }
+        }
+
+        public void releasePendingRequest(NetworkRequest networkRequest) {
+            log("releasePendingRequest " + networkRequest);
+            mPendingReq.remove(networkRequest.requestId);
         }
 
         private boolean isValidRequest(NetworkRequest n) {
