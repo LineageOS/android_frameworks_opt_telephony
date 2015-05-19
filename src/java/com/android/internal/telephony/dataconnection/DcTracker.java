@@ -852,6 +852,14 @@ public final class DcTracker extends DcTrackerBase {
         int dataSub = SubscriptionManager.getDefaultDataSubId();
         boolean defaultDataSelected = SubscriptionManager.isValidSubscriptionId(dataSub);
 
+        boolean psRestricted = mIsPsRestricted;
+        boolean isSetNotification = mPhone.getContext().getResources().getBoolean(
+                com.android.internal.R.bool.config_user_notification_of_restrictied_mobile_access);
+        if (!isSetNotification) {
+            attachedState = true;
+            psRestricted = false;
+        }
+
         PhoneConstants.State state = PhoneConstants.State.IDLE;
         if (mPhone.getCallTracker() != null) {
             state = mPhone.getCallTracker().getState();
@@ -864,7 +872,7 @@ public final class DcTracker extends DcTrackerBase {
                     internalDataEnabled &&
                     defaultDataSelected &&
                     (!mPhone.getServiceState().getDataRoaming() || getDataOnRoamingEnabled()) &&
-                    !mIsPsRestricted &&
+                    !psRestricted &&
                     desiredPowerState;
         if (!allowed && DBG) {
             String reason = "";
@@ -884,7 +892,7 @@ public final class DcTracker extends DcTrackerBase {
             if (mPhone.getServiceState().getDataRoaming() && !getDataOnRoamingEnabled()) {
                 reason += " - Roaming and data roaming not enabled";
             }
-            if (mIsPsRestricted) reason += " - mIsPsRestricted= true";
+            if (psRestricted) reason += " - mIsPsRestricted= true";
             if (!desiredPowerState) reason += " - desiredPowerState= false";
             if (DBG) log("isDataAllowed: not allowed due to" + reason);
         }
