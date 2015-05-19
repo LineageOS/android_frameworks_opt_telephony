@@ -469,6 +469,17 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
+
+    private void switchAfterConferenceSuccess() {
+        if (DBG) log("switchAfterConferenceSuccess fg =" + mForegroundCall.getState() +
+                ", bg = " + mBackgroundCall.getState());
+
+        if (mBackgroundCall.getState() == ImsPhoneCall.State.HOLDING) {
+            log("switchAfterConferenceSuccess");
+            mForegroundCall.switchWith(mBackgroundCall);
+        }
+    }
+
     void
     switchWaitingOrHoldingAndActive() throws CallStateException {
         if (DBG) log("switchWaitingOrHoldingAndActive");
@@ -1167,19 +1178,29 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
 
         @Override
-        public void onCallMerged(final ImsCall call, boolean swapCalls) {
+        public void onCallMerged(final ImsCall call, final ImsCall peerCall, boolean swapCalls) {
             if (DBG) log("onCallMerged");
 
-            mForegroundCall.merge(mBackgroundCall, mForegroundCall.getState());
-            if (swapCalls) {
-                try {
-                    switchWaitingOrHoldingAndActive();
-                } catch (CallStateException e) {
-                    if (Phone.DEBUG_PHONE) {
-                        loge("Failed swap fg and bg calls on merge exception=" + e);
-                    }
-                }
+            ImsPhoneConnection peerConnection = findConnection(peerCall);
+            mForegroundCall = findConnection(call).getCall();
+            if (peerConnection != null) {
+                mBackgroundCall = peerConnection.getCall();
+            } else {
+                log("onCallMerged :: Null connection for background call.");
             }
+
+            log("onCallMerged :: call.mSession=" + call.getSession());
+            if (peerCall.getSession() != null) {
+                log("onCallMerged :: b/g call session=" + peerCall.getSession());
+            } else {
+                log("onCallMerged :: b/g call session is null");
+            }
+
+            if (swapCalls) {
+                switchAfterConferenceSuccess();
+            }
+            mForegroundCall.merge(mBackgroundCall, ImsPhoneCall.State.ACTIVE);
+
             // TODO Temporary code. Remove the try-catch block from the runnable once thread
             // synchronization is fixed.
             Runnable r = new Runnable() {
@@ -1199,8 +1220,26 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
             ImsPhoneCallTracker.this.post(r);
 
-            updatePhoneState();
-            mPhone.notifyPreciseCallStateChanged();
+            // After merge complete, update foreground as Active
+            // and background call as Held, if background call exists
+            processCallStateChange(mForegroundCall.getImsCall(), ImsPhoneCall.State.ACTIVE,
+                    DisconnectCause.NOT_DISCONNECTED);
+            if (peerConnection != null) {
+                processCallStateChange(mBackgroundCall.getImsCall(), ImsPhoneCall.State.HOLDING,
+                    DisconnectCause.NOT_DISCONNECTED);
+            }
+ 
+            // Check if the merge was requested by an existing conference call. In that
+            // case, no further action is required.
+            if (!call.isMergeRequestedByConf()) {
+                log("onCallMerged :: calling onMultipartyStateChanged()");
+                onMultipartyStateChanged(call, true);
+            } else {
+                log("onCallMerged :: Merge requested by existing conference.");
+                // Reset the flag.
+                call.resetIsMergeRequestedByConf(false);
+            }
+
         }
 
         @Override

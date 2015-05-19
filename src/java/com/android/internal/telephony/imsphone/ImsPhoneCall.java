@@ -239,12 +239,7 @@ public class ImsPhoneCall extends Call {
                 imsPhoneConnection.setConnectTime(conferenceConnectTime);
             }
         }
-
-        ImsPhoneConnection[] cc = that.mConnections.toArray(
-                new ImsPhoneConnection[that.mConnections.size()]);
-        for (ImsPhoneConnection c : cc) {
-            c.update(null, state);
-        }
+        Rlog.d(LOG_TAG, "merge: " + that + "state = " + state);
     }
 
     /**
