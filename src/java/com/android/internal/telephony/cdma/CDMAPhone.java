@@ -1199,6 +1199,7 @@ public class CDMAPhone extends PhoneBase {
 
                 mCi.getDeviceIdentity(obtainMessage(EVENT_GET_DEVICE_IDENTITY_DONE));
                 mCi.getRadioCapability(obtainMessage(EVENT_GET_RADIO_CAPABILITY));
+                startLceAfterRadioIsAvailable();
             }
             break;
 
