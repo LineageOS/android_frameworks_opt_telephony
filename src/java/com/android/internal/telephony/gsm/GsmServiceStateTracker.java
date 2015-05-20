@@ -1935,7 +1935,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
      * @param notifyType is one state of PS/CS_*_ENABLE/DISABLE
      */
     private void setNotification(int notifyType) {
-
         if (DBG) log("setNotification: create notification " + notifyType);
 
         // Needed because sprout RIL sends these when they shouldn't?
@@ -1952,9 +1951,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         mNotification.when = System.currentTimeMillis();
         mNotification.flags = Notification.FLAG_AUTO_CANCEL;
         mNotification.icon = com.android.internal.R.drawable.stat_sys_warning;
-        Intent intent = new Intent();
-        mNotification.contentIntent = PendingIntent
-        .getActivity(context, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
 
         CharSequence details = "";
         CharSequence title = context.getText(com.android.internal.R.string.RestrictedChangedTitle);
@@ -1990,8 +1986,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         mNotification.tickerText = title;
         mNotification.color = context.getResources().getColor(
                 com.android.internal.R.color.system_notification_accent_color);
-        mNotification.setLatestEventInfo(context, title, details,
-                mNotification.contentIntent);
+        mNotification.setLatestEventInfo(context, title, details, null);
 
         NotificationManager notificationManager = (NotificationManager)
             context.getSystemService(Context.NOTIFICATION_SERVICE);
