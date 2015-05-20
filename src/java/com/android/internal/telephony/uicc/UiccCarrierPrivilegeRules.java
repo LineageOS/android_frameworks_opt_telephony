@@ -29,6 +29,7 @@ import android.os.Message;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 
+import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccUtils;
 
@@ -116,6 +117,10 @@ public class UiccCarrierPrivilegeRules extends Handler {
     private static final int STATE_LOADING  = 0;
     private static final int STATE_LOADED   = 1;
     private static final int STATE_ERROR    = 2;
+
+    // Max number of retries for open logical channel, interval is 10s.
+    private static final int MAX_RETRY = 3;
+    private static final int RETRY_INTERVAL_MS = 10000;
 
     // Describes a single rule.
     private static class AccessRule {
@@ -209,6 +214,19 @@ public class UiccCarrierPrivilegeRules extends Handler {
     private Message mLoadedCallback;
     private String mStatusMessage;  // Only used for debugging.
     private int mChannelId; // Channel Id for communicating with UICC.
+    private int mRetryCount;  // Number of retries for open logical channel.
+    private final Runnable mRetryRunnable = new Runnable() {
+        @Override
+        public void run() {
+            openChannel();
+        }
+    };
+
+    private void openChannel() {
+        // Send open logical channel request.
+        mUiccCard.iccOpenLogicalChannel(AID,
+            obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE, null));
+    }
 
     public UiccCarrierPrivilegeRules(UiccCard uiccCard, Message loadedCallback) {
         Rlog.d(LOG_TAG, "Creating UiccCarrierPrivilegeRules");
@@ -218,9 +236,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
         mLoadedCallback = loadedCallback;
         mRules = "";
 
-        // Start loading the rules.
-        mUiccCard.iccOpenLogicalChannel(AID,
-            obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE, null));
+        openChannel();
     }
 
     /**
@@ -368,7 +384,17 @@ public class UiccCarrierPrivilegeRules extends Handler {
                   mUiccCard.iccTransmitApduLogicalChannel(mChannelId, CLA, COMMAND, P1, P2, P3, DATA,
                       obtainMessage(EVENT_TRANSMIT_LOGICAL_CHANNEL_DONE, new Integer(mChannelId)));
               } else {
-                  updateState(STATE_ERROR, "Error opening channel");
+                  // MISSING_RESOURCE could be due to logical channels temporarily unavailable, 
+                  // so we retry up to MAX_RETRY times, with an interval of RETRY_INTERVAL_MS.
+                  if (ar.exception instanceof CommandException && mRetryCount < MAX_RETRY &&
+                      ((CommandException) (ar.exception)).getCommandError() ==
+                              CommandException.Error.MISSING_RESOURCE) {
+                      mRetryCount++;
+                      removeCallbacks(mRetryRunnable);
+                      postDelayed(mRetryRunnable, RETRY_INTERVAL_MS);
+                  } else {
+                      updateState(STATE_ERROR, "Error opening channel: " + ar.exception);
+                  }
               }
               break;
 
