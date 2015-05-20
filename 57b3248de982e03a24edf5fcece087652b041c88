@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a89bdaa_d376bd3d",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 875,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2015-05-20T07:56:37Z",
+      "side": 1,
+      "message": "What happened to mIsPsRestricted?",
+      "revId": "57b3248de982e03a24edf5fcece087652b041c88",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
