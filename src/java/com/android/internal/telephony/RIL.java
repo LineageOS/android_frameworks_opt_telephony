@@ -3982,16 +3982,16 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     private Object responseLceData(Parcel p) {
         final ArrayList<Integer> capacityResponse = new ArrayList<Integer>();
-        final int capacityDownBps = p.readInt();
+        final int capacityDownKbps = p.readInt();
         final int confidenceLevel = p.readByte();
         final int lceSuspended = p.readByte();
 
         riljLog("LCE capacity information received:" +
-                " capacity=" + capacityDownBps +
+                " capacity=" + capacityDownKbps +
                 " confidence=" + confidenceLevel +
                 " lceSuspended=" + lceSuspended);
 
-        capacityResponse.add(capacityDownBps);
+        capacityResponse.add(capacityDownKbps);
         capacityResponse.add(confidenceLevel);
         capacityResponse.add(lceSuspended);
         return capacityResponse;

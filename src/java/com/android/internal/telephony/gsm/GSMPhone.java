@@ -1443,6 +1443,7 @@ public class GSMPhone extends PhoneBase {
                 mCi.getIMEI(obtainMessage(EVENT_GET_IMEI_DONE));
                 mCi.getIMEISV(obtainMessage(EVENT_GET_IMEISV_DONE));
                 mCi.getRadioCapability(obtainMessage(EVENT_GET_RADIO_CAPABILITY));
+                startLceAfterRadioIsAvailable();
             }
             break;
 
