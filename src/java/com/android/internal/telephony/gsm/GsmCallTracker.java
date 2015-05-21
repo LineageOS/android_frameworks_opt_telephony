@@ -189,6 +189,14 @@ public final class GsmCallTracker extends CallTracker {
             // and we need to make sure the foreground call is clear
             // for the newly dialed connection
             switchWaitingOrHoldingAndActive();
+            // This is a hack to delay DIAL so that it is sent out to RIL only after
+            // EVENT_SWITCH_RESULT is received. We've seen failures when adding a new call to
+            // multi-way conference calls due to DIAL being sent out before SWITCH is processed
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                // do nothing
+            }
 
             // Fake local state so that
             // a) foregroundCall is empty for the newly dialed connection
