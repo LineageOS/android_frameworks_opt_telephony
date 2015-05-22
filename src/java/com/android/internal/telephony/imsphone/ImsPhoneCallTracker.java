@@ -1411,7 +1411,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 // TODO: Use the ImsCallSession or ImsCallProfile to tell the initial Wifi state and
                 // {@link ImsCallSession.Listener#callSessionHandover} to listen for changes to
                 // wifi capability caused by a handover.
-                if (DBG) log("onFeatureCapabilityChanged: isVowifiEnabled=" + isVowifiEnabled());
+                if (DBG) log("onFeatureCapabilityChanged: isVolteEnabled=" + isVolteEnabled()
+                            + ", isVideoCallEnabled=" + isVideoCallEnabled()
+                            + ", isVowifiEnabled=" + isVowifiEnabled());
                 for (ImsPhoneConnection connection : mConnections) {
                     connection.updateWifiState();
                 }
