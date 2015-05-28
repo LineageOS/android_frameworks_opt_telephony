@@ -2454,7 +2454,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         ImsPhone imsPhone = mImsPhone;
         if ((imsPhone != null)
                 && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
-            return imsPhone.isVideoEnabled();
+            return imsPhone.isVideoCallEnabled();
         }
         return false;
     }
