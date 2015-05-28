@@ -2010,4 +2010,12 @@ public interface CommandsInterface {
      * @param h handle to be removed.
      */
     void unregisterForLceInfo(Handler h);
+
+    /**
+     *
+     * Get modem activity info and stats
+     *
+     * @param result Callback message contains the modem activity information
+     */
+    public void getModemActivityInfo(Message result);
 }
