@@ -37,6 +37,7 @@ import com.android.internal.telephony.uicc.UsimServiceTable;
 import com.android.internal.telephony.PhoneConstants.*; // ????
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Internal interface used to control the phone; SDK developers cannot
@@ -2058,4 +2059,10 @@ public interface Phone {
      * Returns the status of Link Capacity Estimation (LCE) service.
      */
     public int getLceStatus();
+
+    /**
+     * Returns the locale based on the carrier properties (such as {@code ro.carrier}) and
+     * SIM preferences.
+     */
+    public Locale getLocaleFromSimAndCarrierPrefs();
 }

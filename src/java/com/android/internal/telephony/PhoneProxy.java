@@ -49,6 +49,7 @@ import com.android.internal.telephony.uicc.UsimServiceTable;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.Locale;
 
 import com.android.internal.telephony.dataconnection.DctController;
 
@@ -1561,6 +1562,11 @@ public class PhoneProxy extends Handler implements Phone {
     @Override
     public int getLceStatus() {
         return mActivePhone.getLceStatus();
+    }
+
+    @Override
+    public Locale getLocaleFromSimAndCarrierPrefs() {
+        return mActivePhone.getLocaleFromSimAndCarrierPrefs();
     }
 
     /**
