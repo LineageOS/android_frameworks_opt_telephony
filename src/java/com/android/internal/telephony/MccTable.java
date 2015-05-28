@@ -184,11 +184,8 @@ public final class MccTable {
             }
 
             Slog.d(LOG_TAG, "updateMccMncConfiguration: mcc=" + mcc + ", mnc=" + mnc);
-
-            Locale locale = null;
             if (mcc != 0) {
                 setTimezoneFromMccIfNeeded(context, mcc);
-                locale = getLocaleFromMcc(context, mcc);
             }
             if (fromServiceState) {
                 setWifiCountryCodeFromMcc(context, mcc);
@@ -202,10 +199,7 @@ public final class MccTable {
                         config.mnc = mnc == 0 ? Configuration.MNC_ZERO : mnc;
                         updateConfig = true;
                     }
-                    if (locale != null) {
-                        config.setLocale(locale);
-                        updateConfig = true;
-                    }
+
                     if (updateConfig) {
                         Slog.d(LOG_TAG, "updateMccMncConfiguration updateConfig config=" + config);
                         ActivityManagerNative.getDefault().updateConfiguration(config);
@@ -221,29 +215,6 @@ public final class MccTable {
                 // an empty mccmnc means no signal - tell wifi we don't know
                 setWifiCountryCodeFromMcc(context, 0);
             }
-        }
-    }
-
-    // Bug 19232829: It is possible to get through provisioning without setting up a persistent
-    // locale value. We don't modify the locale if the device has completed "provisioning" because
-    // we don't want to change the locale if the user inserts a new SIM or a new version of Android
-    // is better at recognizing MCC values than an older version.
-    private static boolean canUpdateLocale(Context context) {
-        return !(userHasPersistedLocale() || isDeviceProvisioned(context));
-    }
-
-    private static boolean userHasPersistedLocale() {
-        String persistSysLanguage = SystemProperties.get("persist.sys.language", "");
-        String persistSysCountry = SystemProperties.get("persist.sys.country", "");
-        return !(persistSysLanguage.isEmpty() && persistSysCountry.isEmpty());
-    }
-
-    private static boolean isDeviceProvisioned(Context context) {
-        try {
-            return Settings.Global.getInt(
-                    context.getContentResolver(), Settings.Global.DEVICE_PROVISIONED) != 0;
-        } catch (Settings.SettingNotFoundException e) {
-            return false;
         }
     }
 
@@ -264,15 +235,6 @@ public final class MccTable {
         }
         if (country == null) {
             country = ""; // The Locale constructor throws if passed null.
-        }
-
-        // Check whether a developer is trying to test an arbitrary MCC.
-        boolean debuggingMccOverride = isDebuggingMccOverride();
-
-        // If this is a regular user and they already have a persisted locale, we're done.
-        if (!(debuggingMccOverride || canUpdateLocale(context))) {
-            Slog.d(LOG_TAG, "getLocaleForLanguageCountry: not permitted to update locale");
-            return null;
         }
 
         // Find the best match we actually have a localization for.
@@ -329,41 +291,6 @@ public final class MccTable {
         return null;
     }
 
-    private static boolean isDebuggingMccOverride() {
-        if (Build.IS_DEBUGGABLE) {
-            String overrideMcc = SystemProperties.get("persist.sys.override_mcc", "");
-            if (!overrideMcc.isEmpty()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Utility code to set the system locale if it's not set already
-     * @param context Context to act on.
-     * @param language Two character language code desired
-     * @param country Two character country code desired
-     *
-     *  {@hide}
-     */
-    public static void setSystemLocale(Context context, String language, String country) {
-        Locale locale = getLocaleForLanguageCountry(context, language, country);
-        if (locale != null) {
-            Configuration config = new Configuration();
-            config.setLocale(locale);
-            config.userSetLocale = false;
-            Slog.d(LOG_TAG, "setSystemLocale: updateLocale config=" + config);
-            try {
-                ActivityManagerNative.getDefault().updateConfiguration(config);
-            } catch (RemoteException e) {
-                Slog.d(LOG_TAG, "setSystemLocale exception", e);
-            }
-        } else {
-            Slog.d(LOG_TAG, "setSystemLocale: no locale");
-        }
-    }
-
     /**
      * If the timezone is not already set, set it based on the MCC of the SIM.
      * @param context Context to act on.
@@ -390,7 +317,7 @@ public final class MccTable {
      *
      * @return locale for the mcc or null if none
      */
-    private static Locale getLocaleFromMcc(Context context, int mcc) {
+    public static Locale getLocaleFromMcc(Context context, int mcc) {
         String language = MccTable.defaultLanguageForMcc(mcc);
         String country = MccTable.countryCodeForMcc(mcc);
 

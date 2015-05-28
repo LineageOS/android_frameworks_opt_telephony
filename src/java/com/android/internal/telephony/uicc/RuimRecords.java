@@ -29,7 +29,6 @@ import android.os.Message;
 import android.os.SystemProperties;
 import android.telephony.SubscriptionManager;
 import android.telephony.Rlog;
-import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.content.res.Resources;
@@ -738,56 +737,6 @@ public final class RuimRecords extends IccRecords {
         return localeLangs;
     }
 
-    private String findBestLanguage(byte[] languages) {
-        final String[] assetLanguages = getAssetLanguages(mContext);
-
-        if ((languages == null) || (assetLanguages == null)) return null;
-
-        // Each 2-bytes consists of one language
-        for (int i = 0; (i + 1) < languages.length; i += 2) {
-            final String lang;
-            try {
-                lang = new String(languages, i, 2, "ISO-8859-1");
-            } catch(java.io.UnsupportedEncodingException e) {
-                log("Failed to parse SIM language records");
-                continue;
-            }
-
-            for (int j = 0; j < assetLanguages.length; j++) {
-                if (assetLanguages[j].equals(lang)) {
-                    return lang;
-                }
-            }
-        }
-
-        // no match found. return null
-        return null;
-    }
-
-    private void setLocaleFromCsim() {
-        String prefLang = null;
-        // check EFli then EFpl
-        prefLang = findBestLanguage(mEFli);
-
-        if (prefLang == null) {
-            prefLang = findBestLanguage(mEFpl);
-        }
-
-        if (prefLang != null) {
-            // check country code from SIM
-            String imsi = getIMSI();
-            String country = null;
-            if (imsi != null) {
-                country = MccTable.countryCodeForMcc(
-                                    Integer.parseInt(imsi.substring(0,3)));
-            }
-            log("Setting locale to " + prefLang + "_" + country);
-            MccTable.setSystemLocale(mContext, prefLang, country);
-        } else {
-            log ("No suitable CSIM selected locale");
-        }
-    }
-
     @Override
     protected void onRecordLoaded() {
         // One record loaded successfully or failed, In either case
@@ -833,7 +782,7 @@ public final class RuimRecords extends IccRecords {
             }
         }
 
-        setLocaleFromCsim();
+        setSimLanguage(mEFli, mEFpl);
         mRecordsLoadedRegistrants.notifyRegistrants(
             new AsyncResult(null, null, null));
 

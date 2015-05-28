@@ -23,12 +23,15 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 
+import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -79,6 +82,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     protected String mGid1;
     protected String mGid2;
+    protected String mPrefLang;
 
     private final Object mLock = new Object();
 
@@ -488,6 +492,49 @@ public abstract class IccRecords extends Handler implements IccConstants {
             default:
                 super.handleMessage(msg);
         }
+    }
+
+    /**
+     * Returns the SIM language derived from the EF-LI and EF-PL sim records.
+     */
+    public String getSimLanguage() {
+        return mPrefLang;
+    }
+
+    protected void setSimLanguage(byte[] efLi, byte[] efPl) {
+        String[] locales = mContext.getAssets().getLocales();
+        try {
+            mPrefLang = findBestLanguage(efLi, locales);
+        } catch (UnsupportedEncodingException uee) {
+            log("Unable to parse EF-LI: " + Arrays.toString(efLi));
+        }
+
+        if (mPrefLang == null) {
+            try {
+                mPrefLang = findBestLanguage(efPl, locales);
+            } catch (UnsupportedEncodingException uee) {
+                log("Unable to parse EF-PL: " + Arrays.toString(efLi));
+            }
+        }
+    }
+
+    protected static String findBestLanguage(byte[] languages, String[] locales)
+            throws UnsupportedEncodingException {
+        if ((languages == null) || (locales == null)) return null;
+
+        // Each 2-bytes consists of one language
+        for (int i = 0; (i + 1) < languages.length; i += 2) {
+            String lang = new String(languages, i, 2, "ISO-8859-1");
+            for (int j = 0; j < locales.length; j++) {
+                if (locales[j] != null && locales[j].length() >= 2 &&
+                        locales[j].substring(0, 2).equalsIgnoreCase(lang)) {
+                    return lang;
+                }
+            }
+        }
+
+        // no match found. return null
+        return null;
     }
 
     protected abstract void onRecordLoaded();

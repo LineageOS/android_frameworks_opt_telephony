@@ -218,7 +218,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     // to recover from the state. We cache it and notify listeners when they register.
     protected boolean mIsVideoCapable = false;
     protected UiccController mUiccController = null;
-    public AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
+    public final AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
     public SmsStorageMonitor mSmsStorageMonitor;
     public SmsUsageMonitor mSmsUsageMonitor;
     protected AtomicReference<UiccCardApplication> mUiccApplication =
@@ -387,7 +387,7 @@ public abstract class PhoneBase extends Handler implements Phone {
      * @param ci is CommandsInterface
      * @param unitTestMode when true, prevents notifications
      * of state change events
-     * @param subscription is current phone subscription
+     * @param phoneId the phone-id of this phone.
      */
     protected PhoneBase(String name, PhoneNotifier notifier, Context context, CommandsInterface ci,
             boolean unitTestMode, int phoneId) {
@@ -437,9 +437,26 @@ public abstract class PhoneBase extends Handler implements Phone {
                 TelephonyProperties.PROPERTY_CALL_RING_DELAY, 3000);
         Rlog.d(LOG_TAG, "mCallRingDelay=" + mCallRingDelay);
 
-        if (getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) return;
+        if (getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
+            return;
+        }
 
-        setPropertiesByCarrier();
+        // The locale from the "ro.carrier" system property or R.array.carrier_properties.
+        // This will be overwritten by the Locale from the SIM language settings (EF-PL, EF-LI)
+        // if applicable.
+        final Locale carrierLocale = getLocaleFromCarrierProperties(mContext);
+        if (carrierLocale != null && !TextUtils.isEmpty(carrierLocale.getCountry())) {
+            final String country = carrierLocale.getCountry();
+            try {
+                Settings.Global.getInt(mContext.getContentResolver(),
+                        Settings.Global.WIFI_COUNTRY_CODE);
+            } catch (Settings.SettingNotFoundException e) {
+                // note this is not persisting
+                WifiManager wM = (WifiManager)
+                        mContext.getSystemService(Context.WIFI_SERVICE);
+                wM.setCountryCode(country, false);
+            }
+        }
 
         // Initialize device storage and outgoing SMS usage monitors for SMSDispatchers.
         mSmsStorageMonitor = new SmsStorageMonitor(this);
@@ -450,7 +467,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
         mCi.setOnUnsolOemHookRaw(this, EVENT_UNSOL_OEM_HOOK_RAW, null);
         mCi.startLceService(DEFAULT_REPORT_INTERVAL_MS, LCE_PULL_MODE,
-            obtainMessage(EVENT_CONFIG_LCE));
+                obtainMessage(EVENT_CONFIG_LCE));
     }
 
     @Override
@@ -1161,37 +1178,23 @@ public abstract class PhoneBase extends Handler implements Phone {
      * Set the properties by matching the carrier string in
      * a string-array resource
      */
-    private void setPropertiesByCarrier() {
+    private static Locale getLocaleFromCarrierProperties(Context ctx) {
         String carrier = SystemProperties.get("ro.carrier");
 
         if (null == carrier || 0 == carrier.length() || "unknown".equals(carrier)) {
-            return;
+            return null;
         }
 
-        CharSequence[] carrierLocales = mContext.
-                getResources().getTextArray(R.array.carrier_properties);
+        CharSequence[] carrierLocales = ctx.getResources().getTextArray(R.array.carrier_properties);
 
         for (int i = 0; i < carrierLocales.length; i+=3) {
             String c = carrierLocales[i].toString();
             if (carrier.equals(c)) {
-                final Locale l = Locale.forLanguageTag(carrierLocales[i + 1].toString().replace('_', '-'));
-                final String country = l.getCountry();
-                MccTable.setSystemLocale(mContext, l.getLanguage(), country);
-
-                if (!country.isEmpty()) {
-                    try {
-                        Settings.Global.getInt(mContext.getContentResolver(),
-                                Settings.Global.WIFI_COUNTRY_CODE);
-                    } catch (Settings.SettingNotFoundException e) {
-                        // note this is not persisting
-                        WifiManager wM = (WifiManager)
-                                mContext.getSystemService(Context.WIFI_SERVICE);
-                        wM.setCountryCode(country, false);
-                    }
-                }
-                return;
+                return Locale.forLanguageTag(carrierLocales[i + 1].toString().replace('_', '-'));
             }
         }
+
+        return null;
     }
 
     /**
@@ -2379,6 +2382,16 @@ public abstract class PhoneBase extends Handler implements Phone {
             mCi.startLceService(DEFAULT_REPORT_INTERVAL_MS, LCE_PULL_MODE,
                 obtainMessage(EVENT_CONFIG_LCE));
         }
+    }
+
+    @Override
+    public Locale getLocaleFromSimAndCarrierPrefs() {
+        final IccRecords records = mIccRecords.get();
+        if (records != null && records.getSimLanguage() != null) {
+            return new Locale(records.getSimLanguage());
+        }
+
+        return getLocaleFromCarrierProperties(mContext);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
