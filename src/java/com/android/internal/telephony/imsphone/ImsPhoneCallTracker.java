@@ -28,6 +28,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
@@ -38,10 +39,12 @@ import android.provider.Settings;
 import android.preference.PreferenceManager;
 import android.telecom.ConferenceParticipant;
 import android.telecom.VideoProfile;
+import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
+import android.telephony.SubscriptionManager;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsCallProfile;
@@ -120,6 +123,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     loge("onReceive : exception " + e);
                 } catch (RemoteException e) {
                 }
+            } else if (intent.getAction().equals(
+                    CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+                int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
+                        SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+                if (subId == mPhone.getSubId()) {
+                    mAllowEmergencyVideoCalls = isEmergencyVtCallAllowed(subId);
+                    log("onReceive : Updating mAllowEmergencyVideoCalls = " +
+                            mAllowEmergencyVideoCalls);
+                }
             }
         }
     };
@@ -171,6 +183,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
     private boolean pendingCallInEcm = false;
     private boolean mSwitchingFgAndBgCalls = false;
     private ImsCall mCallExpectedToResume = null;
+    private boolean mAllowEmergencyVideoCalls = false;
 
     //***** Events
 
@@ -182,7 +195,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
         IntentFilter intentfilter = new IntentFilter();
         intentfilter.addAction(ImsManager.ACTION_IMS_INCOMING_CALL);
+        intentfilter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mPhone.getContext().registerReceiver(mReceiver, intentfilter);
+        mAllowEmergencyVideoCalls = isEmergencyVtCallAllowed(mPhone.getSubId());
 
         Thread t = new Thread() {
             public void run() {
@@ -300,6 +315,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
             handleEcmTimer(ImsPhone.CANCEL_ECM_TIMER);
         }
 
+        // If the call is to an emergency number and the carrier does not support video emergency
+        // calls, dial as an audio-only call.
+        if (isEmergencyNumber && VideoProfile.VideoState.isVideo(videoState) &&
+                !mAllowEmergencyVideoCalls) {
+            loge("dial: carrier does not support video emergency calls; downgrade to audio-only");
+            videoState = VideoProfile.STATE_AUDIO_ONLY;
+        }
+
         boolean holdBeforeDial = false;
 
         // The new call must be assigned to the foreground call.
@@ -364,6 +387,30 @@ public final class ImsPhoneCallTracker extends CallTracker {
         mPhone.notifyPreciseCallStateChanged();
 
         return mPendingMO;
+    }
+
+    /**
+     * Determines if the carrier associated with the specified SubId supports making video emergency
+     * calls.
+     *
+     * @param subId The sub id.
+     * @return {@code true} if video emergency calls are supported, {@code false} otherwise.
+     */
+    private boolean isEmergencyVtCallAllowed(int subId) {
+        CarrierConfigManager carrierConfigManager = (CarrierConfigManager)
+                mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (carrierConfigManager == null) {
+            loge("isEmergencyVideoCallsSupported: No carrier config service found.");
+            return false;
+        }
+
+        Bundle carrierConfig = carrierConfigManager.getConfigForSubId(subId);
+        if (carrierConfig == null) {
+            loge("isEmergencyVideoCallsSupported: Empty carrier config.");
+            return false;
+        }
+
+        return carrierConfig.getBoolean(CarrierConfigManager.BOOL_ALLOW_EMERGENCY_VIDEO_CALLS);
     }
 
     private void handleEcmTimer(int action) {
