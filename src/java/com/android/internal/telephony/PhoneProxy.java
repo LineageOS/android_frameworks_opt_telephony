@@ -179,8 +179,9 @@ public class PhoneProxy extends Handler implements Phone {
 
         if (mActivePhone != null) {
             // Check for a voice over lte replacement
-            if ((newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_LTE)
-                    || (newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN)) {
+            if ((newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) ||
+                    (newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA) ||
+                    (newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN)) {
                 CarrierConfigManager configMgr = (CarrierConfigManager)
                         mActivePhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
                 PersistableBundle b = configMgr.getConfigForSubId(mActivePhone.getSubId());

@@ -1159,4 +1159,12 @@ public abstract class ServiceStateTracker extends Handler {
 
         return regState;
     }
+
+    /**
+     * {@hide}
+     */
+    public boolean isRatLte(int rat) {
+        return (rat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE ||
+            rat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA);
+    }
 }

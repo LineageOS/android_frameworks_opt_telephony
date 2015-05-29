@@ -893,8 +893,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     mNewSS.setCdmaRoamingIndicator(mDefaultRoamingIndicator);
                 } else if (namMatch && !mIsInPrl) {
                     // TODO this will be removed when we handle roaming on LTE on CDMA+LTE phones
-                    if (mNewSS.getRilVoiceRadioTechnology()
-                            == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
+                    if (isRatLte(mNewSS.getRilVoiceRadioTechnology())) {
                         log("Turn off roaming indicator as voice is LTE");
                         mNewSS.setCdmaRoamingIndicator(EriInfo.ROAMING_INDICATOR_OFF);
                     } else {
