@@ -823,7 +823,7 @@ public final class RuimRecords extends IccRecords {
             }
 
             if (!TextUtils.isEmpty(mImsi)) {
-                log("onAllRecordsLoaded set mcc imsi=" + mImsi);
+                log("onAllRecordsLoaded set mcc imsi=" + (VDBG ? ("=" + mImsi) : ""));
                 mTelephonyManager.setSimCountryIsoForPhone(
                         mParentApp.getPhoneId(),
                         MccTable.countryCodeForMcc(

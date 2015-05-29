@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public abstract class IccRecords extends Handler implements IccConstants {
     protected static final boolean DBG = true;
+    protected static final boolean VDBG = false; // STOPSHIP if true
 
     // ***** Instance Variables
     protected AtomicBoolean mDestroyed = new AtomicBoolean(false);
@@ -125,7 +126,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " newVoiceMailNum=" + mNewVoiceMailNum
                 + " newVoiceMailTag=" + mNewVoiceMailTag
                 + " isVoiceMailFixed=" + mIsVoiceMailFixed
-                + " mImsi=" + mImsi
+                + (VDBG ? (" mImsi=" + mImsi) : "")
                 + " mncLength=" + mMncLength
                 + " mailboxIndex=" + mMailboxIndex
                 + " spn=" + mSpn;
@@ -672,7 +673,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mNewVoiceMailNum=" + mNewVoiceMailNum);
         pw.println(" mNewVoiceMailTag=" + mNewVoiceMailTag);
         pw.println(" mIsVoiceMailFixed=" + mIsVoiceMailFixed);
-        pw.println(" mImsi=" + mImsi);
+        if (VDBG) pw.println(" mImsi=" + mImsi);
         pw.println(" mMncLength=" + mMncLength);
         pw.println(" mMailboxIndex=" + mMailboxIndex);
         pw.println(" mSpn=" + mSpn);
