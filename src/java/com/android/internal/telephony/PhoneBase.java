@@ -1601,14 +1601,15 @@ public abstract class PhoneBase extends Handler implements Phone {
         String subscriberId = sp.getString(VM_ID, null);
         String currentSubscriberId = getSubscriberId();
 
-        Rlog.d(LOG_TAG, "Voicemail count retrieval for subscriberId = " + subscriberId +
-                " current subscriberId = " + currentSubscriberId);
-
         if ((subscriberId != null) && (currentSubscriberId != null)
                 && (currentSubscriberId.equals(subscriberId))) {
             // get voice mail count from preferences
             countVoiceMessages = sp.getInt(VM_COUNT, 0);
             Rlog.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages);
+        } else {
+            Rlog.d(LOG_TAG, "Voicemail count retrieval returning 0 as count for matching " +
+                    "subscriberId not found");
+
         }
         return countVoiceMessages;
     }
