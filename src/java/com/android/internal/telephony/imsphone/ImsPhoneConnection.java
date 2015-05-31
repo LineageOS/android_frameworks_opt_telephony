@@ -19,6 +19,7 @@ package com.android.internal.telephony.imsphone;
 import android.content.Context;
 import android.net.Uri;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -116,7 +117,8 @@ public class ImsPhoneConnection extends Connection {
 
     /** This is probably an MT call */
     /*package*/
-    ImsPhoneConnection(Context context, ImsCall imsCall, ImsPhoneCallTracker ct, ImsPhoneCall parent) {
+    ImsPhoneConnection(Context context, ImsCall imsCall, ImsPhoneCallTracker ct,
+           ImsPhoneCall parent, boolean isUnknown) {
         createWakeLock(context);
         acquireWakeLock();
 
@@ -137,7 +139,7 @@ public class ImsPhoneConnection extends Connection {
             mCnapNamePresentation = PhoneConstants.PRESENTATION_UNKNOWN;
         }
 
-        mIsIncoming = true;
+        mIsIncoming = !isUnknown;
         mCreateTime = System.currentTimeMillis();
         mUusInfo = null;
 
@@ -146,7 +148,8 @@ public class ImsPhoneConnection extends Connection {
         updateWifiState();
 
         mParent = parent;
-        mParent.attach(this, ImsPhoneCall.State.INCOMING);
+        mParent.attach(this,
+                (mIsIncoming? ImsPhoneCall.State.INCOMING: ImsPhoneCall.State.DIALING));
     }
 
     /** This is an MO call, created when dialing */
@@ -739,6 +742,24 @@ public class ImsPhoneConnection extends Connection {
                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVRC_WB)
                 && remoteCallProfile.mRestrictCause == ImsCallProfile.CALL_RESTRICT_CAUSE_NONE;
         return isHighDef ? AUDIO_QUALITY_HIGH_DEFINITION : AUDIO_QUALITY_STANDARD;
+    }
+
+    @Override
+    public Bundle getExtras() {
+        Bundle extras = null;
+        final ImsCall call = getImsCall();
+
+        if (call != null) {
+            final ImsCallProfile callProfile = call.getCallProfile();
+            if (callProfile != null) {
+                extras = callProfile.mCallExtras;
+            }
+        }
+        if (extras == null) {
+            if (DBG) Rlog.d(LOG_TAG, "Call profile extras are null.");
+            return null;
+        }
+        return extras;
     }
 
     /**
