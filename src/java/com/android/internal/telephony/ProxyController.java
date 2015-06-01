@@ -239,6 +239,20 @@ public class ProxyController {
             }
         }
 
+        // Check we actually need to do anything
+        boolean same = true;
+        for (int i = 0; i < mProxyPhones.length; i++) {
+            if (mProxyPhones[i].getRadioAccessFamily() != rafs[i].getRadioAccessFamily()) {
+                same = false;
+            }
+        }
+        if (same) {
+            // All phones are already set to the requested raf
+            logd("setRadioCapability: Already in requested configuration, nothing to do.");
+            // It isn't really an error, so return true - everything is OK.
+            return true;
+        }
+
         // Clear to be sure we're in the initial state
         clearTransaction();
 

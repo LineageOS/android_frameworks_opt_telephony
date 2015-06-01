@@ -550,6 +550,9 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
 
+        // Ensure the modems are mapped correctly
+        mSubscriptionManager.setDefaultDataSubId(mSubscriptionManager.getDefaultDataSubId());
+
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
         logd("updateSubscriptionInfoByIccId:- SsubscriptionInfo update complete");
     }
