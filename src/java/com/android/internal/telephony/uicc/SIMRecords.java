@@ -1491,7 +1491,7 @@ public class SIMRecords extends IccRecords {
         }
 
         if (!TextUtils.isEmpty(mImsi)) {
-            log("onAllRecordsLoaded set mcc imsi=" + mImsi);
+            log("onAllRecordsLoaded set mcc imsi" + (VDBG ? ("=" + mImsi) : ""));
             mTelephonyManager.setSimCountryIsoForPhone(
                     mParentApp.getPhoneId(), MccTable.countryCodeForMcc(
                     Integer.parseInt(mImsi.substring(0,3))));

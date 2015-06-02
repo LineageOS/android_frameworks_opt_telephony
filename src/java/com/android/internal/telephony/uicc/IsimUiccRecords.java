@@ -47,7 +47,8 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     protected static final String LOG_TAG = "IsimUiccRecords";
 
     private static final boolean DBG = true;
-    private static final boolean DUMP_RECORDS = true;   // Note: PII is logged when this is true
+    private static final boolean DUMP_RECORDS = false;  // Note: PII is logged when this is true
+                                                        // STOPSHIP if true
     public static final String INTENT_ISIM_REFRESH = "com.android.intent.isim_refresh";
 
     private static final int EVENT_APP_READY = 1;
@@ -58,8 +59,8 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     private String mIsimImpi;               // IMS private user identity
     private String mIsimDomain;             // IMS home network domain name
     private String[] mIsimImpu;             // IMS public user identity(s)
-    private String mIsimIst;             // IMS Service Table
-    private String[] mIsimPcscf;             // IMS Proxy Call Session Control Function
+    private String mIsimIst;                // IMS Service Table
+    private String[] mIsimPcscf;            // IMS Proxy Call Session Control Function
     private String auth_rsp;
 
     private final Object mLock = new Object();
@@ -69,11 +70,11 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
     @Override
     public String toString() {
         return "IsimUiccRecords: " + super.toString()
-                + " mIsimImpi=" + mIsimImpi
+                + (DUMP_RECORDS ? (" mIsimImpi=" + mIsimImpi
                 + " mIsimDomain=" + mIsimDomain
                 + " mIsimImpu=" + mIsimImpu
                 + " mIsimIst=" + mIsimIst
-                + " mIsimPcscf=" + mIsimPcscf;
+                + " mIsimPcscf=" + mIsimPcscf) : "");
     }
 
     public IsimUiccRecords(UiccCardApplication app, Context c, CommandsInterface ci) {
