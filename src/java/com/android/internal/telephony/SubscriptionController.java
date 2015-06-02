@@ -1478,19 +1478,18 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
-     * Get the SIM state for the subscriber
+     * Get the SIM state for the slot idx
      * @return SIM state as the ordinal of {@See IccCardConstants.State}
      */
     @Override
-    public int getSimStateForSubscriber(int subId) {
+    public int getSimStateForSlotIdx(int slotIdx) {
         State simState;
         String err;
-        int phoneIdx = getPhoneId(subId);
-        if (phoneIdx < 0) {
+        if (slotIdx < 0) {
             simState = IccCardConstants.State.UNKNOWN;
-            err = "invalid PhoneIdx";
+            err = "invalid slotIdx";
         } else {
-            Phone phone = PhoneFactory.getPhone(phoneIdx);
+            Phone phone = PhoneFactory.getPhone(slotIdx);
             if (phone == null) {
                 simState = IccCardConstants.State.UNKNOWN;
                 err = "phone == null";
@@ -1505,7 +1504,7 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
         }
-        if (DBG) logd("getSimStateForSubscriber: " + err + " simState=" + simState
+        if (DBG) logd("getSimStateForSlotIdx: " + err + " simState=" + simState
                 + " ordinal=" + simState.ordinal());
         return simState.ordinal();
     }
