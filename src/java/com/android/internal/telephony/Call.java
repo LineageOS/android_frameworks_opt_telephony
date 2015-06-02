@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.telecom.ConferenceParticipant;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -118,6 +120,14 @@ public abstract class Call {
      */
     public State getState() {
         return mState;
+    }
+
+    /**
+     * getConferenceParticipants
+     * @return List of conference participants.
+     */
+    public List<ConferenceParticipant> getConferenceParticipants() {
+        return null;
     }
 
     /**
