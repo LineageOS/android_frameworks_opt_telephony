@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.imsphone;
 
+import android.telecom.ConferenceParticipant;
 import android.telephony.Rlog;
 import android.telephony.DisconnectCause;
 
@@ -104,6 +105,15 @@ public class ImsPhoneCall extends Call {
     public String
     toString() {
         return mState.toString();
+    }
+
+    @Override
+    public List<ConferenceParticipant> getConferenceParticipants() {
+         ImsCall call = getImsCall();
+         if (call == null) {
+             return null;
+         }
+         return call.getConferenceParticipants();
     }
 
     //***** Called from ImsPhoneConnection
