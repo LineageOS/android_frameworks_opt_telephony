@@ -87,158 +87,131 @@ public final class SmsManager {
      * Whether to append transaction id to MMS WAP Push M-Notification.ind's content location URI
      * when constructing the download URL of a new MMS (boolean type)
      */
-    public static final String
-            MMS_CONFIG_APPEND_TRANSACTION_ID = CarrierConfigManager.BOOL_MMS_APPEND_TRANSACTION_ID;
+    public static final String MMS_CONFIG_APPEND_TRANSACTION_ID = "enabledTransID";
     /**
      * Whether MMS is enabled for the current carrier (boolean type)
      */
-    public static final String MMS_CONFIG_MMS_ENABLED = CarrierConfigManager.BOOL_MMS_MMS_ENABLED;
+    public static final String MMS_CONFIG_MMS_ENABLED = "enabledMMS";
     /**
      * Whether group MMS is enabled for the current carrier (boolean type)
      */
-    public static final String
-            MMS_CONFIG_GROUP_MMS_ENABLED = CarrierConfigManager.BOOL_MMS_GROUP_MMS_ENABLED;
+    public static final String MMS_CONFIG_GROUP_MMS_ENABLED = "enableGroupMms";
     /**
-     * If this is enabled, M-NotifyResp.ind should be sent to the WAP Push content location instead
-     * of the default MMSC (boolean type)
+     * If this is enabled, M-NotifyResp.ind should be sent to the WAP Push content location
+     * instead of the default MMSC (boolean type)
      */
-    public static final String MMS_CONFIG_NOTIFY_WAP_MMSC_ENABLED =
-            CarrierConfigManager.BOOL_MMS_NOTIFY_WAP_MMSC_ENABLED;
+    public static final String MMS_CONFIG_NOTIFY_WAP_MMSC_ENABLED = "enabledNotifyWapMMSC";
     /**
      * Whether alias is enabled (boolean type)
      */
-    public static final String
-            MMS_CONFIG_ALIAS_ENABLED = CarrierConfigManager.BOOL_MMS_ALIAS_ENABLED;
+    public static final String MMS_CONFIG_ALIAS_ENABLED = "aliasEnabled";
     /**
      * Whether audio is allowed to be attached for MMS messages (boolean type)
      */
-    public static final String
-            MMS_CONFIG_ALLOW_ATTACH_AUDIO = CarrierConfigManager.BOOL_MMS_ALLOW_ATTACH_AUDIO;
+    public static final String MMS_CONFIG_ALLOW_ATTACH_AUDIO = "allowAttachAudio";
     /**
      * Whether multipart SMS is enabled (boolean type)
      */
-    public static final String
-            MMS_CONFIG_MULTIPART_SMS_ENABLED = CarrierConfigManager.BOOL_MMS_MULTIPART_SMS_ENABLED;
+    public static final String MMS_CONFIG_MULTIPART_SMS_ENABLED = "enableMultipartSMS";
     /**
      * Whether SMS delivery report is enabled (boolean type)
      */
-    public static final String MMS_CONFIG_SMS_DELIVERY_REPORT_ENABLED =
-            CarrierConfigManager.BOOL_MMS_SMS_DELIVERY_REPORT_ENABLED;
+    public static final String MMS_CONFIG_SMS_DELIVERY_REPORT_ENABLED = "enableSMSDeliveryReports";
     /**
      * Whether content-disposition field should be expected in an MMS PDU (boolean type)
      */
     public static final String MMS_CONFIG_SUPPORT_MMS_CONTENT_DISPOSITION =
-            CarrierConfigManager.BOOL_MMS_SUPPORT_MMS_CONTENT_DISPOSITION;
+            "supportMmsContentDisposition";
     /**
      * Whether multipart SMS should be sent as separate messages
      */
     public static final String MMS_CONFIG_SEND_MULTIPART_SMS_AS_SEPARATE_MESSAGES =
-            CarrierConfigManager.BOOL_MMS_SEND_MULTIPART_SMS_AS_SEPARATE_MESSAGES;
+            "sendMultipartSmsAsSeparateMessages";
     /**
      * Whether MMS read report is enabled (boolean type)
      */
-    public static final String MMS_CONFIG_MMS_READ_REPORT_ENABLED =
-            CarrierConfigManager.BOOL_MMS_MMS_READ_REPORT_ENABLED;
+    public static final String MMS_CONFIG_MMS_READ_REPORT_ENABLED = "enableMMSReadReports";
     /**
      * Whether MMS delivery report is enabled (boolean type)
      */
-    public static final String MMS_CONFIG_MMS_DELIVERY_REPORT_ENABLED =
-            CarrierConfigManager.BOOL_MMS_MMS_DELIVERY_REPORT_ENABLED;
+    public static final String MMS_CONFIG_MMS_DELIVERY_REPORT_ENABLED = "enableMMSDeliveryReports";
     /**
      * Max MMS message size in bytes (int type)
      */
-    public static final String
-            MMS_CONFIG_MAX_MESSAGE_SIZE = CarrierConfigManager.INT_MMS_MAX_MESSAGE_SIZE;
+    public static final String MMS_CONFIG_MAX_MESSAGE_SIZE = "maxMessageSize";
     /**
      * Max MMS image width (int type)
      */
-    public static final String
-            MMS_CONFIG_MAX_IMAGE_WIDTH = CarrierConfigManager.INT_MMS_MAX_IMAGE_WIDTH;
+    public static final String MMS_CONFIG_MAX_IMAGE_WIDTH = "maxImageWidth";
     /**
      * Max MMS image height (int type)
      */
-    public static final String
-            MMS_CONFIG_MAX_IMAGE_HEIGHT = CarrierConfigManager.INT_MMS_MAX_IMAGE_HEIGHT;
+    public static final String MMS_CONFIG_MAX_IMAGE_HEIGHT = "maxImageHeight";
     /**
      * Limit of recipients of MMS messages (int type)
      */
-    public static final String
-            MMS_CONFIG_RECIPIENT_LIMIT = CarrierConfigManager.INT_MMS_RECIPIENT_LIMIT;
+    public static final String MMS_CONFIG_RECIPIENT_LIMIT = "recipientLimit";
     /**
      * Min alias character count (int type)
      */
-    public static final String
-            MMS_CONFIG_ALIAS_MIN_CHARS = CarrierConfigManager.INT_MMS_ALIAS_MIN_CHARS;
+    public static final String MMS_CONFIG_ALIAS_MIN_CHARS = "aliasMinChars";
     /**
      * Max alias character count (int type)
      */
-    public static final String
-            MMS_CONFIG_ALIAS_MAX_CHARS = CarrierConfigManager.INT_MMS_ALIAS_MAX_CHARS;
+    public static final String MMS_CONFIG_ALIAS_MAX_CHARS = "aliasMaxChars";
     /**
-     * When the number of parts of a multipart SMS reaches this threshold, it should be converted
-     * into an MMS (int type)
+     * When the number of parts of a multipart SMS reaches this threshold, it should be
+     * converted into an MMS (int type)
      */
-    public static final String MMS_CONFIG_SMS_TO_MMS_TEXT_THRESHOLD =
-            CarrierConfigManager.INT_MMS_SMS_TO_MMS_TEXT_THRESHOLD;
+    public static final String MMS_CONFIG_SMS_TO_MMS_TEXT_THRESHOLD = "smsToMmsTextThreshold";
     /**
      * Some carriers require SMS to be converted into MMS when text length reaches this threshold
      * (int type)
      */
     public static final String MMS_CONFIG_SMS_TO_MMS_TEXT_LENGTH_THRESHOLD =
-            CarrierConfigManager.INT_MMS_SMS_TO_MMS_TEXT_LENGTH_THRESHOLD;
+            "smsToMmsTextLengthThreshold";
     /**
      * Max message text size (int type)
      */
-    public static final String
-            MMS_CONFIG_MESSAGE_TEXT_MAX_SIZE = CarrierConfigManager.INT_MMS_MESSAGE_TEXT_MAX_SIZE;
+    public static final String MMS_CONFIG_MESSAGE_TEXT_MAX_SIZE = "maxMessageTextSize";
     /**
      * Max message subject length (int type)
      */
-    public static final String
-            MMS_CONFIG_SUBJECT_MAX_LENGTH = CarrierConfigManager.INT_MMS_SUBJECT_MAX_LENGTH;
+    public static final String MMS_CONFIG_SUBJECT_MAX_LENGTH = "maxSubjectLength";
     /**
      * MMS HTTP socket timeout in milliseconds (int type)
      */
-    public static final String
-            MMS_CONFIG_HTTP_SOCKET_TIMEOUT = CarrierConfigManager.INT_MMS_HTTP_SOCKET_TIMEOUT;
+    public static final String MMS_CONFIG_HTTP_SOCKET_TIMEOUT = "httpSocketTimeout";
     /**
      * The name of the UA Prof URL HTTP header for MMS HTTP request (String type)
      */
-    public static final String
-            MMS_CONFIG_UA_PROF_TAG_NAME = CarrierConfigManager.STRING_MMS_UA_PROF_TAG_NAME;
+    public static final String MMS_CONFIG_UA_PROF_TAG_NAME = "uaProfTagName";
     /**
      * The User-Agent header value for MMS HTTP request (String type)
      */
-    public static final String MMS_CONFIG_USER_AGENT = CarrierConfigManager.STRING_MMS_USER_AGENT;
+    public static final String MMS_CONFIG_USER_AGENT = "userAgent";
     /**
      * The UA Profile URL header value for MMS HTTP request (String type)
      */
-    public static final String MMS_CONFIG_UA_PROF_URL = CarrierConfigManager.STRING_MMS_UA_PROF_URL;
+    public static final String MMS_CONFIG_UA_PROF_URL = "uaProfUrl";
     /**
      * A list of HTTP headers to add to MMS HTTP request, separated by "|" (String type)
      */
-    public static final String MMS_CONFIG_HTTP_PARAMS = CarrierConfigManager.STRING_MMS_HTTP_PARAMS;
+    public static final String MMS_CONFIG_HTTP_PARAMS = "httpParams";
     /**
      * Email gateway number (String type)
      */
-    public static final String
-            MMS_CONFIG_EMAIL_GATEWAY_NUMBER = CarrierConfigManager.STRING_MMS_EMAIL_GATEWAY_NUMBER;
+    public static final String MMS_CONFIG_EMAIL_GATEWAY_NUMBER = "emailGatewayNumber";
     /**
      * The suffix to append to the NAI header value for MMS HTTP request (String type)
      */
-    public static final String MMS_CONFIG_NAI_SUFFIX = CarrierConfigManager.STRING_MMS_NAI_SUFFIX;
+    public static final String MMS_CONFIG_NAI_SUFFIX = "naiSuffix";
     /**
-     * If true, show the cell broadcast (amber alert) in the SMS settings. Some carriers don't want
-     * this shown. (Boolean type)
+     * If true, show the cell broadcast (amber alert) in the SMS settings. Some carriers
+     * don't want this shown. (Boolean type)
      */
     public static final String MMS_CONFIG_SHOW_CELL_BROADCAST_APP_LINKS =
-            CarrierConfigManager.BOOL_MMS_SHOW_CELL_BROADCAST_APP_LINKS;
-    /**
-     * Whether the carrier MMSC supports charset field in Content-Type header. If this is false,
-     * then we don't add "charset" to "Content-Type"
-     */
-    public static final String MMS_CONFIG_SUPPORT_HTTP_CHARSET_HEADER =
-            CarrierConfigManager.BOOL_MMS_SUPPORT_HTTP_CHARSET_HEADER;
+            "config_cellBroadcastAppLinks";
     /*
      * Forwarded constants from SimDialogActivity.
      */
