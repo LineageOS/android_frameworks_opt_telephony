@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import static com.android.internal.telephony.RILConstants.*;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -53,7 +52,6 @@ import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneConnection;
-import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -583,7 +581,7 @@ public abstract class PhoneBase extends Handler implements Phone {
                     String dialString = (String) ar.result;
                     if (TextUtils.isEmpty(dialString)) return;
                     try {
-                        dialInternal(dialString, null, VideoProfile.VideoState.AUDIO_ONLY);
+                        dialInternal(dialString, null, VideoProfile.STATE_AUDIO_ONLY);
                     } catch (CallStateException e) {
                         Rlog.e(LOG_TAG, "silent redial failed: " + e);
                     }
@@ -1552,7 +1550,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     private static int getVideoState(Call call) {
-        int videoState = VideoProfile.VideoState.AUDIO_ONLY;
+        int videoState = VideoProfile.STATE_AUDIO_ONLY;
         ImsPhoneConnection conn = (ImsPhoneConnection) call.getEarliestConnection();
         if (conn != null) {
             videoState = conn.getVideoState();
@@ -1562,7 +1560,7 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     private boolean isVideoCall(Call call) {
         int videoState = getVideoState(call);
-        return (VideoProfile.VideoState.isVideo(videoState));
+        return (VideoProfile.isVideo(videoState));
     }
 
     @Override

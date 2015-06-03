@@ -844,7 +844,7 @@ public class GSMPhone extends PhoneBase {
         }
 
         if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Trying (non-IMS) CS call");
-        return dialInternal(dialString, null, VideoProfile.VideoState.AUDIO_ONLY);
+        return dialInternal(dialString, null, VideoProfile.STATE_AUDIO_ONLY);
     }
 
     @Override
