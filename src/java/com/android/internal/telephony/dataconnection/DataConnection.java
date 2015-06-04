@@ -1461,12 +1461,13 @@ public final class DataConnection extends StateMachine {
                                     + " rat=" + rat + " ignoring");
                         }
                     } else {
-                        // have to retry connecting since no attach event will come
-                        if (mConnectionParams.mRetryWhenSSChange) {
-                            retVal = NOT_HANDLED;
-                            break;
-                        }
-                        if (drs != ServiceState.STATE_IN_SERVICE) {
+                        if (drs == ServiceState.STATE_IN_SERVICE) {
+                            // have to retry connecting since no attach event will come
+                            if (mConnectionParams.mRetryWhenSSChange) {
+                                retVal = NOT_HANDLED;
+                                break;
+                            }
+                        } else {
                             // We've lost the connection and we're retrying but DRS or RAT changed
                             // so we may never succeed, might as well give up.
                             mInactiveState.setEnterNotificationParams(DcFailCause.LOST_CONNECTION);
