@@ -2583,9 +2583,7 @@ public final class Telephony {
          * This should be spread to other technologies,
          * but is currently only used for LTE (14) and eHRPD (13).
          * <P>Type: INTEGER</P>
-         * @deprecated Use {@link #BEARER_BITMASK} instead.
          */
-        @Deprecated
         public static final String BEARER = "bearer";
 
         /**
@@ -2595,6 +2593,7 @@ public final class Telephony {
          * RAT/bearer 2 and so on.
          * Bitmask for a radio tech R is (1 << (R - 1))
          * <P>Type: INTEGER</P>
+         * @hide
          */
         public static final String BEARER_BITMASK = "bearer_bitmask";
 
