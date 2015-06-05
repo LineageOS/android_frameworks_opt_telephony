@@ -306,7 +306,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                             isServiceClassVoiceorNone(ssData.serviceClass));
 
                     Rlog.d(LOG_TAG, "setVoiceCallForwardingFlag cffEnabled: " + cffEnabled);
-                    if (mPhone.mIccRecords != null) {
+                    if (mIccRecords != null) {
                         mIccRecords.setVoiceCallForwardingFlag(1, cffEnabled, null);
                         Rlog.d(LOG_TAG, "setVoiceCallForwardingFlag done from SS Info.");
                     } else {
