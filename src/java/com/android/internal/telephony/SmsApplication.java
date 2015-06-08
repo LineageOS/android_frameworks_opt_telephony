@@ -383,51 +383,13 @@ public final class SmsApplication {
                 configurePreferredActivity(packageManager, new ComponentName(
                         applicationData.mPackageName, applicationData.mSendToClass),
                         userId);
-                // Verify that the phone, BT app and MmsService have permissions
-                try {
-                    PackageInfo info = packageManager.getPackageInfo(PHONE_PACKAGE_NAME, 0);
-                    int mode = appOps.checkOp(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
-                            PHONE_PACKAGE_NAME);
-                    if (mode != AppOpsManager.MODE_ALLOWED) {
-                        Rlog.e(LOG_TAG, PHONE_PACKAGE_NAME + " lost OP_WRITE_SMS:  (fixing)");
-                        appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
-                                PHONE_PACKAGE_NAME, AppOpsManager.MODE_ALLOWED);
-                    }
-                } catch (NameNotFoundException e) {
-                    // No phone app on this device (unexpected, even for non-phone devices)
-                    Rlog.e(LOG_TAG, "Phone package not found: " + PHONE_PACKAGE_NAME);
-                    applicationData = null;
-                }
-
-                try {
-                    PackageInfo info = packageManager.getPackageInfo(BLUETOOTH_PACKAGE_NAME, 0);
-                    int mode = appOps.checkOp(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
-                            BLUETOOTH_PACKAGE_NAME);
-                    if (mode != AppOpsManager.MODE_ALLOWED) {
-                        Rlog.e(LOG_TAG, BLUETOOTH_PACKAGE_NAME + " lost OP_WRITE_SMS:  (fixing)");
-                        appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
-                                BLUETOOTH_PACKAGE_NAME, AppOpsManager.MODE_ALLOWED);
-                    }
-                } catch (NameNotFoundException e) {
-                    // No BT app on this device
-                    Rlog.e(LOG_TAG, "Bluetooth package not found: " + BLUETOOTH_PACKAGE_NAME);
-                }
-
-                try {
-                    PackageInfo info = packageManager.getPackageInfo(MMS_SERVICE_PACKAGE_NAME, 0);
-                    int mode = appOps.checkOp(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
-                            MMS_SERVICE_PACKAGE_NAME);
-                    if (mode != AppOpsManager.MODE_ALLOWED) {
-                        Rlog.e(LOG_TAG, MMS_SERVICE_PACKAGE_NAME + " lost OP_WRITE_SMS:  (fixing)");
-                        appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
-                                MMS_SERVICE_PACKAGE_NAME, AppOpsManager.MODE_ALLOWED);
-                    }
-                } catch (NameNotFoundException e) {
-                    // No phone app on this device (unexpected, even for non-phone devices)
-                    Rlog.e(LOG_TAG, "MmsService package not found: " + MMS_SERVICE_PACKAGE_NAME);
-                    applicationData = null;
-                }
-
+                // Assign permission to special system apps
+                assignWriteSmsPermissionToSystemApp(context, packageManager, appOps,
+                        PHONE_PACKAGE_NAME);
+                assignWriteSmsPermissionToSystemApp(context, packageManager, appOps,
+                        BLUETOOTH_PACKAGE_NAME);
+                assignWriteSmsPermissionToSystemApp(context, packageManager, appOps,
+                        MMS_SERVICE_PACKAGE_NAME);
             }
         }
         if (DEBUG_MULTIUSER) {
@@ -498,36 +460,48 @@ public final class SmsApplication {
             appOps.setMode(AppOpsManager.OP_WRITE_SMS, applicationData.mUid,
                     applicationData.mPackageName, AppOpsManager.MODE_ALLOWED);
 
-            // Phone needs to always have this permission to write to the sms database
-            try {
-                PackageInfo info = packageManager.getPackageInfo(PHONE_PACKAGE_NAME, 0);
-                appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
-                        PHONE_PACKAGE_NAME, AppOpsManager.MODE_ALLOWED);
-            } catch (NameNotFoundException e) {
-                // No phone app on this device (unexpected, even for non-phone devices)
-                Rlog.e(LOG_TAG, "Phone package not found: " + PHONE_PACKAGE_NAME);
-            }
-
-            // BT needs to always have this permission to write to the sms database
-            try {
-                PackageInfo info = packageManager.getPackageInfo(BLUETOOTH_PACKAGE_NAME, 0);
-                appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
-                        BLUETOOTH_PACKAGE_NAME, AppOpsManager.MODE_ALLOWED);
-            } catch (NameNotFoundException e) {
-                // No BT app on this device
-                Rlog.e(LOG_TAG, "Bluetooth package not found: " + BLUETOOTH_PACKAGE_NAME);
-            }
-
-            // MmsService needs to always have this permission to write to the sms database
-            try {
-                PackageInfo info = packageManager.getPackageInfo(MMS_SERVICE_PACKAGE_NAME, 0);
-                appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
-                        MMS_SERVICE_PACKAGE_NAME, AppOpsManager.MODE_ALLOWED);
-            } catch (NameNotFoundException e) {
-                // No phone app on this device (unexpected, even for non-phone devices)
-                Rlog.e(LOG_TAG, "MmsService package not found: " + MMS_SERVICE_PACKAGE_NAME);
-            }
+            // Assign permission to special system apps
+            assignWriteSmsPermissionToSystemApp(context, packageManager, appOps,
+                    PHONE_PACKAGE_NAME);
+            assignWriteSmsPermissionToSystemApp(context, packageManager, appOps,
+                    BLUETOOTH_PACKAGE_NAME);
+            assignWriteSmsPermissionToSystemApp(context, packageManager, appOps,
+                    MMS_SERVICE_PACKAGE_NAME);
         }
+    }
+
+    /**
+     * Assign WRITE_SMS AppOps permission to some special system apps.
+     *
+     * @param context The context
+     * @param packageManager The package manager instance
+     * @param appOps The AppOps manager instance
+     * @param packageName The package name of the system app
+     */
+    private static void assignWriteSmsPermissionToSystemApp(Context context,
+            PackageManager packageManager, AppOpsManager appOps, String packageName) {
+        // First check package signature matches the caller's package signature.
+        // Since this class is only used internally by the system, this check makes sure
+        // the package signature matches system signature.
+        final int result = packageManager.checkSignatures(context.getPackageName(), packageName);
+        if (result != PackageManager.SIGNATURE_MATCH) {
+            Rlog.e(LOG_TAG, packageName + " does not have system signature");
+            return;
+        }
+        try {
+            PackageInfo info = packageManager.getPackageInfo(packageName, 0);
+            int mode = appOps.checkOp(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
+                    packageName);
+            if (mode != AppOpsManager.MODE_ALLOWED) {
+                Rlog.w(LOG_TAG, packageName + " does not have OP_WRITE_SMS:  (fixing)");
+                appOps.setMode(AppOpsManager.OP_WRITE_SMS, info.applicationInfo.uid,
+                        packageName, AppOpsManager.MODE_ALLOWED);
+            }
+        } catch (NameNotFoundException e) {
+            // No whitelisted system app on this device
+            Rlog.e(LOG_TAG, "Package not found: " + packageName);
+        }
+
     }
 
     /**
