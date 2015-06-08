@@ -2065,4 +2065,9 @@ public interface Phone {
      * SIM preferences.
      */
     public Locale getLocaleFromSimAndCarrierPrefs();
+
+    /**
+     * Returns the modem activity information
+     */
+    public void getModemActivityInfo(Message response);
 }

@@ -620,4 +620,8 @@ class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface
     @Override
     public void pullLceData(Message result) {
     }
+
+    @Override
+    public void getModemActivityInfo(Message result) {
+    }
 }
