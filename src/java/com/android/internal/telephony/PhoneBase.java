@@ -45,6 +45,7 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.VoLteServiceState;
+import android.telephony.ModemActivityInfo;
 import android.text.TextUtils;
 
 import com.android.ims.ImsManager;
@@ -2370,6 +2371,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     @Override
     public int getLceStatus() {
         return mLceStatus;
+    }
+
+    @Override
+    public void getModemActivityInfo(Message response)  {
+        mCi.getModemActivityInfo(response);
     }
 
     /**

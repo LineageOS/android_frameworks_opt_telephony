@@ -43,6 +43,7 @@ import android.os.PowerManager;
 import android.os.BatteryManager;
 import android.os.SystemProperties;
 import android.os.PowerManager.WakeLock;
+import android.os.SystemClock;
 import android.provider.Settings.SettingNotFoundException;
 import android.telephony.CellInfo;
 import android.telephony.NeighboringCellInfo;
@@ -54,6 +55,7 @@ import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.ModemActivityInfo;
 import android.text.TextUtils;
 import android.util.SparseArray;
 import android.view.Display;
@@ -83,6 +85,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -2594,6 +2597,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_START_LCE: ret = responseLceStatus(p); break;
             case RIL_REQUEST_STOP_LCE: ret = responseLceStatus(p); break;
             case RIL_REQUEST_PULL_LCEDATA: ret = responseLceData(p); break;
+            case RIL_REQUEST_GET_ACTIVITY_INFO: ret = responseActivityData(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
             //break;
@@ -2664,6 +2668,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     }
                     break;
                 }
+                case RIL_REQUEST_GET_ACTIVITY_INFO:
+                    ret = new ModemActivityInfo(0, 0, 0,
+                            new int [ModemActivityInfo.TX_POWER_LEVELS], 0, 0);
+                    error = 0;
+                    break;
             }
 
             if (error != 0) rr.onError(error, ret);
@@ -4010,6 +4019,25 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         return statusResponse;
     }
 
+    private Object responseActivityData(Parcel p) {
+        final int sleepModeTimeMs = p.readInt();
+        final int idleModeTimeMs = p.readInt();
+        int [] txModeTimeMs = new int[ModemActivityInfo.TX_POWER_LEVELS];
+        for (int i = 0; i < ModemActivityInfo.TX_POWER_LEVELS; i++) {
+            txModeTimeMs[i] = p.readInt();
+        }
+        final int rxModeTimeMs = p.readInt();
+
+        riljLog("Modem activity info received:" +
+                " sleepModeTimeMs=" + sleepModeTimeMs +
+                " idleModeTimeMs=" + idleModeTimeMs +
+                " txModeTimeMs[]=" + Arrays.toString(txModeTimeMs) +
+                " rxModeTimeMs=" + rxModeTimeMs);
+
+        return new ModemActivityInfo(SystemClock.elapsedRealtime(), sleepModeTimeMs,
+                        idleModeTimeMs, txModeTimeMs, rxModeTimeMs, 0);
+    }
+
     static String
     requestToString(int request) {
 /*
@@ -4152,6 +4180,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_START_LCE: return "RIL_REQUEST_START_LCE";
             case RIL_REQUEST_STOP_LCE: return "RIL_REQUEST_STOP_LCE";
             case RIL_REQUEST_PULL_LCEDATA: return "RIL_REQUEST_PULL_LCEDATA";
+            case RIL_REQUEST_GET_ACTIVITY_INFO: return "RIL_REQUEST_GET_ACTIVITY_INFO";
             default: return "<unknown request>";
         }
     }
@@ -4786,6 +4815,17 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     @Override
     public void pullLceData(Message response) {
         RILRequest rr = RILRequest.obtain(RIL_REQUEST_PULL_LCEDATA, response);
+        if (RILJ_LOGD) {
+            riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        }
+        send(rr);
+    }
+
+    /**
+    * @hide
+    */
+    public void getModemActivityInfo(Message response) {
+        RILRequest rr = RILRequest.obtain(RIL_REQUEST_GET_ACTIVITY_INFO, response);
         if (RILJ_LOGD) {
             riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
         }
