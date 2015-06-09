@@ -372,7 +372,7 @@ public final class RuimRecords extends IccRecords {
         @Override
         public void onRecordLoaded(AsyncResult ar) {
             byte[] data = (byte[]) ar.result;
-            if (DBG) log("CSIM_IMSIM=" + IccUtils.bytesToHexString(data));
+            if (VDBG) log("CSIM_IMSIM=" + IccUtils.bytesToHexString(data));
             // C.S0065 section 5.2.2 for IMSI_M encoding
             // C.S0005 section 2.3.1 for MIN encoding in IMSI_M.
             boolean provisioned = ((data[7] & 0x80) == 0x80);
