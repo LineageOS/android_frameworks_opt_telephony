@@ -825,7 +825,7 @@ public class SubscriptionController extends ISub.Stub {
                             if (DBG) {
                                 logdl("[addSubInfoRecord] one sim set defaults to subId=" + subId);
                             }
-                            //setDefaultDataSubId(subId);
+                            setDefaultDataSubId(subId);
                             setDataSubId(subId);
                             setDefaultSmsSubId(subId);
                             setDefaultVoiceSubId(subId);
@@ -1191,16 +1191,14 @@ public class SubscriptionController extends ISub.Stub {
             subId = getDefaultSubId();
         }
 
-        if (subId >= DUMMY_SUB_ID_BASE) {
-            return subId - DUMMY_SUB_ID_BASE;
-        } else if (subId < 0) {
-            return (int) (-1 - subId);
-        }
-
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
             return SubscriptionManager.INVALID_PHONE_INDEX;
         }
 
+        if (subId >= DUMMY_SUB_ID_BASE) {
+            logd("getPhoneId,  received dummy subId " + subId);
+            return subId - DUMMY_SUB_ID_BASE;
+        }
 
         // FIXME: Assumes phoneId == slotId
         for (Entry<Integer, Integer> entry: mSlotIdxToSubId.entrySet()) {
