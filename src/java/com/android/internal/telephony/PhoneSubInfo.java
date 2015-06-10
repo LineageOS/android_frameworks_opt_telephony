@@ -18,6 +18,7 @@ package com.android.internal.telephony;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 
+import android.app.AppOpsManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Binder;
@@ -36,6 +37,7 @@ public class PhoneSubInfo {
 
     private Phone mPhone;
     private Context mContext;
+    private AppOpsManager mAppOps;
     private static final String READ_PHONE_STATE =
         android.Manifest.permission.READ_PHONE_STATE;
     // TODO: change getCompleteVoiceMailNumber() to require READ_PRIVILEGED_PHONE_STATE
@@ -47,6 +49,7 @@ public class PhoneSubInfo {
     public PhoneSubInfo(Phone phone) {
         mPhone = phone;
         mContext = phone.getContext();
+        mAppOps = mContext.getSystemService(AppOpsManager.class);
     }
 
     public void dispose() {
@@ -65,24 +68,30 @@ public class PhoneSubInfo {
     /**
      * Retrieves the unique device ID, e.g., IMEI for GSM phones and MEID for CDMA phones.
      */
-    public String getDeviceId() {
-        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+    public String getDeviceId(String callingPackage) {
+        if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
+            return null;
+        }
         return mPhone.getDeviceId();
     }
 
     /**
      * Retrieves the IMEI.
      */
-    public String getImei() {
-        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+    public String getImei(String callingPackage) {
+        if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
+            return null;
+        }
         return mPhone.getImei();
     }
 
     /**
      * Retrieves the NAI.
      */
-    public String getNai() {
-        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+    public String getNai(String callingPackage) {
+        if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
+            return null;
+        }
         return mPhone.getNai();
     }
 
@@ -90,64 +99,82 @@ public class PhoneSubInfo {
      * Retrieves the software version number for the device, e.g., IMEI/SV
      * for GSM phones.
      */
-    public String getDeviceSvn() {
-        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+    public String getDeviceSvn(String callingPackage) {
+        if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
+            return null;
+        }
+
         return mPhone.getDeviceSvn();
     }
 
     /**
      * Retrieves the unique subscriber ID, e.g., IMSI for GSM phones.
      */
-    public String getSubscriberId() {
-        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+    public String getSubscriberId(String callingPackage) {
+        if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
+            return null;
+        }
         return mPhone.getSubscriberId();
     }
 
     /**
      * Retrieves the Group Identifier Level1 for GSM phones.
      */
-    public String getGroupIdLevel1() {
-        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+    public String getGroupIdLevel1(String callingPackage) {
+        if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
+            return null;
+        }
         return mPhone.getGroupIdLevel1();
     }
 
     /**
      * Retrieves the serial number of the ICC, if applicable.
      */
-    public String getIccSerialNumber() {
-        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+    public String getIccSerialNumber(String callingPackage) {
+        if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
+            return null;
+        }
         return mPhone.getIccSerialNumber();
     }
 
     /**
      * Retrieves the phone number string for line 1.
      */
-    public String getLine1Number() {
-        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+    public String getLine1Number(String callingPackage) {
+        if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
+            return null;
+        }
         return mPhone.getLine1Number();
     }
 
     /**
      * Retrieves the alpha identifier for line 1.
      */
-    public String getLine1AlphaTag() {
+    public String getLine1AlphaTag(String callingPackage) {
         mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+        if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
+            return null;
+        }
         return mPhone.getLine1AlphaTag();
     }
 
     /**
      * Retrieves the MSISDN string.
      */
-    public String getMsisdn() {
-        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+    public String getMsisdn(String callingPackage) {
+        if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
+            return null;
+        }
         return mPhone.getMsisdn();
     }
 
     /**
      * Retrieves the voice mail number.
      */
-    public String getVoiceMailNumber() {
-        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
+    public String getVoiceMailNumber(String callingPackage) {
+        if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
+            return null;
+        }
         String number = PhoneNumberUtils.extractNetworkPortion(mPhone.getVoiceMailNumber());
         if (VDBG) log("VM: PhoneSubInfo.getVoiceMailNUmber: " + number);
         return number;
@@ -169,7 +196,10 @@ public class PhoneSubInfo {
     /**
      * Retrieves the alpha identifier associated with the voice mail number.
      */
-    public String getVoiceMailAlphaTag() {
+    public String getVoiceMailAlphaTag(String callingPackage) {
+        if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
+            return null;
+        }
         mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
         return mPhone.getVoiceMailAlphaTag();
     }
@@ -335,5 +365,13 @@ public class PhoneSubInfo {
         pw.println("Phone Subscriber Info:");
         pw.println("  Phone Type = " + mPhone.getPhoneName());
         pw.println("  Device ID = " + mPhone.getDeviceId());
+    }
+
+    private boolean checkReadPhoneState(String callingPackage, String message) {
+        mContext.enforceCallingOrSelfPermission(
+                android.Manifest.permission.READ_PHONE_STATE, message);
+
+        return mAppOps.noteOp(AppOpsManager.OP_READ_PHONE_STATE, Binder.getCallingUid(),
+                callingPackage) == AppOpsManager.MODE_ALLOWED;
     }
 }
