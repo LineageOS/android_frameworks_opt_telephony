@@ -464,7 +464,7 @@ public class CatService extends Handler implements AppInterface {
         Intent intent = new Intent(AppInterface.CAT_CMD_ACTION);
         intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         intent.putExtra("STK CMD", cmdMsg);
-        mContext.sendBroadcast(intent);
+        mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
 
     /**
@@ -477,7 +477,7 @@ public class CatService extends Handler implements AppInterface {
         mCurrntCmd = mMenuCmd;
         Intent intent = new Intent(AppInterface.CAT_SESSION_END_ACTION);
         intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-        mContext.sendBroadcast(intent);
+        mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
 
     private void sendTerminalResponse(CommandDetails cmdDet,
@@ -929,7 +929,7 @@ public class CatService extends Handler implements AppInterface {
         Intent intent = new Intent(AppInterface.CAT_ALPHA_NOTIFY_ACTION);
         intent.putExtra(AppInterface.ALPHA_STRING, alphaString);
         intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-        mContext.sendBroadcast(intent);
+        mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
     /**
      ** This function sends a CARD status (ABSENT, PRESENT, REFRESH) to STK_APP.
@@ -955,7 +955,7 @@ public class CatService extends Handler implements AppInterface {
         CatLog.d(this, "Sending Card Status: "
                 + cardState + " " + "cardPresent: " + cardPresent);
 
-        mContext.sendBroadcast(intent);
+        mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
 
     @Override
