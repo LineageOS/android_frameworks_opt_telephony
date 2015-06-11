@@ -458,7 +458,7 @@ public class CatService extends Handler implements AppInterface {
         intent.putExtra("STK CMD", cmdMsg);
         intent.putExtra("SLOT_ID", mSlotId);
         CatLog.d(this, "Sending CmdMsg: " + cmdMsg+ " on slotid:" + mSlotId);
-        mContext.sendBroadcast(intent);
+        mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
 
     /**
@@ -472,7 +472,7 @@ public class CatService extends Handler implements AppInterface {
         Intent intent = new Intent(AppInterface.CAT_SESSION_END_ACTION);
         intent.putExtra("SLOT_ID", mSlotId);
         intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
-        mContext.sendBroadcast(intent);
+        mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
 
 
@@ -877,7 +877,7 @@ public class CatService extends Handler implements AppInterface {
         intent.putExtra("SLOT_ID", mSlotId);
         CatLog.d(this, "Sending Card Status: "
                 + cardState + " " + "cardPresent: " + cardPresent);
-        mContext.sendBroadcast(intent);
+        mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
 
     private void broadcastAlphaMessage(String alphaString) {
@@ -886,7 +886,7 @@ public class CatService extends Handler implements AppInterface {
         intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         intent.putExtra(AppInterface.ALPHA_STRING, alphaString);
         intent.putExtra("SLOT_ID", mSlotId);
-        mContext.sendBroadcast(intent);
+        mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
 
     @Override
