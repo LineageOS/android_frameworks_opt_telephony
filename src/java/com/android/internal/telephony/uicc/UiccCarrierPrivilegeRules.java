@@ -289,8 +289,11 @@ public class UiccCarrierPrivilegeRules extends Handler {
      */
     public int getCarrierPrivilegeStatus(PackageManager packageManager, String packageName) {
         try {
+            // Include DISABLED_UNTIL_USED components. This facilitates cases where a carrier app
+            // is disabled by default, and some other component wants to enable it when it has
+            // gained carrier privileges (as an indication that a matching SIM has been inserted).
             PackageInfo pInfo = packageManager.getPackageInfo(packageName,
-                PackageManager.GET_SIGNATURES);
+                PackageManager.GET_SIGNATURES | PackageManager.GET_DISABLED_UNTIL_USED_COMPONENTS);
             Signature[] signatures = pInfo.signatures;
             for (Signature sig : signatures) {
                 int accessStatus = getCarrierPrivilegeStatus(sig, pInfo.packageName);
@@ -384,7 +387,7 @@ public class UiccCarrierPrivilegeRules extends Handler {
                   mUiccCard.iccTransmitApduLogicalChannel(mChannelId, CLA, COMMAND, P1, P2, P3, DATA,
                       obtainMessage(EVENT_TRANSMIT_LOGICAL_CHANNEL_DONE, new Integer(mChannelId)));
               } else {
-                  // MISSING_RESOURCE could be due to logical channels temporarily unavailable, 
+                  // MISSING_RESOURCE could be due to logical channels temporarily unavailable,
                   // so we retry up to MAX_RETRY times, with an interval of RETRY_INTERVAL_MS.
                   if (ar.exception instanceof CommandException && mRetryCount < MAX_RETRY &&
                       ((CommandException) (ar.exception)).getCommandError() ==
