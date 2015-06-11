@@ -295,9 +295,9 @@ public class SubscriptionController extends ISub.Stub {
                 + " mcc:" + mcc + " mnc:" + mnc + " countIso:" + countryIso);
         }
 
+        // If line1number has been set to a different number, use it instead.
         String line1Number = mTelephonyManager.getLine1NumberForSubscriber(id);
         if (!TextUtils.isEmpty(line1Number) && !line1Number.equals(number)) {
-            logd("Line1Number is different: " + line1Number);
             number = line1Number;
         }
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
