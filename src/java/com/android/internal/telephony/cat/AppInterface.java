@@ -32,6 +32,9 @@ public interface AppInterface {
     public static final String CAT_SESSION_END_ACTION =
                                     "android.intent.action.stk.session_end";
 
+    // Permission required by STK command receiver
+    public static final String STK_PERMISSION = "android.permission.RECEIVE_STK_COMMANDS";
+
     /*
      * Callback function from app to telephony to pass a result code and user's
      * input back to the ICC.
