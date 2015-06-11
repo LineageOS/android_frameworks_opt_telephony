@@ -24,6 +24,8 @@ import android.os.Looper;
 import android.os.Message;
 import android.telephony.Rlog;
 
+import com.android.internal.telephony.uicc.IccConstants;
+
 public class AdnRecordLoader extends Handler {
     final static String LOG_TAG = "AdnRecordLoader";
     final static boolean VDBG = false;
@@ -64,6 +66,14 @@ public class AdnRecordLoader extends Handler {
         mFh = fh;
     }
 
+    private String getEFPath(int efid) {
+        if (efid == IccConstants.EF_ADN) {
+            return IccConstants.MF_SIM + IccConstants.DF_TELECOM;
+        }
+
+        return null;
+    }
+
     /**
      * Resulting AdnRecord is placed in response.obj.result
      * or response.obj.exception is set
@@ -76,10 +86,9 @@ public class AdnRecordLoader extends Handler {
         mRecordNumber = recordNumber;
         mUserResponse = response;
 
-        mFh.loadEFLinearFixed(
-                    ef, recordNumber,
-                    obtainMessage(EVENT_ADN_LOAD_DONE));
-
+       mFh.loadEFLinearFixed(
+               ef, getEFPath(ef), recordNumber,
+               obtainMessage(EVENT_ADN_LOAD_DONE));
     }
 
 
@@ -94,10 +103,13 @@ public class AdnRecordLoader extends Handler {
         mExtensionEF = extensionEF;
         mUserResponse = response;
 
+        /* If we are loading from EF_ADN, specifically
+         * specify the path as well, since, on some cards,
+         * the fileid is not unique.
+         */
         mFh.loadEFLinearFixedAll(
-                    ef,
-                    obtainMessage(EVENT_ADN_LOAD_ALL_DONE));
-
+                ef, getEFPath(ef),
+                obtainMessage(EVENT_ADN_LOAD_ALL_DONE));
     }
 
     /**
@@ -120,10 +132,10 @@ public class AdnRecordLoader extends Handler {
         mRecordNumber = recordNumber;
         mUserResponse = response;
         mPin2 = pin2;
-
-        mFh.getEFLinearRecordSize( ef,
-            obtainMessage(EVENT_EF_LINEAR_RECORD_SIZE_DONE, adn));
-    }
+ 
+        mFh.getEFLinearRecordSize( ef, getEFPath(ef),
+                obtainMessage(EVENT_EF_LINEAR_RECORD_SIZE_DONE, adn));
+     }
 
     //***** Overridden from Handler
 
@@ -163,7 +175,8 @@ public class AdnRecordLoader extends Handler {
                                 ar.exception);
                     }
 
-                    mFh.updateEFLinearFixed(mEf, mRecordNumber,
+
+                    mFh.updateEFLinearFixed(mEf, getEFPath(mEf), mRecordNumber,
                             data, mPin2, obtainMessage(EVENT_UPDATE_RECORD_DONE));
 
                     mPendingExtLoads = 1;
