@@ -727,7 +727,7 @@ public class DctController extends Handler {
         pw.flush();
         pw.println("TelephonyNetworkFactories:");
         for (NetworkFactory tnf : mNetworkFactory) {
-            pw.println("  " + tnf);
+            tnf.dump(fd, pw, args);
         }
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
