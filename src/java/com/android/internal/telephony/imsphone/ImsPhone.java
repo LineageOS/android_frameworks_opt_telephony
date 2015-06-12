@@ -25,6 +25,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
@@ -87,6 +88,7 @@ import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -506,10 +508,18 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public Connection
     dial(String dialString, int videoState) throws CallStateException {
-        return dialInternal(dialString, videoState);
+        return dialInternal(dialString, videoState, null);
     }
 
-    protected Connection dialInternal(String dialString, int videoState)
+    @Override
+    public Connection
+    dial(String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
+            throws CallStateException {
+        // ignore UUSInfo
+        return dialInternal (dialString, videoState, intentExtras);
+    }
+
+    protected Connection dialInternal(String dialString, int videoState, Bundle intentExtras)
             throws CallStateException {
         // Need to make sure dialString gets parsed properly
         String newDialString = PhoneNumberUtils.stripSeparators(dialString);
@@ -520,7 +530,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
 
         if (mDefaultPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
-            return mCT.dial(dialString, videoState);
+            return mCT.dial(dialString, videoState, intentExtras);
         }
 
         // Only look at the Network portion for mmi
@@ -531,9 +541,9 @@ public class ImsPhone extends ImsPhoneBase {
                 "dialing w/ mmi '" + mmi + "'...");
 
         if (mmi == null) {
-            return mCT.dial(dialString, videoState);
+            return mCT.dial(dialString, videoState, intentExtras);
         } else if (mmi.isTemporaryModeCLIR()) {
-            return mCT.dial(mmi.getDialingNumber(), mmi.getCLIRMode(), videoState);
+            return mCT.dial(mmi.getDialingNumber(), mmi.getCLIRMode(), videoState, intentExtras);
         } else if (!mmi.isSupportedOverImsPhone()) {
             // If the mmi is not supported by IMS service,
             // try to initiate dialing with default phone

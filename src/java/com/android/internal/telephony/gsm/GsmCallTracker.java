@@ -17,6 +17,7 @@
 package com.android.internal.telephony.gsm;
 
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
@@ -169,7 +170,8 @@ public final class GsmCallTracker extends CallTracker {
      * clirMode is one of the CLIR_ constants
      */
     synchronized Connection
-    dial (String dialString, int clirMode, UUSInfo uusInfo) throws CallStateException {
+    dial (String dialString, int clirMode, UUSInfo uusInfo, Bundle intentExtras)
+            throws CallStateException {
         // note that this triggers call state changed notif
         clearDisconnected();
 
@@ -247,13 +249,13 @@ public final class GsmCallTracker extends CallTracker {
     }
 
     Connection
-    dial(String dialString, UUSInfo uusInfo) throws CallStateException {
-        return dial(dialString, CommandsInterface.CLIR_DEFAULT, uusInfo);
+    dial(String dialString, UUSInfo uusInfo, Bundle intentExtras) throws CallStateException {
+        return dial(dialString, CommandsInterface.CLIR_DEFAULT, uusInfo, intentExtras);
     }
 
     Connection
-    dial(String dialString, int clirMode) throws CallStateException {
-        return dial(dialString, clirMode, null);
+    dial(String dialString, int clirMode, Bundle intentExtras) throws CallStateException {
+        return dial(dialString, clirMode, null, intentExtras);
     }
 
     void
