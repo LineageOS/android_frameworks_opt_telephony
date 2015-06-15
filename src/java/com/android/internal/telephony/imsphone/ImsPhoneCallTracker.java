@@ -83,8 +83,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
     private static final boolean VERBOSE_STATE_LOGGING = false; /* stopship if true */
 
     //Indices map to ImsConfig.FeatureConstants
-    private boolean[] mImsFeatureEnabled = {false, false, false, false};
-    private final String[] mImsFeatureStrings = {"VoLTE", "ViLTE", "VoWiFi", "ViWiFi"};
+    private boolean[] mImsFeatureEnabled = {false, false, false, false, false, false};
+    private final String[] mImsFeatureStrings = {"VoLTE", "ViLTE", "VoWiFi", "ViWiFi",
+            "UTLTE", "UTWiFi"};
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -1535,7 +1536,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 boolean tmpIsVideoCallEnabled = isVideoCallEnabled();
                 // Check enabledFeatures to determine capabilities. We ignore disabledFeatures.
                 for (int  i = ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE;
-                        i <= ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI; i++) {
+                        i <= ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_WIFI; i++) {
                     if (enabledFeatures[i] == i) {
                         // If the feature is set to its own integer value it is enabled.
                         if (DBG) log("onFeatureCapabilityChanged(" + i + ", " + mImsFeatureStrings[i] + "): value=true");
@@ -1560,7 +1561,10 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 // TODO: Use the ImsCallSession or ImsCallProfile to tell the initial Wifi state and
                 // {@link ImsCallSession.Listener#callSessionHandover} to listen for changes to
                 // wifi capability caused by a handover.
-                if (DBG) log("onFeatureCapabilityChanged: isVowifiEnabled=" + isVowifiEnabled());
+                if (DBG) log("onFeatureCapabilityChanged: isVolteEnabled=" + isVolteEnabled()
+                            + ", isVideoCallEnabled=" + isVideoCallEnabled()
+                            + ", isVowifiEnabled=" + isVowifiEnabled()
+                            + ", isUtEnabled=" + isUtEnabled());
                 for (ImsPhoneConnection connection : mConnections) {
                     connection.updateWifiState();
                 }
@@ -1770,5 +1774,10 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     new ImsVideoCallProviderWrapper(imsVideoCallProvider);
             conn.setVideoProvider(imsVideoCallProviderWrapper);
         }
+    }
+
+    public boolean isUtEnabled() {
+        return (mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_LTE]
+            || mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_WIFI]);
     }
 }
