@@ -1937,6 +1937,11 @@ public interface Phone {
     public void startMonitoringImsService();
 
     /**
+     * Return if UT capability of ImsPhone is enabled or not
+     */
+    public boolean isUtEnabled();
+
+    /**
      * Release the local instance of the ImsPhone and disconnect from
      * the phone.
      * @return the instance of the ImsPhone phone previously owned

@@ -445,9 +445,13 @@ public class CDMAPhone extends PhoneBase {
                 && ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext)
                 && (imsPhone.getServiceState().getState() != ServiceState.STATE_POWER_OFF);
 
+        boolean useImsForUt = imsPhone != null && imsPhone.isUtEnabled()
+                && dialString.endsWith("#");
+
         if (DBG) {
             Rlog.d(LOG_TAG, "imsUseEnabled=" + imsUseEnabled
                     + ", useImsForEmergency=" + useImsForEmergency
+                    + ", useImsForUt=" + useImsForUt
                     + ", imsPhone=" + imsPhone
                     + ", imsPhone.isVolteEnabled()="
                     + ((imsPhone != null) ? imsPhone.isVolteEnabled() : "N/A")
@@ -459,7 +463,7 @@ public class CDMAPhone extends PhoneBase {
 
         ImsPhone.checkWfcWifiOnlyModeBeforeDial(mImsPhone, mContext);
 
-        if (imsUseEnabled || useImsForEmergency) {
+        if (imsUseEnabled || useImsForEmergency || useImsForUt) {
             try {
                 if (DBG) Rlog.d(LOG_TAG, "Trying IMS PS call");
                 return imsPhone.dial(dialString, uusInfo, videoState, intentExtras);
@@ -1905,4 +1909,16 @@ public class CDMAPhone extends PhoneBase {
         }
         return status;
     }
+
+    public boolean isUtEnabled() {
+        ImsPhone imsPhone = mImsPhone;
+        if (imsPhone != null) {
+            return imsPhone.isUtEnabled();
+        } else {
+            Rlog.d(LOG_TAG, "isUtEnabled: called for CDMA");
+            return false;
+        }
+    }
+
+
 }
