@@ -1417,9 +1417,7 @@ public class SubscriptionController extends ISub.Stub {
             reqStatus = PhoneConstants.SUCCESS;
         }
         mScheduler.updateCurrentDds(null);
-        broadcastDefaultDataSubIdChanged(subId);
-
-        updateAllDataConnectionTrackers();
+        broadcastDefaultDataSubIdChanged(reqStatus);
     }
 
     public void setDefaultDataSubId(int subId) {
@@ -1433,6 +1431,13 @@ public class SubscriptionController extends ISub.Stub {
                     EVENT_SET_DEFAULT_DATA_DONE, null);
         }
         mDctController.setDefaultDataSubId(subId);
+
+        Settings.Global.putInt(mContext.getContentResolver(),
+                Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION, subId);
+        broadcastDefaultDataSubIdChanged(subId);
+
+        // FIXME is this still needed?
+        updateAllDataConnectionTrackers();
     }
 
     public void setDataSubId(int subId) {
