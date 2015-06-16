@@ -31,7 +31,10 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.PowerManager;
+import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
@@ -57,6 +60,7 @@ import android.util.TimeUtils;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.ICarrierConfigLoader;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.ProxyController;
 import com.android.internal.telephony.Phone;
@@ -840,36 +844,68 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         mPollingContext[0]--;
 
         if (mPollingContext[0] == 0) {
-            /**
-             * Since the roaming state of gsm service (from +CREG) and
-             * data service (from +CGREG) could be different, the new SS
-             * is set to roaming when either is true.
-             *
-             * There are exceptions for the above rule.
-             * The new SS is not set as roaming while gsm service reports
-             * roaming but indeed it is same operator.
-             * And the operator is considered non roaming.
-             *
-             * The test for the operators is to handle special roaming
-             * agreements and MVNO's.
-             */
-            boolean roaming = (mGsmRoaming || mDataRoaming);
-            if (mGsmRoaming && !isOperatorConsideredRoaming(mNewSS) &&
-                (isSameNamedOperators(mNewSS) || isOperatorConsideredNonRoaming(mNewSS))) {
-                roaming = false;
-            }
-
-            if (mPhone.isMccMncMarkedAsNonRoaming(mNewSS.getOperatorNumeric())) {
-                roaming = false;
-            } else if (mPhone.isMccMncMarkedAsRoaming(mNewSS.getOperatorNumeric())) {
-                roaming = true;
-            }
-
-            mNewSS.setVoiceRoaming(roaming);
-            mNewSS.setDataRoaming(roaming);
+            updateRoamingState();
             mNewSS.setEmergencyOnly(mEmergencyOnly);
             pollStateDone();
         }
+    }
+
+    /**
+     * Query the carrier configuration to determine if there any network overrides
+     * for roaming or not roaming for the current service state.
+     */
+    protected void updateRoamingState() {
+        /**
+         * Since the roaming state of gsm service (from +CREG) and
+         * data service (from +CGREG) could be different, the new SS
+         * is set to roaming when either is true.
+         *
+         * There are exceptions for the above rule.
+         * The new SS is not set as roaming while gsm service reports
+         * roaming but indeed it is same operator.
+         * And the operator is considered non roaming.
+         *
+         * The test for the operators is to handle special roaming
+         * agreements and MVNO's.
+         */
+        boolean roaming = (mGsmRoaming || mDataRoaming);
+        if (mGsmRoaming && !isOperatorConsideredRoaming(mNewSS) &&
+                (isSameNamedOperators(mNewSS) || isOperatorConsideredNonRoaming(mNewSS))) {
+            roaming = false;
+        }
+
+        ICarrierConfigLoader configLoader =
+            (ICarrierConfigLoader) ServiceManager.getService(Context.CARRIER_CONFIG_SERVICE);
+        if (configLoader != null) {
+            try {
+                PersistableBundle b = configLoader.getConfigForSubId(mPhone.getSubId());
+
+                if (isNonRoamingInGsmNetwork(b, mNewSS.getOperatorNumeric())) {
+                    log("updateRoamingState: carrier config override set non roaming:"
+                            + mNewSS.getOperatorNumeric());
+                    roaming = false;
+                } else if (isRoamingInGsmNetwork(b, mNewSS.getOperatorNumeric())) {
+                    log("updateRoamingState: carrier config override set roaming:"
+                            + mNewSS.getOperatorNumeric());
+                    roaming = true;
+                }
+            } catch (RemoteException e) {
+                loge("updateRoamingState: unable to access carrier config service");
+            }
+        } else {
+            log("updateRoamingState: no carrier config service available");
+        }
+
+        /* NOTE(Deprecated) This roaming override uses a hidden API and is deprecated */
+        if (mPhone.isMccMncMarkedAsNonRoaming(mNewSS.getOperatorNumeric())) {
+            roaming = false;
+        } else if (mPhone.isMccMncMarkedAsRoaming(mNewSS.getOperatorNumeric())) {
+            roaming = true;
+        }
+        /* End Deprecated */
+
+        mNewSS.setVoiceRoaming(roaming);
+        mNewSS.setDataRoaming(roaming);
     }
 
     /**
