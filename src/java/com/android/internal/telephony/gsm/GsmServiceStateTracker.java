@@ -1947,10 +1947,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         Context context = mPhone.getContext();
 
-        mNotification = new Notification();
-        mNotification.when = System.currentTimeMillis();
-        mNotification.flags = Notification.FLAG_AUTO_CANCEL;
-        mNotification.icon = com.android.internal.R.drawable.stat_sys_warning;
 
         CharSequence details = "";
         CharSequence title = context.getText(com.android.internal.R.string.RestrictedChangedTitle);
@@ -1983,10 +1979,16 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
 
         if (DBG) log("setNotification: put notification " + title + " / " +details);
-        mNotification.tickerText = title;
-        mNotification.color = context.getResources().getColor(
-                com.android.internal.R.color.system_notification_accent_color);
-        mNotification.setLatestEventInfo(context, title, details, null);
+        mNotification = new Notification.Builder(context)
+                .setWhen(System.currentTimeMillis())
+                .setAutoCancel(true)
+                .setSmallIcon(com.android.internal.R.drawable.stat_sys_warning)
+                .setTicker(title)
+                .setColor(context.getResources().getColor(
+                        com.android.internal.R.color.system_notification_accent_color))
+                .setContentTitle(title)
+                .setContentText(details)
+                .build();
 
         NotificationManager notificationManager = (NotificationManager)
             context.getSystemService(Context.NOTIFICATION_SERVICE);
