@@ -35,76 +35,76 @@ public class PhoneSubInfoProxy extends IPhoneSubInfo.Stub {
     }
 
     @Override
-    public String getDeviceId() {
-        return mPhoneSubInfo.getDeviceId();
+    public String getDeviceId(String callingPackage) {
+        return mPhoneSubInfo.getDeviceId(callingPackage);
     }
 
-    public String getImei() {
-        return mPhoneSubInfo.getImei();
+    public String getImei(String callingPackage) {
+        return mPhoneSubInfo.getImei(callingPackage);
     }
 
-    public String getNai() {
-        return mPhoneSubInfo.getNai();
+    public String getNai(String callingPackage) {
+        return mPhoneSubInfo.getNai(callingPackage);
     }
 
     @Override
-    public String getDeviceSvn() {
-        return mPhoneSubInfo.getDeviceSvn();
+    public String getDeviceSvn(String callingPackage) {
+        return mPhoneSubInfo.getDeviceSvn(callingPackage);
     }
 
     /**
      * Retrieves the unique subscriber ID, e.g., IMSI for GSM phones.
      */
     @Override
-    public String getSubscriberId() {
-        return mPhoneSubInfo.getSubscriberId();
+    public String getSubscriberId(String callingPackage) {
+        return mPhoneSubInfo.getSubscriberId(callingPackage);
     }
 
     /**
      * Retrieves the Group Identifier Level1 for GSM phones.
      */
-    public String getGroupIdLevel1() {
-        return mPhoneSubInfo.getGroupIdLevel1();
+    public String getGroupIdLevel1(String callingPackage) {
+        return mPhoneSubInfo.getGroupIdLevel1(callingPackage);
     }
 
     /**
      * Retrieves the serial number of the ICC, if applicable.
      */
     @Override
-    public String getIccSerialNumber() {
-        return mPhoneSubInfo.getIccSerialNumber();
+    public String getIccSerialNumber(String callingPackage) {
+        return mPhoneSubInfo.getIccSerialNumber(callingPackage);
     }
 
     /**
      * Retrieves the phone number string for line 1.
      */
     @Override
-    public String getLine1Number() {
-        return mPhoneSubInfo.getLine1Number();
+    public String getLine1Number(String callingPackage) {
+        return mPhoneSubInfo.getLine1Number(callingPackage);
     }
 
     /**
      * Retrieves the alpha identifier for line 1.
      */
     @Override
-    public String getLine1AlphaTag() {
-        return mPhoneSubInfo.getLine1AlphaTag();
+    public String getLine1AlphaTag(String callingPackage) {
+        return mPhoneSubInfo.getLine1AlphaTag(callingPackage);
     }
 
     /**
      * Retrieves the MSISDN Number.
      */
     @Override
-    public String getMsisdn() {
-        return mPhoneSubInfo.getMsisdn();
+    public String getMsisdn(String callingPackage) {
+        return mPhoneSubInfo.getMsisdn(callingPackage);
     }
 
     /**
      * Retrieves the voice mail number.
      */
     @Override
-    public String getVoiceMailNumber() {
-        return mPhoneSubInfo.getVoiceMailNumber();
+    public String getVoiceMailNumber(String callingPackage) {
+        return mPhoneSubInfo.getVoiceMailNumber(callingPackage);
     }
 
     /**
@@ -119,8 +119,8 @@ public class PhoneSubInfoProxy extends IPhoneSubInfo.Stub {
      * Retrieves the alpha identifier associated with the voice mail number.
      */
     @Override
-    public String getVoiceMailAlphaTag() {
-        return mPhoneSubInfo.getVoiceMailAlphaTag();
+    public String getVoiceMailAlphaTag(String callingPackage) {
+        return mPhoneSubInfo.getVoiceMailAlphaTag(callingPackage);
     }
 
     /**
@@ -158,61 +158,64 @@ public class PhoneSubInfoProxy extends IPhoneSubInfo.Stub {
     }
 
     @Override
-    public String getImeiForSubscriber(int subId) throws RemoteException {
+    public String getImeiForSubscriber(int subId, String callingPackage) throws RemoteException {
         // FIXME: getImeiForSubscriber
         return null;
     }
 
     @Override
-    public String getDeviceSvnUsingSubId(int subId) throws RemoteException {
+    public String getDeviceSvnUsingSubId(int subId, String callingPackage) throws RemoteException {
         // FIXME: getDeviceSvnUsingSubId
         return null;
     }
 
     @Override
-    public String getNaiForSubscriber(int subId) throws RemoteException {
+    public String getNaiForSubscriber(int subId, String callingPackage) throws RemoteException {
         // FIXME: NaiForSubscriber
         return null;
     }
 
     @Override
-    public String getSubscriberIdForSubscriber(int subId) throws RemoteException {
+    public String getSubscriberIdForSubscriber(int subId, String callingPackage)
+            throws RemoteException {
         // FIXME: getSubscriberIdForSubscriber
         return null;
     }
 
     @Override
-    public String getGroupIdLevel1ForSubscriber(int subId) throws RemoteException {
+    public String getGroupIdLevel1ForSubscriber(int subId, String callingPackage)
+            throws RemoteException {
         // FIXME: getGroupIdLevel1ForSubscriber
         return null;
     }
 
     @Override
-    public String getIccSerialNumberForSubscriber(int subId) throws RemoteException {
+    public String getIccSerialNumberForSubscriber(int subId, String callingPackage)
+            throws RemoteException {
         // FIXME: getIccSerialNumberForSubscriber
         return null;
     }
 
     @Override
-    public String getLine1NumberForSubscriber(int subId) throws RemoteException {
+    public String getLine1NumberForSubscriber(int subId, String callingPackage) throws RemoteException {
         // FIXME: getLine1NumberForSubscriber
         return null;
     }
 
     @Override
-    public String getLine1AlphaTagForSubscriber(int subId) throws RemoteException {
+    public String getLine1AlphaTagForSubscriber(int subId, String callingPackage) throws RemoteException {
         // FIXME: getLine1AlphaTagForSubscriber
         return null;
     }
 
     @Override
-    public String getMsisdnForSubscriber(int subId) throws RemoteException {
+    public String getMsisdnForSubscriber(int subId, String callingPackage) throws RemoteException {
         // FIXME: getMsisdnForSubscriber
         return null;
     }
 
     @Override
-    public String getVoiceMailNumberForSubscriber(int subId) throws RemoteException {
+    public String getVoiceMailNumberForSubscriber(int subId, String callingPackage) throws RemoteException {
         // FIXME: getVoiceMailNumberForSubscriber
         return null;
     }
@@ -224,7 +227,7 @@ public class PhoneSubInfoProxy extends IPhoneSubInfo.Stub {
     }
 
     @Override
-    public String getVoiceMailAlphaTagForSubscriber(int subId) throws RemoteException {
+    public String getVoiceMailAlphaTagForSubscriber(int subId, String callingPackage) throws RemoteException {
         // FIXME: getVoiceMailAlphaTagForSubscriber
         return null;
     }
@@ -253,7 +256,7 @@ public class PhoneSubInfoProxy extends IPhoneSubInfo.Stub {
      * Returns null if the Authentification hasn't been successed or isn't present iphonesubinfo.
      * @return the response of ISIM Authetification, or null if not available
      * @deprecated
-     * @see getIccSimChallengeResponse
+     * @see #getIccSimChallengeResponse
      */
     public String getIsimChallengeResponse(String nonce) {
         return mPhoneSubInfo.getIsimChallengeResponse(nonce);
