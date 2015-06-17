@@ -151,7 +151,6 @@ public class PhoneSubInfo {
      * Retrieves the alpha identifier for line 1.
      */
     public String getLine1AlphaTag(String callingPackage) {
-        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
         if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
             return null;
         }
@@ -200,7 +199,6 @@ public class PhoneSubInfo {
         if (!checkReadPhoneState(callingPackage, "Requires READ_PHONE_STATE")) {
             return null;
         }
-        mContext.enforceCallingOrSelfPermission(READ_PHONE_STATE, "Requires READ_PHONE_STATE");
         return mPhone.getVoiceMailAlphaTag();
     }
 
@@ -371,7 +369,10 @@ public class PhoneSubInfo {
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.READ_PHONE_STATE, message);
 
-        return mAppOps.noteOp(AppOpsManager.OP_READ_PHONE_STATE, Binder.getCallingUid(),
-                callingPackage) == AppOpsManager.MODE_ALLOWED;
+        return true;
+        // TODO b/21726452 enforce OP_READ_PHONE_STATE once
+        // PhoneInterfaceManager.getMergedSubscriberIds got fixed
+        // return mAppOps.noteOp(AppOpsManager.OP_READ_PHONE_STATE, Binder.getCallingUid(),
+        // callingPackage) == AppOpsManager.MODE_ALLOWED;
     }
 }
