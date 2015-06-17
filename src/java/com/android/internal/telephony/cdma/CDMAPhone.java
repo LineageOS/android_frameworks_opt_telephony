@@ -153,6 +153,7 @@ public class CDMAPhone extends PhoneBase {
         super("CDMA", notifier, context, ci, false, phoneId);
         initSstIcc();
         init(context, notifier);
+        notifyPhoneStateChanged();
     }
 
     protected void initSstIcc() {
