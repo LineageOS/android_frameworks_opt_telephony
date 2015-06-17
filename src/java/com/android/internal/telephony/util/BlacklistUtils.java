@@ -94,6 +94,14 @@ public class BlacklistUtils {
             return MATCH_NONE;
         }
 
+        if (isBlacklistUnknownNumberEnabled(context, mode)) {
+            CallerInfo ci = CallerInfo.getCallerInfo(context, number);
+            if (ci == null || !ci.contactExists) {
+                if (DEBUG) Log.d(TAG, "Blacklist matched due to unknown number");
+                return MATCH_UNKNOWN;
+            }
+        }
+
         // Private and unknown number matching
         if (TextUtils.isEmpty(number)) {
             if (isBlacklistPrivateNumberEnabled(context, mode)) {
@@ -101,14 +109,6 @@ public class BlacklistUtils {
                 return MATCH_PRIVATE;
             }
             return MATCH_NONE;
-        }
-
-        if (isBlacklistUnknownNumberEnabled(context, mode)) {
-            CallerInfo ci = CallerInfo.getCallerInfo(context, number);
-            if (!ci.contactExists) {
-                if (DEBUG) Log.d(TAG, "Blacklist matched due to unknown number");
-                return MATCH_UNKNOWN;
-            }
         }
 
         Uri.Builder builder = Blacklist.CONTENT_FILTER_BYNUMBER_URI.buildUpon();
