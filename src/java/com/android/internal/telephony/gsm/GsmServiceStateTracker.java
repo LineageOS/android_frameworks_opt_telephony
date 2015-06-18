@@ -48,8 +48,9 @@ import android.telephony.CellLocation;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
-import android.telephony.gsm.GsmCellLocation;
+import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
 import android.util.TimeUtils;
@@ -65,7 +66,6 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RestrictedState;
 import com.android.internal.telephony.ServiceStateTracker;
-import android.telephony.SubscriptionManager;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
@@ -156,12 +156,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     /** Wake lock used while setting time of day. */
     private PowerManager.WakeLock mWakeLock;
     private static final String WAKELOCK_TAG = "ServiceStateTracker";
-
-    /** Keep track of SPN display rules, so we only broadcast intent if something changes. */
-    private String mCurSpn = null;
-    private String mCurPlmn = null;
-    private boolean mCurShowPlmn = false;
-    private boolean mCurShowSpn = false;
 
     /** Notification type. */
     static final int PS_ENABLED = 1001;            // Access Control blocks data service
@@ -643,31 +637,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             showSpn = false;
         }
 
-        // Update SPN_STRINGS_UPDATED_ACTION IFF any value changes
-        if (showPlmn != mCurShowPlmn
-                || showSpn != mCurShowSpn
-                || !TextUtils.equals(spn, mCurSpn)
-                || !TextUtils.equals(plmn, mCurPlmn)) {
-            if (DBG) {
-                log(String.format("updateSpnDisplay: changed" +
-                        " sending intent rule=" + rule +
-                        " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s'",
-                        showPlmn, plmn, showSpn, spn));
-            }
-            Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
-            intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-            intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, showSpn);
-            intent.putExtra(TelephonyIntents.EXTRA_SPN, spn);
-            intent.putExtra(TelephonyIntents.EXTRA_SHOW_PLMN, showPlmn);
-            intent.putExtra(TelephonyIntents.EXTRA_PLMN, plmn);
-            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
-            mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
-        }
-
-        mCurShowSpn = showSpn;
-        mCurShowPlmn = showPlmn;
-        mCurSpn = spn;
-        mCurPlmn = plmn;
+        sendSpnStringsBroadcastIfNeeded(plmn, showPlmn, spn, showSpn);
     }
 
     /**
@@ -2168,10 +2138,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         pw.println(" mReportedGprsNoReg=" + mReportedGprsNoReg);
         pw.println(" mNotification=" + mNotification);
         pw.println(" mWakeLock=" + mWakeLock);
-        pw.println(" mCurSpn=" + mCurSpn);
-        pw.println(" mCurShowSpn=" + mCurShowSpn);
-        pw.println(" mCurPlmn=" + mCurPlmn);
-        pw.println(" mCurShowPlmn=" + mCurShowPlmn);
         pw.flush();
     }
 
