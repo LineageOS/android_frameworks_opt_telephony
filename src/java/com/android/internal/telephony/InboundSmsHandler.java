@@ -826,8 +826,9 @@ public abstract class InboundSmsHandler extends StateMachine {
             Intent intent = new Intent(Intents.PROTECTED_SMS_RECEIVED_ACTION);
             intent.putExtra("pdus", pdus);
             intent.putExtra("format", tracker.getFormat());
+            //This is protected by a System|Signature permission
             dispatchIntent(intent, android.Manifest.permission.RECEIVE_PROTECTED_SMS,
-                    AppOpsManager.OP_RECEIVE_SMS, resultReceiver, UserHandle.OWNER);
+                    AppOpsManager.OP_RECEIVE_SMS, resultReceiver, UserHandle.ALL);
             return true;
         }
 
