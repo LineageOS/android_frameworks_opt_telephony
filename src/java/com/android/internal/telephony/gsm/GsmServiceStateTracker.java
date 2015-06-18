@@ -896,14 +896,6 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             log("updateRoamingState: no carrier config service available");
         }
 
-        /* NOTE(Deprecated) This roaming override uses a hidden API and is deprecated */
-        if (mPhone.isMccMncMarkedAsNonRoaming(mNewSS.getOperatorNumeric())) {
-            roaming = false;
-        } else if (mPhone.isMccMncMarkedAsRoaming(mNewSS.getOperatorNumeric())) {
-            roaming = true;
-        }
-        /* End Deprecated */
-
         mNewSS.setVoiceRoaming(roaming);
         mNewSS.setDataRoaming(roaming);
     }
