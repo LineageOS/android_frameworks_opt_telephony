@@ -40,7 +40,6 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
-import android.telephony.SubscriptionManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
@@ -129,9 +128,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     /** Wake lock used while setting time of day. */
     private PowerManager.WakeLock mWakeLock;
     private static final String WAKELOCK_TAG = "ServiceStateTracker";
-
-    /** Contains the name of the registered network in CDMA (either ONS or ERI text). */
-    protected String mCurPlmn = null;
 
     protected String mMdn;
     protected int mHomeSystemId[] = null;
@@ -603,27 +599,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     "of service, set plmn='" + plmn + "'");
         }
 
-        if (!TextUtils.equals(plmn, mCurPlmn)) {
-            // Allow A blank plmn, "" to set showPlmn to true. Previously, we
-            // would set showPlmn to true only if plmn was not empty, i.e. was not
-            // null and not blank. But this would cause us to incorrectly display
-            // "No Service". Now showPlmn is set to true for any non null string.
-            boolean showPlmn = plmn != null;
-            if (DBG) {
-                log(String.format("updateSpnDisplay: changed sending intent" +
-                            " showPlmn='%b' plmn='%s'", showPlmn, plmn));
-            }
-            Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
-            intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
-            intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, false);
-            intent.putExtra(TelephonyIntents.EXTRA_SPN, "");
-            intent.putExtra(TelephonyIntents.EXTRA_SHOW_PLMN, showPlmn);
-            intent.putExtra(TelephonyIntents.EXTRA_PLMN, plmn);
-            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
-            mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
-        }
-
-        mCurPlmn = plmn;
+        sendSpnStringsBroadcastIfNeeded(plmn, plmn != null, "", false);
     }
 
     /**
@@ -2110,7 +2086,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         pw.println(" mSavedTime=" + mSavedTime);
         pw.println(" mSavedAtTime=" + mSavedAtTime);
         pw.println(" mWakeLock=" + mWakeLock);
-        pw.println(" mCurPlmn=" + mCurPlmn);
         pw.println(" mMdn=" + mMdn);
         pw.println(" mHomeSystemId=" + mHomeSystemId);
         pw.println(" mHomeNetworkId=" + mHomeNetworkId);
