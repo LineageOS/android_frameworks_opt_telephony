@@ -112,6 +112,7 @@ public interface Phone {
     static final String REASON_DATA_SPECIFIC_DISABLED = "specificDisabled";
     static final String REASON_SIM_NOT_READY = "simNotReady";
     static final String REASON_IWLAN_AVAILABLE = "iwlanAvailable";
+    static final String REASON_CARRIER_CHANGE = "carrierChange";
 
     // Used for band mode selection methods
     static final int BM_UNSPECIFIED = 0; // selected by baseband automatically
