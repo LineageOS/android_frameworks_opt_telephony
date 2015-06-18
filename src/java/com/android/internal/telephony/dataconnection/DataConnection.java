@@ -1745,7 +1745,9 @@ public final class DataConnection extends StateMachine {
         public void exit() {
             if (DBG) log("DcActiveState: exit dc=" + this);
             String reason = mNetworkInfo.getReason();
-            if (mDisconnectParams != null && mDisconnectParams.mReason != null) {
+            if(mDcController.isExecutingCarrierChange()) {
+                reason = Phone.REASON_CARRIER_CHANGE;
+            } else if (mDisconnectParams != null && mDisconnectParams.mReason != null) {
                 reason = mDisconnectParams.mReason;
             } else if (mDcFailCause != null) {
                 reason = mDcFailCause.toString();
