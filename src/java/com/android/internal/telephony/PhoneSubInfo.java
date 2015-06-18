@@ -369,10 +369,7 @@ public class PhoneSubInfo {
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.READ_PHONE_STATE, message);
 
-        return true;
-        // TODO b/21726452 enforce OP_READ_PHONE_STATE once
-        // PhoneInterfaceManager.getMergedSubscriberIds got fixed
-        // return mAppOps.noteOp(AppOpsManager.OP_READ_PHONE_STATE, Binder.getCallingUid(),
-        // callingPackage) == AppOpsManager.MODE_ALLOWED;
+        return mAppOps.noteOp(AppOpsManager.OP_READ_PHONE_STATE, Binder.getCallingUid(),
+                callingPackage) == AppOpsManager.MODE_ALLOWED;
     }
 }
