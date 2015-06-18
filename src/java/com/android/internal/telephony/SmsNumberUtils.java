@@ -534,7 +534,7 @@ public class SmsNumberUtils {
         if (DBG) Rlog.d(TAG, "enter filterDestAddr. destAddr=\"" + destAddr + "\"" );
 
         if (destAddr == null || !PhoneNumberUtils.isGlobalPhoneNumber(destAddr)) {
-            Rlog.w(TAG, "destAddr" + destAddr + " is not a global phone number!");
+            Rlog.w(TAG, "destAddr" + destAddr + " is not a global phone number! Nothing changed.");
             return destAddr;
         }
 
@@ -551,7 +551,10 @@ public class SmsNumberUtils {
             }
         }
 
-        if (DBG) Rlog.d(TAG, "leave filterDestAddr, new destAddr=\"" + result + "\"" );
+        if (DBG) {
+            Rlog.d(TAG, "destAddr is " + ((result != null)?"formatted.":"not formatted."));
+            Rlog.d(TAG, "leave filterDestAddr, new destAddr=\"" + (result != null ? result : destAddr) + "\"" );
+        }
         return result != null ? result : destAddr;
     }
 

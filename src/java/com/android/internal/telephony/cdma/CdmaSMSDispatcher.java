@@ -109,19 +109,30 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, destPort, data, (deliveryIntent != null));
-        HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
-        SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                null /*messageUri*/, false /*isExpectMore*/, null /*fullMessageText*/,
-                false /*isText*/);
+        if (pdu != null) {
+            HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
+            SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
+                    null /*messageUri*/, false /*isExpectMore*/, null /*fullMessageText*/,
+                    false /*isText*/);
 
-        String carrierPackage = getCarrierAppPackageName();
-        if (carrierPackage != null) {
-            Rlog.d(TAG, "Found carrier package.");
-            DataSmsSender smsSender = new DataSmsSender(tracker);
-            smsSender.sendSmsByCarrierApp(carrierPackage, new SmsSenderCallback(smsSender));
+            String carrierPackage = getCarrierAppPackageName();
+            if (carrierPackage != null) {
+                Rlog.d(TAG, "Found carrier package.");
+                DataSmsSender smsSender = new DataSmsSender(tracker);
+                smsSender.sendSmsByCarrierApp(carrierPackage, new SmsSenderCallback(smsSender));
+            } else {
+                Rlog.v(TAG, "No carrier package.");
+                sendSubmitPdu(tracker);
+            }
         } else {
-            Rlog.v(TAG, "No carrier package.");
-            sendSubmitPdu(tracker);
+            Rlog.e(TAG, "CdmaSMSDispatcher.sendData(): getSubmitPdu() returned null");
+            if (sentIntent != null) {
+                try {
+                    sentIntent.send(SmsManager.RESULT_ERROR_GENERIC_FAILURE);
+                } catch (CanceledException ex) {
+                    Rlog.e(TAG, "Intent has been canceled!");
+                }
+            }
         }
     }
 
@@ -147,6 +158,13 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
             }
         } else {
             Rlog.e(TAG, "CdmaSMSDispatcher.sendText(): getSubmitPdu() returned null");
+            if (sentIntent != null) {
+                try {
+                    sentIntent.send(SmsManager.RESULT_ERROR_GENERIC_FAILURE);
+                } catch (CanceledException ex) {
+                    Rlog.e(TAG, "Intent has been canceled!");
+                }
+            }
         }
     }
 
