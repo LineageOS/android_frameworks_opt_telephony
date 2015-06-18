@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.content.Context;
 import android.net.LinkAddress;
 import android.net.NetworkUtils;
 import android.net.LinkProperties.CompareResult;
@@ -25,6 +26,8 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
 import android.telephony.DataConnectionRealTimeInfo;
+import android.telephony.TelephonyManager;
+import android.telephony.PhoneStateListener;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.DctConstants;
@@ -73,6 +76,13 @@ class DcController extends StateMachine {
 
     private DccDefaultState mDccDefaultState = new DccDefaultState();
 
+    TelephonyManager mTelephonyManager;
+    private PhoneStateListener mPhoneStateListener;
+
+    //mExecutingCarrierChange tracks whether the phone is currently executing
+    //carrier network change
+    private volatile boolean mExecutingCarrierChange;
+
     /**
      * Constructor.
      *
@@ -91,6 +101,19 @@ class DcController extends StateMachine {
         addState(mDccDefaultState);
         setInitialState(mDccDefaultState);
         log("X ctor");
+
+        mPhoneStateListener = new PhoneStateListener(handler.getLooper()) {
+            @Override
+            public void onCarrierNetworkChange(boolean active) {
+                mExecutingCarrierChange = active;
+            }
+        };
+
+        mTelephonyManager = (TelephonyManager) phone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
+        if(mTelephonyManager != null) {
+            mTelephonyManager.listen(mPhoneStateListener,
+                    PhoneStateListener.LISTEN_CARRIER_NETWORK_CHANGE);
+        }
     }
 
     static DcController makeDcc(PhoneBase phone, DcTrackerBase dct, Handler handler) {
@@ -101,6 +124,7 @@ class DcController extends StateMachine {
 
     void dispose() {
         log("dispose: call quiteNow()");
+        if(mTelephonyManager != null) mTelephonyManager.listen(mPhoneStateListener, 0);
         quitNow();
     }
 
@@ -125,6 +149,10 @@ class DcController extends StateMachine {
         if (DBG && removedDc == null) {
             log("removeActiveDcByCid removedDc=null dc=" + dc);
         }
+    }
+
+    boolean isExecutingCarrierChange() {
+        return mExecutingCarrierChange;
     }
 
     private class DccDefaultState extends State {
