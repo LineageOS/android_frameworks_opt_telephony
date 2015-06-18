@@ -1217,6 +1217,7 @@ public class GSMPhone extends PhoneBase {
 
     public void updateDataConnectionTracker() {
         ((DcTracker)mDcTracker).update();
+        mSST.updateSpnDisplay();
     }
 
     protected  boolean isCfEnable(int action) {

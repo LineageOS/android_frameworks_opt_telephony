@@ -162,6 +162,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     private String mCurPlmn = null;
     private boolean mCurShowPlmn = false;
     private boolean mCurShowSpn = false;
+    private int mCurSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     /** Notification type. */
     static final int PS_ENABLED = 1001;            // Access Control blocks data service
@@ -644,22 +645,28 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
 
         // Update SPN_STRINGS_UPDATED_ACTION IFF any value changes
-        if (showPlmn != mCurShowPlmn
+        int phoneId = mPhone.getPhoneId();
+        int[] subIds = SubscriptionManager.getSubId(phoneId);
+        int subId = subIds != null && subIds.length > 0
+                ? subIds[0] : SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+
+        if (subId != mCurSubId
+                || showPlmn != mCurShowPlmn
                 || showSpn != mCurShowSpn
                 || !TextUtils.equals(spn, mCurSpn)
                 || !TextUtils.equals(plmn, mCurPlmn)) {
             if (DBG) {
                 log(String.format("updateSpnDisplay: changed" +
                         " sending intent rule=" + rule +
-                        " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s'",
-                        showPlmn, plmn, showSpn, spn));
+                        " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s' for sub %d",
+                        showPlmn, plmn, showSpn, spn, subId));
             }
             Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
             intent.putExtra(TelephonyIntents.EXTRA_SHOW_SPN, showSpn);
             intent.putExtra(TelephonyIntents.EXTRA_SPN, spn);
             intent.putExtra(TelephonyIntents.EXTRA_SHOW_PLMN, showPlmn);
             intent.putExtra(TelephonyIntents.EXTRA_PLMN, plmn);
-            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
+            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId, subId);
             mPhone.getContext().sendStickyBroadcastAsUser(intent, UserHandle.ALL);
         }
 
@@ -667,6 +674,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         mCurShowPlmn = showPlmn;
         mCurSpn = spn;
         mCurPlmn = plmn;
+        mCurSubId = subId;
     }
 
     /**
