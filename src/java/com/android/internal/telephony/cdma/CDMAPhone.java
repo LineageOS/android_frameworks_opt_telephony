@@ -24,6 +24,7 @@ import android.content.SharedPreferences;
 import android.database.SQLException;
 import android.net.Uri;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.PowerManager;
@@ -406,6 +407,26 @@ public class CDMAPhone extends PhoneBase {
     @Override
     public Connection
     dial (String dialString, int videoState) throws CallStateException {
+        return dial(dialString, null, videoState, null);
+    }
+
+
+    @Override
+    protected Connection
+    dialInternal (String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
+            throws CallStateException {
+        // Need to make sure dialString gets parsed properly
+        String newDialString = PhoneNumberUtils.stripSeparators(dialString);
+        return mCT.dial(newDialString);
+    }
+
+    @Override
+    public Connection dial(String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
+            throws CallStateException {
+        if (uusInfo != null) {
+            throw new CallStateException("Sending UUS information NOT supported in CDMA!");
+        }
+
         ImsPhone imsPhone = mImsPhone;
 
         boolean imsUseEnabled = isImsUseEnabled()
@@ -437,7 +458,7 @@ public class CDMAPhone extends PhoneBase {
         if (imsUseEnabled || useImsForEmergency) {
             try {
                 if (DBG) Rlog.d(LOG_TAG, "Trying IMS PS call");
-                return imsPhone.dial(dialString, videoState);
+                return imsPhone.dial(dialString, uusInfo, videoState, intentExtras);
             } catch (CallStateException e) {
                 if (DBG) Rlog.d(LOG_TAG, "IMS PS call exception " + e +
                         "imsUseEnabled =" + imsUseEnabled + ", imsPhone =" + imsPhone);
@@ -450,23 +471,7 @@ public class CDMAPhone extends PhoneBase {
         }
 
         if (DBG) Rlog.d(LOG_TAG, "Trying (non-IMS) CS call");
-        return dialInternal(dialString, null, videoState);
-    }
-
-
-    @Override
-    protected Connection
-    dialInternal (String dialString, UUSInfo uusInfo,
-            int videoState) throws CallStateException {
-        // Need to make sure dialString gets parsed properly
-        String newDialString = PhoneNumberUtils.stripSeparators(dialString);
-        return mCT.dial(newDialString);
-    }
-
-    @Override
-    public Connection dial(String dialString, UUSInfo uusInfo, int videoState)
-            throws CallStateException {
-        throw new CallStateException("Sending UUS information NOT supported in CDMA!");
+        return dialInternal(dialString, null, videoState, intentExtras);
     }
 
     @Override
