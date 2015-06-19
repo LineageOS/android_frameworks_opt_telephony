@@ -141,6 +141,11 @@ abstract class SipConnectionBase extends Connection {
     }
 
     @Override
+    public String getVendorDisconnectCause() {
+      return null;
+    }
+
+    @Override
     public PostDialState getPostDialState() {
         if (VDBG) log("getPostDialState: ret=" + mPostDialState);
         return mPostDialState;

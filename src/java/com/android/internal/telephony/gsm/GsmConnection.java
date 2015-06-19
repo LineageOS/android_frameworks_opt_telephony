@@ -64,6 +64,7 @@ public class GsmConnection extends Connection {
     PostDialState mPostDialState = PostDialState.NOT_STARTED;
     UUSInfo mUusInfo;
     int mPreciseCause = 0;
+    String mVendorCause;
 
     Connection mOrigConnection;
 
@@ -293,6 +294,7 @@ public class GsmConnection extends Connection {
     onHangupLocal() {
         mCause = DisconnectCause.LOCAL;
         mPreciseCause = 0;
+        mVendorCause = null;
     }
 
     /**
@@ -375,8 +377,9 @@ public class GsmConnection extends Connection {
     }
 
     /*package*/ void
-    onRemoteDisconnect(int causeCode) {
+    onRemoteDisconnect(int causeCode, String vendorCause) {
         this.mPreciseCause = causeCode;
+        this.mVendorCause = vendorCause;
         onDisconnect(disconnectCauseFromCode(causeCode));
     }
 
@@ -753,6 +756,11 @@ public class GsmConnection extends Connection {
 
     public int getPreciseDisconnectCause() {
         return mPreciseCause;
+    }
+
+    @Override
+    public String getVendorDisconnectCause() {
+        return mVendorCause;
     }
 
     @Override
