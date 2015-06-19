@@ -37,6 +37,7 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.DriverCall;
 import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.LastCallFailCause;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
@@ -915,6 +916,7 @@ public final class GsmCallTracker extends CallTracker {
 
             case EVENT_GET_LAST_CALL_FAIL_CAUSE:
                 int causeCode;
+                String vendorCause = null;
                 ar = (AsyncResult)msg.obj;
 
                 operationComplete();
@@ -926,7 +928,9 @@ public final class GsmCallTracker extends CallTracker {
                     Rlog.i(LOG_TAG,
                             "Exception during getLastCallFailCause, assuming normal disconnect");
                 } else {
-                    causeCode = ((int[])ar.result)[0];
+                    LastCallFailCause failCause = (LastCallFailCause)ar.result;
+                    causeCode = failCause.causeCode;
+                    vendorCause = failCause.vendorCause;
                 }
                 // Log the causeCode if its not normal
                 if (causeCode == CallFailCause.NO_CIRCUIT_AVAIL ||
@@ -947,7 +951,7 @@ public final class GsmCallTracker extends CallTracker {
                 ) {
                     GsmConnection conn = mDroppedDuringPoll.get(i);
 
-                    conn.onRemoteDisconnect(causeCode);
+                    conn.onRemoteDisconnect(causeCode, vendorCause);
                 }
 
                 updatePhoneState();

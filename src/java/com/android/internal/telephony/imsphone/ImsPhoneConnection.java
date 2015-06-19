@@ -222,6 +222,11 @@ public class ImsPhoneConnection extends Connection {
         mCause = cause;
     }
 
+    @Override
+    public String getVendorDisconnectCause() {
+      return null;
+    }
+
     public ImsPhoneCallTracker getOwner () {
         return mOwner;
     }
