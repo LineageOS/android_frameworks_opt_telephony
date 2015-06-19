@@ -36,6 +36,7 @@ import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.DriverCall;
+import com.android.internal.telephony.LastCallFailCause;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
@@ -1006,6 +1007,7 @@ public final class CdmaCallTracker extends CallTracker {
 
             case EVENT_GET_LAST_CALL_FAIL_CAUSE:
                 int causeCode;
+                String vendorCause = null;
                 ar = (AsyncResult)msg.obj;
 
                 operationComplete();
@@ -1017,7 +1019,9 @@ public final class CdmaCallTracker extends CallTracker {
                     Rlog.i(LOG_TAG,
                             "Exception during getLastCallFailCause, assuming normal disconnect");
                 } else {
-                    causeCode = ((int[])ar.result)[0];
+                    LastCallFailCause failCause = (LastCallFailCause)ar.result;
+                    causeCode = failCause.causeCode;
+                    vendorCause = failCause.vendorCause;
                 }
 
                 for (int i = 0, s =  mDroppedDuringPoll.size()
@@ -1025,7 +1029,7 @@ public final class CdmaCallTracker extends CallTracker {
                 ) {
                     CdmaConnection conn = mDroppedDuringPoll.get(i);
 
-                    conn.onRemoteDisconnect(causeCode);
+                    conn.onRemoteDisconnect(causeCode, vendorCause);
                 }
 
                 updatePhoneState();
