@@ -257,6 +257,15 @@ public abstract class Connection {
     public abstract int getDisconnectCause();
 
     /**
+     * Returns a string disconnect cause which is from vendor.
+     * Vendors may use this string to explain the underline causes of failed calls.
+     * There is no guarantee that it is non-null nor it'll have meaningful stable values.
+     * Only use it when getDisconnectCause() returns a value that is not specific enough, like
+     * ERROR_UNSPECIFIED.
+     */
+    public abstract String getVendorDisconnectCause();
+
+    /**
      * Returns true of this connection originated elsewhere
      * ("MT" or mobile terminated; another party called this terminal)
      * or false if this call originated here (MO or mobile originated).
