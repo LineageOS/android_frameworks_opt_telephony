@@ -21,6 +21,7 @@ import android.content.Context;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.AsyncResult;
+import android.os.BaseBundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
@@ -28,6 +29,7 @@ import android.os.RegistrantList;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.preference.PreferenceManager;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellInfo;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
@@ -45,6 +47,7 @@ import android.content.Context;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1085,5 +1088,42 @@ public abstract class ServiceStateTracker extends Handler {
                 log("pollStateDone: mNewSS = " + mNewSS);
             }
         }
+    }
+
+    /**
+     * Check if the network identifier has membership in the set of
+     * network identifiers stored in the carrier config bundle.
+     *
+     * @param b a carrier config bundle object
+     * @param network The network identifier to check network existence in bundle
+     * @param key The key to index into the bundle presenting a string array of
+     *            networks to check membership
+     *
+     * @return true if network has membership in bundle networks, false otherwise
+     * @see CarrierConfigManager
+     */
+    private boolean isInNetwork(BaseBundle b, String network, String key) {
+        String[] networks = b.getStringArray(key);
+
+        if (networks != null && Arrays.asList(networks).contains(network)) {
+            return true;
+        }
+        return false;
+    }
+
+    protected boolean isRoamingInGsmNetwork(BaseBundle b, String network) {
+        return isInNetwork(b, network, CarrierConfigManager.KEY_GSM_ROAMING_NETWORKS_STRING_ARRAY);
+    }
+
+    protected boolean isNonRoamingInGsmNetwork(BaseBundle b, String network) {
+        return isInNetwork(b, network, CarrierConfigManager.KEY_GSM_NONROAMING_NETWORKS_STRING_ARRAY);
+    }
+
+    protected boolean isRoamingInCdmaNetwork(BaseBundle b, String network) {
+        return isInNetwork(b, network, CarrierConfigManager.KEY_CDMA_ROAMING_NETWORKS_STRING_ARRAY);
+    }
+
+    protected boolean isNonRoamingInCdmaNetwork(BaseBundle b, String network) {
+        return isInNetwork(b, network, CarrierConfigManager.KEY_CDMA_NONROAMING_NETWORKS_STRING_ARRAY);
     }
 }

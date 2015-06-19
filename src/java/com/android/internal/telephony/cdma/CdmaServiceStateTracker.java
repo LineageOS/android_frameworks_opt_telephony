@@ -25,9 +25,12 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.os.UserHandle;
@@ -49,6 +52,7 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.CommandsInterface.RadioState;
 import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.ICarrierConfigLoader;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
@@ -1104,9 +1108,42 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         }
     }
 
-    protected void pollStateDone() {
-        if (DBG) log("pollStateDone: cdma oldSS=[" + mSS + "] newSS=[" + mNewSS + "]");
+    /**
+     * Query the carrier configuration to determine if there are any network overrides
+     * for roaming or not roaming for the current service state.
+     */
+    protected void updateRoamingState() {
+        ICarrierConfigLoader configLoader =
+            (ICarrierConfigLoader) ServiceManager.getService(Context.CARRIER_CONFIG_SERVICE);
+        if (configLoader != null) {
+            try {
+                PersistableBundle b = configLoader.getConfigForSubId(mPhone.getSubId());
+                String systemId = Integer.toString(mNewSS.getSystemId());
 
+                if (isNonRoamingInGsmNetwork(b, mNewSS.getOperatorNumeric())
+                        || isNonRoamingInCdmaNetwork(b, systemId)) {
+                    log("updateRoamingState: carrier config override set non-roaming:"
+                            + mNewSS.getOperatorNumeric() + ", " + systemId);
+                    mNewSS.setVoiceRoaming(false);
+                    mNewSS.setDataRoaming(false);
+                    mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_OFF);
+                } else if (isRoamingInGsmNetwork(b, mNewSS.getOperatorNumeric())
+                        || isRoamingInCdmaNetwork(b, systemId)) {
+                    log("updateRoamingState: carrier config override set roaming:"
+                            + mNewSS.getOperatorNumeric() + ", " + systemId);
+                    mNewSS.setVoiceRoaming(true);
+                    mNewSS.setDataRoaming(true);
+                    mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_ON);
+                    mNewSS.setCdmaEriIconMode(EriInfo.ROAMING_ICON_MODE_NORMAL);
+                }
+            } catch (RemoteException e) {
+                loge("updateRoamingState: unable to access carrier config service");
+            }
+        } else {
+            log("updateRoamingState: no carrier config service available");
+        }
+
+       /* NOTE(Deprecated) This roaming override uses a hidden API and is deprecated */
         if (mPhone.isMccMncMarkedAsNonRoaming(mNewSS.getOperatorNumeric()) ||
                 mPhone.isSidMarkedAsNonRoaming(mNewSS.getSystemId())) {
             log("pollStateDone: override - marked as non-roaming.");
@@ -1121,11 +1158,18 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_ON);
             mNewSS.setCdmaEriIconMode(EriInfo.ROAMING_ICON_MODE_NORMAL);
         }
+        /* End Deprecated */
 
         if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
             mNewSS.setVoiceRoaming(true);
             mNewSS.setDataRoaming(true);
         }
+    }
+
+    protected void pollStateDone() {
+        if (DBG) log("pollStateDone: cdma oldSS=[" + mSS + "] newSS=[" + mNewSS + "]");
+
+        updateRoamingState();
 
         useDataRegStateForDataOnlyDevices();
 
