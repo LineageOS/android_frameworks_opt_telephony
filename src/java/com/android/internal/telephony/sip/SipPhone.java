@@ -26,6 +26,7 @@ import android.net.sip.SipManager;
 import android.net.sip.SipProfile;
 import android.net.sip.SipSession;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Message;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
@@ -213,7 +214,7 @@ public class SipPhone extends SipPhoneBase {
 
     @Override
     public void switchHoldingAndActive() throws CallStateException {
-        if (DBG) log("dialInternal: switch fg and bg");
+        if (DBG) log("switchHoldingAndActive: switch fg and bg");
         synchronized (SipPhone.class) {
             mForegroundCall.switchWith(mBackgroundCall);
             if (mBackgroundCall.getState().isAlive()) mBackgroundCall.hold();
