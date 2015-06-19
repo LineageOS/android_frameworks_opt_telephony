@@ -28,6 +28,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
@@ -284,17 +285,18 @@ public final class ImsPhoneCallTracker extends CallTracker {
     }
 
     Connection
-    dial(String dialString, int videoState) throws CallStateException {
+    dial(String dialString, int videoState, Bundle intentExtras) throws CallStateException {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
         int oirMode = sp.getInt(PhoneBase.CLIR_KEY, CommandsInterface.CLIR_DEFAULT);
-        return dial(dialString, oirMode, videoState);
+        return dial(dialString, oirMode, videoState, intentExtras);
     }
 
     /**
      * oirMode is one of the CLIR_ constants
      */
     synchronized Connection
-    dial(String dialString, int clirMode, int videoState) throws CallStateException {
+    dial(String dialString, int clirMode, int videoState, Bundle intentExtras)
+            throws CallStateException {
         boolean isPhoneInEcmMode = SystemProperties.getBoolean(
                 TelephonyProperties.PROPERTY_INECM_MODE, false);
         boolean isEmergencyNumber = PhoneNumberUtils.isEmergencyNumber(dialString);
@@ -1285,7 +1287,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 processCallStateChange(mBackgroundCall.getImsCall(), ImsPhoneCall.State.HOLDING,
                     DisconnectCause.NOT_DISCONNECTED);
             }
- 
+
             // Check if the merge was requested by an existing conference call. In that
             // case, no further action is required.
             if (!call.isMergeRequestedByConf()) {

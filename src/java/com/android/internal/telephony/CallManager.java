@@ -1047,7 +1047,7 @@ public final class CallManager {
      */
     public Connection dial(Phone phone, String dialString, UUSInfo uusInfo, int videoState)
             throws CallStateException {
-        return phone.dial(dialString, uusInfo, videoState);
+        return phone.dial(dialString, uusInfo, videoState, null);
     }
 
     /**
