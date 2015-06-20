@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.content.Context;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.telephony.CellInfo;
@@ -864,15 +865,20 @@ public interface Phone {
      * path is connected (or a call index has been assigned) until
      * PhoneStateChanged notification has occurred.
      *
+     * NOTE: If adding another parameter, consider creating a DialArgs parameter instead to
+     * encapsulate all dial arguments and decrease scaffolding headache.
+     *
      * @param dialString The dial string.
      * @param uusInfo The UUSInfo.
      * @param videoState The desired video state for the connection.
+     * @param intentExtras The extras from the original CALL intent.
      * @exception CallStateException if a new outgoing call is not currently
      *                possible because no more call slots exist or a call exists
      *                that is dialing, alerting, ringing, or waiting. Other
      *                errors are handled asynchronously.
      */
-    Connection dial(String dialString, UUSInfo uusInfo, int videoState) throws CallStateException;
+    Connection dial(String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
+            throws CallStateException;
 
     /**
      * Handles PIN MMI commands (PIN/PIN2/PUK/PUK2), which are initiated

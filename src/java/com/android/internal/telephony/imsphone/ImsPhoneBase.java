@@ -19,6 +19,7 @@ package com.android.internal.telephony.imsphone;
 import android.content.Context;
 import android.net.LinkProperties;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
@@ -63,13 +64,6 @@ abstract class ImsPhoneBase extends PhoneBase {
 
     public ImsPhoneBase(String name, Context context, PhoneNotifier notifier) {
         super(name, notifier, context, new ImsPhoneCommandInterface(context), false);
-    }
-
-    @Override
-    public Connection dial(String dialString, UUSInfo uusInfo, int videoState)
-            throws CallStateException {
-        // ignore UUSInfo
-        return dial(dialString, videoState);
     }
 
     @Override

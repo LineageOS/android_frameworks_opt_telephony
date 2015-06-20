@@ -22,6 +22,7 @@ import android.content.SharedPreferences;
 import android.database.SQLException;
 import android.net.Uri;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Registrant;
@@ -794,12 +795,13 @@ public class GSMPhone extends PhoneBase {
     @Override
     public Connection
     dial(String dialString, int videoState) throws CallStateException {
-        return dial(dialString, null, videoState);
+        return dial(dialString, null, videoState, null);
     }
 
     @Override
     public Connection
-    dial (String dialString, UUSInfo uusInfo, int videoState) throws CallStateException {
+    dial (String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
+            throws CallStateException {
         ImsPhone imsPhone = mImsPhone;
 
         boolean imsUseEnabled = isImsUseEnabled()
@@ -831,7 +833,7 @@ public class GSMPhone extends PhoneBase {
         if (imsUseEnabled || useImsForEmergency) {
             try {
                 if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Trying IMS PS call");
-                return imsPhone.dial(dialString, videoState);
+                return imsPhone.dial(dialString, uusInfo, videoState, intentExtras);
             } catch (CallStateException e) {
                 if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "IMS PS call exception " + e +
                         "imsUseEnabled =" + imsUseEnabled + ", imsPhone =" + imsPhone);
@@ -844,12 +846,12 @@ public class GSMPhone extends PhoneBase {
         }
 
         if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Trying (non-IMS) CS call");
-        return dialInternal(dialString, null, VideoProfile.STATE_AUDIO_ONLY);
+        return dialInternal(dialString, null, VideoProfile.STATE_AUDIO_ONLY, intentExtras);
     }
 
     @Override
     protected Connection
-    dialInternal (String dialString, UUSInfo uusInfo, int videoState)
+    dialInternal (String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
             throws CallStateException {
 
         // Need to make sure dialString gets parsed properly
@@ -868,9 +870,9 @@ public class GSMPhone extends PhoneBase {
                                "dialing w/ mmi '" + mmi + "'...");
 
         if (mmi == null) {
-            return mCT.dial(newDialString, uusInfo);
+            return mCT.dial(newDialString, uusInfo, intentExtras);
         } else if (mmi.isTemporaryModeCLIR()) {
-            return mCT.dial(mmi.mDialingNumber, mmi.getCLIRMode(), uusInfo);
+            return mCT.dial(mmi.mDialingNumber, mmi.getCLIRMode(), uusInfo, intentExtras);
         } else {
             mPendingMMIs.add(mmi);
             mMmiRegistrants.notifyRegistrants(new AsyncResult(null, mmi, null));

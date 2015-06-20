@@ -24,6 +24,7 @@ import android.content.Intent;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.os.AsyncResult;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
@@ -755,8 +756,9 @@ public class PhoneProxy extends Handler implements Phone {
     }
 
     @Override
-    public Connection dial(String dialString, UUSInfo uusInfo, int videoState) throws CallStateException {
-        return mActivePhone.dial(dialString, uusInfo, videoState);
+    public Connection dial(String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
+            throws CallStateException {
+        return mActivePhone.dial(dialString, uusInfo, videoState, intentExtras);
     }
 
     @Override
