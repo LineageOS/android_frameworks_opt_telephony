@@ -80,7 +80,7 @@ import java.util.PriorityQueue;
 public abstract class DcTrackerBase extends Handler {
     protected static final boolean DBG = true;
     protected static final boolean VDBG = false; // STOPSHIP if true
-    protected static final boolean VDBG_STALL = true; // STOPSHIP if true
+    protected static final boolean VDBG_STALL = false; // STOPSHIP if true
     protected static final boolean RADIO_TESTS = false;
 
     static boolean mIsCleanupRequired = false;
