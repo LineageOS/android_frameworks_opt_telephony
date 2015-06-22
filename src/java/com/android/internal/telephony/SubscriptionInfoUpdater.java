@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import static android.Manifest.permission.READ_PHONE_STATE;
 
 import android.app.ActivityManagerNative;
+import android.app.IUserSwitchObserver;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.ContentResolver;
@@ -26,9 +27,13 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.IPackageManager;
 import android.os.AsyncResult;
 import android.os.Handler;
+import android.os.IRemoteCallback;
 import android.os.Message;
+import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.preference.PreferenceManager;
@@ -43,6 +48,7 @@ import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IccUtils;
+
 import android.text.TextUtils;
 
 import java.util.List;
@@ -94,6 +100,9 @@ public class SubscriptionInfoUpdater extends Handler {
     private static String mIccId[] = new String[PROJECT_SIM_NUM];
     private static int[] mInsertSimState = new int[PROJECT_SIM_NUM];
     private SubscriptionManager mSubscriptionManager = null;
+    private IPackageManager mPackageManager;
+    // The current foreground user ID.
+    private int mCurrentlyActiveUserId;
 
     public SubscriptionInfoUpdater(Context context, Phone[] phoneProxy, CommandsInterface[] ci) {
         logd("Constructor invoked");
@@ -101,10 +110,55 @@ public class SubscriptionInfoUpdater extends Handler {
         mContext = context;
         mPhone = phoneProxy;
         mSubscriptionManager = SubscriptionManager.from(mContext);
+        mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
 
         IntentFilter intentFilter = new IntentFilter(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         intentFilter.addAction(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
         mContext.registerReceiver(sReceiver, intentFilter);
+
+        initializeCarrierApps();
+    }
+
+    private void initializeCarrierApps() {
+        // Initialize carrier apps:
+        // -Now (on system startup)
+        // -Whenever new carrier privilege rules might change (new SIM is loaded)
+        // -Whenever we switch to a new user
+        mCurrentlyActiveUserId = 0;
+        try {
+            ActivityManagerNative.getDefault().registerUserSwitchObserver(
+                    new IUserSwitchObserver.Stub() {
+                @Override
+                public void onUserSwitching(int newUserId, IRemoteCallback reply)
+                        throws RemoteException {
+                    mCurrentlyActiveUserId = newUserId;
+                    CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
+                            mPackageManager, TelephonyManager.getDefault(), mCurrentlyActiveUserId);
+
+                    if (reply != null) {
+                        try {
+                            reply.sendResult(null);
+                        } catch (RemoteException e) {
+                        }
+                    }
+                }
+
+                @Override
+                public void onUserSwitchComplete(int newUserId) {
+                    // Ignore.
+                }
+
+                @Override
+                public void onForegroundProfileSwitch(int newProfileId) throws RemoteException {
+                    // Ignore.
+                }
+            });
+            mCurrentlyActiveUserId = ActivityManagerNative.getDefault().getCurrentUser().id;
+        } catch (RemoteException e) {
+            logd("Couldn't get current user ID; guessing it's 0: " + e.getMessage());
+        }
+        CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
+                mPackageManager, TelephonyManager.getDefault(), mCurrentlyActiveUserId);
     }
 
     private final BroadcastReceiver sReceiver = new  BroadcastReceiver() {
@@ -391,6 +445,10 @@ public class SubscriptionInfoUpdater extends Handler {
         } else {
             logd("Invalid subId, could not update ContentResolver");
         }
+
+        // Update set of enabled carrier apps now that the privilege rules may have changed.
+        CarrierAppUtils.disableCarrierAppsUntilPrivileged(mContext.getOpPackageName(),
+                mPackageManager, TelephonyManager.getDefault(), mCurrentlyActiveUserId);
 
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
         updateCarrierConfig(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
