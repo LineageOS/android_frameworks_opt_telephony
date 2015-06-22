@@ -16,9 +16,11 @@
 
 package com.android.internal.telephony;
 
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.ServiceConnection;
@@ -26,6 +28,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.UserHandle;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.Log;
@@ -46,29 +49,47 @@ public class CarrierServiceBindHelper {
 
     private Context mContext;
     private AppBinding[] mBindings;
+    private final BroadcastReceiver mReceiver = new PackageChangedBroadcastReceiver();
 
     private static final int EVENT_BIND = 0;
     private static final int EVENT_UNBIND = 1;
     private static final int EVENT_BIND_TIMEOUT = 2;
+    private static final int EVENT_PACKAGE_CHANGED = 3;
 
     private static final int BIND_TIMEOUT_MILLIS = 10000;
 
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
-            AppBinding binding = (AppBinding)msg.obj;
-            log("mHandler: " + msg.what + " phoneId: " + binding.getPhoneId());
+            String carrierPackageName;
+            AppBinding binding;
+            log("mHandler: " + msg.what);
 
             CarrierServiceConnection connection;
             switch (msg.what) {
                 case EVENT_BIND:
+                    binding = (AppBinding) msg.obj;
+                    log("Binding to phoneId: " + binding.getPhoneId());
                     binding.bind();
                     break;
                 case EVENT_BIND_TIMEOUT:
+                    binding = (AppBinding) msg.obj;
                     log("Bind timeout for phoneId: " + binding.getPhoneId());
-                    // Intentional fallthrough
-                case EVENT_UNBIND:
                     binding.unbind();
+                    break;
+                case EVENT_UNBIND:
+                    binding = (AppBinding) msg.obj;
+                    log("Unbinding for phoneId: " + binding.getPhoneId());
+                    binding.unbind();
+                    break;
+                case EVENT_PACKAGE_CHANGED:
+                    carrierPackageName = (String) msg.obj;
+                    for (AppBinding appBinding : mBindings) {
+                        if (carrierPackageName.equals(appBinding.getPackage())) {
+                          log(carrierPackageName + " changed and corresponds to a phone. Rebinding.");
+                          appBinding.bind();
+                        }
+                    }
                     break;
             }
         }
@@ -83,6 +104,15 @@ public class CarrierServiceBindHelper {
         for (int phoneId = 0; phoneId < numPhones; phoneId++) {
             mBindings[phoneId] = new AppBinding(phoneId);
         }
+
+        // Register for package updates. Update app or uninstall app update will have all 3 intents,
+        // in the order or removed, added, replaced, all with extra_replace set to true.
+        IntentFilter pkgFilter = new IntentFilter();
+        pkgFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
+        pkgFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        pkgFilter.addAction(Intent.ACTION_PACKAGE_REPLACED);
+        pkgFilter.addDataScheme("package");
+        context.registerReceiverAsUser(mReceiver, UserHandle.ALL, pkgFilter, null, null);
     }
 
     public void updateForPhoneId(int phoneId, String simState) {
@@ -111,6 +141,7 @@ public class CarrierServiceBindHelper {
         private long lastBindStartMillis;
         private int unbindCount;
         private long lastUnbindMillis;
+        private String carrierPackage;
 
         public AppBinding(int phoneId) {
             this.phoneId = phoneId;
@@ -118,6 +149,10 @@ public class CarrierServiceBindHelper {
 
         public int getPhoneId() {
             return phoneId;
+        }
+
+        public String getPackage() {
+            return carrierPackage;
         }
 
         public void handleConnectionDown() {
@@ -140,7 +175,7 @@ public class CarrierServiceBindHelper {
             }
 
             log("Found carrier app: " + carrierPackageNames);
-            String carrierPackage = carrierPackageNames.get(0);
+            carrierPackage = carrierPackageNames.get(0);
 
             // Log debug information
             bindCount++;
@@ -230,6 +265,28 @@ public class CarrierServiceBindHelper {
             log("Disconnected from carrier app: " + name.flattenToString());
             this.service = null;
             this.binding.handleConnectionDown();
+        }
+    }
+
+    private class PackageChangedBroadcastReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            log("Receive action: " + action);
+            switch (action) {
+                case Intent.ACTION_PACKAGE_ADDED:
+                case Intent.ACTION_PACKAGE_REMOVED:
+                case Intent.ACTION_PACKAGE_REPLACED:
+                    int uid = intent.getIntExtra(Intent.EXTRA_UID, -1);
+                    String packageName = mContext.getPackageManager().getNameForUid(uid);
+                    if (packageName != null) {
+                      // We don't have a phoneId for arg1.
+                      mHandler.sendMessage(
+                              mHandler.obtainMessage(EVENT_PACKAGE_CHANGED, packageName));
+                    }
+                    break;
+
+            }
         }
     }
 
