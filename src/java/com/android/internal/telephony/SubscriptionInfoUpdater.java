@@ -289,6 +289,7 @@ public class SubscriptionInfoUpdater extends Handler {
             } else {
                 logd("NOT Querying IccId its already set sIccid[" + slotId + "]=" + iccId);
                 updateCarrierConfig(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
+                broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED, reason);
             }
         } else {
             logd("sFh[" + slotId + "] is null, ignore");
