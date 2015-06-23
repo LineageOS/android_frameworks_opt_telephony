@@ -53,6 +53,8 @@ import com.android.internal.telephony.uicc.IccUtils;
 
 import android.text.TextUtils;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.List;
 
 /**
@@ -105,6 +107,7 @@ public class SubscriptionInfoUpdater extends Handler {
     private IPackageManager mPackageManager;
     // The current foreground user ID.
     private int mCurrentlyActiveUserId;
+    private CarrierServiceBindHelper mCarrierServiceBindHelper;
 
     public SubscriptionInfoUpdater(Context context, Phone[] phoneProxy, CommandsInterface[] ci) {
         logd("Constructor invoked");
@@ -118,6 +121,7 @@ public class SubscriptionInfoUpdater extends Handler {
         intentFilter.addAction(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
         mContext.registerReceiver(sReceiver, intentFilter);
 
+        mCarrierServiceBindHelper = new CarrierServiceBindHelper(mContext);
         initializeCarrierApps();
     }
 
@@ -296,7 +300,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED,
                                          uObj.reason);
                 if (!ICCID_STRING_FOR_NO_SIM.equals(mIccId[slotId])) {
-                    updateCarrierConfig(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
+                    updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
                 }
                 break;
             }
@@ -328,11 +332,11 @@ public class SubscriptionInfoUpdater extends Handler {
                 break;
 
             case EVENT_SIM_UNKNOWN:
-                updateCarrierConfig(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN);
+                updateCarrierServices(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_UNKNOWN);
                 break;
 
             case EVENT_SIM_IO_ERROR:
-                updateCarrierConfig(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
+                updateCarrierServices(msg.arg1, IccCardConstants.INTENT_VALUE_ICC_CARD_IO_ERROR);
                 break;
 
             default:
@@ -369,7 +373,7 @@ public class SubscriptionInfoUpdater extends Handler {
                                 new QueryIccIdUserObj(reason, slotId)));
             } else {
                 logd("NOT Querying IccId its already set sIccid[" + slotId + "]=" + iccId);
-                updateCarrierConfig(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
+                updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED);
                 broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOCKED, reason);
             }
         } else {
@@ -478,13 +482,14 @@ public class SubscriptionInfoUpdater extends Handler {
                 mPackageManager, TelephonyManager.getDefault(), mCurrentlyActiveUserId);
 
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
-        updateCarrierConfig(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
+        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
     }
 
-    private void updateCarrierConfig(int slotId, String simState) {
+    private void updateCarrierServices(int slotId, String simState) {
         CarrierConfigManager configManager = (CarrierConfigManager)
                 mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
         configManager.updateConfigForPhoneId(slotId, simState);
+        mCarrierServiceBindHelper.updateForPhoneId(slotId, simState);
     }
 
     private void handleSimAbsent(int slotId) {
@@ -495,7 +500,7 @@ public class SubscriptionInfoUpdater extends Handler {
         if (isAllIccIdQueryDone()) {
             updateSubscriptionInfoByIccId();
         }
-        updateCarrierConfig(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
+        updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_ABSENT);
     }
 
     /**
@@ -682,5 +687,10 @@ public class SubscriptionInfoUpdater extends Handler {
 
     private void logd(String message) {
         Rlog.d(LOG_TAG, message);
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("SubscriptionInfoUpdater:");
+        mCarrierServiceBindHelper.dump(fd, pw, args);
     }
 }
