@@ -197,7 +197,8 @@ public class ProxyController {
             Phone activePhone = mProxyPhones[phoneId].getActivePhone();
             return ((PhoneBase) activePhone).mDcTracker.isDisconnected();
         } else {
-            return false;
+            // if we can't find a phone for the given subId, it is disconnected.
+            return true;
         }
     }
 
