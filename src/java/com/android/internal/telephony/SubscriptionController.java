@@ -1254,7 +1254,7 @@ public class SubscriptionController extends ISub.Stub {
             for (int i = 0; i < numSubs; i++) {
                 dummyValues[i] = SubscriptionManager.DUMMY_SUBSCRIPTION_ID_BASE - slotIdx;
             }
-            if (DBG) {
+            if (VDBG) {
                 logd("getDummySubIds: slotIdx=" + slotIdx
                     + " return " + numSubs + " DummySubIds with each subId=" + dummyValues[0]);
             }
