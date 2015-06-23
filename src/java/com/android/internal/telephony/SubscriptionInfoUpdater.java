@@ -27,7 +27,9 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.IPackageManager;
+import android.content.pm.IPackagesProvider;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.IRemoteCallback;
@@ -120,6 +122,31 @@ public class SubscriptionInfoUpdater extends Handler {
     }
 
     private void initializeCarrierApps() {
+        // Let the PackageManager query carrier apps as they get certain permissions granted by
+        // default.
+        try {
+            mPackageManager.setCarrierAppPackagesProvider(
+                    new IPackagesProvider.Stub() {
+                        @Override
+                        public String[] getPackages(int userId) {
+                            List<ApplicationInfo> defaultApps =
+                                    CarrierAppUtils.getDefaultCarrierApps(mPackageManager,
+                                            TelephonyManager.getDefault(), userId);
+                            if (defaultApps == null) {
+                                return null;
+                            }
+                            int count = defaultApps.size();
+                            String[] packages = new String[count];
+                            for (int i = 0; i < count; i++) {
+                                packages[i] = defaultApps.get(i).packageName;
+                            }
+                            return packages;
+                        }
+                    });
+        } catch (RemoteException e) {
+            logd("Couldn't contact PackageManager: " + e.getMessage());
+        }
+
         // Initialize carrier apps:
         // -Now (on system startup)
         // -Whenever new carrier privilege rules might change (new SIM is loaded)
