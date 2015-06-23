@@ -39,6 +39,7 @@ import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.RequestInfo;
 import com.android.internal.util.AsyncChannel;
+import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -700,6 +701,21 @@ public class DctController extends Handler {
                 mPendingReq.remove(request.requestId);
                 needNetworkFor(request, 0);
             }
+        }
+
+        @Override
+        public void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
+            super.dump(fd, writer, args);
+            final IndentingPrintWriter pw = new IndentingPrintWriter(writer, "  ");
+            pw.increaseIndent();
+            pw.println("Pending Requests:");
+            pw.increaseIndent();
+            for (int i = 0; i < mPendingReq.size(); i++) {
+                NetworkRequest request = mPendingReq.valueAt(i);
+                pw.println(request);
+            }
+            pw.decreaseIndent();
+            pw.decreaseIndent();
         }
     }
 
