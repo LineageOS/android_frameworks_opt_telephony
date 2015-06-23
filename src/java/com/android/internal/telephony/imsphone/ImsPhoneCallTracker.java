@@ -31,6 +31,7 @@ import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
@@ -334,7 +335,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
         // If the call is to an emergency number and the carrier does not support video emergency
         // calls, dial as an audio-only call.
-        if (isEmergencyNumber && VideoProfile.VideoState.isVideo(videoState) &&
+        if (isEmergencyNumber && VideoProfile.isVideo(videoState) &&
                 !mAllowEmergencyVideoCalls) {
             loge("dial: carrier does not support video emergency calls; downgrade to audio-only");
             videoState = VideoProfile.STATE_AUDIO_ONLY;
@@ -421,7 +422,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             return false;
         }
 
-        Bundle carrierConfig = carrierConfigManager.getConfigForSubId(subId);
+        PersistableBundle carrierConfig = carrierConfigManager.getConfigForSubId(subId);
         if (carrierConfig == null) {
             loge("isEmergencyVideoCallsSupported: Empty carrier config.");
             return false;
