@@ -456,5 +456,13 @@ public class PhoneFactory {
             e.printStackTrace();
         }
         pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            sSubInfoRecordUpdater.dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
     }
 }
