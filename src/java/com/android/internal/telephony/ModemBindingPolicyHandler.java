@@ -169,6 +169,7 @@ public class ModemBindingPolicyHandler extends Handler {
     private boolean mModemRatCapabilitiesAvailable = false;
     private boolean mIsSetPrefNwModeInProgress = false;
     //private boolean mIsBindingInProgress = false;
+    private boolean mIsSetDsdsNwModeInProgress = false;
     private int[] mPreferredStackId = new int[mNumPhones];
     private int[] mCurrentStackId = new int[mNumPhones];
     private int[] mPrefNwMode = new int[mNumPhones];
@@ -649,5 +650,47 @@ public class ModemBindingPolicyHandler extends Handler {
 
     private void loge(String string) {
         Rlog.e(LOG_TAG, string);
+    }
+
+    public void setDsdsNetworkType(int networkType1, int phoneId1,
+            int networkType2, int phoneId2/*, Message response*/) {
+        int ret = FAILURE;
+
+        //if binding is in progress return failure for this request
+        if (mIsSetDsdsNwModeInProgress) {
+            loge("[setDsdsNetworkType]: In Progress:");
+            //sendResponseToTarget(response, RILConstants.GENERIC_FAILURE);
+            return;
+        }
+
+        logd("[setDsdsNetworkType]: nwMode:" + networkType1 + ", on phoneId:" + phoneId1 + ", and");
+        logd("[setDsdsNetworkType]: nwMode:" + networkType2 + ", on phoneId:" + phoneId2);
+        mIsSetDsdsNwModeInProgress = true;
+
+        // From updatePreferredStackIds()
+        syncCurrentStackInfo();
+
+        if ((!(isNwModeSupportedOnStack(networkType1, mCurrentStackId[phoneId1])))
+            && (isNwModeSupportedOnStack(networkType1, mCurrentStackId[phoneId2]))) {
+
+            logd("[setDsdsNetworkType]: Switching stacks");
+            logd("[setDsdsNetworkType]: " + mPreferredStackId[phoneId1] + " = " + mCurrentStackId[phoneId2]);
+            mPreferredStackId[phoneId1] = mCurrentStackId[phoneId2];
+            logd("[setDsdsNetworkType]: " + mPreferredStackId[phoneId2] + " = " + mCurrentStackId[phoneId1]);
+            mPreferredStackId[phoneId2] = mCurrentStackId[phoneId1];
+            Message msg = Message.obtain(this, EVENT_UPDATE_BINDING_DONE, null);
+            ret = mModemStackController.updateStackBinding(mPreferredStackId, false /* isBootUp */, msg);
+
+            if (ret == FAILURE) {
+                logd("[setDsdsNetworkType]: Switching stacks failed");
+            }
+        }
+
+        Message msg2 = obtainMessage(EVENT_SET_NW_MODE_DONE, phoneId2);
+        mCi[phoneId2].setPreferredNetworkType(networkType2, msg2);
+        Message msg1 = obtainMessage(EVENT_SET_NW_MODE_DONE, phoneId1);
+        mCi[phoneId1].setPreferredNetworkType(networkType1, msg1);
+
+        mIsSetDsdsNwModeInProgress = false;
     }
 }
