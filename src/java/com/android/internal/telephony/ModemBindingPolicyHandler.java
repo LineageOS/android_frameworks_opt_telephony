@@ -154,6 +154,8 @@ public class ModemBindingPolicyHandler extends Handler {
     private static final int EVENT_MODEM_RAT_CAPS_AVAILABLE = 1;
     private static final int EVENT_UPDATE_BINDING_DONE = 2;
     private static final int EVENT_SET_NW_MODE_DONE = 3;
+    private static final int EVENT_SET_NW_MODE_FROM_DB_DONE = 4;
+    private static final int EVENT_GET_NW_MODE_DONE = 5;
 
     //*****Constants
     private static final int SUCCESS = 1;
@@ -169,6 +171,7 @@ public class ModemBindingPolicyHandler extends Handler {
     private boolean mModemRatCapabilitiesAvailable = false;
     private boolean mIsSetPrefNwModeInProgress = false;
     //private boolean mIsBindingInProgress = false;
+    private boolean mIsSetDsdsNwModeInProgress = false;
     private int[] mPreferredStackId = new int[mNumPhones];
     private int[] mCurrentStackId = new int[mNumPhones];
     private int[] mPrefNwMode = new int[mNumPhones];
@@ -237,6 +240,20 @@ public class ModemBindingPolicyHandler extends Handler {
                 handleSetPreferredNetwork(msg);
                 break;
 
+            case EVENT_SET_NW_MODE_FROM_DB_DONE:
+                ar = (AsyncResult)msg.obj;
+                int phoneId = msg.arg1;
+                int networkMode = msg.arg2;
+                if (ar.exception != null) {
+                    logd("Failed to set preferred network mode for slot" + phoneId);
+                }
+                Message msg2 = obtainMessage(EVENT_GET_NW_MODE_DONE, phoneId, networkMode);
+                mCi[phoneId].getPreferredNetworkType(msg2);
+                break;
+            case EVENT_GET_NW_MODE_DONE:
+                handleGetPreferredNetwork(msg);
+                break;
+
             default:
                 break;
         }
@@ -261,6 +278,23 @@ public class ModemBindingPolicyHandler extends Handler {
         } else {
             logd("Failed to set preferred network mode for slot" + index);
             mNumOfSetPrefNwModeSuccess = 0;
+        }
+
+    }
+
+    private void handleGetPreferredNetwork(Message msg) {
+        AsyncResult ar = (AsyncResult) msg.obj;
+        int modemNetworkMode = ((int[]) ar.result)[0];
+        int phoneId = msg.arg1;
+        int networkMode = msg.arg2; // unused.
+        if (ar.exception == null) {
+            logd("Updating network mode in DB for slot[" + phoneId + "] with "
+                    + modemNetworkMode);
+            TelephonyManager.putIntAtIndex(mContext.getContentResolver(),
+                    android.provider.Settings.Global.PREFERRED_NETWORK_MODE,
+                    phoneId, modemNetworkMode);
+        } else {
+            logd("Failed to get preferred network mode for slot" + phoneId);
         }
 
     }
@@ -480,6 +514,38 @@ public class ModemBindingPolicyHandler extends Handler {
             mStoredResponse.put(phoneId, response);
         } else {
             mCi[phoneId].setPreferredNetworkType(networkType, response);
+            mIsSetPrefNwModeInProgress = false;
+        }
+    }
+
+    public void setPreferredNetworkTypesFromDB() {
+        // If binding is in progress return failure for this request
+        if (mIsSetPrefNwModeInProgress) {
+            loge("setPreferredNetworkTypesFromDB: In Progress:");
+            return;
+        }
+
+        syncPreferredNwModeFromDB();
+
+        for (int i = 0; i < mNumPhones; i++) {
+            logd("setPreferredNetworkTypesFromDB: nwMode:" + mPrefNwMode[i] + ", on phoneId:" + i);
+        }
+
+        mIsSetPrefNwModeInProgress = true;
+
+
+        // If CrossBinding request is not accepted, i.e. return value is FAILURE
+        // send request directly to RIL, or else store the setpref Msg for later processing.
+        if (updateStackBindingIfRequired(false) == SUCCESS) {
+            for (int i = 0; i < mNumPhones; i++) {
+                Message response = obtainMessage(EVENT_SET_NW_MODE_FROM_DB_DONE, i, mPrefNwMode[i]);
+                mStoredResponse.put(i, response);
+            }
+        } else {
+            for (int i = 0; i < mNumPhones; i++) {
+                Message response = obtainMessage(EVENT_SET_NW_MODE_FROM_DB_DONE, i, mPrefNwMode[i]);
+                mCi[i].setPreferredNetworkType(mPrefNwMode[i], response);
+            }
             mIsSetPrefNwModeInProgress = false;
         }
     }
