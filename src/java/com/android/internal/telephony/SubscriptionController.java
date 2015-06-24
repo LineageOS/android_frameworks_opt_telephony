@@ -34,6 +34,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.net.NetworkRequest;
 import android.preference.PreferenceManager;
@@ -162,6 +163,8 @@ public class SubscriptionController extends ISub.Stub {
     private DdsScheduler mScheduler;
     private DdsSchedulerAc mSchedulerAc;
 
+    private NetworkModeHandler mNetworkModeHandler;
+
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -230,6 +233,7 @@ public class SubscriptionController extends ISub.Stub {
         mSchedulerAc = new DdsSchedulerAc();
         mSchedulerAc.connect(mContext, mDataConnectionHandler, mScheduler.getHandler());
 
+        mNetworkModeHandler = new NetworkModeHandler();
     }
 
     public int getSubIdFromNetworkRequest(NetworkRequest n) {
@@ -1431,12 +1435,57 @@ public class SubscriptionController extends ISub.Stub {
             throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
         }
         if (DBG) logdl("[setDefaultDataSubId] subId=" + subId);
+
         if (mDctController == null) {
             mDctController = DctController.getInstance();
             mDctController.registerForDefaultDataSwitchInfo(mDataConnectionHandler,
                     EVENT_SET_DEFAULT_DATA_DONE, null);
         }
         mDctController.setDefaultDataSubId(subId);
+    }
+
+    private void setDefaultDataSubNetworkType(int subId) {
+        if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
+            throw new RuntimeException("setDefaultDataSubNetworkType called with DEFAULT_SUB_ID");
+        }
+        if (DBG) logdl("[setDefaultDataSubNetworkType] subId=" + subId);
+
+        int len = sProxyPhones.length;
+        if (DBG) logdl("[setDefaultDataSubNetworkType] num phones=" + len);
+
+        boolean isDsds = mTelephonyManager.getMultiSimConfiguration()
+                == TelephonyManager.MultiSimVariants.DSDS;
+        boolean isMultiRat = SystemProperties.getBoolean("ro.ril.multi_rat_capable", false);
+
+        if (isDsds && !isMultiRat && len > 1) {
+            int dataPhoneId = 0;
+            for (int phoneId = 0; phoneId < len; phoneId++) {
+                PhoneProxy phone = sProxyPhones[phoneId];
+                int id = phone.getSubId();
+                int networkMode;
+
+                if (id == subId) {
+                    try {
+                        networkMode = TelephonyManager.getIntAtIndex(mContext.getContentResolver(),
+                                    Settings.Global.CONFIGURED_NETWORK_MODE, phoneId);
+                    } catch (SettingNotFoundException snfe) {
+                        networkMode = PhoneFactory.calculatePreferredNetworkType(mContext, id);
+                    }
+                    dataPhoneId = phoneId;
+                } else {
+                    networkMode = Phone.NT_MODE_GSM_ONLY;
+                }
+
+                if (DBG) {
+                    logdl("[setDefaultDataSubNetworkType] set network type for subId " + id
+                            + ", phoneId " + phoneId + " to " + networkMode);
+                }
+                TelephonyManager.putIntAtIndex(mContext.getContentResolver(),
+                        Settings.Global.PREFERRED_NETWORK_MODE, phoneId, networkMode);
+            }
+            mNetworkModeHandler.obtainMessage(NetworkModeHandler.MESSAGE_SWITCH_NETWORK_TYPE,
+                    dataPhoneId, 0).sendToTarget();
+        }
     }
 
     public void setDataSubId(int subId) {
@@ -1506,8 +1555,84 @@ public class SubscriptionController extends ISub.Stub {
             switch (msg.what) {
                 case EVENT_SET_DEFAULT_DATA_DONE:{
                     AsyncResult ar = (AsyncResult) msg.obj;
-                    logd("EVENT_SET_DEFAULT_DATA_DONE subId:" + (Integer)ar.result);
+                    int subId = (Integer) ar.result;
+                    logd("EVENT_SET_DEFAULT_DATA_DONE subId:" + subId);
+                    setDefaultDataSubNetworkType(subId);
                     updateDataSubId(ar);
+                    break;
+                }
+            }
+        }
+    }
+
+    private class NetworkModeHandler extends Handler {
+        static final int MESSAGE_SWITCH_NETWORK_TYPE = 0;
+        static final int MESSAGE_ADVANCE_PHONE = 1;
+        static final int MESSAGE_GET_PREF_NETWORK_TYPE = 2;
+
+        private int mDataPhoneId;
+        private int mCurrentPhoneIndex;
+        private boolean mSetTypePending = false;
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MESSAGE_SWITCH_NETWORK_TYPE:
+                    if (DBG) logd("[NetworkModeHandler] start switch, data phoneId = " + msg.arg1);
+                    mDataPhoneId = msg.arg1;
+                    mCurrentPhoneIndex = -1;
+                    if (!mSetTypePending) {
+                        sendEmptyMessage(MESSAGE_ADVANCE_PHONE);
+                    }
+                    break;
+                case MESSAGE_ADVANCE_PHONE:
+                    mSetTypePending = false;
+                    if (mCurrentPhoneIndex < sProxyPhones.length) {
+                        mCurrentPhoneIndex++;
+                        if (mCurrentPhoneIndex == mDataPhoneId) {
+                            mCurrentPhoneIndex++;
+                        }
+                        final int phoneId = mCurrentPhoneIndex == sProxyPhones.length
+                                ? mDataPhoneId : mCurrentPhoneIndex;
+                        if (DBG) {
+                            logd("[NetworkModeHandler] advance to next phone, now handling "
+                                    + (phoneId == mDataPhoneId ? "data " : "")
+                                    + "phoneId " + phoneId);
+                        }
+                        sProxyPhones[phoneId].getPreferredNetworkType(
+                                obtainMessage(MESSAGE_GET_PREF_NETWORK_TYPE, phoneId, 0));
+                    } else {
+                        if (DBG) logd("[NetworkModeHandler] all switches done");
+                    }
+                    break;
+                case MESSAGE_GET_PREF_NETWORK_TYPE: {
+                    Phone phone = sProxyPhones[msg.arg1];
+                    AsyncResult ar = (AsyncResult) msg.obj;
+                    boolean hasSet = false;
+                    if (ar.exception == null) {
+                        int modemNetworkMode = ((int[]) ar.result)[0];
+                        try {
+                            int setNetworkMode = TelephonyManager.getIntAtIndex(
+                                    phone.getContext().getContentResolver(),
+                                    Settings.Global.PREFERRED_NETWORK_MODE, phone.getPhoneId());
+                            if (DBG) {
+                                logd("[NetworkModeHandler] phone " + phone.getPhoneId()
+                                        + ": current mode " + modemNetworkMode
+                                        + ", pref mode " + setNetworkMode);
+                            }
+                            if (modemNetworkMode != setNetworkMode) {
+                                phone.setPreferredNetworkType(setNetworkMode,
+                                        obtainMessage(MESSAGE_ADVANCE_PHONE));
+                                hasSet = true;
+                            }
+                        } catch (SettingNotFoundException e) {
+                            if (DBG) logd("[NetworkModeHandler] no preferred mode set for phone "
+                                    + phone.getPhoneId());
+                        }
+                    }
+                    if (!hasSet) {
+                        sendEmptyMessage(MESSAGE_ADVANCE_PHONE);
+                    }
                     break;
                 }
             }
