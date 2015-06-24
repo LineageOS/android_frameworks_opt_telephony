@@ -148,7 +148,7 @@ public class ImsPhone extends ImsPhoneBase {
     private boolean mImsRegistered = false;
 
     // List of Registrants to send supplementary service notifications to.
-    RegistrantList mSsnRegistrants = new RegistrantList();
+    private RegistrantList mSsnRegistrants = new RegistrantList();
 
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
@@ -1082,8 +1082,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public void registerForSuppServiceNotification(
-            Handler h, int what, Object obj) {
+    public void registerForSuppServiceNotification(Handler h, int what, Object obj) {
         mSsnRegistrants.addUnique(h, what, obj);
     }
 
