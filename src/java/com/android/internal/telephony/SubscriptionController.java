@@ -1427,6 +1427,23 @@ public class SubscriptionController extends ISub.Stub {
             throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
         }
         if (DBG) logdl("[setDefaultDataSubId] subId=" + subId);
+
+        int len = sProxyPhones.length;
+        if (DBG) logdl("[setDefaultDataSubId] num phones=" + len);
+
+        for (int phoneId = 0; phoneId < len; phoneId++) {
+            PhoneProxy phone = sProxyPhones[phoneId];
+            int id = phone.getSubId();
+            if (DBG) logdl("[setDefaultDataSubId] phoneId=" + phoneId + " subId=" + id);
+            if (id != subId) {
+                phone.setPreferredNetworkType(Phone.NT_MODE_GSM_ONLY, null);
+                if (DBG) logdl("[setDefaultDataSubId] Set preferredNetworkType to GSM only");
+            } else {
+                int networkType = PhoneFactory.calculatePreferredNetworkType(mContext, id);
+                phone.setPreferredNetworkType(networkType, null);
+                if (DBG) logdl("[setDefaultDataSubId] Set preferredNetworkType=" + networkType);
+            }
+        }
         if (mDctController == null) {
             mDctController = DctController.getInstance();
             mDctController.registerForDefaultDataSwitchInfo(mDataConnectionHandler,
