@@ -1227,7 +1227,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             if (DBG) log("onCallSuppServiceReceived: suppServiceInfo=" + suppServiceInfo);
 
             SuppServiceNotification supp = new SuppServiceNotification();
-            supp.notificationType = suppServiceInfo.notificationType ;
+            supp.notificationType = suppServiceInfo.notificationType;
             supp.code = suppServiceInfo.code;
             supp.index = suppServiceInfo.index;
             supp.number = suppServiceInfo.number;
