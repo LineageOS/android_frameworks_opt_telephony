@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a1ff146_04dd7670",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 830,
+      "author": {
+        "id": 6334
+      },
+      "writtenOn": "2015-06-24T04:40:57Z",
+      "side": 1,
+      "message": "line wrap at 100 char",
+      "revId": "d73d73c5a4368884afc734c6e1bc1413ea6dacc2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1ff146_64e46a3b",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 831,
+      "author": {
+        "id": 6334
+      },
+      "writtenOn": "2015-06-24T04:40:57Z",
+      "side": 1,
+      "message": "Don\u0027t comment this out. Do this instead:\n\nif (!Arrays.asList(\"gee\", \"geehrc\", \"geefhd\").contains(\n        SystemProperties.get(\"ro.product.board\"))) {\n    setDefaultDataSubId(subId);\n}\n\nAlthought not sure reading the product model here is the best. Possibly creating a prop value for skipping this and setting it for the devices that need this.",
+      "revId": "d73d73c5a4368884afc734c6e1bc1413ea6dacc2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
