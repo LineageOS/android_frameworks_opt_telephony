@@ -27,8 +27,10 @@ import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.SystemProperties;
 import android.os.UserHandle;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellInfo;
 import android.telephony.CellLocation;
 import android.telephony.Rlog;
@@ -177,13 +179,20 @@ public class PhoneProxy extends Handler implements Phone {
 
         if (mActivePhone != null) {
             // Check for a voice over lte replacement
-            if ((newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) ||
-                    (newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN)) {
-                int volteReplacementRat = mActivePhone.getContext().getResources().getInteger(
-                        com.android.internal.R.integer.config_volte_replacement_rat);
-                logd("phoneObjectUpdater: volteReplacementRat=" + volteReplacementRat);
-                if (volteReplacementRat != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
-                    newVoiceRadioTech = volteReplacementRat;
+            if ((newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_LTE)
+                    || (newVoiceRadioTech == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN)) {
+                CarrierConfigManager configMgr = (CarrierConfigManager)
+                        mActivePhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+                PersistableBundle b = configMgr.getConfigForSubId(mActivePhone.getSubId());
+                if (b != null) {
+                    int volteReplacementRat =
+                            b.getInt(CarrierConfigManager.KEY_VOLTE_REPLACEMENT_RAT_INT);
+                    logd("phoneObjectUpdater: volteReplacementRat=" + volteReplacementRat);
+                    if (volteReplacementRat != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) {
+                        newVoiceRadioTech = volteReplacementRat;
+                    }
+                } else {
+                    loge("phoneObjectUpdater: didn't get volteReplacementRat from carrier config");
                 }
             }
 
