@@ -34,6 +34,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.net.NetworkRequest;
 import android.preference.PreferenceManager;
@@ -1433,12 +1434,49 @@ public class SubscriptionController extends ISub.Stub {
             throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
         }
         if (DBG) logdl("[setDefaultDataSubId] subId=" + subId);
+
         if (mDctController == null) {
             mDctController = DctController.getInstance();
             mDctController.registerForDefaultDataSwitchInfo(mDataConnectionHandler,
                     EVENT_SET_DEFAULT_DATA_DONE, null);
         }
         mDctController.setDefaultDataSubId(subId);
+
+    }
+
+    private void setDefaultDataSubNetworkType(int subId) {
+        if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
+            throw new RuntimeException("setDefaultDataSubNetworkType called with DEFAULT_SUB_ID");
+        }
+        if (DBG) logdl("[setDefaultDataSubNetworkType] subId=" + subId);
+        int len = sProxyPhones.length;
+        if (DBG) logdl("[setDefaultDataSubNetworkType] num phones=" + len);
+
+        boolean isDsds = mTelephonyManager.getMultiSimConfiguration()
+                == TelephonyManager.MultiSimVariants.DSDS;
+        boolean isMultiRat = SystemProperties.getBoolean("ro.ril.multi_rat_capable", false);
+
+        if (isDsds && !isMultiRat && len > 1) {
+            int networkType1 = 0;
+            int networkType2 = 0;
+            int phoneId1 = 0;
+            int phoneId2 = 0; // TODO: Better defaults for all 4
+            for (int phoneId = 0; phoneId < len; phoneId++) {
+                PhoneProxy phone = sProxyPhones[phoneId];
+                int id = phone.getSubId();
+
+                if (id == subId) {
+                    networkType1 = getUserNwMode(id);
+                    phoneId1 = phoneId;
+                    logdl("[setDefaultDataSubNetworkType] networkType1: " + networkType1 + ", phoneId1: " + phoneId1);
+                } else {
+                    networkType2 = Phone.NT_MODE_GSM_ONLY;
+                    phoneId2 = phoneId;
+                    logdl("[setDefaultDataSubNetworkType] networkType2: " + networkType2 + ", phoneId2: " + phoneId2);
+                }
+            }
+            ModemBindingPolicyHandler.getInstance().setDsdsNetworkType(networkType1, phoneId1, networkType2, phoneId2);
+        }
     }
 
     public void setDataSubId(int subId) {
@@ -1508,7 +1546,9 @@ public class SubscriptionController extends ISub.Stub {
             switch (msg.what) {
                 case EVENT_SET_DEFAULT_DATA_DONE:{
                     AsyncResult ar = (AsyncResult) msg.obj;
-                    logd("EVENT_SET_DEFAULT_DATA_DONE subId:" + (Integer)ar.result);
+                    int subId = (Integer) ar.result;
+                    logd("EVENT_SET_DEFAULT_DATA_DONE subId:" + subId);
+                    setDefaultDataSubNetworkType(subId);
                     updateDataSubId(ar);
                     break;
                 }
