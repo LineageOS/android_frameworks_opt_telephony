@@ -86,15 +86,22 @@ public final class CarrierAppUtils {
                 boolean hasPrivileges =
                         telephonyManager.checkCarrierPrivilegesForPackageAnyPhone(packageName) ==
                                 TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
-                if (hasPrivileges
-                        && (ai.enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
-                        || ai.enabledSetting ==
-                                PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED)) {
-                    Slog.i(TAG, "Update state(" + packageName + "): ENABLED for user " + userId);
-                    anyAppsEnabled = true;
-                    packageManager.setApplicationEnabledSetting(packageName,
-                            PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0, userId,
-                            callingPackage);
+                if (hasPrivileges) {
+                    if (ai.enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
+                            || ai.enabledSetting ==
+                                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED) {
+                        Slog.i(TAG, "Update state(" + packageName + "): ENABLED for user "
+                                + userId);
+                        anyAppsEnabled = true;
+                        packageManager.setApplicationEnabledSetting(packageName,
+                                PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0, userId,
+                                callingPackage);
+                    } else if (ai.enabledSetting ==
+                            PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
+                        // If we're already enabled, don't bother re-enabling, but treat the app as
+                        // enabled so that we re-grant default permissions in case they were lost.
+                        anyAppsEnabled = true;
+                    }
                 } else if (!hasPrivileges
                         && ai.enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT) {
                     Slog.i(TAG, "Update state(" + packageName + "): DISABLED_UNTIL_USED for user "
