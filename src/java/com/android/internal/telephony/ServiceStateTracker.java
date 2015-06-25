@@ -1091,14 +1091,24 @@ public abstract class ServiceStateTracker extends Handler {
     }
 
     /**
+     * Check if device is non-roaming and always on home network.
+     *
+     * @param b carrier config bundle obtained from CarrierConfigManager
+     * @return true if network is always on home network, false otherwise
+     * @see CarrierConfigManager
+     */
+    protected final boolean alwaysOnHomeNetwork(BaseBundle b) {
+        return b.getBoolean(CarrierConfigManager.KEY_FORCE_HOME_NETWORK_BOOL);
+    }
+
+    /**
      * Check if the network identifier has membership in the set of
      * network identifiers stored in the carrier config bundle.
      *
-     * @param b a carrier config bundle object
+     * @param b carrier config bundle obtained from CarrierConfigManager
      * @param network The network identifier to check network existence in bundle
      * @param key The key to index into the bundle presenting a string array of
      *            networks to check membership
-     *
      * @return true if network has membership in bundle networks, false otherwise
      * @see CarrierConfigManager
      */
@@ -1111,19 +1121,19 @@ public abstract class ServiceStateTracker extends Handler {
         return false;
     }
 
-    protected boolean isRoamingInGsmNetwork(BaseBundle b, String network) {
+    protected final boolean isRoamingInGsmNetwork(BaseBundle b, String network) {
         return isInNetwork(b, network, CarrierConfigManager.KEY_GSM_ROAMING_NETWORKS_STRING_ARRAY);
     }
 
-    protected boolean isNonRoamingInGsmNetwork(BaseBundle b, String network) {
+    protected final boolean isNonRoamingInGsmNetwork(BaseBundle b, String network) {
         return isInNetwork(b, network, CarrierConfigManager.KEY_GSM_NONROAMING_NETWORKS_STRING_ARRAY);
     }
 
-    protected boolean isRoamingInCdmaNetwork(BaseBundle b, String network) {
+    protected final boolean isRoamingInCdmaNetwork(BaseBundle b, String network) {
         return isInNetwork(b, network, CarrierConfigManager.KEY_CDMA_ROAMING_NETWORKS_STRING_ARRAY);
     }
 
-    protected boolean isNonRoamingInCdmaNetwork(BaseBundle b, String network) {
+    protected final boolean isNonRoamingInCdmaNetwork(BaseBundle b, String network) {
         return isInNetwork(b, network, CarrierConfigManager.KEY_CDMA_NONROAMING_NETWORKS_STRING_ARRAY);
     }
 }
