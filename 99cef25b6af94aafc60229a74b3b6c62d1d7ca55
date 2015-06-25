@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bff0334d_63bc7cbb",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1438,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2015-06-25T01:04:40Z",
+      "side": 1,
+      "message": "TOOD: Add a \u0026\u0026 !multi RAT here.",
+      "revId": "99cef25b6af94aafc60229a74b3b6c62d1d7ca55",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bff0334d_43b178e1",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1442,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2015-06-25T01:04:40Z",
+      "side": 1,
+      "message": "This always reports the highest for some reason.\n\nThe db looks fine though,\n INSERT INTO \"global\" VALUES(282,\u0027preferred_network_mode\u0027,\u00271,9\u0027);\n\n\nWill investigate tomorrow.",
+      "revId": "99cef25b6af94aafc60229a74b3b6c62d1d7ca55",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
