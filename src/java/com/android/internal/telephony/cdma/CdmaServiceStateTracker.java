@@ -1120,21 +1120,19 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 PersistableBundle b = configLoader.getConfigForSubId(mPhone.getSubId());
                 String systemId = Integer.toString(mNewSS.getSystemId());
 
-                if (isNonRoamingInGsmNetwork(b, mNewSS.getOperatorNumeric())
+                if (alwaysOnHomeNetwork(b)) {
+                    log("updateRoamingState: carrier config override always on home network");
+                    setRoamingOff();
+                } else if (isNonRoamingInGsmNetwork(b, mNewSS.getOperatorNumeric())
                         || isNonRoamingInCdmaNetwork(b, systemId)) {
                     log("updateRoamingState: carrier config override set non-roaming:"
                             + mNewSS.getOperatorNumeric() + ", " + systemId);
-                    mNewSS.setVoiceRoaming(false);
-                    mNewSS.setDataRoaming(false);
-                    mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_OFF);
+                    setRoamingOff();
                 } else if (isRoamingInGsmNetwork(b, mNewSS.getOperatorNumeric())
                         || isRoamingInCdmaNetwork(b, systemId)) {
                     log("updateRoamingState: carrier config override set roaming:"
                             + mNewSS.getOperatorNumeric() + ", " + systemId);
-                    mNewSS.setVoiceRoaming(true);
-                    mNewSS.setDataRoaming(true);
-                    mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_ON);
-                    mNewSS.setCdmaEriIconMode(EriInfo.ROAMING_ICON_MODE_NORMAL);
+                    setRoamingOn();
                 }
             } catch (RemoteException e) {
                 loge("updateRoamingState: unable to access carrier config service");
@@ -1147,6 +1145,19 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             mNewSS.setVoiceRoaming(true);
             mNewSS.setDataRoaming(true);
         }
+    }
+
+    private void setRoamingOn() {
+        mNewSS.setVoiceRoaming(true);
+        mNewSS.setDataRoaming(true);
+        mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_ON);
+        mNewSS.setCdmaEriIconMode(EriInfo.ROAMING_ICON_MODE_NORMAL);
+    }
+
+    private void setRoamingOff() {
+        mNewSS.setVoiceRoaming(false);
+        mNewSS.setDataRoaming(false);
+        mNewSS.setCdmaEriIconIndex(EriInfo.ROAMING_INDICATOR_OFF);
     }
 
     protected void pollStateDone() {

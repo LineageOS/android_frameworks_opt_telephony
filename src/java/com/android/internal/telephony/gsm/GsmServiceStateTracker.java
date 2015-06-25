@@ -880,7 +880,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             try {
                 PersistableBundle b = configLoader.getConfigForSubId(mPhone.getSubId());
 
-                if (isNonRoamingInGsmNetwork(b, mNewSS.getOperatorNumeric())) {
+                if (alwaysOnHomeNetwork(b)) {
+                    log("updateRoamingState: carrier config override always on home network");
+                    roaming = false;
+                } else if (isNonRoamingInGsmNetwork(b, mNewSS.getOperatorNumeric())) {
                     log("updateRoamingState: carrier config override set non roaming:"
                             + mNewSS.getOperatorNumeric());
                     roaming = false;
