@@ -2330,6 +2330,13 @@ public abstract class PhoneBase extends Handler implements Phone {
         mDcTracker.setDataEnabled(getDataEnabled());
     }
 
+    protected void setPreferredNetworkTypeIfSimLoaded() {
+        int subId = getSubId();
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+            int type = PhoneFactory.calculatePreferredNetworkType(mContext, getSubId());
+            setPreferredNetworkType(type, null);
+        }
+    }
 
     @Override
     public void registerForRadioCapabilityChanged(Handler h, int what, Object obj) {
