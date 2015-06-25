@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "bff0334d_a9e2652e",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1438,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2015-06-25T17:04:32Z",
+      "side": 1,
+      "message": "Yes, because if both modems are set to 3G, it\u0027ll crash.\n\nThis could use a msim / phones \u003e 1 check though.",
+      "parentUuid": "bff0334d_e3840cb4",
+      "revId": "99cef25b6af94aafc60229a74b3b6c62d1d7ca55",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bff0334d_23a31452",
         "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
         "patchSetId": 1
@@ -48,6 +66,24 @@
       "writtenOn": "2015-06-25T02:48:44Z",
       "side": 1,
       "message": "is this the correct mode for cdma phones also?",
+      "revId": "99cef25b6af94aafc60229a74b3b6c62d1d7ca55",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bff0334d_89d1e15a",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1439,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2015-06-25T17:04:32Z",
+      "side": 1,
+      "message": "No, that is what the multi RAT comment was for (rendang)",
+      "parentUuid": "bff0334d_23a31452",
       "revId": "99cef25b6af94aafc60229a74b3b6c62d1d7ca55",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
