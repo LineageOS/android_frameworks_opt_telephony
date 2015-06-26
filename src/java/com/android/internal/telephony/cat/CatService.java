@@ -348,7 +348,7 @@ public class CatService extends Handler implements AppInterface {
         mCurrntCmd = cmdMsg;
         Intent intent = new Intent(AppInterface.CAT_CMD_ACTION);
         intent.putExtra("STK CMD", cmdMsg);
-        mContext.sendBroadcast(intent);
+        mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
 
     /**
@@ -360,7 +360,7 @@ public class CatService extends Handler implements AppInterface {
 
         mCurrntCmd = mMenuCmd;
         Intent intent = new Intent(AppInterface.CAT_SESSION_END_ACTION);
-        mContext.sendBroadcast(intent);
+        mContext.sendBroadcast(intent, AppInterface.STK_PERMISSION);
     }
 
     private void sendTerminalResponse(CommandDetails cmdDet,
