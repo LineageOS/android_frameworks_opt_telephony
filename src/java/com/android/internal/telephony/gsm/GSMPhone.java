@@ -1450,7 +1450,9 @@ public class GSMPhone extends PhoneBase {
             break;
 
             case EVENT_RADIO_ON:
-                // do-nothing
+                // If this is on APM off, SIM may already be loaded. Send setPreferredNetworkType
+                // request to RIL to preserve user setting across APM toggling
+                setPreferredNetworkTypeIfSimLoaded();
                 break;
 
             case EVENT_REGISTERED_TO_NETWORK:

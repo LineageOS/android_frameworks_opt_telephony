@@ -1273,6 +1273,9 @@ public class CDMAPhone extends PhoneBase {
             case EVENT_RADIO_ON:{
                 Rlog.d(LOG_TAG, "Event EVENT_RADIO_ON Received");
                 handleCdmaSubscriptionSource(mCdmaSSM.getCdmaSubscriptionSource());
+                // If this is on APM off, SIM may already be loaded. Send setPreferredNetworkType
+                // request to RIL to preserve user setting across APM toggling
+                setPreferredNetworkTypeIfSimLoaded();
             }
             break;
 
