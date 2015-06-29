@@ -22,7 +22,6 @@ import android.app.AppOpsManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Binder;
-import android.os.RemoteException;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 
@@ -366,19 +365,15 @@ public class PhoneSubInfo {
     }
 
     private boolean checkReadPhoneState(String callingPackage, String message) {
-        boolean failReadPhoneState = false;
         try {
-            mContext.enforceCallingOrSelfPermission(android.Manifest.permission.READ_PHONE_STATE,
-                    message);
-        } catch (SecurityException e) {
-            failReadPhoneState = true;
-        }
-        if (failReadPhoneState) {
             mContext.enforceCallingOrSelfPermission(
                     android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE, message);
 
-            // SKIP checking run-time OP_READ_PHONE_STATE since using PRIVILEDGED
+            // SKIP checking run-time OP_READ_PHONE_STATE since self or using PRIVILEGED
             return true;
+        } catch (SecurityException e) {
+            mContext.enforceCallingOrSelfPermission(android.Manifest.permission.READ_PHONE_STATE,
+                    message);
         }
 
         return mAppOps.noteOp(AppOpsManager.OP_READ_PHONE_STATE, Binder.getCallingUid(),
