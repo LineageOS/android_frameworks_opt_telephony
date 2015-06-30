@@ -30,6 +30,7 @@ import android.telecom.Log;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
+import android.text.TextUtils;
 
 import com.android.ims.ImsException;
 import com.android.ims.ImsStreamMediaProfile;
@@ -597,8 +598,10 @@ public class ImsPhoneConnection extends Connection {
         boolean updateParent = mParent.update(this, imsCall, state);
         boolean updateMediaCapabilities = updateMediaCapabilities(imsCall);
         boolean updateWifiState = updateWifiState();
+        boolean updateAddressDisplay = updateAddressDisplay(imsCall);
 
-        return updateParent || updateMediaCapabilities || updateWifiState;
+        return updateParent || updateMediaCapabilities || updateWifiState
+            || updateAddressDisplay;
     }
 
     @Override
@@ -642,6 +645,56 @@ public class ImsPhoneConnection extends Connection {
      */
     public long getConferenceConnectTime() {
         return mConferenceConnectTime;
+    }
+
+    /**
+     * Check for a change in the address display related fields for the {@link ImsCall}, and
+     * update the {@link ImsPhoneConnection} with this information.
+     *
+     * @param imsCall The call to check for changes in address display fields.
+     * @return Whether the address display fields have been changed.
+     */
+    private boolean updateAddressDisplay(ImsCall imsCall) {
+        if (imsCall == null) {
+            return false;
+        }
+
+        boolean changed = false;
+        ImsCallProfile callProfile = imsCall.getCallProfile();
+        if (callProfile != null) {
+            String address = callProfile.getCallExtra(ImsCallProfile.EXTRA_OI);
+            String name = callProfile.getCallExtra(ImsCallProfile.EXTRA_CNA);
+            int nump = ImsCallProfile.OIRToPresentation(
+                    callProfile.getCallExtraInt(ImsCallProfile.EXTRA_OIR));
+            int namep = ImsCallProfile.OIRToPresentation(
+                    callProfile.getCallExtraInt(ImsCallProfile.EXTRA_CNAP));
+            if (Phone.DEBUG_PHONE) {
+                Rlog.d(LOG_TAG, "address = " +  address + " name = " + name +
+                        " nump = " + nump + " namep = " + namep);
+            }
+            if(equalsHandlesNulls(mAddress, address)) {
+                mAddress = address;
+                changed = true;
+            }
+            if (TextUtils.isEmpty(name)) {
+                if (!TextUtils.isEmpty(mCnapName)) {
+                    mCnapName = "";
+                    changed = true;
+                }
+            } else if (!name.equals(mCnapName)) {
+                mCnapName = name;
+                changed = true;
+            }
+            if (mNumberPresentation != nump) {
+                mNumberPresentation = nump;
+                changed = true;
+            }
+            if (mCnapNamePresentation != namep) {
+                mCnapNamePresentation = namep;
+                changed = true;
+            }
+        }
+        return changed;
     }
 
     /**
