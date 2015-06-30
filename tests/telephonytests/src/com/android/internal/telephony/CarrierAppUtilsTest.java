@@ -60,7 +60,9 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
-        Mockito.verify(mPackageManager, Mockito.never()).grantDefaultPermissions(Mockito.anyInt());
+        Mockito.verify(mPackageManager, Mockito.never())
+                .grantDefaultPermissionsToEnabledCarrierApps(Mockito.any(String[].class),
+                        Mockito.anyInt());
         Mockito.verifyNoMoreInteractions(mTelephonyManager);
     }
 
@@ -74,7 +76,9 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
-        Mockito.verify(mPackageManager, Mockito.never()).grantDefaultPermissions(Mockito.anyInt());
+        Mockito.verify(mPackageManager, Mockito.never())
+                .grantDefaultPermissionsToEnabledCarrierApps(
+                        Mockito.any(String[].class), Mockito.anyInt());
         Mockito.verifyNoMoreInteractions(mTelephonyManager);
     }
 
@@ -94,7 +98,9 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
-        Mockito.verify(mPackageManager, Mockito.never()).grantDefaultPermissions(Mockito.anyInt());
+        Mockito.verify(mPackageManager, Mockito.never())
+                .grantDefaultPermissionsToEnabledCarrierApps(
+                        Mockito.any(String[].class), Mockito.anyInt());
     }
 
     /** Configured app has privileges, but was disabled - should do nothing. */
@@ -112,7 +118,9 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
-        Mockito.verify(mPackageManager, Mockito.never()).grantDefaultPermissions(Mockito.anyInt());
+        Mockito.verify(mPackageManager, Mockito.never())
+                .grantDefaultPermissionsToEnabledCarrierApps(
+                        Mockito.any(String[].class), Mockito.anyInt());
     }
 
     /** Configured app has privileges, and is already enabled - should only grant permissions. */
@@ -130,7 +138,8 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
-        Mockito.verify(mPackageManager).grantDefaultPermissions(USER_ID);
+        Mockito.verify(mPackageManager).grantDefaultPermissionsToEnabledCarrierApps(
+                new String[] {appInfo.packageName}, USER_ID);
     }
 
     /** Configured app has privileges, and is in the default state - should enable. */
@@ -148,7 +157,8 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager).setApplicationEnabledSetting(
                 CARRIER_APP, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0, USER_ID,
                 CALLING_PACKAGE);
-        Mockito.verify(mPackageManager).grantDefaultPermissions(USER_ID);
+        Mockito.verify(mPackageManager).grantDefaultPermissionsToEnabledCarrierApps(
+                new String[] {appInfo.packageName}, USER_ID);
     }
 
     /** Configured app has privileges, and is disabled until used - should enable. */
@@ -167,7 +177,8 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager).setApplicationEnabledSetting(
                 CARRIER_APP, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0, USER_ID,
                 CALLING_PACKAGE);
-        Mockito.verify(mPackageManager).grantDefaultPermissions(USER_ID);
+        Mockito.verify(mPackageManager).grantDefaultPermissionsToEnabledCarrierApps(
+                new String[] {appInfo.packageName}, USER_ID);
     }
 
     /** Configured app has no privileges, and was disabled by the user - should do nothing. */
@@ -185,7 +196,9 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
-        Mockito.verify(mPackageManager, Mockito.never()).grantDefaultPermissions(Mockito.anyInt());
+        Mockito.verify(mPackageManager, Mockito.never())
+                .grantDefaultPermissionsToEnabledCarrierApps(
+                        Mockito.any(String[].class), Mockito.anyInt());
     }
 
     /** Configured app has no privileges, and was disabled - should do nothing. */
@@ -203,7 +216,9 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
-        Mockito.verify(mPackageManager, Mockito.never()).grantDefaultPermissions(Mockito.anyInt());
+        Mockito.verify(mPackageManager, Mockito.never())
+                .grantDefaultPermissionsToEnabledCarrierApps(
+                        Mockito.any(String[].class), Mockito.anyInt());
     }
 
     /** Configured app has no privileges, and is explicitly enabled - should do nothing. */
@@ -221,7 +236,9 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
-        Mockito.verify(mPackageManager, Mockito.never()).grantDefaultPermissions(Mockito.anyInt());
+        Mockito.verify(mPackageManager, Mockito.never())
+                .grantDefaultPermissionsToEnabledCarrierApps(
+                        Mockito.any(String[].class), Mockito.anyInt());
     }
 
     /** Configured app has no privileges, and is in the default state - should disable until use. */
@@ -239,7 +256,9 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager).setApplicationEnabledSetting(
                 CARRIER_APP, PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED, 0, USER_ID,
                 CALLING_PACKAGE);
-        Mockito.verify(mPackageManager, Mockito.never()).grantDefaultPermissions(Mockito.anyInt());
+        Mockito.verify(mPackageManager, Mockito.never())
+                .grantDefaultPermissionsToEnabledCarrierApps(
+                        Mockito.any(String[].class), Mockito.anyInt());
     }
 
     /** Configured app has no privileges, and is disabled until used - should do nothing. */
@@ -258,7 +277,9 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
-        Mockito.verify(mPackageManager, Mockito.never()).grantDefaultPermissions(Mockito.anyInt());
+        Mockito.verify(mPackageManager, Mockito.never())
+                .grantDefaultPermissionsToEnabledCarrierApps(
+                        Mockito.any(String[].class), Mockito.anyInt());
     }
 }
 
