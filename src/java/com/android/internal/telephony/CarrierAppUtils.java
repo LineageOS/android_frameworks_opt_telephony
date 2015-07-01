@@ -79,10 +79,8 @@ public final class CarrierAppUtils {
         if (candidates == null || candidates.isEmpty()) {
             return;
         }
-
-        List<String> enabledCarrierPackages = new ArrayList<>();
-
         try {
+            boolean anyAppsEnabled = false;
             for (ApplicationInfo ai : candidates) {
                 String packageName = ai.packageName;
                 boolean hasPrivileges =
@@ -94,7 +92,7 @@ public final class CarrierAppUtils {
                                     PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED) {
                         Slog.i(TAG, "Update state(" + packageName + "): ENABLED for user "
                                 + userId);
-                        enabledCarrierPackages.add(ai.packageName);
+                        anyAppsEnabled = true;
                         packageManager.setApplicationEnabledSetting(packageName,
                                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0, userId,
                                 callingPackage);
@@ -102,7 +100,7 @@ public final class CarrierAppUtils {
                             PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
                         // If we're already enabled, don't bother re-enabling, but treat the app as
                         // enabled so that we re-grant default permissions in case they were lost.
-                        enabledCarrierPackages.add(ai.packageName);
+                        anyAppsEnabled = true;
                     }
                 } else if (!hasPrivileges
                         && ai.enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT) {
@@ -114,12 +112,10 @@ public final class CarrierAppUtils {
                 }
             }
 
-            if (!enabledCarrierPackages.isEmpty()) {
+            if (anyAppsEnabled) {
                 // Since we enabled at least one app, ensure we grant default permissions to those
                 // apps.
-                String[] packageNames = new String[enabledCarrierPackages.size()];
-                enabledCarrierPackages.toArray(packageNames);
-                packageManager.grantDefaultPermissionsToEnabledCarrierApps(packageNames, userId);
+                packageManager.grantDefaultPermissions(userId);
             }
         } catch (RemoteException e) {
             Slog.w(TAG, "Could not reach PackageManager", e);
