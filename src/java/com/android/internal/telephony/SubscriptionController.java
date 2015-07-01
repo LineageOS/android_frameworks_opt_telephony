@@ -222,6 +222,11 @@ public class SubscriptionController extends ISub.Stub {
                 callingPackage) == AppOpsManager.MODE_ALLOWED;
     }
 
+    private void enforceModifyPhoneState(String message) {
+        mContext.enforceCallingOrSelfPermission(
+                android.Manifest.permission.MODIFY_PHONE_STATE, message);
+    }
+
     /**
      * Broadcast when SubscriptionInfo has changed
      * FIXME: Hopefully removed if the API council accepts SubscriptionInfoListener
@@ -233,22 +238,7 @@ public class SubscriptionController extends ISub.Stub {
         mContext.sendBroadcast(intent);
      }
 
-     private boolean checkNotifyPermission(String method) {
-         if (mContext.checkCallingOrSelfPermission(android.Manifest.permission.MODIFY_PHONE_STATE)
-                     == PackageManager.PERMISSION_GRANTED) {
-             return true;
-         }
-         if (DBG) {
-             logd("checkNotifyPermission Permission Denial: " + method + " from pid="
-                     + Binder.getCallingPid() + ", uid=" + Binder.getCallingUid());
-         }
-         return false;
-     }
-
      public void notifySubscriptionInfoChanged() {
-         if (!checkNotifyPermission("notifySubscriptionInfoChanged")) {
-             return;
-         }
          ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(ServiceManager.getService(
                  "telephony.registry"));
          try {
@@ -671,16 +661,13 @@ public class SubscriptionController extends ISub.Stub {
      * Add a new SubInfoRecord to subinfo database if needed
      * @param iccId the IccId of the SIM card
      * @param slotId the slot which the SIM is inserted
-     * @param callingPackage The package making the IPC.
      * @return 0 if success, < 0 on error.
      */
     @Override
-    public int addSubInfoRecord(String iccId, int slotId, String callingPackage) {
+    public int addSubInfoRecord(String iccId, int slotId) {
         if (DBG) logdl("[addSubInfoRecord]+ iccId:" + iccId + " slotId:" + slotId);
 
-        if (!canReadPhoneState(callingPackage, "addSubInfoRecord")) {
-            return -1;
-        }
+        enforceModifyPhoneState("addSubInfoRecord");
 
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
@@ -889,10 +876,7 @@ public class SubscriptionController extends ISub.Stub {
     private int setCarrierText(String text, int subId) {
         if (DBG) logd("[setCarrierText]+ text:" + text + " subId:" + subId);
 
-        // Not called from an IPC.
-        if (!canReadPhoneState(mContext.getOpPackageName(), "setCarrierText")) {
-            return 0;
-        }
+        enforceModifyPhoneState("setCarrierText");
 
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
@@ -900,8 +884,9 @@ public class SubscriptionController extends ISub.Stub {
             ContentValues value = new ContentValues(1);
             value.put(SubscriptionManager.CARRIER_NAME, text);
 
-            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                    value, SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
+                    Long.toString(subId), null);
             notifySubscriptionInfoChanged();
 
             return result;
@@ -917,12 +902,10 @@ public class SubscriptionController extends ISub.Stub {
      * @return the number of records updated
      */
     @Override
-    public int setIconTint(int tint, int subId, String callingPackage) {
+    public int setIconTint(int tint, int subId) {
         if (DBG) logd("[setIconTint]+ tint:" + tint + " subId:" + subId);
 
-        if (!canReadPhoneState(callingPackage, "setIconTint")) {
-            return 0;
-        }
+        enforceModifyPhoneState("setIconTint");
 
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
@@ -932,8 +915,9 @@ public class SubscriptionController extends ISub.Stub {
             value.put(SubscriptionManager.COLOR, tint);
             if (DBG) logd("[setIconTint]- tint:" + tint + " set");
 
-            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                    value, SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
+                    Long.toString(subId), null);
             notifySubscriptionInfoChanged();
 
             return result;
@@ -949,8 +933,8 @@ public class SubscriptionController extends ISub.Stub {
      * @return the number of records updated
      */
     @Override
-    public int setDisplayName(String displayName, int subId, String callingPackage) {
-        return setDisplayNameUsingSrc(displayName, subId, -1, callingPackage);
+    public int setDisplayName(String displayName, int subId) {
+        return setDisplayNameUsingSrc(displayName, subId, -1);
     }
 
     /**
@@ -962,16 +946,13 @@ public class SubscriptionController extends ISub.Stub {
      * @return the number of records updated
      */
     @Override
-    public int setDisplayNameUsingSrc(String displayName, int subId, long nameSource,
-            String callingPackage) {
+    public int setDisplayNameUsingSrc(String displayName, int subId, long nameSource) {
         if (DBG) {
             logd("[setDisplayName]+  displayName:" + displayName + " subId:" + subId
                 + " nameSource:" + nameSource);
         }
 
-        if (!canReadPhoneState(callingPackage, "setDisplayNameUsingSrc")) {
-            return 0;
-        }
+        enforceModifyPhoneState("setDisplayNameUsingSrc");
 
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
@@ -991,8 +972,9 @@ public class SubscriptionController extends ISub.Stub {
             }
             if (DBG) logd("[setDisplayName]- mDisplayName:" + nameToSet + " set");
 
-            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                    value, SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
+                    Long.toString(subId), null);
             notifySubscriptionInfoChanged();
 
             return result;
@@ -1005,16 +987,13 @@ public class SubscriptionController extends ISub.Stub {
      * Set phone number by subId
      * @param number the phone number of the SIM
      * @param subId the unique SubInfoRecord index in database
-     * @param callingPackage The package making the IPC.
      * @return the number of records updated
      */
     @Override
-    public int setDisplayNumber(String number, int subId, String callingPackage) {
+    public int setDisplayNumber(String number, int subId) {
         if (DBG) logd("[setDisplayNumber]+ subId:" + subId);
 
-        if (!canReadPhoneState(callingPackage, "setDisplayNumber")) {
-            return -1;
-        }
+        enforceModifyPhoneState("setDisplayNumber");
 
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
@@ -1031,9 +1010,9 @@ public class SubscriptionController extends ISub.Stub {
             ContentValues value = new ContentValues(1);
             value.put(SubscriptionManager.NUMBER, number);
 
-            // This function had a call to update number on the SIM (Phone.setLine1Number()) but that
-            // was removed as there doesn't seem to be a reason for that. If it is added back, watch out
-            // for deadlocks.
+            // This function had a call to update number on the SIM (Phone.setLine1Number()) but
+            // that was removed as there doesn't seem to be a reason for that. If it is added
+            // back, watch out for deadlocks.
 
             result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
                     SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID
@@ -1051,16 +1030,13 @@ public class SubscriptionController extends ISub.Stub {
      * Set data roaming by simInfo index
      * @param roaming 0:Don't allow data when roaming, 1:Allow data when roaming
      * @param subId the unique SubInfoRecord index in database
-     * @param callingPackage The package making the IPC.
      * @return the number of records updated
      */
     @Override
-    public int setDataRoaming(int roaming, int subId, String callingPackage) {
+    public int setDataRoaming(int roaming, int subId) {
         if (DBG) logd("[setDataRoaming]+ roaming:" + roaming + " subId:" + subId);
 
-        if (!canReadPhoneState(callingPackage, "setDataRoaming")) {
-            return -1;
-        }
+        enforceModifyPhoneState("setDataRoaming");
 
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
@@ -1074,8 +1050,9 @@ public class SubscriptionController extends ISub.Stub {
             value.put(SubscriptionManager.DATA_ROAMING, roaming);
             if (DBG) logd("[setDataRoaming]- roaming:" + roaming + " set");
 
-            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI, value,
-                    SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" + Long.toString(subId), null);
+            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                    value, SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
+                    Long.toString(subId), null);
             notifySubscriptionInfoChanged();
 
             return result;
@@ -1273,14 +1250,11 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     /**
-     * @param callingPackage The package making the IPC.
      * @return the number of records cleared
      */
     @Override
-    public int clearSubInfo(String callingPackage) {
-        if (!canReadPhoneState(callingPackage, "clearSubInfo")) {
-            return 0;
-        }
+    public int clearSubInfo() {
+        enforceModifyPhoneState("clearSubInfo");
 
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
@@ -1355,6 +1329,8 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public void setDefaultSmsSubId(int subId) {
+        enforceModifyPhoneState("setDefaultSmsSubId");
+
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             throw new RuntimeException("setDefaultSmsSubId called with DEFAULT_SUB_ID");
         }
@@ -1384,6 +1360,8 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public void setDefaultVoiceSubId(int subId) {
+        enforceModifyPhoneState("setDefaultVoiceSubId");
+
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             throw new RuntimeException("setDefaultVoiceSubId called with DEFAULT_SUB_ID");
         }
@@ -1422,6 +1400,8 @@ public class SubscriptionController extends ISub.Stub {
 
     @Override
     public void setDefaultDataSubId(int subId) {
+        enforceModifyPhoneState("setDefaultDataSubId");
+
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
         }
@@ -1502,8 +1482,8 @@ public class SubscriptionController extends ISub.Stub {
                 intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
                 SubscriptionManager.putPhoneIdAndSubIdExtra(intent, phoneId, subId);
                 if (DBG) {
-                    logdl("[setDefaultFallbackSubId] broadcast default subId changed phoneId=" + phoneId
-                            + " subId=" + subId);
+                    logdl("[setDefaultFallbackSubId] broadcast default subId changed phoneId=" +
+                            phoneId + " subId=" + subId);
                 }
                 mContext.sendStickyBroadcastAsUser(intent, UserHandle.ALL);
             } else {
@@ -1516,10 +1496,8 @@ public class SubscriptionController extends ISub.Stub {
     }
 
     @Override
-    public void clearDefaultsForInactiveSubIds(String callingPackage) {
-        if (!canReadPhoneState(callingPackage, "clearDefaultsForInactiveSubIds")) {
-            return;
-        }
+    public void clearDefaultsForInactiveSubIds() {
+        enforceModifyPhoneState("clearDefaultsForInactiveSubIds");
 
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
@@ -1667,6 +1645,7 @@ public class SubscriptionController extends ISub.Stub {
         return subIdArr;
     }
 
+    @Override
     public boolean isActiveSubId(int subId) {
         boolean retVal = SubscriptionManager.isValidSubscriptionId(subId)
                 && sSlotIdxToSubId.containsValue(subId);
