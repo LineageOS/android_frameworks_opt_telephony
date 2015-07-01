@@ -127,12 +127,12 @@ public class ApnContext {
     }
 
     public synchronized ApnSetting getApnSetting() {
-        log("getApnSetting: apnSetting=" + mApnSetting);
+        if (DBG) log("getApnSetting: apnSetting=" + mApnSetting);
         return mApnSetting;
     }
 
     public synchronized void setApnSetting(ApnSetting apnSetting) {
-        log("setApnSetting: apnSetting=" + apnSetting);
+        if (DBG) log("setApnSetting: apnSetting=" + apnSetting);
         mApnSetting = apnSetting;
     }
 
