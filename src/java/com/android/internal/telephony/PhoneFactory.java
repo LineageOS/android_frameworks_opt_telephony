@@ -53,6 +53,7 @@ public class PhoneFactory {
     static final String LOG_TAG = "PhoneFactory";
     static final int SOCKET_OPEN_RETRY_MILLIS = 2 * 1000;
     static final int SOCKET_OPEN_MAX_RETRY = 3;
+    static final boolean DBG = false;
 
     //***** Class Variables
 
@@ -228,15 +229,18 @@ public class PhoneFactory {
                 throw new IllegalStateException("Default phones haven't been made yet!");
                 // CAF_MSIM FIXME need to introduce default phone id ?
             } else if (phoneId == SubscriptionManager.DEFAULT_PHONE_INDEX) {
-                dbgInfo = "phoneId == DEFAULT_PHONE_ID return sProxyPhone";
+                if (DBG) dbgInfo = "phoneId == DEFAULT_PHONE_ID return sProxyPhone";
                 phone = sProxyPhone;
             } else {
-                dbgInfo = "phoneId != DEFAULT_PHONE_ID return sProxyPhones[phoneId]";
+                if (DBG) dbgInfo = "phoneId != DEFAULT_PHONE_ID return sProxyPhones[phoneId]";
                 phone = (((phoneId >= 0)
                                 && (phoneId < TelephonyManager.getDefault().getPhoneCount()))
                         ? sProxyPhones[phoneId] : null);
             }
-            Rlog.d(LOG_TAG, "getPhone:- " + dbgInfo + " phoneId=" + phoneId + " phone=" + phone);
+            if (DBG) {
+                Rlog.d(LOG_TAG, "getPhone:- " + dbgInfo + " phoneId=" + phoneId +
+                        " phone=" + phone);
+            }
             return phone;
         }
     }
@@ -278,7 +282,7 @@ public class PhoneFactory {
 
         // Update MCC MNC device configuration information
         String defaultMccMnc = TelephonyManager.getDefault().getSimOperatorNumericForPhone(phoneId);
-        Rlog.d(LOG_TAG, "update mccmnc=" + defaultMccMnc);
+        if (DBG) Rlog.d(LOG_TAG, "update mccmnc=" + defaultMccMnc);
         MccTable.updateMccMncConfiguration(sContext, defaultMccMnc, false);
 
         // Broadcast an Intent for default sub change
