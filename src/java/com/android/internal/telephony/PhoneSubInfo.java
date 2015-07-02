@@ -140,7 +140,8 @@ public class PhoneSubInfo {
      * Retrieves the phone number string for line 1.
      */
     public String getLine1Number(String callingPackage) {
-        if (!checkReadPhoneState(callingPackage, "getLine1Number")) {
+        // This is open to apps with WRITE_SMS.
+        if (!checkReadPhoneNumber(callingPackage, "getLine1Number")) {
             return null;
         }
         return mPhone.getLine1Number();
@@ -378,5 +379,16 @@ public class PhoneSubInfo {
 
         return mAppOps.noteOp(AppOpsManager.OP_READ_PHONE_STATE, Binder.getCallingUid(),
             callingPackage) == AppOpsManager.MODE_ALLOWED;
+    }
+
+
+    /**
+     * Besides READ_PHONE_STATE, WRITE_SMS also allows apps to get phone numbers.
+     */
+    private boolean checkReadPhoneNumber(String callingPackage, String message) {
+        // Note checkReadPhoneState() may throw, so we need to do the appops check first.
+        return (mAppOps.noteOp(AppOpsManager.OP_WRITE_SMS,
+                        Binder.getCallingUid(), callingPackage) == AppOpsManager.MODE_ALLOWED)
+                || checkReadPhoneState(callingPackage, message);
     }
 }
