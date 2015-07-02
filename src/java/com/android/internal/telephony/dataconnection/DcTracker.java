@@ -715,7 +715,7 @@ public final class DcTracker extends DcTrackerBase {
         boolean recordsLoaded = false;
         if (r != null) {
             recordsLoaded = r.getRecordsLoaded();
-            if (DBG) log("isDataAllowed getRecordsLoaded=" + recordsLoaded);
+            if (DBG && !recordsLoaded) log("isDataAllowed getRecordsLoaded=" + recordsLoaded);
         }
 
         //FIXME always attach
@@ -1599,7 +1599,6 @@ public final class DcTracker extends DcTrackerBase {
         ApnContext potentialApnCtx = null;
         for (ApnContext curApnCtx : mApnContexts.values()) {
             DcAsyncChannel curDcac = curApnCtx.getDcAc();
-            log("curDcac: " + curDcac);
             if (curDcac != null) {
                 ApnSetting apnSetting = curApnCtx.getApnSetting();
                 log("apnSetting: " + apnSetting);
@@ -2463,10 +2462,9 @@ public final class DcTracker extends DcTrackerBase {
         if (mAllApnSettings != null) {
             if (DBG) log("buildWaitingApns: mAllApnSettings=" + mAllApnSettings);
             for (ApnSetting apn : mAllApnSettings) {
-                if (DBG) log("buildWaitingApns: apn=" + apn);
                 if (apn.canHandleType(requestedApnType)) {
                     if (ServiceState.bitmaskHasTech(apn.bearerBitmask, radioTech)) {
-                        if (DBG) log("buildWaitingApns: adding apn=" + apn.toString());
+                        if (DBG) log("buildWaitingApns: adding apn=" + apn);
                         apnList.add(apn);
                     } else {
                         if (DBG) {
@@ -2474,12 +2472,10 @@ public final class DcTracker extends DcTrackerBase {
                                     "not include radioTech:" + radioTech);
                         }
                     }
-                } else {
-                if (DBG) {
+                } else if (DBG) {
                     log("buildWaitingApns: couldn't handle requesedApnType="
                             + requestedApnType);
                 }
-            }
             }
         } else {
             loge("mAllApnSettings is empty!");
