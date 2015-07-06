@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.net.Uri;
+import android.os.Bundle;
 import android.os.SystemClock;
 import android.telecom.ConferenceParticipant;
 import android.telephony.Rlog;
@@ -298,6 +299,15 @@ public abstract class Connection {
      */
     public Call.State getStateBeforeHandover() {
         return mPreHandoverState;
+   }
+
+   /**
+     * getExtras returns the extras associated with a connection.
+     * @return null. Subclasses of Connection that support call extras need
+     * to override this method to return the extras.
+     */
+    public Bundle getExtras() {
+        return null;
     }
 
     /**
