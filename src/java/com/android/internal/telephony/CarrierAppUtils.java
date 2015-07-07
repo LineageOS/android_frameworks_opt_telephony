@@ -96,8 +96,8 @@ public final class CarrierAppUtils {
                                 + userId);
                         enabledCarrierPackages.add(ai.packageName);
                         packageManager.setApplicationEnabledSetting(packageName,
-                                PackageManager.COMPONENT_ENABLED_STATE_ENABLED, 0, userId,
-                                callingPackage);
+                                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                                PackageManager.DONT_KILL_APP, userId, callingPackage);
                     } else if (ai.enabledSetting ==
                             PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
                         // If we're already enabled, don't bother re-enabling, but treat the app as
