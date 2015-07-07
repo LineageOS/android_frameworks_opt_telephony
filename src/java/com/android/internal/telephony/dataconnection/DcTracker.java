@@ -2429,6 +2429,9 @@ public final class DcTracker extends DcTrackerBase {
             if (DBG) log("buildWaitingApns: usePreferred NotFoundException set to true");
             usePreferred = true;
         }
+        if (usePreferred) {
+            mPreferredApn = getPreferredApn();
+        }
         if (DBG) {
             log("buildWaitingApns: usePreferred=" + usePreferred
                     + " canSetPreferApn=" + mCanSetPreferApn
