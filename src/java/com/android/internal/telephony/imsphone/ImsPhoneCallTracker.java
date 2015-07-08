@@ -596,8 +596,21 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
         // Keep track of the connect time of the earliest call so that it can be set on the
         // {@code ImsConference} when it is created.
-        long conferenceConnectTime = Math.min(mForegroundCall.getEarliestConnectTime(),
-                mBackgroundCall.getEarliestConnectTime());
+        long foregroundConnectTime = mForegroundCall.getEarliestConnectTime();
+        long backgroundConnectTime = mBackgroundCall.getEarliestConnectTime();
+        long conferenceConnectTime;
+        if (foregroundConnectTime > 0 && backgroundConnectTime > 0) {
+            conferenceConnectTime = Math.min(mForegroundCall.getEarliestConnectTime(),
+                    mBackgroundCall.getEarliestConnectTime());
+            log("conference - using connect time = " + conferenceConnectTime);
+        } else if (foregroundConnectTime > 0) {
+            log("conference - bg call connect time is 0; using fg = " + foregroundConnectTime);
+            conferenceConnectTime = foregroundConnectTime;
+        } else {
+            log("conference - fg call connect time is 0; using bg = " + backgroundConnectTime);
+            conferenceConnectTime = backgroundConnectTime;
+        }
+
         ImsPhoneConnection foregroundConnection = mForegroundCall.getFirstConnection();
         if (foregroundConnection != null) {
             foregroundConnection.setConferenceConnectTime(conferenceConnectTime);
