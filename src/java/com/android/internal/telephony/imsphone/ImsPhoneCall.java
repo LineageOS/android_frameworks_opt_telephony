@@ -237,6 +237,8 @@ public class ImsPhoneCall extends Call {
             long conferenceConnectTime = imsPhoneConnection.getConferenceConnectTime();
             if (conferenceConnectTime > 0) {
                 imsPhoneConnection.setConnectTime(conferenceConnectTime);
+            } else {
+                Rlog.d(LOG_TAG, "merge: conference connect time is 0");
             }
         }
         Rlog.d(LOG_TAG, "merge: " + that + "state = " + state);
