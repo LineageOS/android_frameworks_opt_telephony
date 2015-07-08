@@ -56,6 +56,7 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
+import android.util.LocalLog;
 import android.view.WindowManager;
 import android.telephony.Rlog;
 
@@ -252,18 +253,20 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     @Override
-    public void incApnRefCount(String name) {
+    public void incApnRefCount(String name, LocalLog log) {
         ApnContext apnContext = mApnContexts.get(name);
+        log.log("DcTracker.incApnRefCount on " + name + " found " + apnContext);
         if (apnContext != null) {
-            apnContext.incRefCount();
+            apnContext.incRefCount(log);
         }
     }
 
     @Override
-    public void decApnRefCount(String name) {
+    public void decApnRefCount(String name, LocalLog log) {
         ApnContext apnContext = mApnContexts.get(name);
+        log.log("DcTracker.decApnRefCount on " + name + " found " + apnContext);
         if (apnContext != null) {
-            apnContext.decRefCount();
+            apnContext.decRefCount(log);
         }
     }
 
@@ -832,6 +835,7 @@ public final class DcTracker extends DcTrackerBase {
                     " due to " + apnContext.getReason() + " apnContext=" + apnContext);
             log("trySetupData with mIsPsRestricted=" + mIsPsRestricted);
         }
+        apnContext.requestLog("trySetupData due to " + apnContext.getReason());
 
         if (mPhone.getSimulatedRadioControl() != null) {
             // Assume data is connected on the simulator
@@ -855,7 +859,9 @@ public final class DcTracker extends DcTrackerBase {
                 (isDataAllowed(apnContext) &&
                 getAnyDataEnabled(checkUserDataEnabled) && !isEmergency()))) {
             if (apnContext.getState() == DctConstants.State.FAILED) {
-                if (DBG) log("trySetupData: make a FAILED ApnContext IDLE so its reusable");
+                String str ="trySetupData: make a FAILED ApnContext IDLE so its reusable";
+                if (DBG) log(str);
+                apnContext.requestLog(str);
                 apnContext.setState(DctConstants.State.IDLE);
             }
             int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
@@ -867,7 +873,9 @@ public final class DcTracker extends DcTrackerBase {
                 if (waitingApns.isEmpty()) {
                     notifyNoData(DcFailCause.MISSING_UNKNOWN_APN, apnContext);
                     notifyOffApnsOfAvailability(apnContext.getReason());
-                    if (DBG) log("trySetupData: X No APN found retValue=false");
+                    String str = "trySetupData: X No APN found retValue=false";
+                    if (DBG) log(str);
+                    apnContext.requestLog(str);
                     return false;
                 } else {
                     apnContext.setWaitingApns(waitingApns);
@@ -893,7 +901,16 @@ public final class DcTracker extends DcTrackerBase {
                 mPhone.notifyDataConnectionFailed(apnContext.getReason(), apnContext.getApnType());
             }
             notifyOffApnsOfAvailability(apnContext.getReason());
-            if (DBG) log ("trySetupData: X apnContext not 'ready' retValue=false");
+            String str = "trySetupData: X apnContext not 'ready' retValue=false";
+            apnContext.requestLog(str);
+            if (DBG) {
+                log(str);
+                if (!apnContext.isConnectable()) log("apnContext.isConnectable = false");
+                if (!isDataAllowed(apnContext)) log("isDataAllowed = false");
+                if (!getAnyDataEnabled(checkUserDataEnabled)) {
+                    log("getAnyDataEnabled(" + checkUserDataEnabled + ") = false");
+                }
+            }
             return false;
         }
     }
@@ -989,10 +1006,10 @@ public final class DcTracker extends DcTrackerBase {
         }
 
         DcAsyncChannel dcac = apnContext.getDcAc();
-        if (DBG) {
-            log("cleanUpConnection: E tearDown=" + tearDown + " reason=" + apnContext.getReason() +
-                    " apnContext=" + apnContext);
-        }
+        String str = "cleanUpConnection: tearDown=" + tearDown + " reason=" +
+                apnContext.getReason();
+        if (DBG) log(str + " apnContext=" + apnContext);
+        apnContext.requestLog(str);
         if (tearDown) {
             if (apnContext.isDisconnected()) {
                 // The request is tearDown and but ApnContext is not connected.
@@ -1000,10 +1017,9 @@ public final class DcTracker extends DcTrackerBase {
                 apnContext.setState(DctConstants.State.IDLE);
                 if (!apnContext.isReady()) {
                     if (dcac != null) {
-                        if (DBG) {
-                            log("cleanUpConnection: teardown, disconnected, !ready apnContext="
-                                    + apnContext);
-                        }
+                        str = "cleanUpConnection: teardown, disconnectd, !ready";
+                        if (DBG) log(str + " apnContext=" + apnContext);
+                        apnContext.requestLog(str);
                         dcac.tearDown(apnContext, "", null);
                     }
                     apnContext.setDataConnectionAc(null);
@@ -1027,10 +1043,9 @@ public final class DcTracker extends DcTrackerBase {
                                 disconnectAll = true;
                             }
                         }
-                        if (DBG) {
-                            log("cleanUpConnection: tearing down" + (disconnectAll ? " all" :"")
-                                    + "apnContext=" + apnContext);
-                        }
+                        str = "cleanUpConnection: tearing down" + (disconnectAll ? " all" : "");
+                        if (DBG) log(str + "apnContext=" + apnContext);
+                        apnContext.requestLog(str);
                         Message msg = obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, apnContext);
                         if (disconnectAll) {
                             apnContext.getDcAc().tearDownAll(apnContext.getReason(), msg);
@@ -1045,6 +1060,7 @@ public final class DcTracker extends DcTrackerBase {
                     // apn is connected but no reference to dcac.
                     // Should not be happen, but reset the state in case.
                     apnContext.setState(DctConstants.State.IDLE);
+                    apnContext.requestLog("cleanUpConnection: connected, bug no DCAC");
                     mPhone.notifyDataConnection(apnContext.getReason(),
                                                 apnContext.getApnType());
                 }
@@ -1062,10 +1078,9 @@ public final class DcTracker extends DcTrackerBase {
         if (dcac != null) {
             cancelReconnectAlarm(apnContext);
         }
-        if (DBG) {
-            log("cleanUpConnection: X tearDown=" + tearDown + " reason=" + apnContext.getReason() +
-                    " apnContext=" + apnContext + " dcac=" + apnContext.getDcAc());
-        }
+        str = "cleanUpConnection: X tearDown=" + tearDown + " reason=" + apnContext.getReason();
+        if (DBG) log(str + " apnContext=" + apnContext + " dcac=" + apnContext.getDcAc());
+        apnContext.requestLog(str);
     }
 
     /**
@@ -1222,6 +1237,7 @@ public final class DcTracker extends DcTrackerBase {
 
     private boolean setupData(ApnContext apnContext, int radioTech) {
         if (DBG) log("setupData: apnContext=" + apnContext);
+        apnContext.requestLog("setupData");
         ApnSetting apnSetting;
         DcAsyncChannel dcac = null;
 
@@ -1518,11 +1534,12 @@ public final class DcTracker extends DcTrackerBase {
     private void applyNewState(ApnContext apnContext, boolean enabled, boolean met) {
         boolean cleanup = false;
         boolean trySetup = false;
-        if (DBG) {
-            log("applyNewState(" + apnContext.getApnType() + ", " + enabled +
-                    "(" + apnContext.isEnabled() + "), " + met + "(" +
-                    apnContext.getDependencyMet() +"))");
-        }
+        String str ="applyNewState(" + apnContext.getApnType() + ", " + enabled +
+                "(" + apnContext.isEnabled() + "), " + met + "(" +
+                apnContext.getDependencyMet() +"))";
+        if (DBG) log(str);
+        apnContext.requestLog(str);
+
         if (apnContext.isReady()) {
             cleanup = true;
             if (enabled && met) {
@@ -1534,6 +1551,7 @@ public final class DcTracker extends DcTrackerBase {
                     case DISCONNECTING:
                         // We're "READY" and active so just return
                         if (DBG) log("applyNewState: 'ready' so return");
+                        apnContext.requestLog("applyNewState state=" + state + ", so return");
                         return;
                     case IDLE:
                         // fall through: this is unexpected but if it happens cleanup and try setup
