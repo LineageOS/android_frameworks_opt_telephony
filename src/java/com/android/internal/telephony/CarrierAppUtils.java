@@ -88,29 +88,33 @@ public final class CarrierAppUtils {
                 boolean hasPrivileges =
                         telephonyManager.checkCarrierPrivilegesForPackageAnyPhone(packageName) ==
                                 TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
-                if (hasPrivileges) {
-                    if (ai.enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
+
+                // Only update enabled state for the app on /system. Once it has been updated we
+                // shouldn't touch it.
+                if (!ai.isUpdatedSystemApp()) {
+                    if (hasPrivileges
+                            && (ai.enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
                             || ai.enabledSetting ==
-                                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED) {
+                                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED)) {
                         Slog.i(TAG, "Update state(" + packageName + "): ENABLED for user "
                                 + userId);
-                        enabledCarrierPackages.add(ai.packageName);
                         packageManager.setApplicationEnabledSetting(packageName,
                                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                                 PackageManager.DONT_KILL_APP, userId, callingPackage);
-                    } else if (ai.enabledSetting ==
-                            PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
-                        // If we're already enabled, don't bother re-enabling, but treat the app as
-                        // enabled so that we re-grant default permissions in case they were lost.
-                        enabledCarrierPackages.add(ai.packageName);
+                    } else if (!hasPrivileges
+                            && ai.enabledSetting ==
+                                    PackageManager.COMPONENT_ENABLED_STATE_DEFAULT) {
+                        Slog.i(TAG, "Update state(" + packageName
+                                + "): DISABLED_UNTIL_USED for user " + userId);
+                        packageManager.setApplicationEnabledSetting(packageName,
+                                PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED, 0,
+                                userId, callingPackage);
                     }
-                } else if (!hasPrivileges
-                        && ai.enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT) {
-                    Slog.i(TAG, "Update state(" + packageName + "): DISABLED_UNTIL_USED for user "
-                            + userId);
-                    packageManager.setApplicationEnabledSetting(packageName,
-                            PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED, 0, userId,
-                            callingPackage);
+                }
+
+                // Always re-grant default permissions to carrier apps w/ privileges.
+                if (hasPrivileges) {
+                    enabledCarrierPackages.add(ai.packageName);
                 }
             }
 
@@ -194,8 +198,7 @@ public final class CarrierAppUtils {
                     // No app found for packageName
                     continue;
                 }
-                boolean isSystemPackage = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
-                if (!isSystemPackage) {
+                if (!ai.isSystemApp()) {
                     continue;
                 }
                 apps.add(ai);
