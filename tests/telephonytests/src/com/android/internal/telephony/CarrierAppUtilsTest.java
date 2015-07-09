@@ -82,7 +82,10 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verifyNoMoreInteractions(mTelephonyManager);
     }
 
-    /** Configured app has privileges, but was disabled by the user - should do nothing. */
+    /**
+     * Configured app has privileges, but was disabled by the user - should only grant
+     * permissions.
+     */
     public void testDisableCarrierAppsUntilPrivileged_HasPrivileges_DisabledUser()
             throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
@@ -98,12 +101,11 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
-        Mockito.verify(mPackageManager, Mockito.never())
-                .grantDefaultPermissionsToEnabledCarrierApps(
-                        Mockito.any(String[].class), Mockito.anyInt());
+        Mockito.verify(mPackageManager).grantDefaultPermissionsToEnabledCarrierApps(
+                new String[] {appInfo.packageName}, USER_ID);
     }
 
-    /** Configured app has privileges, but was disabled - should do nothing. */
+    /** Configured app has privileges, but was disabled - should only grant permissions. */
     public void testDisableCarrierAppsUntilPrivileged_HasPrivileges_Disabled() throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
         appInfo.packageName = CARRIER_APP;
@@ -118,9 +120,8 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
-        Mockito.verify(mPackageManager, Mockito.never())
-                .grantDefaultPermissionsToEnabledCarrierApps(
-                        Mockito.any(String[].class), Mockito.anyInt());
+        Mockito.verify(mPackageManager).grantDefaultPermissionsToEnabledCarrierApps(
+                new String[] {appInfo.packageName}, USER_ID);
     }
 
     /** Configured app has privileges, and is already enabled - should only grant permissions. */
@@ -128,6 +129,25 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         ApplicationInfo appInfo = new ApplicationInfo();
         appInfo.packageName = CARRIER_APP;
         appInfo.flags |= ApplicationInfo.FLAG_SYSTEM;
+        appInfo.enabledSetting = PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
+        Mockito.when(mPackageManager.getApplicationInfo(CARRIER_APP,
+                PackageManager.GET_DISABLED_UNTIL_USED_COMPONENTS, USER_ID)).thenReturn(appInfo);
+        Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
+        CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
+                mTelephonyManager, USER_ID, CARRIER_APPS);
+        Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
+                Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
+                Mockito.anyString());
+        Mockito.verify(mPackageManager).grantDefaultPermissionsToEnabledCarrierApps(
+                new String[] {appInfo.packageName}, USER_ID);
+    }
+
+    /** Configured /data app has privileges - should only grant permissions. */
+    public void testDisableCarrierAppsUntilPrivileged_HasPrivileges_UpdatedApp() throws Exception {
+        ApplicationInfo appInfo = new ApplicationInfo();
+        appInfo.packageName = CARRIER_APP;
+        appInfo.flags |= ApplicationInfo.FLAG_SYSTEM | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP;
         appInfo.enabledSetting = PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
         Mockito.when(mPackageManager.getApplicationInfo(CARRIER_APP,
                 PackageManager.GET_DISABLED_UNTIL_USED_COMPONENTS, USER_ID)).thenReturn(appInfo);
@@ -226,6 +246,26 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         ApplicationInfo appInfo = new ApplicationInfo();
         appInfo.packageName = CARRIER_APP;
         appInfo.flags |= ApplicationInfo.FLAG_SYSTEM;
+        appInfo.enabledSetting = PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
+        Mockito.when(mPackageManager.getApplicationInfo(CARRIER_APP,
+                PackageManager.GET_DISABLED_UNTIL_USED_COMPONENTS, USER_ID)).thenReturn(appInfo);
+        Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
+                .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
+        CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
+                mTelephonyManager, USER_ID, CARRIER_APPS);
+        Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
+                Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
+                Mockito.anyString());
+        Mockito.verify(mPackageManager, Mockito.never())
+                .grantDefaultPermissionsToEnabledCarrierApps(
+                        Mockito.any(String[].class), Mockito.anyInt());
+    }
+
+    /** Configured /data app has no privileges - should do nothing. */
+    public void testDisableCarrierAppsUntilPrivileged_NoPrivileges_UpdatedApp() throws Exception {
+        ApplicationInfo appInfo = new ApplicationInfo();
+        appInfo.packageName = CARRIER_APP;
+        appInfo.flags |= ApplicationInfo.FLAG_SYSTEM | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP;
         appInfo.enabledSetting = PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
         Mockito.when(mPackageManager.getApplicationInfo(CARRIER_APP,
                 PackageManager.GET_DISABLED_UNTIL_USED_COMPONENTS, USER_ID)).thenReturn(appInfo);
