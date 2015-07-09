@@ -16,7 +16,7 @@
 
 package com.android.internal.telephony.dataconnection;
 
-
+import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
@@ -24,6 +24,7 @@ import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
+import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.util.AsyncChannel;
 import com.android.internal.util.FastPrintWriter;
 import com.android.internal.util.Protocol;
@@ -211,8 +212,12 @@ public final class DataConnection extends StateMachine {
     static final int EVENT_DATA_CONNECTION_ROAM_ON = BASE + 12;
     static final int EVENT_DATA_CONNECTION_ROAM_OFF = BASE + 13;
     static final int EVENT_BW_REFRESH_RESPONSE = BASE + 14;
+    static final int EVENT_DATA_CONNECTION_VOICE_CALL_STARTED = BASE + 15;
+    static final int EVENT_DATA_CONNECTION_VOICE_CALL_ENDED = BASE + 16;
 
-    private static final int CMD_TO_STRING_COUNT = EVENT_BW_REFRESH_RESPONSE - BASE + 1;
+    private static final int CMD_TO_STRING_COUNT =
+            EVENT_DATA_CONNECTION_VOICE_CALL_ENDED - BASE + 1;
+
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
         sCmdToString[EVENT_CONNECT - BASE] = "EVENT_CONNECT";
@@ -232,6 +237,10 @@ public final class DataConnection extends StateMachine {
         sCmdToString[EVENT_DATA_CONNECTION_ROAM_ON - BASE] = "EVENT_DATA_CONNECTION_ROAM_ON";
         sCmdToString[EVENT_DATA_CONNECTION_ROAM_OFF - BASE] = "EVENT_DATA_CONNECTION_ROAM_OFF";
         sCmdToString[EVENT_BW_REFRESH_RESPONSE - BASE] = "EVENT_BW_REFRESH_RESPONSE";
+        sCmdToString[EVENT_DATA_CONNECTION_VOICE_CALL_STARTED - BASE] =
+                "EVENT_DATA_CONNECTION_VOICE_CALL_STARTED";
+        sCmdToString[EVENT_DATA_CONNECTION_VOICE_CALL_ENDED - BASE] =
+                "EVENT_DATA_CONNECTION_VOICE_CALL_ENDED";
     }
     // Convert cmd to string or null if unknown
     static String cmdToString(int cmd) {
@@ -1225,6 +1234,7 @@ public final class DataConnection extends StateMachine {
                     mNetworkInfo.setSubtype(networkType,
                             TelephonyManager.getNetworkTypeName(networkType));
                     if (mNetworkAgent != null) {
+                        updateNetworkInfoSuspendState();
                         mNetworkAgent.sendNetworkCapabilities(makeNetworkCapabilities());
                         mNetworkAgent.sendNetworkInfo(mNetworkInfo);
                         mNetworkAgent.sendLinkProperties(mLinkProperties);
@@ -1250,6 +1260,33 @@ public final class DataConnection extends StateMachine {
             return retVal;
         }
     }
+
+    private boolean updateNetworkInfoSuspendState() {
+        final NetworkInfo.DetailedState oldState = mNetworkInfo.getDetailedState();
+
+        // this is only called when we are either connected or suspended.  Decide which.
+        if (mNetworkAgent == null) {
+            Rlog.e(getName(), "Setting suspend state without a NetworkAgent");
+        }
+
+        // if we are not in-service change to SUSPENDED
+        final ServiceStateTracker sst = mPhone.getServiceStateTracker();
+        if (sst.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE) {
+            mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.SUSPENDED, null, null);
+        } else {
+            // check for voice call and concurrency issues
+            if (sst.isConcurrentVoiceAndDataAllowed() == false) {
+                final CallTracker ct = mPhone.getCallTracker();
+                if (ct.getState() != PhoneConstants.State.IDLE) {
+                    mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.SUSPENDED, null, null);
+                    return (oldState != NetworkInfo.DetailedState.SUSPENDED);
+                }
+            }
+            mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.CONNECTED, null, null);
+        }
+        return (oldState != mNetworkInfo.getDetailedState());
+    }
+
     private DcDefaultState mDefaultState = new DcDefaultState();
 
     /**
@@ -1724,6 +1761,11 @@ public final class DataConnection extends StateMachine {
             // If we were retrying there maybe more than one, otherwise they'll only be one.
             notifyAllOfConnected(Phone.REASON_CONNECTED);
 
+            mPhone.getCallTracker().registerForVoiceCallStarted(getHandler(),
+                    DataConnection.EVENT_DATA_CONNECTION_VOICE_CALL_STARTED, null);
+            mPhone.getCallTracker().registerForVoiceCallEnded(getHandler(),
+                    DataConnection.EVENT_DATA_CONNECTION_VOICE_CALL_ENDED, null);
+
             // If the EVENT_CONNECT set the current max retry restore it here
             // if it didn't then this is effectively a NOP.
             mRetryManager.restoreCurMaxRetryCount();
@@ -1752,6 +1794,9 @@ public final class DataConnection extends StateMachine {
             } else if (mDcFailCause != null) {
                 reason = mDcFailCause.toString();
             }
+            mPhone.getCallTracker().unregisterForVoiceCallStarted(getHandler());
+            mPhone.getCallTracker().unregisterForVoiceCallEnded(getHandler());
+
             mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.DISCONNECTED,
                     reason, mNetworkInfo.getExtraInfo());
             mNetworkAgent.sendNetworkInfo(mNetworkInfo);
@@ -1873,6 +1918,15 @@ public final class DataConnection extends StateMachine {
                                 mNetworkAgent.sendNetworkCapabilities(nc);
                             }
                         }
+                    }
+                    retVal = HANDLED;
+                    break;
+                }
+                case EVENT_DATA_CONNECTION_VOICE_CALL_STARTED:
+                case EVENT_DATA_CONNECTION_VOICE_CALL_ENDED: {
+                    if (updateNetworkInfoSuspendState()) {
+                        // state changed
+                        mNetworkAgent.sendNetworkInfo(mNetworkInfo);
                     }
                     retVal = HANDLED;
                     break;
