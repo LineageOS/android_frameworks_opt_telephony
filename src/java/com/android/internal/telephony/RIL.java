@@ -289,7 +289,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     // Number of per-network elements expected in QUERY_AVAILABLE_NETWORKS's response.
     // 4 elements is default, but many RILs actually return 5, making it impossible to
     // divide the response array without prior knowledge of the number of elements.
-    protected int mQANElements = 4;
+    protected int mQANElements = SystemProperties.getInt("ro.ril.telephony.mqanelements", 4);
 
     //***** Events
 
