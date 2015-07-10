@@ -376,7 +376,7 @@ public class ProxyController {
             if (mRadioAccessFamilyStatusCounter == 0) {
                 HashSet<String> modemsInUse = new HashSet<String>(mNewLogicalModemIds.length);
                 for (String modemId : mNewLogicalModemIds) {
-                    if (!modemId.equals("") && !modemsInUse.add(modemId)) {
+                    if (!modemsInUse.add(modemId)) {
                         mTransactionFailed = true;
                         Log.wtf(LOG_TAG, "ERROR: sending down the same id for different phones");
                     }
