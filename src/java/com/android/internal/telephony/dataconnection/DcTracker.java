@@ -2482,7 +2482,7 @@ public final class DcTracker extends DcTrackerBase {
                 }
             }
         } else {
-            loge("mAllApnSettings is empty!");
+            loge("mAllApnSettings is null!");
         }
         if (DBG) log("buildWaitingApns: X apnList=" + apnList);
         return apnList;
@@ -2519,8 +2519,8 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private ApnSetting getPreferredApn() {
-        if (mAllApnSettings.isEmpty()) {
-            log("getPreferredApn: X not found mAllApnSettings.isEmpty");
+        if (mAllApnSettings == null || mAllApnSettings.isEmpty()) {
+            log("getPreferredApn: mAllApnSettings is " + ((mAllApnSettings == null)?"null":"empty"));
             return null;
         }
 
