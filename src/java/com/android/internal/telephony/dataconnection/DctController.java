@@ -586,8 +586,8 @@ public class DctController extends Handler {
         }
         if (nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
             if (name != null) error = true;
-            name = null;
-            loge("EIMS APN type not yet supported");
+            name = PhoneConstants.APN_TYPE_EMERGENCY;
+            type = ConnectivityManager.TYPE_MOBILE_EMERGENCY;
         }
         if (error) {
             loge("Multiple apn types specified in request - result is unspecified!");
