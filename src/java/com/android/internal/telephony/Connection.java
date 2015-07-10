@@ -389,6 +389,10 @@ public abstract class Connection {
         }
     }
 
+    public final void removePostDialListener(PostDialListener listener) {
+        mPostDialListeners.remove(listener);
+    }
+
     protected final void clearPostDialListeners() {
         mPostDialListeners.clear();
     }
