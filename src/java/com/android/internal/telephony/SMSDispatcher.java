@@ -83,8 +83,8 @@ public abstract class SMSDispatcher extends Handler {
     private static final String SEND_NEXT_MSG_EXTRA = "SendNextMsg";
 
     /** Permission required to send SMS to short codes without user confirmation. */
-    private static final String SEND_SMS_NO_CONFIRMATION_PERMISSION =
-            "android.permission.SEND_SMS_NO_CONFIRMATION";
+    private static final String SEND_RESPOND_VIA_MESSAGE_PERMISSION =
+            "android.permission.SEND_RESPOND_VIA_MESSAGE";
 
     private static final int PREMIUM_RULE_USE_SIM = 1;
     private static final int PREMIUM_RULE_USE_NETWORK = 2;
@@ -825,7 +825,7 @@ public abstract class SMSDispatcher extends Handler {
             return true;
         }
 
-        if (mContext.checkCallingOrSelfPermission(SEND_SMS_NO_CONFIRMATION_PERMISSION)
+        if (mContext.checkCallingOrSelfPermission(SEND_RESPOND_VIA_MESSAGE_PERMISSION)
                 == PackageManager.PERMISSION_GRANTED) {
             return true;            // app is pre-approved to send to short codes
         } else {
