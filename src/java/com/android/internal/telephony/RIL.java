@@ -3446,8 +3446,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 + " 0x" + Integer.toHexString(sw2) + " "
                 + s);
 
-
-        return new IccIoResult(sw1, sw2, android.util.Base64.decode(s, android.util.Base64.DEFAULT));
+        return new IccIoResult(sw1, sw2, (s != null)
+                ? android.util.Base64.decode(s, android.util.Base64.DEFAULT) : (byte[]) null);
     }
 
     private Object
