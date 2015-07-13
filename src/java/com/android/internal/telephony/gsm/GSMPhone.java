@@ -1818,7 +1818,7 @@ public class GSMPhone extends PhoneBase {
         return (r != null) ? r.isCspPlmnEnabled() : false;
     }
 
-    boolean isManualNetSelAllowed() {
+    public boolean isManualNetSelAllowed() {
 
         int nwMode = Phone.PREFERRED_NT_MODE;
         int subId = getSubId();
