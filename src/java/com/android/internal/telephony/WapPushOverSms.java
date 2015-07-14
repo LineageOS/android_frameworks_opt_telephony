@@ -21,6 +21,7 @@ import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_NOTIFICATION_IN
 import static com.google.android.mms.pdu.PduHeaders.MESSAGE_TYPE_READ_ORIG_IND;
 import android.app.Activity;
 import android.app.AppOpsManager;
+import android.app.BroadcastOptions;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.ContentValues;
@@ -34,7 +35,9 @@ import android.database.sqlite.SqliteWrapper;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.IDeviceIdleController;
 import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
@@ -60,9 +63,12 @@ import com.google.android.mms.pdu.ReadOrigInd;
  */
 public class WapPushOverSms implements ServiceConnection {
     private static final String TAG = "WAP PUSH";
-    private static final boolean DBG = true;
+    private static final boolean DBG = false;
 
     private final Context mContext;
+    IDeviceIdleController mDeviceIdleController;
+
+    private String mWapPushManagerPackage;
 
     /** Assigned from ServiceConnection callback on main threaad. */
     private volatile IWapPushManager mWapPushManager;
@@ -81,12 +87,15 @@ public class WapPushOverSms implements ServiceConnection {
 
     public WapPushOverSms(Context context) {
         mContext = context;
+        mDeviceIdleController = IDeviceIdleController.Stub.asInterface(
+                ServiceManager.getService(Context.DEVICE_IDLE_CONTROLLER));
         Intent intent = new Intent(IWapPushManager.class.getName());
         ComponentName comp = intent.resolveSystemService(context.getPackageManager(), 0);
         intent.setComponent(comp);
         if (comp == null || !context.bindService(intent, this, Context.BIND_AUTO_CREATE)) {
             Rlog.e(TAG, "bindService() for wappush manager failed");
         } else {
+            mWapPushManagerPackage = comp.getPackageName();
             if (DBG) Rlog.v(TAG, "bindService() for wappush manager succeeded");
         }
     }
@@ -230,6 +239,9 @@ public class WapPushOverSms implements ServiceConnection {
                     if (wapPushMan == null) {
                         if (DBG) Rlog.w(TAG, "wap push manager not found!");
                     } else {
+                        mDeviceIdleController.addPowerSaveTempWhitelistAppForMms(
+                                mWapPushManagerPackage, 0, "mms-mgr");
+
                         Intent intent = new Intent();
                         intent.putExtra("transactionId", transactionId);
                         intent.putExtra("pduType", pduType);
@@ -283,14 +295,24 @@ public class WapPushOverSms implements ServiceConnection {
             // Direct the intent to only the default MMS app. If we can't find a default MMS app
             // then sent it to all broadcast receivers.
             ComponentName componentName = SmsApplication.getDefaultMmsApplication(mContext, true);
+            Bundle options = null;
             if (componentName != null) {
                 // Deliver MMS message only to this receiver
                 intent.setComponent(componentName);
                 if (DBG) Rlog.v(TAG, "Delivering MMS to: " + componentName.getPackageName() +
                         " " + componentName.getClassName());
+                long duration = 0;
+                try {
+                    duration = mDeviceIdleController.addPowerSaveTempWhitelistAppForMms(
+                            componentName.getPackageName(), 0, "mms-app");
+                    BroadcastOptions bopts = BroadcastOptions.makeBasic();
+                    bopts.setTemporaryAppWhitelistDuration(duration);
+                    options = bopts.toBundle();
+                } catch (RemoteException e) {
+                }
             }
 
-            handler.dispatchIntent(intent, permission, appOp, receiver, UserHandle.OWNER);
+            handler.dispatchIntent(intent, permission, appOp, options, receiver, UserHandle.OWNER);
             return Activity.RESULT_OK;
         } catch (ArrayIndexOutOfBoundsException aie) {
             // 0-byte WAP PDU or other unexpected WAP PDU contents can easily throw this;
