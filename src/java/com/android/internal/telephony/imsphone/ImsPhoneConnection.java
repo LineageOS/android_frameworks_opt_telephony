@@ -117,7 +117,8 @@ public class ImsPhoneConnection extends Connection {
 
     /** This is probably an MT call */
     /*package*/
-    ImsPhoneConnection(Context context, ImsCall imsCall, ImsPhoneCallTracker ct, ImsPhoneCall parent) {
+    ImsPhoneConnection(Context context, ImsCall imsCall, ImsPhoneCallTracker ct,
+            ImsPhoneCall parent) {
         createWakeLock(context);
         acquireWakeLock();
 
@@ -152,7 +153,8 @@ public class ImsPhoneConnection extends Connection {
 
     /** This is an MO call, created when dialing */
     /*package*/
-    ImsPhoneConnection(Context context, String dialString, ImsPhoneCallTracker ct, ImsPhoneCall parent) {
+    ImsPhoneConnection(Context context, String dialString, ImsPhoneCallTracker ct,
+            ImsPhoneCall parent) {
         createWakeLock(context);
         acquireWakeLock();
 
@@ -474,7 +476,8 @@ public class ImsPhoneConnection extends Connection {
             // arg1 is the character that was/is being processed
             notifyMessage.arg1 = c;
 
-            //Rlog.v(LOG_TAG, "##### processNextPostDialChar: send msg to postDialHandler, arg1=" + c);
+            //Rlog.v(LOG_TAG,
+            //      "##### processNextPostDialChar: send msg to postDialHandler, arg1=" + c);
             notifyMessage.sendToTarget();
         }
     }
@@ -593,12 +596,10 @@ public class ImsPhoneConnection extends Connection {
         }
 
         boolean updateParent = mParent.update(this, imsCall, state);
-        boolean updateMediaCapabilities = updateMediaCapabilities(imsCall);
         boolean updateWifiState = updateWifiState();
         boolean updateAddressDisplay = updateAddressDisplay(imsCall);
 
-        return updateParent || updateMediaCapabilities || updateWifiState
-            || updateAddressDisplay;
+        return updateParent || updateWifiState || updateAddressDisplay;
     }
 
     @Override
@@ -701,7 +702,7 @@ public class ImsPhoneConnection extends Connection {
      * @param imsCall The call to check for changes in media capabilities.
      * @return Whether the media capabilities have been changed.
      */
-    private boolean updateMediaCapabilities(ImsCall imsCall) {
+    public boolean updateMediaCapabilities(ImsCall imsCall) {
         if (imsCall == null) {
             return false;
         }
