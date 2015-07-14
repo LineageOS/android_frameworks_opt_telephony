@@ -95,6 +95,7 @@ public class DcSwitchStateMachine extends StateMachine {
             switch (msg.what) {
                 case DcSwitchAsyncChannel.REQ_CONNECT: {
                     RequestInfo apnRequest = (RequestInfo)msg.obj;
+                    apnRequest.log("DcSwitchStateMachine.IdleState: REQ_CONNECT");
                     if (DBG) log("IdleState: REQ_CONNECT, apnRequest=" + apnRequest);
                     transitionTo(mAttachingState);
                     retVal = HANDLED;
@@ -160,6 +161,7 @@ public class DcSwitchStateMachine extends StateMachine {
             switch (msg.what) {
                 case DcSwitchAsyncChannel.REQ_CONNECT: {
                     RequestInfo apnRequest = (RequestInfo)msg.obj;
+                    apnRequest.log("DcSwitchStateMachine.AttachingState: REQ_CONNECT");
                     if (DBG) log("AttachingState: REQ_CONNECT, apnRequest=" + apnRequest);
 
                     // do nothing - wait til we attach and then we'll execute all requests
@@ -245,6 +247,7 @@ public class DcSwitchStateMachine extends StateMachine {
             switch (msg.what) {
                 case DcSwitchAsyncChannel.REQ_CONNECT: {
                     RequestInfo apnRequest = (RequestInfo)msg.obj;
+                    apnRequest.log("DcSwitchStateMachine.AttachedState: REQ_CONNECT");
                     if (DBG) log("AttachedState: REQ_CONNECT, apnRequest=" + apnRequest);
 
                     DctController.getInstance().executeRequest(apnRequest);
@@ -301,6 +304,7 @@ public class DcSwitchStateMachine extends StateMachine {
             switch (msg.what) {
                 case DcSwitchAsyncChannel.REQ_CONNECT: {
                     RequestInfo apnRequest = (RequestInfo)msg.obj;
+                    apnRequest.log("DcSwitchStateMachine.DetachingState: REQ_CONNECT");
                     if (DBG) log("DetachingState: REQ_CONNECT, apnRequest=" + apnRequest);
 
                     // can't process this now - wait until we return to idle

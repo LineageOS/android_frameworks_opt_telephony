@@ -21,6 +21,7 @@ import android.content.Context;
 import android.net.NetworkConfig;
 import android.telephony.Rlog;
 import android.text.TextUtils;
+import android.util.LocalLog;
 
 import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
@@ -271,16 +272,48 @@ public class ApnContext {
         }
     }
 
-    public void incRefCount() {
+    private final ArrayList<LocalLog> mLocalLogs = new ArrayList<LocalLog>();
+
+    public void requestLog(String str) {
         synchronized (mRefCountLock) {
+            for (LocalLog l : mLocalLogs) {
+                l.log(str);
+            }
+        }
+    }
+
+    public void incRefCount(LocalLog log) {
+        synchronized (mRefCountLock) {
+            if (mRefCount == 0) {
+               // we wanted to leave the last in so it could actually capture the tear down
+               // of the network
+               requestLog("clearing log with size=" + mLocalLogs.size());
+               mLocalLogs.clear();
+            }
+            if (mLocalLogs.contains(log)) {
+                log.log("ApnContext.incRefCount has duplicate add - " + mRefCount);
+            } else {
+                mLocalLogs.add(log);
+                log.log("ApnContext.incRefCount - " + mRefCount);
+            }
             if (mRefCount++ == 0) {
                 mDcTracker.setEnabled(mDcTracker.apnTypeToId(mApnType), true);
             }
         }
     }
 
-    public void decRefCount() {
+    public void decRefCount(LocalLog log) {
         synchronized (mRefCountLock) {
+            // leave the last log alive to capture the actual tear down
+            if (mRefCount != 1) {
+                if (mLocalLogs.remove(log)) {
+                    log.log("ApnContext.decRefCount - " + mRefCount);
+                } else {
+                    log.log("ApnContext.decRefCount didn't find log - " + mRefCount);
+                }
+            } else {
+                log.log("ApnContext.decRefCount - 1");
+            }
             if (mRefCount-- == 1) {
                 mDcTracker.setEnabled(mDcTracker.apnTypeToId(mApnType), false);
             }
@@ -290,13 +323,14 @@ public class ApnContext {
     @Override
     public synchronized String toString() {
         // We don't print mDataConnection because its recursive.
-        return "{mApnType=" + mApnType + " mState=" + getState() + " mWaitingApns={" + mWaitingApns +
-                "} mWaitingApnsPermanentFailureCountDown=" + mWaitingApnsPermanentFailureCountDown +
-                " mApnSetting={" + mApnSetting + "} mReason=" + mReason +
-                " mDataEnabled=" + mDataEnabled + " mDependencyMet=" + mDependencyMet + "}";
+        return "{mApnType=" + mApnType + " mState=" + getState() + " mWaitingApns={" +
+                mWaitingApns + "} mWaitingApnsPermanentFailureCountDown=" +
+                mWaitingApnsPermanentFailureCountDown + " mApnSetting={" + mApnSetting +
+                "} mReason=" + mReason + " mDataEnabled=" + mDataEnabled + " mDependencyMet=" +
+                mDependencyMet + "}";
     }
 
-    protected void log(String s) {
+    private void log(String s) {
         Rlog.d(LOG_TAG, "[ApnContext:" + mApnType + "] " + s);
     }
 
