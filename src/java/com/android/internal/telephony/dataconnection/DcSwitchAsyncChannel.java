@@ -16,13 +16,14 @@
 
 package com.android.internal.telephony.dataconnection;
 
-import com.android.internal.util.AsyncChannel;
-import com.android.internal.util.Protocol;
-import com.android.internal.telephony.PhoneConstants;
-
 import android.net.NetworkRequest;
 import android.os.Message;
 import android.telephony.Rlog;
+import android.util.LocalLog;
+
+import com.android.internal.util.AsyncChannel;
+import com.android.internal.util.Protocol;
+import com.android.internal.telephony.PhoneConstants;
 
 public class DcSwitchAsyncChannel extends AsyncChannel {
     private static final boolean DBG = true;
@@ -60,12 +61,23 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
 
     public static class RequestInfo {
         boolean executed;
-        NetworkRequest request;
-        int priority;
+        final NetworkRequest request;
+        final int priority;
+        private final LocalLog requestLog;
 
-        public RequestInfo(NetworkRequest request, int priority) {
+        public RequestInfo(NetworkRequest request, int priority, LocalLog l) {
             this.request = request;
             this.priority = priority;
+            this.requestLog = l;
+            this.executed = false;
+        }
+
+        public void log(String str) {
+            requestLog.log(str);
+        }
+
+        public LocalLog getLog() {
+            return requestLog;
         }
 
         @Override
