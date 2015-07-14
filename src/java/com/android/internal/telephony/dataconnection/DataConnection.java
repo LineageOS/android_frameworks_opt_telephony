@@ -516,6 +516,7 @@ public final class DataConnection extends StateMachine {
         if (DBG) log("onConnect: carrier='" + mApnSetting.carrier
                 + "' APN='" + mApnSetting.apn
                 + "' proxy='" + mApnSetting.proxy + "' port='" + mApnSetting.port + "'");
+        if (cp.mApnContext != null) cp.mApnContext.requestLog("DataConnection.onConnect");
 
         // Check if we should fake an error.
         if (mDcTesterFailBringUpAll.getDcFailBringUp().mCounter  > 0) {
@@ -583,9 +584,10 @@ public final class DataConnection extends StateMachine {
      */
     private void tearDownData(Object o) {
         int discReason = RILConstants.DEACTIVATE_REASON_NONE;
+        ApnContext apnContext = null;
         if ((o != null) && (o instanceof DisconnectParams)) {
             DisconnectParams dp = (DisconnectParams)o;
-
+            apnContext = dp.mApnContext;
             if (TextUtils.equals(dp.mReason, Phone.REASON_RADIO_TURNED_OFF)) {
                 discReason = RILConstants.DEACTIVATE_REASON_RADIO_OFF;
             } else if (TextUtils.equals(dp.mReason, Phone.REASON_PDP_RESET)) {
@@ -595,11 +597,15 @@ public final class DataConnection extends StateMachine {
         if (mPhone.mCi.getRadioState().isOn()
                 || (mPhone.getServiceState().getRilDataRadioTechnology()
                         == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN )) {
-            if (DBG) log("tearDownData radio is on, call deactivateDataCall");
+            String str = "tearDownData radio is on, call deactivateDataCall";
+            if (DBG) log(str);
+            if (apnContext != null) apnContext.requestLog(str);
             mPhone.mCi.deactivateDataCall(mCid, discReason,
                     obtainMessage(EVENT_DEACTIVATE_DONE, mTag, 0, o));
         } else {
-            if (DBG) log("tearDownData radio is off sendMessage EVENT_DEACTIVATE_DONE immediately");
+            String str = "tearDownData radio is off sendMessage EVENT_DEACTIVATE_DONE immediately";
+            if (DBG) log(str);
+            if (apnContext != null) apnContext.requestLog(str);
             AsyncResult ar = new AsyncResult(o, null, null);
             sendMessage(obtainMessage(EVENT_DEACTIVATE_DONE, mTag, 0, ar));
         }
@@ -1606,6 +1612,9 @@ public final class DataConnection extends StateMachine {
                         log("DcActivatingState onSetupConnectionCompleted result=" + result
                                 + " dc=" + DataConnection.this);
                     }
+                    if (cp.mApnContext != null) {
+                        cp.mApnContext.requestLog("onSetupConnectionCompleted result=" + result);
+                    }
                     switch (result) {
                         case SUCCESS:
                             // All is well
@@ -1632,16 +1641,16 @@ public final class DataConnection extends StateMachine {
                         case ERR_RilError:
                             int delay = mDcRetryAlarmController.getSuggestedRetryTime(
                                                                     DataConnection.this, ar);
-                            if (DBG) {
-                                log("DcActivatingState: ERR_RilError "
-                                        + " delay=" + delay
-                                        + " isRetryNeeded=" + mRetryManager.isRetryNeeded()
-                                        + " result=" + result
-                                        + " result.isRestartRadioFail=" +
-                                        result.mFailCause.isRestartRadioFail()
-                                        + " result.isPermanentFail=" +
-                                        mDct.isPermanentFail(result.mFailCause));
-                            }
+                            String str = "DcActivatingState: ERR_RilError "
+                                    + " delay=" + delay
+                                    + " isRetryNeeded=" + mRetryManager.isRetryNeeded()
+                                    + " result=" + result
+                                    + " result.isRestartRadioFail=" +
+                                    result.mFailCause.isRestartRadioFail()
+                                    + " result.isPermanentFail=" +
+                                    mDct.isPermanentFail(result.mFailCause);
+                            if (DBG) log(str);
+                            if (cp.mApnContext != null) cp.mApnContext.requestLog(str);
                             if (result.mFailCause.isRestartRadioFail()) {
                                 if (DBG) log("DcActivatingState: ERR_RilError restart radio");
                                 mDct.sendRestartRadio();
@@ -1960,10 +1969,14 @@ public final class DataConnection extends StateMachine {
                     break;
 
                 case EVENT_DEACTIVATE_DONE:
-                    if (DBG) log("DcDisconnectingState msg.what=EVENT_DEACTIVATE_DONE RefCount="
-                            + mApnContexts.size());
                     AsyncResult ar = (AsyncResult) msg.obj;
                     DisconnectParams dp = (DisconnectParams) ar.userObj;
+
+                    String str = "DcDisconnectingState msg.what=EVENT_DEACTIVATE_DONE RefCount="
+                            + mApnContexts.size();
+                    if (DBG) log(str);
+                    if (dp.mApnContext != null) dp.mApnContext.requestLog(str);
+
                     if (dp.mTag == mTag) {
                         // Transition to inactive but send notifications after
                         // we've entered the mInactive state.
@@ -2002,10 +2015,10 @@ public final class DataConnection extends StateMachine {
                     AsyncResult ar = (AsyncResult) msg.obj;
                     ConnectionParams cp = (ConnectionParams) ar.userObj;
                     if (cp.mTag == mTag) {
-                        if (DBG) {
-                            log("DcDisconnectionErrorCreatingConnection" +
-                                " msg.what=EVENT_DEACTIVATE_DONE");
-                        }
+                        String str = "DcDisconnectionErrorCreatingConnection" +
+                                " msg.what=EVENT_DEACTIVATE_DONE";
+                        if (DBG) log(str);
+                        if (cp.mApnContext != null) cp.mApnContext.requestLog(str);
 
                         // Transition to inactive but send notifications after
                         // we've entered the mInactive state.
