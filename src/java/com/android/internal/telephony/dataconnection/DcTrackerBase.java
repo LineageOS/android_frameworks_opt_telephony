@@ -48,6 +48,7 @@ import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.EventLog;
+import android.util.LocalLog;
 import android.telephony.Rlog;
 
 import com.android.internal.R;
@@ -661,13 +662,9 @@ public abstract class DcTrackerBase extends Handler {
         mPhone.notifyDataActivity();
     }
 
-    public void incApnRefCount(String name) {
+    abstract public void incApnRefCount(String name, LocalLog log);
 
-    }
-
-    public void decApnRefCount(String name) {
-
-    }
+    abstract public void decApnRefCount(String name, LocalLog log);
 
     public boolean isApnSupported(String name) {
         return false;
@@ -1305,58 +1302,7 @@ public abstract class DcTrackerBase extends Handler {
         sendMessage(msg);
     }
 
-    protected void onEnableApn(int apnId, int enabled) {
-        if (DBG) {
-            log("EVENT_APN_ENABLE_REQUEST apnId=" + apnId + ", apnType=" + apnIdToType(apnId) +
-                    ", enabled=" + enabled + ", dataEnabled = " + mDataEnabled[apnId] +
-                    ", enabledCount = " + mEnabledCount + ", isApnTypeActive = " +
-                    isApnTypeActive(apnIdToType(apnId)));
-        }
-        if (enabled == DctConstants.ENABLED) {
-            synchronized (this) {
-                if (!mDataEnabled[apnId]) {
-                    mDataEnabled[apnId] = true;
-                    mEnabledCount++;
-                }
-            }
-            String type = apnIdToType(apnId);
-            if (!isApnTypeActive(type)) {
-                mRequestedApnType = type;
-                onEnableNewApn();
-            } else {
-                notifyApnIdUpToCurrent(Phone.REASON_APN_SWITCHED, apnId);
-            }
-        } else {
-            // disable
-            boolean didDisable = false;
-            synchronized (this) {
-                if (mDataEnabled[apnId]) {
-                    mDataEnabled[apnId] = false;
-                    mEnabledCount--;
-                    didDisable = true;
-                }
-            }
-            if (didDisable) {
-                if ((mEnabledCount == 0) || (apnId == DctConstants.APN_DUN_ID)) {
-                    mRequestedApnType = PhoneConstants.APN_TYPE_DEFAULT;
-                    onCleanUpConnection(true, apnId, Phone.REASON_DATA_DISABLED);
-                }
-
-                // send the disconnect msg manually, since the normal route wont send
-                // it (it's not enabled)
-                notifyApnIdDisconnected(Phone.REASON_DATA_DISABLED, apnId);
-                if (mDataEnabled[DctConstants.APN_DEFAULT_ID] == true
-                        && !isApnTypeActive(PhoneConstants.APN_TYPE_DEFAULT)) {
-                    // TODO - this is an ugly way to restore the default conn - should be done
-                    // by a real contention manager and policy that disconnects the lower pri
-                    // stuff as enable requests come in and pops them back on as we disable back
-                    // down to the lower pri stuff
-                    mRequestedApnType = PhoneConstants.APN_TYPE_DEFAULT;
-                    onEnableNewApn();
-                }
-            }
-        }
-    }
+    abstract void onEnableApn(int apnId, int enabled);
 
     /**
      * Called when we switch APNs.
