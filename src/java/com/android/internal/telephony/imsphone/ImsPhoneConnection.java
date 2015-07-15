@@ -580,6 +580,15 @@ public class ImsPhoneConnection extends Connection {
      */
     /*package*/ boolean update(ImsCall imsCall, ImsPhoneCall.State state) {
         if (state == ImsPhoneCall.State.ACTIVE) {
+            // If the state of the call is active, but there is a pending request to the RIL to hold
+            // the call, we will skip this update.  This is really a signalling delay or failure
+            // from the RIL, but we will prevent it from going through as we will end up erroneously
+            // making this call active when really it should be on hold.
+            if (imsCall.isPendingHold()) {
+                Rlog.w(LOG_TAG, "update : state is ACTIVE, but call is pending hold, skipping");
+                return false;
+            }
+
             if (mParent.getState().isRinging() || mParent.getState().isDialing()) {
                 onConnectedInOrOut();
             }
