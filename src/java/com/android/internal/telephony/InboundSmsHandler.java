@@ -21,6 +21,7 @@ import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
 import android.app.Activity;
 import android.app.ActivityManagerNative;
 import android.app.AppOpsManager;
+import android.app.BroadcastOptions;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
 import android.content.BroadcastReceiver;
@@ -42,6 +43,7 @@ import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.RemoteException;
@@ -814,7 +816,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param user user to deliver the intent to
      */
     protected void dispatchIntent(Intent intent, String permission, int appOp,
-            BroadcastReceiver resultReceiver, UserHandle user) {
+            Bundle opts, BroadcastReceiver resultReceiver, UserHandle user) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());
         if (user.equals(UserHandle.ALL)) {
@@ -843,14 +845,13 @@ public abstract class InboundSmsHandler extends StateMachine {
                     }
                 }
                 // Only pass in the resultReceiver when the USER_OWNER is processed.
-                mContext.sendOrderedBroadcastAsUser(intent, targetUser, permission, appOp,
+                mContext.sendOrderedBroadcastAsUser(intent, targetUser, permission, appOp, opts,
                         users[i] == UserHandle.USER_OWNER ? resultReceiver : null,
                         getHandler(), Activity.RESULT_OK, null, null);
             }
         } else {
-            mContext.sendOrderedBroadcastAsUser(intent, user, permission, appOp,
-                    resultReceiver,
-                    getHandler(), Activity.RESULT_OK, null, null);
+            mContext.sendOrderedBroadcastAsUser(intent, user, permission, appOp, opts,
+                    resultReceiver, getHandler(), Activity.RESULT_OK, null, null);
         }
     }
 
@@ -911,7 +912,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
 
         dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                AppOpsManager.OP_RECEIVE_SMS, resultReceiver, UserHandle.OWNER);
+                AppOpsManager.OP_RECEIVE_SMS, null, resultReceiver, UserHandle.OWNER);
     }
 
     /**
@@ -1041,7 +1042,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 intent.setComponent(null);
                 // All running users will be notified of the received sms.
                 dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                        AppOpsManager.OP_RECEIVE_SMS, this, UserHandle.ALL);
+                        AppOpsManager.OP_RECEIVE_SMS, null, this, UserHandle.ALL);
             } else if (action.equals(Intents.WAP_PUSH_DELIVER_ACTION)) {
                 // Now dispatch the notification only intent
                 intent.setAction(Intents.WAP_PUSH_RECEIVED_ACTION);
@@ -1049,7 +1050,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 // Only the primary user will receive notification of incoming mms.
                 // That app will do the actual downloading of the mms.
                 dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                        AppOpsManager.OP_RECEIVE_SMS, this, UserHandle.OWNER);
+                        AppOpsManager.OP_RECEIVE_SMS, null, this, UserHandle.OWNER);
             } else {
                 // Now that the intents have been deleted we can clean up the PDU data.
                 if (!Intents.DATA_SMS_RECEIVED_ACTION.equals(action)
