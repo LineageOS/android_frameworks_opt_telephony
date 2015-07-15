@@ -75,6 +75,10 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     private static final boolean DBG = true;
 
+    // When true, dumps the state of ImsPhoneCallTracker after changes to foreground and background
+    // calls.  This is helpful for debugging.
+    private static final boolean VERBOSE_STATE_LOGGING = false; /* stopship if true */
+
     private boolean[] mImsFeatureEnabled = {false, false, false, false};
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
@@ -141,10 +145,10 @@ public final class ImsPhoneCallTracker extends CallTracker {
     private RegistrantList mVoiceCallEndedRegistrants = new RegistrantList();
     private RegistrantList mVoiceCallStartedRegistrants = new RegistrantList();
 
-    ImsPhoneCall mRingingCall = new ImsPhoneCall(this);
-    ImsPhoneCall mForegroundCall = new ImsPhoneCall(this);
-    ImsPhoneCall mBackgroundCall = new ImsPhoneCall(this);
-    ImsPhoneCall mHandoverCall = new ImsPhoneCall(this);
+    final ImsPhoneCall mRingingCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_RINGING);
+    final ImsPhoneCall mForegroundCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_FOREGROUND);
+    final ImsPhoneCall mBackgroundCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_BACKGROUND);
+    final ImsPhoneCall mHandoverCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_HANDOVER);
 
     private ImsPhoneConnection mPendingMO;
     private int mClirMode = CommandsInterface.CLIR_DEFAULT;
@@ -506,6 +510,11 @@ public final class ImsPhoneCallTracker extends CallTracker {
             // be resumed.
             try {
                 imsCall.hold();
+
+                // If there is no background call to resume, then don't expect there to be a switch.
+                if (mCallExpectedToResume == null) {
+                    mSwitchingFgAndBgCalls = false;
+                }
             } catch (ImsException e) {
                 mForegroundCall.switchWith(mBackgroundCall);
                 throw new CallStateException(e.getMessage());
@@ -1102,7 +1111,13 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
         @Override
         public void onCallHeld(ImsCall imsCall) {
-            if (DBG) log("onCallHeld");
+            if (DBG) {
+                if (mForegroundCall.getImsCall() == imsCall) {
+                    log("onCallHeld (fg) " + imsCall);
+                } else if (mBackgroundCall.getImsCall() == imsCall) {
+                    log("onCallHeld (bg) " + imsCall);
+                }
+            }
 
             synchronized (mSyncHold) {
                 ImsPhoneCall.State oldState = mBackgroundCall.getState();
@@ -1169,6 +1184,10 @@ public final class ImsPhoneCallTracker extends CallTracker {
             // is not the one we expected, we likely had a resume failure and we need to swap the
             // FG and BG calls back.
             if (mSwitchingFgAndBgCalls && imsCall != mCallExpectedToResume) {
+                if (DBG) {
+                    log("onCallResumed : switching " + mForegroundCall + " with "
+                            + mBackgroundCall);
+                }
                 mForegroundCall.switchWith(mBackgroundCall);
                 mSwitchingFgAndBgCalls = false;
                 mCallExpectedToResume = null;
@@ -1179,10 +1198,13 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
         @Override
         public void onCallResumeFailed(ImsCall imsCall, ImsReasonInfo reasonInfo) {
-            // TODO : What should be done?
             // If we are in the midst of swapping the FG and BG calls and we got a resume fail, we
             // need to swap back the FG and BG calls.
             if (mSwitchingFgAndBgCalls && imsCall == mCallExpectedToResume) {
+                if (DBG) {
+                    log("onCallResumeFailed : switching " + mForegroundCall + " with "
+                            + mBackgroundCall);
+                }
                 mForegroundCall.switchWith(mBackgroundCall);
                 mCallExpectedToResume = null;
                 mSwitchingFgAndBgCalls = false;
@@ -1217,25 +1239,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
         public void onCallMerged(final ImsCall call, final ImsCall peerCall, boolean swapCalls) {
             if (DBG) log("onCallMerged");
 
+            ImsPhoneCall foregroundImsPhoneCall = findConnection(call).getCall();
             ImsPhoneConnection peerConnection = findConnection(peerCall);
-            mForegroundCall = findConnection(call).getCall();
-            if (peerConnection != null) {
-                mBackgroundCall = peerConnection.getCall();
-            } else {
-                log("onCallMerged :: Null connection for background call.");
-            }
-
-            log("onCallMerged :: call.mSession=" + call.getSession());
-            if (peerCall.getSession() != null) {
-                log("onCallMerged :: b/g call session=" + peerCall.getSession());
-            } else {
-                log("onCallMerged :: b/g call session is null");
-            }
+            ImsPhoneCall peerImsPhoneCall = peerConnection == null ? null
+                    : peerConnection.getCall();
 
             if (swapCalls) {
                 switchAfterConferenceSuccess();
             }
-            mForegroundCall.merge(mBackgroundCall, ImsPhoneCall.State.ACTIVE);
+            foregroundImsPhoneCall.merge(peerImsPhoneCall, ImsPhoneCall.State.ACTIVE);
 
             // TODO Temporary code. Remove the try-catch block from the runnable once thread
             // synchronization is fixed.
@@ -1275,7 +1287,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 // Reset the flag.
                 call.resetIsMergeRequestedByConf(false);
             }
-
+            logState();
         }
 
         @Override
@@ -1601,6 +1613,33 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     protected void loge(String msg) {
         Rlog.e(LOG_TAG, "[ImsPhoneCallTracker] " + msg);
+    }
+
+    /**
+     * Logs the current state of the ImsPhoneCallTracker.  Useful for debugging issues with
+     * call tracking.
+     */
+    /* package */
+    void logState() {
+        if (!VERBOSE_STATE_LOGGING) {
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Current IMS PhoneCall State:\n");
+        sb.append(" Foreground: ");
+        sb.append(mForegroundCall);
+        sb.append("\n");
+        sb.append(" Background: ");
+        sb.append(mBackgroundCall);
+        sb.append("\n");
+        sb.append(" Ringing: ");
+        sb.append(mRingingCall);
+        sb.append("\n");
+        sb.append(" Handover: ");
+        sb.append(mHandoverCall);
+        sb.append("\n");
+        Rlog.v(LOG_TAG, sb.toString());
     }
 
     @Override
