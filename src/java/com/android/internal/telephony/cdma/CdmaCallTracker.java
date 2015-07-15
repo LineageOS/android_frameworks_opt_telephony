@@ -584,6 +584,13 @@ public final class CdmaCallTracker extends CallTracker {
                     if (hoConnection != null) {
                         // Single Radio Voice Call Continuity (SRVCC) completed
                         mConnections[i].migrateFrom(hoConnection);
+                        // Updating connect time for silent redial cases (ex: Calls are transferred
+                        // from DIALING/ALERTING/INCOMING/WAITING to ACTIVE)
+                        if (hoConnection.mPreHandoverState != CdmaCall.State.ACTIVE &&
+                                hoConnection.mPreHandoverState != CdmaCall.State.HOLDING) {
+                            mConnections[i].onConnectedInOrOut();
+                        }
+
                         mHandoverConnections.remove(hoConnection);
                         mPhone.notifyHandoverStateChanged(mConnections[i]);
                     } else {

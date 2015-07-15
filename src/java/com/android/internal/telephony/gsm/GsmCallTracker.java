@@ -29,6 +29,7 @@ import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.telephony.gsm.GsmCellLocation;
 import android.util.EventLog;
+import java.util.Iterator;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.Call;
@@ -450,7 +451,7 @@ public final class GsmCallTracker extends CallTracker {
         }
 
         Connection newRinging = null; //or waiting
-        Connection newUnknown = null;
+        ArrayList<Connection> newUnknownConnections = new ArrayList<Connection>();
         boolean hasNonHangupStateChanged = false;   // Any change besides
                                                     // a dropped connection
         boolean hasAnyCallDisconnected = false;
@@ -510,9 +511,23 @@ public final class GsmCallTracker extends CallTracker {
                     if (hoConnection != null) {
                         // Single Radio Voice Call Continuity (SRVCC) completed
                         mConnections[i].migrateFrom(hoConnection);
-                        if (!hoConnection.isMultiparty()) {
-                            // Remove only if it is not multiparty
-                            mHandoverConnections.remove(hoConnection);
+                        // Updating connect time for silent redial cases (ex: Calls are transferred
+                        // from DIALING/ALERTING/INCOMING/WAITING to ACTIVE)
+                        if (hoConnection.mPreHandoverState != GsmCall.State.ACTIVE &&
+                                hoConnection.mPreHandoverState != GsmCall.State.HOLDING) {
+                            mConnections[i].onConnectedInOrOut();
+                        }
+
+                        mHandoverConnections.remove(hoConnection);
+                        for (Iterator<Connection> it = mHandoverConnections.iterator();
+                            it.hasNext();) {
+                            Connection c = it.next();
+                            Rlog.i(LOG_TAG, "HO Conn state is " + c.mPreHandoverState);
+                            if (c.mPreHandoverState == mConnections[i].getState()) {
+                                Rlog.i(LOG_TAG, "Removing HO conn "
+                                    + hoConnection + c.mPreHandoverState);
+                                it.remove();
+                            }
                         }
                         mPhone.notifyHandoverStateChanged(mConnections[i]);
                     } else if ( mConnections[i].getCall() == mRingingCall ) { // it's a ringing call
@@ -537,7 +552,7 @@ public final class GsmCallTracker extends CallTracker {
                             }
                         }
 
-                        newUnknown = mConnections[i];
+                        newUnknownConnections.add(mConnections[i]);
 
                         unknownConnectionAppeared = true;
                     }
@@ -662,7 +677,10 @@ public final class GsmCallTracker extends CallTracker {
         updatePhoneState();
 
         if (unknownConnectionAppeared) {
-            mPhone.notifyUnknownConnection(newUnknown);
+           for (Connection c : newUnknownConnections) {
+               log("Notify unknown for " + c);
+               mPhone.notifyUnknownConnection(c);
+           }
         }
 
         if (hasNonHangupStateChanged || newRinging != null || hasAnyCallDisconnected) {

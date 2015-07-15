@@ -1069,7 +1069,7 @@ public class CDMAPhone extends PhoneBase {
     }
 
     void notifyUnknownConnection(Connection connection) {
-        mUnknownConnectionRegistrants.notifyResult(connection);
+        super.notifyUnknownConnectionP(connection);
     }
 
     @Override
