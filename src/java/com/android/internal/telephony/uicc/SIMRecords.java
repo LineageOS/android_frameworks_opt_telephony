@@ -1728,6 +1728,7 @@ public class SIMRecords extends IccRecords {
      */
     private void getSpnFsm(boolean start, AsyncResult ar) {
         byte[] data;
+        boolean foundSpn = false;
 
         if (start) {
             // Check previous state to see if there is outstanding
@@ -1765,9 +1766,13 @@ public class SIMRecords extends IccRecords {
                     if (DBG) log("Load EF_SPN: " + getServiceProviderName()
                             + " spnDisplayCondition: " + mSpnDisplayCondition);
                     setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
+                    if (!TextUtils.isEmpty(getServiceProviderName())) {
+                        foundSpn = true;
+                    }
 
                     mSpnState = GetSpnFsmState.IDLE;
-                } else {
+                }
+                if (!foundSpn) {
                     mFh.loadEFTransparent( EF_SPN_CPHS,
                             obtainMessage(EVENT_GET_SPN_DONE));
                     mRecordsToLoad++;
@@ -1787,8 +1792,13 @@ public class SIMRecords extends IccRecords {
                     if (DBG) log("Load EF_SPN_CPHS: " + getServiceProviderName());
                     setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
 
+                    if (!TextUtils.isEmpty(getServiceProviderName())) {
+                        foundSpn = true;
+                    }
+
                     mSpnState = GetSpnFsmState.IDLE;
-                } else {
+                }
+                if (!foundSpn) {
                     mFh.loadEFTransparent(
                             EF_SPN_SHORT_CPHS, obtainMessage(EVENT_GET_SPN_DONE));
                     mRecordsToLoad++;
@@ -1803,9 +1813,16 @@ public class SIMRecords extends IccRecords {
 
                     if (DBG) log("Load EF_SPN_SHORT_CPHS: " + getServiceProviderName());
                     setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
-                }else {
+
+                    if (!TextUtils.isEmpty(getServiceProviderName())) {
+                        foundSpn = true;
+                    }
+
+                }
+
+                if (!foundSpn) {
                     if (DBG) log("No SPN loaded in either CHPS or 3GPP");
-                    if (mPnnHomeName != null && mSpn == null) {
+                    if (mPnnHomeName != null && (mSpn == null || TextUtils.isEmpty(mSpn))) {
                         if (DBG) log("Falling back to home network name for SPN");
                         mSpn = mPnnHomeName;
                         setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, mSpn);
