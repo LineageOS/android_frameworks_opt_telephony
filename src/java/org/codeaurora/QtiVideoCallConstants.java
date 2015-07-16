@@ -40,6 +40,7 @@ public class QtiVideoCallConstants {
     /**
      * Call substate bitmask values
      */
+
     /* Default case */
     public static final int CALL_SUBSTATE_NONE = 0;
 
@@ -71,5 +72,53 @@ public class QtiVideoCallConstants {
      */
     private QtiVideoCallConstants() {
     }
+
+    /* UI Orientation Modes */
+    public static final int ORIENTATION_MODE_UNSPECIFIED = -1;
+    public static final int ORIENTATION_MODE_LANDSCAPE = 1;
+    public static final int ORIENTATION_MODE_PORTRAIT = 2;
+    public static final int ORIENTATION_MODE_DYNAMIC = 3;
+
+    /* Orientation mode extra key name */
+    public static final String ORIENTATION_MODE_EXTRA_KEY = "OrientationMode";
+
+   /* Upgrade/downgrade of a volte/vt call due to unknown reason. */
+    public static final int CAUSE_CODE_UNSPECIFIED = 0;
+
+    /* Upgrade of a volte call on request from local end */
+    public static final int CAUSE_CODE_SESSION_MODIFY_UPGRADE_LOCAL_REQ = 1;
+
+    /* Upgrade of a volte call on request from remote end */
+    public static final int CAUSE_CODE_SESSION_MODIFY_UPGRADE_REMOTE_REQ = 2;
+
+    /* Downgrade of a vt call on request from local end */
+    public static final int CAUSE_CODE_SESSION_MODIFY_DOWNGRADE_LOCAL_REQ = 3;
+
+    /* Downgrade of a vt call on request from remote end */
+    public static final int CAUSE_CODE_SESSION_MODIFY_DOWNGRADE_REMOTE_REQ = 4;
+
+    /* Downgrade of a vt call due to RTP/RTCP Timeout for Video stream */
+    public static final int CAUSE_CODE_SESSION_MODIFY_DOWNGRADE_RTP_TIMEOUT = 5;
+
+    /* Downgrade of a vt call due to QOS for Video stream */
+    public static final int CAUSE_CODE_SESSION_MODIFY_DOWNGRADE_QOS = 6;
+
+    /* Downgrade of a vt call due to PACKET LOSS for Video stream */
+    public static final int CAUSE_CODE_SESSION_MODIFY_DOWNGRADE_PACKET_LOSS = 7;
+
+    /* Downgrade of a vt call due to Low throughput for Video stream */
+    public static final int CAUSE_CODE_SESSION_MODIFY_DOWNGRADE_LOW_THRPUT = 8;
+
+    /* Downgrade of a vt call due to Thermal Mitigation */
+    public static final int CAUSE_CODE_SESSION_MODIFY_DOWNGRADE_THERM_MITIGATION = 9;
+
+    /* Downgrade of a vt call due to Lip-sync */
+    public static final int CAUSE_CODE_SESSION_MODIFY_DOWNGRADE_LIPSYNC = 10;
+
+    /* Downgrade of a vt call due to generic error */
+    public static final int CAUSE_CODE_SESSION_MODIFY_DOWNGRADE_GENERIC_ERROR = 11;
+
+    /* Session modification cause extra key name */
+    public static final String SESSION_MODIFICATION_CAUSE_EXTRA_KEY = "SessionModificationCause";
 }
 
