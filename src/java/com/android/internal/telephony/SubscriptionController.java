@@ -1686,6 +1686,101 @@ public class SubscriptionController extends ISub.Stub {
         return simState.ordinal();
     }
 
+    /**
+     * Store properties associated with SubscriptionInfo in database
+     * @param subId Subscription Id of Subscription
+     * @param propKey Column name in database associated with SubscriptionInfo
+     * @param propValue Value to store in DB for particular subId & column name
+     * @hide
+     */
+    @Override
+    public void setSubscriptionProperty(int subId, String propKey, String propValue) {
+        enforceModifyPhoneState("setSubscriptionProperty");
+        final long token = Binder.clearCallingIdentity();
+        ContentResolver resolver = mContext.getContentResolver();
+        ContentValues value = new ContentValues();
+        switch (propKey) {
+            case SubscriptionManager.CB_EXTREME_THREAT_ALERT:
+            case SubscriptionManager.CB_SEVERE_THREAT_ALERT:
+            case SubscriptionManager.CB_AMBER_ALERT:
+            case SubscriptionManager.CB_EMERGENCY_ALERT:
+            case SubscriptionManager.CB_ALERT_SOUND_DURATION:
+            case SubscriptionManager.CB_ALERT_REMINDER_INTERVAL:
+            case SubscriptionManager.CB_ALERT_VIBRATE:
+            case SubscriptionManager.CB_ALERT_SPEECH:
+            case SubscriptionManager.CB_ETWS_TEST_ALERT:
+            case SubscriptionManager.CB_CHANNEL_50_ALERT:
+            case SubscriptionManager.CB_CMAS_TEST_ALERT:
+            case SubscriptionManager.CB_OPT_OUT_DIALOG:
+                value.put(propKey, Integer.parseInt(propValue));
+                break;
+            default:
+                if(DBG) logd("Invalid column name");
+                break;
+        }
+
+        resolver.update(SubscriptionManager.CONTENT_URI, value,
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID +
+                        "=" + Integer.toString(subId), null);
+        Binder.restoreCallingIdentity(token);
+    }
+
+    /**
+     * Store properties associated with SubscriptionInfo in database
+     * @param subId Subscription Id of Subscription
+     * @param propKey Column name in SubscriptionInfo database
+     * @return Value associated with subId and propKey column in database
+     * @hide
+     */
+    @Override
+    public String getSubscriptionProperty(int subId, String propKey, String callingPackage) {
+        if (!canReadPhoneState(callingPackage, "getSubInfoUsingSlotIdWithCheck")) {
+            return null;
+        }
+        String resultValue = null;
+        ContentResolver resolver = mContext.getContentResolver();
+        Cursor cursor = resolver.query(SubscriptionManager.CONTENT_URI,
+                new String[]{propKey},
+                SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=?",
+                new String[]{subId + ""}, null);
+
+        try {
+            if (cursor != null) {
+                if (cursor.moveToFirst()) {
+                    switch (propKey) {
+                        case SubscriptionManager.CB_EXTREME_THREAT_ALERT:
+                        case SubscriptionManager.CB_SEVERE_THREAT_ALERT:
+                        case SubscriptionManager.CB_AMBER_ALERT:
+                        case SubscriptionManager.CB_EMERGENCY_ALERT:
+                        case SubscriptionManager.CB_ALERT_SOUND_DURATION:
+                        case SubscriptionManager.CB_ALERT_REMINDER_INTERVAL:
+                        case SubscriptionManager.CB_ALERT_VIBRATE:
+                        case SubscriptionManager.CB_ALERT_SPEECH:
+                        case SubscriptionManager.CB_ETWS_TEST_ALERT:
+                        case SubscriptionManager.CB_CHANNEL_50_ALERT:
+                        case SubscriptionManager.CB_CMAS_TEST_ALERT:
+                        case SubscriptionManager.CB_OPT_OUT_DIALOG:
+                            resultValue = cursor.getInt(0) + "";
+                            break;
+                        default:
+                            if(DBG) logd("Invalid column name");
+                            break;
+                    }
+                } else {
+                    if(DBG) logd("Valid row not present in db");
+                }
+            } else {
+                if(DBG) logd("Query failed");
+            }
+        } finally {
+            if (cursor != null) {
+                cursor.close();
+            }
+        }
+        if (DBG) logd("getSubscriptionProperty Query value = " + resultValue);
+        return resultValue;
+    }
+
     private static void printStackTrace(String msg) {
         RuntimeException re = new RuntimeException();
         slogd("StackTrace - " + msg);
