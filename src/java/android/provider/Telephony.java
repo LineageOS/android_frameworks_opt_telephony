@@ -1932,6 +1932,13 @@ public final class Telephony {
         public static final String MESSAGE_COUNT = "message_count";
 
         /**
+         * The unread message count of the thread.
+         * <P>Type: INTEGER</P>
+         * @hide
+         */
+        public static final String UNREAD_MESSAGE_COUNT = "unread_message_count";
+
+        /**
          * Indicates whether all messages of the thread have been read.
          * <P>Type: INTEGER</P>
          */
