@@ -18,10 +18,12 @@ package com.android.internal.telephony.dataconnection;
 
 import android.app.PendingIntent;
 import android.content.Context;
+import android.content.res.Resources;
 import android.net.NetworkConfig;
 import android.telephony.Rlog;
 import android.text.TextUtils;
 import android.util.LocalLog;
+import android.util.SparseIntArray;
 
 import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
@@ -318,6 +320,67 @@ public class ApnContext {
                 mDcTracker.setEnabled(mDcTracker.apnTypeToId(mApnType), false);
             }
         }
+    }
+
+    private final SparseIntArray mRetriesLeftPerErrorCode = new SparseIntArray();
+
+    public void resetErrorCodeRetries() {
+        requestLog("ApnContext.resetErrorCodeRetries");
+        if (DBG) log("ApnContext.resetErrorCodeRetries");
+
+        String[] config = Resources.getSystem().getStringArray(
+                com.android.internal.R.array.config_cell_retries_per_error_code);
+        synchronized (mRetriesLeftPerErrorCode) {
+            mRetriesLeftPerErrorCode.clear();
+
+            for (String c : config) {
+                String errorValue[] = c.split(",");
+                if (errorValue != null && errorValue.length == 2) {
+                    int count = 0;
+                    int errorCode = 0;
+                    try {
+                        errorCode = Integer.parseInt(errorValue[0]);
+                        count = Integer.parseInt(errorValue[1]);
+                    } catch (NumberFormatException e) {
+                        log("Exception parsing config_retries_per_error_code: " + e);
+                        continue;
+                    }
+                    if (count > 0 && errorCode > 0) {
+                        mRetriesLeftPerErrorCode.put(errorCode, count);
+                    }
+                } else {
+                    log("Exception parsing config_retries_per_error_code: " + c);
+                }
+            }
+        }
+    }
+
+    public boolean restartOnError(int errorCode) {
+        boolean result = false;
+        int retriesLeft = 0;
+        synchronized(mRetriesLeftPerErrorCode) {
+            retriesLeft = mRetriesLeftPerErrorCode.get(errorCode);
+            switch (retriesLeft) {
+                case 0: {
+                    // not set, never restart modem
+                    break;
+                }
+                case 1: {
+                    resetErrorCodeRetries();
+                    result = true;
+                    break;
+                }
+                default: {
+                    mRetriesLeftPerErrorCode.put(errorCode, retriesLeft - 1);
+                    result = false;
+                }
+            }
+        }
+        String str = "ApnContext.restartOnError(" + errorCode + ") found " + retriesLeft +
+                " and returned " + result;
+        if (DBG) log(str);
+        requestLog(str);
+        return result;
     }
 
     @Override

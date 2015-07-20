@@ -1651,7 +1651,10 @@ public final class DataConnection extends StateMachine {
                                     mDct.isPermanentFail(result.mFailCause);
                             if (DBG) log(str);
                             if (cp.mApnContext != null) cp.mApnContext.requestLog(str);
-                            if (result.mFailCause.isRestartRadioFail()) {
+                            if (result.mFailCause.isRestartRadioFail() ||
+                                    (cp.mApnContext != null &&
+                                    cp.mApnContext.restartOnError(
+                                    result.mFailCause.getErrorCode()))) {
                                 if (DBG) log("DcActivatingState: ERR_RilError restart radio");
                                 mDct.sendRestartRadio();
                                 mInactiveState.setEnterNotificationParams(cp, result.mFailCause);
