@@ -1599,7 +1599,10 @@ public final class DcTracker extends DcTrackerBase {
         apnContext.setEnabled(enabled);
         apnContext.setDependencyMet(met);
         if (cleanup) cleanUpConnection(true, apnContext);
-        if (trySetup) trySetupData(apnContext);
+        if (trySetup) {
+            apnContext.resetErrorCodeRetries();
+            trySetupData(apnContext);
+        }
     }
 
     private DcAsyncChannel checkForCompatibleConnectedApnContext(ApnContext apnContext) {
