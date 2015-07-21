@@ -1003,15 +1003,16 @@ public final class ImsPhoneCallTracker extends CallTracker {
         // State updates will be triggered through individual callbacks
         // i.e. onCallHeld, onCallResume, etc and conn.update will be responsible for the update
         if (ignoreState) {
-            changed = conn.updateMediaCapabilities(imsCall);
-        } else {
-            changed = conn.update(imsCall, state);
-            if (state == ImsPhoneCall.State.DISCONNECTED) {
-                changed = conn.onDisconnect(cause) || changed;
-                //detach the disconnected connections
-                conn.getCall().detach(conn);
-                removeConnection(conn);
-            }
+            conn.updateMediaCapabilities(imsCall);
+            return;
+        }
+
+        changed = conn.update(imsCall, state);
+        if (state == ImsPhoneCall.State.DISCONNECTED) {
+            changed = conn.onDisconnect(cause) || changed;
+            //detach the disconnected connections
+            conn.getCall().detach(conn);
+            removeConnection(conn);
         }
 
         if (changed) {
