@@ -618,7 +618,6 @@ public class ProxyController {
         int maxNumRafBit = 0;
         int maxRaf = RadioAccessFamily.RAF_UNKNOWN;
 
-        int number;
         for (int len = 0; len < mProxyPhones.length; len++) {
             numRafSupported[len] = Integer.bitCount(mProxyPhones[len].getRadioAccessFamily());
             if (maxNumRafBit < numRafSupported[len]) {
@@ -637,7 +636,6 @@ public class ProxyController {
         int minNumRafBit = 0;
         int minRaf = RadioAccessFamily.RAF_UNKNOWN;
 
-        int number;
         for (int len = 0; len < mProxyPhones.length; len++) {
             numRafSupported[len] = Integer.bitCount(mProxyPhones[len].getRadioAccessFamily());
             if ((minNumRafBit == 0) || (minNumRafBit > numRafSupported[len])) {
