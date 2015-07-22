@@ -124,16 +124,17 @@ public class UiccSmsController extends ISms.Stub {
     public void sendText(String callingPackage, String destAddr, String scAddr,
             String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         sendTextForSubscriber(getPreferredSmsSubscription(), callingPackage, destAddr, scAddr,
-            text, sentIntent, deliveryIntent);
+            text, sentIntent, deliveryIntent, true /* persistMessageForNonDefaultSmsApp*/);
     }
 
     @Override
     public void sendTextForSubscriber(int subId, String callingPackage, String destAddr,
-            String scAddr, String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+            String scAddr, String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
+            boolean persistMessageForNonDefaultSmsApp) {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null) {
             iccSmsIntMgr.sendText(callingPackage, destAddr, scAddr, text, sentIntent,
-                    deliveryIntent);
+                    deliveryIntent, persistMessageForNonDefaultSmsApp);
         } else {
             Rlog.e(LOG_TAG,"sendTextForSubscriber iccSmsIntMgr is null for" +
                           " Subscription: " + subId);
@@ -158,18 +159,19 @@ public class UiccSmsController extends ISms.Stub {
             List<String> parts, List<PendingIntent> sentIntents,
             List<PendingIntent> deliveryIntents) throws android.os.RemoteException {
          sendMultipartTextForSubscriber(getPreferredSmsSubscription(), callingPackage, destAddr,
-                 scAddr, parts, sentIntents, deliveryIntents);
+                 scAddr, parts, sentIntents, deliveryIntents,
+                 true /* persistMessageForNonDefaultSmsApp */);
     }
 
     @Override
     public void sendMultipartTextForSubscriber(int subId, String callingPackage, String destAddr,
             String scAddr, List<String> parts, List<PendingIntent> sentIntents,
-            List<PendingIntent> deliveryIntents)
+            List<PendingIntent> deliveryIntents, boolean persistMessageForNonDefaultSmsApp)
             throws android.os.RemoteException {
         IccSmsInterfaceManager iccSmsIntMgr = getIccSmsInterfaceManager(subId);
         if (iccSmsIntMgr != null ) {
             iccSmsIntMgr.sendMultipartText(callingPackage, destAddr, scAddr, parts, sentIntents,
-                    deliveryIntents);
+                    deliveryIntents, persistMessageForNonDefaultSmsApp);
         } else {
             Rlog.e(LOG_TAG,"sendMultipartTextForSubscriber iccSmsIntMgr is null for" +
                           " Subscription: " + subId);
