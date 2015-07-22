@@ -301,9 +301,8 @@ public class WapPushOverSms implements ServiceConnection {
                 intent.setComponent(componentName);
                 if (DBG) Rlog.v(TAG, "Delivering MMS to: " + componentName.getPackageName() +
                         " " + componentName.getClassName());
-                long duration = 0;
                 try {
-                    duration = mDeviceIdleController.addPowerSaveTempWhitelistAppForMms(
+                    long duration = mDeviceIdleController.addPowerSaveTempWhitelistAppForMms(
                             componentName.getPackageName(), 0, "mms-app");
                     BroadcastOptions bopts = BroadcastOptions.makeBasic();
                     bopts.setTemporaryAppWhitelistDuration(duration);
