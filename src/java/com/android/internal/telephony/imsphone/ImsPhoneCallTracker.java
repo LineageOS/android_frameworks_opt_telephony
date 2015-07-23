@@ -79,7 +79,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
     // calls.  This is helpful for debugging.
     private static final boolean VERBOSE_STATE_LOGGING = false; /* stopship if true */
 
+    //Indices map to ImsConfig.FeatureConstants
     private boolean[] mImsFeatureEnabled = {false, false, false, false};
+    private final String[] mImsFeatureStrings = {"VoLTE", "ViLTE", "VoWiFi", "ViWiFi"};
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -1477,17 +1479,17 @@ public final class ImsPhoneCallTracker extends CallTracker {
                         i <= ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI; i++) {
                     if (enabledFeatures[i] == i) {
                         // If the feature is set to its own integer value it is enabled.
-                        if (DBG) log("onFeatureCapabilityChanged: i=" + i + ", value=true");
+                        if (DBG) log("onFeatureCapabilityChanged(" + i + ", " + mImsFeatureStrings[i] + "): value=true");
                         mImsFeatureEnabled[i] = true;
                     } else if (enabledFeatures[i]
                             == ImsConfig.FeatureConstants.FEATURE_TYPE_UNKNOWN) {
                         // FEATURE_TYPE_UNKNOWN indicates that a feature is disabled.
-                        if (DBG) log("onFeatureCapabilityChanged: i=" + i + ", value=false");
+                        if (DBG) log("onFeatureCapabilityChanged(" + i + ", " + mImsFeatureStrings[i] + "): value=false");
                         mImsFeatureEnabled[i] = false;
                     } else {
                         // Feature has unknown state; it is not its own value or -1.
                         if (DBG) {
-                            loge("onFeatureCapabilityChanged: i=" + i + ", unexpectedValue="
+                            loge("onFeatureCapabilityChanged(" + i + ", " +mImsFeatureStrings[i] + "): unexpectedValue="
                                 + enabledFeatures[i]);
                         }
                     }
@@ -1506,8 +1508,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
                 mPhone.onFeatureCapabilityChanged();
             }
-
-            if (DBG) log("onFeatureCapabilityChanged: mImsFeatureEnabled=" +  mImsFeatureEnabled);
         }
     };
 
