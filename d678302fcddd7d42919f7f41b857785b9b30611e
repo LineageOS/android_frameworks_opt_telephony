@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "df140735_687a0b89",
+        "filename": "src/java/com/android/internal/telephony/ModemBindingPolicyHandler.java",
+        "patchSetId": 8
+      },
+      "lineNbr": 655,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2015-07-23T00:07:51Z",
+      "side": 1,
+      "message": "I went for this because as Danny and I discovered, getting the existing code to work like how we want it to always doesn\u0027t always work.\n\nMaking this is a special case allows to do exactly what we want, no more and no less.",
+      "revId": "d678302fcddd7d42919f7f41b857785b9b30611e",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
