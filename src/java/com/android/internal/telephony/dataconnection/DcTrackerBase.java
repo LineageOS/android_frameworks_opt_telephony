@@ -662,9 +662,15 @@ public abstract class DcTrackerBase extends Handler {
         mPhone.notifyDataActivity();
     }
 
-    abstract public void incApnRefCount(String name, LocalLog log);
+    abstract public void incApnRefCount(String name, LocalLog log, int serialNum);
 
-    abstract public void decApnRefCount(String name, LocalLog log);
+    abstract public void decApnRefCount(String name, LocalLog log, int serialNum);
+
+    abstract public int currentRequestCount();
+
+    abstract public void clearApnRefCounts();
+
+    abstract public void snapshotContexts(String logName);
 
     public boolean isApnSupported(String name) {
         return false;
