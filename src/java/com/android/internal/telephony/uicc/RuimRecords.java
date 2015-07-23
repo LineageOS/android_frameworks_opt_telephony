@@ -782,7 +782,11 @@ public final class RuimRecords extends IccRecords {
             }
         }
 
-        setSimLanguage(mEFli, mEFpl);
+        Resources resource = Resources.getSystem();
+        if (resource.getBoolean(com.android.internal.R.bool.config_use_sim_language_file)) {
+            setSimLanguage(mEFli, mEFpl);
+        }
+
         mRecordsLoadedRegistrants.notifyRegistrants(
             new AsyncResult(null, null, null));
 
@@ -818,16 +822,13 @@ public final class RuimRecords extends IccRecords {
                 obtainMessage(EVENT_GET_ICCID_DONE));
         mRecordsToLoad++;
 
-        Resources resource = Resources.getSystem();
-        if (resource.getBoolean(com.android.internal.R.bool.config_use_sim_language_file)) {
-            mFh.loadEFTransparent(EF_PL,
-                    obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfPlLoaded()));
-            mRecordsToLoad++;
+        mFh.loadEFTransparent(EF_PL,
+                obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfPlLoaded()));
+        mRecordsToLoad++;
 
-            mFh.loadEFTransparent(EF_CSIM_LI,
-                    obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfCsimLiLoaded()));
-            mRecordsToLoad++;
-        }
+        mFh.loadEFTransparent(EF_CSIM_LI,
+                obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfCsimLiLoaded()));
+        mRecordsToLoad++;
 
         mFh.loadEFTransparent(EF_CSIM_SPN,
                 obtainMessage(EVENT_GET_ICC_RECORD_DONE, new EfCsimSpnLoaded()));
