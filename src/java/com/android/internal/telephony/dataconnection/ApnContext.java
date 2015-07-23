@@ -285,7 +285,7 @@ public class ApnContext {
         }
     }
 
-    public void incRefCount(LocalLog log) {
+    public void incRefCount(LocalLog log, int serialNum) {
         synchronized (mRefCountLock) {
             if (mRefCount == 0) {
                // we wanted to leave the last in so it could actually capture the tear down
@@ -302,10 +302,11 @@ public class ApnContext {
             if (mRefCount++ == 0) {
                 mDcTracker.setEnabled(mDcTracker.apnTypeToId(mApnType), true);
             }
+            DctController.getInstance().ackNetworkExecution(serialNum);
         }
     }
 
-    public void decRefCount(LocalLog log) {
+    public void decRefCount(LocalLog log, int serialNum) {
         synchronized (mRefCountLock) {
             // leave the last log alive to capture the actual tear down
             if (mRefCount != 1) {
@@ -319,6 +320,29 @@ public class ApnContext {
             }
             if (mRefCount-- == 1) {
                 mDcTracker.setEnabled(mDcTracker.apnTypeToId(mApnType), false);
+            }
+            DctController.getInstance().ackNetworkExecution(serialNum);
+        }
+    }
+
+    public void clearRefCount() {
+        synchronized (mRefCountLock) {
+            for (LocalLog l : mLocalLogs) l.log("ApnContext.clearRefCount from " + mRefCount);
+            mLocalLogs.clear();
+            mRefCount = 0;
+            mDcTracker.setEnabled(mDcTracker.apnTypeToId(mApnType), false);
+        }
+    }
+
+    int getRefCount() {
+        return mRefCount;
+    }
+
+    void copyLogTo(LocalLog other) {
+        synchronized (mRefCountLock) {
+            for (LocalLog l : mLocalLogs) {
+                other.log("-----");
+                l.copyTo(other, 30);
             }
         }
     }

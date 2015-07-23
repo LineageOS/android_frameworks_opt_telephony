@@ -412,6 +412,49 @@ public class PhoneFactory {
         return ImsPhoneFactory.makePhone(sContext, phoneNotifier, defaultPhone);
     }
 
+    /**
+     * Adds a local log category.
+     *
+     * Only used within the telephony process.  Use localLog to add log entries.
+     *
+     * TODO - is there a better way to do this?  Think about design when we have a minute.
+     *
+     * @param key the name of the category - will be the header in the service dump.
+     * @param size the number of lines to maintain in this category
+     */
+    public static void addLocalLog(String key, int size) {
+        synchronized(sLocalLogs) {
+            if (sLocalLogs.containsKey(key)) {
+                throw new IllegalArgumentException("key " + key + " already present");
+            }
+            sLocalLogs.put(key, new LocalLog(size));
+        }
+    }
+
+    /**
+     * Add a line to the named Local Log.
+     *
+     * This will appear in the TelephonyDebugService dump.
+     *
+     * @param key the name of the log category to put this in.  Must be created
+     *            via addLocalLog.
+     * @param log the string to add to the log.
+     */
+    public static void localLog(String key, String log) {
+        synchronized(sLocalLogs) {
+            if (sLocalLogs.containsKey(key) == false) {
+                throw new IllegalArgumentException("key " + key + " not found");
+            }
+            sLocalLogs.get(key).log(log);
+        }
+    }
+
+    public static LocalLog getLocalLog(String key) {
+        synchronized (sLocalLogs) {
+            return sLocalLogs.get(key);
+        }
+    }
+
     public static void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("PhoneFactory:");
         PhoneProxy [] phones = (PhoneProxy[])PhoneFactory.getPhones();
