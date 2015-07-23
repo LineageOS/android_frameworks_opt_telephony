@@ -1414,6 +1414,7 @@ public class SubscriptionController extends ISub.Stub {
         if (SubscriptionManager.isValidSubscriptionId(subId)) {
             // Only re-map modems if the new default data sub is valid
             RadioAccessFamily[] rafs = new RadioAccessFamily[len];
+            boolean atLeastOneMatch = false;
             for (int phoneId = 0; phoneId < len; phoneId++) {
                 PhoneProxy phone = sProxyPhones[phoneId];
                 int raf;
@@ -1421,6 +1422,7 @@ public class SubscriptionController extends ISub.Stub {
                 if (id == subId) {
                     // TODO Handle the general case of N modems and M subscriptions.
                     raf = proxyController.getMaxRafSupported();
+                    atLeastOneMatch = true;
                 } else {
                     // TODO Handle the general case of N modems and M subscriptions.
                     raf = proxyController.getMinRafSupported();
@@ -1428,7 +1430,11 @@ public class SubscriptionController extends ISub.Stub {
                 logdl("[setDefaultDataSubId] phoneId=" + phoneId + " subId=" + id + " RAF=" + raf);
                 rafs[phoneId] = new RadioAccessFamily(phoneId, raf);
             }
-            proxyController.setRadioCapability(rafs);
+            if (atLeastOneMatch) {
+                proxyController.setRadioCapability(rafs);
+            } else {
+                if (DBG) logdl("[setDefaultDataSubId] no valid subId's found - not updating.");
+            }
         }
 
         // FIXME is this still needed?
