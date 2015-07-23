@@ -28,6 +28,7 @@ import android.util.SparseIntArray;
 import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
+import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -397,7 +398,17 @@ public class ApnContext {
         Rlog.d(LOG_TAG, "[ApnContext:" + mApnType + "] " + s);
     }
 
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        pw.println("ApnContext: " + this.toString());
+    public void dump(FileDescriptor fd, PrintWriter printWriter, String[] args) {
+        final IndentingPrintWriter pw = new IndentingPrintWriter(printWriter, "  ");
+        synchronized (mRefCountLock) {
+            pw.println(toString());
+            if (mRefCount > 0) {
+                pw.increaseIndent();
+                for (LocalLog l : mLocalLogs) {
+                    l.dump(fd, pw, args);
+                }
+                pw.decreaseIndent();
+            }
+        }
     }
 }
