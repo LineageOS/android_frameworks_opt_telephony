@@ -69,6 +69,7 @@ import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
@@ -253,20 +254,49 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     @Override
-    public void incApnRefCount(String name, LocalLog log) {
+    public void incApnRefCount(String name, LocalLog log, int serialNum) {
         ApnContext apnContext = mApnContexts.get(name);
-        log.log("DcTracker.incApnRefCount on " + name + " found " + apnContext);
+        log.log("DcTracker.incApnRefCount on " + name + " found " + apnContext + " (" +
+                serialNum + ")");
         if (apnContext != null) {
-            apnContext.incRefCount(log);
+            apnContext.incRefCount(log, serialNum);
+        }
+
+    }
+
+    @Override
+    public void decApnRefCount(String name, LocalLog log, int serialNum) {
+        ApnContext apnContext = mApnContexts.get(name);
+        log.log("DcTracker.decApnRefCount on " + name + " found " + apnContext + " (" +
+                serialNum + ")");
+        if (apnContext != null) {
+            apnContext.decRefCount(log, serialNum);
         }
     }
 
     @Override
-    public void decApnRefCount(String name, LocalLog log) {
-        ApnContext apnContext = mApnContexts.get(name);
-        log.log("DcTracker.decApnRefCount on " + name + " found " + apnContext);
-        if (apnContext != null) {
-            apnContext.decRefCount(log);
+    public int currentRequestCount() {
+        int total = 0;
+        for (ApnContext apnContext: mApnContexts.values()) {
+            total += apnContext.getRefCount();
+        }
+        return total;
+    }
+
+    @Override
+    public void clearApnRefCounts() {
+        for (ApnContext apnContext : mApnContexts.values()) {
+            apnContext.clearRefCount();
+        }
+    }
+
+    public void snapshotContexts(String logName) {
+        LocalLog l = PhoneFactory.getLocalLog(logName);
+        if (l != null) {
+            for (ApnContext apnContext : mApnContexts.values()) {
+                l.log(apnContext.toString());
+                apnContext.copyLogTo(l);
+            }
         }
     }
 
