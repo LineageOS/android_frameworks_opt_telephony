@@ -772,6 +772,7 @@ public final class RuimRecords extends IccRecords {
                 log("update icc_operator_numeric=" + operator);
                 mTelephonyManager.setSimOperatorNumericForPhone(
                         mParentApp.getPhoneId(), operator);
+                setSpnFromConfig(operator);
             } else {
                 log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
             }
