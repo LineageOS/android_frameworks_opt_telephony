@@ -36,6 +36,8 @@ import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static com.android.internal.telephony.TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA;
+
 /**
  * {@hide}
  */
@@ -60,6 +62,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected int mRecordsToLoad;  // number of pending load requests
 
     protected AdnRecordCache mAdnCache;
+
+    private SpnOverride mSpnOverride;
 
     // ***** Cached SIM State; cleared on channel close
 
@@ -124,6 +128,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " mCi=" + mCi
                 + " mFh=" + mFh
                 + " mParentApp=" + mParentApp
+                + " mSpnOverride=" + "mSpnOverride"
                 + " recordsLoadedRegistrants=" + mRecordsLoadedRegistrants
                 + " mImsiReadyRegistrants=" + mImsiReadyRegistrants
                 + " mRecordsEventsRegistrants=" + mRecordsEventsRegistrants
@@ -172,6 +177,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(
                 Context.TELEPHONY_SERVICE);
         mCi.registerForIccRefresh(this, EVENT_REFRESH, null);
+        mSpnOverride = new SpnOverride();
     }
 
     /**
@@ -388,6 +394,16 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     protected void setServiceProviderName(String spn) {
         mSpn = spn;
+    }
+
+    protected void setSpnFromConfig(String carrier) {
+        if (mSpnOverride.containsCarrier(carrier)) {
+            String overrideSpn = mSpnOverride.getSpn(carrier);
+            log("set override spn carrier: " + carrier + ", spn: " + overrideSpn);
+            setServiceProviderName(overrideSpn);
+            mTelephonyManager.setSimOperatorNameForPhone(
+                    mParentApp.getPhoneId(), getServiceProviderName());
+        }
     }
 
     /**
@@ -780,6 +796,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mCi=" + mCi);
         pw.println(" mFh=" + mFh);
         pw.println(" mParentApp=" + mParentApp);
+        pw.println(" mSpnOverride=" + mSpnOverride);
         pw.println(" recordsLoadedRegistrants: size=" + mRecordsLoadedRegistrants.size());
         for (int i = 0; i < mRecordsLoadedRegistrants.size(); i++) {
             pw.println("  recordsLoadedRegistrants[" + i + "]="
