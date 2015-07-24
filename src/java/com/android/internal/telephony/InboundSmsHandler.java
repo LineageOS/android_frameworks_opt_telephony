@@ -44,9 +44,11 @@ import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.IDeviceIdleController;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.os.UserManager;
@@ -189,6 +191,8 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     private UserManager mUserManager;
 
+    IDeviceIdleController mDeviceIdleController;
+
     /**
      * Create a new SMS broadcast helper.
      * @param name the class name for logging
@@ -215,6 +219,8 @@ public abstract class InboundSmsHandler extends StateMachine {
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, name);
         mWakeLock.acquire();    // wake lock released after we enter idle state
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
+        mDeviceIdleController = IDeviceIdleController.Stub.asInterface(
+                ServiceManager.getService(Context.DEVICE_IDLE_CONTROLLER));
 
         addState(mDefaultState);
         addState(mStartupState, mDefaultState);
@@ -867,6 +873,28 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
     }
 
+    Bundle handleSmsWhitelisting(ComponentName target) {
+        String pkgName;
+        String reason;
+        if (target != null) {
+            pkgName = target.getPackageName();
+            reason = "sms-app";
+        } else {
+            pkgName = mContext.getPackageName();
+            reason = "sms-broadcast";
+        }
+        try {
+            long duration = mDeviceIdleController.addPowerSaveTempWhitelistAppForSms(
+                    pkgName, 0, reason);
+            BroadcastOptions bopts = BroadcastOptions.makeBasic();
+            bopts.setTemporaryAppWhitelistDuration(duration);
+            return bopts.toBundle();
+        } catch (RemoteException e) {
+        }
+
+        return null;
+    }
+
     /**
      * Creates and dispatches the intent to the default SMS app or the appropriate port.
      *
@@ -911,8 +939,9 @@ public abstract class InboundSmsHandler extends StateMachine {
             intent.setComponent(null);
         }
 
+        Bundle options = handleSmsWhitelisting(intent.getComponent());
         dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                AppOpsManager.OP_RECEIVE_SMS, null, resultReceiver, UserHandle.OWNER);
+                AppOpsManager.OP_RECEIVE_SMS, options, resultReceiver, UserHandle.OWNER);
     }
 
     /**
@@ -1041,16 +1070,26 @@ public abstract class InboundSmsHandler extends StateMachine {
                 intent.setAction(Intents.SMS_RECEIVED_ACTION);
                 intent.setComponent(null);
                 // All running users will be notified of the received sms.
+                Bundle options = handleSmsWhitelisting(null);
                 dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                        AppOpsManager.OP_RECEIVE_SMS, null, this, UserHandle.ALL);
+                        AppOpsManager.OP_RECEIVE_SMS, options, this, UserHandle.ALL);
             } else if (action.equals(Intents.WAP_PUSH_DELIVER_ACTION)) {
                 // Now dispatch the notification only intent
                 intent.setAction(Intents.WAP_PUSH_RECEIVED_ACTION);
                 intent.setComponent(null);
                 // Only the primary user will receive notification of incoming mms.
                 // That app will do the actual downloading of the mms.
+                Bundle options = null;
+                try {
+                    long duration = mDeviceIdleController.addPowerSaveTempWhitelistAppForMms(
+                            mContext.getPackageName(), 0, "mms-broadcast");
+                    BroadcastOptions bopts = BroadcastOptions.makeBasic();
+                    bopts.setTemporaryAppWhitelistDuration(duration);
+                    options = bopts.toBundle();
+                } catch (RemoteException e) {
+                }
                 dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                        AppOpsManager.OP_RECEIVE_SMS, null, this, UserHandle.OWNER);
+                        AppOpsManager.OP_RECEIVE_SMS, options, this, UserHandle.OWNER);
             } else {
                 // Now that the intents have been deleted we can clean up the PDU data.
                 if (!Intents.DATA_SMS_RECEIVED_ACTION.equals(action)
