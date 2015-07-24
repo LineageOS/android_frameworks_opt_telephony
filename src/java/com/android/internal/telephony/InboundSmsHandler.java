@@ -409,8 +409,19 @@ public abstract class InboundSmsHandler extends StateMachine {
 
                 case EVENT_BROADCAST_SMS:
                     // if any broadcasts were sent, transition to waiting state
-                    if (processMessagePart((InboundSmsTracker) msg.obj)) {
+                    InboundSmsTracker inboundSmsTracker = (InboundSmsTracker) msg.obj;
+                    if (processMessagePart(inboundSmsTracker)) {
                         transitionTo(mWaitingState);
+                    } else {
+                        // if event is sent from SmsBroadcastUndelivered.broadcastSms(), and
+                        // processMessagePart() returns false, the state machine will be stuck in
+                        // DeliveringState until next message is received. Send message to
+                        // transition to idle to avoid that so that wakelock can be released
+                        log("No broadcast sent. Delete msg from raw table and return to idle " +
+                                "state");
+                        deleteFromRawTable(inboundSmsTracker.getDeleteWhere(),
+                                inboundSmsTracker.getDeleteWhereArgs());
+                        sendMessage(EVENT_RETURN_TO_IDLE);
                     }
                     return HANDLED;
 
