@@ -2052,7 +2052,7 @@ public class GSMPhone extends PhoneBase {
         if (status) {
             IccRecords iccRecords = mIccRecords.get();
             if (iccRecords != null) {
-                SystemProperties.set(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA,
+                setSystemProperty(TelephonyProperties.PROPERTY_ICC_OPERATOR_ALPHA,
                         iccRecords.getServiceProviderName());
             }
             if (mSST != null) {

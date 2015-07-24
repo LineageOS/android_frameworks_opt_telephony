@@ -425,7 +425,7 @@ public final class RuimRecords extends IccRecords {
             }
             if (DBG) log("spn=" + getServiceProviderName());
             if (DBG) log("spnCondition=" + mCsimSpnDisplayCondition);
-            SystemProperties.set(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
+            setSystemProperty(PROPERTY_ICC_OPERATOR_ALPHA, getServiceProviderName());
         }
     }
 
@@ -923,6 +923,7 @@ public final class RuimRecords extends IccRecords {
                     operator + "'");
             setSystemProperty(PROPERTY_ICC_OPERATOR_NUMERIC, operator);
             setSystemProperty(PROPERTY_APN_RUIM_OPERATOR_NUMERIC, operator);
+            setSpnFromConfig(operator);
         } else {
             log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
         }
