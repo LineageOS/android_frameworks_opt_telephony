@@ -1438,7 +1438,12 @@ public class SIMRecords extends IccRecords {
     protected void onAllRecordsLoaded() {
         if (DBG) log("record load complete");
 
-        setSimLanguage(mEfLi, mEfPl);
+        Resources resource = Resources.getSystem();
+        if (resource.getBoolean(com.android.internal.R.bool.config_use_sim_language_file)) {
+            setSimLanguage(mEfLi, mEfPl);
+        } else {
+            if (DBG) log ("Not using EF LI/EF PL");
+        }
 
         if (mParentApp.getState() == AppState.APPSTATE_PIN ||
                mParentApp.getState() == AppState.APPSTATE_PUK) {
@@ -1509,12 +1514,6 @@ public class SIMRecords extends IccRecords {
     }
 
     private void loadEfLiAndEfPl() {
-        Resources resource = Resources.getSystem();
-        if (!resource.getBoolean(com.android.internal.R.bool.config_use_sim_language_file)) {
-            if (DBG) log ("Not using EF LI/EF PL");
-            return;
-        }
-
         if (mParentApp.getType() == AppType.APPTYPE_USIM) {
             mRecordsRequested = true;
             mFh.loadEFTransparent(EF_LI,
