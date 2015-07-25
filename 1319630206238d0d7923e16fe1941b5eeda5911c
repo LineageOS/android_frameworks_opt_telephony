@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "df140735_e2587757",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 926,
+      "author": {
+        "id": 10293
+      },
+      "writtenOn": "2015-07-25T03:51:01Z",
+      "side": 1,
+      "message": "convert tab to spaces",
+      "revId": "1319630206238d0d7923e16fe1941b5eeda5911c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
