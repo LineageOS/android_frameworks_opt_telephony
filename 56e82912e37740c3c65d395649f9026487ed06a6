@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "df140735_22766fda",
+        "filename": "src/java/com/android/internal/telephony/uicc/RuimRecords.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 430,
+      "author": {
+        "id": 10293
+      },
+      "writtenOn": "2015-07-25T03:26:39Z",
+      "side": 1,
+      "message": "should be able to remove this block right?",
+      "revId": "56e82912e37740c3c65d395649f9026487ed06a6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
