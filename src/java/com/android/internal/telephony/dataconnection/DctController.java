@@ -516,7 +516,7 @@ public class DctController extends Handler {
     }
 
     private void onExecuteRequest(RequestInfo requestInfo) {
-        if (!requestInfo.executed) {
+        if (!requestInfo.executed && mRequestInfos.containsKey(requestInfo.request.requestId)) {
             logd("onExecuteRequest request=" + requestInfo);
             requestInfo.log("DctController.onExecuteRequest - executed=" + requestInfo.executed);
             requestInfo.executed = true;
