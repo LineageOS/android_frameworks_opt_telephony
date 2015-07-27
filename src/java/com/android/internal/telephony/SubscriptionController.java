@@ -324,6 +324,8 @@ public class SubscriptionController extends ISub.Stub {
         } else {
             accessRules = null;
         }
+        int userNwMode = cursor.getInt(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.USER_NETWORK_MODE));
 
         if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
@@ -331,7 +333,8 @@ public class SubscriptionController extends ISub.Stub {
                     + simSlotIndex + " displayName:" + displayName + " nameSource:" + nameSource
                     + " iconTint:" + iconTint + " dataRoaming:" + dataRoaming
                     + " mcc:" + mcc + " mnc:" + mnc + " countIso:" + countryIso + " isEmbedded:"
-                    + isEmbedded + " accessRules:" + Arrays.toString(accessRules));
+                    + isEmbedded + " accessRules:" + Arrays.toString(accessRules)
+                    + " userNwMode:" + userNwMode);
         }
 
         // If line1number has been set to a different number, use it instead.
@@ -341,7 +344,7 @@ public class SubscriptionController extends ISub.Stub {
         }
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
                 nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
-                isEmbedded, accessRules);
+                isEmbedded, accessRules, userNwMode);
     }
 
     /**
