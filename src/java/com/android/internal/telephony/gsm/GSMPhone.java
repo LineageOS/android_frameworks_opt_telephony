@@ -802,6 +802,7 @@ public class GSMPhone extends PhoneBase {
     public Connection
     dial (String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
             throws CallStateException {
+        boolean isEmergency = PhoneNumberUtils.isEmergencyNumber(dialString);
         ImsPhone imsPhone = mImsPhone;
 
         boolean imsUseEnabled = isImsUseEnabled()
@@ -810,7 +811,7 @@ public class GSMPhone extends PhoneBase {
                  && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE);
 
         boolean useImsForEmergency = imsPhone != null
-                && PhoneNumberUtils.isEmergencyNumber(dialString)
+                && isEmergency
                 &&  mContext.getResources().getBoolean(
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall)
                 && ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext)
@@ -845,6 +846,10 @@ public class GSMPhone extends PhoneBase {
             }
         }
 
+        if ((mSST != null) && (mSST.mSS.getState() == ServiceState.STATE_OUT_OF_SERVICE)
+                && !isEmergency) {
+            throw new CallStateException("cannot dial in current state");
+        }
         if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Trying (non-IMS) CS call");
         return dialInternal(dialString, null, VideoProfile.STATE_AUDIO_ONLY, intentExtras);
     }
