@@ -427,6 +427,7 @@ public class CDMAPhone extends PhoneBase {
             throw new CallStateException("Sending UUS information NOT supported in CDMA!");
         }
 
+        boolean isEmergency = PhoneNumberUtils.isEmergencyNumber(dialString);
         ImsPhone imsPhone = mImsPhone;
 
         boolean imsUseEnabled = isImsUseEnabled()
@@ -435,7 +436,7 @@ public class CDMAPhone extends PhoneBase {
                  && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE);
 
         boolean useImsForEmergency = imsPhone != null
-                && PhoneNumberUtils.isEmergencyNumber(dialString)
+                && isEmergency
                 &&  mContext.getResources().getBoolean(
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall)
                 && ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext)
@@ -470,6 +471,10 @@ public class CDMAPhone extends PhoneBase {
             }
         }
 
+        if ((mSST != null) && (mSST.mSS.getState() == ServiceState.STATE_OUT_OF_SERVICE)
+                && !isEmergency) {
+            throw new CallStateException("cannot dial in current state");
+        }
         if (DBG) Rlog.d(LOG_TAG, "Trying (non-IMS) CS call");
         return dialInternal(dialString, null, videoState, intentExtras);
     }
