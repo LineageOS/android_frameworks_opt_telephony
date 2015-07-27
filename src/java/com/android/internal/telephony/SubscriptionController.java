@@ -376,13 +376,15 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.SUB_STATE));
         int nwMode = cursor.getInt(cursor.getColumnIndexOrThrow(
                 SubscriptionManager.NETWORK_MODE));
+        int userNwMode = cursor.getInt(cursor.getColumnIndexOrThrow(
+                SubscriptionManager.USER_NETWORK_MODE));
 
         if (DBG) {
             logd("[getSubInfoRecord] id:" + id + " iccid:" + iccId + " simSlotIndex:" + simSlotIndex
                 + " displayName:" + displayName + " nameSource:" + nameSource
                 + " iconTint:" + iconTint + " dataRoaming:" + dataRoaming
                 + " mcc:" + mcc + " mnc:" + mnc + " countIso:" + countryIso +
-                " status:" + status + " nwMode:" + nwMode);
+                " status:" + status + " nwMode:" + nwMode + " userNwMode:" + userNwMode);
         }
 
         String line1Number = mTelephonyManager.getLine1NumberForSubscriber(id);
@@ -392,7 +394,7 @@ public class SubscriptionController extends ISub.Stub {
         }
         return new SubscriptionInfo(id, iccId, simSlotIndex, displayName, carrierName,
                 nameSource, iconTint, number, dataRoaming, iconBitmap, mcc, mnc, countryIso,
-                status, nwMode);
+                status, nwMode, userNwMode);
     }
 
     /**
@@ -1467,10 +1469,12 @@ public class SubscriptionController extends ISub.Stub {
                 if (id == subId) {
                     networkType1 = getUserNwMode(id);
                     phoneId1 = phoneId;
-                    if (DBG) logdl("[setDefaultDataSubNetworkType] networkType1: " + networkType1 + ", phoneId1: " + phoneId1);
+                    if (DBG) logdl("[setDefaultDataSubNetworkType] networkType1: "
+                            + networkType1 + ", phoneId1: " + phoneId1);
                 } else {
                     phoneId2 = phoneId;
-                    if (DBG) logdl("[setDefaultDataSubNetworkType] networkType2: " + networkType2 + ", phoneId2: " + phoneId2);
+                    if (DBG) logdl("[setDefaultDataSubNetworkType] networkType2: "
+                            + networkType2 + ", phoneId2: " + phoneId2);
                 }
             }
             TelephonyManager.putIntAtIndex(mContext.getContentResolver(),
@@ -1739,7 +1743,27 @@ public class SubscriptionController extends ISub.Stub {
         if (subInfo != null)  {
             return subInfo.mNwMode;
         } else {
-            loge("getSubState: invalid subId = " + subId);
+            loge("getNwMode: invalid subId = " + subId);
+            return SubscriptionManager.DEFAULT_NW_MODE;
+        }
+    }
+
+    /* {@hide} */
+    public void setUserNwMode(int subId, int nwMode) {
+        logd("setUserNwMode, nwMode: " + nwMode + " subId: " + subId);
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.USER_NETWORK_MODE, nwMode);
+        mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                value, BaseColumns._ID + "=" + Integer.toString(subId), null);
+    }
+
+    /* {@hide} */
+    public int getUserNwMode(int subId) {
+        SubscriptionInfo subInfo = getActiveSubscriptionInfo(subId);
+        if (subInfo != null)  {
+            return subInfo.mUserNwMode;
+        } else {
+            loge("getUserNwMode: invalid subId = " + subId);
             return SubscriptionManager.DEFAULT_NW_MODE;
         }
     }
