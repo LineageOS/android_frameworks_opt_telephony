@@ -417,10 +417,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                         // processMessagePart() returns false, the state machine will be stuck in
                         // DeliveringState until next message is received. Send message to
                         // transition to idle to avoid that so that wakelock can be released
-                        log("No broadcast sent. Delete msg from raw table and return to idle " +
-                                "state");
-                        deleteFromRawTable(inboundSmsTracker.getDeleteWhere(),
-                                inboundSmsTracker.getDeleteWhereArgs());
+                        log("No broadcast sent on processing EVENT_BROADCAST_SMS in Delivering " +
+                                "state. Return to Idle state");
                         sendMessage(EVENT_RETURN_TO_IDLE);
                     }
                     return HANDLED;
@@ -759,7 +757,12 @@ public abstract class InboundSmsHandler extends StateMachine {
             int result = mWapPush.dispatchWapPdu(output.toByteArray(), resultReceiver, this);
             if (DBG) log("dispatchWapPdu() returned " + result);
             // result is Activity.RESULT_OK if an ordered broadcast was sent
-            return (result == Activity.RESULT_OK);
+            if (result == Activity.RESULT_OK) {
+                return true;
+            } else {
+                deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs());
+                return false;
+            }
         }
 
         List<String> carrierPackages = null;
