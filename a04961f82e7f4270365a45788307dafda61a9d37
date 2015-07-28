@@ -70,6 +70,24 @@
     },
     {
       "key": {
+        "uuid": "bf091321_2cf78bf8",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 11
+      },
+      "lineNbr": 1449,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2015-07-28T17:00:55Z",
+      "side": 1,
+      "message": "It shouldn\u0027t, actually. I copied it from the above method.\n\nIn any case, a runtimeexception might be too much, it\u0027ll switch to a log print rather.",
+      "parentUuid": "bf091321_3eaa1185",
+      "revId": "a04961f82e7f4270365a45788307dafda61a9d37",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bf091321_7be89b15",
         "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
         "patchSetId": 11
@@ -99,6 +117,24 @@
       "side": 1,
       "message": "Maybe move this logic to ModemBindingPolicyHandler? Then you can just pass the subId, check for the invalid indexes and invalid subscription id\u0027s.",
       "parentUuid": "bf091321_7be89b15",
+      "revId": "a04961f82e7f4270365a45788307dafda61a9d37",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bf091321_ecd87380",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 11
+      },
+      "lineNbr": 1463,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2015-07-28T17:00:55Z",
+      "side": 1,
+      "message": "I didn\u0027t want to add any non modem specific code to that, and this class already has the necessary imports and initialisations.",
+      "parentUuid": "bf091321_fe93795b",
       "revId": "a04961f82e7f4270365a45788307dafda61a9d37",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
