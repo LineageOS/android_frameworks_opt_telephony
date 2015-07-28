@@ -3476,6 +3476,8 @@ public class DcTracker extends Handler {
                 !apnTypeSameAny(first, second) &&
                 xorEquals(first.proxy, second.proxy) &&
                 xorEquals(first.port, second.port) &&
+                xorEquals(first.protocol, second.protocol) &&
+                xorEquals(first.roamingProtocol, second.roamingProtocol) &&
                 first.carrierEnabled == second.carrierEnabled &&
                 first.bearerBitmask == second.bearerBitmask &&
                 first.profileId == second.profileId &&
