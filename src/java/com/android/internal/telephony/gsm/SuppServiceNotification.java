@@ -35,6 +35,9 @@ public class SuppServiceNotification {
     /** TS 27.007 7.17 "number" (MT only) */
     public String number;
 
+    /** List of forwarded numbers, if any */
+    public String[] history;
+
     static public final int NOTIFICATION_TYPE_MO = 0;
     static public final int NOTIFICATION_TYPE_MT = 1;
 
@@ -67,6 +70,7 @@ public class SuppServiceNotification {
             + (notificationType == NOTIFICATION_TYPE_MO ? " originated " : " terminated ")
             + " code: " + code
             + " index: " + index
+            + " history: " + history
             + " \""
             + PhoneNumberUtils.stringFromStringAndTOA(number, type) + "\" ";
     }
