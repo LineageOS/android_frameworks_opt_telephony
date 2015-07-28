@@ -53,6 +53,23 @@
     },
     {
       "key": {
+        "uuid": "bf091321_3eaa1185",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 11
+      },
+      "lineNbr": 1449,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2015-07-28T01:43:00Z",
+      "side": 1,
+      "message": "Should we really throw a runtimeexception here? in what scenario does this happen?\n\nCommenting mostly because its unusual to break anything based off of bad data from telephony.",
+      "revId": "a04961f82e7f4270365a45788307dafda61a9d37",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bf091321_7be89b15",
         "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
         "patchSetId": 11
@@ -64,6 +81,24 @@
       "writtenOn": "2015-07-27T20:47:28Z",
       "side": 1,
       "message": "Any suggestions here?",
+      "revId": "a04961f82e7f4270365a45788307dafda61a9d37",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bf091321_fe93795b",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 11
+      },
+      "lineNbr": 1463,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2015-07-28T01:43:00Z",
+      "side": 1,
+      "message": "Maybe move this logic to ModemBindingPolicyHandler? Then you can just pass the subId, check for the invalid indexes and invalid subscription id\u0027s.",
+      "parentUuid": "bf091321_7be89b15",
       "revId": "a04961f82e7f4270365a45788307dafda61a9d37",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
