@@ -32,6 +32,7 @@ import android.os.UserManager;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.provider.Telephony;
+import android.test.AssertionFailedError;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.MediumTest;
@@ -42,6 +43,7 @@ import com.android.internal.telephony.SmsBroadcastUndelivered;
 import com.android.internal.telephony.SmsHeader;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyTest;
+import com.android.internal.telephony.TelephonyTestUtils;
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.IState;
@@ -389,6 +391,40 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         waitForMs(50);
 
         assertEquals("IdleState", getCurrentState().getName());
+    }
+
+    @Test
+    public void testAquireWakeLock() {
+        int oldWakeLockCount = 0;
+        int newWakeLockCount = 0;
+        try {
+            oldWakeLockCount = mGsmInboundSmsHandler.getWakelockCount();
+            callMethodWithNoArgs("acquireWakeLock");
+            newWakeLockCount = mGsmInboundSmsHandler.getWakelockCount();
+            assertEquals(1, newWakeLockCount - oldWakeLockCount);
+
+            callMethodWithNoArgs("decrementWakeLock");
+            newWakeLockCount = mGsmInboundSmsHandler.getWakelockCount();
+            assertEquals(0, newWakeLockCount - oldWakeLockCount);
+
+            oldWakeLockCount = mGsmInboundSmsHandler.getWakelockCount();
+            callMethodWithNoArgs("acquireWakeLock");
+            newWakeLockCount = mGsmInboundSmsHandler.getWakelockCount();
+            assertEquals(1, newWakeLockCount - oldWakeLockCount);
+
+            callMethodWithNoArgs("releaseWakeLock");
+            newWakeLockCount = mGsmInboundSmsHandler.getWakelockCount();
+            assertEquals(0, newWakeLockCount);
+        } catch(Exception e) {
+            fail(e.toString());
+        }
+    }
+
+    private void callMethodWithNoArgs(String method) throws Exception {
+        Method m;
+        m = mGsmInboundSmsHandler.getClass().getSuperclass().getDeclaredMethod(method);
+        m.setAccessible(true);
+        m.invoke(mGsmInboundSmsHandler);
     }
 
     @Test
