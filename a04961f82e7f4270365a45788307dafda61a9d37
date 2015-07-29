@@ -19,6 +19,23 @@
     },
     {
       "key": {
+        "uuid": "bf091321_9f78f4f8",
+        "filename": "src/java/com/android/internal/telephony/ModemBindingPolicyHandler.java",
+        "patchSetId": 11
+      },
+      "lineNbr": 673,
+      "author": {
+        "id": 10293
+      },
+      "writtenOn": "2015-07-29T20:22:22Z",
+      "side": 1,
+      "message": "is this missing a check?  It looks like updatePreferredStackIds would also ensure that the phoneId2 stack supports the phoneId1 NW type after cross binding.\n\nI think it would be simpler to write a new version of setPreferredNetworkType.  It could take multiple phoneId/networkType pairs.  If rebinding is required, we just put the response in the map as before.  If rebinding is not required, just call mCi[phoneId].setPreferredNeworkType for each phoneId.  This way we don\u0027t have to rewrite any of the logic from updatePreferredStackIds.",
+      "revId": "a04961f82e7f4270365a45788307dafda61a9d37",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bf091321_db9327a3",
         "filename": "src/java/com/android/internal/telephony/ModemBindingPolicyHandler.java",
         "patchSetId": 11
