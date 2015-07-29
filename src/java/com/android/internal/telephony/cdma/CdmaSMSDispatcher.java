@@ -113,7 +113,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
             HashMap map = getSmsTrackerMap(destAddr, scAddr, destPort, data, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
                     null /*messageUri*/, false /*isExpectMore*/, null /*fullMessageText*/,
-                    false /*isText*/);
+                    false /*isText*/, true /*persistMessage*/);
 
             String carrierPackage = getCarrierAppPackageName();
             if (carrierPackage != null) {
@@ -139,13 +139,14 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
     /** {@inheritDoc} */
     @Override
     protected void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
-            PendingIntent deliveryIntent, Uri messageUri, String callingPkg) {
+            PendingIntent deliveryIntent, Uri messageUri, String callingPkg,
+            boolean persistMessage) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, text, (deliveryIntent != null), null);
         if (pdu != null) {
             HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                    messageUri, false /*isExpectMore*/, text, true /*isText*/);
+                    messageUri, false /*isExpectMore*/, text, true /*isText*/, persistMessage);
 
             String carrierPackage = getCarrierAppPackageName();
             if (carrierPackage != null) {
@@ -209,7 +210,8 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                 message, submitPdu);
         return getSmsTracker(map, sentIntent, deliveryIntent,
                 getFormat(), unsentPartCount, anyPartFailed, messageUri, smsHeader,
-                false /*isExpextMore*/, fullMessageText, true /*isText*/);
+                false /*isExpextMore*/, fullMessageText, true /*isText*/,
+                true /*persistMessage*/);
     }
 
     @Override
