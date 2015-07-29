@@ -2362,10 +2362,12 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     private ApnSetting mergeApns(ApnSetting dest, ApnSetting src) {
+        int id = dest.id;
         ArrayList<String> resultTypes = new ArrayList<String>();
         resultTypes.addAll(Arrays.asList(dest.types));
         for (String srcType : src.types) {
             if (resultTypes.contains(srcType) == false) resultTypes.add(srcType);
+            if (srcType.equals(PhoneConstants.APN_TYPE_DEFAULT)) id = src.id;
         }
         String mmsc = (TextUtils.isEmpty(dest.mmsc) ? src.mmsc : dest.mmsc);
         String mmsProxy = (TextUtils.isEmpty(dest.mmsProxy) ? src.mmsProxy : dest.mmsProxy);
@@ -2378,7 +2380,7 @@ public final class DcTracker extends DcTrackerBase {
         int bearerBitmask = (dest.bearerBitmask == 0 || src.bearerBitmask == 0) ?
                 0 : (dest.bearerBitmask | src.bearerBitmask);
 
-        return new ApnSetting(dest.id, dest.numeric, dest.carrier, dest.apn,
+        return new ApnSetting(id, dest.numeric, dest.carrier, dest.apn,
                 proxy, port, mmsc, mmsProxy, mmsPort, dest.user, dest.password,
                 dest.authType, resultTypes.toArray(new String[0]), protocol,
                 roamingProtocol, dest.carrierEnabled, 0, bearerBitmask, dest.profileId,
