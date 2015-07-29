@@ -388,11 +388,13 @@ public class IccSmsInterfaceManager {
      * This method checks only if the calling package has the permission to send the sms.
      */
     public void sendText(String callingPackage, String destAddr, String scAddr,
-            String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+            String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
+            boolean persistMessageForNonDefaultSmsApp) {
         mPhone.getContext().enforceCallingPermission(
                 Manifest.permission.SEND_SMS,
                 "Sending SMS message");
-        sendTextInternal(callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent);
+        sendTextInternal(callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent,
+            persistMessageForNonDefaultSmsApp);
     }
 
     /**
@@ -404,7 +406,8 @@ public class IccSmsInterfaceManager {
         mPhone.getContext().enforceCallingOrSelfPermission(
                 Manifest.permission.SEND_SMS,
                 "Sending SMS message");
-        sendTextInternal(callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent);
+        sendTextInternal(callingPackage, destAddr, scAddr, text, sentIntent, deliveryIntent,
+            true /* persistMessageForNonDefaultSmsApp */);
     }
 
     /**
@@ -433,8 +436,8 @@ public class IccSmsInterfaceManager {
      */
 
     private void sendTextInternal(String callingPackage, String destAddr, String scAddr,
-            String text, PendingIntent sentIntent, PendingIntent deliveryIntent) {
-
+            String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
+            boolean persistMessageForNonDefaultSmsApp) {
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             log("sendText: destAddr=" + destAddr + " scAddr=" + scAddr +
                 " text='"+ text + "' sentIntent=" +
@@ -444,9 +447,13 @@ public class IccSmsInterfaceManager {
                 callingPackage) != AppOpsManager.MODE_ALLOWED) {
             return;
         }
+        if (!persistMessageForNonDefaultSmsApp) {
+            // Only allow carrier app to skip auto message persistence.
+            enforceCarrierPrivilege();
+        }
         destAddr = filterDestAddress(destAddr);
         mDispatcher.sendText(destAddr, scAddr, text, sentIntent, deliveryIntent,
-                null/*messageUri*/, callingPackage);
+                null/*messageUri*/, callingPackage, persistMessageForNonDefaultSmsApp);
     }
 
     /**
@@ -497,10 +504,14 @@ public class IccSmsInterfaceManager {
 
     public void sendMultipartText(String callingPackage, String destAddr, String scAddr,
             List<String> parts, List<PendingIntent> sentIntents,
-            List<PendingIntent> deliveryIntents) {
+            List<PendingIntent> deliveryIntents, boolean persistMessageForNonDefaultSmsApp) {
         mPhone.getContext().enforceCallingPermission(
                 Manifest.permission.SEND_SMS,
                 "Sending SMS message");
+        if (!persistMessageForNonDefaultSmsApp) {
+            // Only allow carrier app to skip auto message persistence.
+            enforceCarrierPrivilege();
+        }
         if (Rlog.isLoggable("SMS", Log.VERBOSE)) {
             int i = 0;
             for (String part : parts) {
@@ -538,14 +549,15 @@ public class IccSmsInterfaceManager {
 
                 mDispatcher.sendText(destAddr, scAddr, singlePart,
                         singleSentIntent, singleDeliveryIntent,
-                        null/*messageUri*/, callingPackage);
+                        null/*messageUri*/, callingPackage,
+                        persistMessageForNonDefaultSmsApp);
             }
             return;
         }
 
         mDispatcher.sendMultipartText(destAddr, scAddr, (ArrayList<String>) parts,
                 (ArrayList<PendingIntent>) sentIntents, (ArrayList<PendingIntent>) deliveryIntents,
-                null/*messageUri*/, callingPackage);
+                null/*messageUri*/, callingPackage, persistMessageForNonDefaultSmsApp);
     }
 
 
@@ -945,7 +957,8 @@ public class IccSmsInterfaceManager {
         }
         textAndAddress[1] = filterDestAddress(textAndAddress[1]);
         mDispatcher.sendText(textAndAddress[1], scAddress, textAndAddress[0],
-                sentIntent, deliveryIntent, messageUri, callingPkg);
+                sentIntent, deliveryIntent, messageUri, callingPkg,
+                true /* persistMessageForNonDefaultSmsApp */);
     }
 
     public void sendStoredMultipartText(String callingPkg, Uri messageUri, String scAddress,
@@ -1000,7 +1013,8 @@ public class IccSmsInterfaceManager {
                 }
 
                 mDispatcher.sendText(textAndAddress[1], scAddress, singlePart,
-                        singleSentIntent, singleDeliveryIntent, messageUri, callingPkg);
+                        singleSentIntent, singleDeliveryIntent, messageUri, callingPkg,
+                        true  /* persistMessageForNonDefaultSmsApp */);
             }
             return;
         }
@@ -1012,7 +1026,8 @@ public class IccSmsInterfaceManager {
                 (ArrayList<PendingIntent>) sentIntents,
                 (ArrayList<PendingIntent>) deliveryIntents,
                 messageUri,
-                callingPkg);
+                callingPkg,
+                true  /* persistMessageForNonDefaultSmsApp */);
     }
 
     private boolean isFailedOrDraft(ContentResolver resolver, Uri messageUri) {

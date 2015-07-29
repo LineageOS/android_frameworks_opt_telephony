@@ -290,6 +290,13 @@ public final class SmsManager {
     public void sendTextMessage(
             String destinationAddress, String scAddress, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        sendTextMessageInternal(destinationAddress, scAddress, text,
+            sentIntent, deliveryIntent, true /* persistMessageForCarrierApp*/);
+    }
+
+    private void sendTextMessageInternal(String destinationAddress, String scAddress,
+            String text, PendingIntent sentIntent, PendingIntent deliveryIntent,
+            boolean persistMessageForCarrierApp) {
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
@@ -302,10 +309,26 @@ public final class SmsManager {
             ISms iccISms = getISmsServiceOrThrow();
             iccISms.sendTextForSubscriber(getSubscriptionId(), ActivityThread.currentPackageName(),
                     destinationAddress,
-                    scAddress, text, sentIntent, deliveryIntent);
+                    scAddress, text, sentIntent, deliveryIntent,
+                    persistMessageForCarrierApp);
         } catch (RemoteException ex) {
             // ignore it
         }
+    }
+
+    /**
+     * Send a text based SMS without writing it into the SMS Provider.
+     *
+     * <p>Only the carrier app can call this method.</p>
+     *
+     * @see #sendTextMessage(String, String, String, PendingIntent, PendingIntent)
+     * @hide
+     */
+    public void sendTextMessageWithoutPersisting(
+            String destinationAddress, String scAddress, String text,
+            PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        sendTextMessageInternal(destinationAddress, scAddress, text,
+            sentIntent, deliveryIntent, false /* persistMessageForCarrierApp*/);
     }
 
     /**
@@ -431,6 +454,14 @@ public final class SmsManager {
     public void sendMultipartTextMessage(
             String destinationAddress, String scAddress, ArrayList<String> parts,
             ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
+        sendMultipartTextMessageInternal(destinationAddress, scAddress, parts,
+              sentIntents, deliveryIntents, true /* persistMessageForCarrierApp*/);
+    }
+
+    private void sendMultipartTextMessageInternal(
+            String destinationAddress, String scAddress, ArrayList<String> parts,
+            ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents,
+            boolean persistMessageForCarrierApp) {
         if (TextUtils.isEmpty(destinationAddress)) {
             throw new IllegalArgumentException("Invalid destinationAddress");
         }
@@ -444,7 +475,7 @@ public final class SmsManager {
                 iccISms.sendMultipartTextForSubscriber(getSubscriptionId(),
                         ActivityThread.currentPackageName(),
                         destinationAddress, scAddress, parts,
-                        sentIntents, deliveryIntents);
+                        sentIntents, deliveryIntents, persistMessageForCarrierApp);
             } catch (RemoteException ex) {
                 // ignore it
             }
@@ -460,6 +491,21 @@ public final class SmsManager {
             sendTextMessage(destinationAddress, scAddress, parts.get(0),
                     sentIntent, deliveryIntent);
         }
+    }
+
+    /**
+     * Send a multi-part text based SMS without writing it into the SMS Provider.
+     *
+     * <p>Only the carrier app can call this method.</p>
+     *
+     * @see #sendMultipartTextMessage(String, String, ArrayList, ArrayList, ArrayList)
+     * @hide
+     **/
+    public void sendMultipartTextMessageWithoutPersisting(
+            String destinationAddress, String scAddress, ArrayList<String> parts,
+            ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
+        sendMultipartTextMessageInternal(destinationAddress, scAddress, parts,
+            sentIntents, deliveryIntents, false /* persistMessageForCarrierApp*/);
     }
 
     /**
