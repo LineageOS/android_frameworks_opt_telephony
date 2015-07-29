@@ -64,7 +64,6 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
         final NetworkRequest request;
         final int priority;
         private final LocalLog requestLog;
-        int executionSerialNumber;
 
         public RequestInfo(NetworkRequest request, int priority, LocalLog l) {
             this.request = request;

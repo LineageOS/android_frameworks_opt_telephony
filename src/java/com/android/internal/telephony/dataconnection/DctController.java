@@ -31,13 +31,11 @@ import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.util.LocalLog;
-import android.util.Log;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.RequestInfo;
@@ -61,7 +59,6 @@ public class DctController extends Handler {
     private static final int EVENT_RELEASE_REQUEST = 103;
     private static final int EVENT_RELEASE_ALL_REQUESTS = 104;
     private static final int EVENT_RETRY_ATTACH = 105;
-    private static final int EVENT_EXECUTION_TIMEOUT = 106;
 
     private static final int EVENT_DATA_ATTACHED = 500;
     private static final int EVENT_DATA_DETACHED = 600;
@@ -210,8 +207,6 @@ public class DctController extends Handler {
         mPhoneNum = phones.length;
         mPhones = phones;
 
-        createRequestExecLog();
-
         mDcSwitchStateMachine = new DcSwitchStateMachine[mPhoneNum];
         mDcSwitchAsyncChannel = new DcSwitchAsyncChannel[mPhoneNum];
         mDcSwitchStateHandler = new Handler[mPhoneNum];
@@ -280,7 +275,7 @@ public class DctController extends Handler {
                 onExecuteAllRequests(msg.arg1);
                 break;
             case EVENT_RELEASE_REQUEST:
-                onReleaseRequest((RequestInfo)msg.obj, msg.arg1);
+                onReleaseRequest((RequestInfo)msg.obj);
                 break;
             case EVENT_RELEASE_ALL_REQUESTS:
                 onReleaseAllRequests(msg.arg1);
@@ -288,140 +283,8 @@ public class DctController extends Handler {
             case EVENT_RETRY_ATTACH:
                 onRetryAttach(msg.arg1);
                 break;
-            case EVENT_EXECUTION_TIMEOUT:
-                onEventExecutionTimeout(msg.arg1);
-                break;
             default:
                 loge("Un-handled message [" + msg.what + "]");
-        }
-    }
-
-    // how long to wait for ApnContext to call us back..
-    private static final long EXECUTION_TIMEOUT_MS = 1000 * 30;
-    private final HashMap<Integer, RequestInfo> mExecutingNetworkRequestTransactions =
-            new HashMap<Integer, RequestInfo>();
-    private final HashMap<Integer, RequestInfo> mExecutingNetworkReleaseTransactions =
-            new HashMap<Integer, RequestInfo>();
-    private final Object mExecutingLock = new Object();
-    private static final int NO_SERIAL = 0;
-    private int mExecutingSerialNumber = 1;
-    private static final String REQUEST_LOG_NAME = "DctController Request Exec";
-
-    private static final boolean ATTEMPT_TO_REPAIR_EXEC_MISMATCH = false;
-
-    private void createRequestExecLog() {
-        PhoneFactory.addLocalLog(REQUEST_LOG_NAME, 200000);
-    }
-
-    private void requestExecLog(String log) {
-        PhoneFactory.localLog(REQUEST_LOG_NAME, log);
-    }
-
-    private void trackNetworkRequest(RequestInfo ri) {
-        synchronized (mExecutingLock) {
-            if (ri.executionSerialNumber != NO_SERIAL) {
-                Log.wtf(LOG_TAG, "networkRequest added twice?");
-            }
-            // need to store away so when we actually act on it we can pass this on
-            ri.executionSerialNumber = ++mExecutingSerialNumber;
-            mExecutingNetworkRequestTransactions.put(ri.executionSerialNumber, ri);
-            final Message msg = obtainMessage(EVENT_EXECUTION_TIMEOUT, ri.executionSerialNumber, 0);
-            sendMessageDelayed(msg, EXECUTION_TIMEOUT_MS);
-        }
-    }
-
-    private int trackNetworkRelease(RequestInfo ri) {
-        synchronized (mExecutingLock) {
-            final int executionSerialNumber = ++mExecutingSerialNumber;
-            mExecutingNetworkReleaseTransactions.put(executionSerialNumber, ri);
-            final Message msg = obtainMessage(EVENT_EXECUTION_TIMEOUT, executionSerialNumber, 0);
-            sendMessageDelayed(msg, EXECUTION_TIMEOUT_MS);
-            return executionSerialNumber;
-        }
-    }
-
-    /**
-     * the ack that a network was requested or released
-     * @param executionSerialNumber the number of the ask executed
-     * @param totalLiveRequests the number of requests alive *after* processing
-     */
-    void ackNetworkExecution(int executionSerialNumber) {
-        final Integer serialNum = new Integer(executionSerialNumber);
-        synchronized (mExecutingLock) {
-            if (mExecutingNetworkRequestTransactions.remove(serialNum) == null) {
-                if (mExecutingNetworkReleaseTransactions.remove(serialNum) == null) {
-                    Log.wtf(LOG_TAG, "ackNetworkExecution can't find request for " +
-                            executionSerialNumber);
-                }
-            }
-            verifyNetworkRequestsLocked();
-        }
-    }
-
-    private void onEventExecutionTimeout(int serialNum) {
-        synchronized (mExecutingLock) {
-            if ((mExecutingNetworkRequestTransactions.remove(serialNum) != null) ||
-                    (mExecutingNetworkReleaseTransactions.remove(serialNum) != null)) {
-                requestExecLog("Timeout on request " + serialNum);
-                verifyNetworkRequestsLocked();
-            }
-        }
-    }
-
-    private boolean loggedVerifyFailure = false;
-
-    private void verifyNetworkRequestsLocked() {
-        int ourLiveCount = mRequestInfos.size();
-        int ourExecutedCount = 0;
-        int phoneId = 0;
-        for (RequestInfo ri : mRequestInfos.values()) {
-            if (ri.executed) {
-                ourExecutedCount++;
-                phoneId = getRequestPhoneId(ri.request);
-            }
-        }
-
-        if (!SubscriptionManager.isValidPhoneId(phoneId)) return;
-
-        int pendingRequestCount = mExecutingNetworkRequestTransactions.size();
-        int pendingReleaseCount = mExecutingNetworkReleaseTransactions.size();
-
-        final PhoneBase phoneBase = (PhoneBase)mPhones[phoneId].getActivePhone();
-        final DcTrackerBase dcTracker = phoneBase.mDcTracker;
-
-        final int dcTrackerLiveRequests = dcTracker.currentRequestCount();
-
-        ourLiveCount += pendingReleaseCount;
-        ourLiveCount -= pendingRequestCount;
-
-        if (ourLiveCount != dcTrackerLiveRequests) {
-            if (!loggedVerifyFailure) {
-                requestExecLog("verifyNetworkRequestsLocked failed!  Ours=" + ourLiveCount +
-                        ", dcTrackers=" + dcTrackerLiveRequests);
-                requestExecLog("dc=" + dcTrackerLiveRequests + ", mRequestInfos=" +
-                        mRequestInfos.size() + ", exec=" + ourExecutedCount + ", pReq=" +
-                        pendingRequestCount + ", pRel=" + pendingReleaseCount);
-
-                dcTracker.snapshotContexts(REQUEST_LOG_NAME);
-                loggedVerifyFailure = true;
-            }
-
-            if (ATTEMPT_TO_REPAIR_EXEC_MISMATCH) {
-                if (ourLiveCount == 0) {
-                    if (mExecutingNetworkRequestTransactions.size() == 0 &&
-                            mExecutingNetworkReleaseTransactions.size() == 0) {
-                        requestExecLog("attempting to repair DcTracker");
-                        dcTracker.clearApnRefCounts();
-                    } else {
-                        requestExecLog("not attempting to repair due to pending transactions " +
-                                (mExecutingNetworkRequestTransactions.size() +
-                                mExecutingNetworkReleaseTransactions.size()));
-                    }
-                } else {
-                    requestExecLog("not attempting to repair due to our live count " +
-                            ourLiveCount);
-                }
-            }
         }
     }
 
@@ -431,7 +294,6 @@ public class DctController extends Handler {
         l.log("Dctc.requestNetwork, priority=" + priority);
 
         RequestInfo requestInfo = new RequestInfo(request, priority, l);
-        trackNetworkRequest(requestInfo);
         mRequestInfos.put(request.requestId, requestInfo);
         processRequests();
 
@@ -443,9 +305,8 @@ public class DctController extends Handler {
         logd("releaseNetwork request=" + request + ", requestInfo=" + requestInfo);
         if (requestInfo != null) requestInfo.log("DctController.releaseNetwork");
 
-        final int serialNum = trackNetworkRelease(requestInfo);
         mRequestInfos.remove(request.requestId);
-        releaseRequest(requestInfo, serialNum);
+        releaseRequest(requestInfo);
         processRequests();
         return PhoneConstants.APN_REQUEST_STARTED;
     }
@@ -465,9 +326,9 @@ public class DctController extends Handler {
         sendMessage(obtainMessage(EVENT_EXECUTE_ALL_REQUESTS, phoneId,0));
     }
 
-    void releaseRequest(RequestInfo request, int serialNum) {
+    void releaseRequest(RequestInfo request) {
         logd("releaseRequest, request= " + request);
-        sendMessage(obtainMessage(EVENT_RELEASE_REQUEST, serialNum, 0, request));
+        sendMessage(obtainMessage(EVENT_RELEASE_REQUEST, request));
     }
 
     void releaseAllRequests(int phoneId) {
@@ -524,7 +385,7 @@ public class DctController extends Handler {
             int phoneId = getRequestPhoneId(requestInfo.request);
             PhoneBase phoneBase = (PhoneBase)mPhones[phoneId].getActivePhone();
             DcTrackerBase dcTracker = phoneBase.mDcTracker;
-            dcTracker.incApnRefCount(apn, requestInfo.getLog(), requestInfo.executionSerialNumber);
+            dcTracker.incApnRefCount(apn, requestInfo.getLog());
         }
     }
 
@@ -539,7 +400,7 @@ public class DctController extends Handler {
         }
     }
 
-    private void onReleaseRequest(RequestInfo requestInfo, int executionSerialNumber) {
+    private void onReleaseRequest(RequestInfo requestInfo) {
         logd("onReleaseRequest request=" + requestInfo);
         if (requestInfo != null) {
             requestInfo.log("DctController.onReleaseRequest");
@@ -548,7 +409,7 @@ public class DctController extends Handler {
                 int phoneId = getRequestPhoneId(requestInfo.request);
                 PhoneBase phoneBase = (PhoneBase)mPhones[phoneId].getActivePhone();
                 DcTrackerBase dcTracker = phoneBase.mDcTracker;
-                dcTracker.decApnRefCount(apn, requestInfo.getLog(), executionSerialNumber);
+                dcTracker.decApnRefCount(apn, requestInfo.getLog());
                 requestInfo.executed = false;
             }
         }
@@ -560,8 +421,7 @@ public class DctController extends Handler {
         while (iterator.hasNext()) {
             RequestInfo requestInfo = mRequestInfos.get(iterator.next());
             if (getRequestPhoneId(requestInfo.request) == phoneId) {
-                final int serialNum = trackNetworkRelease(requestInfo);
-                onReleaseRequest(requestInfo, serialNum);
+                onReleaseRequest(requestInfo);
             }
         }
     }
@@ -600,7 +460,17 @@ public class DctController extends Handler {
                 RequestInfo requestInfo = mRequestInfos.get(iterator.next());
                 String specifier = requestInfo.request.networkCapabilities.getNetworkSpecifier();
                 if (specifier == null || specifier.equals("")) {
-                    onReleaseRequest(requestInfo, trackNetworkRelease(requestInfo));
+                    if (requestInfo.executed) {
+                        String apn = apnForNetworkRequest(requestInfo.request);
+                        logd("[setDataSubId] activePhoneId:" + activePhoneId + ", subId =" +
+                                dataSubId);
+                        requestInfo.log("DctController.onSettingsChange releasing request");
+                        PhoneBase phoneBase =
+                                (PhoneBase)mPhones[activePhoneId].getActivePhone();
+                        DcTrackerBase dcTracker = phoneBase.mDcTracker;
+                        dcTracker.decApnRefCount(apn, requestInfo.getLog());
+                        requestInfo.executed = false;
+                    }
                 }
             }
         }
