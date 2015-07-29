@@ -441,7 +441,7 @@ public class DctController extends Handler {
     private int releaseNetwork(NetworkRequest request) {
         RequestInfo requestInfo = mRequestInfos.get(request.requestId);
         logd("releaseNetwork request=" + request + ", requestInfo=" + requestInfo);
-        requestInfo.log("DctController.releaseNetwork");
+        if (requestInfo != null) requestInfo.log("DctController.releaseNetwork");
 
         final int serialNum = trackNetworkRelease(requestInfo);
         mRequestInfos.remove(request.requestId);
@@ -541,14 +541,16 @@ public class DctController extends Handler {
 
     private void onReleaseRequest(RequestInfo requestInfo, int executionSerialNumber) {
         logd("onReleaseRequest request=" + requestInfo);
-        requestInfo.log("DctController.onReleaseRequest");
-        if (requestInfo != null && requestInfo.executed) {
-            String apn = apnForNetworkRequest(requestInfo.request);
-            int phoneId = getRequestPhoneId(requestInfo.request);
-            PhoneBase phoneBase = (PhoneBase)mPhones[phoneId].getActivePhone();
-            DcTrackerBase dcTracker = phoneBase.mDcTracker;
-            dcTracker.decApnRefCount(apn, requestInfo.getLog(), executionSerialNumber);
-            requestInfo.executed = false;
+        if (requestInfo != null) {
+            requestInfo.log("DctController.onReleaseRequest");
+            if (requestInfo.executed) {
+                String apn = apnForNetworkRequest(requestInfo.request);
+                int phoneId = getRequestPhoneId(requestInfo.request);
+                PhoneBase phoneBase = (PhoneBase)mPhones[phoneId].getActivePhone();
+                DcTrackerBase dcTracker = phoneBase.mDcTracker;
+                dcTracker.decApnRefCount(apn, requestInfo.getLog(), executionSerialNumber);
+                requestInfo.executed = false;
+            }
         }
     }
 
