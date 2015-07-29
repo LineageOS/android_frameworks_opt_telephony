@@ -454,12 +454,6 @@ public class PhoneFactory {
         }
     }
 
-    public static LocalLog getLocalLog(String key) {
-        synchronized (sLocalLogs) {
-            return sLocalLogs.get(key);
-        }
-    }
-
     public static void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("PhoneFactory:");
         PhoneProxy [] phones = (PhoneProxy[])PhoneFactory.getPhones();
