@@ -36,6 +36,24 @@
     },
     {
       "key": {
+        "uuid": "bf091321_1f03c444",
+        "filename": "src/java/com/android/internal/telephony/ModemBindingPolicyHandler.java",
+        "patchSetId": 11
+      },
+      "lineNbr": 673,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2015-07-29T21:27:33Z",
+      "side": 1,
+      "message": "I intentionally left that out as we have the phoneId2 networkTyp2 hardcoded to 2G in SubscriptionController, which we assume is supported by both stacks. Otherwise this wouldn\u0027t be useful.\n\nI do like that idea of a generic method though, I had thought of that initially. It could be used elsewhere too if needed. Will switch to that.",
+      "parentUuid": "bf091321_9f78f4f8",
+      "revId": "a04961f82e7f4270365a45788307dafda61a9d37",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bf091321_db9327a3",
         "filename": "src/java/com/android/internal/telephony/ModemBindingPolicyHandler.java",
         "patchSetId": 11
