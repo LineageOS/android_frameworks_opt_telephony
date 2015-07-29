@@ -172,13 +172,14 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     @Override
     protected void sendMultipartText(String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
-            ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg) {
+            ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
+            boolean persistMessage) {
         if (isCdmaMo()) {
             mCdmaDispatcher.sendMultipartText(destAddr, scAddr,
-                    parts, sentIntents, deliveryIntents, messageUri, callingPkg);
+                    parts, sentIntents, deliveryIntents, messageUri, callingPkg, persistMessage);
         } else {
             mGsmDispatcher.sendMultipartText(destAddr, scAddr,
-                    parts, sentIntents, deliveryIntents, messageUri, callingPkg);
+                    parts, sentIntents, deliveryIntents, messageUri, callingPkg, persistMessage);
         }
     }
 
@@ -197,14 +198,15 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
 
     @Override
     protected void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
-            PendingIntent deliveryIntent, Uri messageUri, String callingPkg) {
+            PendingIntent deliveryIntent, Uri messageUri, String callingPkg,
+            boolean persistMessage) {
         Rlog.d(TAG, "sendText");
         if (isCdmaMo()) {
             mCdmaDispatcher.sendText(destAddr, scAddr,
-                    text, sentIntent, deliveryIntent, messageUri, callingPkg);
+                    text, sentIntent, deliveryIntent, messageUri, callingPkg, persistMessage);
         } else {
             mGsmDispatcher.sendText(destAddr, scAddr,
-                    text, sentIntent, deliveryIntent, messageUri, callingPkg);
+                    text, sentIntent, deliveryIntent, messageUri, callingPkg, persistMessage);
         }
     }
 
