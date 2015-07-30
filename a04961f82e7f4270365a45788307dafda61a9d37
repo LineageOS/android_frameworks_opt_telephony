@@ -54,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "bf091321_c2fe93ad",
+        "filename": "src/java/com/android/internal/telephony/ModemBindingPolicyHandler.java",
+        "patchSetId": 11
+      },
+      "lineNbr": 673,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2015-07-30T02:37:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bf091321_1f03c444",
+      "revId": "a04961f82e7f4270365a45788307dafda61a9d37",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "bf091321_db9327a3",
         "filename": "src/java/com/android/internal/telephony/ModemBindingPolicyHandler.java",
         "patchSetId": 11
@@ -117,6 +135,24 @@
       "side": 1,
       "message": "It shouldn\u0027t, actually. I copied it from the above method.\n\nIn any case, a runtimeexception might be too much, it\u0027ll switch to a log print rather.",
       "parentUuid": "bf091321_3eaa1185",
+      "revId": "a04961f82e7f4270365a45788307dafda61a9d37",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bf091321_02f5abcb",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 11
+      },
+      "lineNbr": 1449,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2015-07-30T02:37:49Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bf091321_2cf78bf8",
       "revId": "a04961f82e7f4270365a45788307dafda61a9d37",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
