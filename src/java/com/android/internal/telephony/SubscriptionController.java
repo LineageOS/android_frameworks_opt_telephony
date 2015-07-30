@@ -208,10 +208,10 @@ public class SubscriptionController extends ISub.Stub {
      */
     private boolean canReadPhoneState(String callingPackage, String message) {
         try {
-            mContext.enforceCallingPermission(
+            mContext.enforceCallingOrSelfPermission(
                     android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE, message);
 
-            // SKIP checking run-time permission since using PRIVILEDGED permission
+            // SKIP checking run-time permission since self or using PRIVILEDGED permission
             return true;
         } catch (SecurityException e) {
             mContext.enforceCallingOrSelfPermission(android.Manifest.permission.READ_PHONE_STATE,
