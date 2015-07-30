@@ -123,6 +123,14 @@ public class ApnContext {
         mDcAc = dcac;
     }
 
+    public synchronized void releaseDataConnection(String reason) {
+        if (mDcAc != null) {
+            mDcAc.tearDown(this, reason, null);
+            mDcAc = null;
+        }
+        setState(DctConstants.State.IDLE);
+    }
+
     public synchronized PendingIntent getReconnectIntent() {
         return mReconnectAlarmIntent;
     }
