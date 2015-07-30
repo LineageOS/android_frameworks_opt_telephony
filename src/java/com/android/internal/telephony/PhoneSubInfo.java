@@ -367,10 +367,10 @@ public class PhoneSubInfo {
 
     private boolean checkReadPhoneState(String callingPackage, String message) {
         try {
-            mContext.enforceCallingPermission(
+            mContext.enforceCallingOrSelfPermission(
                     android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE, message);
 
-            // SKIP checking run-time OP_READ_PHONE_STATE since using PRIVILEGED
+            // SKIP checking run-time OP_READ_PHONE_STATE since self or using PRIVILEGED
             return true;
         } catch (SecurityException e) {
             mContext.enforceCallingOrSelfPermission(android.Manifest.permission.READ_PHONE_STATE,
