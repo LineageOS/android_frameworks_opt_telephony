@@ -799,11 +799,11 @@ public final class DcTracker extends DcTrackerBase {
             if (apnContext.getState() == DctConstants.State.FAILED
                     || apnContext.getState() == DctConstants.State.RETRYING) {
                 if (retryFailures == RetryFailures.ALWAYS) {
-                    apnContext.setState(DctConstants.State.IDLE);
+                    apnContext.releaseDataConnection(reason);
                 } else if (apnContext.isConcurrentVoiceAndDataAllowed() == false &&
                          mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
                     // RetryFailures.ONLY_ON_CHANGE - check if voice concurrency has changed
-                    apnContext.setState(DctConstants.State.IDLE);
+                    apnContext.releaseDataConnection(reason);
                 } else {
                     // RetryFailures.ONLY_ON_CHANGE - check if the apns have changed
                     int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
@@ -812,7 +812,7 @@ public final class DcTracker extends DcTrackerBase {
                         waitingApns = buildWaitingApns(apnContext.getApnType(), radioTech);
                         if (originalApns.size() != waitingApns.size() ||
                                 originalApns.containsAll(waitingApns) == false) {
-                            apnContext.setState(DctConstants.State.IDLE);
+                            apnContext.releaseDataConnection(reason);
                         }
                     }
                 }
