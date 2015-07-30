@@ -427,9 +427,15 @@ public class CDMALTEPhone extends CDMAPhone {
     public String getOperatorNumeric() {
         String operatorNumeric = null;
         IccRecords curIccRecords = null;
+
         if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
-            operatorNumeric = SystemProperties.get("ro.cdma.home.operator.numeric");
-        } else if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_RUIM_SIM) {
+            operatorNumeric = SystemProperties.get(PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
+            if (TextUtils.isEmpty(operatorNumeric)) {
+                operatorNumeric = null;
+            }
+        }
+
+        if (operatorNumeric == null) {
             curIccRecords = mSimRecords;
             if (curIccRecords != null) {
                 operatorNumeric = curIccRecords.getOperatorNumeric();
@@ -441,6 +447,7 @@ public class CDMALTEPhone extends CDMAPhone {
                 }
             }
         }
+
         if (operatorNumeric == null) {
             Rlog.e(LOG_TAG, "getOperatorNumeric: Cannot retrieve operatorNumeric:"
                     + " mCdmaSubscriptionSource = " + mCdmaSubscriptionSource + " mIccRecords = "
