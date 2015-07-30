@@ -2524,16 +2524,20 @@ public final class DcTracker extends DcTrackerBase {
      * @return operator numeric
      */
     private String getOperatorNumeric() {
-        String result;
+        String result = null;
+
         if (isNvSubscription()) {
             result = SystemProperties.get(CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
-            log("getOperatorNumberic - returning from NV: " + result);
-        } else {
+        }
+
+        if (TextUtils.isEmpty(result)) {
             IccRecords r = mIccRecords.get();
             result = (r != null) ? r.getOperatorNumeric() : "";
             log("getOperatorNumberic - returning from card: " + result);
+        } else {
+            log("getOperatorNumberic - returning from NV: " + result);
         }
-        if (result == null) result = "";
+
         return result;
     }
 
