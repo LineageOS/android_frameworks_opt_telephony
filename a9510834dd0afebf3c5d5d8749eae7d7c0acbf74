@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bf091321_e20197b1",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 12
+      },
+      "lineNbr": 1464,
+      "author": {
+        "id": 2195
+      },
+      "writtenOn": "2015-07-30T02:05:32Z",
+      "side": 1,
+      "message": "How do these look?",
+      "range": {
+        "startLine": 1461,
+        "startChar": 11,
+        "endLine": 1464,
+        "endChar": 67
+      },
+      "revId": "a9510834dd0afebf3c5d5d8749eae7d7c0acbf74",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
