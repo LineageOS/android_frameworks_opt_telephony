@@ -2466,16 +2466,27 @@ public final class DcTracker extends DcTrackerBase {
      * @return operator numeric
      */
     private String getOperatorNumeric() {
-        String result;
-        if (isNvSubscription()) {
+        String result = null;
+        Boolean isNv = isNvSubscription();
+
+        if (isNv) {
             result = SystemProperties.get(CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
-            log("getOperatorNumberic - returning from NV: " + result);
-        } else {
+            if (result != null && !result.equals("")) {
+                log("getOperatorNumberic - returning from NV: \"" + result + "\"");
+            } else {
+                isNv = false;
+                result = null;
+            }
+        }
+
+        if (!isNv) {
             IccRecords r = mIccRecords.get();
             result = (r != null) ? r.getOperatorNumeric() : "";
-            log("getOperatorNumberic - returning from card: " + result);
+            log("getOperatorNumberic - returning from card: \"" + result + "\"");
         }
+
         if (result == null) result = "";
+
         return result;
     }
 
