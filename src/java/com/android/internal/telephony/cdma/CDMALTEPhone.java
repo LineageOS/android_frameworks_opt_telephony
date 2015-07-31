@@ -427,20 +427,33 @@ public class CDMALTEPhone extends CDMAPhone {
     public String getOperatorNumeric() {
         String operatorNumeric = null;
         IccRecords curIccRecords = null;
-        if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
-            operatorNumeric = SystemProperties.get("ro.cdma.home.operator.numeric");
-        } else if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_RUIM_SIM) {
-            curIccRecords = mSimRecords;
-            if (curIccRecords != null) {
-                operatorNumeric = curIccRecords.getOperatorNumeric();
-            } else {
-                curIccRecords = mIccRecords.get();
-                if (curIccRecords != null && (curIccRecords instanceof RuimRecords)) {
-                    RuimRecords csim = (RuimRecords) curIccRecords;
-                    operatorNumeric = csim.getOperatorNumeric();
+
+        switch (mCdmaSubscriptionSource) {
+            case CDMA_SUBSCRIPTION_NV:
+                operatorNumeric =
+                        SystemProperties.get(CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
+                break;
+            case CDMA_SUBSCRIPTION_UNKNOWN:
+                // We're destroyed, return null
+                if (!mIsTheCurrentActivePhone) {
+                    return null;
                 }
-            }
+                // otherwise, attempt to retrieve records if we can and the subscription
+                // reported is incorrect
+            case CDMA_SUBSCRIPTION_RUIM_SIM:
+                curIccRecords = mSimRecords;
+                if (curIccRecords != null) {
+                    operatorNumeric = curIccRecords.getOperatorNumeric();
+                } else {
+                    curIccRecords = mIccRecords.get();
+                    if (curIccRecords != null && (curIccRecords instanceof RuimRecords)) {
+                        RuimRecords csim = (RuimRecords) curIccRecords;
+                        operatorNumeric = csim.getOperatorNumeric();
+                    }
+                }
+                break;
         }
+
         if (operatorNumeric == null) {
             Rlog.e(LOG_TAG, "getOperatorNumeric: Cannot retrieve operatorNumeric:"
                     + " mCdmaSubscriptionSource = " + mCdmaSubscriptionSource + " mIccRecords = "
