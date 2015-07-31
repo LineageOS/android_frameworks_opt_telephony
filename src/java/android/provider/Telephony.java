@@ -1069,7 +1069,20 @@ public final class Telephony {
              * @return an array of SmsMessages for the PDUs
              */
             public static SmsMessage[] getMessagesFromIntent(Intent intent) {
-                Object[] messages = (Object[]) intent.getSerializableExtra("pdus");
+                Object[] messages;
+                try {
+                    messages = (Object[]) intent.getSerializableExtra("pdus");
+                }
+                catch (ClassCastException e) {
+                    Rlog.e(TAG, "getMessagesFromIntent: " + e);
+                    return null;
+                }
+
+                if (messages == null) {
+                    Rlog.e(TAG, "pdus does not exist in the intent");
+                    return null;
+                }
+
                 String format = intent.getStringExtra("format");
                 int subId = intent.getIntExtra(PhoneConstants.SUBSCRIPTION_KEY,
                         SubscriptionManager.getDefaultSmsSubId());
