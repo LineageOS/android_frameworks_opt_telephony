@@ -56,4 +56,10 @@ public abstract class TelephonyPluginBase implements TelephonyPluginInterface {
             CommandsInterface[] commandsInterfaces) {
         SubscriptionController.init(context, commandsInterfaces);
     }
+
+    @Override
+    public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Context context,
+            Phone[] phoneProxy, CommandsInterface[] commandsInterfaces) {
+        return new SubscriptionInfoUpdater(context, phoneProxy, commandsInterfaces);
+    }
 }

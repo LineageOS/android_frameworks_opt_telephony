@@ -42,4 +42,7 @@ public interface TelephonyPluginInterface {
 
     public void initSubscriptionController(Context context,
             CommandsInterface[] commandsInterfaces);
+
+    public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Context context,
+            Phone[] phoneProxy, CommandsInterface[] commandsInterfaces);
 }
