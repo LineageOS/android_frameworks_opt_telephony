@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bf091321_0e0a7425",
+        "filename": "src/java/com/android/internal/telephony/cdma/CDMALTEPhone.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 435,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2015-08-01T00:05:24Z",
+      "side": 1,
+      "message": "Instead of essentially lying about subscription type here,\n\nwe could force people to set a systemprop which states that both subscription types are supported a la https://github.com/CyanogenMod/android_device_samsung_d2vzw/blob/cm-12.1/system.prop#L12\n\nthen read that prop here.",
+      "revId": "4d3a5b8949f259bfa4e8cd9a6c82d7b54d9d204f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
