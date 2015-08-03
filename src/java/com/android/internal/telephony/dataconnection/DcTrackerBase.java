@@ -814,7 +814,7 @@ public abstract class DcTrackerBase extends Handler {
         } catch (SettingNotFoundException snfe) {
             if (DBG) log("getDataOnRoamingEnabled: SettingNofFoundException snfe=" + snfe);
         }
-        if (DBG) {
+        if (VDBG) {
             log("getDataOnRoamingEnabled: phoneSubId=" + phoneSubId +
                     " isDataRoamingEnabled=" + isDataRoamingEnabled);
         }
@@ -1119,8 +1119,13 @@ public abstract class DcTrackerBase extends Handler {
                 }
                 break;
             }
+            case DctConstants.EVENT_DATA_STATE_CHANGED: {
+                // no longer do anything, but still registered - clean up log
+                // TODO - why are we still registering?
+                break;
+            }
             default:
-                Rlog.e("DATA", "Unidentified event msg=" + msg);
+                Rlog.e("DcTrackerBase", "Unhandled event=" + msg);
                 break;
         }
     }

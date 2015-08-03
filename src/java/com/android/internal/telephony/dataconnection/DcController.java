@@ -418,7 +418,7 @@ class DcController extends StateMachine {
                 dc.sendMessage(DataConnection.EVENT_LOST_CONNECTION, dc.mTag);
             }
 
-            if (DBG) log("onDataStateChanged: X");
+            if (VDBG) log("onDataStateChanged: X");
         }
     }
 

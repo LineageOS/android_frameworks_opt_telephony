@@ -539,7 +539,6 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public List<SubscriptionInfo> getActiveSubscriptionInfoList(String callingPackage) {
-        if (DBG) logdl("[getActiveSubInfoList]+");
 
         if (!canReadPhoneState(callingPackage, "getActiveSubscriptionInfoList")) {
             return null;
@@ -1140,7 +1139,7 @@ public class SubscriptionController extends ISub.Stub {
         // getDefaultSubId which makes a best guess.
         if (slotIdx == SubscriptionManager.DEFAULT_SIM_SLOT_INDEX) {
             slotIdx = getSlotId(getDefaultSubId());
-            if (DBG) logd("[getSubId] map default slotIdx=" + slotIdx);
+            if (VDBG) logd("[getSubId] map default slotIdx=" + slotIdx);
         }
 
         // Check that we have a valid SlotIdx
@@ -1152,7 +1151,7 @@ public class SubscriptionController extends ISub.Stub {
         // Check if we've got any SubscriptionInfo records using slotIdToSubId as a surrogate.
         int size = sSlotIdxToSubId.size();
         if (size == 0) {
-            if (DBG) {
+            if (VDBG) {
                 logd("[getSubId]- sSlotIdxToSubId.size == 0, return DummySubIds slotIdx="
                         + slotIdx);
             }

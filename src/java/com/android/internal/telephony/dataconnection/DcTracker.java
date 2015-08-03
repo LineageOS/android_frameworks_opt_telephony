@@ -563,7 +563,7 @@ public final class DcTracker extends DcTrackerBase {
                 switch (apnContext.getState()) {
                 case CONNECTED:
                 case DISCONNECTING:
-                    if (DBG) log("overall state is CONNECTED");
+                    if (VDBG) log("overall state is CONNECTED");
                     return DctConstants.State.CONNECTED;
                 case RETRYING:
                 case CONNECTING:
@@ -582,18 +582,18 @@ public final class DcTracker extends DcTrackerBase {
         }
 
         if (!isAnyEnabled) { // Nothing enabled. return IDLE.
-            if (DBG) log( "overall state is IDLE");
+            if (VDBG) log( "overall state is IDLE");
             return DctConstants.State.IDLE;
         }
 
         if (isConnecting) {
-            if (DBG) log( "overall state is CONNECTING");
+            if (VDBG) log( "overall state is CONNECTING");
             return DctConstants.State.CONNECTING;
         } else if (!isFailed) {
-            if (DBG) log( "overall state is IDLE");
+            if (VDBG) log( "overall state is IDLE");
             return DctConstants.State.IDLE;
         } else {
-            if (DBG) log( "overall state is FAILED");
+            if (VDBG) log( "overall state is FAILED");
             return DctConstants.State.FAILED;
         }
     }
@@ -2585,7 +2585,7 @@ public final class DcTracker extends DcTrackerBase {
 
     @Override
     public void handleMessage (Message msg) {
-        if (DBG) log("handleMessage msg=" + msg);
+        if (VDBG) log("handleMessage msg=" + msg);
 
         if (!mPhone.mIsTheCurrentActivePhone || mIsDisposed) {
             loge("handleMessage: Ignore GSM msgs since GSM phone is inactive");
