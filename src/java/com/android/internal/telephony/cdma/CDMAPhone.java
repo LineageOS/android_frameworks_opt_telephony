@@ -36,6 +36,7 @@ import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Telephony;
+import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
@@ -430,6 +431,11 @@ public class CDMAPhone extends PhoneBase {
         boolean isEmergency = PhoneNumberUtils.isEmergencyNumber(dialString);
         ImsPhone imsPhone = mImsPhone;
 
+        CarrierConfigManager configManager =
+                (CarrierConfigManager) mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        boolean alwaysTryImsForEmergencyCarrierConfig = configManager.getConfigForSubId(getSubId())
+                .getBoolean(CarrierConfigManager.KEY_CARRIER_USE_IMS_FIRST_FOR_EMERGENCY_BOOL);
+
         boolean imsUseEnabled = isImsUseEnabled()
                  && imsPhone != null
                  && (imsPhone.isVolteEnabled() || imsPhone.isVowifiEnabled())
@@ -438,8 +444,7 @@ public class CDMAPhone extends PhoneBase {
         boolean useImsForEmergency = ImsManager.isVolteEnabledByPlatform(mContext)
                 && imsPhone != null
                 && isEmergency
-                &&  mContext.getResources().getBoolean(
-                        com.android.internal.R.bool.useImsAlwaysForEmergencyCall)
+                && alwaysTryImsForEmergencyCarrierConfig
                 && ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext)
                 && (imsPhone.getServiceState().getState() != ServiceState.STATE_POWER_OFF);
 
