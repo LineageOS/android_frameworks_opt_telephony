@@ -749,7 +749,10 @@ public class ImsPhone extends ImsPhoneBase {
     public void setOutgoingCallerIdDisplay(int clirMode, Message onComplete) {
         if (DBG) Rlog.d(LOG_TAG, "setCLIR action= " + clirMode);
         Message resp;
-        resp = obtainMessage(EVENT_SET_CLIR_DONE, onComplete);
+        // Packing CLIR value in the message. This will be required for
+        // SharedPreference caching, if the message comes back as part of
+        // a success response.
+        resp = obtainMessage(EVENT_SET_CLIR_DONE, clirMode, 0, onComplete);
         try {
             ImsUtInterface ut = mCT.getUtInterface();
             ut.updateCLIR(clirMode, resp);
@@ -1263,6 +1266,10 @@ public class ImsPhone extends ImsPhoneBase {
                 break;
 
              case EVENT_SET_CLIR_DONE:
+                 if (ar.exception == null) {
+                     saveClirSetting(msg.arg1);
+                 }
+                 // (Intentional fallthrough)
              case EVENT_SET_CALL_BARRING_DONE:
              case EVENT_SET_CALL_WAITING_DONE:
                 sendResponse((Message) ar.userObj, null, ar.exception);

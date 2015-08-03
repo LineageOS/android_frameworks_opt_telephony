@@ -1085,6 +1085,22 @@ public abstract class PhoneBase extends Handler implements Phone {
         }
     }
 
+    /**
+     * Saves CLIR setting so that we can re-apply it as necessary
+     * (in case the RIL resets it across reboots).
+     */
+    public void saveClirSetting(int commandInterfaceCLIRMode) {
+        // Open the shared preferences editor, and write the value.
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putInt(CLIR_KEY + getPhoneId(), commandInterfaceCLIRMode);
+
+        // Commit and log the result.
+        if (!editor.commit()) {
+            Rlog.e(LOG_TAG, "Failed to commit CLIR preference");
+        }
+    }
+
     // Inherited documentation suffices.
     @Override
     public void setUnitTestMode(boolean f) {
