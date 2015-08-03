@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9f0e0f27_77831058",
+        "filename": "src/java/com/android/internal/telephony/cdma/CDMALTEPhone.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2015-08-03T18:23:39Z",
+      "side": 1,
+      "message": "if (TextUtils.isEmpty(operatorNumeric)) {",
+      "revId": "99da369a3ae44d923f6d29498c4442db2a6db742",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9f0e0f27_97b46437",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 2473,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2015-08-03T18:23:39Z",
+      "side": 1,
+      "message": "Simpler variant:\n\nif (TextUtils.isEmpty(result)) {\n    result \u003d null;\n}\nlog(\"getOperatorNumeric - returning from NV: \" + result);",
+      "revId": "99da369a3ae44d923f6d29498c4442db2a6db742",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
