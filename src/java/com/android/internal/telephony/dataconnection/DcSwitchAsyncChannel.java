@@ -44,8 +44,10 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
     static final int RSP_IS_IDLE_OR_DETACHING_STATE = BASE + 6;
     static final int EVENT_DATA_ATTACHED =            BASE + 7;
     static final int EVENT_DATA_DETACHED =            BASE + 8;
+    static final int EVENT_EMERGENCY_CALL_STARTED =   BASE + 9;
+    static final int EVENT_EMERGENCY_CALL_ENDED =     BASE + 10;
 
-    private static final int CMD_TO_STRING_COUNT = EVENT_DATA_DETACHED - BASE + 1;
+    private static final int CMD_TO_STRING_COUNT = EVENT_EMERGENCY_CALL_ENDED - BASE + 1;
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
         sCmdToString[REQ_CONNECT - BASE] = "REQ_CONNECT";
@@ -57,6 +59,8 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
         sCmdToString[RSP_IS_IDLE_OR_DETACHING_STATE - BASE] = "RSP_IS_IDLE_OR_DETACHING_STATE";
         sCmdToString[EVENT_DATA_ATTACHED - BASE] = "EVENT_DATA_ATTACHED";
         sCmdToString[EVENT_DATA_DETACHED - BASE] = "EVENT_DATA_DETACHED";
+        sCmdToString[EVENT_EMERGENCY_CALL_STARTED - BASE] = "EVENT_EMERGENCY_CALL_STARTED";
+        sCmdToString[EVENT_EMERGENCY_CALL_ENDED - BASE] = "EVENT_EMERGENCY_CALL_ENDED";
     }
 
     public static class RequestInfo {
@@ -117,12 +121,18 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
 
     public void notifyDataAttached() {
         sendMessage(EVENT_DATA_ATTACHED);
-        if (DBG) log("notifyDataAttached");
     }
 
     public void notifyDataDetached() {
         sendMessage(EVENT_DATA_DETACHED);
-        if (DBG) log("EVENT_DATA_DETACHED");
+    }
+
+    public void notifyEmergencyCallToggled(int start) {
+        if (start != 0) {
+            sendMessage(EVENT_EMERGENCY_CALL_STARTED);
+        } else {
+            sendMessage(EVENT_EMERGENCY_CALL_ENDED);
+        }
     }
 
     private boolean rspIsIdle(Message response) {

@@ -335,6 +335,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected final RegistrantList mVideoCapabilityChangedRegistrants
             = new RegistrantList();
 
+    protected final RegistrantList mEmergencyCallToggledRegistrants
+            = new RegistrantList();
+
 
     protected Looper mLooper; /* to insure registrants are in correct thread*/
 
@@ -997,6 +1000,23 @@ public abstract class PhoneBase extends Handler implements Phone {
         mCi.setNetworkSelectionModeManual(network.getOperatorNumeric(), msg);
 
         updateSavedNetworkOperator(nsm);
+    }
+
+    /**
+     * Registration point for emergency call/callback mode start. Message.obj is AsyncResult and
+     * Message.obj.result will be Integer indicating start of call by value 1 or end of call by
+     * value 0
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj.userObj
+     */
+    public void registerForEmergencyCallToggle(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mEmergencyCallToggledRegistrants.add(r);
+    }
+
+    public void unregisterForEmergencyCallToggle(Handler h) {
+        mEmergencyCallToggledRegistrants.remove(h);
     }
 
     private void updateSavedNetworkOperator(NetworkSelectMessage nsm) {

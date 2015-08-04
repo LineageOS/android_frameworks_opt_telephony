@@ -22,6 +22,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.NetworkFactory;
 import android.net.NetworkRequest;
+import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -62,6 +63,7 @@ public class DctController extends Handler {
 
     private static final int EVENT_DATA_ATTACHED = 500;
     private static final int EVENT_DATA_DETACHED = 600;
+    private static final int EVENT_EMERGENCY_CALL_TOGGLED = 700;
 
     private static DctController sDctController;
 
@@ -126,6 +128,8 @@ public class DctController extends Handler {
                    EVENT_DATA_ATTACHED + index, null);
         phoneBase.getServiceStateTracker().registerForDataConnectionDetached(mRspHandler,
                    EVENT_DATA_DETACHED + index, null);
+        phoneBase.registerForEmergencyCallToggle(mRspHandler,
+                EVENT_EMERGENCY_CALL_TOGGLED + index, null);
 
         ConnectivityManager cm = (ConnectivityManager)mPhones[index].getContext()
             .getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -164,7 +168,14 @@ public class DctController extends Handler {
     private Handler mRspHandler = new Handler() {
         @Override
         public void handleMessage(Message msg){
-            if (msg.what >= EVENT_DATA_DETACHED) {
+            if (msg.what >= EVENT_EMERGENCY_CALL_TOGGLED) {
+                logd("EVENT_PHONE" + (msg.what - EVENT_EMERGENCY_CALL_TOGGLED + 1)
+                        + "_EMERGENCY_CALL_END.");
+                AsyncResult ar = (AsyncResult) msg.obj;
+                Integer toggle = (Integer) ar.result;
+                mDcSwitchAsyncChannel[msg.what - EVENT_EMERGENCY_CALL_TOGGLED].
+                        notifyEmergencyCallToggled(toggle.intValue());
+            } else if (msg.what >= EVENT_DATA_DETACHED) {
                 logd("EVENT_PHONE" + (msg.what - EVENT_DATA_DETACHED + 1)
                         + "_DATA_DETACH.");
                 mDcSwitchAsyncChannel[msg.what - EVENT_DATA_DETACHED].notifyDataDetached();

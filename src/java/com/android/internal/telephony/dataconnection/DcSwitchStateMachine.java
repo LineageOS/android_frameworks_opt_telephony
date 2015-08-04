@@ -17,6 +17,7 @@
 package com.android.internal.telephony.dataconnection;
 
 import com.android.internal.util.AsyncChannel;
+import com.android.internal.util.IState;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -48,10 +49,15 @@ public class DcSwitchStateMachine extends StateMachine {
     private AsyncChannel mAc;
 
     private IdleState mIdleState = new IdleState();
+    private EmergencyState mEmergencyState = new EmergencyState();
     private AttachingState mAttachingState = new AttachingState();
     private AttachedState mAttachedState = new AttachedState();
     private DetachingState mDetachingState = new DetachingState();
     private DefaultState mDefaultState = new DefaultState();
+
+    // In case of transition to emergency state, this tracks the state of the state machine prior
+    // to entering emergency state
+    private IState mPreEmergencyState;
 
     protected DcSwitchStateMachine(Phone phone, String name, int id) {
         super(name);
@@ -61,6 +67,7 @@ public class DcSwitchStateMachine extends StateMachine {
 
         addState(mDefaultState);
         addState(mIdleState, mDefaultState);
+        addState(mEmergencyState, mDefaultState);
         addState(mAttachingState, mDefaultState);
         addState(mAttachedState, mDefaultState);
         addState(mDetachingState, mDefaultState);
@@ -137,6 +144,40 @@ public class DcSwitchStateMachine extends StateMachine {
                     break;
             }
             return retVal;
+        }
+    }
+
+    private class EmergencyState extends State {
+        @Override
+        public boolean processMessage(Message msg) {
+            final PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
+            if (!pb.mDcTracker.isEmergency()) {
+                loge("EmergencyState: isEmergency() is false. deferMessage msg.what=0x" +
+                        Integer.toHexString(msg.what));
+                deferMessage(msg);
+                transitionTo(mPreEmergencyState);
+                return HANDLED;
+            }
+
+            switch (msg.what) {
+                case DcSwitchAsyncChannel.EVENT_EMERGENCY_CALL_ENDED: {
+                    transitionTo(mPreEmergencyState);
+                    break;
+                }
+
+                case DcSwitchAsyncChannel.EVENT_EMERGENCY_CALL_STARTED: {
+                    loge("EmergencyState: ignoring EVENT_EMERGENCY_CALL_STARTED");
+                    break;
+                }
+
+                default: {
+                    log("EmergencyState: deferMessage msg.what=0x" + Integer.toHexString(msg.what));
+                    deferMessage(msg);
+                    break;
+                }
+            }
+
+            return HANDLED;
         }
     }
 
@@ -396,6 +437,11 @@ public class DcSwitchStateMachine extends StateMachine {
                     if (VDBG) log("REQ_IS_IDLE_OR_DETACHING_STATE  isIdleDetaching=" + val);
                     mAc.replyToMessage(msg,
                             DcSwitchAsyncChannel.RSP_IS_IDLE_OR_DETACHING_STATE, val ? 1 : 0);
+                    break;
+                }
+                case DcSwitchAsyncChannel.EVENT_EMERGENCY_CALL_STARTED: {
+                    mPreEmergencyState = getCurrentState();
+                    transitionTo(mEmergencyState);
                     break;
                 }
                 default:
