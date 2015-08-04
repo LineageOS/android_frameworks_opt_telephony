@@ -810,7 +810,7 @@ public class GSMPhone extends PhoneBase {
                  && (imsPhone.isVolteEnabled() || imsPhone.isVowifiEnabled())
                  && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE);
 
-        boolean useImsForEmergency = ImsManager.isVolteEnabledByPlatform(mContext
+        boolean useImsForEmergency = ImsManager.isVolteEnabledByPlatform(mContext)
                 && imsPhone != null
                 && isEmergency
                 &&  mContext.getResources().getBoolean(
