@@ -435,7 +435,8 @@ public class CDMAPhone extends PhoneBase {
                  && (imsPhone.isVolteEnabled() || imsPhone.isVowifiEnabled())
                  && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE);
 
-        boolean useImsForEmergency = imsPhone != null
+        boolean useImsForEmergency = ImsManager.isVolteEnabledByPlatform(mContext)
+                && imsPhone != null
                 && isEmergency
                 &&  mContext.getResources().getBoolean(
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall)
