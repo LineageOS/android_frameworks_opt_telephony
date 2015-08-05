@@ -598,6 +598,10 @@ public class DctController extends Handler {
             type = ConnectivityManager.TYPE_MOBILE_EMERGENCY;
         }
         if (error) {
+            // TODO: If this error condition is removed, the framework's handling of
+            // NET_CAPABILITY_NOT_RESTRICTED will need to be updated so requests for
+            // say FOTA and INTERNET are marked as restricted.  This is not how
+            // NetworkCapabilities.maybeMarkCapabilitiesRestricted currently works.
             loge("Multiple apn types specified in request - result is unspecified!");
         }
         if (type == -1 || name == null) {
