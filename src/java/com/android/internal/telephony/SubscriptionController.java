@@ -75,8 +75,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class SubscriptionController extends ISub.Stub {
     static final String LOG_TAG = "SubscriptionController";
-    static final boolean DBG = true;
-    static final boolean VDBG = false;
+    protected static final boolean DBG = true;
+    protected static final boolean VDBG = false;
     static final int MAX_LOCAL_LOG_LINES = 500; // TODO: Reduce to 100 when 17678050 is fixed
     private ScLocalLog mLocalLog = new ScLocalLog(MAX_LOCAL_LOG_LINES);
 
@@ -121,7 +121,7 @@ public class SubscriptionController extends ISub.Stub {
     protected final Object mLock = new Object();
 
     /** The singleton instance. */
-    private static SubscriptionController sInstance = null;
+    protected static SubscriptionController sInstance = null;
     protected static PhoneProxy[] sProxyPhones;
     protected Context mContext;
     protected TelephonyManager mTelephonyManager;
@@ -130,10 +130,10 @@ public class SubscriptionController extends ISub.Stub {
     private final AppOpsManager mAppOps;
 
     // FIXME: Does not allow for multiple subs in a slot and change to SparseArray
-    private static Map<Integer, Integer> sSlotIdxToSubId =
+    protected static Map<Integer, Integer> sSlotIdxToSubId =
             new ConcurrentHashMap<Integer, Integer>();
-    private static int mDefaultFallbackSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-    private static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
+    protected static int mDefaultFallbackSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+    protected static int mDefaultPhoneId = SubscriptionManager.DEFAULT_PHONE_INDEX;
 
     private int[] colorArr;
 
@@ -168,7 +168,7 @@ public class SubscriptionController extends ISub.Stub {
         return sInstance;
     }
 
-    private SubscriptionController(Context c) {
+    protected SubscriptionController(Context c) {
         mContext = c;
         mCM = CallManager.getInstance();
         mTelephonyManager = TelephonyManager.from(mContext);
@@ -223,7 +223,7 @@ public class SubscriptionController extends ISub.Stub {
                 callingPackage) == AppOpsManager.MODE_ALLOWED;
     }
 
-    private void enforceModifyPhoneState(String message) {
+    protected void enforceModifyPhoneState(String message) {
         mContext.enforceCallingOrSelfPermission(
                 android.Manifest.permission.MODIFY_PHONE_STATE, message);
     }
@@ -755,8 +755,9 @@ public class SubscriptionController extends ISub.Stub {
                             }
 
                             // Set the default sub if not set or if single sim device
+                            // Also set default sub, if current default subId is not active
                             if (!SubscriptionManager.isValidSubscriptionId(defaultSubId)
-                                    || subIdCountMax == 1) {
+                                    || subIdCountMax == 1 || (!isActiveSubId(defaultSubId))) {
                                 setDefaultFallbackSubId(subId);
                             }
                             // If single sim device, set this subscription as the default for everything
@@ -1229,7 +1230,7 @@ public class SubscriptionController extends ISub.Stub {
 
     }
 
-    private int[] getDummySubIds(int slotIdx) {
+    protected int[] getDummySubIds(int slotIdx) {
         // FIXME: Remove notion of Dummy SUBSCRIPTION_ID.
         // I tested this returning null as no one appears to care,
         // but no connection came up on sprout with two sims.
@@ -1286,7 +1287,7 @@ public class SubscriptionController extends ISub.Stub {
         Rlog.v(LOG_TAG, msg);
     }
 
-    private void logdl(String msg) {
+    protected void logdl(String msg) {
         logd(msg);
         mLocalLog.log(msg);
     }
@@ -1472,7 +1473,7 @@ public class SubscriptionController extends ISub.Stub {
      * sub is set as default subId. If two or more  sub's are active
      * the first sub is set as default subscription
      */
-    private void setDefaultFallbackSubId(int subId) {
+    protected void setDefaultFallbackSubId(int subId) {
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             throw new RuntimeException("setDefaultSubId called with DEFAULT_SUB_ID");
         }
@@ -1532,7 +1533,7 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    private boolean shouldDefaultBeCleared(List<SubscriptionInfo> records, int subId) {
+    protected boolean shouldDefaultBeCleared(List<SubscriptionInfo> records, int subId) {
         if (DBG) logdl("[shouldDefaultBeCleared: subId] " + subId);
         if (records == null) {
             if (DBG) logdl("[shouldDefaultBeCleared] return true no records subId=" + subId);
@@ -1791,7 +1792,7 @@ public class SubscriptionController extends ISub.Stub {
         return resultValue;
     }
 
-    private static void printStackTrace(String msg) {
+    protected static void printStackTrace(String msg) {
         RuntimeException re = new RuntimeException();
         slogd("StackTrace - " + msg);
         StackTraceElement[] st = re.getStackTrace();
