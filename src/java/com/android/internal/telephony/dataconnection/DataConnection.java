@@ -561,7 +561,7 @@ public final class DataConnection extends StateMachine {
         }
 
         String protocol;
-        if (mPhone.getServiceState().getDataRoaming()) {
+        if (mPhone.getServiceState().getDataRoamingFromRegistration()) {
             protocol = mApnSetting.roamingProtocol;
         } else {
             protocol = mApnSetting.protocol;
