@@ -203,6 +203,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     private int pendingCallClirMode;
     private int mPendingCallVideoState;
+    private Bundle mPendingIntentExtras;
     private boolean pendingCallInEcm = false;
     private boolean mSwitchingFgAndBgCalls = false;
     private ImsCall mCallExpectedToResume = null;
@@ -361,6 +362,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             holdBeforeDial = true;
             // Cache the video state for pending MO call.
             mPendingCallVideoState = videoState;
+            mPendingIntentExtras = intentExtras;
             switchWaitingOrHoldingAndActive();
         }
 
@@ -392,7 +394,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
         if (!holdBeforeDial) {
             if ((!isPhoneInEcmMode) || (isPhoneInEcmMode && isEmergencyNumber)) {
-                dialInternal(mPendingMO, clirMode, videoState);
+                dialInternal(mPendingMO, clirMode, videoState, intentExtras);
             } else {
                 try {
                     getEcbmInterface().exitEmergencyCallbackMode();
@@ -449,7 +451,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    private void dialInternal(ImsPhoneConnection conn, int clirMode, int videoState) {
+    private void dialInternal(ImsPhoneConnection conn, int clirMode, int videoState,
+            Bundle intentExtras) {
+
         if (conn == null) {
             return;
         }
@@ -475,6 +479,12 @@ public final class ImsPhoneCallTracker extends CallTracker {
             ImsCallProfile profile = mImsManager.createCallProfile(mServiceId,
                     serviceType, callType);
             profile.setCallExtraInt(ImsCallProfile.EXTRA_OIR, clirMode);
+
+            if (intentExtras != null &&
+                    intentExtras.containsKey(android.telecom.TelecomManager.EXTRA_CALL_SUBJECT)) {
+                profile.setCallExtra(ImsCallProfile.EXTRA_DISPLAY_TEXT,
+                        intentExtras.getString(android.telecom.TelecomManager.EXTRA_CALL_SUBJECT));
+            }
 
             ImsCall imsCall = mImsManager.makeCall(mServiceId, profile,
                     callees, mImsCallListener);
@@ -1692,7 +1702,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     removeConnection(mPendingMO);
                     mPendingMO = null;
                 }
-
+                mPendingIntentExtras = null;
                 updatePhoneState();
                 mPhone.notifyPreciseCallStateChanged();
                 break;
@@ -1706,14 +1716,16 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 }
                 break;
             case EVENT_DIAL_PENDINGMO:
-                dialInternal(mPendingMO, mClirMode, mPendingCallVideoState);
+                dialInternal(mPendingMO, mClirMode, mPendingCallVideoState, mPendingIntentExtras);
+                mPendingIntentExtras = null;
                 break;
 
             case EVENT_EXIT_ECM_RESPONSE_CDMA:
                 // no matter the result, we still do the same here
                 if (pendingCallInEcm) {
                     dialInternal(mPendingMO, pendingCallClirMode,
-                            mPendingCallVideoState);
+                            mPendingCallVideoState, mPendingIntentExtras);
+                    mPendingIntentExtras = null;
                     pendingCallInEcm = false;
                 }
                 mPhone.unsetOnEcbModeExitResponse(this);
