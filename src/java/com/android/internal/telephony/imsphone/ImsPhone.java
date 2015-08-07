@@ -1557,4 +1557,8 @@ public class ImsPhone extends ImsPhoneBase {
             }
         }
     }
+
+    public boolean isUtEnabled() {
+        return mCT.isUtEnabled();
+    }
 }
