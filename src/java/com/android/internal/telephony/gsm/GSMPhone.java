@@ -1243,10 +1243,12 @@ public class GSMPhone extends PhoneBase {
         ImsPhone imsPhone = mImsPhone;
         if ((imsPhone != null)
                 && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
-            imsPhone.setOutgoingCallerIdDisplay(commandInterfaceCLIRMode,
-            obtainMessage(EVENT_SET_CLIR_COMPLETE, commandInterfaceCLIRMode, 0, onComplete));
+            imsPhone.setOutgoingCallerIdDisplay(commandInterfaceCLIRMode, onComplete);
             return;
         }
+        // Packing CLIR value in the message. This will be required for
+        // SharedPreference caching, if the message comes back as part of
+        // a success response.
         mCi.setCLIR(commandInterfaceCLIRMode,
                 obtainMessage(EVENT_SET_CLIR_COMPLETE, commandInterfaceCLIRMode, 0, onComplete));
     }
@@ -1732,22 +1734,6 @@ public class GSMPhone extends PhoneBase {
             }
         }
         return false;
-    }
-
-    /**
-     * Saves CLIR setting so that we can re-apply it as necessary
-     * (in case the RIL resets it across reboots).
-     */
-    public void saveClirSetting(int commandInterfaceCLIRMode) {
-        // open the shared preferences editor, and write the value.
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
-        SharedPreferences.Editor editor = sp.edit();
-        editor.putInt(CLIR_KEY + getPhoneId(), commandInterfaceCLIRMode);
-
-        // commit and log the result.
-        if (! editor.commit()) {
-            Rlog.e(LOG_TAG, "failed to commit CLIR preference");
-        }
     }
 
     private void handleCfuQueryResult(CallForwardInfo[] infos) {
