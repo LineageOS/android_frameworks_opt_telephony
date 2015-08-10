@@ -1148,7 +1148,12 @@ public class CDMAPhone extends PhoneBase {
             sendEmergencyCallbackModeChange();
             // Re-initiate data connection
             mDcTracker.setInternalDataEnabled(true);
+            notifyEmergencyCallRegistrants(false);
         }
+    }
+
+    protected void notifyEmergencyCallRegistrants(boolean started) {
+        mEmergencyCallToggledRegistrants.notifyResult(started ? 1 : 0);
     }
 
     /**
