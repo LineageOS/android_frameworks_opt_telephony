@@ -37,6 +37,7 @@ import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
+import android.provider.Settings.SettingNotFoundException;
 import android.telephony.Rlog;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
@@ -429,7 +430,16 @@ public class SubscriptionInfoUpdater extends Handler {
 
             if (storedSubId != subId) {
                 int networkType = RILConstants.PREFERRED_NETWORK_MODE;
-
+                //Get previous network mode for this slot,
+                // to be more relevant instead of default mode
+                try {
+                    networkType  = TelephonyManager.getIntAtIndex(
+                            mContext.getContentResolver(),
+                           Settings.Global.PREFERRED_NETWORK_MODE, slotId);
+                } catch (SettingNotFoundException snfe) {
+                    Rlog.e(LOG_TAG, "Settings Exception Reading Value At Index for"+
+                           " Settings.Global.PREFERRED_NETWORK_MODE");
+                }
                 // Set the modem network mode
                 mPhone[slotId].setPreferredNetworkType(networkType, null);
                 Settings.Global.putInt(mPhone[slotId].getContext().getContentResolver(),

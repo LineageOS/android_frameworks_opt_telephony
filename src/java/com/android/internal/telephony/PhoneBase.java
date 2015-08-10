@@ -1473,6 +1473,12 @@ public abstract class PhoneBase extends Handler implements Phone {
         int filteredRaf = (rafFromType & modemRaf);
         int filteredType = RadioAccessFamily.getNetworkTypeFromRaf(filteredRaf);
 
+        // The getNetworkTypeFromRaf, has no way to differentiate between MODE_GSM_UMTS
+        // and MODE_WCDMA_PREF since they have the same raf. So check for it explicitly
+        if (networkType == RILConstants.NETWORK_MODE_GSM_UMTS &&
+                filteredType == RILConstants.NETWORK_MODE_WCDMA_PREF) {
+            filteredType = RILConstants.NETWORK_MODE_GSM_UMTS;
+        }
         Rlog.d(LOG_TAG, "setPreferredNetworkType: networkType = " + networkType
                 + " modemRaf = " + modemRaf
                 + " rafFromType = " + rafFromType
