@@ -1123,6 +1123,7 @@ public final class CdmaCallTracker extends CallTracker {
             if (Phone.DEBUG_PHONE) log("disableDataCallInEmergencyCall");
             mIsInEmergencyCall = true;
             mPhone.mDcTracker.setInternalDataEnabled(false);
+            mPhone.notifyEmergencyCallRegistrants(true);
         }
     }
 
@@ -1140,6 +1141,7 @@ public final class CdmaCallTracker extends CallTracker {
             if (inEcm.compareTo("false") == 0) {
                 // Re-initiate data connection
                 mPhone.mDcTracker.setInternalDataEnabled(true);
+                mPhone.notifyEmergencyCallRegistrants(false);
             }
         }
     }
