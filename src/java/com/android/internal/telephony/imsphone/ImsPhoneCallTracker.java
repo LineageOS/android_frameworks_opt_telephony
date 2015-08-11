@@ -1570,6 +1570,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     mPhone.onFeatureCapabilityChanged();
                 }
 
+                if (tmpIsVideoCallEnabled != isVideoCallEnabled()) {
+                    mPhone.notifyForVideoCapabilityChanged(isVideoCallEnabled());
+                }
             }
         }
 
