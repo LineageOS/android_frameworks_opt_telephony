@@ -874,6 +874,9 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             roaming = false;
         }
 
+        // Save the roaming state before carrier config possibly overrides it.
+        mNewSS.setDataRoamingFromRegistration(roaming);
+
         ICarrierConfigLoader configLoader =
             (ICarrierConfigLoader) ServiceManager.getService(Context.CARRIER_CONFIG_SERVICE);
         if (configLoader != null) {
