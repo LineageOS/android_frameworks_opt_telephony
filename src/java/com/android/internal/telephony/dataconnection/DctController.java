@@ -60,6 +60,8 @@ public class DctController extends Handler {
     private static final int EVENT_RELEASE_REQUEST = 103;
     private static final int EVENT_RELEASE_ALL_REQUESTS = 104;
     private static final int EVENT_RETRY_ATTACH = 105;
+    private static final int EVENT_SETTINGS_CHANGED = 106;
+    private static final int EVENT_SUBSCRIPTIONS_CHANGED = 107;
 
     private static final int EVENT_DATA_ATTACHED = 500;
     private static final int EVENT_DATA_DETACHED = 600;
@@ -89,7 +91,7 @@ public class DctController extends Handler {
             new OnSubscriptionsChangedListener() {
         @Override
         public void onSubscriptionsChanged() {
-            onSubInfoReady();
+            DctController.this.obtainMessage(EVENT_SUBSCRIPTIONS_CHANGED).sendToTarget();
         }
     };
 
@@ -97,7 +99,7 @@ public class DctController extends Handler {
         @Override
         public void onChange(boolean selfChange) {
             logd("Settings change");
-            onSettingsChange();
+            DctController.this.obtainMessage(EVENT_SETTINGS_CHANGED).sendToTarget();
         }
     };
 
@@ -294,6 +296,12 @@ public class DctController extends Handler {
             case EVENT_RETRY_ATTACH:
                 onRetryAttach(msg.arg1);
                 break;
+            case EVENT_SETTINGS_CHANGED:
+                onSettingsChanged();
+                break;
+            case EVENT_SUBSCRIPTIONS_CHANGED:
+                onSubInfoReady();
+                break;
             default:
                 loge("Un-handled message [" + msg.what + "]");
         }
@@ -446,7 +454,7 @@ public class DctController extends Handler {
         }
     }
 
-    private void onSettingsChange() {
+    private void onSettingsChanged() {
         //Sub Selection
         long dataSubId = mSubController.getDefaultDataSubId();
 
@@ -711,29 +719,23 @@ public class DctController extends Handler {
 
             final LocalLog l = addLogger(networkRequest);
 
-            if (!SubscriptionManager.isUsableSubIdValue(mPhone.getSubId())) {
-                final String str = "SubId not useable, pending request.";
+            if (!SubscriptionManager.isUsableSubIdValue(mPhone.getSubId()) ||
+                    getRequestPhoneId(networkRequest) != mPhone.getPhoneId()) {
+                final String str = "Request not useable, pending request.";
                 log(str);
                 l.log(str);
                 mPendingReq.put(networkRequest.requestId, networkRequest);
                 return;
             }
 
-            if (getRequestPhoneId(networkRequest) == mPhone.getPhoneId()) {
-                DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
-                String apn = apnForNetworkRequest(networkRequest);
-                if (dcTracker.isApnSupported(apn)) {
-                    requestNetwork(networkRequest, dcTracker.getApnPriority(apn), l);
-                } else {
-                    final String str = "Unsupported APN";
-                    log(str);
-                    l.log(str);
-                }
+            DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
+            String apn = apnForNetworkRequest(networkRequest);
+            if (dcTracker.isApnSupported(apn)) {
+                requestNetwork(networkRequest, dcTracker.getApnPriority(apn), l);
             } else {
-                final String str = "Request not send, put to pending";
+                final String str = "Unsupported APN";
                 log(str);
                 l.log(str);
-                mPendingReq.put(networkRequest.requestId, networkRequest);
             }
         }
 
@@ -743,7 +745,7 @@ public class DctController extends Handler {
             log(str + networkRequest);
             final LocalLog l = requestLog(networkRequest.requestId, str);
 
-            if (!SubscriptionManager.isUsableSubIdValue(mPhone.getSubId())) {
+            if (mPendingReq.get(networkRequest.requestId) != null) {
                 str = "Sub Info has not been ready, remove request.";
                 log(str);
                 if (l != null) l.log(str);
@@ -751,22 +753,7 @@ public class DctController extends Handler {
                 return;
             }
 
-            if (getRequestPhoneId(networkRequest) == mPhone.getPhoneId()) {
-                DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
-                String apn = apnForNetworkRequest(networkRequest);
-                if (dcTracker.isApnSupported(apn)) {
-                    releaseNetwork(networkRequest);
-                } else {
-                    str = "Unsupported APN";
-                    log(str);
-                    if (l != null) l.log(str);
-                }
-
-            } else {
-                str = "Request not released";
-                log(str);
-                if (l != null) l.log(str);
-            }
+            releaseNetwork(networkRequest);
         }
 
         @Override
