@@ -119,7 +119,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
                     // Normal MT/Unknown call
                     ImsCall imsCall = mImsManager.takeCall(mServiceId, intent, mImsCallListener);
-                    ImsPhoneConnection conn = new ImsPhoneConnection(mPhone.getContext(), imsCall,
+                    ImsPhoneConnection conn = new ImsPhoneConnection(mPhone, imsCall,
                             ImsPhoneCallTracker.this,
                             (isUnknown? mForegroundCall: mRingingCall), isUnknown);
                     addConnection(conn);
@@ -365,7 +365,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 }
             }
 
-            mPendingMO = new ImsPhoneConnection(mPhone.getContext(),
+            mPendingMO = new ImsPhoneConnection(mPhone,
                     checkForTestEmergencyNumber(dialString), this, mForegroundCall);
         }
         addConnection(mPendingMO);
