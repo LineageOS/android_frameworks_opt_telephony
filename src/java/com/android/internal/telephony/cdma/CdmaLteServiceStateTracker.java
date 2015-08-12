@@ -460,9 +460,11 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             }
 
             if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY &&
-                    mIccRecords != null && (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE)) {
+                    mIccRecords != null && (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE)
+                    && mSS.getRilVoiceRadioTechnology() != ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
                 // SIM is found on the device. If ERI roaming is OFF, and SID/NID matches
-                // one configured in SIM, use operator name from CSIM record.
+                // one configured in SIM, use operator name from CSIM record. Note that ERI, SID,
+                // and NID are CDMA only, not applicable to LTE.
                 boolean showSpn =
                     ((RuimRecords)mIccRecords).getCsimSpnDisplayCondition();
                 int iconIndex = mSS.getCdmaEriIconIndex();
