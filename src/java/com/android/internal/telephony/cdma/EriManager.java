@@ -183,6 +183,8 @@ public final class EriManager {
             mEriFile.mEriFileType = Integer.parseInt(
                     parser.getAttributeValue(null, "EriFileType"));
 
+            if (DBG) Rlog.d(LOG_TAG, "loadEriFileFromXml: Version " + mEriFile.mVersionNumber + " #Entries " + mEriFile.mNumberOfEriEntries + " FileType " + mEriFile.mEriFileType);
+
             int parsedEriEntries = 0;
             while(true) {
                 XmlUtils.nextElement(parser);
@@ -213,6 +215,8 @@ public final class EriManager {
                     parsedEriEntries++;
                     mEriFile.mRoamIndTable.put(roamingIndicator, new EriInfo (roamingIndicator,
                             iconIndex, iconMode, eriText, callPromptId, alertId));
+                    
+                    if (DBG) Rlog.d(LOG_TAG, "loadEriFileFromXml: EriInfo:  RoamingIndicator " + roamingIndicator + " eriText " + eriText);
                 }
             }
 
@@ -483,6 +487,7 @@ public final class EriManager {
     }
 
     public String getCdmaEriText(int roamInd, int defRoamInd){
+        if (DBG) Rlog.d(LOG_TAG, "getCdmaEriText: EriInfo:  RoamingIndicator " + roamInd + " defRoamInd " + defRoamInd + " eriText " + (getEriDisplayInformation(roamInd, defRoamInd).mEriIconText));
         return getEriDisplayInformation(roamInd, defRoamInd).mEriIconText;
     }
 }

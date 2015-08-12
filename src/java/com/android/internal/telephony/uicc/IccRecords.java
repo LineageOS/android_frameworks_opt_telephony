@@ -454,6 +454,16 @@ public abstract class IccRecords extends Handler implements IccConstants {
         }
     }
 
+    public boolean isCarrierInSpnConfig(String carrier) {
+        if (mSpnOverride.containsCarrier(carrier)) {
+            log("spn override present carrier: " + carrier);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+
     /**
      * Set voice mail number to SIM record
      *

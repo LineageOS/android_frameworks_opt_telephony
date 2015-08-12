@@ -61,6 +61,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
+    protected static final boolean DBG = true;
     private CDMALTEPhone mCdmaLtePhone;
     private final CellInfoLte mCellInfoLte;
     protected int mNewRilRadioTechnology = 0;
@@ -502,9 +503,19 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                     eriText = mPhone.getContext()
                             .getText(com.android.internal.R.string.roamingTextSearching).toString();
                 }
+                if (DBG) log("SPN_DBG : CDMALteSST.pollStateDone eriText " + eriText);
                 mSS.setOperatorAlphaLong(eriText);
             }
 
+           if(mUiccApplcation != null){
+               if (DBG) log("SPN_DBG : CDMALteSST mUiccApplcation != null && mSS.getVoiceRegState() == " + mSS.getVoiceRegState());
+               if(mIccRecords != null){
+                   if (DBG) log("SPN_DBG : CDMALteSST showSpn " + ((RuimRecords)mIccRecords).getCsimSpnDisplayCondition() + " iconIndex " + mSS.getCdmaEriIconIndex());
+                   if (DBG) log("SPN_DBG : CDMALteSST isSpn " + ((RuimRecords)mIccRecords).isCarrierInSpnConfig(mSS.getOperatorAlphaLong()) + " isInHomeSidNid " + isInHomeSidNid(mSS.getSystemId(), mSS.getNetworkId()));
+                   if (DBG) log("SPN_DBG : CDMALteSST getServiceProviderName " + mIccRecords.getServiceProviderName() + " OperatorAlphaLong " + mSS.getOperatorAlphaLong());
+               }
+           }
+           
             if (mUiccApplcation != null && mUiccApplcation.getState() == AppState.APPSTATE_READY &&
                     mIccRecords != null && (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE)) {
                 // SIM is found on the device. If ERI roaming is OFF, and SID/NID matches
@@ -514,20 +525,19 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 int iconIndex = mSS.getCdmaEriIconIndex();
 
                 if (showSpn && (iconIndex == EriInfo.ROAMING_INDICATOR_OFF) &&
-                    isInHomeSidNid(mSS.getSystemId(), mSS.getNetworkId()) &&
+                    ( isInHomeSidNid(mSS.getSystemId(), mSS.getNetworkId()) ||
+                    ((RuimRecords)mIccRecords).isCarrierInSpnConfig(mSS.getOperatorAlphaLong()) ) &&
                     mIccRecords != null) {
                     mSS.setOperatorAlphaLong(mIccRecords.getServiceProviderName());
                 }
             }
-
-            String operatorNumeric;
 
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ALPHA,
                     mSS.getOperatorAlphaLong());
 
             String prevOperatorNumeric =
                     SystemProperties.get(TelephonyProperties.PROPERTY_OPERATOR_NUMERIC, "");
-            operatorNumeric = mSS.getOperatorNumeric();
+            String operatorNumeric = mSS.getOperatorNumeric();
             // try to fix the invalid Operator Numeric
             if (isInvalidOperatorNumeric(operatorNumeric)) {
                 int sid = mSS.getSystemId();
@@ -568,6 +578,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
                     (mSS.getVoiceRoaming() || mSS.getDataRoaming()) ? "true" : "false");
 
+            if (DBG) log("SPN_DBG : CDMALteSST.pollStateDone");
             updateSpnDisplay();
             setRoamingType(mSS);
             log("Broadcasting ServiceState : " + mSS);

@@ -279,6 +279,7 @@ public abstract class ServiceStateTracker extends Handler {
                         editor.commit();
                     }
                 }
+                if (DBG) log("SPN_DBG : SubscriptionListener.onSubscriptionInfoChanged");
                 updateSpnDisplay();
             }
         }
@@ -287,6 +288,7 @@ public abstract class ServiceStateTracker extends Handler {
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            if (DBG) log("SPN_DBG : SubscriptionListener.BroadcastReceiver");
             updateSpnDisplay();
         }
     };

@@ -75,6 +75,7 @@ import java.util.TimeZone;
  */
 public class CdmaServiceStateTracker extends ServiceStateTracker {
     static final String LOG_TAG = "CdmaSST";
+    protected static final boolean DBG = true;
 
     CDMAPhone mPhone;
     CdmaCellLocation mCellLoc;
@@ -1247,6 +1248,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     eriText = mPhone.getContext().getText(
                             com.android.internal.R.string.roamingTextSearching).toString();
                 }
+                if (DBG) log("SPN_DBG : CDMASST.pollStateDone eriText " + eriText);
                 mSS.setOperatorAlphaLong(eriText);
             }
 
@@ -1300,6 +1302,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_ISROAMING,
                     (mSS.getVoiceRoaming() || mSS.getDataRoaming()) ? "true" : "false");
 
+            if (DBG) log("SPN_DBG : CDMASST.pollStateDone");
             updateSpnDisplay();
             // set roaming type
             setRoamingType(mSS);
