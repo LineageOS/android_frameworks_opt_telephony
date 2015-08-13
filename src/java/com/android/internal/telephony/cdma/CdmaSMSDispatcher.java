@@ -139,13 +139,14 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
     @Override
     public void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
             PendingIntent deliveryIntent, Uri messageUri, String callingPkg,
-            boolean persistMessage) {
+            boolean persistMessage, int priority, boolean isExpectMore, int validityPeriod) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
-                scAddr, destAddr, text, (deliveryIntent != null), null);
+                scAddr, destAddr, text, (deliveryIntent != null), null, priority);
         if (pdu != null) {
             HashMap map = getSmsTrackerMap(destAddr, scAddr, text, pdu);
             SmsTracker tracker = getSmsTracker(map, sentIntent, deliveryIntent, getFormat(),
-                    messageUri, false /*isExpectMore*/, text, true /*isText*/, persistMessage);
+                    messageUri, isExpectMore, text, true /*isText*/, validityPeriod,
+                    persistMessage);
 
             String carrierPackage = getCarrierAppPackageName();
             if (carrierPackage != null) {
@@ -186,6 +187,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
     protected SmsTracker getNewSubmitPduTracker(String destinationAddress, String scAddress,
             String message, SmsHeader smsHeader, int encoding,
             PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart,
+            int priority, boolean isExpectMore, int validityPeriod,
             AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
             String fullMessageText) {
         UserData uData = new UserData();
@@ -205,13 +207,13 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
          * callback to the sender when that last fragment delivery
          * has been acknowledged. */
         SmsMessage.SubmitPdu submitPdu = SmsMessage.getSubmitPdu(destinationAddress,
-                uData, (deliveryIntent != null) && lastPart);
+                uData, (deliveryIntent != null) && lastPart, priority);
 
         HashMap map = getSmsTrackerMap(destinationAddress, scAddress,
                 message, submitPdu);
         return getSmsTracker(map, sentIntent, deliveryIntent,
                 getFormat(), unsentPartCount, anyPartFailed, messageUri, smsHeader,
-                false /*isExpextMore*/, fullMessageText, true /*isText*/,
+                (!lastPart || isExpectMore), fullMessageText, true /*isText*/, validityPeriod,
                 true /*persistMessage*/);
     }
 

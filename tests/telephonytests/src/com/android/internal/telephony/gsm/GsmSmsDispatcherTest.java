@@ -107,8 +107,8 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
         when(mCountryDetector.detectCountry())
                 .thenReturn(new Country("US", Country.COUNTRY_SOURCE_SIM));
 
-        mGsmSmsDispatcher.sendText(
-                "6501002000", "121" /*scAddr*/, "test sms", null, null, null, null, false);
+        mGsmSmsDispatcher.sendText("6501002000", "121" /*scAddr*/, "test sms",
+                null, null, null, null, false, -1, false, -1);
 
         verify(mSimulatedCommandsVerifier).sendSMS(anyString(), anyString(), any(Message.class));
         // Blocked number provider is notified about the emergency contact asynchronously.
@@ -126,12 +126,22 @@ public class GsmSmsDispatcherTest extends TelephonyTest {
 
         mGsmSmsDispatcher.sendText(
                 getEmergencyNumberFromSystemPropertiesOrDefault(), "121" /*scAddr*/, "test sms",
-                null, null, null, null, false);
+                null, null, null, null, false, -1, false, -1);
 
         verify(mSimulatedCommandsVerifier).sendSMS(anyString(), anyString(), any(Message.class));
         // Blocked number provider is notified about the emergency contact asynchronously.
         TelephonyTestUtils.waitForMs(50);
         assertEquals(1, mFakeBlockedNumberContentProvider.mNumEmergencyContactNotifications);
+    }
+
+    @Test @SmallTest
+    public void testSmsMessageValidityPeriod() throws Exception {
+        int vp;
+        vp = SmsMessage.getRelativeValidityPeriod(-5);
+        assertEquals(-1, vp);
+
+        vp = SmsMessage.getRelativeValidityPeriod(100);
+        assertEquals(100 / 5 - 1, vp);
     }
 
     private String getEmergencyNumberFromSystemPropertiesOrDefault() {

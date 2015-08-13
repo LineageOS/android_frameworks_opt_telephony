@@ -179,13 +179,15 @@ public class ImsSMSDispatcher extends SMSDispatcher {
     public void sendMultipartText(String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
-            boolean persistMessage) {
+            boolean persistMessage, int priority, boolean isExpectMore, int validityPeriod) {
         if (isCdmaMo()) {
             mCdmaDispatcher.sendMultipartText(destAddr, scAddr,
-                    parts, sentIntents, deliveryIntents, messageUri, callingPkg, persistMessage);
+                    parts, sentIntents, deliveryIntents, messageUri, callingPkg, persistMessage,
+                    priority, isExpectMore, validityPeriod);
         } else {
             mGsmDispatcher.sendMultipartText(destAddr, scAddr,
-                    parts, sentIntents, deliveryIntents, messageUri, callingPkg, persistMessage);
+                    parts, sentIntents, deliveryIntents, messageUri, callingPkg, persistMessage,
+                    priority, isExpectMore, validityPeriod);
         }
     }
 
@@ -205,14 +207,16 @@ public class ImsSMSDispatcher extends SMSDispatcher {
     @Override
     public void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
             PendingIntent deliveryIntent, Uri messageUri, String callingPkg,
-            boolean persistMessage) {
+            boolean persistMessage, int priority, boolean isExpectMore, int validityPeriod) {
         Rlog.d(TAG, "sendText");
         if (isCdmaMo()) {
             mCdmaDispatcher.sendText(destAddr, scAddr,
-                    text, sentIntent, deliveryIntent, messageUri, callingPkg, persistMessage);
+                    text, sentIntent, deliveryIntent, messageUri, callingPkg, persistMessage,
+                    priority, isExpectMore, validityPeriod);
         } else {
             mGsmDispatcher.sendText(destAddr, scAddr,
-                    text, sentIntent, deliveryIntent, messageUri, callingPkg, persistMessage);
+                    text, sentIntent, deliveryIntent, messageUri, callingPkg, persistMessage,
+                    priority, isExpectMore, validityPeriod);
         }
     }
 
@@ -366,9 +370,9 @@ public class ImsSMSDispatcher extends SMSDispatcher {
     @Override
     protected SmsTracker getNewSubmitPduTracker(String destinationAddress, String scAddress,
             String message, SmsHeader smsHeader, int format, PendingIntent sentIntent,
-            PendingIntent deliveryIntent, boolean lastPart,
-            AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
-            String fullMessageText) {
+            PendingIntent deliveryIntent, boolean lastPart, int priority, boolean isExpectMore,
+            int validityPeriod, AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed,
+            Uri messageUri, String fullMessageText) {
         Rlog.e(TAG, "Error! Not implemented for IMS.");
         return null;
     }
