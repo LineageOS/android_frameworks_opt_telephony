@@ -434,10 +434,22 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     serviceType, callType);
             profile.setCallExtraInt(ImsCallProfile.EXTRA_OIR, clirMode);
 
-            if (intentExtras != null &&
-                    intentExtras.containsKey(android.telecom.TelecomManager.EXTRA_CALL_SUBJECT)) {
-                profile.setCallExtra(ImsCallProfile.EXTRA_DISPLAY_TEXT,
-                        intentExtras.getString(android.telecom.TelecomManager.EXTRA_CALL_SUBJECT));
+            // Translate call subject intent-extra from Telecom-specific extra key to the
+            // ImsCallProfile key.
+            if (intentExtras != null) {
+                if (intentExtras.containsKey(android.telecom.TelecomManager.EXTRA_CALL_SUBJECT)) {
+                    intentExtras.putString(ImsCallProfile.EXTRA_DISPLAY_TEXT,
+                            intentExtras.getString(
+                                    android.telecom.TelecomManager.EXTRA_CALL_SUBJECT));
+                }
+
+                // Pack the OEM-specific call extras.
+                profile.mCallExtras.putBundle(ImsCallProfile.EXTRA_OEM_EXTRAS, intentExtras);
+
+                // NOTE: Extras to be sent over the network are packed into the
+                // intentExtras individually, with uniquely defined keys.
+                // These key-value pairs are processed by IMS Service before
+                // being sent to the lower layers/to the network.
             }
 
             ImsCall imsCall = mImsManager.makeCall(mServiceId, profile,
