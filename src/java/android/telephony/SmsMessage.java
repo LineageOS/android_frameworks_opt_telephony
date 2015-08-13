@@ -19,6 +19,7 @@ package android.telephony;
 import android.os.Binder;
 import android.os.Parcel;
 import android.content.res.Resources;
+import android.telephony.SubscriptionManager;
 import android.text.TextUtils;
 
 import com.android.internal.telephony.GsmAlphabet;
@@ -256,6 +257,32 @@ public class SmsMessage {
 
         return wrappedMessage != null ? new SmsMessage(wrappedMessage) : null;
     }
+
+    /**
+     * Create an SmsMessage from an SMS EF record.
+     *
+     * @param index Index of SMS record. This should be index in ArrayList
+     *              returned by SmsManager.getAllMessagesFromSim + 1.
+     * @param data Record data.
+     * @param subId Subscription Id of the SMS
+     * @return An SmsMessage representing the record.
+     *
+     * @hide
+     */
+    public static SmsMessage createFromEfRecord(int index, byte[] data, int subId) {
+        SmsMessageBase wrappedMessage;
+
+        if (isCdmaVoice(subId)) {
+            wrappedMessage = com.android.internal.telephony.cdma.SmsMessage.createFromEfRecord(
+                    index, data);
+        } else {
+            wrappedMessage = com.android.internal.telephony.gsm.SmsMessage.createFromEfRecord(
+                    index, data);
+        }
+
+        return wrappedMessage != null ? new SmsMessage(wrappedMessage) : null;
+    }
+
 
     /**
      * Get the TP-Layer-Length for the given SMS-SUBMIT PDU Basically, the
@@ -800,15 +827,17 @@ public class SmsMessage {
         return isCdmaVoice(SubscriptionManager.getDefaultSmsSubId());
     }
 
-     /**
-      * Determines whether or not to current phone type is cdma
-      *
-      * @return true if current phone type is cdma, false otherwise.
-      */
-     private static boolean isCdmaVoice(int subId) {
-         int activePhone = TelephonyManager.getDefault().getCurrentPhoneType(subId);
-         return (PHONE_TYPE_CDMA == activePhone);
-   }
+    /**
+     * Determines whether or not to current phone type is cdma.
+     *
+     * @param subId Subscription Id of the SMS
+     * @return true if current phone type is cdma, false otherwise.
+     */
+    private static boolean isCdmaVoice(int subId) {
+        int activePhone = TelephonyManager.getDefault().getCurrentPhoneType(subId);
+        return (PHONE_TYPE_CDMA == activePhone);
+    }
+
     /**
      * Decide if the carrier supports long SMS.
      * {@hide}

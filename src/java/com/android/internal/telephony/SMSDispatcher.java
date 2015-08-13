@@ -778,10 +778,29 @@ public abstract class SMSDispatcher extends Handler {
      * @param callingPkg the calling package name
      * @param persistMessage whether to save the sent message into SMS DB for a
      *   non-default SMS app.
+     *
+     * @param priority Priority level of the message
+     *  Refer specification See 3GPP2 C.S0015-B, v2.0, table 4.5.9-1
+     *  ---------------------------------
+     *  PRIORITY      | Level of Priority
+     *  ---------------------------------
+     *      '00'      |     Normal
+     *      '01'      |     Interactive
+     *      '10'      |     Urgent
+     *      '11'      |     Emergency
+     *  ----------------------------------
+     *  Any Other values included Negative considered as Invalid Priority Indicator of the message.
+     * @param isExpectMore is a boolean to indicate the sending message is multi segmented or not.
+     * @param validityPeriod Validity Period of the message in mins.
+     *  Refer specification 3GPP TS 23.040 V6.8.1 section 9.2.3.12.1.
+     *  Validity Period(Minimum) -> 5 mins
+     *  Validity Period(Maximum) -> 635040 mins(i.e.63 weeks).
+     *  Any Other values included Negative considered as Invalid Validity Period of the message.
      */
     protected abstract void sendText(String destAddr, String scAddr, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent, Uri messageUri,
-            String callingPkg, boolean persistMessage);
+            String callingPkg, boolean persistMessage, int priority, boolean isExpectMore,
+            int validityPeriod);
 
     /**
      * Inject an SMS PDU into the android platform.
@@ -833,11 +852,28 @@ public abstract class SMSDispatcher extends Handler {
      * @param callingPkg the calling package name
      * @param persistMessage whether to save the sent message into SMS DB for a
      *   non-default SMS app.
+     * @param priority Priority level of the message
+     *  Refer specification See 3GPP2 C.S0015-B, v2.0, table 4.5.9-1
+     *  ---------------------------------
+     *  PRIORITY      | Level of Priority
+     *  ---------------------------------
+     *      '00'      |     Normal
+     *      '01'      |     Interactive
+     *      '10'      |     Urgent
+     *      '11'      |     Emergency
+     *  ----------------------------------
+     *  Any Other values included Negative considered as Invalid Priority Indicator of the message.
+     * @param isExpectMore is a boolean to indicate the sending message is multi segmented or not.
+     * @param validityPeriod Validity Period of the message in mins.
+     *  Refer specification 3GPP TS 23.040 V6.8.1 section 9.2.3.12.1.
+     *  Validity Period(Minimum) -> 5 mins
+     *  Validity Period(Maximum) -> 635040 mins(i.e.63 weeks).
+     *  Any Other values included Negative considered as Invalid Validity Period of the message.
      */
     protected void sendMultipartText(String destAddr, String scAddr,
             ArrayList<String> parts, ArrayList<PendingIntent> sentIntents,
             ArrayList<PendingIntent> deliveryIntents, Uri messageUri, String callingPkg,
-            boolean persistMessage) {
+            boolean persistMessage, int priority, boolean isExpectMore, int validityPeriod) {
         final String fullMessageText = getMultipartMessageText(parts);
         int refNumber = getNextConcatenatedRef() & 0x00FF;
         int msgCount = parts.size();
@@ -893,8 +929,9 @@ public abstract class SMSDispatcher extends Handler {
 
             trackers[i] =
                 getNewSubmitPduTracker(destAddr, scAddr, parts.get(i), smsHeader, encoding,
-                        sentIntent, deliveryIntent, (i == (msgCount - 1)),
-                        unsentPartCount, anyPartFailed, messageUri, fullMessageText);
+                        sentIntent, deliveryIntent, (i == (msgCount - 1)), priority, isExpectMore,
+                        validityPeriod, unsentPartCount, anyPartFailed, messageUri,
+                        fullMessageText);
             trackers[i].mPersistMessage = persistMessage;
         }
 
@@ -924,11 +961,12 @@ public abstract class SMSDispatcher extends Handler {
     /**
      * Create a new SubmitPdu and return the SMS tracker.
      */
-    protected abstract SmsTracker getNewSubmitPduTracker(String destinationAddress, String scAddress,
-            String message, SmsHeader smsHeader, int encoding,
+    protected abstract SmsTracker getNewSubmitPduTracker(String destinationAddress,
+            String scAddress, String message, SmsHeader smsHeader, int encoding,
             PendingIntent sentIntent, PendingIntent deliveryIntent, boolean lastPart,
-            AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
-            String fullMessageText);
+            int priority, boolean isExpectMore, int validityPeriod,
+            AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed,
+            Uri messageUri, String fullMessageText);
 
     /**
      * Send an SMS
@@ -1282,7 +1320,8 @@ public abstract class SMSDispatcher extends Handler {
         }
 
         sendMultipartText(destinationAddress, scAddress, parts, sentIntents, deliveryIntents,
-                null/*messageUri*/, null/*callingPkg*/, tracker.mPersistMessage);
+                null/*messageUri*/, null/*callingPkg*/, tracker.mPersistMessage, -1,
+                tracker.mExpectMore, tracker.mvalidityPeriod);
     }
 
     /**
@@ -1296,6 +1335,7 @@ public abstract class SMSDispatcher extends Handler {
         public int mImsRetry; // nonzero indicates initial message was sent over Ims
         public int mMessageRef;
         public boolean mExpectMore;
+        public int mvalidityPeriod;
         String mFormat;
 
         public final PendingIntent mSentIntent;
@@ -1327,7 +1367,7 @@ public abstract class SMSDispatcher extends Handler {
                 PendingIntent deliveryIntent, PackageInfo appInfo, String destAddr, String format,
                 AtomicInteger unsentPartCount, AtomicBoolean anyPartFailed, Uri messageUri,
                 SmsHeader smsHeader, boolean isExpectMore, String fullMessageText, int subId,
-                boolean isText, boolean persistMessage) {
+                boolean isText, int validityPeriod, boolean persistMessage) {
             mData = data;
             mSentIntent = sentIntent;
             mDeliveryIntent = deliveryIntent;
@@ -1338,6 +1378,7 @@ public abstract class SMSDispatcher extends Handler {
             mExpectMore = isExpectMore;
             mImsRetry = 0;
             mMessageRef = 0;
+            mvalidityPeriod = validityPeriod;
             mUnsentPartCount = unsentPartCount;
             mAnyPartFailed = anyPartFailed;
             mMessageUri = messageUri;
@@ -1549,7 +1590,8 @@ public abstract class SMSDispatcher extends Handler {
     protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
             PendingIntent deliveryIntent, String format, AtomicInteger unsentPartCount,
             AtomicBoolean anyPartFailed, Uri messageUri, SmsHeader smsHeader,
-            boolean isExpectMore, String fullMessageText, boolean isText, boolean persistMessage) {
+            boolean isExpectMore, String fullMessageText, boolean isText, int validityPeriod,
+            boolean persistMessage) {
         // Get calling app package name via UID from Binder call
         PackageManager pm = mContext.getPackageManager();
         String[] packageNames = pm.getPackagesForUid(Binder.getCallingUid());
@@ -1569,7 +1611,7 @@ public abstract class SMSDispatcher extends Handler {
         String destAddr = PhoneNumberUtils.extractNetworkPortion((String) data.get("destAddr"));
         return new SmsTracker(data, sentIntent, deliveryIntent, appInfo, destAddr, format,
                 unsentPartCount, anyPartFailed, messageUri, smsHeader, isExpectMore,
-                fullMessageText, getSubId(), isText, persistMessage);
+                fullMessageText, getSubId(), isText, validityPeriod, persistMessage);
     }
 
     protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
@@ -1577,7 +1619,15 @@ public abstract class SMSDispatcher extends Handler {
             String fullMessageText, boolean isText, boolean persistMessage) {
         return getSmsTracker(data, sentIntent, deliveryIntent, format, null/*unsentPartCount*/,
                 null/*anyPartFailed*/, messageUri, null/*smsHeader*/, isExpectMore,
-                fullMessageText, isText, persistMessage);
+                fullMessageText, isText, -1, persistMessage);
+    }
+
+    protected SmsTracker getSmsTracker(HashMap<String, Object> data, PendingIntent sentIntent,
+            PendingIntent deliveryIntent, String format, Uri messageUri, boolean isExpectMore,
+            String fullMessageText, boolean isText, int validityPeriod, boolean persistMessage) {
+        return getSmsTracker(data, sentIntent, deliveryIntent, format, null/*unsentPartCount*/,
+                null/*anyPartFailed*/, messageUri, null/*smsHeader*/, isExpectMore, fullMessageText,
+                isText, validityPeriod, persistMessage);
     }
 
     protected HashMap<String, Object> getSmsTrackerMap(String destAddr, String scAddr,
