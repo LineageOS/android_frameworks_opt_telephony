@@ -247,6 +247,15 @@ public final class Telephony {
         public static final String SUBSCRIPTION_ID = "sub_id";
 
         /**
+         * The phone to which the message belongs to. Its value will be
+         * < 0 if the phone id cannot be determined.
+         * <p>Type: INTEGER (long) </p>
+         * @hide
+         */
+        public static final String PHONE_ID = "phone_id";
+
+
+        /**
          * The MTU size of the mobile interface to which the APN connected
          * @hide
          */
@@ -409,7 +418,9 @@ public final class Telephony {
             ContentValues values = new ContentValues(8);
             Rlog.v(TAG,"Telephony addMessageToUri sub id: " + subId);
 
+            int phoneId = SubscriptionManager.getPhoneId(subId);
             values.put(SUBSCRIPTION_ID, subId);
+            values.put(PHONE_ID, phoneId);
             values.put(ADDRESS, address);
             if (date != null) {
                 values.put(DATE, date);
@@ -1660,6 +1671,15 @@ public final class Telephony {
         public static final String SUBSCRIPTION_ID = "sub_id";
 
         /**
+         * The phone to which the message belongs to. Its value will be
+         * < 0 if the phone id cannot be determined.
+         * <p>Type: INTEGER (long)</p>
+         * @hide
+         */
+        public static final String PHONE_ID = "phone_id";
+
+
+        /**
          * The identity of the sender of a sent message. It is
          * usually the package name of the app which sends the message.
          * <p class="note"><strong>Note:</strong>
@@ -2407,6 +2427,14 @@ public final class Telephony {
              * <p>Type: INTEGER (long) </p>
              */
             public static final String SUBSCRIPTION_ID = "pending_sub_id";
+
+            /**
+             * The phone to which the message belongs to. Its value will be
+             * < 0 if the phone id cannot be determined.
+             * <p>Type: INTEGER (long) </p>
+             * @hide
+             */
+            public static final String PHONE_ID = "pending_phone_id";
         }
 
         /**
@@ -2630,6 +2658,13 @@ public final class Telephony {
          * <p>Type: INTEGER (long) </p>
          */
         public static final String SUBSCRIPTION_ID = "sub_id";
+
+        /**
+         * The phone to which the APN belongs to
+         * <p>Type: INTEGER (long) </p>
+         * @hide
+         */
+        public static final String PHONE_ID = "phone_id";
 
         /**
          * The profile_id to which the APN saved in modem
