@@ -187,7 +187,10 @@ public class CarrierServiceBindHelper {
 
             ResolveInfo carrierResolveInfo = mContext.getPackageManager().resolveService(
                 carrierService, PackageManager.GET_META_DATA);
-            Bundle metadata = carrierResolveInfo.serviceInfo.metaData;
+            Bundle metadata = null;
+            if (carrierResolveInfo != null) {
+              metadata = carrierResolveInfo.serviceInfo.metaData;
+            }
 
             // Only bind if the service wants it
             if (metadata == null ||
