@@ -60,7 +60,7 @@ import com.android.internal.telephony.uicc.UiccController;
  */
 public abstract class ServiceStateTracker extends Handler {
     protected  static final boolean DBG = true;
-    protected static final boolean VDBG = false;
+    protected static final boolean VDBG = true;
 
     protected static final String PROP_FORCE_ROAMING = "telephony.test.forceRoaming";
 
