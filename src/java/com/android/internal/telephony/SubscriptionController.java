@@ -28,6 +28,7 @@ import android.net.Uri;
 import android.os.Binder;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.telephony.RadioAccessFamily;
@@ -1450,6 +1451,8 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public void setDefaultDataSubId(int subId) {
         enforceModifyPhoneState("setDefaultDataSubId");
+        String flexMapSupportType =
+                SystemProperties.get("persist.radio.flexmap_type", "nw_mode");
 
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
@@ -1457,9 +1460,11 @@ public class SubscriptionController extends ISub.Stub {
 
         ProxyController proxyController = ProxyController.getInstance();
         int len = sPhones.length;
-        logdl("[setDefaultDataSubId] num phones=" + len + ", subId=" + subId);
+        logdl("[setDefaultDataSubId] num phones=" + len + ", subId=" +
+                subId + " dds flex map = " + flexMapSupportType);
 
-        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+        // Initiate flex map process only if the flexmap support type is "dds".
+        if (SubscriptionManager.isValidSubscriptionId(subId) && flexMapSupportType.equals("dds")) {
             // Only re-map modems if the new default data sub is valid
             RadioAccessFamily[] rafs = new RadioAccessFamily[len];
             boolean atLeastOneMatch = false;
