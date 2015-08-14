@@ -200,7 +200,9 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
 
         // System setting property AIRPLANE_MODE_ON is set in Settings.
         int airplaneMode = Settings.Global.getInt(mCr, Settings.Global.AIRPLANE_MODE_ON, 0);
-        mDesiredPowerState = ! (airplaneMode > 0);
+        int enableCellularOnBoot = Settings.Global.getInt(mCr,
+                Settings.Global.ENABLE_CELLULAR_ON_BOOT, 1);
+        mDesiredPowerState = (enableCellularOnBoot > 0) && ! (airplaneMode > 0);
 
         mCr.registerContentObserver(
                 Settings.Global.getUriFor(Settings.Global.AUTO_TIME), true,
