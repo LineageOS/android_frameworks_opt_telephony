@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7f231b9d_134aa326",
+        "filename": "src/java/com/android/internal/telephony/cdma/CdmaLteServiceStateTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 527,
+      "author": {
+        "id": 12941
+      },
+      "writtenOn": "2015-08-14T06:31:11Z",
+      "side": 1,
+      "message": "This patch should work for roaming cards. However is it safe to assume all Ruim cards would have the showSpn bit set?",
+      "revId": "d4f84eb38fde9591e48f550afaa16c87e3d00732",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
