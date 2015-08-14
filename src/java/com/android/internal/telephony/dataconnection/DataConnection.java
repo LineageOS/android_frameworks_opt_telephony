@@ -1770,8 +1770,17 @@ public final class DataConnection extends StateMachine {
                 log("DcActiveState: connected after retrying call notifyAllOfConnected");
                 mRetryManager.setRetryCount(0);
             }
-            // If we were retrying there maybe more than one, otherwise they'll only be one.
-            notifyAllOfConnected(Phone.REASON_CONNECTED);
+
+            boolean createNetworkAgent = true;
+            // If a disconnect is already pending, avoid notifying all of connected
+            if (DataConnection.this.getHandler().hasMessages(EVENT_DISCONNECT) ||
+                    DataConnection.this.getHandler().hasMessages(EVENT_DISCONNECT_ALL)) {
+                log("DcActiveState: skipping notifyAllOfConnected()");
+                createNetworkAgent = false;
+            } else {
+                // If we were retrying there maybe more than one, otherwise they'll only be one.
+                notifyAllOfConnected(Phone.REASON_CONNECTED);
+            }
 
             mPhone.getCallTracker().registerForVoiceCallStarted(getHandler(),
                     DataConnection.EVENT_DATA_CONNECTION_VOICE_CALL_STARTED, null);
@@ -1790,9 +1799,12 @@ public final class DataConnection extends StateMachine {
 
             final NetworkMisc misc = new NetworkMisc();
             misc.subscriberId = mPhone.getSubscriberId();
-            mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
-                    "DcNetworkAgent", mNetworkInfo, makeNetworkCapabilities(), mLinkProperties,
-                    50, misc);
+
+            if (createNetworkAgent) {
+                mNetworkAgent = new DcNetworkAgent(getHandler().getLooper(), mPhone.getContext(),
+                        "DcNetworkAgent", mNetworkInfo, makeNetworkCapabilities(), mLinkProperties,
+                        50, misc);
+            }
         }
 
         @Override
@@ -1811,8 +1823,10 @@ public final class DataConnection extends StateMachine {
 
             mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.DISCONNECTED,
                     reason, mNetworkInfo.getExtraInfo());
-            mNetworkAgent.sendNetworkInfo(mNetworkInfo);
-            mNetworkAgent = null;
+            if (mNetworkAgent != null) {
+                mNetworkAgent.sendNetworkInfo(mNetworkInfo);
+                mNetworkAgent = null;
+            }
         }
 
         @Override
@@ -1906,13 +1920,17 @@ public final class DataConnection extends StateMachine {
                 }
                 case EVENT_DATA_CONNECTION_ROAM_ON: {
                     mNetworkInfo.setRoaming(true);
-                    mNetworkAgent.sendNetworkInfo(mNetworkInfo);
+                    if (mNetworkAgent != null) {
+                        mNetworkAgent.sendNetworkInfo(mNetworkInfo);
+                    }
                     retVal = HANDLED;
                     break;
                 }
                 case EVENT_DATA_CONNECTION_ROAM_OFF: {
                     mNetworkInfo.setRoaming(false);
-                    mNetworkAgent.sendNetworkInfo(mNetworkInfo);
+                    if (mNetworkAgent != null) {
+                        mNetworkAgent.sendNetworkInfo(mNetworkInfo);
+                    }
                     retVal = HANDLED;
                     break;
                 }
@@ -1936,7 +1954,7 @@ public final class DataConnection extends StateMachine {
                 }
                 case EVENT_DATA_CONNECTION_VOICE_CALL_STARTED:
                 case EVENT_DATA_CONNECTION_VOICE_CALL_ENDED: {
-                    if (updateNetworkInfoSuspendState()) {
+                    if (updateNetworkInfoSuspendState() && mNetworkAgent != null) {
                         // state changed
                         mNetworkAgent.sendNetworkInfo(mNetworkInfo);
                     }
