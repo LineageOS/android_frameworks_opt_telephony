@@ -55,7 +55,7 @@ public class ApnSetting {
     public final String user;
     public final String password;
     public final int authType;
-    public final String[] types;
+    public String[] types;
     public final int typesBitmap;
     public final int id;
     public final String numeric;
