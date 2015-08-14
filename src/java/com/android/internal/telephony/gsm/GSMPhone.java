@@ -55,6 +55,7 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_BUSY;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 
+import com.android.internal.telephony.TelephonyPluginDelegate;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallForwardInfo;
@@ -154,7 +155,7 @@ public class GSMPhone extends PhoneBase {
         mCT = new GsmCallTracker(this);
 
         mSST = new GsmServiceStateTracker(this);
-        mDcTracker = new DcTracker(this);
+        mDcTracker = TelephonyPluginDelegate.getInstance().makeDcTracker(this);
 
         if (!unitTestMode) {
             mSimPhoneBookIntManager = new SimPhoneBookInterfaceManager(this);
@@ -189,7 +190,7 @@ public class GSMPhone extends PhoneBase {
         mCT = new GsmCallTracker(this);
 
         mSST = new GsmServiceStateTracker(this);
-        mDcTracker = new DcTracker(this);
+        mDcTracker = TelephonyPluginDelegate.getInstance().makeDcTracker(this);
 
         if (!unitTestMode) {
             mSimPhoneBookIntManager = new SimPhoneBookInterfaceManager(this);

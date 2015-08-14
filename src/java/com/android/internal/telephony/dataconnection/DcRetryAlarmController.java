@@ -140,6 +140,7 @@ public class DcRetryAlarmController {
         Intent intent = new Intent(mActionRetry);
         intent.putExtra(INTENT_RETRY_ALARM_WHAT, what);
         intent.putExtra(INTENT_RETRY_ALARM_TAG, tag);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
 
         if (DBG) {
             log("startRetryAlarm: next attempt in " + (delay / 1000) + "s" +
@@ -148,7 +149,7 @@ public class DcRetryAlarmController {
 
         PendingIntent retryIntent = PendingIntent.getBroadcast (mPhone.getContext(), 0,
                                         intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+        mAlarmManager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 SystemClock.elapsedRealtime() + delay, retryIntent);
     }
 

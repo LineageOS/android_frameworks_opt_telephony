@@ -90,8 +90,8 @@ import com.android.internal.telephony.ServiceStateTracker;
 /**
  * {@hide}
  */
-public final class DcTracker extends DcTrackerBase {
-    protected final String LOG_TAG = "DCT";
+public class DcTracker extends DcTrackerBase {
+    protected String LOG_TAG = "DCT";
 
     /**
      * List of messages that are waiting to be posted, when data call disconnect
@@ -825,7 +825,7 @@ public final class DcTracker extends DcTrackerBase {
         ONLY_ON_CHANGE
     };
 
-    private void setupDataOnConnectableApns(String reason) {
+    protected void setupDataOnConnectableApns(String reason) {
         setupDataOnConnectableApns(reason, RetryFailures.ALWAYS);
     }
 
@@ -1237,7 +1237,7 @@ public final class DcTracker extends DcTrackerBase {
         return apn;
     }
 
-    private ArrayList<ApnSetting> createApnList(Cursor cursor) {
+    protected ArrayList<ApnSetting> createApnList(Cursor cursor) {
         ArrayList<ApnSetting> mnoApns = new ArrayList<ApnSetting>();
         ArrayList<ApnSetting> mvnoApns = new ArrayList<ApnSetting>();
         IccRecords r = mIccRecords.get();
@@ -1388,7 +1388,7 @@ public final class DcTracker extends DcTrackerBase {
         tryRestartDataConnections(Phone.REASON_APN_CHANGED);
     }
 
-    private void tryRestartDataConnections(String reason) {
+    protected void tryRestartDataConnections(String reason) {
         DctConstants.State overallState = getOverallState();
         boolean isDisconnected = (overallState == DctConstants.State.IDLE ||
                 overallState == DctConstants.State.FAILED);
@@ -1510,6 +1510,7 @@ public final class DcTracker extends DcTrackerBase {
         String apnType = apnContext.getApnType();
 
         Intent intent = new Intent(INTENT_RECONNECT_ALARM + "." + apnType);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_REASON, apnContext.getReason());
         intent.putExtra(INTENT_RECONNECT_ALARM_EXTRA_TYPE, apnType);
 
@@ -1525,13 +1526,14 @@ public final class DcTracker extends DcTrackerBase {
         PendingIntent alarmIntent = PendingIntent.getBroadcast (mPhone.getContext(), 0,
                                         intent, PendingIntent.FLAG_UPDATE_CURRENT);
         apnContext.setReconnectIntent(alarmIntent);
-        mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+        mAlarmManager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 SystemClock.elapsedRealtime() + delay, alarmIntent);
     }
 
     private void startAlarmForRestartTrySetup(int delay, ApnContext apnContext) {
         String apnType = apnContext.getApnType();
         Intent intent = new Intent(INTENT_RESTART_TRYSETUP_ALARM + "." + apnType);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
         intent.putExtra(INTENT_RESTART_TRYSETUP_ALARM_EXTRA_TYPE, apnType);
 
         if (DBG) {
@@ -1541,7 +1543,7 @@ public final class DcTracker extends DcTrackerBase {
         PendingIntent alarmIntent = PendingIntent.getBroadcast (mPhone.getContext(), 0,
                                         intent, PendingIntent.FLAG_UPDATE_CURRENT);
         apnContext.setReconnectIntent(alarmIntent);
-        mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+        mAlarmManager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 SystemClock.elapsedRealtime() + delay, alarmIntent);
     }
 
@@ -1554,7 +1556,7 @@ public final class DcTracker extends DcTrackerBase {
         }
     }
 
-    private void onRecordsLoaded() {
+    protected void onRecordsLoaded() {
         if (DBG) log("onRecordsLoaded: createAllApnList");
         mAutoAttachOnCreationConfig = mPhone.getContext().getResources()
                 .getBoolean(com.android.internal.R.bool.config_auto_attach_data_on_creation);
@@ -2343,7 +2345,7 @@ public final class DcTracker extends DcTrackerBase {
      * Returns mccmnc for data call either from cdma_home_operator or from IccRecords
      * @return operator numeric
      */
-    private String getOperatorNumeric() {
+    protected String getOperatorNumeric() {
         String result;
         if (isNvSubscription()) {
             result = SystemProperties.get(CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC);
@@ -2360,7 +2362,7 @@ public final class DcTracker extends DcTrackerBase {
      * Based on the operator numeric, create a list for all possible
      * Data Connections and setup the preferredApn.
      */
-    private void createAllApnList() {
+    protected void createAllApnList() {
         mAllApnSettings = new ArrayList<ApnSetting>();
         String operator = getOperatorNumeric();
         if (operator != null && !operator.isEmpty()) {
@@ -2408,7 +2410,7 @@ public final class DcTracker extends DcTrackerBase {
         setDataProfilesAsNeeded();
     }
 
-    private void dedupeApnSettings() {
+    protected void dedupeApnSettings() {
         ArrayList<ApnSetting> resultApns = new ArrayList<ApnSetting>();
 
         // coalesce APNs if they are similar enough to prevent
@@ -2518,7 +2520,7 @@ public final class DcTracker extends DcTrackerBase {
                 dest.maxConnsTime, dest.mtu, dest.mvnoType, dest.mvnoMatchData);
     }
 
-    private boolean isDummyProfileNeeded() {
+    protected boolean isDummyProfileNeeded() {
         int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
         int radioTechFam = UiccController.getFamilyFromRadioTechnology(radioTech);
         IccRecords r = mIccRecords.get();
@@ -2530,7 +2532,7 @@ public final class DcTracker extends DcTrackerBase {
                 (r != null) && (r instanceof RuimRecords)));
     }
 
-    private void addDummyApnSettings(String operator) {
+    protected void addDummyApnSettings(String operator) {
         // Create dummy data profiles.
         if (DBG) log("createAllApnList: Creating dummy apn for cdma operator:" + operator);
         String[] defaultApnTypes = {
@@ -2690,7 +2692,7 @@ public final class DcTracker extends DcTrackerBase {
         return result.toString();
     }
 
-    private void setPreferredApn(int pos) {
+    protected void setPreferredApn(int pos) {
         if (!mCanSetPreferApn) {
             log("setPreferredApn: X !canSEtPreferApn");
             return;
@@ -2710,7 +2712,7 @@ public final class DcTracker extends DcTrackerBase {
         }
     }
 
-    private ApnSetting getPreferredApn() {
+    protected ApnSetting getPreferredApn() {
         if (mAllApnSettings == null || mAllApnSettings.isEmpty()) {
             log("getPreferredApn: mAllApnSettings is " + ((mAllApnSettings == null)?"null":"empty"));
             return null;
@@ -3196,7 +3198,7 @@ public final class DcTracker extends DcTrackerBase {
     /**
      * Add the Emergency APN settings to APN settings list
      */
-    private void addEmergencyApnSetting() {
+    protected void addEmergencyApnSetting() {
         if(mEmergencyApn != null) {
             if(mAllApnSettings == null) {
                 mAllApnSettings = new ArrayList<ApnSetting>();
