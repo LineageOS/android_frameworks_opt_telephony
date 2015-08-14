@@ -1719,7 +1719,7 @@ public class SubscriptionController extends ISub.Stub {
         broadcastDefaultDataSubIdChanged(subId);
     }
 
-    private void updateAllDataConnectionTrackers() {
+    protected void updateAllDataConnectionTrackers() {
         // Tell Phone Proxies to update data connection tracker
         int len = sPhones.length;
         if (DBG) logdl("[updateAllDataConnectionTrackers] sPhones.length=" + len);
@@ -1729,7 +1729,7 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    private void broadcastDefaultDataSubIdChanged(int subId) {
+    protected void broadcastDefaultDataSubIdChanged(int subId) {
         // Broadcast an Intent for default data sub change
         if (DBG) logdl("[broadcastDefaultDataSubIdChanged] subId=" + subId);
         Intent intent = new Intent(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED);
