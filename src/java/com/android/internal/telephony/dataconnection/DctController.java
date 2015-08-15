@@ -51,7 +51,7 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 
 public class DctController extends Handler {
-    private static final String LOG_TAG = "DctController";
+    protected static String LOG_TAG = "DctController";
     private static final boolean DBG = true;
 
     private static final int EVENT_PROCESS_REQUESTS = 100;
@@ -67,15 +67,15 @@ public class DctController extends Handler {
     private static final int EVENT_DATA_DETACHED = 600;
     private static final int EVENT_EMERGENCY_CALL_TOGGLED = 700;
 
-    private static DctController sDctController;
+    protected static DctController sDctController;
 
-    private int mPhoneNum;
-    private PhoneProxy[] mPhones;
+    protected int mPhoneNum;
+    protected PhoneProxy[] mPhones;
     private DcSwitchStateMachine[] mDcSwitchStateMachine;
-    private DcSwitchAsyncChannel[] mDcSwitchAsyncChannel;
+    protected DcSwitchAsyncChannel[] mDcSwitchAsyncChannel;
     private Handler[] mDcSwitchStateHandler;
-    private HashMap<Integer, RequestInfo> mRequestInfos = new HashMap<Integer, RequestInfo>();
-    private Context mContext;
+    protected HashMap<Integer, RequestInfo> mRequestInfos = new HashMap<Integer, RequestInfo>();
+    protected Context mContext;
 
     /** Used to send us NetworkRequests from ConnectivityService.  Remember it so we can
      * unregister on dispose. */
@@ -83,7 +83,7 @@ public class DctController extends Handler {
     private NetworkFactory[] mNetworkFactory;
     private NetworkCapabilities[] mNetworkFilter;
 
-    private SubscriptionController mSubController = SubscriptionController.getInstance();
+    protected SubscriptionController mSubController = SubscriptionController.getInstance();
 
     private SubscriptionManager mSubMgr;
 
@@ -207,7 +207,7 @@ public class DctController extends Handler {
         return sDctController;
     }
 
-    private DctController(PhoneProxy[] phones) {
+    protected DctController(PhoneProxy[] phones) {
         logd("DctController(): phones.length=" + phones.length);
         if (phones == null || phones.length == 0) {
             if (phones == null) {
@@ -330,7 +330,7 @@ public class DctController extends Handler {
         return PhoneConstants.APN_REQUEST_STARTED;
     }
 
-    void processRequests() {
+    protected void processRequests() {
         logd("processRequests");
         sendMessage(obtainMessage(EVENT_PROCESS_REQUESTS));
     }
@@ -360,7 +360,7 @@ public class DctController extends Handler {
         sendMessage(obtainMessage(EVENT_RETRY_ATTACH, phoneId, 0));
     }
 
-    private void onProcessRequest() {
+    protected void onProcessRequest() {
         //process all requests
         //1. Check all requests and find subscription of the top priority
         //   request
@@ -488,9 +488,9 @@ public class DctController extends Handler {
         }
     }
 
-    private void onSettingsChanged() {
+    protected void onSettingsChanged() {
         //Sub Selection
-        long dataSubId = mSubController.getDefaultDataSubId();
+        int dataSubId = mSubController.getDefaultDataSubId();
 
         int activePhoneId = -1;
         for (int i=0; i<mDcSwitchStateMachine.length; i++) {
@@ -537,7 +537,7 @@ public class DctController extends Handler {
         processRequests();
     }
 
-    private int getTopPriorityRequestPhoneId() {
+    protected int getTopPriorityRequestPhoneId() {
         RequestInfo retRequestInfo = null;
         int phoneId = 0;
         int priority = -1;
@@ -665,7 +665,7 @@ public class DctController extends Handler {
         return name;
     }
 
-    private int getRequestPhoneId(NetworkRequest networkRequest) {
+    protected int getRequestPhoneId(NetworkRequest networkRequest) {
         String specifier = networkRequest.networkCapabilities.getNetworkSpecifier();
         int subId;
         if (specifier == null || specifier.equals("")) {
@@ -683,15 +683,15 @@ public class DctController extends Handler {
         return phoneId;
     }
 
-    private static void logd(String s) {
+    protected static void logd(String s) {
         if (DBG) Rlog.d(LOG_TAG, s);
     }
 
-    private static void loge(String s) {
+    protected static void loge(String s) {
         if (DBG) Rlog.e(LOG_TAG, s);
     }
 
-    private class TelephonyNetworkFactory extends NetworkFactory {
+    protected class TelephonyNetworkFactory extends NetworkFactory {
         private final SparseArray<NetworkRequest> mPendingReq = new SparseArray<NetworkRequest>();
         private Phone mPhone;
 

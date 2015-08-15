@@ -46,8 +46,9 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
     static final int EVENT_DATA_DETACHED =            BASE + 8;
     static final int EVENT_EMERGENCY_CALL_STARTED =   BASE + 9;
     static final int EVENT_EMERGENCY_CALL_ENDED =     BASE + 10;
+    static final int EVENT_RESET =                    BASE + 11;
 
-    private static final int CMD_TO_STRING_COUNT = EVENT_EMERGENCY_CALL_ENDED - BASE + 1;
+    private static final int CMD_TO_STRING_COUNT = EVENT_RESET - BASE + 1;
     private static String[] sCmdToString = new String[CMD_TO_STRING_COUNT];
     static {
         sCmdToString[REQ_CONNECT - BASE] = "REQ_CONNECT";
@@ -61,13 +62,14 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
         sCmdToString[EVENT_DATA_DETACHED - BASE] = "EVENT_DATA_DETACHED";
         sCmdToString[EVENT_EMERGENCY_CALL_STARTED - BASE] = "EVENT_EMERGENCY_CALL_STARTED";
         sCmdToString[EVENT_EMERGENCY_CALL_ENDED - BASE] = "EVENT_EMERGENCY_CALL_ENDED";
+        sCmdToString[EVENT_RESET - BASE] = "EVENT_RESET";
     }
 
     public static class RequestInfo {
-        boolean executed;
-        final NetworkRequest request;
-        final int priority;
-        final int phoneId;
+        public boolean executed;
+        public final NetworkRequest request;
+        public final int priority;
+        public final int phoneId;
         private final LocalLog requestLog;
 
         public RequestInfo(NetworkRequest request, int priority, LocalLog l, int phoneId) {
@@ -93,6 +95,16 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
         }
     }
 
+    public static class ConnectInfo {
+        final RequestInfo request;
+        final Message responseMessage;
+
+        public ConnectInfo(RequestInfo req, Message msg) {
+            this.request = req;
+            this.responseMessage = msg;
+        }
+    }
+
     protected static String cmdToString(int cmd) {
         cmd -= BASE;
         if ((cmd >= 0) && (cmd < sCmdToString.length)) {
@@ -108,7 +120,14 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
     }
 
     public int connect(RequestInfo apnRequest) {
-        sendMessage(REQ_CONNECT, apnRequest);
+        ConnectInfo connectInfo = new ConnectInfo(apnRequest, null);
+        sendMessage(REQ_CONNECT, connectInfo);
+        return PhoneConstants.APN_REQUEST_STARTED;
+    }
+
+    public int connect(RequestInfo apnRequest, Message msg) {
+        ConnectInfo connectInfo = new ConnectInfo(apnRequest, msg);
+        sendMessage(REQ_CONNECT, connectInfo);
         return PhoneConstants.APN_REQUEST_STARTED;
     }
 
@@ -135,6 +154,11 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
         } else {
             sendMessage(EVENT_EMERGENCY_CALL_ENDED);
         }
+    }
+
+    public void reset() {
+        sendMessage(EVENT_RESET);
+        if (DBG) log("EVENT_RESET");
     }
 
     private boolean rspIsIdle(Message response) {
