@@ -242,18 +242,8 @@ public class DcSwitchStateMachine extends StateMachine {
                         loge("EVENT_DATA_ALLOWED ignored arg1=" + msg.arg1 + ", seq=" +
                                 mCurrentAllowedSequence);
                     } else if (ar.exception != null) {
-                        if (ar.exception instanceof CommandException) {
-                            CommandException e = (CommandException)ar.exception;
-                            if (e.getCommandError() ==
-                                    CommandException.Error.REQUEST_NOT_SUPPORTED) {
-                                // must be on a single-sim device so stay in Attaching
-                                // this is important to avoid an infinite loop
-                                retVal = HANDLED;
-                                break;
-                            }
-                        }
                         loge("EVENT_DATA_ALLOWED failed, " + ar.exception);
-                        transitionTo(mIdleState);
+                        //TODO: Implement backoff retries and abort logic.
                     }
                     retVal = HANDLED;
                     break;
@@ -344,7 +334,7 @@ public class DcSwitchStateMachine extends StateMachine {
                     if (DBG) {
                         log("AttachedState: EVENT_DATA_DETACHED");
                     }
-                    transitionTo(mAttachingState);
+                    transitionTo(mIdleState);
                     retVal = HANDLED;
                     break;
                 }
