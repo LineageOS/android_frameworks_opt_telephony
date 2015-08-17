@@ -86,4 +86,13 @@ oneway interface IQtiImsInterfaceListener {
      * @return void
      */
    void onGetPacketErrorCount(int status, long packetErrorCount);
+
+    /**
+     * Notifies client the result of call deflect request
+     *
+     * @param <result> is one of the values QTIIMS_REQUEST_*, as defined in
+     *        <code>org.codeaurora.ims.qtiims.QtiImsInterfaceUtils.</code>
+     * @return void.
+     */
+    void receiveCallDeflectResponse(int result);
 }

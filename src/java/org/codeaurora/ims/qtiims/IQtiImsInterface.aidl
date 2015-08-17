@@ -95,4 +95,16 @@ oneway interface IQtiImsInterface {
      * @throws RemoteException if calling the IMS service results in an error.
      */
     void getPacketErrorCount(IQtiImsInterfaceListener listener);
+
+   /**
+     * sendCallDeflectRequest
+     * Deflects a incoming call to given number
+     *
+     * @param phoneId indicates the phone instance which triggered the request
+     * @param deflectNumber indicates the target number to deflect
+     * @param listener an IQtiImsInterfaceListener instance to indicate the response
+     * @return void
+     */
+    void sendCallDeflectRequest(int phoneId, String deflectNumber,
+            IQtiImsInterfaceListener listener);
 }
