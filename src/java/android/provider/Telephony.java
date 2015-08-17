@@ -988,6 +988,15 @@ public final class Telephony {
                     "android.provider.Telephony.SMS_CB_RECEIVED";
 
             /**
+             * Action: A SMS based carrier provision intent. Used to identify default
+             * carrier provisioning app on the device.
+             * @hide
+             */
+            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+            public static final String SMS_CARRIER_PROVISION_ACTION =
+                    "android.provider.Telephony.SMS_CARRIER_PROVISION";
+
+            /**
              * Broadcast Action: A new Emergency Broadcast message has been received
              * by the device. The intent will have the following extra
              * values:</p>
