@@ -45,4 +45,13 @@ public interface TelephonyPluginInterface {
 
     public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Context context,
             Phone[] phoneProxy, CommandsInterface[] commandsInterfaces);
+
+    public PhoneBase makeGSMPhone(Context context, CommandsInterface ci,
+            PhoneNotifier notifier, int phoneId);
+
+    public PhoneBase makeCDMALTEPhone(Context context, CommandsInterface ci,
+            PhoneNotifier notifier, int phoneId);
+
+    public void initExtTelephonyClasses(Context context,
+            Phone[] phoneProxy, CommandsInterface[] commandsInterfaces);
 }

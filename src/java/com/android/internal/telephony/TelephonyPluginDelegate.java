@@ -114,4 +114,19 @@ public class TelephonyPluginDelegate {
             Phone[] phoneProxy, CommandsInterface[] commandsInterfaces) {
         return sPlugin.makeSubscriptionInfoUpdater(context, phoneProxy, commandsInterfaces);
     }
+
+    public PhoneBase makeGSMPhone(Context context, CommandsInterface ci,
+            PhoneNotifier notifier, int phoneId) {
+        return sPlugin.makeGSMPhone(context, ci, notifier, phoneId);
+    }
+
+    public PhoneBase makeCDMALTEPhone(Context context, CommandsInterface ci,
+            PhoneNotifier notifier, int phoneId) {
+        return sPlugin.makeCDMALTEPhone(context, ci, notifier, phoneId);
+    }
+
+    public void initExtTelephonyClasses(Context context,
+            Phone[] phoneProxy, CommandsInterface[] commandsInterfaces) {
+        sPlugin.initExtTelephonyClasses(context, phoneProxy, commandsInterfaces);
+    }
 }
