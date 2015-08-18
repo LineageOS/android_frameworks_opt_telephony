@@ -193,6 +193,13 @@ public class DcSwitchStateMachine extends StateMachine {
             final PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
             pb.mCi.setDataAllowed(true, obtainMessage(EVENT_DATA_ALLOWED,
                     ++mCurrentAllowedSequence, 0));
+            // if we're on a carrier that unattaches us if we're idle for too long
+            // (on wifi) and they won't re-attach until we poke them.  Poke them!
+            // essentially react as Attached does here in Attaching.
+            if (pb.mDcTracker.getAutoAttachOnCreation()) {
+                if (DBG) log("AttachingState executeAll due to autoAttach");
+                DctController.getInstance().executeAllRequests(mId);
+            }
         }
 
         @Override
@@ -205,11 +212,16 @@ public class DcSwitchStateMachine extends StateMachine {
                     apnRequest.log("DcSwitchStateMachine.AttachingState: REQ_CONNECT");
                     if (DBG) log("AttachingState: REQ_CONNECT, apnRequest=" + apnRequest);
 
-                    // do nothing - wait til we attach and then we'll execute all requests
+                    final PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
+                    if (pb.mDcTracker.getAutoAttachOnCreation() == false) {
+                        // do nothing - wait til we attach and then we'll execute all requests
+                    } else {
+                        apnRequest.log("DcSwitchStateMachine processing due to autoAttach");
+                        DctController.getInstance().executeRequest(apnRequest);
+                    }
                     retVal = HANDLED;
                     break;
                 }
-
                 case EVENT_DATA_ALLOWED: {
                     AsyncResult ar = (AsyncResult)msg.obj;
                     if (mCurrentAllowedSequence != msg.arg1) {
@@ -252,6 +264,14 @@ public class DcSwitchStateMachine extends StateMachine {
                 case DcSwitchAsyncChannel.REQ_DISCONNECT_ALL: {
                     if (DBG) {
                         log("AttachingState: REQ_DISCONNECT_ALL" );
+                    }
+                    final PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
+                    if (pb.mDcTracker.getAutoAttachOnCreation()) {
+                        // if AutoAttachOnCreation, then we may have executed requests
+                        // without ever actually getting to Attached, so release the request
+                        // here in that case.
+                        if (DBG) log("releasingAll due to autoAttach");
+                        DctController.getInstance().releaseAllRequests(mId);
                     }
 
                     // modem gets unhappy if we try to detach while attaching
