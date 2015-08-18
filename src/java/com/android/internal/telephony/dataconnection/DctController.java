@@ -307,12 +307,12 @@ public class DctController extends Handler {
         }
     }
 
-    private int requestNetwork(NetworkRequest request, int priority, LocalLog l) {
+    private int requestNetwork(NetworkRequest request, int priority, LocalLog l, int phoneId) {
         logd("requestNetwork request=" + request
                 + ", priority=" + priority);
         l.log("Dctc.requestNetwork, priority=" + priority);
 
-        RequestInfo requestInfo = new RequestInfo(request, priority, l);
+        RequestInfo requestInfo = new RequestInfo(request, priority, l, phoneId);
         mRequestInfos.put(request.requestId, requestInfo);
         processRequests();
 
@@ -386,7 +386,7 @@ public class DctController extends Handler {
             Iterator<Integer> iterator = mRequestInfos.keySet().iterator();
             while (iterator.hasNext()) {
                 RequestInfo requestInfo = mRequestInfos.get(iterator.next());
-                if (getRequestPhoneId(requestInfo.request) == phoneId && !requestInfo.executed) {
+                if (requestInfo.phoneId == phoneId && !requestInfo.executed) {
                     mDcSwitchAsyncChannel[phoneId].connect(requestInfo);
                 }
             }
@@ -401,7 +401,7 @@ public class DctController extends Handler {
             requestInfo.log("DctController.onExecuteRequest - executed=" + requestInfo.executed);
             requestInfo.executed = true;
             String apn = apnForNetworkRequest(requestInfo.request);
-            int phoneId = getRequestPhoneId(requestInfo.request);
+            int phoneId = requestInfo.phoneId;
             PhoneBase phoneBase = (PhoneBase)mPhones[phoneId].getActivePhone();
             DcTrackerBase dcTracker = phoneBase.mDcTracker;
             dcTracker.incApnRefCount(apn, requestInfo.getLog());
@@ -413,7 +413,7 @@ public class DctController extends Handler {
         Iterator<Integer> iterator = mRequestInfos.keySet().iterator();
         while (iterator.hasNext()) {
             RequestInfo requestInfo = mRequestInfos.get(iterator.next());
-            if (getRequestPhoneId(requestInfo.request) == phoneId) {
+            if (requestInfo.phoneId == phoneId) {
                 onExecuteRequest(requestInfo);
             }
         }
@@ -425,7 +425,7 @@ public class DctController extends Handler {
             requestInfo.log("DctController.onReleaseRequest");
             if (requestInfo.executed) {
                 String apn = apnForNetworkRequest(requestInfo.request);
-                int phoneId = getRequestPhoneId(requestInfo.request);
+                int phoneId = requestInfo.phoneId;
                 PhoneBase phoneBase = (PhoneBase)mPhones[phoneId].getActivePhone();
                 DcTrackerBase dcTracker = phoneBase.mDcTracker;
                 dcTracker.decApnRefCount(apn, requestInfo.getLog());
@@ -439,7 +439,7 @@ public class DctController extends Handler {
         Iterator<Integer> iterator = mRequestInfos.keySet().iterator();
         while (iterator.hasNext()) {
             RequestInfo requestInfo = mRequestInfos.get(iterator.next());
-            if (getRequestPhoneId(requestInfo.request) == phoneId) {
+            if (requestInfo.phoneId == phoneId) {
                 onReleaseRequest(requestInfo);
             }
         }
@@ -514,7 +514,7 @@ public class DctController extends Handler {
             while (iterator.hasNext()) {
                 RequestInfo requestInfo = mRequestInfos.get(iterator.next());
                 logd("selectExecPhone requestInfo = " + requestInfo);
-                if (getRequestPhoneId(requestInfo.request) == i &&
+                if (requestInfo.phoneId == i &&
                         priority < requestInfo.priority) {
                     priority = requestInfo.priority;
                     retRequestInfo = requestInfo;
@@ -731,7 +731,8 @@ public class DctController extends Handler {
             DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
             String apn = apnForNetworkRequest(networkRequest);
             if (dcTracker.isApnSupported(apn)) {
-                requestNetwork(networkRequest, dcTracker.getApnPriority(apn), l);
+                requestNetwork(networkRequest, dcTracker.getApnPriority(apn), l,
+                        mPhone.getPhoneId());
             } else {
                 final String str = "Unsupported APN";
                 log(str);
