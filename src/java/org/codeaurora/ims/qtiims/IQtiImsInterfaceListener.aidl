@@ -28,8 +28,6 @@
 
 package org.codeaurora.ims.qtiims;
 
-import com.android.ims.ImsCallForwardInfo;
-
 /**
  * Used by client application to get the result from lower layer by
  * communicating with vendor.
@@ -39,18 +37,53 @@ oneway interface IQtiImsInterfaceListener {
     /**
      * Notifies client the value of the set operation result.
      *
-     * @param result To return success or failure.
-     * @param serviceClass supported service classes
+     * @param status To return status of request.
      * @return void.
      */
-    void onSetCallForwardUncondTimer(int result, int serviceClass);
+    void onSetCallForwardUncondTimer(int status);
 
      /**
      * Notifies client the value of the get operation result.
      *
-     * @param ImsCallForwardInfo response data will be filled in this
-     *        structure.
+     * @param startHour indicates starting hour
+     * @param startMinute indicates starting minute
+     * @param endHour indicates ending hour
+     * @param endMinute indicates ending minute
+     * @param reason is one of the valid call forwarding
+     *        CF_REASONS, as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param status indicates status of CF service.
+     * @param number is the target phone number to forward calls to
+     * @param serviceClass indicates serviceClass type that is supported.
      * @return void.
      */
-    void onGetCallForwardUncondTimer(in ImsCallForwardInfo[] cfInfo);
+    void onGetCallForwardUncondTimer(int startHour, int endHour, int startMinute,
+            int endMinute, int reason, int status, String number, int serviceClass);
+
+   /**
+     * Notifies client with any UT failure result.
+     *
+     * @param errCode contains error code
+     * @param errString contains error string if any.
+     * @return void.
+     */
+    void onUTReqFailed(int errCode, String errString);
+
+   /**
+     * Notifies client the value of the get operation result on get packet count item.
+     *
+     * @param status. as defined in com.android.ims.ImsConfig#OperationStatusConstants.
+     * @param packetCount. total number of packets sent or received
+     * @return void
+     */
+    void onGetPacketCount(int status, long packetCount);
+
+   /**
+     * Notifies client the value of the get operation result on get packet error count item.
+     *
+     * @param status. as defined in com.android.ims.ImsConfig#OperationStatusConstants.
+     * @param packetErrorCount. total number of packet errors encountered
+     * @return void
+     */
+   void onGetPacketErrorCount(int status, long packetErrorCount);
 }

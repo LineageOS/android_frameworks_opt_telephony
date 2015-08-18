@@ -49,12 +49,16 @@ oneway interface IQtiImsInterface {
      * @param reason is one of the valid call forwarding
      *        CF_REASONS, as defined in
      *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param serviceClass is service class, that is used to set CFT
+     *        SERVICE_CLASS, as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
      * @param dialingNumber is the target phone number to forward calls to
      * @param QtiImsInterfaceListener listener to request
      * @return void
      */
     void setCallForwardUncondTimer(int startHour, int startMinute, int endHour, int endMinute,
-            int action, int reason, String dialingNumber, IQtiImsInterfaceListener listener);
+            int action, int reason, int serviceClass, String dialingNumber,
+            IQtiImsInterfaceListener listener);
 
    /**
      * getCallForwardingUncondTimerOptions
@@ -63,8 +67,32 @@ oneway interface IQtiImsInterface {
      * @param reason is one of the valid call forwarding
      *        CF_REASONS, as defined in
      *        <code>com.android.internal.telephony.CommandsInterface.</code>
+     * @param serviceClass is service class, that is used to get CFT
+     *        SERVICE_CLASS, as defined in
+     *        <code>com.android.internal.telephony.CommandsInterface.</code>
      * @param QtiImsInterfaceListener listener to request
      * @return void
      */
-    void getCallForwardUncondTimer(int reason, IQtiImsInterfaceListener listener);
+    void getCallForwardUncondTimer(int reason, int serviceClass,
+            IQtiImsInterfaceListener listener);
+
+    /**
+      * Total number of packets sent or received
+      *
+      * @param listener, provided if caller needs to be notified for get result.
+      * @return void
+      *
+      * @throws RemoteException if calling the IMS service results in an error.
+      */
+    void getPacketCount(IQtiImsInterfaceListener listener);
+
+   /**
+     * Total number of packet errors encountered
+     *
+     * @param listener, provided if caller needs to be notified for get result.
+     * @return void
+     *
+     * @throws RemoteException if calling the IMS service results in an error.
+     */
+    void getPacketErrorCount(IQtiImsInterfaceListener listener);
 }
