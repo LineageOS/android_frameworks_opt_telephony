@@ -63,6 +63,9 @@ public class QtiVideoCallConstants {
     /* Call substate extra key name */
     public static final String CALL_SUBSTATE_EXTRA_KEY = "CallSubstate";
 
+    /* Default camera zoom max */
+    public static final int CAMERA_MAX_ZOOM = 100;
+
     /**
      * Private constructor. This class should not be instantiated.
      */
