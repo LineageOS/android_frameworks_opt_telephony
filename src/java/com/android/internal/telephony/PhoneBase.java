@@ -1314,6 +1314,7 @@ public abstract class PhoneBase extends Handler implements Phone {
      * @return the original list with CDMA lat/long cleared if necessary
      */
     private List<CellInfo> privatizeCellInfoList(List<CellInfo> cellInfoList) {
+        if (cellInfoList == null) return null;
         int mode = Settings.Secure.getInt(getContext().getContentResolver(),
                 Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF);
         if (mode == Settings.Secure.LOCATION_MODE_OFF) {
