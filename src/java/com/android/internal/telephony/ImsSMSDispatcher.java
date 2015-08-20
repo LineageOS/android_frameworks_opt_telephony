@@ -25,7 +25,6 @@ import android.os.Message;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
-
 import com.android.internal.telephony.cdma.CdmaInboundSmsHandler;
 import com.android.internal.R;
 import com.android.internal.telephony.cdma.CdmaSMSDispatcher;
@@ -441,9 +440,9 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     public boolean shouldSendSmsOverIms() {
         boolean sendSmsOn1x = mContext.getResources().getBoolean(
                 com.android.internal.R.bool.config_send_sms1x_on_voice_call);
-        int currentCallState = mTelephonyManager.getCallState();
-        int currentVoiceNetwork = mTelephonyManager.getVoiceNetworkType();
-        int currentDataNetwork = mTelephonyManager.getDataNetworkType();
+        PhoneConstants.State currentCallState = mPhone.getState();
+        int currentVoiceNetwork = mPhone.getServiceState().getVoiceNetworkType();
+        int currentDataNetwork = mPhone.getServiceState().getDataNetworkType();
 
         Rlog.d(TAG, "data = " + currentDataNetwork + " voice = " + currentVoiceNetwork
                 + " call state = " + currentCallState);
@@ -453,7 +452,7 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
             // network and there is an active 1xRTT voice call.
             if (currentDataNetwork == TelephonyManager.NETWORK_TYPE_EHRPD
                     && currentVoiceNetwork == TelephonyManager.NETWORK_TYPE_1xRTT
-                    && currentCallState != mTelephonyManager.CALL_STATE_IDLE) {
+                    && currentCallState != PhoneConstants.State.IDLE) {
                 enableSendSmsOverIms(false);
                 return false;
             }
