@@ -117,7 +117,7 @@ public interface IccCard {
     /**
      * Supply Network depersonalization code to the RIL
      */
-    public void supplyNetworkDepersonalization (String pin, Message onComplete);
+    public void supplyNetworkDepersonalization (String pin, String type, Message onComplete);
 
     /**
      * Check whether ICC pin lock is enabled

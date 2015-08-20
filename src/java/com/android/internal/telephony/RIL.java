@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 import static com.android.internal.telephony.RILConstants.*;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_UNKNOWN;
 import static android.telephony.TelephonyManager.NETWORK_TYPE_EDGE;
@@ -303,6 +306,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     private static final int CDMA_BSI_NO_OF_INTS_STRUCT = 3;
 
     private static final int CDMA_BROADCAST_SMS_NO_OF_SERVICE_CATEGORIES = 31;
+
+    private static final char NULL_TERMINATOR = '\0';
+
+    private static final int NULL_TERMINATOR_LENGTH = BYTE_SIZE;
+
+    /** Sim DePersonalization code */
+    private static final int OEMHOOK_EVT_HOOK_ENTER_DEPERSONALIZATION_CODE = OEMHOOK_BASE + 51;
 
     private final DisplayManager.DisplayListener mDisplayListener =
             new DisplayManager.DisplayListener() {
@@ -910,15 +920,32 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     @Override
     public void
-    supplyNetworkDepersonalization(String netpin, Message result) {
-        RILRequest rr = RILRequest.obtain(RIL_REQUEST_ENTER_NETWORK_DEPERSONALIZATION, result);
+    supplyNetworkDepersonalization(String netpin, String type, Message response) {
+        Rlog.d(RILJ_LOG_TAG, "supplyDepersonalization: netpin = " + netpin + " type = " + type);
 
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+        byte[] payload = null;
+        // type + null character +
+        // netpin + null character
+        int payloadLength  = type.length() + NULL_TERMINATOR_LENGTH +
+                                (netpin == null ? NULL_TERMINATOR_LENGTH
+                                        : netpin.length() + NULL_TERMINATOR_LENGTH);
 
-        rr.mParcel.writeInt(1);
-        rr.mParcel.writeString(netpin);
+        payload = new byte[payloadLength];
+        ByteBuffer buf = createBufferWithNativeByteOrder(payload);
+        // type
+        buf.put(type.getBytes());
+        buf.put((byte)NULL_TERMINATOR); // null character
+        // pin
+        if (netpin != null) buf.put(netpin.getBytes());
+        buf.put((byte)NULL_TERMINATOR); // null character
+        sendOemRilRequestRaw(OEMHOOK_EVT_HOOK_ENTER_DEPERSONALIZATION_CODE,
+                payload.length, payload, response);
+    }
 
-        send(rr);
+    private ByteBuffer createBufferWithNativeByteOrder(byte[] bytes) {
+        ByteBuffer buf = ByteBuffer.wrap(bytes);
+        buf.order(ByteOrder.nativeOrder());
+        return buf;
     }
 
     @Override
