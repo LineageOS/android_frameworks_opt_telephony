@@ -379,28 +379,28 @@ class DcController extends StateMachine {
                 }
             }
 
-            // Temporary notification until RIL implementation is complete.
-            if (mOverallDataConnectionActiveState != newOverallDataConnectionActiveState) {
-                mOverallDataConnectionActiveState = newOverallDataConnectionActiveState;
-                long time = SystemClock.elapsedRealtimeNanos();
-                int dcPowerState;
-                switch (mOverallDataConnectionActiveState) {
-                    case DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE:
-                    case DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT:
-                        dcPowerState = DataConnectionRealTimeInfo.DC_POWER_STATE_LOW;
-                        break;
-                    case DATA_CONNECTION_ACTIVE_PH_LINK_UP:
-                        dcPowerState = DataConnectionRealTimeInfo.DC_POWER_STATE_HIGH;
-                        break;
-                    default:
-                        dcPowerState = DataConnectionRealTimeInfo.DC_POWER_STATE_UNKNOWN;
-                        break;
-                }
-                DataConnectionRealTimeInfo dcRtInfo =
-                        new DataConnectionRealTimeInfo(time , dcPowerState);
-                log("onDataStateChanged: notify DcRtInfo changed dcRtInfo=" + dcRtInfo);
-                mPhone.notifyDataConnectionRealTimeInfo(dcRtInfo);
-            }
+            // TODO: b/23319188 Enable/Disable this based on enable/disable of dormancy indications 
+            //if (mOverallDataConnectionActiveState != newOverallDataConnectionActiveState) {
+            //    mOverallDataConnectionActiveState = newOverallDataConnectionActiveState;
+            //    long time = SystemClock.elapsedRealtimeNanos();
+            //    int dcPowerState;
+            //    switch (mOverallDataConnectionActiveState) {
+            //        case DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE:
+            //        case DATA_CONNECTION_ACTIVE_PH_LINK_DORMANT:
+            //            dcPowerState = DataConnectionRealTimeInfo.DC_POWER_STATE_LOW;
+            //            break;
+            //        case DATA_CONNECTION_ACTIVE_PH_LINK_UP:
+            //            dcPowerState = DataConnectionRealTimeInfo.DC_POWER_STATE_HIGH;
+            //            break;
+            //        default:
+            //            dcPowerState = DataConnectionRealTimeInfo.DC_POWER_STATE_UNKNOWN;
+            //            break;
+            //    }
+            //    DataConnectionRealTimeInfo dcRtInfo =
+            //            new DataConnectionRealTimeInfo(time , dcPowerState);
+            //    log("onDataStateChanged: notify DcRtInfo changed dcRtInfo=" + dcRtInfo);
+            //    mPhone.notifyDataConnectionRealTimeInfo(dcRtInfo); 
+            //}
 
             if (DBG) {
                 lr("onDataStateChanged: dcsToRetry=" + dcsToRetry
