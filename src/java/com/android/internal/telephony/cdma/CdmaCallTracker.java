@@ -124,6 +124,11 @@ public final class CdmaCallTracker extends CallTracker {
 
         clearDisconnected();
 
+        for (CdmaConnection cdmaConnection : mConnections) {
+            if (cdmaConnection != null) {
+                cdmaConnection.dispose();
+            }
+        }
     }
 
     @Override
@@ -358,6 +363,7 @@ public final class CdmaCallTracker extends CallTracker {
 
         updatePhoneState();
         mPhone.notifyPreciseCallStateChanged();
+
     }
 
     boolean

@@ -119,8 +119,13 @@ public final class GsmCallTracker extends CallTracker {
         mCi.unregisterForOn(this);
         mCi.unregisterForNotAvailable(this);
 
-
         clearDisconnected();
+
+        for (GsmConnection gsmConnection : mConnections) {
+            if (gsmConnection != null) {
+                gsmConnection.dispose();
+            }
+        }
     }
 
     @Override
