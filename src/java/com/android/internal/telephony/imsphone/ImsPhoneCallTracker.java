@@ -365,6 +365,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
             mPendingMO = new ImsPhoneConnection(mPhone.getContext(),
                     checkForTestEmergencyNumber(dialString), this, mForegroundCall);
+            mPendingMO.setVideoState(videoState);
         }
         addConnection(mPendingMO);
 
@@ -958,8 +959,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
         // It should modify only other capabilities of call through updateMediaCapabilities
         // State updates will be triggered through individual callbacks
         // i.e. onCallHeld, onCallResume, etc and conn.update will be responsible for the update
+        conn.updateMediaCapabilities(imsCall);
         if (ignoreState) {
-            conn.updateMediaCapabilities(imsCall);
             return;
         }
 
