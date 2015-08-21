@@ -76,6 +76,7 @@ import java.util.ArrayList;
     public final void sendTextMessage(
             String destinationAddress, String scAddress, String text,
             PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        android.util.SeempLog.record(94);
         mSmsMgrProxy.sendTextMessage(destinationAddress, scAddress, text,
                 sentIntent, deliveryIntent);
     }
@@ -128,6 +129,7 @@ import java.util.ArrayList;
     public final void sendMultipartTextMessage(
             String destinationAddress, String scAddress, ArrayList<String> parts,
             ArrayList<PendingIntent> sentIntents, ArrayList<PendingIntent> deliveryIntents) {
+        android.util.SeempLog.record(96);
         mSmsMgrProxy.sendMultipartTextMessage(destinationAddress, scAddress, parts,
                 sentIntents, deliveryIntents);
     }
@@ -161,6 +163,7 @@ import java.util.ArrayList;
     public final void sendDataMessage(
             String destinationAddress, String scAddress, short destinationPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
+        android.util.SeempLog.record(92);
         mSmsMgrProxy.sendDataMessage(destinationAddress, scAddress, destinationPort,
                 data, sentIntent, deliveryIntent);
     }
@@ -178,6 +181,7 @@ import java.util.ArrayList;
      */
     @Deprecated
     public final boolean copyMessageToSim(byte[] smsc, byte[] pdu, int status) {
+        android.util.SeempLog.record(101);
         return mSmsMgrProxy.copyMessageToIcc(smsc, pdu, status);
     }
 
@@ -191,6 +195,7 @@ import java.util.ArrayList;
      */
     @Deprecated
     public final boolean deleteMessageFromSim(int messageIndex) {
+        android.util.SeempLog.record(102);
         return mSmsMgrProxy.deleteMessageFromIcc(messageIndex);
     }
 
@@ -208,6 +213,7 @@ import java.util.ArrayList;
      */
     @Deprecated
     public final boolean updateMessageOnSim(int messageIndex, int newStatus, byte[] pdu) {
+        android.util.SeempLog.record(103);
         return mSmsMgrProxy.updateMessageOnIcc(messageIndex, newStatus, pdu);
     }
 
@@ -219,6 +225,7 @@ import java.util.ArrayList;
      */
     @Deprecated
     public final ArrayList<android.telephony.SmsMessage> getAllMessagesFromSim() {
+        android.util.SeempLog.record(104);
         return android.telephony.SmsManager.getDefault().getAllMessagesFromIcc();
     }
 
