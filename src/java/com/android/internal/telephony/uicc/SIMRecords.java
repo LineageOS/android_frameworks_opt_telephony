@@ -901,6 +901,9 @@ public class SIMRecords extends IccRecords {
                     if (mMncLength == 0xf) {
                         mMncLength = UNKNOWN;
                         log("setting5 mMncLength=" + mMncLength);
+                    } else if (mMncLength != 2 && mMncLength != 3) {
+                        mMncLength = UNINITIALIZED;
+                        log("setting5 mMncLength=" + mMncLength);
                     }
                 } finally {
                     if (((mMncLength == UNINITIALIZED) || (mMncLength == UNKNOWN) ||
