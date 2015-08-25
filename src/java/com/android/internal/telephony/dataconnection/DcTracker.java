@@ -2760,10 +2760,12 @@ public final class DcTracker extends DcTrackerBase {
                 mIccRecords.set(null);
             }
             if (newIccRecords != null) {
-                log("New records found");
-                mIccRecords.set(newIccRecords);
-                newIccRecords.registerForRecordsLoaded(
-                        this, DctConstants.EVENT_RECORDS_LOADED, null);
+                if (mPhone.getSubId() >= 0) {
+                    log("New records found.");
+                    mIccRecords.set(newIccRecords);
+                    newIccRecords.registerForRecordsLoaded(
+                            this, DctConstants.EVENT_RECORDS_LOADED, null);
+                }
             } else {
                 onSimNotReady();
             }
