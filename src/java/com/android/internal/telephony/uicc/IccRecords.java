@@ -25,6 +25,8 @@ import android.os.RegistrantList;
 
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
+
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 
@@ -713,7 +715,11 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mRecordsToLoad=" + mRecordsToLoad);
         pw.println(" mRdnCache=" + mAdnCache);
         pw.println(" iccid=" + mIccId);
-        pw.println(" mMsisdn=" + mMsisdn);
+        if (TextUtils.isEmpty(mMsisdn)) {
+            pw.println(" mMsisdn=null");
+        } else {
+            pw.println(" mMsisdn=" + (VDBG ? mMsisdn : "XXX"));
+        }
         pw.println(" mMsisdnTag=" + mMsisdnTag);
         pw.println(" mVoiceMailNum=" + mVoiceMailNum);
         pw.println(" mVoiceMailTag=" + mVoiceMailTag);
