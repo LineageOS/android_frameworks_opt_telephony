@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3f1d235d_8e056f7d",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 13
+      },
+      "lineNbr": 1470,
+      "author": {
+        "id": 9199
+      },
+      "writtenOn": "2015-08-25T01:31:42Z",
+      "side": 1,
+      "message": "\u003e 100 chars",
+      "revId": "7fa76bf9f9135008a3e578b75d23e4e0f268cdc9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3f1d235d_6e0a138b",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 13
+      },
+      "lineNbr": 1473,
+      "author": {
+        "id": 9199
+      },
+      "writtenOn": "2015-08-25T01:31:42Z",
+      "side": 1,
+      "message": "\u003e 100 chars",
+      "revId": "7fa76bf9f9135008a3e578b75d23e4e0f268cdc9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
