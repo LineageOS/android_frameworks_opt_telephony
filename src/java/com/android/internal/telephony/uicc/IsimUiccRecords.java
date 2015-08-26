@@ -501,11 +501,13 @@ public final class IsimUiccRecords extends IccRecords implements IsimRecords {
         pw.println("IsimRecords: " + this);
         pw.println(" extends:");
         super.dump(fd, pw, args);
-        pw.println(" mIsimImpi=" + mIsimImpi);
-        pw.println(" mIsimDomain=" + mIsimDomain);
-        pw.println(" mIsimImpu[]=" + Arrays.toString(mIsimImpu));
-        pw.println(" mIsimIst" + mIsimIst);
-        pw.println(" mIsimPcscf"+mIsimPcscf);
+        if (DUMP_RECORDS) {
+            pw.println(" mIsimImpi=" + mIsimImpi);
+            pw.println(" mIsimDomain=" + mIsimDomain);
+            pw.println(" mIsimImpu[]=" + Arrays.toString(mIsimImpu));
+            pw.println(" mIsimIst" + mIsimIst);
+            pw.println(" mIsimPcscf" + mIsimPcscf);
+        }
         pw.flush();
     }
 
