@@ -645,8 +645,15 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             showSpn = false;
         }
 
+        int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
+        int[] subIds = SubscriptionManager.getSubId(mPhone.getPhoneId());
+        if (subIds != null && subIds.length > 0) {
+            subId = subIds[0];
+        }
+
         // Update SPN_STRINGS_UPDATED_ACTION IFF any value changes
-        if (showPlmn != mCurShowPlmn
+        if (mSubId != subId ||
+                showPlmn != mCurShowPlmn
                 || showSpn != mCurShowSpn
                 || !TextUtils.equals(spn, mCurSpn)
                 || !TextUtils.equals(dataSpn, mCurDataSpn)
@@ -654,8 +661,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             if (DBG) {
                 log(String.format("updateSpnDisplay: changed" +
                         " sending intent rule=" + rule +
-                        " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s' dataSpn='%s'",
-                        showPlmn, plmn, showSpn, spn, dataSpn));
+                        " showPlmn='%b' plmn='%s' showSpn='%b' spn='%s' dataSpn='%s' subId='%d'",
+                        showPlmn, plmn, showSpn, spn, dataSpn, subId));
             }
             Intent intent = new Intent(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION);
             intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
@@ -673,6 +680,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
             }
         }
 
+        mSubId = subId;
         mCurShowSpn = showSpn;
         mCurShowPlmn = showPlmn;
         mCurSpn = spn;
