@@ -239,6 +239,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected String mCurPlmn = null;
     protected boolean mCurShowPlmn = false;
     protected boolean mCurShowSpn = false;
+    protected int mSubId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
 
     private boolean mImsRegistered = false;
 
@@ -303,6 +304,11 @@ public abstract class ServiceStateTracker extends Handler {
                         editor.remove(PhoneBase.NETWORK_SELECTION_SHORT_KEY);
                         editor.commit();
                     }
+
+                    // Once sub id becomes valid, we need to update the service provider name
+                    // displayed on the UI again. The old SPN update intents sent to
+                    // MobileSignalController earlier were actually ignored due to invalid sub id.
+                    updateSpnDisplay();
                 }
             }
         }
