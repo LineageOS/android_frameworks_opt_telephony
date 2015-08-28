@@ -71,7 +71,7 @@ public class DataProfile {
     }
 
     DataProfile(ApnSetting apn, boolean isRoaming) {
-        this(apn.profileId, apn.apn, isRoaming? apn.protocol : apn.roamingProtocol,
+        this(apn.profileId, apn.apn, isRoaming? apn.roamingProtocol : apn.protocol,
                 apn.authType, apn.user, apn.password, apn.bearerBitmask == 0 ? TYPE_COMMON :
                         (ServiceState.hasCdma(apn.bearerBitmask) ? TYPE_3GPP2 : TYPE_3GPP),
                 apn.maxConnsTime, apn.maxConns, apn.waitTime, apn.carrierEnabled);
