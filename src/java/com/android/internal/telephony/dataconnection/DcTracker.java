@@ -377,6 +377,7 @@ public final class DcTracker extends DcTrackerBase {
             loge("isApnSupported: name=null");
             return false;
         }
+
         ApnContext apnContext = mApnContexts.get(name);
         if (apnContext == null) {
             loge("Request for unsupported mobile name: " + name);
