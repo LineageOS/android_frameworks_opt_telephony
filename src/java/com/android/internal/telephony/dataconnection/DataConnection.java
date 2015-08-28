@@ -941,7 +941,7 @@ public final class DataConnection extends StateMachine {
                     default:
                 }
             }
-            ConnectivityManager.maybeMarkCapabilitiesRestricted(result);
+            result.maybeMarkCapabilitiesRestricted();
         }
         int up = 14;
         int down = 14;
