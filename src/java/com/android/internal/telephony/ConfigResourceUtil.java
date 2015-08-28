@@ -34,12 +34,21 @@ import android.content.res.Resources;
 import android.content.res.Resources.NotFoundException;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.util.Log;
+import java.util.Arrays;
 
 public class ConfigResourceUtil {
     public static final String TAG = "ConfigResourceUtil";
     public static String packageName = "com.android.frameworks.telresources";
 
-    public boolean getBooleanValue(Context context, String resourceName) {
+    /**
+     * Utility method that gets a boolean resource declared in
+     * frameworks/opt/telephony/resources/res/values/config.xml. This
+     * resource may be replaced by an overlay of the same name.
+     * @param context The context of the application calling the utility
+     * @param resourceName The name of the resource that is requested
+     * @return value of resource
+     */
+    public static boolean getBooleanValue(Context context, String resourceName) {
         try {
             Resources res = context.getPackageManager().getResourcesForApplication(packageName);
             if (res == null)
@@ -54,7 +63,15 @@ public class ConfigResourceUtil {
         }
     }
 
-    public int getIntValue(Context context, String resourceName) {
+    /**
+     * Utility method that gets an integer resource declared in
+     * frameworks/opt/telephony/resources/res/values/config.xml. This
+     * resource may be replaced by an overlay of the same name.
+     * @param context The context of the application calling the utility
+     * @param resourceName The name of the resource that is requested
+     * @return value of resource
+     */
+    public static int getIntValue(Context context, String resourceName) {
         try {
             Resources res = context.getPackageManager().getResourcesForApplication(packageName);
             if (res == null)
@@ -63,6 +80,75 @@ public class ConfigResourceUtil {
             int resValue = res.getInteger(resId);
             Log.v(TAG, "resourceName = " + resourceName + " resourceId = " + resId
                     + "resourceValue = " + resValue);
+            return resValue;
+        } catch (NameNotFoundException | NotFoundException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    /**
+     * Utility method that gets a string resource declared in
+     * frameworks/opt/telephony/resources/res/values/config.xml. This
+     * resource may be replaced by an overlay of the same name.
+     * @param context The context of the application calling the utility
+     * @param resourceName The name of the resource that is requested
+     * @return value of resource
+     */
+    public static String getStringValue(Context context, String resourceName) {
+        try {
+            Resources res = context.getPackageManager().getResourcesForApplication(packageName);
+            if (res == null)
+                Log.e(TAG, "res is null");
+            int resId = res.getIdentifier(resourceName, "string", packageName);
+            String resValue = res.getString(resId);
+            Log.v(TAG, "resourceName = " + resourceName + " resourceId = " + resId
+                    + "resourceValue = " + resValue);
+            return resValue;
+        } catch (NameNotFoundException | NotFoundException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    /**
+     * Utility method that gets an integer array resource declared in
+     * frameworks/opt/telephony/resources/res/values/config.xml. This
+     * resource may be replaced by an overlay of the same name.
+     * @param context The context of the application calling the utility
+     * @param resourceName The name of the resource that is requested
+     * @return value of resource
+     */
+    public static int[] getIntArray(Context context, String resourceName) {
+        try {
+            Resources res = context.getPackageManager().getResourcesForApplication(packageName);
+            if (res == null)
+                Log.e(TAG, "res is null");
+            int resId = res.getIdentifier(resourceName, "array", packageName);
+            int[] resValue = res.getIntArray(resId);
+            Log.v(TAG, "resourceName = " + resourceName + " resourceId = " + resId
+                    + "resourceValue = " + Arrays.toString(resValue));
+            return resValue;
+        } catch (NameNotFoundException | NotFoundException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    /**
+     * Utility method that gets a string array resource declared in
+     * frameworks/opt/telephony/resources/res/values/config.xml. This
+     * resource may be replaced by an overlay of the same name.
+     * @param context The context of the application calling the utility
+     * @param resourceName The name of the resource that is requested
+     * @return value of resource
+     */
+    public static String[] getStringArray(Context context, String resourceName) {
+        try {
+            Resources res = context.getPackageManager().getResourcesForApplication(packageName);
+            if (res == null)
+                Log.e(TAG, "res is null");
+            int resId = res.getIdentifier(resourceName, "array", packageName);
+            String[] resValue = res.getStringArray(resId);
+            Log.v(TAG, "resourceName = " + resourceName + " resourceId = " + resId
+                    + "resourceValue = " + Arrays.toString(resValue));
             return resValue;
         } catch (NameNotFoundException | NotFoundException e) {
             throw new RuntimeException(e.getMessage());
