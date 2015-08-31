@@ -1055,6 +1055,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                     if (mIccRecords != null) {
                         mPhone.setVoiceCallForwardingFlag(1, cffEnabled, mDialingNumber);
                         mPhone.setCallForwardingPreference(cffEnabled);
+                        mPhone.setVideoCallForwardingPreference(cffEnabled);
                     }
                 }
 

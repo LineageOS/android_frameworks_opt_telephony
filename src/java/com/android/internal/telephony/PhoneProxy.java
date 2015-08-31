@@ -1699,6 +1699,22 @@ public class PhoneProxy extends Handler implements Phone {
         mActivePhone.setBroadcastEmergencyCallStateChanges(broadcast);
     }
 
+    @Override
+    public void getCallForwardingOption(int commandInterfaceCFReason,
+            int commandInterfaceServiceClass, Message onComplete) {
+        mActivePhone.getCallForwardingOption(commandInterfaceCFReason,
+                commandInterfaceServiceClass, onComplete);
+    }
+
+    @Override
+    public void setCallForwardingOption(int commandInterfaceCFReason,
+            int commandInterfaceCFAction, String dialingNumber,
+            int commandInterfaceServiceClass, int timerSeconds, Message onComplete) {
+        mActivePhone.setCallForwardingOption(commandInterfaceCFReason,
+                commandInterfaceCFAction, dialingNumber,
+                commandInterfaceServiceClass, timerSeconds, onComplete);
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         try {
             ((PhoneBase)mActivePhone).dump(fd, pw, args);
