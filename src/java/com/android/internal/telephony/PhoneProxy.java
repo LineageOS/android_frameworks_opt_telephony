@@ -19,8 +19,10 @@ package com.android.internal.telephony;
 
 
 import android.app.ActivityManagerNative;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.os.AsyncResult;
@@ -75,10 +77,21 @@ public class PhoneProxy extends Handler implements Phone {
     private static final int EVENT_REQUEST_VOICE_RADIO_TECH_DONE = 3;
     private static final int EVENT_RIL_CONNECTED = 4;
     private static final int EVENT_UPDATE_PHONE_OBJECT = 5;
-    private static final int EVENT_SIM_RECORDS_LOADED = 6;
+    private static final int EVENT_CARRIER_CONFIG_CHANGED = 6;
 
     private int mPhoneId = 0;
 
+    private Context mContext;
+    private boolean mPhoneProxyReceiverRegistered = false;
+    private BroadcastReceiver mPhoneProxyReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Rlog.d(LOG_TAG, "mPhoneProxyReceiver: action " + intent.getAction());
+            if (intent.getAction().equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+                sendMessage(obtainMessage(EVENT_CARRIER_CONFIG_CHANGED));
+            }
+        }
+    };
     private static final String LOG_TAG = "PhoneProxy";
 
     //***** Class Methods
@@ -98,7 +111,8 @@ public class PhoneProxy extends Handler implements Phone {
         mPhoneId = phone.getPhoneId();
         mIccSmsInterfaceManager =
                 new IccSmsInterfaceManager((PhoneBase)this.mActivePhone);
-        mIccCardProxy = new IccCardProxy(mActivePhone.getContext(), mCommandsInterface, mActivePhone.getPhoneId());
+        mContext = mActivePhone.getContext();
+        mIccCardProxy = new IccCardProxy(mContext, mCommandsInterface, mActivePhone.getPhoneId());
 
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
             // For the purpose of IccCardProxy we only care about the technology family
@@ -148,10 +162,10 @@ public class PhoneProxy extends Handler implements Phone {
             phoneObjectUpdater(msg.arg1);
             break;
 
-        case EVENT_SIM_RECORDS_LOADED:
+        case EVENT_CARRIER_CONFIG_CHANGED:
             // Only check for the voice radio tech if it not going to be updated by the voice
             // registration changes.
-            if (!mActivePhone.getContext().getResources().getBoolean(
+            if (mActivePhone != null && !mContext.getResources().getBoolean(
                     com.android.internal.R.bool.config_switch_phone_on_voice_reg_state_change)) {
                 mCommandsInterface.getVoiceRadioTechnology(obtainMessage(
                         EVENT_REQUEST_VOICE_RADIO_TECH_DONE));
@@ -285,7 +299,6 @@ public class PhoneProxy extends Handler implements Phone {
 
         if (oldPhone != null) {
             outgoingPhoneName = ((PhoneBase) oldPhone).getPhoneName();
-            oldPhone.unregisterForSimRecordsLoaded(this);
         }
 
         logd("Switching Voice Phone : " + outgoingPhoneName + " >>> "
@@ -311,7 +324,13 @@ public class PhoneProxy extends Handler implements Phone {
                 mActivePhone.acquireOwnershipOfImsPhone(imsPhone);
             }
             mActivePhone.startMonitoringImsService();
-            mActivePhone.registerForSimRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
+
+            if (!mPhoneProxyReceiverRegistered) {
+                IntentFilter filter = new IntentFilter();
+                filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+                mContext.registerReceiver(mPhoneProxyReceiver, filter);
+                mPhoneProxyReceiverRegistered = true;
+            }
         }
 
         if (oldPhone != null) {
@@ -1356,12 +1375,13 @@ public class PhoneProxy extends Handler implements Phone {
 
     @Override
     public void dispose() {
-        if (mActivePhone != null) {
-            mActivePhone.unregisterForSimRecordsLoaded(this);
-        }
         mCommandsInterface.unregisterForOn(this);
         mCommandsInterface.unregisterForVoiceRadioTechChanged(this);
         mCommandsInterface.unregisterForRilConnected(this);
+        if (mPhoneProxyReceiverRegistered) {
+            mContext.unregisterReceiver(mPhoneProxyReceiver);
+            mPhoneProxyReceiverRegistered = false;
+        }
     }
 
     @Override
