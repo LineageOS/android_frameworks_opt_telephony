@@ -1070,6 +1070,11 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 return DisconnectCause.TIMED_OUT;
 
             case ImsReasonInfo.CODE_LOCAL_LOW_BATTERY:
+                return DisconnectCause.LOCAL_LOW_BATTERY;
+
+            case ImsReasonInfo.CODE_LOW_BATTERY:
+                return DisconnectCause.LOW_BATTERY;
+
             case ImsReasonInfo.CODE_LOCAL_POWER_OFF:
                 return DisconnectCause.POWER_OFF;
 

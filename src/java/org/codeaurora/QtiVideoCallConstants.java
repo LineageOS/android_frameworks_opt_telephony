@@ -154,6 +154,9 @@ public class QtiVideoCallConstants {
     /* Downgrade of a vt call due to generic error */
     public static final int CAUSE_CODE_SESSION_MODIFY_DOWNGRADE_GENERIC_ERROR = 11;
 
+    /* Upgrade/downgrade of a volte/vt call is rejected due to low battery */
+    public static final int CAUSE_CODE_SESSION_MODIFY_REQUEST_LOW_BATTERY = 12;
+
     /* Session modification cause extra key name */
     public static final String SESSION_MODIFICATION_CAUSE_EXTRA_KEY = "SessionModificationCause";
 }
