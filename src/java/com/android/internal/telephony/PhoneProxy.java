@@ -78,6 +78,7 @@ public class PhoneProxy extends Handler implements Phone {
     private static final int EVENT_RIL_CONNECTED = 4;
     private static final int EVENT_UPDATE_PHONE_OBJECT = 5;
     private static final int EVENT_SIM_RECORDS_LOADED = 6;
+    private static final int EVENT_RADIO_AVAILABLE = 7;
 
     private int mPhoneId = 0;
 
@@ -95,6 +96,7 @@ public class PhoneProxy extends Handler implements Phone {
 
         mCommandsInterface.registerForRilConnected(this, EVENT_RIL_CONNECTED, null);
         mCommandsInterface.registerForOn(this, EVENT_RADIO_ON, null);
+        mCommandsInterface.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
         mCommandsInterface.registerForVoiceRadioTechChanged(
                              this, EVENT_VOICE_RADIO_TECH_CHANGED, null);
         mPhoneId = phone.getPhoneId();
@@ -129,6 +131,8 @@ public class PhoneProxy extends Handler implements Phone {
     public void handleMessage(Message msg) {
         AsyncResult ar = (AsyncResult) msg.obj;
         switch(msg.what) {
+        case EVENT_RADIO_AVAILABLE:
+            // intentional fall through.
         case EVENT_RADIO_ON:
             /* Proactively query voice radio technologies */
             mCommandsInterface.getVoiceRadioTechnology(
@@ -1384,6 +1388,7 @@ public class PhoneProxy extends Handler implements Phone {
             mActivePhone.getContext().unregisterReceiver(sConfigChangeReceiver);
         }
         mCommandsInterface.unregisterForOn(this);
+        mCommandsInterface.unregisterForAvailable(this);
         mCommandsInterface.unregisterForVoiceRadioTechChanged(this);
         mCommandsInterface.unregisterForRilConnected(this);
     }
