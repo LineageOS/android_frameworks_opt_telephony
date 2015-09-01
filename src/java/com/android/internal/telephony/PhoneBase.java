@@ -73,6 +73,8 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.codeaurora.QtiVideoCallConstants;
+
 /**
  * (<em>Not for SDK use</em>)
  * A base implementation for the com.android.internal.telephony.Phone interface.
@@ -2520,6 +2522,12 @@ public abstract class PhoneBase extends Handler implements Phone {
         }
 
         return getLocaleFromCarrierProperties(mContext);
+    }
+
+    /* Validate the given extras if the call is for CS domain or not */
+    protected boolean shallDialOnCircuitSwitch(Bundle extras) {
+            return (extras != null && extras.getInt(QtiVideoCallConstants.EXTRA_CALL_DOMAIN,
+                    QtiVideoCallConstants.DOMAIN_AUTOMATIC) == QtiVideoCallConstants.DOMAIN_CS);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

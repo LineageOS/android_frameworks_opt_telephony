@@ -73,11 +73,35 @@ public class QtiVideoCallConstants {
     public static final int CALL_FAIL_EXTRA_CODE_LTE_3G_HA_FAILED =
            ImsReasonInfo.CODE_LOCAL_HO_NOT_FEASIBLE;
 
+    /* Call fail error code for Retry CS call*/
+    public static final int CALL_FAIL_EXTRA_CODE_CALL_CS_RETRY_REQUIRED =
+            ImsReasonInfo.CODE_LOCAL_CALL_CS_RETRY_REQUIRED;
+
     /* Unknown disconnect cause */
     public static final int DISCONNECT_CAUSE_UNSPECIFIED = -1;
 
+    /**
+     * Whether the IMS to CS retry is enabled
+     * <p>
+     * Type: int (0 for false, 1 for true)
+     * @hide
+     */
+    public static final String IMS_TO_CS_RETRY_ENABLED = "qti.settings.cs_retry";
+
     /* Default camera zoom max */
     public static final int CAMERA_MAX_ZOOM = 100;
+
+    /**
+     * Controls dial request route for CS calls.
+     * 0 - Use the default routing strategy.
+     * 1 - Place the call over CS path
+     * 2 - Place the call over PS path
+     */
+    public static final String EXTRA_CALL_DOMAIN =
+            "org.codeaurora.extra.CALL_DOMAIN";
+    public static final int DOMAIN_AUTOMATIC = 0;
+    public static final int DOMAIN_CS = 1;
+    public static final int DOMAIN_PS = 2;
 
     /**
      * Private constructor. This class should not be instantiated.

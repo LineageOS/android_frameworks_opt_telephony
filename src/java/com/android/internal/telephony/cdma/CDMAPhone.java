@@ -443,7 +443,8 @@ public class CDMAPhone extends PhoneBase {
         boolean imsUseEnabled = isImsUseEnabled()
                  && imsPhone != null
                  && (imsPhone.isVolteEnabled() || imsPhone.isVowifiEnabled())
-                 && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE);
+                 && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
+                 && !shallDialOnCircuitSwitch(intentExtras);
 
         boolean useImsForEmergency = ImsManager.isVolteEnabledByPlatform(mContext)
                 && imsPhone != null
