@@ -193,6 +193,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     private int pendingCallClirMode;
     private int mPendingCallVideoState;
+    private Bundle mPendingIntentExtras;
     private boolean pendingCallInEcm = false;
     private boolean mSwitchingFgAndBgCalls = false;
     private ImsCall mCallExpectedToResume = null;
@@ -340,6 +341,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             holdBeforeDial = true;
             // Cache the video state for pending MO call.
             mPendingCallVideoState = videoState;
+            mPendingIntentExtras = intentExtras;
             switchWaitingOrHoldingAndActive();
         }
 
@@ -383,6 +385,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 mPhone.setOnEcbModeExitResponse(this, EVENT_EXIT_ECM_RESPONSE_CDMA, null);
                 pendingCallClirMode = clirMode;
                 mPendingCallVideoState = videoState;
+                mPendingIntentExtras = intentExtras;
                 pendingCallInEcm = true;
             }
         }
@@ -994,8 +997,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
         // It should modify only other capabilities of call through updateMediaCapabilities
         // State updates will be triggered through individual callbacks
         // i.e. onCallHeld, onCallResume, etc and conn.update will be responsible for the update
-        conn.updateMediaCapabilities(imsCall);
         if (ignoreState) {
+            conn.updateExtras(imsCall);
+            conn.updateMediaCapabilities(imsCall);
             return;
         }
 
@@ -1686,7 +1690,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     removeConnection(mPendingMO);
                     mPendingMO = null;
                 }
-
+                mPendingIntentExtras = null;
                 updatePhoneState();
                 mPhone.notifyPreciseCallStateChanged();
                 break;
@@ -1701,16 +1705,18 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 break;
             case EVENT_DIAL_PENDINGMO:
                 dialInternal(mPendingMO, mClirMode, mPendingCallVideoState,
-                        mPendingMO.getExtras());
+                        mPendingIntentExtras);
+                mPendingIntentExtras = null;
                 break;
 
             case EVENT_EXIT_ECM_RESPONSE_CDMA:
                 // no matter the result, we still do the same here
                 if (pendingCallInEcm) {
                     dialInternal(mPendingMO, pendingCallClirMode,
-                            mPendingCallVideoState, mPendingMO.getExtras());
+                            mPendingCallVideoState, mPendingIntentExtras);
                     pendingCallInEcm = false;
                 }
+                mPendingIntentExtras = null;
                 mPhone.unsetOnEcbModeExitResponse(this);
                 break;
         }

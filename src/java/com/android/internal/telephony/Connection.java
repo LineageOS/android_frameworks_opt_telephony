@@ -64,6 +64,7 @@ public abstract class Connection {
         public void onCallSubstateChanged(int callSubstate);
         public void onMultipartyStateChanged(boolean isMultiParty);
         public void onConferenceMergedFailed();
+        public void onExtrasChanged(Bundle extras);
     }
 
     /**
@@ -89,6 +90,8 @@ public abstract class Connection {
         public void onMultipartyStateChanged(boolean isMultiParty) {}
         @Override
         public void onConferenceMergedFailed() {}
+        @Override
+        public void onExtrasChanged(Bundle extras) {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -307,15 +310,6 @@ public abstract class Connection {
     public Call.State getStateBeforeHandover() {
         return mPreHandoverState;
    }
-
-   /**
-     * getExtras returns the extras associated with a connection.
-     * @return null. Subclasses of Connection that support call extras need
-     * to override this method to return the extras.
-     */
-    public Bundle getExtras() {
-        return null;
-    }
 
     /**
      * Get the details of conference participants. Expected to be
@@ -640,6 +634,16 @@ public abstract class Connection {
         mAudioQuality = audioQuality;
         for (Listener l : mListeners) {
             l.onAudioQualityChanged(mAudioQuality);
+        }
+    }
+
+    /**
+     * Notifies listeners that connection extras has changed.
+     * @param extras New connection extras.
+     */
+    public void setConnectionExtras(Bundle extras) {
+        for (Listener l : mListeners) {
+            l.onExtrasChanged(extras);
         }
     }
 
