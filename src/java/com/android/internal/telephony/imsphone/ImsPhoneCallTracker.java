@@ -1003,6 +1003,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
         // i.e. onCallHeld, onCallResume, etc and conn.update will be responsible for the update
         if (ignoreState) {
             conn.updateMediaCapabilities(imsCall);
+            conn.updateExtras(imsCall);
             return;
         }
 

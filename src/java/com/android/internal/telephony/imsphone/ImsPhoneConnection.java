@@ -45,6 +45,8 @@ import com.android.internal.telephony.UUSInfo;
 import com.android.ims.ImsCall;
 import com.android.ims.ImsCallProfile;
 
+import java.util.Objects;
+
 /**
  * {@hide}
  */
@@ -57,6 +59,7 @@ public class ImsPhoneConnection extends Connection {
     private ImsPhoneCallTracker mOwner;
     private ImsPhoneCall mParent;
     private ImsCall mImsCall;
+    private Bundle mExtras = new Bundle();
 
     private String mPostDialString;      // outgoing calls only
     private boolean mDisconnected;
@@ -638,8 +641,11 @@ public class ImsPhoneConnection extends Connection {
         boolean updateParent = mParent.update(this, imsCall, state);
         boolean updateWifiState = updateWifiState();
         boolean updateAddressDisplay = updateAddressDisplay(imsCall);
+        boolean updateMediaCapabilities = updateMediaCapabilities(imsCall);
+        boolean updateExtras = updateExtras(imsCall);
 
-        return updateParent || updateWifiState || updateAddressDisplay;
+        return updateParent || updateWifiState || updateAddressDisplay || updateMediaCapabilities
+                || updateExtras;
     }
 
     @Override
@@ -817,6 +823,54 @@ public class ImsPhoneConnection extends Connection {
     }
 
     /**
+     * Check for a change in call extras of {@link ImsCall}, and
+     * update the {@link ImsPhoneConnection} accordingly.
+     *
+     * @param imsCall The call to check for changes in extras.
+     * @return Whether the extras fields have been changed.
+     */
+     boolean updateExtras(ImsCall imsCall) {
+        if (imsCall == null) {
+            return false;
+        }
+
+        final ImsCallProfile callProfile = imsCall.getCallProfile();
+        final Bundle extras = callProfile != null ? callProfile.mCallExtras : null;
+        if (extras == null && DBG) {
+            Rlog.d(LOG_TAG, "Call profile extras are null.");
+        }
+
+        final boolean changed = !areBundlesEqual(extras, mExtras);
+        if (changed) {
+            mExtras.clear();
+            mExtras.putAll(extras);
+            setConnectionExtras(mExtras);
+        }
+        return changed;
+    }
+
+    private static boolean areBundlesEqual(Bundle extras, Bundle newExtras) {
+        if (extras == null || newExtras == null) {
+            return extras == newExtras;
+        }
+
+        if (extras.size() != newExtras.size()) {
+            return false;
+        }
+
+        for(String key : extras.keySet()) {
+            if (key != null) {
+                final Object value = extras.get(key);
+                final Object newValue = newExtras.get(key);
+                if (!Objects.equals(value, newValue)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
      * Determines the {@link ImsPhoneConnection} audio quality based on the local and remote
      * {@link ImsCallProfile}. If indicate a HQ audio call if the local stream profile
      * indicates AMR_WB or EVRC_WB and there is no remote restrict cause.
@@ -838,24 +892,6 @@ public class ImsPhoneConnection extends Connection {
                         == ImsStreamMediaProfile.AUDIO_QUALITY_EVRC_WB)
                 && remoteCallProfile.mRestrictCause == ImsCallProfile.CALL_RESTRICT_CAUSE_NONE;
         return isHighDef ? AUDIO_QUALITY_HIGH_DEFINITION : AUDIO_QUALITY_STANDARD;
-    }
-
-    @Override
-    public Bundle getExtras() {
-        Bundle extras = null;
-        final ImsCall call = getImsCall();
-
-        if (call != null) {
-            final ImsCallProfile callProfile = call.getCallProfile();
-            if (callProfile != null) {
-                extras = callProfile.mCallExtras;
-            }
-        }
-        if (extras == null) {
-            if (DBG) Rlog.d(LOG_TAG, "Call profile extras are null.");
-            return null;
-        }
-        return extras;
     }
 
     /**
