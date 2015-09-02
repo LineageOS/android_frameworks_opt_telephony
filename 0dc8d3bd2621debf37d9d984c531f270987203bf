@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3f1d235d_c005647c",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 831,
+      "author": {
+        "id": 3671
+      },
+      "writtenOn": "2015-09-02T22:54:13Z",
+      "side": 1,
+      "message": "you could probably just do a getboolean here instead of creating a whole new method for it\n\nif (!SystemProperties.getBoolean(\"ro.telephony.ril.nodefaultdata\", false))\n\nor something of that nature",
+      "range": {
+        "startLine": 831,
+        "startChar": 31,
+        "endLine": 831,
+        "endChar": 33
+      },
+      "revId": "0dc8d3bd2621debf37d9d984c531f270987203bf",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
