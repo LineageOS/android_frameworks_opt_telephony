@@ -332,6 +332,7 @@ public class AdnRecord implements Parcelable {
         byte[] bcdNumber;
         byte[] byteTag;
         byte[] adnString;
+        int length;
         int footerOffset = recordSize - FOOTER_SIZE_BYTES;
 
         // create an empty record
@@ -343,37 +344,72 @@ public class AdnRecord implements Parcelable {
         if ((TextUtils.isEmpty(mNumber)) && (TextUtils.isEmpty(mAlphaTag))) {
             Rlog.w(LOG_TAG, "[buildAdnString] Empty dialing number");
             return adnString;   // return the empty record (for delete)
-        } else if ((mNumber != null) && (mNumber.length()
-                > (ADN_DIALING_NUMBER_END - ADN_DIALING_NUMBER_START + 1) * 2)) {
-            Rlog.w(LOG_TAG,
-                    "[buildAdnString] Max length of dialing number is 20");
-            return null;
         } else if (mAlphaTag != null && mAlphaTag.length() > footerOffset) {
             Rlog.w(LOG_TAG,
                     "[buildAdnString] Max length of tag is " + footerOffset);
+            return null;
+        } else if (mNumber != null && mNumber.length()
+                > (ADN_DIALING_NUMBER_END - ADN_DIALING_NUMBER_START + 1) * 4) {
+            Rlog.w(LOG_TAG,
+                    "[buildAdnString] Max length of dialing number is 40");
             return null;
         } else {
             if (!(TextUtils.isEmpty(mNumber))) {
                 bcdNumber = PhoneNumberUtils.numberToCalledPartyBCD(mNumber);
 
-            System.arraycopy(bcdNumber, 0, adnString,
-                    footerOffset + ADN_TON_AND_NPI, bcdNumber.length);
-
-                adnString[footerOffset + ADN_BCD_NUMBER_LENGTH]
-                        = (byte) (bcdNumber.length);
+            if (mNumber != null && mNumber.length()
+                    > (ADN_DIALING_NUMBER_END - ADN_DIALING_NUMBER_START + 1) * 2
+                    && mNumber.length() <= 40 ) {
+                if (!hasExtendedRecord()) {
+                    Rlog.d(LOG_TAG,
+                            "[buildAdnString] No EXT1 file/record exists");
+                    return null;
+                }
+                length = (ADN_DIALING_NUMBER_END - ADN_DIALING_NUMBER_START + 1);
+            } else {
+                length = (bcdNumber.length);
             }
+
+            System.arraycopy(bcdNumber, 0, adnString,
+                    footerOffset + ADN_TON_AND_NPI,
+                    length);
+
+            adnString[footerOffset + ADN_BCD_NUMBER_LENGTH] =
+                    (byte) length;
             adnString[footerOffset + ADN_CAPABILITY_ID]
                     = (byte) 0xFF; // Capability Id
             adnString[footerOffset + ADN_EXTENSION_ID]
-                    = (byte) 0xFF; // Extension Record Id
+                    = (byte) mExtRecord; // Extension Record Id
 
-            if (!TextUtils.isEmpty(mAlphaTag)) {
-                byteTag = IccUtils.stringToAdnStringField(mAlphaTag);
-                System.arraycopy(byteTag, 0, adnString, 0, byteTag.length);
-            }
-
-            return adnString;
         }
+        if (!TextUtils.isEmpty(mAlphaTag)) {
+            byteTag = IccUtils.stringToAdnStringField(mAlphaTag);
+            System.arraycopy(byteTag, 0, adnString, 0, byteTag.length);
+        }
+        return adnString;
+        }
+    }
+
+    /* Build the EXT1 data to store the remaining digits
+    /* when number length is greater than 20 */
+    public byte[] buildExtData() {
+        byte[] extData;
+        byte[] extendedNum;
+
+        // Each EXT1 record is 13 bytes.
+        extData = new byte[EXT_RECORD_LENGTH_BYTES];
+        for (int i = 0; i <  EXT_RECORD_LENGTH_BYTES; i++) {
+            extData[i] = (byte) 0xFF;
+        }
+
+        extendedNum = PhoneNumberUtils.numberToCalledPartyBCD(mNumber);
+
+        // extData stores the remaining digits of the number greater than 20.
+        System.arraycopy(extendedNum, 10, extData, 2, (extendedNum.length - 10));
+        extData[0] = (byte) 2; // Record Type: Additional data
+        extData[1] = (byte) ((extendedNum.length - 10)); //Length of extension data in bytes.
+        return extData;
+
     }
 
     /**

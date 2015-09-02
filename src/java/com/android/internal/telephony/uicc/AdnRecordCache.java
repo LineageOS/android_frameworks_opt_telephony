@@ -22,6 +22,7 @@ import android.os.Message;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.gsm.UsimPhoneBookManager;
 
@@ -33,7 +34,7 @@ import java.util.Iterator;
  */
 public final class AdnRecordCache extends Handler implements IccConstants {
     //***** Instance Variables
-
+    final static String LOG_TAG = "AdnRecordCache";
     private IccFileHandler mFh;
     private UsimPhoneBookManager mUsimPhoneBookManager;
 
@@ -49,6 +50,9 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
     // People waiting for adn record to be updated
     SparseArray<Message> mUserWriteResponse = new SparseArray<Message>();
+
+    //EXT file Used/free records.
+    SparseArray<int[]> extRecList = new SparseArray<int[]>();
 
     //***** Event Constants
 
@@ -134,6 +138,20 @@ public final class AdnRecordCache extends Handler implements IccConstants {
         }
     }
 
+    /* Find the free EXT1 record in the EXT1 file */
+    private int findFreeExtRec(int extensionEf) {
+        int[] extRec = extRecList.get(extensionEf);
+        for (int i = 0; i  < extRec.length; i++) {
+            if (extRec[i] == 0) {
+                Rlog.d(LOG_TAG, "Free record found: " +(i+1));
+                return (i+1);
+            }
+        }
+
+        Rlog.d(LOG_TAG, "No Free record found: ");
+        return -1;
+    }
+
     /**
      * Update an ADN-like record in EF by record index
      *
@@ -162,7 +180,7 @@ public final class AdnRecordCache extends Handler implements IccConstants {
         mUserWriteResponse.put(efid, response);
 
         new AdnRecordLoader(mFh).updateEF(adn, efid, extensionEF,
-                recordIndex, pin2,
+                recordIndex, pin2,  findFreeExtRec(extensionEF),
                 obtainMessage(EVENT_UPDATE_ADN_DONE, efid, recordIndex, adn));
     }
 
@@ -347,7 +365,7 @@ public final class AdnRecordCache extends Handler implements IccConstants {
         }
 
         new AdnRecordLoader(mFh).loadAllFromEF(efid, extensionEf, path,
-                obtainMessage(EVENT_LOAD_ALL_ADN_LIKE_DONE, efid, 0));
+                obtainMessage(EVENT_LOAD_ALL_ADN_LIKE_DONE, efid, extensionEf));
     }
 
     //***** Private methods
@@ -374,12 +392,14 @@ public final class AdnRecordCache extends Handler implements IccConstants {
     handleMessage(Message msg) {
         AsyncResult ar;
         int efid;
+        int extensionEf;
 
         switch(msg.what) {
             case EVENT_LOAD_ALL_ADN_LIKE_DONE:
                 /* arg1 is efid, obj.result is ArrayList<AdnRecord>*/
                 ar = (AsyncResult) msg.obj;
                 efid = msg.arg1;
+                extensionEf = msg.arg2;
                 ArrayList<Message> waiters;
 
                 waiters = mAdnLikeWaiters.get(efid);
@@ -387,6 +407,7 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
                 if (ar.exception == null) {
                     mAdnLikeFiles.put(efid, (ArrayList<AdnRecord>) ar.result);
+                    extRecList.put(extensionEf, (int[])(ar.userObj));
                 }
                 notifyWaiters(waiters, ar);
                 if (mAdnLikeFiles.get(EF_ADN) != null) {
@@ -397,6 +418,7 @@ public final class AdnRecordCache extends Handler implements IccConstants {
                 ar = (AsyncResult)msg.obj;
                 efid = msg.arg1;
                 int index = msg.arg2;
+                extensionEf = extensionEfForEf(efid);
                 AdnRecord adn = (AdnRecord) (ar.userObj);
 
                 if (ar.exception == null) {
@@ -405,6 +427,10 @@ public final class AdnRecordCache extends Handler implements IccConstants {
                     }
                     if (efid == EF_PBR) {
                         mUsimPhoneBookManager.loadEfFilesFromUsim().set(index - 1, adn);
+                    }
+                    if (adn != null && adn.hasExtendedRecord()
+                            && adn.mExtRecord > 0) {
+                        extRecList.get(extensionEf)[adn.mExtRecord - 1] = 1;
                     }
                 }
 
