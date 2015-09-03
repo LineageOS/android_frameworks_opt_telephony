@@ -61,6 +61,7 @@ import android.view.WindowManager;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.cdma.CDMALTEPhone;
+import com.android.internal.telephony.ConfigResourceUtil;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.DctConstants;
@@ -72,6 +73,7 @@ import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.UiccController;
@@ -86,7 +88,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Objects;
 import java.lang.StringBuilder;
 
-import com.android.internal.telephony.ServiceStateTracker;
 /**
  * {@hide}
  */
@@ -888,6 +889,13 @@ public class DcTracker extends DcTrackerBase {
         boolean desiredPowerState = sst.getDesiredPowerState();
         boolean checkUserDataEnabled =
                     !(apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IMS));
+
+        // MMS: If property is set, enable mms data even if mobile data is turned off.
+        if (apnContext.getApnType().equals(PhoneConstants.APN_TYPE_MMS)) {
+               checkUserDataEnabled = checkUserDataEnabled &&
+                   !(ConfigResourceUtil.getBooleanValue(mPhone.getContext(),
+                               "config_enable_mms_with_mobile_data_off"));
+        }
 
         if (apnContext.isConnectable() && (isEmergencyApn ||
                 (isDataAllowed(apnContext) &&
