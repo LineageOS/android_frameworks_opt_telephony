@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3f1d235d_0db5d431",
+        "filename": "src/java/com/android/internal/telephony/imsphone/ImsPhoneCallTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1443,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2015-09-03T05:11:41Z",
+      "side": 1,
+      "message": "This should be a localized string. (Can either patch inline or after the fact)",
+      "revId": "88522012c077d700df8329485f809eb1a2cb8c8c",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
