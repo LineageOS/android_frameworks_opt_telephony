@@ -171,7 +171,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_GET_RADIO_CAPABILITY           = 35;
     protected static final int EVENT_SS                             = 36;
     protected static final int EVENT_CONFIG_LCE                     = 37;
-    protected static final int EVENT_LAST                           = EVENT_CONFIG_LCE;
+    private static final int EVENT_CHECK_FOR_NETWORK_AUTOMATIC      = 38;
+    protected static final int EVENT_LAST                           =
+            EVENT_CHECK_FOR_NETWORK_AUTOMATIC;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -660,6 +662,10 @@ public abstract class PhoneBase extends Handler implements Phone {
                 }
                 break;
 
+            case EVENT_CHECK_FOR_NETWORK_AUTOMATIC: {
+                onCheckForNetworkSelectionModeAutomatic(msg);
+                break;
+            }
             default:
                 throw new RuntimeException("unexpected event not handled");
         }
@@ -966,19 +972,47 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public void setNetworkSelectionModeAutomatic(Message response) {
-        // wrap the response message in our own message along with
-        // an empty string (to indicate automatic selection) for the
-        // operator's id.
-        NetworkSelectMessage nsm = new NetworkSelectMessage();
-        nsm.message = response;
-        nsm.operatorNumeric = "";
-        nsm.operatorAlphaLong = "";
-        nsm.operatorAlphaShort = "";
+        Rlog.d(LOG_TAG, "setNetworkSelectionModeAutomatic, querying current mode");
+        // we don't want to do this unecesarily - it acutally causes
+        // the radio to repeate network selection and is costly
+        // first check if we're already in automatic mode
+        Message msg = obtainMessage(EVENT_CHECK_FOR_NETWORK_AUTOMATIC);
+        msg.obj = response;
+        mCi.getNetworkSelectionMode(msg);
+    }
 
-        Message msg = obtainMessage(EVENT_SET_NETWORK_AUTOMATIC_COMPLETE, nsm);
-        mCi.setNetworkSelectionModeAutomatic(msg);
+    private void onCheckForNetworkSelectionModeAutomatic(Message fromRil) {
+        AsyncResult ar = (AsyncResult)fromRil.obj;
+        Message response = (Message)ar.userObj;
+        boolean doAutomatic = true;
+        if (ar.exception == null && ar.result != null) {
+            try {
+                int[] modes = (int[])ar.result;
+                if (modes[0] == 0) {
+                    // already confirmed to be in automatic mode - don't resend
+                    doAutomatic = false;
+                }
+            } catch (Exception e) {
+                // send the setting on error
+            }
+        }
+        if (doAutomatic) {
+            // wrap the response message in our own message along with
+            // an empty string (to indicate automatic selection) for the
+            // operator's id.
+            NetworkSelectMessage nsm = new NetworkSelectMessage();
+            nsm.message = response;
+            nsm.operatorNumeric = "";
+            nsm.operatorAlphaLong = "";
+            nsm.operatorAlphaShort = "";
 
-        updateSavedNetworkOperator(nsm);
+            Message msg = obtainMessage(EVENT_SET_NETWORK_AUTOMATIC_COMPLETE, nsm);
+            mCi.setNetworkSelectionModeAutomatic(msg);
+
+            updateSavedNetworkOperator(nsm);
+        } else {
+            Rlog.d(LOG_TAG, "setNetworkSelectionModeAutomatic - already auto, ignoring");
+        }
     }
 
     @Override
