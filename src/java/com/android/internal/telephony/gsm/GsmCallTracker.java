@@ -930,8 +930,15 @@ public final class GsmCallTracker extends CallTracker {
                 operationComplete();
             break;
 
-            case EVENT_SWITCH_RESULT:
             case EVENT_CONFERENCE_RESULT:
+                // The conference merge failed, so notify listeners.  Ultimately this bubbles up
+                // to Telecom, which will inform the InCall UI of the failure.
+                Connection connection = mForegroundCall.getLatestConnection();
+                if (connection != null) {
+                    connection.onConferenceMergeFailed();
+                }
+                // fall through
+            case EVENT_SWITCH_RESULT:
             case EVENT_SEPARATE_RESULT:
             case EVENT_ECT_RESULT:
                 ar = (AsyncResult)msg.obj;
