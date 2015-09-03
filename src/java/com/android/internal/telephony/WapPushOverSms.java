@@ -311,7 +311,7 @@ public class WapPushOverSms implements ServiceConnection {
                 }
             }
 
-            handler.dispatchIntent(intent, permission, appOp, options, receiver, UserHandle.OWNER);
+            handler.dispatchIntent(intent, permission, appOp, options, receiver, UserHandle.SYSTEM);
             return Activity.RESULT_OK;
         } catch (ArrayIndexOutOfBoundsException aie) {
             // 0-byte WAP PDU or other unexpected WAP PDU contents can easily throw this;
