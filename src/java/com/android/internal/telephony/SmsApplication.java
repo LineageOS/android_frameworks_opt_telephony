@@ -56,6 +56,7 @@ public final class SmsApplication {
     private static final String PHONE_PACKAGE_NAME = "com.android.phone";
     private static final String BLUETOOTH_PACKAGE_NAME = "com.android.bluetooth";
     private static final String MMS_SERVICE_PACKAGE_NAME = "com.android.mms.service";
+    private static final String TELEPHONY_PROVIDER_PACKAGE_NAME = "com.android.providers.telephony";
 
     private static final String SCHEME_SMS = "sms";
     private static final String SCHEME_SMSTO = "smsto";
@@ -390,6 +391,8 @@ public final class SmsApplication {
                         BLUETOOTH_PACKAGE_NAME);
                 assignWriteSmsPermissionToSystemApp(context, packageManager, appOps,
                         MMS_SERVICE_PACKAGE_NAME);
+                assignWriteSmsPermissionToSystemApp(context, packageManager, appOps,
+                        TELEPHONY_PROVIDER_PACKAGE_NAME);
             }
         }
         if (DEBUG_MULTIUSER) {
@@ -467,6 +470,8 @@ public final class SmsApplication {
                     BLUETOOTH_PACKAGE_NAME);
             assignWriteSmsPermissionToSystemApp(context, packageManager, appOps,
                     MMS_SERVICE_PACKAGE_NAME);
+            assignWriteSmsPermissionToSystemApp(context, packageManager, appOps,
+                    TELEPHONY_PROVIDER_PACKAGE_NAME);
         }
     }
 
