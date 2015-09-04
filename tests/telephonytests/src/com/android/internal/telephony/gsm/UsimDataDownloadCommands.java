@@ -24,6 +24,7 @@ import android.telephony.Rlog;
 
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.UUSInfo;
+import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.uicc.IccIoResult;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 
@@ -629,7 +630,7 @@ class UsimDataDownloadCommands extends BaseCommands {
     }
 
     @Override
-    public void requestIccSimAuthentication(String data, Message response) {
+    public void requestIccSimAuthentication(int authContext, String data, String aid, Message response) {
     }
 
     @Override
@@ -698,5 +699,10 @@ class UsimDataDownloadCommands extends BaseCommands {
 
     @Override
     public void getHardwareConfig (Message result) {
+    }
+
+    @Override
+    public boolean needsOldRilFeature(String feature) {
+        return false;
     }
 }

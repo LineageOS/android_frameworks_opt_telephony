@@ -118,6 +118,7 @@ public class ApnSettingTest extends TestCase {
 
     @SmallTest
     public void testArrayFromString() throws Exception {
+        String[] mmsTypes = {"mms", "*"};
         // Test a multiple v3 string.
         String testString = "[ApnSettingV3] Name,apn,,,,,,,,,123,45,,mms|*,IPV6,IP,true,14,,,,,,,spn,testspn";
         testString += " ;[ApnSettingV3] Name1,apn1,,,,,,,,,123,46,,mms|*,IPV6,IP,true,12,,,,,,,gid,testGid";
