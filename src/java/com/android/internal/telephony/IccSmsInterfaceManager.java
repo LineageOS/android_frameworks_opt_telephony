@@ -31,6 +31,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.UserManager;
 import android.provider.Telephony;
+import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
@@ -1363,8 +1364,9 @@ public class IccSmsInterfaceManager {
             countryIso = telephonyManager.getNetworkCountryIso();
         }
 
+        String networkPortion = PhoneNumberUtils.extractNetworkPortion(destAddr);
         smsCategory = SmsUsageMonitor.mergeShortCodeCategories(smsCategory,
-                mPhone.mSmsUsageMonitor.checkDestination(destAddr, countryIso));
+                mPhone.mSmsUsageMonitor.checkDestination(networkPortion, countryIso));
 
         if (smsCategory == SmsUsageMonitor.CATEGORY_NOT_SHORT_CODE
                 || smsCategory == SmsUsageMonitor.CATEGORY_FREE_SHORT_CODE
