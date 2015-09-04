@@ -33,8 +33,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.UserInfo;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.database.Cursor;
@@ -49,7 +47,6 @@ import android.os.Message;
 import android.os.PowerManager;
 import android.os.RemoteException;
 import android.os.ServiceManager;
-import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.preference.PreferenceManager;
@@ -853,7 +850,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             // by user policy.
             for (int i = users.length - 1; i >= 0; i--) {
                 UserHandle targetUser = new UserHandle(users[i]);
-                if (users[i] != UserHandle.USER_OWNER) {
+                if (users[i] != UserHandle.USER_SYSTEM) {
                     // Is the user not allowed to use SMS?
                     if (mUserManager.hasUserRestriction(UserManager.DISALLOW_SMS, targetUser)) {
                         continue;
@@ -864,9 +861,9 @@ public abstract class InboundSmsHandler extends StateMachine {
                         continue;
                     }
                 }
-                // Only pass in the resultReceiver when the USER_OWNER is processed.
+                // Only pass in the resultReceiver when the USER_SYSTEM is processed.
                 mContext.sendOrderedBroadcastAsUser(intent, targetUser, permission, appOp, opts,
-                        users[i] == UserHandle.USER_OWNER ? resultReceiver : null,
+                        users[i] == UserHandle.USER_SYSTEM ? resultReceiver : null,
                         getHandler(), Activity.RESULT_OK, null, null);
             }
         } else {
@@ -955,7 +952,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
         Bundle options = handleSmsWhitelisting(intent.getComponent());
         dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                AppOpsManager.OP_RECEIVE_SMS, options, resultReceiver, UserHandle.OWNER);
+                AppOpsManager.OP_RECEIVE_SMS, options, resultReceiver, UserHandle.SYSTEM);
     }
 
     /**
@@ -1103,7 +1100,7 @@ public abstract class InboundSmsHandler extends StateMachine {
                 } catch (RemoteException e) {
                 }
                 dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                        AppOpsManager.OP_RECEIVE_SMS, options, this, UserHandle.OWNER);
+                        AppOpsManager.OP_RECEIVE_SMS, options, this, UserHandle.SYSTEM);
             } else {
                 // Now that the intents have been deleted we can clean up the PDU data.
                 if (!Intents.DATA_SMS_RECEIVED_ACTION.equals(action)

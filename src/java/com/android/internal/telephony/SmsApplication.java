@@ -523,24 +523,24 @@ public final class SmsApplication {
 
         @Override
         public void onPackageDisappeared(String packageName, int reason) {
-            onPackageChanged(packageName);
+            onPackageChanged();
         }
 
         @Override
         public void onPackageAppeared(String packageName, int reason) {
-            onPackageChanged(packageName);
+            onPackageChanged();
         }
 
         @Override
         public void onPackageModified(String packageName) {
-            onPackageChanged(packageName);
+            onPackageChanged();
         }
 
-        private void onPackageChanged(String packageName) {
+        private void onPackageChanged() {
             PackageManager packageManager = mContext.getPackageManager();
             Context userContext = mContext;
             final int userId = getSendingUserId();
-            if (userId != UserHandle.USER_OWNER) {
+            if (userId != UserHandle.USER_SYSTEM) {
                 try {
                     userContext = mContext.createPackageContextAsUser(mContext.getPackageName(), 0,
                             new UserHandle(userId));
