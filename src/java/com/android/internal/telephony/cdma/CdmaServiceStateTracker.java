@@ -1574,8 +1574,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         String onsl = s.getVoiceOperatorAlphaLong();
         String onss = s.getVoiceOperatorAlphaShort();
 
-        boolean equalsOnsl = onsl != null && spn.equals(onsl);
-        boolean equalsOnss = onss != null && spn.equals(onss);
+        boolean equalsOnsl = onsl != null && spn != null && !spn.isEmpty() && spn.equals(onsl);
+        boolean equalsOnss = onss != null && spn != null && !spn.isEmpty() && spn.equals(onss);
 
         return cdmaRoaming && !(equalsOnsl || equalsOnss);
     }
