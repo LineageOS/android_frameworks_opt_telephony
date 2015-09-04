@@ -170,10 +170,24 @@ public class DcSwitchStateMachine extends StateMachine {
                     break;
                 }
 
-                default: {
+                // explicitly call out the messages we must defer
+                // anything not listed falls through to the default state
+                case DcSwitchAsyncChannel.REQ_CONNECT:
+                case DcSwitchAsyncChannel.REQ_RETRY_CONNECT:
+                case DcSwitchAsyncChannel.REQ_DISCONNECT_ALL:
+                case DcSwitchAsyncChannel.EVENT_DATA_ATTACHED:
+                case DcSwitchAsyncChannel.EVENT_DATA_DETACHED: {
                     log("EmergencyState: deferMessage msg.what=0x" + Integer.toHexString(msg.what));
                     deferMessage(msg);
                     break;
+                }
+
+                default: {
+                    if (VDBG) {
+                        log("EmergencyState: nothandled msg.what=0x" +
+                                Integer.toHexString(msg.what));
+                    }
+                    return NOT_HANDLED;
                 }
             }
 
