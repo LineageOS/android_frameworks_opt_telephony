@@ -107,6 +107,7 @@ public abstract class PhoneBase extends Handler implements Phone {
                 if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_UP)) {
                     mImsServiceReady = true;
                     updateImsPhone();
+                    ImsManager.updateImsServiceConfig(mContext, mPhoneId, false);
                 } else if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_DOWN)) {
                     mImsServiceReady = false;
                     updateImsPhone();
@@ -495,6 +496,7 @@ public abstract class PhoneBase extends Handler implements Phone {
             if (imsManager != null && imsManager.isServiceAvailable()) {
                 mImsServiceReady = true;
                 updateImsPhone();
+                ImsManager.updateImsServiceConfig(mContext, mPhoneId, false);
             }
         }
     }
