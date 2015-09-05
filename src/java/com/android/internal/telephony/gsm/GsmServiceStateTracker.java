@@ -169,6 +169,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     static final int PS_NOTIFICATION = 888;  // Id to update and cancel PS restricted
     static final int CS_NOTIFICATION = 999;  // Id to update and cancel CS restricted
 
+    private boolean disableRoamingState = SystemProperties.getBoolean("config.disable_roaming_state", false);
+
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -1610,6 +1612,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 return true;
             }
         }
+
+        if (disableRoamingState) {
+            return true;
+        }
+
         return false;
     }
 
