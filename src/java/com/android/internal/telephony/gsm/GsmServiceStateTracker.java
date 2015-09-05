@@ -1022,9 +1022,17 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 " mNewReasonDataDenied=" + mNewReasonDataDenied);
         }
 
-        if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
-            mNewSS.setVoiceRoaming(true);
-            mNewSS.setDataRoaming(true);
+        /**
+         * Enforce Roaming
+         *
+         * false = force no Roaming
+         * true = force Roaming
+         * empty value = no forcing (default)
+         */
+        String roamingState = SystemProperties.get(PROP_FORCE_ROAMING);
+        if (roamingState != null && (roamingState.equals("false") || roamingState.equals("true")) {
+            mNewSS.setVoiceRoaming(roamingState);
+            mNewSS.setDataRoaming(roamingState);
         }
 
         useDataRegStateForDataOnlyDevices();
@@ -1610,6 +1618,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 return true;
             }
         }
+
         return false;
     }
 
