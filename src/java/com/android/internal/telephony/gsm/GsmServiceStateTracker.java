@@ -169,6 +169,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     static final int PS_NOTIFICATION = 888;  // Id to update and cancel PS restricted
     static final int CS_NOTIFICATION = 999;  // Id to update and cancel CS restricted
 
+    private static final String PROP_ROAMING_STATE = "persist.sys.roaming-state";
+
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -1603,6 +1605,10 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
 
         if (numericArray.length == 0 || operatorNumeric == null) {
             return false;
+        }
+
+        if (!SystemProperties.getBoolean(PROP_ROAMING_STATE, true)) {
+            return;
         }
 
         for (String numeric : numericArray) {
