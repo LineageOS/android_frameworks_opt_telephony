@@ -40,6 +40,7 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 
+import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -170,6 +171,8 @@ public class PhoneProxy extends Handler implements Phone {
                 mCommandsInterface.getVoiceRadioTechnology(obtainMessage(
                         EVENT_REQUEST_VOICE_RADIO_TECH_DONE));
             }
+            // Force update IMS service
+            ImsManager.updateImsServiceConfig(mContext, mPhoneId, true);
             break;
 
         default:
