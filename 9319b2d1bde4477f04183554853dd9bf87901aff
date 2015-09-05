@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3f1d235d_bc03ac0d",
+        "filename": "src/java/com/android/internal/telephony/gsm/GsmServiceStateTracker.java",
+        "patchSetId": 13
+      },
+      "lineNbr": 1024,
+      "author": {
+        "id": 8328
+      },
+      "writtenOn": "2015-09-05T22:55:07Z",
+      "side": 0,
+      "message": "if (Build.IS_DEBUGGABLE \u0026\u0026 SystemProperties.getBoolean(PROP_FORCE_ROAMING)) {\n  mNewSS.setVoiceRoaming(true);\n  mNewSS.setDataRoaming(true);\n} else if (Build.IS_DEBUGGABLE \u0026\u0026 SystemProperties.getBoolean(PROP_FORCE_ROAMING_DISABLE, false)) {\n  mNewSS.setVoiceRoaming(false);\n  mNewSS.setDataRoaming(false);\n}",
+      "revId": "9319b2d1bde4477f04183554853dd9bf87901aff",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
