@@ -30,5 +30,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 <!-- These resources are around just to allow their values to be customized
      for different hardware and product builds.  Do not translate. -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-
+    <!-- config to not tear down data call when NO DNS is received -->
+    <bool name="config_allowDataCallWithoutDns">false</bool>
 </resources>

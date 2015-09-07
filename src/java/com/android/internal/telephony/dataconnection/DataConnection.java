@@ -18,6 +18,7 @@ package com.android.internal.telephony.dataconnection;
 
 import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.ConfigResourceUtil;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
@@ -115,6 +116,8 @@ public final class DataConnection extends StateMachine {
     private DcTrackerBase mDct = null;
 
     protected String[] mPcscfAddr;
+
+    private ConfigResourceUtil mConfigResUtil = new ConfigResourceUtil();
 
     /**
      * Used internally for saving connecting parameters.
@@ -811,6 +814,19 @@ public final class DataConnection extends StateMachine {
     private boolean isDnsOk(String[] domainNameServers) {
         if (NULL_IP.equals(domainNameServers[0]) && NULL_IP.equals(domainNameServers[1])
                 && !mPhone.isDnsCheckDisabled()) {
+            boolean allowNoDns = false;
+            try {
+                allowNoDns = mConfigResUtil.getBooleanValue(mPhone.getContext(),
+                        "config_allowDataCallWithoutDns");
+            } catch (Exception ex) {
+                if (DBG) log("isDnsOk: exception reading config. Ex= " + ex);
+            }
+
+            if (allowNoDns) {
+                log("isDnsOk: Data call without DNS allowed.");
+                return true;
+            }
+
             // Work around a race condition where QMI does not fill in DNS:
             // Deactivate PDP and let DataConnectionTracker retry.
             // Do not apply the race condition workaround for MMS APN
