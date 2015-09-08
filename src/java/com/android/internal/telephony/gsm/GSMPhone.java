@@ -816,8 +816,7 @@ public class GSMPhone extends PhoneBase {
         boolean alwaysTryImsForEmergencyCarrierConfig = configManager.getConfigForSubId(getSubId())
                 .getBoolean(CarrierConfigManager.KEY_CARRIER_USE_IMS_FIRST_FOR_EMERGENCY_BOOL);
 
-        boolean useImsForEmergency = ImsManager.isVolteEnabledByPlatform(mContext)
-                && imsPhone != null
+        boolean useImsForEmergency = imsPhone != null
                 && isEmergency
                 && alwaysTryImsForEmergencyCarrierConfig
                 && ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext)
