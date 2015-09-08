@@ -391,26 +391,34 @@ public abstract class DcTrackerBase extends Handler {
     private SubscriptionManager mSubscriptionManager;
     private final OnSubscriptionsChangedListener mOnSubscriptionsChangedListener =
             new OnSubscriptionsChangedListener() {
-        /**
-         * Callback invoked when there is any change to any SubscriptionInfo. Typically
-         * this method would invoke {@link SubscriptionManager#getActiveSubscriptionInfoList}
-         */
-        @Override
-        public void onSubscriptionsChanged() {
-            if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
-            // Set the network type, in case the radio does not restore it.
-            int subId = mPhone.getSubId();
-            if (SubscriptionManager.isValidSubscriptionId(subId)) {
-                if (mDataRoamingSettingObserver != null) {
-                    mDataRoamingSettingObserver.unregister();
+                public final AtomicInteger mPreviousSubId =
+                        new AtomicInteger(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+                /**
+                 * Callback invoked when there is any change to any SubscriptionInfo. Typically
+                 * this method would invoke {@link SubscriptionManager#getActiveSubscriptionInfoList}
+                 */
+                @Override
+                public void onSubscriptionsChanged() {
+                    if (DBG) log("SubscriptionListener.onSubscriptionInfoChanged");
+                    // Set the network type, in case the radio does not restore it.
+                    int subId = mPhone.getSubId();
+                    if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                        if (mDataRoamingSettingObserver != null) {
+                            mDataRoamingSettingObserver.unregister();
+                        }
+                        // Watch for changes to Settings.Global.DATA_ROAMING
+                        mDataRoamingSettingObserver = new DataRoamingSettingObserver(mPhone,
+                                mPhone.getContext());
+                        mDataRoamingSettingObserver.register();
+
+                    }
+                    if (mPreviousSubId.getAndSet(subId) != subId &&
+                            SubscriptionManager.isValidSubscriptionId(subId)) {
+                        onRecordsLoadedOrSubIdChanged();
+                    }
                 }
-                // Watch for changes to Settings.Global.DATA_ROAMING
-                mDataRoamingSettingObserver = new DataRoamingSettingObserver(mPhone,
-                        mPhone.getContext());
-                mDataRoamingSettingObserver.register();
-            }
-        }
-    };
+            };
 
     private class DataRoamingSettingObserver extends ContentObserver {
 
@@ -1926,6 +1934,9 @@ public abstract class DcTrackerBase extends Handler {
 
     public boolean getAutoAttachOnCreation() {
         return mAutoAttachOnCreation.get();
+    }
+
+    void onRecordsLoadedOrSubIdChanged() {
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

@@ -249,7 +249,8 @@ public abstract class ServiceStateTracker extends Handler {
         new SstSubscriptionsChangedListener();
 
     protected class SstSubscriptionsChangedListener extends OnSubscriptionsChangedListener {
-        public final AtomicInteger mPreviousSubId = new AtomicInteger(-1); // < 0 is invalid subId
+        public final AtomicInteger mPreviousSubId =
+                new AtomicInteger(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
         /**
          * Callback invoked when there is any change to any SubscriptionInfo. Typically
          * this method would invoke {@link SubscriptionManager#getActiveSubscriptionInfoList}

@@ -1483,15 +1483,16 @@ public final class DcTracker extends DcTrackerBase {
         }
     }
 
-    private void onRecordsLoaded() {
-        if (DBG) log("onRecordsLoaded: createAllApnList");
+    @Override
+    void onRecordsLoadedOrSubIdChanged() {
+        if (DBG) log("onRecordsLoadedOrSubIdChanged: createAllApnList");
         mAutoAttachOnCreationConfig = mPhone.getContext().getResources()
                 .getBoolean(com.android.internal.R.bool.config_auto_attach_data_on_creation);
 
         createAllApnList();
         setInitialAttachApn();
         if (mPhone.mCi.getRadioState().isOn()) {
-            if (DBG) log("onRecordsLoaded: notifying data availability");
+            if (DBG) log("onRecordsLoadedOrSubIdChanged: notifying data availability");
             notifyOffApnsOfAvailability(Phone.REASON_SIM_LOADED);
         }
         setupDataOnConnectableApns(Phone.REASON_SIM_LOADED);
@@ -2587,7 +2588,14 @@ public final class DcTracker extends DcTrackerBase {
 
         switch (msg.what) {
             case DctConstants.EVENT_RECORDS_LOADED:
-                onRecordsLoaded();
+                // If onRecordsLoadedOrSubIdChanged() is not called here, it should be called on
+                // onSubscriptionsChanged() when a valid subId is available.
+                int subId = mPhone.getSubId();
+                if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                    onRecordsLoadedOrSubIdChanged();
+                } else {
+                    log("Ignoring EVENT_RECORDS_LOADED as subId is not valid: " + subId);
+                }
                 break;
 
             case DctConstants.EVENT_DATA_CONNECTION_DETACHED:
@@ -2753,7 +2761,7 @@ public final class DcTracker extends DcTrackerBase {
                 mIccRecords.set(null);
             }
             if (newIccRecords != null) {
-                if (mPhone.getSubId() >= 0) {
+                if (SubscriptionManager.isValidSubscriptionId(mPhone.getSubId())) {
                     log("New records found.");
                     mIccRecords.set(newIccRecords);
                     newIccRecords.registerForRecordsLoaded(
