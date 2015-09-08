@@ -1281,17 +1281,20 @@ public final class DataConnection extends StateMachine {
         // if we are not in-service change to SUSPENDED
         final ServiceStateTracker sst = mPhone.getServiceStateTracker();
         if (sst.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE) {
-            mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.SUSPENDED, null, null);
+            mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.SUSPENDED, null,
+                    mNetworkInfo.getExtraInfo());
         } else {
             // check for voice call and concurrency issues
             if (sst.isConcurrentVoiceAndDataAllowed() == false) {
                 final CallTracker ct = mPhone.getCallTracker();
                 if (ct.getState() != PhoneConstants.State.IDLE) {
-                    mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.SUSPENDED, null, null);
+                    mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.SUSPENDED, null,
+                            mNetworkInfo.getExtraInfo());
                     return (oldState != NetworkInfo.DetailedState.SUSPENDED);
                 }
             }
-            mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.CONNECTED, null, null);
+            mNetworkInfo.setDetailedState(NetworkInfo.DetailedState.CONNECTED, null,
+                    mNetworkInfo.getExtraInfo());
         }
         return (oldState != mNetworkInfo.getDetailedState());
     }
