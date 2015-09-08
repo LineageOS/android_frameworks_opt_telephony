@@ -529,6 +529,8 @@ public final class CdmaCallTracker extends CallTracker {
         boolean needsPollDelay = false;
         boolean unknownConnectionAppeared = false;
 
+        boolean noConnectionExists = true;
+
         for (int i = 0, curDC = 0, dcSize = polledCalls.size()
                 ; i < mConnections.length; i++) {
             CdmaConnection conn = mConnections[i];
@@ -543,6 +545,10 @@ public final class CdmaCallTracker extends CallTracker {
                 } else {
                     dc = null;
                 }
+            }
+
+            if (conn != null || dc != null) {
+                noConnectionExists = false;
             }
 
             if (DBG_POLL) log("poll: conn[i=" + i + "]=" +
@@ -607,7 +613,6 @@ public final class CdmaCallTracker extends CallTracker {
                             newUnknown = mConnections[i];
                         }
                     }
-                    checkAndEnableDataCallAfterEmergencyCallDropped();
                 }
                 hasNonHangupStateChanged = true;
             } else if (conn != null && dc == null) {
@@ -687,6 +692,12 @@ public final class CdmaCallTracker extends CallTracker {
                     }
                 }
             }
+        }
+
+        // Safety check so that obj is not stuck with mIsInEmergencyCall set to true (and data
+        // disabled). This should never happen though.
+        if (noConnectionExists) {
+            checkAndEnableDataCallAfterEmergencyCallDropped();
         }
 
         // This is the first poll after an ATD.
@@ -1137,12 +1148,15 @@ public final class CdmaCallTracker extends CallTracker {
     private void disableDataCallInEmergencyCall(String dialString) {
         if (PhoneNumberUtils.isLocalEmergencyNumber(mPhone.getContext(), dialString)) {
             if (Phone.DEBUG_PHONE) log("disableDataCallInEmergencyCall");
-            mIsInEmergencyCall = true;
-            mPhone.mDcTracker.setInternalDataEnabled(false);
-            mPhone.notifyEmergencyCallRegistrants(true);
+            setIsInEmergencyCall();
         }
     }
 
+    protected void setIsInEmergencyCall() {
+        mIsInEmergencyCall = true;
+        mPhone.mDcTracker.setInternalDataEnabled(false);
+        mPhone.notifyEmergencyCallRegistrants(true);
+    }
     /**
      * Check and enable data call after an emergency call is dropped if it's
      * not in ECM

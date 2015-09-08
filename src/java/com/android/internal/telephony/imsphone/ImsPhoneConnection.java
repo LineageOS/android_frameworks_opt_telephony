@@ -87,6 +87,8 @@ public class ImsPhoneConnection extends Connection {
     // The cached delay to be used between DTMF tones fetched from carrier config.
     private int mDtmfToneDelay = 0;
 
+    private boolean mIsEmergency = false;
+
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
     private static final int EVENT_PAUSE_DONE = 2;
@@ -170,7 +172,7 @@ public class ImsPhoneConnection extends Connection {
     /** This is an MO call, created when dialing */
     /*package*/
     ImsPhoneConnection(ImsPhone phone, String dialString, ImsPhoneCallTracker ct,
-            ImsPhoneCall parent) {
+            ImsPhoneCall parent, boolean isEmergency) {
         createWakeLock(phone.getContext());
         acquireWakeLock();
 
@@ -192,6 +194,8 @@ public class ImsPhoneConnection extends Connection {
 
         mParent = parent;
         parent.attachFake(this, ImsPhoneCall.State.DIALING);
+
+        mIsEmergency = isEmergency;
 
         fetchDtmfToneDelay(phone);
     }
@@ -875,6 +879,14 @@ public class ImsPhoneConnection extends Connection {
         }
         sb.append("]");
         return sb.toString();
+    }
+
+    /**
+     * Indicates whether current phone connection is emergency or not
+     * @return boolean: true if emergency, false otherwise
+     */
+    protected boolean isEmergency() {
+        return mIsEmergency;
     }
 }
 
