@@ -792,6 +792,9 @@ public abstract class PhoneBase extends Handler implements Phone {
        mHandoverRegistrants.notifyRegistrants(ar);
     }
 
+    protected void setIsInEmergencyCall() {
+    }
+
     public void migrateFrom(PhoneBase from) {
         migrate(mHandoverRegistrants, from.mHandoverRegistrants);
         migrate(mPreciseCallStateRegistrants, from.mPreciseCallStateRegistrants);
@@ -803,6 +806,9 @@ public abstract class PhoneBase extends Handler implements Phone {
         migrate(mMmiRegistrants, from.mMmiRegistrants);
         migrate(mUnknownConnectionRegistrants, from.mUnknownConnectionRegistrants);
         migrate(mSuppServiceFailedRegistrants, from.mSuppServiceFailedRegistrants);
+        if (from.isInEmergencyCall()) {
+            setIsInEmergencyCall();
+        }
     }
 
     public void migrate(RegistrantList to, RegistrantList from) {
