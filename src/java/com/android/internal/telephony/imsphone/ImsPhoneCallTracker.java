@@ -366,7 +366,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
             }
 
             mPendingMO = new ImsPhoneConnection(mPhone,
-                    checkForTestEmergencyNumber(dialString), this, mForegroundCall);
+                    checkForTestEmergencyNumber(dialString), this, mForegroundCall,
+                    isEmergencyNumber);
         }
         addConnection(mPendingMO);
 
@@ -943,10 +944,26 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     private synchronized void removeConnection(ImsPhoneConnection conn) {
         mConnections.remove(conn);
+        // If not emergency call is remaining, notify emergency call registrants
+        if (mIsInEmergencyCall) {
+            boolean isEmergencyCallInList = false;
+            // if no emergency calls pending, set this to false
+            for (ImsPhoneConnection imsPhoneConnection : mConnections) {
+                if (imsPhoneConnection != null && imsPhoneConnection.isEmergency() == true) {
+                    isEmergencyCallInList = true;
+                    break;
+                }
+            }
+
+            mIsInEmergencyCall = isEmergencyCallInList;
+        }
     }
 
     private synchronized void addConnection(ImsPhoneConnection conn) {
         mConnections.add(conn);
+        if (conn.isEmergency()) {
+            mIsInEmergencyCall = true;
+        }
     }
 
     private void processCallStateChange(ImsCall imsCall, ImsPhoneCall.State state, int cause) {
