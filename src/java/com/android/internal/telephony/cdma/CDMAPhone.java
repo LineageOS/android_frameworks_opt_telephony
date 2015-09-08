@@ -1087,6 +1087,11 @@ public class CDMAPhone extends PhoneBase {
     }
 
     @Override
+    protected void setIsInEmergencyCall() {
+        mCT.setIsInEmergencyCall();
+    }
+
+    @Override
     public boolean isInEcm() {
         return mIsPhoneInEcmState;
     }
@@ -1157,7 +1162,7 @@ public class CDMAPhone extends PhoneBase {
         }
     }
 
-    protected void notifyEmergencyCallRegistrants(boolean started) {
+    public void notifyEmergencyCallRegistrants(boolean started) {
         mEmergencyCallToggledRegistrants.notifyResult(started ? 1 : 0);
     }
 
