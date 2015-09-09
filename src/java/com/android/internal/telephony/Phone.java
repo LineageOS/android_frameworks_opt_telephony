@@ -109,6 +109,7 @@ public interface Phone {
     static final String REASON_NV_READY = "nvReady";
     static final String REASON_SINGLE_PDN_ARBITRATION = "SinglePdnArbitration";
     static final String REASON_DATA_SPECIFIC_DISABLED = "specificDisabled";
+    static final String REASON_SIM_NOT_READY = "simNotReady";
     static final String REASON_IWLAN_AVAILABLE = "iwlanAvailable";
 
     // Used for band mode selection methods

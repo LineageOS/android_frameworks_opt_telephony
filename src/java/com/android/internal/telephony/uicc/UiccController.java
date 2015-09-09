@@ -27,6 +27,7 @@ import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.telephony.TelephonyManager;
 import android.telephony.Rlog;
+import android.text.format.Time;
 
 import android.telephony.ServiceState;
 
@@ -39,6 +40,7 @@ import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.LinkedList;
 
 /**
  * This class is responsible for keeping all knowledge about
@@ -106,6 +108,10 @@ public class UiccController extends Handler {
     protected RegistrantList mIccChangedRegistrants = new RegistrantList();
 
     private boolean mOEMHookSimRefresh = false;
+
+    // Logging for dumpsys. Useful in cases when the cards run into errors.
+    private static final int MAX_PROACTIVE_COMMANDS_TO_LOG = 20;
+    private LinkedList<String> mCardLogs = new LinkedList<String>();
 
     public static UiccController make(Context c, CommandsInterface[] ci) {
         synchronized (mLock) {
@@ -396,6 +402,15 @@ public class UiccController extends Handler {
         Rlog.d(LOG_TAG, string);
     }
 
+    // TODO: This is hacky. We need a better way of saving the logs.
+    public void addCardLog(String data) {
+        Time t = new Time();
+        t.setToNow();
+        mCardLogs.addLast(t.format("%m-%d %H:%M:%S") + " " + data);
+        if (mCardLogs.size() > MAX_PROACTIVE_COMMANDS_TO_LOG) {
+            mCardLogs.removeFirst();
+        }
+    }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("UiccController: " + this);
@@ -416,6 +431,10 @@ public class UiccController extends Handler {
                 pw.println("  mUiccCards[" + i + "]=" + mUiccCards[i]);
                 mUiccCards[i].dump(fd, pw, args);
             }
+        }
+        pw.println("mCardLogs: ");
+        for (int i = 0; i < mCardLogs.size(); ++i) {
+            pw.println("  " + mCardLogs.get(i));
         }
     }
 }

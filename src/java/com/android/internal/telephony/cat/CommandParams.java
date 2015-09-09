@@ -59,6 +59,11 @@ class DisplayTextParams extends CommandParams {
         }
         return false;
     }
+
+    @Override
+    public String toString() {
+        return "TextMessage=" + mTextMsg + " " + super.toString();
+    }
 }
 
 class LaunchBrowserParams extends CommandParams {
@@ -81,6 +86,11 @@ class LaunchBrowserParams extends CommandParams {
             return true;
         }
         return false;
+    }
+
+    @Override
+    public String toString() {
+        return "TextMessage=" + mConfirmMsg + " " + super.toString();
     }
 }
 
