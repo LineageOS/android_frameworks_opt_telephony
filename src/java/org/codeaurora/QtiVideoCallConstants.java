@@ -28,6 +28,8 @@
 
 package org.codeaurora;
 
+import com.android.ims.ImsReasonInfo;
+
 /**
  * The class contains definitions for Qti specific constants related to any value added features
  * for video telephony.
@@ -63,6 +65,16 @@ public class QtiVideoCallConstants {
 
     /* Call substate extra key name */
     public static final String CALL_SUBSTATE_EXTRA_KEY = "CallSubstate";
+
+    /* Call fail code extra key name */
+    public static final String EXTRAS_KEY_CALL_FAIL_EXTRA_CODE  = "CallFailExtraCode";
+
+    /* Call fail error code for handover not feasible */
+    public static final int CALL_FAIL_EXTRA_CODE_LTE_3G_HA_FAILED =
+           ImsReasonInfo.CODE_LOCAL_HO_NOT_FEASIBLE;
+
+    /* Unknown disconnect cause */
+    public static final int DISCONNECT_CAUSE_UNSPECIFIED = -1;
 
     /* Default camera zoom max */
     public static final int CAMERA_MAX_ZOOM = 100;
