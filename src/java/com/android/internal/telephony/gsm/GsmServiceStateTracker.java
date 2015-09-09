@@ -881,6 +881,13 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 roaming = true;
             }
 
+            // We can't really be roaming if we're not in service and not registered to an operator
+            // set us to false
+            if (mNewSS.getState() == ServiceState.STATE_OUT_OF_SERVICE &&
+                    mNewSS.getOperatorNumeric() == null) {
+                roaming = false;
+            }
+
             mNewSS.setVoiceRoaming(roaming);
             mNewSS.setDataRoaming(roaming);
 
