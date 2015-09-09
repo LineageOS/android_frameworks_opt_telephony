@@ -31,11 +31,14 @@ import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.RemoteException;
 import android.os.SystemProperties;
 import android.provider.Settings;
+import android.telephony.CarrierConfigManager;
+import android.text.TextUtils;
 import android.widget.Toast;
 import android.preference.PreferenceManager;
 import android.telecom.ConferenceParticipant;
@@ -440,8 +443,9 @@ public final class ImsPhoneCallTracker extends CallTracker {
             if (intentExtras != null) {
                 if (intentExtras.containsKey(android.telecom.TelecomManager.EXTRA_CALL_SUBJECT)) {
                     intentExtras.putString(ImsCallProfile.EXTRA_DISPLAY_TEXT,
-                            intentExtras.getString(
-                                    android.telecom.TelecomManager.EXTRA_CALL_SUBJECT));
+                            removeInstantLetteringInvalidCharacters(intentExtras.getString(
+                                    android.telecom.TelecomManager.EXTRA_CALL_SUBJECT))
+                    );
                 }
 
                 // Pack the OEM-specific call extras.
@@ -1820,5 +1824,41 @@ public final class ImsPhoneCallTracker extends CallTracker {
     public boolean isUtEnabled() {
         return (mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_LTE]
             || mImsFeatureEnabled[ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_WIFI]);
+    }
+
+    /**
+     * Given a call subject, removes any characters considered by the current carrier to be
+     * invalid.
+     *
+     * @param callSubject The call subject.
+     * @return The call subject with invalid characters removed.
+     */
+    private String removeInstantLetteringInvalidCharacters(String callSubject) {
+        String invalidCharacters = getInstantLetteringInvalidCharacters();
+        if (TextUtils.isEmpty(invalidCharacters)) {
+            return callSubject;
+        }
+
+        return callSubject.replaceAll(invalidCharacters, "");
+    }
+
+    /**
+     * Determines from carrier config the regular expression specifying which characters are not
+     * allowed in instant lettering messages.
+     *
+     * @return Regular expression defining the invalid characters, or empty string if none.
+     */
+    private String getInstantLetteringInvalidCharacters() {
+        CarrierConfigManager configMgr = (CarrierConfigManager)
+                mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        if (configMgr == null) {
+            return "";
+        }
+        PersistableBundle b = configMgr.getConfigForSubId(mPhone.getSubId());
+        if (b != null) {
+            return b.getString(
+                    CarrierConfigManager.KEY_CARRIER_INSTANT_LETTERING_INVALID_CHARS_STRING);
+        }
+        return "";
     }
 }
