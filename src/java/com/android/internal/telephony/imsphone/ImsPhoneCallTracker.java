@@ -1186,10 +1186,10 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     mPhone.initiateSilentRedial();
                     return;
                 } else {
+                    mPendingMO = null;
                     int cause = getDisconnectCauseFromReasonInfo(reasonInfo);
                     processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
                 }
-                mPendingMO = null;
             }
         }
 
