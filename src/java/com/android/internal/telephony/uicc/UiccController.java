@@ -125,12 +125,7 @@ public class UiccController extends Handler {
         for (int i = 0; i < mCis.length; i++) {
             Integer index = new Integer(i);
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, index);
-            // TODO remove this once modem correctly notifies the unsols
-            if (DECRYPT_STATE.equals(SystemProperties.get("vold.decrypt"))) {
-                mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
-            } else {
-                mCis[i].registerForOn(this, EVENT_ICC_STATUS_CHANGED, index);
-            }
+            mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
             mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, index);
             mCis[i].registerForIccRefresh(this, EVENT_SIM_REFRESH, index);
         }
