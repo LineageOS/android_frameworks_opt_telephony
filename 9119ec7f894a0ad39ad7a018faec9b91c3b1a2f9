@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3f1d235d_27be6065",
+        "filename": "src/java/com/android/internal/telephony/gsm/GsmServiceStateTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 889,
+      "author": {
+        "id": 13513
+      },
+      "writtenOn": "2015-09-10T07:40:46Z",
+      "side": 1,
+      "message": "Did this change fix the issue? We can combine this condition and the one above mPhone.isMccMncMarkedAsNonRoaming(mNewSS.getOperatorNumeric()) || (mNewSS.getState() \u003d\u003d ServiceState.STATE_OUT_OF_SERVICE \u0026\u0026\n                    mNewSS.getOperatorNumeric() \u003d\u003d null)",
+      "revId": "9119ec7f894a0ad39ad7a018faec9b91c3b1a2f9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
