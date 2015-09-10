@@ -16,6 +16,24 @@
       "revId": "9119ec7f894a0ad39ad7a018faec9b91c3b1a2f9",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1f1a1f67_f6203e4c",
+        "filename": "src/java/com/android/internal/telephony/gsm/GsmServiceStateTracker.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 889,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2015-09-10T22:30:18Z",
+      "side": 1,
+      "message": "I couldn\u0027t repro issue locally since it requires a roaming sim. However based off the logs this is what\u0027s happening.\n\nI didn\u0027t want to combine this into any other check as to make it more apparent that the device should never really get into this state.",
+      "parentUuid": "3f1d235d_27be6065",
+      "revId": "9119ec7f894a0ad39ad7a018faec9b91c3b1a2f9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
