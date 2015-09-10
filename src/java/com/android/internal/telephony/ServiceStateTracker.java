@@ -1099,8 +1099,18 @@ public abstract class ServiceStateTracker extends Handler {
         boolean inSameCountry = true;
         final String networkMCC = operatorNumeric.substring(0, 3);
         final String homeMCC = homeNumeric.substring(0, 3);
-        final String networkCountry = MccTable.countryCodeForMcc(Integer.parseInt(networkMCC));
-        final String homeCountry = MccTable.countryCodeForMcc(Integer.parseInt(homeMCC));
+        final int networkMccInt;
+        final int homeMccInt;
+        try {
+            networkMccInt = Integer.parseInt(networkMCC);
+            homeMccInt = Integer.parseInt(homeMCC);
+        } catch (NumberFormatException e) {
+            // Not a valid network MCC or home MCC
+            return false;
+        }
+
+        final String networkCountry = MccTable.countryCodeForMcc(networkMccInt);
+        final String homeCountry = MccTable.countryCodeForMcc(homeMccInt);
         if (networkCountry.isEmpty() || homeCountry.isEmpty()) {
             // Not a valid country
             return false;
