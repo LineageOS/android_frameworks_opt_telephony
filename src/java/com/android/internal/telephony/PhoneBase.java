@@ -1044,7 +1044,8 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
-    public void selectNetworkManually(OperatorInfo network, Message response) {
+    public void selectNetworkManually(OperatorInfo network, boolean persistSelection,
+            Message response) {
         // wrap the response message in our own message along with
         // the operator's id.
         NetworkSelectMessage nsm = new NetworkSelectMessage();
@@ -1056,7 +1057,11 @@ public abstract class PhoneBase extends Handler implements Phone {
         Message msg = obtainMessage(EVENT_SET_NETWORK_MANUAL_COMPLETE, nsm);
         mCi.setNetworkSelectionModeManual(network.getOperatorNumeric(), msg);
 
-        updateSavedNetworkOperator(nsm);
+        if (persistSelection) {
+            updateSavedNetworkOperator(nsm);
+        } else {
+            clearSavedNetworkSelection();
+        }
     }
 
     /**
@@ -1131,6 +1136,17 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     /**
+     * Clears the saved network selection.
+     */
+    private void clearSavedNetworkSelection() {
+        // open the shared preferences and search with our key.
+        PreferenceManager.getDefaultSharedPreferences(getContext()).edit().
+                remove(NETWORK_SELECTION_KEY + getSubId()).
+                remove(NETWORK_SELECTION_NAME_KEY + getSubId()).
+                remove(NETWORK_SELECTION_SHORT_KEY + getSubId()).commit();
+    }
+
+    /**
      * Method to restore the previously saved operator id, or reset to
      * automatic selection, all depending upon the value in the shared
      * preferences.
@@ -1143,7 +1159,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         if (networkSelection == null || TextUtils.isEmpty(networkSelection.getOperatorNumeric())) {
             setNetworkSelectionModeAutomatic(response);
         } else {
-            selectNetworkManually(networkSelection, response);
+            selectNetworkManually(networkSelection, true, response);
         }
     }
 
