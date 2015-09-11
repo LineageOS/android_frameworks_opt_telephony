@@ -23,11 +23,13 @@ import android.net.Uri;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony.Blacklist;
+import android.telephony.PhoneNumberUtils;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.Pair;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Locale;
 
 import com.android.internal.telephony.CallerInfo;
 
@@ -119,7 +121,7 @@ public class BlacklistUtils {
 
         int result = MATCH_NONE;
         Cursor c = context.getContentResolver().query(builder.build(),
-                new String[] { Blacklist.IS_REGEX, type }, null, null, null);
+                new String[]{Blacklist.IS_REGEX, type}, null, null, null);
 
         if (c != null) {
             if (DEBUG) Log.d(TAG, "Blacklist query successful, " + c.getCount() + " matches");
@@ -180,5 +182,81 @@ public class BlacklistUtils {
         return Settings.System.getIntForUser(context.getContentResolver(),
                 Settings.System.PHONE_BLACKLIST_REGEX_ENABLED, 0,
                 UserHandle.USER_CURRENT_OR_SELF) != 0;
+    }
+
+    public static Pair<String, Boolean> isValidBlacklistInput(Context context, String number) {
+        final Pair<String, Boolean> normalizeResult = BlacklistUtils.normalizeNumber(
+                context, number);
+        final String normalizedNumber = normalizeResult.first;
+        boolean isRegex = normalizedNumber.indexOf('%') >= 0 ||
+                normalizedNumber.indexOf('_') >= 0;
+        // For non-regex numbers, apply additional validity checking if
+        // they didn't pass e164 normalization
+        if (!isRegex && !normalizeResult.second && !BlacklistUtils.isValidPhoneNumber(number)) {
+            // number was invalid
+            return new Pair<String, Boolean>(normalizedNumber, false);
+        }
+        return new Pair<String, Boolean>(normalizedNumber, true);
+    }
+
+    /**
+     * Normalizes the passed in number and tries to format it according to E164.
+     * Returns a pair of
+     * - normalized number
+     * - boolean indicating whether the number is a E164 number or not
+     */
+    public static Pair<String, Boolean> normalizeNumber(Context context, String number) {
+        int len = number.length();
+        StringBuilder ret = new StringBuilder(len);
+
+        for (int i = 0; i < len; i++) {
+            char c = number.charAt(i);
+            // Character.digit() supports ASCII and Unicode digits (fullwidth, Arabic-Indic, etc.)
+            int digit = Character.digit(c, 10);
+            if (digit != -1) {
+                ret.append(digit);
+            } else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+                String actualNumber = PhoneNumberUtils.convertKeypadLettersToDigits(number);
+                return normalizeNumber(context, actualNumber);
+            } else if (i == 0 && c == '+') {
+                ret.append(c);
+            } else if (c == '*') {
+                // replace regex match-multiple character by SQL equivalent
+                ret.append('%');
+            } else if (c == '.') {
+                // replace regex-match-single character by SQL equivalent
+                ret.append('_');
+            }
+        }
+
+        String normalizedNumber = ret.toString();
+        String e164Number = toE164Number(context, normalizedNumber);
+        return Pair.create(e164Number != null ? e164Number : normalizedNumber, e164Number != null);
+    }
+
+    public static String toE164Number(Context context, String src) {
+        // Try to retrieve the current ISO Country code
+        TelephonyManager tm = (TelephonyManager)
+                context.getSystemService(Context.TELEPHONY_SERVICE);
+        String countryCode = tm.getSimCountryIso();
+        Locale numberLocale = TextUtils.isEmpty(countryCode)
+                ? context.getResources().getConfiguration().locale
+                : new Locale("", countryCode);
+
+        return PhoneNumberUtils.formatNumberToE164(src, numberLocale.getCountry());
+    }
+
+    public static boolean isValidPhoneNumber(String address) {
+        for (int i = 0, count = address.length(); i < count; i++) {
+            if (!PhoneNumberUtils.isISODigit(address.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static boolean isInputRegex(String input) {
+        return input.indexOf('%') >= 0 ||
+                input.indexOf('_') >= 0;
     }
 }
