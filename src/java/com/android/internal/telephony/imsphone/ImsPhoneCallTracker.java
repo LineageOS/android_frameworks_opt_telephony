@@ -40,6 +40,8 @@ import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.text.TextUtils;
 import android.widget.Toast;
+import android.telephony.CarrierConfigManager;
+import android.text.TextUtils;
 import android.preference.PreferenceManager;
 import android.telecom.ConferenceParticipant;
 import android.telecom.VideoProfile;
@@ -489,7 +491,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             if (intentExtras != null) {
                 if (intentExtras.containsKey(android.telecom.TelecomManager.EXTRA_CALL_SUBJECT)) {
                     intentExtras.putString(ImsCallProfile.EXTRA_DISPLAY_TEXT,
-                            removeInstantLetteringInvalidCharacters(intentExtras.getString(
+                            cleanseInstantLetteringMessage(intentExtras.getString(
                                     android.telecom.TelecomManager.EXTRA_CALL_SUBJECT))
                     );
                 }
@@ -1875,37 +1877,60 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     /**
      * Given a call subject, removes any characters considered by the current carrier to be
-     * invalid.
+     * invalid, as well as escaping (using \) any characters which the carrier requires to be
+     * escaped.
      *
      * @param callSubject The call subject.
-     * @return The call subject with invalid characters removed.
+     * @return The call subject with invalid characters removed and escaping applied as required.
      */
-    private String removeInstantLetteringInvalidCharacters(String callSubject) {
-        String invalidCharacters = getInstantLetteringInvalidCharacters();
-        if (TextUtils.isEmpty(invalidCharacters)) {
+    private String cleanseInstantLetteringMessage(String callSubject) {
+        // Get the carrier config for the current sub.
+        CarrierConfigManager configMgr = (CarrierConfigManager)
+                mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        // Bail if we can't find the carrier config service.
+        if (configMgr == null) {
             return callSubject;
         }
 
-        return callSubject.replaceAll(invalidCharacters, "");
+        PersistableBundle carrierConfig = configMgr.getConfigForSubId(mPhone.getSubId());
+        // Bail if no carrier config found.
+        if (carrierConfig == null) {
+            return callSubject;
+        }
+
+        // Try to replace invalid characters
+        String invalidCharacters = carrierConfig.getString(
+                CarrierConfigManager.KEY_CARRIER_INSTANT_LETTERING_INVALID_CHARS_STRING);
+        if (!TextUtils.isEmpty(invalidCharacters)) {
+            callSubject = callSubject.replaceAll(invalidCharacters, "");
+        }
+
+        // Try to escape characters which need to be escaped.
+        String escapedCharacters = carrierConfig.getString(
+                CarrierConfigManager.KEY_CARRIER_INSTANT_LETTERING_ESCAPED_CHARS_STRING);
+        if (!TextUtils.isEmpty(escapedCharacters)) {
+            callSubject = escapeChars(escapedCharacters, callSubject);
+        }
+        return callSubject;
     }
 
     /**
-     * Determines from carrier config the regular expression specifying which characters are not
-     * allowed in instant lettering messages.
+     * Given a source string, return a string where a set of characters are escaped using the
+     * backslash character.
      *
-     * @return Regular expression defining the invalid characters, or empty string if none.
+     * @param toEscape The characters to escape with a backslash.
+     * @param source The source string.
+     * @return The source string with characters escaped.
      */
-    private String getInstantLetteringInvalidCharacters() {
-        CarrierConfigManager configMgr = (CarrierConfigManager)
-                mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
-        if (configMgr == null) {
-            return "";
+    private String escapeChars(String toEscape, String source) {
+        StringBuilder escaped = new StringBuilder();
+        for (char c : source.toCharArray()) {
+            if (toEscape.contains(Character.toString(c))) {
+                escaped.append("\\");
+            }
+            escaped.append(c);
         }
-        PersistableBundle b = configMgr.getConfigForSubId(mPhone.getSubId());
-        if (b != null) {
-            return b.getString(
-                    CarrierConfigManager.KEY_CARRIER_INSTANT_LETTERING_INVALID_CHARS_STRING);
-        }
-        return "";
+
+        return escaped.toString();
     }
 }
