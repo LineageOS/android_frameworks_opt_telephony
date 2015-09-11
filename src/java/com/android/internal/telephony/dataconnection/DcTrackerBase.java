@@ -458,6 +458,10 @@ public abstract class DcTrackerBase extends Handler {
         // Get default value from system property or use DEFAULT_MDC_INITIAL_RETRY
         int value = SystemProperties.getInt(
                 Settings.Global.MDC_INITIAL_MAX_RETRY, DEFAULT_MDC_INITIAL_RETRY);
+        if (value == DEFAULT_MDC_INITIAL_RETRY) {
+            value = mPhone.getContext().getResources().getInteger(
+                R.integer.config_mdc_initial_max_retry);
+        }
 
         // Check if its been overridden
         return Settings.Global.getInt(mResolver,
