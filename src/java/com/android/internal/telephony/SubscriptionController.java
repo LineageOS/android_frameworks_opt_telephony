@@ -1424,9 +1424,7 @@ public class SubscriptionController extends ISub.Stub {
             reqStatus = PhoneConstants.SUCCESS;
         }
         mScheduler.updateCurrentDds(null);
-        broadcastDefaultDataSubIdChanged(subId);
-
-        updateAllDataConnectionTrackers();
+        broadcastDefaultDataSubIdChanged(reqStatus);
     }
 
     public void setDefaultDataSubId(int subId) {
