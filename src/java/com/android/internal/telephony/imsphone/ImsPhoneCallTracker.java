@@ -1884,6 +1884,10 @@ public final class ImsPhoneCallTracker extends CallTracker {
      * @return The call subject with invalid characters removed and escaping applied as required.
      */
     private String cleanseInstantLetteringMessage(String callSubject) {
+        if (TextUtils.isEmpty(callSubject)) {
+            return callSubject;
+        }
+
         // Get the carrier config for the current sub.
         CarrierConfigManager configMgr = (CarrierConfigManager)
                 mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
