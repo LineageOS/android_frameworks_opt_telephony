@@ -45,6 +45,10 @@ public interface CallFailCause {
     static final int DIAL_MODIFIED_TO_SS            = 245;
     static final int DIAL_MODIFIED_TO_DIAL          = 246;
 
+    //Emergency Redial
+    static final int EMERGENCY_TEMP_FAILURE         = 325;
+    static final int EMERGENCY_PERM_FAILURE         = 326;
+
     static final int CDMA_LOCKED_UNTIL_POWER_CYCLE  = 1000;
     static final int CDMA_DROP                      = 1001;
     static final int CDMA_INTERCEPT                 = 1002;

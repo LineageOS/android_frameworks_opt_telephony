@@ -92,5 +92,9 @@ public interface CallFailCause {
     static final int PROTOCOL_ERROR_UNSPECIFIED = 111;
     static final int INTERWORKING_UNSPECIFIED = 127;
 
+    //Emergency Redial
+    static final int EMERGENCY_TEMP_FAILURE = 325;
+    static final int EMERGENCY_PERM_FAILURE = 326;
+
     static final int ERROR_UNSPECIFIED = 0xffff;
 }
