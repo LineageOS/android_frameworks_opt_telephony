@@ -1184,6 +1184,30 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     sendEmptyMessage(EVENT_DIAL_PENDINGMO);
                 }
             }
+
+            if (mSwitchingFgAndBgCalls) {
+                if (DBG) {
+                    log("onCallTerminated: Call terminated in the midst of Switching " +
+                            "Fg and Bg calls.");
+                }
+                // If we are the in midst of swapping FG and BG calls and the call that was
+                // terminated was the one that we expected to resume, we need to swap the FG and
+                // BG calls back.
+                if (imsCall == mCallExpectedToResume) {
+                    if (DBG) {
+                        log("onCallTerminated: switching " + mForegroundCall + " with "
+                                + mBackgroundCall);
+                    }
+                    mForegroundCall.switchWith(mBackgroundCall);
+                }
+                // This call terminated in the midst of a switch after the other call was held, so
+                // resume it back to ACTIVE state since the switch failed.
+                if (mForegroundCall.getState() == ImsPhoneCall.State.HOLDING) {
+                    sendEmptyMessage(EVENT_RESUME_BACKGROUND);
+                    mSwitchingFgAndBgCalls = false;
+                    mCallExpectedToResume = null;
+                }
+            }
         }
 
         @Override
@@ -1211,7 +1235,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     // The EVENT_RESUME_BACKGROUND causes resumeWaitingOrHolding to be called.
                     if ((mForegroundCall.getState() == ImsPhoneCall.State.HOLDING)
                             || (mRingingCall.getState() == ImsPhoneCall.State.WAITING)) {
-
                             sendEmptyMessage(EVENT_RESUME_BACKGROUND);
                     } else {
                         //when multiple connections belong to background call,
@@ -1226,6 +1249,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
                         // This may happen if there is no BG call and we are holding a call so that
                         // we can dial another one.
                         mSwitchingFgAndBgCalls = false;
+                    }
+                } else if (oldState == ImsPhoneCall.State.IDLE && mSwitchingFgAndBgCalls) {
+                    // The other call terminated in the midst of a switch before this call was held,
+                    // so resume the foreground call back to ACTIVE state since the switch failed.
+                    if (mForegroundCall.getState() == ImsPhoneCall.State.HOLDING) {
+                        sendEmptyMessage(EVENT_RESUME_BACKGROUND);
+                        mSwitchingFgAndBgCalls = false;
+                        mCallExpectedToResume = null;
                     }
                 }
             }
