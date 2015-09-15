@@ -65,6 +65,7 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.net.InetAddress;
 import java.util.Collection;
+import java.util.HashMap;
 
 /**
  * {@hide}
@@ -127,15 +128,18 @@ public final class DataConnection extends StateMachine {
         int mRilRat;
         boolean mRetryWhenSSChange;
         Message mOnCompletedMsg;
+        final int mConnectionGeneration;
 
         ConnectionParams(ApnContext apnContext, int initialMaxRetry, int profileId,
-                int rilRadioTechnology, boolean retryWhenSSChange, Message onCompletedMsg) {
+                int rilRadioTechnology, boolean retryWhenSSChange, Message onCompletedMsg,
+                int connectionGeneration) {
             mApnContext = apnContext;
             mInitialMaxRetry = initialMaxRetry;
             mProfileId = profileId;
             mRilRat = rilRadioTechnology;
             mRetryWhenSSChange = retryWhenSSChange;
             mOnCompletedMsg = onCompletedMsg;
+            mConnectionGeneration = connectionGeneration;
         }
 
         @Override
@@ -190,7 +194,7 @@ public final class DataConnection extends StateMachine {
     //***** Package visible variables
     int mTag;
     int mCid;
-    List<ApnContext> mApnContexts = null;
+    HashMap<ApnContext, ConnectionParams> mApnContexts = null;
     PendingIntent mReconnectIntent = null;
     RetryManager mRetryManager = new RetryManager();
 
@@ -448,7 +452,7 @@ public final class DataConnection extends StateMachine {
             addState(mDisconnectingErrorCreatingConnection, mDefaultState);
         setInitialState(mInactiveState);
 
-        mApnContexts = new ArrayList<ApnContext>();
+        mApnContexts = new HashMap<ApnContext, ConnectionParams>();
         if (DBG) log("DataConnection constructor X");
     }
 
@@ -614,10 +618,13 @@ public final class DataConnection extends StateMachine {
     private void notifyAllWithEvent(ApnContext alreadySent, int event, String reason) {
         mNetworkInfo.setDetailedState(mNetworkInfo.getDetailedState(), reason,
                 mNetworkInfo.getExtraInfo());
-        for (ApnContext apnContext : mApnContexts) {
+        for (ConnectionParams cp : mApnContexts.values()) {
+            ApnContext apnContext = cp.mApnContext;
             if (apnContext == alreadySent) continue;
             if (reason != null) apnContext.setReason(reason);
-            Message msg = mDct.obtainMessage(event, apnContext);
+            Pair<ApnContext, Integer> pair =
+                    new Pair<ApnContext, Integer>(apnContext, cp.mConnectionGeneration);
+            Message msg = mDct.obtainMessage(event, pair);
             AsyncResult.forMessage(msg);
             msg.sendToTarget();
         }
@@ -1038,8 +1045,8 @@ public final class DataConnection extends StateMachine {
         mConnectionParams = cp;
         mConnectionParams.mTag = mTag;
 
-        if (!mApnContexts.contains(apnContext)) {
-            mApnContexts.add(apnContext);
+        if (!mApnContexts.containsKey(apnContext)) {
+            mApnContexts.put(apnContext, cp);
         }
         configureRetry(mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT));
         mRetryManager.setRetryCount(0);
@@ -1547,7 +1554,8 @@ public final class DataConnection extends StateMachine {
                 case EVENT_DISCONNECT: {
                     DisconnectParams dp = (DisconnectParams) msg.obj;
 
-                    if (mApnContexts.remove(dp.mApnContext) && mApnContexts.size() == 0) {
+                    if ((mApnContexts.remove(dp.mApnContext) != null) &&
+                            (mApnContexts.size() == 0)) {
                         if (DBG) {
                             log("DcRetryingState msg.what=EVENT_DISCONNECT " + " RefCount="
                                     + mApnContexts.size() + " dp=" + dp);
@@ -1845,10 +1853,10 @@ public final class DataConnection extends StateMachine {
                     if (DBG) {
                         log("DcActiveState: EVENT_CONNECT cp=" + cp + " dc=" + DataConnection.this);
                     }
-                    if (mApnContexts.contains(cp.mApnContext)) {
+                    if (mApnContexts.containsKey(cp.mApnContext)) {
                         log("DcActiveState ERROR already added apnContext=" + cp.mApnContext);
                     } else {
-                        mApnContexts.add(cp.mApnContext);
+                        mApnContexts.put(cp.mApnContext, cp);
                         if (DBG) {
                             log("DcActiveState msg.what=EVENT_CONNECT RefCount="
                                     + mApnContexts.size());
@@ -1864,7 +1872,7 @@ public final class DataConnection extends StateMachine {
                         log("DcActiveState: EVENT_DISCONNECT dp=" + dp
                                 + " dc=" + DataConnection.this);
                     }
-                    if (mApnContexts.contains(dp.mApnContext)) {
+                    if (mApnContexts.containsKey(dp.mApnContext)) {
                         if (DBG) {
                             log("DcActiveState msg.what=EVENT_DISCONNECT RefCount="
                                     + mApnContexts.size());
@@ -2091,7 +2099,7 @@ public final class DataConnection extends StateMachine {
             }
             // this can only happen if our exit has been called - we're already disconnected
             if (mApnContexts == null) return;
-            for (ApnContext apnContext : mApnContexts) {
+            for (ApnContext apnContext : mApnContexts.keySet()) {
                 log("DcNetworkAgent: [unwanted]: disconnect apnContext=" + apnContext);
                 Message msg = mDct.obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, apnContext);
                 DisconnectParams dp = new DisconnectParams(apnContext, apnContext.getReason(), msg);
