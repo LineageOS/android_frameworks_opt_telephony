@@ -380,6 +380,27 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
     }
 
     /**
+     * Load first @size bytes from SIM Transparent EF
+     *
+     * @param fileid EF id
+     * @param size
+     * @param path Path of the EF on the card
+     * @param onLoaded
+     *
+     * ((AsyncResult)(onLoaded.obj)).result is the byte[]
+     *
+     */
+    public void loadEFTransparent(int fileid, int size, String path, Message onLoaded) {
+        Message response = obtainMessage(EVENT_READ_BINARY_DONE,
+                        fileid, 0, onLoaded);
+        if (path == null){
+            path = getEFPath(fileid);
+        }
+        mCi.iccIOForApp(COMMAND_READ_BINARY, fileid, path,
+                        0, 0, size, null, null, mAid, response);
+    }
+
+    /**
      * Load a SIM Transparent EF-IMG. Used right after loadEFImgLinearFixed to
      * retrive STK's icon data.
      *
