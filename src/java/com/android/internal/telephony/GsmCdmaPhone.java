@@ -33,6 +33,8 @@ import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.preference.PreferenceManager;
@@ -83,6 +85,8 @@ import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.IsimUiccRecords;
+
+import org.codeaurora.internal.IExtTelephony;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -1059,7 +1063,7 @@ public class GsmCdmaPhone extends Phone {
             throw new CallStateException("Sending UUS information NOT supported in CDMA!");
         }
 
-        boolean isEmergency = PhoneNumberUtils.isEmergencyNumber(dialString);
+        boolean isEmergency = isEmergencyNumber(dialString);
         Phone imsPhone = mImsPhone;
 
         CarrierConfigManager configManager =
@@ -3336,6 +3340,20 @@ public class GsmCdmaPhone extends Phone {
     @VisibleForTesting
     public PowerManager.WakeLock getWakeLock() {
         return mWakeLock;
+    }
+
+    private boolean isEmergencyNumber(String address) {
+        IExtTelephony mIExtTelephony =
+            IExtTelephony.Stub.asInterface(ServiceManager.getService("extphone"));
+        boolean result = false;
+        try {
+            result = mIExtTelephony.isEmergencyNumber(address);
+        } catch (RemoteException ex) {
+            loge("RemoteException" + ex);
+        } catch (NullPointerException ex) {
+            loge("NullPointerException" + ex);
+        }
+        return result;
     }
 
 }
