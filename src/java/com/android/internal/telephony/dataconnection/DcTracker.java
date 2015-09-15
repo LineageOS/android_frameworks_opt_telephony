@@ -57,6 +57,7 @@ import android.telephony.gsm.GsmCellLocation;
 import android.text.TextUtils;
 import android.util.EventLog;
 import android.util.LocalLog;
+import android.util.Pair;
 import android.view.WindowManager;
 import android.telephony.Rlog;
 
@@ -1311,6 +1312,7 @@ public final class DcTracker extends DcTrackerBase {
 
         apnContext.setDataConnectionAc(dcac);
         apnContext.setApnSetting(apnSetting);
+        int connectionGeneration = apnContext.incAndGetConnectionGeneration();
         apnContext.setState(DctConstants.State.CONNECTING);
         mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
 
@@ -1318,7 +1320,7 @@ public final class DcTracker extends DcTrackerBase {
         msg.what = DctConstants.EVENT_DATA_SETUP_COMPLETE;
         msg.obj = apnContext;
         dcac.bringUp(apnContext, getInitialMaxRetry(), profileId, radioTech,
-                mAutoAttachOnCreation.get(), msg);
+                mAutoAttachOnCreation.get(), msg, connectionGeneration);
 
         if (DBG) log("setupData: initing!");
         return true;
@@ -1821,13 +1823,9 @@ public final class DcTracker extends DcTrackerBase {
 
         DcFailCause cause = DcFailCause.UNKNOWN;
         boolean handleError = false;
-        ApnContext apnContext = null;
+        ApnContext apnContext = getValidApnContext(ar, "onDataSetupComplete");
 
-        if(ar.userObj instanceof ApnContext){
-            apnContext = (ApnContext)ar.userObj;
-        } else {
-            throw new RuntimeException("onDataSetupComplete: No apnContext");
-        }
+        if (apnContext == null) return;
 
         if (ar.exception == null) {
             DcAsyncChannel dcac = apnContext.getDcAc();
@@ -2011,6 +2009,27 @@ public final class DcTracker extends DcTrackerBase {
     }
 
     /**
+     * check for obsolete messages.  Return ApnContext if valid, null if not
+     */
+    private ApnContext getValidApnContext(AsyncResult ar, String logString) {
+        if (ar != null && ar.userObj instanceof Pair) {
+            Pair<ApnContext, Integer>pair = (Pair<ApnContext, Integer>)ar.userObj;
+            ApnContext apnContext = pair.first;
+            if (apnContext != null) {
+                if (apnContext.getConnectionGeneration() == pair.second) {
+                    return apnContext;
+                } else {
+                    log("ignoring obsolete " + logString);
+                    return null;
+                }
+            }
+        }
+        throw new RuntimeException(logString + ": No apnContext");
+    }
+
+
+
+    /**
      * Error has occurred during the SETUP {aka bringUP} request and the DCT
      * should either try the next waiting APN or start over from the
      * beginning if the list is empty. Between each SETUP request there will
@@ -2019,13 +2038,9 @@ public final class DcTracker extends DcTrackerBase {
     @Override
     protected void onDataSetupCompleteError(AsyncResult ar) {
         String reason = "";
-        ApnContext apnContext = null;
+        ApnContext apnContext = getValidApnContext(ar, "onDataSetupCompleteError");
 
-        if(ar.userObj instanceof ApnContext){
-            apnContext = (ApnContext)ar.userObj;
-        } else {
-            throw new RuntimeException("onDataSetupCompleteError: No apnContext");
-        }
+        if (apnContext == null) return;
 
         // See if there are more APN's to try
         if (apnContext.getWaitingApns().isEmpty()) {
@@ -2059,15 +2074,9 @@ public final class DcTracker extends DcTrackerBase {
      * Called when EVENT_DISCONNECT_DONE is received.
      */
     @Override
-    protected void onDisconnectDone(int connId, AsyncResult ar) {
-        ApnContext apnContext = null;
-
-        if (ar.userObj instanceof ApnContext) {
-            apnContext = (ApnContext) ar.userObj;
-        } else {
-            loge("onDisconnectDone: Invalid ar in onDisconnectDone, ignore");
-            return;
-        }
+    protected void onDisconnectDone(AsyncResult ar) {
+        ApnContext apnContext = getValidApnContext(ar, "onDisconnectDone");
+        if (apnContext == null) return;
 
         if(DBG) log("onDisconnectDone: EVENT_DISCONNECT_DONE apnContext=" + apnContext);
         apnContext.setState(DctConstants.State.IDLE);
@@ -2138,16 +2147,10 @@ public final class DcTracker extends DcTrackerBase {
      * Called when EVENT_DISCONNECT_DC_RETRYING is received.
      */
     @Override
-    protected void onDisconnectDcRetrying(int connId, AsyncResult ar) {
+    protected void onDisconnectDcRetrying(AsyncResult ar) {
         // We could just do this in DC!!!
-        ApnContext apnContext = null;
-
-        if (ar.userObj instanceof ApnContext) {
-            apnContext = (ApnContext) ar.userObj;
-        } else {
-            loge("onDisconnectDcRetrying: Invalid ar in onDisconnectDone, ignore");
-            return;
-        }
+        ApnContext apnContext = getValidApnContext(ar, "onDisconnectDcRetrying");
+        if (apnContext == null) return;
 
         apnContext.setState(DctConstants.State.RETRYING);
         if(DBG) log("onDisconnectDcRetrying: apnContext=" + apnContext);
