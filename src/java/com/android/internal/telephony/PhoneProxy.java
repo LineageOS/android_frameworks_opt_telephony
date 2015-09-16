@@ -1504,7 +1504,11 @@ public class PhoneProxy extends Handler implements Phone {
     public ImsPhone relinquishOwnershipOfImsPhone() { return null; }
 
     @Override
-    public void startMonitoringImsService() {}
+    public void startMonitoringImsService() {
+        if (mActivePhone != null) {
+            mActivePhone.startMonitoringImsService();
+        }
+    }
 
     @Override
     public void acquireOwnershipOfImsPhone(ImsPhone imsPhone) { }
