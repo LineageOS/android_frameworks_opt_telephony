@@ -383,7 +383,7 @@ public class PhoneSubInfo {
 
 
     /**
-     * Besides READ_PHONE_STATE, WRITE_SMS also allows apps to get phone numbers.
+     * Besides READ_PHONE_STATE, WRITE_SMS and READ_SMS also allow apps to get phone numbers.
      */
     private boolean checkReadPhoneNumber(String callingPackage, String message) {
         // Default SMS app can always read it.
@@ -393,11 +393,19 @@ public class PhoneSubInfo {
         }
         try {
             return checkReadPhoneState(callingPackage, message);
-        } catch (SecurityException e) {
-            // Can be read with READ_SMS too.
-            mContext.enforceCallingOrSelfPermission(android.Manifest.permission.READ_SMS, message);
-            return mAppOps.noteOp(AppOpsManager.OP_READ_SMS,
-                    Binder.getCallingUid(), callingPackage) == AppOpsManager.MODE_ALLOWED;
+        } catch (SecurityException readPhoneStateSecurityException) {
+            try {
+                // Can be read with READ_SMS too.
+                mContext.enforceCallingOrSelfPermission(android.Manifest.permission.READ_SMS, message);
+                return mAppOps.noteOp(AppOpsManager.OP_READ_SMS,
+                        Binder.getCallingUid(), callingPackage) == AppOpsManager.MODE_ALLOWED;
+            } catch (SecurityException readSmsSecurityException) {
+                // Throw exception with message including both READ_PHONE_STATE and READ_SMS
+                // permissions
+                throw new SecurityException(message + ": Neither user " + Binder.getCallingUid() +
+                        " nor current process has " + android.Manifest.permission.READ_PHONE_STATE +
+                        " or " + android.Manifest.permission.READ_SMS + ".");
+            }
         }
     }
 }
