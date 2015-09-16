@@ -433,13 +433,23 @@ public class SubscriptionInfoUpdater extends Handler {
                 //Get previous network mode for this slot,
                 // to be more relevant instead of default mode
                 try {
-                    networkType  = TelephonyManager.getIntAtIndex(
+                    networkType  = android.provider.Settings.Global.getInt(
                             mContext.getContentResolver(),
-                           Settings.Global.PREFERRED_NETWORK_MODE, slotId);
+                            Settings.Global.PREFERRED_NETWORK_MODE + subId);
                 } catch (SettingNotFoundException snfe) {
-                    Rlog.e(LOG_TAG, "Settings Exception Reading Value At Index for"+
-                           " Settings.Global.PREFERRED_NETWORK_MODE");
+
+                    logd("Settings Exception reading value at subid for"+
+                         " Settings.Global.PREFERRED_NETWORK_MODE");
+                    try {
+                        networkType  = TelephonyManager.getIntAtIndex(
+                                mContext.getContentResolver(),
+                               Settings.Global.PREFERRED_NETWORK_MODE, slotId);
+                    } catch (SettingNotFoundException retrySnfe) {
+                        Rlog.e(LOG_TAG, "Settings Exception Reading Value At Index for"+
+                               " Settings.Global.PREFERRED_NETWORK_MODE");
+                    }
                 }
+
                 // Set the modem network mode
                 mPhone[slotId].setPreferredNetworkType(networkType, null);
                 Settings.Global.putInt(mPhone[slotId].getContext().getContentResolver(),
