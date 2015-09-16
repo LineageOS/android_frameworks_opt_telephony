@@ -44,6 +44,14 @@ public class GsmSmsTest extends AndroidTestCase {
     }
 
     @SmallTest
+    public void testRecipientAddress() throws Exception {
+        String pdu = "0891683108200505F011000D91683196032930F000000006C8329BFD0E01";
+        SmsMessage sms = SmsMessage.createFromPdu(HexDump.hexStringToByteArray(pdu));
+        assertEquals("+8613800250500", sms.getServiceCenterAddress());
+        assertEquals("+8613693092030", sms.getRecipientAddress());
+    }
+
+    @SmallTest
     public void testUdh() throws Exception {
         String pdu = "07914140279510F6440A8111110301003BF56080207130138A8C0B05040B8423F"
                 + "000032A02010106276170706C69636174696F6E2F766E642E7761702E6D6D732D"
