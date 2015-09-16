@@ -1040,7 +1040,10 @@ public final class DcTracker extends DcTrackerBase {
                         str = "cleanUpConnection: tearing down" + (disconnectAll ? " all" : "");
                         if (DBG) log(str + "apnContext=" + apnContext);
                         apnContext.requestLog(str);
-                        Message msg = obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, apnContext);
+                        Pair<ApnContext, Integer> pair =
+                                new Pair<ApnContext, Integer>(apnContext,
+                                apnContext.getConnectionGeneration());
+                        Message msg = obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, pair);
                         if (disconnectAll) {
                             apnContext.getDcAc().tearDownAll(apnContext.getReason(), msg);
                         } else {
@@ -1307,7 +1310,7 @@ public final class DcTracker extends DcTrackerBase {
 
         Message msg = obtainMessage();
         msg.what = DctConstants.EVENT_DATA_SETUP_COMPLETE;
-        msg.obj = apnContext;
+        msg.obj = new Pair<ApnContext, Integer>(apnContext, connectionGeneration);
         dcac.bringUp(apnContext, getInitialMaxRetry(), profileId, radioTech,
                 mAutoAttachOnCreation.get(), msg, connectionGeneration);
 
