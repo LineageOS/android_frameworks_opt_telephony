@@ -230,6 +230,14 @@ public class PhoneProxy extends Handler implements Phone {
                     newVoiceRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT;
                 }
             } else {
+
+                // If the device is shutting down, then there is no need to switch to the new phone
+                // which might send unnecessary attach request to the modem.
+                if (isShuttingDown()) {
+                    logd("Device is shutting down. No need to switch phone now.");
+                    return;
+                }
+
                 boolean matchCdma = ServiceState.isCdma(newVoiceRadioTech);
                 boolean matchGsm = ServiceState.isGsm(newVoiceRadioTech);
                 if ((matchCdma  &&
@@ -1545,6 +1553,9 @@ public class PhoneProxy extends Handler implements Phone {
     public void shutdownRadio() {
         mActivePhone.shutdownRadio();
     }
+
+    @Override
+    public boolean isShuttingDown() { return mActivePhone.isShuttingDown(); }
 
     @Override
     public void setRadioCapability(RadioCapability rc, Message response) {
