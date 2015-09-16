@@ -2096,9 +2096,12 @@ public final class DataConnection extends StateMachine {
             }
             // this can only happen if our exit has been called - we're already disconnected
             if (mApnContexts == null) return;
-            for (ApnContext apnContext : mApnContexts.keySet()) {
+            for (ConnectionParams cp : mApnContexts.values()) {
+                final ApnContext apnContext = cp.mApnContext;
+                final Pair<ApnContext, Integer> pair =
+                        new Pair<ApnContext, Integer>(apnContext, cp.mConnectionGeneration);
                 log("DcNetworkAgent: [unwanted]: disconnect apnContext=" + apnContext);
-                Message msg = mDct.obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, apnContext);
+                Message msg = mDct.obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, pair);
                 DisconnectParams dp = new DisconnectParams(apnContext, apnContext.getReason(), msg);
                 DataConnection.this.sendMessage(DataConnection.this.
                         obtainMessage(EVENT_DISCONNECT, dp));
