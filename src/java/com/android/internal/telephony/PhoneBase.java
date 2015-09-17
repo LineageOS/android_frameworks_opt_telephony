@@ -2397,6 +2397,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     }
 
     @Override
+    public boolean isShuttingDown() {
+        return getServiceStateTracker().isDeviceShuttingDown();
+    }
+
+    @Override
     public void setRadioCapability(RadioCapability rc, Message response) {
         mCi.setRadioCapability(rc, response);
     }
