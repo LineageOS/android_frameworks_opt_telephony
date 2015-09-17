@@ -86,6 +86,12 @@ public abstract class Connection {
     public static final int AUDIO_QUALITY_STANDARD = 1;
     public static final int AUDIO_QUALITY_HIGH_DEFINITION = 2;
 
+    /**
+     * The telecom internal call ID associated with this connection.  Only to be used for debugging
+     * purposes.
+     */
+    private String mTelecomCallId;
+
     //Caller Name Display
     protected String mCnapName;
     protected int mCnapNamePresentation  = PhoneConstants.PRESENTATION_ALLOWED;
@@ -128,6 +134,23 @@ public abstract class Connection {
     public Call.State mPreHandoverState = Call.State.IDLE;
 
     /* Instance Methods */
+
+    /**
+     * @return The telecom internal call ID associated with this connection.  Only to be used for
+     * debugging purposes.
+     */
+    public String getTelecomCallId() {
+        return mTelecomCallId;
+    }
+
+    /**
+     * Sets the telecom call ID associated with this connection.
+     *
+     * @param telecomCallId The telecom call ID.
+     */
+    public void setTelecomCallId(String telecomCallId) {
+        mTelecomCallId = telecomCallId;
+    }
 
     /**
      * Gets address (e.g. phone number) associated with connection.
@@ -713,6 +736,7 @@ public abstract class Connection {
     public String toString() {
         StringBuilder str = new StringBuilder(128);
 
+        str.append(" callId: " + getTelecomCallId());
         if (Rlog.isLoggable(LOG_TAG, Log.DEBUG)) {
             str.append("addr: " + getAddress())
                     .append(" pres.: " + getNumberPresentation())
