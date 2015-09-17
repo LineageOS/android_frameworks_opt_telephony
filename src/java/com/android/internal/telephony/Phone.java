@@ -1986,6 +1986,11 @@ public interface Phone {
     public void shutdownRadio();
 
     /**
+     * Return true if the device is shutting down.
+     */
+    public boolean isShuttingDown();
+
+    /**
      *  Set phone radio capability
      *
      *  @param rc the phone radio capability defined in
