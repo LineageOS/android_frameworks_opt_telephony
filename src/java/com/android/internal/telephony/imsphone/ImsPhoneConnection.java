@@ -905,9 +905,11 @@ public class ImsPhoneConnection extends Connection {
         StringBuilder sb = new StringBuilder();
         sb.append("[ImsPhoneConnection objId: ");
         sb.append(System.identityHashCode(this));
-        sb.append(" address:");
+        sb.append(" telecomCallID: ");
+        sb.append(getTelecomCallId());
+        sb.append(" address: ");
         sb.append(Log.pii(getAddress()));
-        sb.append(" ImsCall:");
+        sb.append(" ImsCall: ");
         if (mImsCall == null) {
             sb.append("null");
         } else {
