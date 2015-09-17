@@ -812,18 +812,21 @@ public class GSMPhone extends PhoneBase {
 
         boolean useImsForEmergency = imsPhone != null
                 && isEmergency
-                &&  mContext.getResources().getBoolean(
+                && mContext.getResources().getBoolean(
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall)
                 && ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext)
                 && (imsPhone.getServiceState().getState() != ServiceState.STATE_POWER_OFF);
 
-        boolean useImsForUt = imsPhone != null && imsPhone.isUtEnabled()
-                && dialString.endsWith("#");
+        boolean isUt = PhoneNumberUtils.extractNetworkPortionAlt(PhoneNumberUtils.
+                stripSeparators(dialString)).endsWith("#");
+
+        boolean useImsForUt = imsPhone != null && imsPhone.isUtEnabled();
 
         if (LOCAL_DEBUG) {
             Rlog.d(LOG_TAG, "imsUseEnabled=" + imsUseEnabled
                     + ", useImsForEmergency=" + useImsForEmergency
                     + ", useImsForUt=" + useImsForUt
+                    + ", isUt=" + isUt
                     + ", imsPhone=" + imsPhone
                     + ", imsPhone.isVolteEnabled()="
                     + ((imsPhone != null) ? imsPhone.isVolteEnabled() : "N/A")
@@ -835,7 +838,7 @@ public class GSMPhone extends PhoneBase {
 
         ImsPhone.checkWfcWifiOnlyModeBeforeDial(mImsPhone, mContext);
 
-        if (imsUseEnabled || useImsForEmergency || useImsForUt) {
+        if ((imsUseEnabled && (!isUt || useImsForUt)) || useImsForEmergency) {
             try {
                 if (LOCAL_DEBUG) Rlog.d(LOG_TAG, "Trying IMS PS call");
                 return imsPhone.dial(dialString, uusInfo, videoState, intentExtras);
