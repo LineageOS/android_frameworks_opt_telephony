@@ -423,8 +423,7 @@ abstract class ImsPhoneBase extends PhoneBase {
     }
 
     @Override
-    public void selectNetworkManually(
-            OperatorInfo network,
+    public void selectNetworkManually(OperatorInfo network, boolean persistSelection,
             Message response) {
     }
 
