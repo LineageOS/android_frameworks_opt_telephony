@@ -1156,8 +1156,7 @@ public interface Phone {
      *
      * @see #setNetworkSelectionModeAutomatic(Message)
      */
-    void selectNetworkManually(OperatorInfo network,
-                            Message response);
+    void selectNetworkManually(OperatorInfo network, boolean persistSelection, Message response);
 
     /**
      * Query the radio for the current network selection mode.
