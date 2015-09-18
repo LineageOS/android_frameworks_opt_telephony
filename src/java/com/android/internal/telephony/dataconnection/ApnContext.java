@@ -334,6 +334,10 @@ public class ApnContext {
             if (mRefCount-- == 1) {
                 mDcTracker.setEnabled(mDcTracker.apnTypeToId(mApnType), false);
             }
+            if (mRefCount < 0) {
+                log.log("ApnContext.decRefCount went to " + mRefCount);
+                mRefCount = 0;
+            }
         }
     }
 
