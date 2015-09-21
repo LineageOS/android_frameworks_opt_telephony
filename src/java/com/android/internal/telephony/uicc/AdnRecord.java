@@ -142,6 +142,10 @@ public class AdnRecord implements Parcelable {
         return mNumber;
     }
 
+    public void setNumber(String number) {
+        mNumber = number;
+    }
+
     public String[] getEmails() {
         return mEmails;
     }
