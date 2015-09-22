@@ -83,7 +83,6 @@ public class PhoneProxy extends Handler implements Phone {
     private int mPhoneId = 0;
 
     private Context mContext;
-    private boolean mPhoneProxyReceiverRegistered = false;
     private BroadcastReceiver mPhoneProxyReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -121,6 +120,9 @@ public class PhoneProxy extends Handler implements Phone {
         } else if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
             mIccCardProxy.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
         }
+
+        mContext.registerReceiver(mPhoneProxyReceiver, new IntentFilter(
+                CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
     }
 
     @Override
@@ -335,13 +337,6 @@ public class PhoneProxy extends Handler implements Phone {
                 mActivePhone.acquireOwnershipOfImsPhone(imsPhone);
             }
             mActivePhone.startMonitoringImsService();
-
-            if (!mPhoneProxyReceiverRegistered) {
-                IntentFilter filter = new IntentFilter();
-                filter.addAction(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-                mContext.registerReceiver(mPhoneProxyReceiver, filter);
-                mPhoneProxyReceiverRegistered = true;
-            }
         }
 
         if (oldPhone != null) {
@@ -1390,10 +1385,7 @@ public class PhoneProxy extends Handler implements Phone {
         mCommandsInterface.unregisterForOn(this);
         mCommandsInterface.unregisterForVoiceRadioTechChanged(this);
         mCommandsInterface.unregisterForRilConnected(this);
-        if (mPhoneProxyReceiverRegistered) {
-            mContext.unregisterReceiver(mPhoneProxyReceiver);
-            mPhoneProxyReceiverRegistered = false;
-        }
+        mContext.unregisterReceiver(mPhoneProxyReceiver);
     }
 
     @Override
