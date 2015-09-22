@@ -175,6 +175,25 @@ public class DcSwitchStateMachine extends StateMachine {
                     break;
                 }
 
+                case DcSwitchAsyncChannel.REQ_IS_IDLE_STATE: {
+                    boolean val = mPreEmergencyState == mIdleState;
+                    if (VDBG) log("EmergencyState: REQ_IS_IDLE_STATE  isIdle=" + val);
+                    mAc.replyToMessage(msg, DcSwitchAsyncChannel.RSP_IS_IDLE_STATE, val ? 1 : 0);
+                    break;
+                }
+
+                case DcSwitchAsyncChannel.REQ_IS_IDLE_OR_DETACHING_STATE: {
+                    boolean val = (mPreEmergencyState == mIdleState ||
+                            mPreEmergencyState == mDetachingState);
+                    if (VDBG) {
+                        log("EmergencyState: " +
+                            "REQ_IS_IDLE_OR_DETACHING_STATE  isIdleDetaching=" + val);
+                    }
+                    mAc.replyToMessage(msg,
+                            DcSwitchAsyncChannel.RSP_IS_IDLE_OR_DETACHING_STATE, val ? 1 : 0);
+                    break;
+                }
+
                 // explicitly call out the messages we must defer
                 // anything not listed falls through to the default state
                 case DcSwitchAsyncChannel.REQ_CONNECT:
