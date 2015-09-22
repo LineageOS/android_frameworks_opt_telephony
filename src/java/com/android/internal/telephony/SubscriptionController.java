@@ -1783,6 +1783,7 @@ public class SubscriptionController extends ISub.Stub {
             case SubscriptionManager.CB_ALERT_SPEECH:
             case SubscriptionManager.CB_ETWS_TEST_ALERT:
             case SubscriptionManager.CB_CHANNEL_50_ALERT:
+            case SubscriptionManager.CB_CHANNEL_60_ALERT:
             case SubscriptionManager.CB_CMAS_TEST_ALERT:
             case SubscriptionManager.CB_OPT_OUT_DIALOG:
                 value.put(propKey, Integer.parseInt(propValue));
@@ -1879,6 +1880,7 @@ public class SubscriptionController extends ISub.Stub {
                         case SubscriptionManager.CB_ALERT_SPEECH:
                         case SubscriptionManager.CB_ETWS_TEST_ALERT:
                         case SubscriptionManager.CB_CHANNEL_50_ALERT:
+                        case SubscriptionManager.CB_CHANNEL_60_ALERT:
                         case SubscriptionManager.CB_CMAS_TEST_ALERT:
                         case SubscriptionManager.CB_OPT_OUT_DIALOG:
                             resultValue = cursor.getInt(0) + "";
