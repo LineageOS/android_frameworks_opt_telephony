@@ -1045,9 +1045,10 @@ public final class DataConnection extends StateMachine {
         mConnectionParams = cp;
         mConnectionParams.mTag = mTag;
 
-        if (!mApnContexts.containsKey(apnContext)) {
-            mApnContexts.put(apnContext, cp);
-        }
+        // always update the ConnectionParams with the latest or the
+        // connectionGeneration gets stale
+        mApnContexts.put(apnContext, cp);
+
         configureRetry(mApnSetting.canHandleType(PhoneConstants.APN_TYPE_DEFAULT));
         mRetryManager.setRetryCount(0);
         mRetryManager.setCurMaxRetryCount(mConnectionParams.mInitialMaxRetry);
