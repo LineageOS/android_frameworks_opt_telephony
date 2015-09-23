@@ -1044,12 +1044,13 @@ public final class DcTracker extends DcTrackerBase {
                                 disconnectAll = true;
                             }
                         }
-                        str = "cleanUpConnection: tearing down" + (disconnectAll ? " all" : "");
+                        final int generation = apnContext.getConnectionGeneration();
+                        str = "cleanUpConnection: tearing down" + (disconnectAll ? " all" : "") +
+                                " using gen#" + generation;
                         if (DBG) log(str + "apnContext=" + apnContext);
                         apnContext.requestLog(str);
                         Pair<ApnContext, Integer> pair =
-                                new Pair<ApnContext, Integer>(apnContext,
-                                apnContext.getConnectionGeneration());
+                                new Pair<ApnContext, Integer>(apnContext, generation);
                         Message msg = obtainMessage(DctConstants.EVENT_DISCONNECT_DONE, pair);
                         if (disconnectAll) {
                             apnContext.getDcAc().tearDownAll(apnContext.getReason(), msg);
@@ -1311,19 +1312,21 @@ public final class DcTracker extends DcTrackerBase {
                 return false;
             }
         }
-        if (DBG) log("setupData: dcac=" + dcac + " apnSetting=" + apnSetting);
+        final int generation = apnContext.incAndGetConnectionGeneration();
+        if (DBG) {
+            log("setupData: dcac=" + dcac + " apnSetting=" + apnSetting + " gen#=" + generation);
+        }
 
         apnContext.setDataConnectionAc(dcac);
         apnContext.setApnSetting(apnSetting);
-        int connectionGeneration = apnContext.incAndGetConnectionGeneration();
         apnContext.setState(DctConstants.State.CONNECTING);
         mPhone.notifyDataConnection(apnContext.getReason(), apnContext.getApnType());
 
         Message msg = obtainMessage();
         msg.what = DctConstants.EVENT_DATA_SETUP_COMPLETE;
-        msg.obj = new Pair<ApnContext, Integer>(apnContext, connectionGeneration);
+        msg.obj = new Pair<ApnContext, Integer>(apnContext, generation);
         dcac.bringUp(apnContext, getInitialMaxRetry(), profileId, radioTech,
-                mAutoAttachOnCreation.get(), msg, connectionGeneration);
+                mAutoAttachOnCreation.get(), msg, generation);
 
         if (DBG) log("setupData: initing!");
         return true;
@@ -2019,7 +2022,12 @@ public final class DcTracker extends DcTrackerBase {
             Pair<ApnContext, Integer>pair = (Pair<ApnContext, Integer>)ar.userObj;
             ApnContext apnContext = pair.first;
             if (apnContext != null) {
-                if (apnContext.getConnectionGeneration() == pair.second) {
+                final int generation = apnContext.getConnectionGeneration();
+                if (DBG) {
+                    log("getValidApnContext (" + logString + ") on " + apnContext + " got " +
+                            generation + " vs " + pair.second);
+                }
+                if (generation == pair.second) {
                     return apnContext;
                 } else {
                     log("ignoring obsolete " + logString);
