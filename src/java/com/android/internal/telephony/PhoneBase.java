@@ -1019,23 +1019,26 @@ public abstract class PhoneBase extends Handler implements Phone {
                 // send the setting on error
             }
         }
-        if (doAutomatic) {
-            // wrap the response message in our own message along with
-            // an empty string (to indicate automatic selection) for the
-            // operator's id.
-            NetworkSelectMessage nsm = new NetworkSelectMessage();
-            nsm.message = response;
-            nsm.operatorNumeric = "";
-            nsm.operatorAlphaLong = "";
-            nsm.operatorAlphaShort = "";
 
+        // wrap the response message in our own message along with
+        // an empty string (to indicate automatic selection) for the
+        // operator's id.
+        NetworkSelectMessage nsm = new NetworkSelectMessage();
+        nsm.message = response;
+        nsm.operatorNumeric = "";
+        nsm.operatorAlphaLong = "";
+        nsm.operatorAlphaShort = "";
+
+        if (doAutomatic) {
             Message msg = obtainMessage(EVENT_SET_NETWORK_AUTOMATIC_COMPLETE, nsm);
             mCi.setNetworkSelectionModeAutomatic(msg);
-
-            updateSavedNetworkOperator(nsm);
         } else {
             Rlog.d(LOG_TAG, "setNetworkSelectionModeAutomatic - already auto, ignoring");
+            ar.userObj = nsm;
+            handleSetSelectNetwork(ar);
         }
+
+        updateSavedNetworkOperator(nsm);
     }
 
     @Override
