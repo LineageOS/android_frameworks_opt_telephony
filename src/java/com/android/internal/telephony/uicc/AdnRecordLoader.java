@@ -280,6 +280,4 @@ public class AdnRecordLoader extends Handler {
             mUserResponse = null;
         }
     }
-
-
 }

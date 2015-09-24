@@ -168,7 +168,8 @@ public abstract class IccPhoneBookInterfaceManager {
         }
 
 
-        if (DBG) logd("updateAdnRecordsInEfBySearch: efid=" + efid +
+        if (DBG) logd("updateAdnRecordsInEfBySearch: efid=0x" +
+                Integer.toHexString(efid).toUpperCase() +
                 " ("+ oldTag + "," + oldPhoneNumber + ")"+ "==>" +
                 " ("+ newTag + "," + newPhoneNumber + ")"+ " pin2=" + pin2);
 
@@ -219,7 +220,8 @@ public abstract class IccPhoneBookInterfaceManager {
                     "Requires android.permission.WRITE_CONTACTS permission");
         }
 
-        if (DBG) logd("updateAdnRecordsInEfByIndex: efid=" + efid +
+        if (DBG) logd("updateAdnRecordsInEfByIndex: efid=0x" +
+                Integer.toHexString(efid).toUpperCase() +
                 " Index=" + index + " ==> " +
                 "("+ newTag + "," + newPhoneNumber + ")"+ " pin2=" + pin2);
         synchronized(mLock) {
@@ -268,7 +270,7 @@ public abstract class IccPhoneBookInterfaceManager {
         }
 
         efid = updateEfForIccType(efid);
-        if (DBG) logd("getAdnRecordsInEF: efid=" + efid);
+        if (DBG) logd("getAdnRecordsInEF: efid=0x" + Integer.toHexString(efid).toUpperCase());
 
         synchronized(mLock) {
             checkThread();
