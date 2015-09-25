@@ -809,7 +809,8 @@ public class GSMPhone extends PhoneBase {
 
         boolean imsUseEnabled = isImsUseEnabled()
                  && imsPhone != null
-                 && (imsPhone.isVolteEnabled() || imsPhone.isVowifiEnabled())
+                 && (imsPhone.isVolteEnabled() || imsPhone.isVowifiEnabled() ||
+                 (imsPhone.isVideoCallEnabled() && VideoProfile.isVideo(videoState)))
                  && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
                  && !shallDialOnCircuitSwitch(intentExtras);
 
@@ -833,6 +834,8 @@ public class GSMPhone extends PhoneBase {
                     + ((imsPhone != null) ? imsPhone.isVolteEnabled() : "N/A")
                     + ", imsPhone.isVowifiEnabled()="
                     + ((imsPhone != null) ? imsPhone.isVowifiEnabled() : "N/A")
+                    + ", imsPhone.isVideoCallEnabled()="
+                    + ((imsPhone != null) ? imsPhone.isVideoCallEnabled() : "N/A")
                     + ", imsPhone.getServiceState().getState()="
                     + ((imsPhone != null) ? imsPhone.getServiceState().getState() : "N/A"));
         }
