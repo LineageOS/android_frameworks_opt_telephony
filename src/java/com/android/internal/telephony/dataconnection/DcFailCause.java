@@ -16,6 +16,11 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.content.res.Resources;
+import android.content.Context;
+import android.telephony.SubscriptionManager;
+
+import com.android.internal.R;
+
 import java.util.HashMap;
 
 /**
@@ -87,16 +92,22 @@ public enum DcFailCause {
         return (this == REGULAR_DEACTIVATION && mRestartRadioOnRegularDeactivation);
     }
 
-    public boolean isPermanentFail() {
-        return (this == OPERATOR_BARRED) || (this == MISSING_UNKNOWN_APN) ||
-                (this == UNKNOWN_PDP_ADDRESS_TYPE) || (this == USER_AUTHENTICATION) ||
-                (this == ACTIVATION_REJECT_GGSN) || (this == SERVICE_OPTION_NOT_SUPPORTED) ||
-                (this == SERVICE_OPTION_NOT_SUBSCRIBED) || (this == NSAPI_IN_USE) ||
-                (this == ONLY_IPV4_ALLOWED) || (this == ONLY_IPV6_ALLOWED) ||
-                (this == PROTOCOL_ERRORS) ||
-                (this == RADIO_POWER_OFF) || (this == TETHERED_CALL_ACTIVE) ||
-                (this == RADIO_NOT_AVAILABLE) || (this == UNACCEPTABLE_NETWORK_PARAMETER) ||
-                (this == SIGNAL_LOST);
+    public boolean isPermanentFail(Context context, int subId) {
+        if (this == ACTIVATION_REJECT_GGSN) {
+            return (SubscriptionManager.getResourcesForSubId(context, subId).
+                    getBoolean(com.android.internal.R.bool.config_reject_ggsn_perm_failure));
+        } else if (this == PROTOCOL_ERRORS) {
+            return (SubscriptionManager.getResourcesForSubId(context, subId).
+                    getBoolean(com.android.internal.R.bool.config_protocol_errors_perm_failure));
+        } else {
+            return (this == OPERATOR_BARRED) || (this == MISSING_UNKNOWN_APN) ||
+                    (this == UNKNOWN_PDP_ADDRESS_TYPE) || (this == USER_AUTHENTICATION) ||
+                    (this == SERVICE_OPTION_NOT_SUPPORTED) ||
+                    (this == SERVICE_OPTION_NOT_SUBSCRIBED) || (this == NSAPI_IN_USE) ||
+                    (this == ONLY_IPV4_ALLOWED) || (this == ONLY_IPV6_ALLOWED) ||
+                    (this == RADIO_POWER_OFF) || (this == TETHERED_CALL_ACTIVE) ||
+                    (this == RADIO_NOT_AVAILABLE) || (this == UNACCEPTABLE_NETWORK_PARAMETER);
+        }
     }
 
     public boolean isEventLoggable() {
