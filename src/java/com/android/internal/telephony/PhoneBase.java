@@ -1038,6 +1038,14 @@ public abstract class PhoneBase extends Handler implements Phone {
             updateSavedNetworkOperator(nsm);
         } else {
             Rlog.d(LOG_TAG, "setNetworkSelectionModeAutomatic - already auto, ignoring");
+            // since the Network selection mode is already set to
+            // automatic, sendresponse with the result considering
+            // it as successful for those expecting it.
+            if (response != null) {
+                AsyncResult.forMessage(response, null, null);
+                response.sendToTarget();
+            }
+
         }
     }
 
