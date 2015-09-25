@@ -729,7 +729,7 @@ public class ImsPhoneConnection extends Connection {
      * @param imsCall The call to check for changes in address display fields.
      * @return Whether the address display fields have been changed.
      */
-    private boolean updateAddressDisplay(ImsCall imsCall) {
+    public boolean updateAddressDisplay(ImsCall imsCall) {
         if (imsCall == null) {
             return false;
         }
