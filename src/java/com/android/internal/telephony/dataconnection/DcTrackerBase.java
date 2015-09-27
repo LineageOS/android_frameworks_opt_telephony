@@ -277,7 +277,7 @@ public abstract class DcTrackerBase extends Handler {
     protected ApnSetting mActiveApn;
 
     /** allApns holds all apns */
-    protected ArrayList<ApnSetting> mAllApnSettings = new ArrayList<ApnSetting>();
+    protected final ArrayList<ApnSetting> mAllApnSettings = new ArrayList<ApnSetting>();
 
     /** preferred apn */
     protected ApnSetting mPreferredApn = null;
