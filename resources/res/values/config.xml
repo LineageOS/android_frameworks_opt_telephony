@@ -37,4 +37,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <!-- Configuartion to support 7bit Ascii encoding and decoding
             for long messages. -->
     <bool name="config_ascii_7bit_support_for_long_message">false</bool>
+    <!-- Configuration for displaying 14 digit IMEI Number -->
+    <bool name="config_enable_display_14digit_imei">false</bool>
 </resources>
