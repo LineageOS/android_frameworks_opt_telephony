@@ -120,6 +120,10 @@ public class TelephonyPluginDelegate {
         return sPlugin.makeGSMPhone(context, ci, notifier, phoneId);
     }
 
+    public PhoneProxy makePhoneProxy(PhoneBase phone) {
+        return sPlugin.makePhoneProxy(phone);
+    }
+
     public PhoneBase makeCDMALTEPhone(Context context, CommandsInterface ci,
             PhoneNotifier notifier, int phoneId) {
         return sPlugin.makeCDMALTEPhone(context, ci, notifier, phoneId);
