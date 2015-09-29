@@ -73,6 +73,11 @@ public abstract class TelephonyPluginBase implements TelephonyPluginInterface {
     }
 
     @Override
+    public PhoneProxy makePhoneProxy(PhoneBase phone) {
+        return new PhoneProxy(phone);
+    }
+
+    @Override
     public PhoneBase makeCDMALTEPhone(Context context, CommandsInterface ci,
             PhoneNotifier notifier, int phoneId) {
         return new CDMALTEPhone(context, ci, notifier, phoneId);
