@@ -45,6 +45,7 @@ import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.VoLteServiceState;
 import android.telephony.ModemActivityInfo;
 import android.text.TextUtils;
@@ -178,8 +179,9 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_SS                             = 36;
     protected static final int EVENT_CONFIG_LCE                     = 37;
     private static final int EVENT_CHECK_FOR_NETWORK_AUTOMATIC      = 38;
+    protected static final int EVENT_GET_CALLFORWARDING_STATUS      = 39;
     protected static final int EVENT_LAST                           =
-            EVENT_CHECK_FOR_NETWORK_AUTOMATIC;
+            EVENT_GET_CALLFORWARDING_STATUS;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -194,6 +196,13 @@ public abstract class PhoneBase extends Handler implements Phone {
     public static final String VM_COUNT = "vm_count_key";
     // Key used to read/write the ID for storing the voice mail
     public static final String VM_ID = "vm_id_key";
+
+    // Key used to read/write the SIM IMSI used for storing the imsi
+    public static final String SIM_IMSI = "sim_imsi_key";
+    // Key used to read/write SIM IMSI used for storing the imsi
+    public static final String VM_SIM_IMSI = "vm_sim_imsi_key";
+    // Key used to read/write if Call Forwarding is enabled
+    public static final String CF_ENABLED = "cf_enabled_key";
 
     // Key used to read/write "disable DNS server check" pref (used for testing)
     public static final String DNS_SERVER_CHECK_DISABLED_KEY = "dns_server_check_disabled_key";
@@ -1439,6 +1448,89 @@ public abstract class PhoneBase extends Handler implements Phone {
     public boolean getCallForwardingIndicator() {
         IccRecords r = mIccRecords.get();
         return (r != null) ? r.getVoiceCallForwardingFlag() : false;
+    }
+
+    /**
+     * This method stores the CF_ENABLED flag in preferences
+     * @param enabled
+     */
+    public void setCallForwardingPreference(boolean enabled) {
+        Rlog.d(LOG_TAG, "Set callforwarding info to perferences");
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor edit = sp.edit();
+        edit.putBoolean(CF_ENABLED + getSubId(), enabled);
+        edit.commit();
+
+        // set the sim imsi to be able to track when the sim card is changed.
+        setSimImsi(getSubscriberId());
+    }
+
+    public boolean getCallForwardingPreference() {
+        Rlog.d(LOG_TAG, "Get callforwarding info from perferences");
+
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        boolean cf = false;
+        // Migrate CF enabled flag from phoneid based preference to subId based.
+        boolean needMigration = false;
+        String oldCfKey = null;
+        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+            if (!sp.contains(CF_ENABLED + getSubId()) && sp.contains(CF_ENABLED + mPhoneId)) {
+                oldCfKey = CF_ENABLED + mPhoneId;
+                needMigration = true;
+            }
+        } else {
+            if (!sp.contains(CF_ENABLED + getSubId()) && sp.contains(CF_ENABLED)) {
+                oldCfKey = CF_ENABLED;
+                needMigration = true;
+            }
+        }
+        if (needMigration) {
+            // Save cf flag based on subId and remove old preference
+            cf = sp.getBoolean(oldCfKey, false);
+            setCallForwardingPreference(cf);
+            SharedPreferences.Editor edit = sp.edit();
+            edit.remove(oldCfKey);
+            edit.commit();
+            return cf;
+        }
+        cf = sp.getBoolean(CF_ENABLED + getSubId(), false);
+        return cf;
+    }
+
+    public String getSimImsi() {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        boolean needMigration = false;
+        String oldImsiKey = null;
+        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+            //Migrate sim_imsi value for msim
+            if (!sp.contains(SIM_IMSI + getSubId()) && sp.contains(VM_SIM_IMSI + mPhoneId)) {
+                oldImsiKey = VM_SIM_IMSI + mPhoneId;
+                needMigration = true;
+            }
+        } else {
+            //Migrate sim_imsi value for single sim
+            if (!sp.contains(SIM_IMSI + getSubId()) && sp.contains(VM_SIM_IMSI)) {
+                oldImsiKey = VM_SIM_IMSI;
+                needMigration = true;
+            }
+        }
+        if (needMigration) {
+            // Save imsi based on subId and remove old preference
+            String imsi = sp.getString(oldImsiKey, null);
+            setSimImsi(imsi);
+            SharedPreferences.Editor editor = sp.edit();
+            editor.remove(oldImsiKey);
+            editor.commit();
+            return imsi;
+        }
+        return sp.getString(SIM_IMSI + getSubId(), null);
+    }
+
+    public void setSimImsi(String imsi) {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putString(SIM_IMSI + getSubId(), imsi);
+        editor.apply();
     }
 
     /**

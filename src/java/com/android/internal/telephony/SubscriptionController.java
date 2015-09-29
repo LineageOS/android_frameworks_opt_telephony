@@ -22,6 +22,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -31,6 +32,7 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.UserHandle;
+import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
@@ -1663,6 +1665,16 @@ public class SubscriptionController extends ISub.Stub {
 
         if (VDBG) logdl("[isActiveSubId]- " + retVal);
         return retVal;
+    }
+
+    public void removeStaleSubPreferences(String prefKey) {
+        List<SubscriptionInfo> subInfoList = getAllSubInfoList(mContext.getOpPackageName());
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        for (SubscriptionInfo subInfo : subInfoList) {
+            if (subInfo.getSimSlotIndex() == -1) {
+                sp.edit().remove(prefKey + subInfo.getSubscriptionId()).commit();
+            }
+        }
     }
 
     /**
