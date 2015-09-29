@@ -73,16 +73,17 @@ public class PhoneProxy extends Handler implements Phone {
 
     private int mRilVersion;
 
-    private static final int EVENT_VOICE_RADIO_TECH_CHANGED = 1;
+    protected static final int EVENT_VOICE_RADIO_TECH_CHANGED = 1;
     private static final int EVENT_RADIO_ON = 2;
-    private static final int EVENT_REQUEST_VOICE_RADIO_TECH_DONE = 3;
-    private static final int EVENT_RIL_CONNECTED = 4;
+    protected static final int EVENT_REQUEST_VOICE_RADIO_TECH_DONE = 3;
+    protected static final int EVENT_RIL_CONNECTED = 4;
     private static final int EVENT_UPDATE_PHONE_OBJECT = 5;
     private static final int EVENT_CARRIER_CONFIG_CHANGED = 6;
     private static final int EVENT_SIM_RECORDS_LOADED = 7;
     private static final int EVENT_RADIO_AVAILABLE = 8;
+    protected static final int EVENT_RADIO_UNAVAILABLE = 9;
 
-    private int mPhoneId = 0;
+    protected int mPhoneId = 0;
 
     private Context mContext;
     private BroadcastReceiver mPhoneProxyReceiver = new BroadcastReceiver() {
@@ -111,6 +112,7 @@ public class PhoneProxy extends Handler implements Phone {
         mCommandsInterface.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
         mCommandsInterface.registerForVoiceRadioTechChanged(
                              this, EVENT_VOICE_RADIO_TECH_CHANGED, null);
+        mCommandsInterface.registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, null);
         mPhoneId = phone.getPhoneId();
         mIccSmsInterfaceManager =
                 new IccSmsInterfaceManager((PhoneBase)this.mActivePhone);
@@ -220,15 +222,15 @@ public class PhoneProxy extends Handler implements Phone {
         super.handleMessage(msg);
     }
 
-    private static void logd(String msg) {
+    protected void logd(String msg) {
         Rlog.d(LOG_TAG, "[PhoneProxy] " + msg);
     }
 
-    private void loge(String msg) {
+    protected void loge(String msg) {
         Rlog.e(LOG_TAG, "[PhoneProxy] " + msg);
     }
 
-    private void phoneObjectUpdater(int newVoiceRadioTech) {
+    protected void phoneObjectUpdater(int newVoiceRadioTech) {
         logd("phoneObjectUpdater: newVoiceRadioTech=" + newVoiceRadioTech);
 
         if (mActivePhone != null) {
