@@ -814,7 +814,11 @@ public final class DcTracker extends DcTrackerBase {
                         if (originalApns.size() != waitingApns.size() ||
                                 originalApns.containsAll(waitingApns) == false) {
                             apnContext.releaseDataConnection(reason);
+                        } else {
+                            continue;
                         }
+                    } else {
+                        continue;
                     }
                 }
             }
