@@ -69,15 +69,14 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
         public boolean executed;
         public final NetworkRequest request;
         public final int priority;
-        public final int phoneId;
+
         private final LocalLog requestLog;
 
-        public RequestInfo(NetworkRequest request, int priority, LocalLog l, int phoneId) {
+        public RequestInfo(NetworkRequest request, int priority, LocalLog l) {
             this.request = request;
             this.priority = priority;
             this.requestLog = l;
             this.executed = false;
-            this.phoneId = phoneId;
         }
 
         public void log(String str) {
@@ -91,7 +90,7 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
         @Override
         public String toString() {
             return "[ request=" + request + ", executed=" + executed +
-                ", priority=" + priority + ", phoneId=" + phoneId + "]";
+                ", priority=" + priority + "]";
         }
     }
 
