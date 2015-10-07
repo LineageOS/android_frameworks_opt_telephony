@@ -725,6 +725,7 @@ public final class CdmaCallTracker extends CallTracker {
         // These cases need no "last call fail" reason
         for (int i = mDroppedDuringPoll.size() - 1; i >= 0 ; i--) {
             CdmaConnection conn = mDroppedDuringPoll.get(i);
+            boolean wasDisconnected = false;
 
             if (conn.isIncoming() && conn.getConnectTime() == 0) {
                 // Missed or rejected call
@@ -741,10 +742,17 @@ public final class CdmaCallTracker extends CallTracker {
                 }
                 mDroppedDuringPoll.remove(i);
                 hasAnyCallDisconnected |= conn.onDisconnect(cause);
+                wasDisconnected = true;
             } else if (conn.mCause == DisconnectCause.LOCAL
                     || conn.mCause == DisconnectCause.INVALID_NUMBER) {
                 mDroppedDuringPoll.remove(i);
                 hasAnyCallDisconnected |= conn.onDisconnect(conn.mCause);
+                wasDisconnected = true;
+            }
+
+            if (wasDisconnected && unknownConnectionAppeared && conn == newUnknown) {
+                unknownConnectionAppeared = false;
+                newUnknown = null;
             }
         }
 
