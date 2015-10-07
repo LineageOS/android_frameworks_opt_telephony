@@ -119,7 +119,7 @@ class SmsCbHeader {
                     warningSecurityInfo = null;
                 }
                 mEtwsInfo = new SmsCbEtwsInfo(warningType, emergencyUserAlert, activatePopup,
-                        warningSecurityInfo);
+                        true, warningSecurityInfo);
                 mCmasInfo = null;
                 return;     // skip the ETWS/CMAS initialization code for regular notifications
             } else {
@@ -166,7 +166,8 @@ class SmsCbHeader {
             boolean emergencyUserAlert = isEtwsEmergencyUserAlert();
             boolean activatePopup = isEtwsPopupAlert();
             int warningType = getEtwsWarningType();
-            mEtwsInfo = new SmsCbEtwsInfo(warningType, emergencyUserAlert, activatePopup, null);
+            mEtwsInfo = new SmsCbEtwsInfo(warningType, emergencyUserAlert, activatePopup,
+                    false, null);
             mCmasInfo = null;
         } else if (isCmasMessage()) {
             int messageClass = getCmasMessageClass();
