@@ -22,12 +22,13 @@ import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 import com.android.internal.telephony.CommandException;
+import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.ConnectInfo;
+import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.RequestInfo;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneProxy;
-import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.ConnectInfo;
-import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.RequestInfo;
+import com.android.internal.telephony.SubscriptionController;
 
 import android.os.AsyncResult;
 import android.os.Message;
@@ -126,10 +127,17 @@ public class DcSwitchStateMachine extends StateMachine {
 
 
                 case DcSwitchAsyncChannel.EVENT_DATA_ATTACHED:
+                    SubscriptionController subController = SubscriptionController.getInstance();
+                    int ddsSubId = subController.getDefaultDataSubId();
+                    int ddsPhoneId = subController.getPhoneId(ddsSubId);
+
                     if (DBG) {
-                        log("AttachingState: EVENT_DATA_ATTACHED");
+                        log("IdleState: EVENT_DATA_ATTACHED");
                     }
-                    transitionTo(mAttachedState);
+
+                    if (ddsPhoneId == mId) {
+                        transitionTo(mAttachedState);
+                    }
                     retVal = HANDLED;
                     break;
 
@@ -325,9 +333,7 @@ public class DcSwitchStateMachine extends StateMachine {
                         DctController.getInstance().releaseAllRequests(mId);
                     }
 
-                    // modem gets unhappy if we try to detach while attaching
-                    // wait til attach finishes.
-                    deferMessage(msg);
+                    transitionTo(mIdleState);
                     retVal = HANDLED;
                     break;
                 }
