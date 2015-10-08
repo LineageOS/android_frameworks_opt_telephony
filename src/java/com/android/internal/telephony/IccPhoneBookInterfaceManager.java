@@ -50,6 +50,7 @@ public abstract class IccPhoneBookInterfaceManager {
     protected final Object mLock = new Object();
     protected int mRecordSize[];
     protected boolean mSuccess;
+    private   boolean mForceAdnUsage = false;
     protected List<AdnRecord> mRecords;
 
 
@@ -125,6 +126,7 @@ public abstract class IccPhoneBookInterfaceManager {
         if (mRecords != null) {
             mRecords.clear();
         }
+        mForceAdnUsage = false;
     }
 
     public void updateIccRecords(IccRecords iccRecords) {
@@ -314,19 +316,24 @@ public abstract class IccPhoneBookInterfaceManager {
                     "Requires android.permission.READ_CONTACTS permission");
         }
 
-        efid = updateEfForIccType(efid);
-        if (DBG) logd("getAdnRecordsInEF: efid=" + efid);
-
         synchronized(mLock) {
             checkThread();
             AtomicBoolean status = new AtomicBoolean(false);
             Message response = mBaseHandler.obtainMessage(EVENT_LOAD_DONE, status);
+            efid = updateEfForIccType(efid);
+            if (DBG) logd("getAdnRecordsInEF: efid=" + efid);
+
             if (mAdnCache != null) {
                 mAdnCache.requestLoadAllAdnLike(efid,
                         mAdnCache.extensionEfForEf(efid), null, response);
                 waitForResult(status);
             } else {
                 loge("Failure while trying to load from SIM due to uninitialised adncache");
+            }
+            if (mRecords == null && efid == IccConstants.EF_PBR && !mAdnCache.isPbrPresent()) {
+                logd("getAdnRecordsInEF: Load from EF_ADN as pbr is not present");
+                mForceAdnUsage = true;
+                return getAdnRecordsInEf(IccConstants.EF_ADN);
             }
         }
         return mRecords;
@@ -369,7 +376,7 @@ public abstract class IccPhoneBookInterfaceManager {
 
     private int updateEfForIccType(int efid) {
         // Check if we are trying to read ADN records
-        if (efid == IccConstants.EF_ADN) {
+        if (efid == IccConstants.EF_ADN && !mForceAdnUsage) {
             if (mPhone.getCurrentUiccAppType() == AppType.APPTYPE_USIM ||
                     mPhone.getCurrentUiccAppType() == AppType.APPTYPE_CSIM) {
                 return IccConstants.EF_PBR;
