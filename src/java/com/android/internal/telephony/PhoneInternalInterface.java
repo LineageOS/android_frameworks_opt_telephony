@@ -68,7 +68,7 @@ public interface PhoneInternalInterface {
     }
 
     enum SuppService {
-      UNKNOWN, SWITCH, SEPARATE, TRANSFER, CONFERENCE, REJECT, HANGUP, RESUME;
+      UNKNOWN, SWITCH, SEPARATE, TRANSFER, CONFERENCE, REJECT, HANGUP, RESUME, HOLD;
     }
 
     // "Features" accessible through the connectivity manager
