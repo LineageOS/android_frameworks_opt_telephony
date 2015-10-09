@@ -384,7 +384,7 @@ public class UiccCardApplication {
                     // request has completed. ar.userObj is the response Message
                     int attemptsRemaining = -1;
                     ar = (AsyncResult)msg.obj;
-                    if ((ar.exception != null) && (ar.result != null)) {
+                    if (ar.result != null) {
                         attemptsRemaining = parsePinPukErrorResult(ar);
                     }
                     Message response = (Message)ar.userObj;
