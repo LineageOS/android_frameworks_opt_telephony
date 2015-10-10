@@ -441,12 +441,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
         boolean isConferenceUri = false;
         boolean isSkipSchemaParsing = false;
+        boolean isCallPull = false;
 
         if (intentExtras != null) {
             isConferenceUri = intentExtras.getBoolean(
                     TelephonyProperties.EXTRA_DIAL_CONFERENCE_URI, false);
             isSkipSchemaParsing = intentExtras.getBoolean(
                     TelephonyProperties.EXTRA_SKIP_SCHEMA_PARSING, false);
+            isCallPull = intentExtras.getBoolean(
+                    TelephonyProperties.EXTRA_IS_CALL_PULL, false);
         }
 
         if (!isConferenceUri && !isSkipSchemaParsing && (conn.getAddress()== null
@@ -473,6 +476,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
             profile.setCallExtraInt(ImsCallProfile.EXTRA_OIR, clirMode);
             profile.setCallExtraBoolean(TelephonyProperties.EXTRAS_IS_CONFERENCE_URI,
                     isConferenceUri);
+            profile.setCallExtraBoolean(ImsCallProfile.EXTRA_IS_CALL_PULL, isCallPull);
 
             // Translate call subject intent-extra from Telecom-specific extra key to the
             // ImsCallProfile key.

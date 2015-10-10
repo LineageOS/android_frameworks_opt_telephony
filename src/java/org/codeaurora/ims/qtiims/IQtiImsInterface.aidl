@@ -107,4 +107,14 @@ oneway interface IQtiImsInterface {
      */
     void sendCallDeflectRequest(int phoneId, String deflectNumber,
             IQtiImsInterfaceListener listener);
+
+   /**
+     * Register for VICE dialog
+     *
+     * @param listener, provided if caller needs to be notified for get result.
+     * @return void
+     *
+     */
+    void registerForViceRefreshInfo(IQtiImsInterfaceListener listener);
+
 }
