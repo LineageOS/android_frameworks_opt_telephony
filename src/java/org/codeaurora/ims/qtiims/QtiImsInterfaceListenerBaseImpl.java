@@ -69,6 +69,11 @@ public class QtiImsInterfaceListenerBaseImpl extends IQtiImsInterfaceListener.St
         logUnexpectedQtiImsListenerCall("receiveCallDeflectResponse");
     }
 
+    @Override
+    public void notifyRefreshViceInfo(QtiViceInfo viceInfo) {
+        logUnexpectedQtiImsListenerCall("notifyRefreshViceInfo");
+    }
+
     private static void logUnexpectedQtiImsListenerCall(String name)
     {
         Rlog.e(LOG_TAG, "Error! " + name + "() in QtiImsInterfaceListener should not be " +
