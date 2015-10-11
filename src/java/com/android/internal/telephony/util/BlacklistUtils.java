@@ -192,7 +192,7 @@ public class BlacklistUtils {
                 normalizedNumber.indexOf('_') >= 0;
         // For non-regex numbers, apply additional validity checking if
         // they didn't pass e164 normalization
-        if (!isRegex && !normalizeResult.second && !BlacklistUtils.isValidPhoneNumber(number)) {
+        if (!isRegex && !normalizeResult.second && !PhoneNumberUtils.isGlobalPhoneNumber(number)) {
             // number was invalid
             return new Pair<String, Boolean>(normalizedNumber, false);
         }
@@ -244,15 +244,6 @@ public class BlacklistUtils {
                 : new Locale("", countryCode);
 
         return PhoneNumberUtils.formatNumberToE164(src, numberLocale.getCountry());
-    }
-
-    public static boolean isValidPhoneNumber(String address) {
-        for (int i = 0, count = address.length(); i < count; i++) {
-            if (!PhoneNumberUtils.isISODigit(address.charAt(i))) {
-                return false;
-            }
-        }
-        return true;
     }
 
     public static boolean isInputRegex(String input) {
