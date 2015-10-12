@@ -50,7 +50,6 @@ public abstract class IccPhoneBookInterfaceManager {
     protected final Object mLock = new Object();
     protected int mRecordSize[];
     protected boolean mSuccess;
-    private   boolean mIs3gCard = false;  // flag to determine if card is 3G or 2G
     protected List<AdnRecord> mRecords;
 
 
@@ -382,7 +381,8 @@ public abstract class IccPhoneBookInterfaceManager {
     public int getAdnCount() {
         int adnCount = 0;
         if (mAdnCache != null) {
-            if (mIs3gCard) {
+            if (mPhone.getCurrentUiccAppType() == AppType.APPTYPE_USIM ||
+                    mPhone.getCurrentUiccAppType() == AppType.APPTYPE_CSIM) {
                 adnCount = mAdnCache.getUsimAdnCount();
             } else {
                 adnCount = mAdnCache.getAdnCount();
