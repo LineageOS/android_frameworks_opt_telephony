@@ -19,6 +19,7 @@ package com.android.internal.telephony.dataconnection;
 import android.net.NetworkRequest;
 import android.os.Message;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionManager;
 import android.util.LocalLog;
 
 import com.android.internal.util.AsyncChannel;
@@ -64,18 +65,16 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
     }
 
     public static class RequestInfo {
-        boolean executed;
         final NetworkRequest request;
         final int priority;
-        final int phoneId;
+        int executedPhoneId;
         private final LocalLog requestLog;
 
-        public RequestInfo(NetworkRequest request, int priority, LocalLog l, int phoneId) {
+        public RequestInfo(NetworkRequest request, int priority, LocalLog l) {
             this.request = request;
             this.priority = priority;
             this.requestLog = l;
-            this.executed = false;
-            this.phoneId = phoneId;
+            this.executedPhoneId = SubscriptionManager.INVALID_PHONE_INDEX;
         }
 
         public void log(String str) {
@@ -88,8 +87,8 @@ public class DcSwitchAsyncChannel extends AsyncChannel {
 
         @Override
         public String toString() {
-            return "[ request=" + request + ", executed=" + executed +
-                ", priority=" + priority + ", phoneId=" + phoneId + "]";
+            return "[ request=" + request + ", executedPhoneId=" + executedPhoneId +
+                ", priority=" + priority + "]";
         }
     }
 
