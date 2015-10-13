@@ -39,4 +39,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <bool name="config_ascii_7bit_support_for_long_message">false</bool>
     <!-- Configuration for displaying 14 digit IMEI Number -->
     <bool name="config_enable_display_14digit_imei">false</bool>
+    <!-- Controlling respond call via sms feature via config item -->
+    <bool name="config_reject_call_via_sms_enabled">true</bool>
 </resources>
