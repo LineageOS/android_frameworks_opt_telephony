@@ -1847,6 +1847,13 @@ public interface CommandsInterface {
             int p3, String data, Message response);
 
     /**
+     * Get ATR (Answer To Reset; as per ISO/IEC 7816-4) from SIM card
+     *
+     * @param response Callback message
+     */
+    public void getAtr(Message response);
+
+    /**
      * Read one of the NV items defined in {@link RadioNVItems} / {@code ril_nv_items.h}.
      * Used for device configuration by some CDMA operators.
      *
