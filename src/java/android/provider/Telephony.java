@@ -316,7 +316,7 @@ public final class Telephony {
          * @hide
          */
         public static Cursor query(ContentResolver cr, String[] projection) {
-            android.util.SeempLog.record(13);
+            android.util.SeempLog.record(10);
             return cr.query(CONTENT_URI, projection, null, null, DEFAULT_SORT_ORDER);
         }
 
@@ -326,7 +326,7 @@ public final class Telephony {
          */
         public static Cursor query(ContentResolver cr, String[] projection,
                 String where, String orderBy) {
-            android.util.SeempLog.record(13);
+            android.util.SeempLog.record(10);
             return cr.query(CONTENT_URI, projection, where,
                     null, orderBy == null ? DEFAULT_SORT_ORDER : orderBy);
         }
@@ -2044,7 +2044,7 @@ public final class Telephony {
          */
         public static Cursor query(
                 ContentResolver cr, String[] projection) {
-            android.util.SeempLog.record(13);
+            android.util.SeempLog.record(10);
             return cr.query(CONTENT_URI, projection, null, null, DEFAULT_SORT_ORDER);
         }
 
@@ -2055,7 +2055,7 @@ public final class Telephony {
         public static Cursor query(
                 ContentResolver cr, String[] projection,
                 String where, String orderBy) {
-            android.util.SeempLog.record(13);
+            android.util.SeempLog.record(10);
             return cr.query(CONTENT_URI, projection,
                     where, null, orderBy == null ? DEFAULT_SORT_ORDER : orderBy);
         }
