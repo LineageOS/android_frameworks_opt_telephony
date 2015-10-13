@@ -1099,8 +1099,11 @@ public abstract class InboundSmsHandler extends StateMachine {
                     options = bopts.toBundle();
                 } catch (RemoteException e) {
                 }
-                dispatchIntent(intent, android.Manifest.permission.RECEIVE_SMS,
-                        AppOpsManager.OP_RECEIVE_SMS, options, this, UserHandle.SYSTEM);
+
+                String mimeType = intent.getType();
+                dispatchIntent(intent, WapPushOverSms.getPermissionForType(mimeType),
+                        WapPushOverSms.getAppOpsPermissionForIntent(mimeType), options, this,
+                        UserHandle.SYSTEM);
             } else {
                 // Now that the intents have been deleted we can clean up the PDU data.
                 if (!Intents.DATA_SMS_RECEIVED_ACTION.equals(action)
