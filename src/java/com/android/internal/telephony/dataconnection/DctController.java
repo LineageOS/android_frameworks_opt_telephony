@@ -375,7 +375,7 @@ public class DctController extends Handler {
         //2-2. If no, set data not allow on the current PS subscription
         //2-2-1. Set data allow on the selected subscription
 
-        int requestedPhoneId = getTopPriorityRequestPhoneId();
+        final int requestedPhoneId = getTopPriorityRequestPhoneId();
         int activePhoneId = INVALID_PHONE_INDEX;
 
         for (int i=0; i<mDcSwitchStateMachine.length; i++) {
@@ -525,7 +525,12 @@ public class DctController extends Handler {
         } else {
             subId = Integer.parseInt(topSubId);
         }
-        return mSubController.getPhoneId(subId);
+        final int phoneId = mSubController.getPhoneId(subId);
+        if (phoneId == DEFAULT_PHONE_INDEX) {
+            // that means there isn't a phone for the default sub
+            return INVALID_PHONE_INDEX;
+        }
+        return phoneId;
     }
 
     private void onSubInfoReady() {
