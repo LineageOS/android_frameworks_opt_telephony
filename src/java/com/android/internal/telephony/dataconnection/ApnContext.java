@@ -310,11 +310,18 @@ public class ApnContext {
             if (mRefCount++ == 0) {
                 mDcTracker.setEnabled(mDcTracker.apnTypeToId(mApnType), true);
             }
+            log("incRefCount postIncrement = " + mRefCount);
         }
     }
 
     public void decRefCount(LocalLog log) {
         synchronized (mRefCountLock) {
+            if (mRefCount == 0) {
+                log.log("ApnContext.decRefCount - reset to 0.");
+                log("decRefCount attempt to decrement below 0");
+                return;
+            }
+
             // leave the last log alive to capture the actual tear down
             if (mRefCount != 1) {
                 if (mLocalLogs.remove(log)) {
@@ -328,6 +335,7 @@ public class ApnContext {
             if (mRefCount-- == 1) {
                 mDcTracker.setEnabled(mDcTracker.apnTypeToId(mApnType), false);
             }
+            log("decRefCount postDeccrement = " + mRefCount);
         }
     }
 

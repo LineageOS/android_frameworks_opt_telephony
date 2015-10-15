@@ -468,12 +468,24 @@ public class DctController extends Handler {
         }
     }
 
-    private void onReleaseAllRequests(int phoneId) {
+    private boolean isWithOutSpecifier(RequestInfo requestInfo) {
+        String specifier = requestInfo.request.networkCapabilities
+            .getNetworkSpecifier();
+        if (specifier == null || specifier.equals("")) {
+            logd("isWithOutSpecifier = true, requestInfo = " + requestInfo);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    protected void onReleaseAllRequests(int phoneId) {
         logd("onReleaseAllRequests phoneId=" + phoneId);
         Iterator<Integer> iterator = mRequestInfos.keySet().iterator();
         while (iterator.hasNext()) {
             RequestInfo requestInfo = mRequestInfos.get(iterator.next());
-            if (getRequestPhoneId(requestInfo.request) == phoneId) {
+            if ((getRequestPhoneId(requestInfo.request) == phoneId)
+                || isWithOutSpecifier(requestInfo)) {
                 onReleaseRequest(requestInfo);
             }
         }
@@ -485,6 +497,32 @@ public class DctController extends Handler {
 
         if (phoneId != -1 && phoneId == topPriPhone) {
             mDcSwitchAsyncChannel[phoneId].retryConnect();
+        }
+    }
+
+    private void deactivateDdsRequests() {
+        int dataSubId = mSubController.getDefaultDataSubId();
+
+        Iterator<Integer> iterator = mRequestInfos.keySet().iterator();
+        while (iterator.hasNext()) {
+            RequestInfo requestInfo = mRequestInfos.get(iterator.next());
+            String specifier = requestInfo.request.networkCapabilities
+                .getNetworkSpecifier();
+            if (specifier == null || specifier.equals("")) {
+                if (requestInfo.executed) {
+                    String apn = apnForNetworkRequest(requestInfo.request);
+                    logd("[setDataSubId] subId =" + dataSubId);
+                    requestInfo.log(
+                            "DctController.onSettingsChange releasing request");
+                    for (int i = 0; i < mPhoneNum; i++) {
+                        PhoneBase phoneBase =
+                            (PhoneBase)mPhones[i].getActivePhone();
+                        DcTrackerBase dcTracker = phoneBase.mDcTracker;
+                        dcTracker.decApnRefCount(apn, requestInfo.getLog());
+                        requestInfo.executed = false;
+                    }
+                }
+            }
         }
     }
 
@@ -500,33 +538,8 @@ public class DctController extends Handler {
             }
         }
 
-        int[] subIds = SubscriptionManager.getSubId(activePhoneId);
-        if (subIds ==  null || subIds.length == 0) {
-            loge("onSettingsChange, subIds null or length 0 for activePhoneId " + activePhoneId);
-            return;
-        }
-        logd("onSettingsChange, data sub: " + dataSubId + ", active data sub: " + subIds[0]);
-
-        if (subIds[0] != dataSubId) {
-            Iterator<Integer> iterator = mRequestInfos.keySet().iterator();
-            while (iterator.hasNext()) {
-                RequestInfo requestInfo = mRequestInfos.get(iterator.next());
-                String specifier = requestInfo.request.networkCapabilities.getNetworkSpecifier();
-                if (specifier == null || specifier.equals("")) {
-                    if (requestInfo.executed) {
-                        String apn = apnForNetworkRequest(requestInfo.request);
-                        logd("[setDataSubId] activePhoneId:" + activePhoneId + ", subId =" +
-                                dataSubId);
-                        requestInfo.log("DctController.onSettingsChange releasing request");
-                        PhoneBase phoneBase =
-                                (PhoneBase)mPhones[activePhoneId].getActivePhone();
-                        DcTrackerBase dcTracker = phoneBase.mDcTracker;
-                        dcTracker.decApnRefCount(apn, requestInfo.getLog());
-                        requestInfo.executed = false;
-                    }
-                }
-            }
-        }
+        logd("onSettingsChange, activePhoneId = " + activePhoneId);
+        deactivateDdsRequests();
 
         // Some request maybe pending due to invalid settings
         // Try to handle pending request when settings changed
