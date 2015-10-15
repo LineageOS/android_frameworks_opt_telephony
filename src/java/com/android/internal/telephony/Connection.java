@@ -55,6 +55,7 @@ public abstract class Connection {
         public void onMultipartyStateChanged(boolean isMultiParty);
         public void onConferenceMergedFailed();
         public void onExtrasChanged(Bundle extras);
+        public void onExitedEcmMode();
     }
 
     /**
@@ -84,6 +85,8 @@ public abstract class Connection {
         public void onConferenceMergedFailed() {}
         @Override
         public void onExtrasChanged(Bundle extras) {}
+        @Override
+        public void onExitedEcmMode() {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
@@ -720,6 +723,15 @@ public abstract class Connection {
     public void onConferenceMergeFailed() {
         for (Listener l : mListeners) {
             l.onConferenceMergedFailed();
+        }
+    }
+
+    /**
+     * Notifies that the underlying phone has exited ECM mode.
+     */
+    public void onExitedEcmMode() {
+        for (Listener l : mListeners) {
+            l.onExitedEcmMode();
         }
     }
 

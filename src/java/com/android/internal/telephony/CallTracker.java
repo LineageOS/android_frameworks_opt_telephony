@@ -187,7 +187,10 @@ public abstract class CallTracker extends Handler {
             if (values.length == 2) {
                 if (values[0].equals(
                         android.telephony.PhoneNumberUtils.stripSeparators(dialString))) {
-                    mCi.testingEmergencyCall();
+                    // mCi will be null for ImsPhoneCallTracker.
+                    if (mCi != null) {
+                        mCi.testingEmergencyCall();
+                    }
                     log("checkForTestEmergencyNumber: remap " +
                             dialString + " to " + values[1]);
                     dialString = values[1];
