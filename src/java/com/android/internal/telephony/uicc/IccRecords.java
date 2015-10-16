@@ -111,6 +111,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     @Override
     public String toString() {
+        String iccIdToPrint = mIccId != null ? mIccId.substring(0, 9) + "XXXXXXXXXXX" : null;
         return "mDestroyed=" + mDestroyed
                 + " mContext=" + mContext
                 + " mCi=" + mCi
@@ -125,7 +126,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " recordsToLoad=" + mRecordsToLoad
                 + " adnCache=" + mAdnCache
                 + " recordsRequested=" + mRecordsRequested
-                + " iccid=" + mIccId
+                + " iccid=" + iccIdToPrint
                 + " msisdnTag=" + mMsisdnTag
                 + " voiceMailNum=" + mVoiceMailNum
                 + " voiceMailTag=" + mVoiceMailTag
@@ -714,7 +715,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mRecordsRequested=" + mRecordsRequested);
         pw.println(" mRecordsToLoad=" + mRecordsToLoad);
         pw.println(" mRdnCache=" + mAdnCache);
-        pw.println(" iccid=" + mIccId);
+        String iccIdToPrint = mIccId != null ? mIccId.substring(0, 9) + "XXXXXXXXXXX" : null;
+        pw.println(" iccid=" + iccIdToPrint);
         if (TextUtils.isEmpty(mMsisdn)) {
             pw.println(" mMsisdn=null");
         } else {
