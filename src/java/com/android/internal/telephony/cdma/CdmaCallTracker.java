@@ -226,7 +226,7 @@ public final class CdmaCallTracker extends CallTracker {
             return dialThreeWay(dialString);
         }
 
-        mPendingMO = new CdmaConnection(mPhone.getContext(), checkForTestEmergencyNumber(dialString),
+        mPendingMO = new CdmaConnection(mPhone, checkForTestEmergencyNumber(dialString),
                 this, mForegroundCall);
         mHangupPendingMO = false;
 
@@ -280,7 +280,7 @@ public final class CdmaCallTracker extends CallTracker {
             disableDataCallInEmergencyCall(dialString);
 
             // Attach the new connection to foregroundCall
-            mPendingMO = new CdmaConnection(mPhone.getContext(),
+            mPendingMO = new CdmaConnection(mPhone,
                                 checkForTestEmergencyNumber(dialString), this, mForegroundCall);
             // Some network need a empty flash before sending the normal one
             m3WayCallFlashDelay = mPhone.getContext().getResources()
@@ -590,7 +590,7 @@ public final class CdmaCallTracker extends CallTracker {
                     if (Phone.DEBUG_PHONE) {
                         log("pendingMo=" + mPendingMO + ", dc=" + dc);
                     }
-                    mConnections[i] = new CdmaConnection(mPhone.getContext(), dc, this, i);
+                    mConnections[i] = new CdmaConnection(mPhone, dc, this, i);
 
                     Connection hoConnection = getHoConnection(dc);
                     if (hoConnection != null) {
