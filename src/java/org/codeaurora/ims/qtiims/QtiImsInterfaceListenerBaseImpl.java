@@ -29,55 +29,42 @@
 
 package org.codeaurora.ims.qtiims;
 
-import android.telephony.Rlog;
-
 /**
  * This class contains default implementation for IQtiImsInterfaceListener.
  */
 public class QtiImsInterfaceListenerBaseImpl extends IQtiImsInterfaceListener.Stub {
 
-    private static String LOG_TAG = "QtiImsInterfaceListenerBaseImpl";
-
     @Override
     public void onSetCallForwardUncondTimer(int status) {
-        logUnexpectedQtiImsListenerCall("onSetCallForwardUncondTimer");
     }
 
     @Override
     public void onGetCallForwardUncondTimer(int startHour, int endHour, int startMinute,
             int endMinute, int reason, int status, String number, int service) {
-        logUnexpectedQtiImsListenerCall("onGetCallForwardUncondTimer");
     }
 
     @Override
     public void onUTReqFailed(int errCode, String errString) {
-        logUnexpectedQtiImsListenerCall("onUTReqFailed");
     }
 
     @Override
     public void onGetPacketCount(int status, long packetCount) {
-        logUnexpectedQtiImsListenerCall("onGetPacketCount");
     }
 
     @Override
     public void onGetPacketErrorCount(int status, long packetErrorCount) {
-        logUnexpectedQtiImsListenerCall("onGetPacketErrorCount");
     }
 
     @Override
     public void receiveCallDeflectResponse(int result) {
-        logUnexpectedQtiImsListenerCall("receiveCallDeflectResponse");
     }
 
     @Override
     public void notifyRefreshViceInfo(QtiViceInfo viceInfo) {
-        logUnexpectedQtiImsListenerCall("notifyRefreshViceInfo");
     }
 
-    private static void logUnexpectedQtiImsListenerCall(String name)
-    {
-        Rlog.e(LOG_TAG, "Error! " + name + "() in QtiImsInterfaceListener should not be " +
-                "called, Default Implementation.");
+    @Override
+    public void receiveCallTransferResponse(int result) {
     }
 }
 
