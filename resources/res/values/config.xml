@@ -75,4 +75,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <string name="data_conn_status_title"></string>
     <string name="user_authentication_failed"></string>
     <string name="service_not_subscribed"></string>
+
+    <!-- control to enable or disable call transfer feature -->
+    <bool name="config_enable_calltransfer_over_ims">false</bool>
 </resources>
