@@ -2543,7 +2543,12 @@ public final class DcTracker extends DcTrackerBase {
      * Data Connections and setup the preferredApn.
      */
     private void createAllApnList() {
-        mAllApnSettings.clear();
+        if (mAllApnSettings != null) {
+            mAllApnSettings.clear();
+        }
+        else {
+            mAllApnSettings = new ArrayList<ApnSetting>();
+        }
         String operator = getOperatorNumeric();
         int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
 
