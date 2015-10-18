@@ -782,6 +782,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                             // states[3] (if present) is the current radio technology
                             if (states.length >= 4 && states[3] != null) {
                                 type = Integer.parseInt(states[3]);
+                                if (type == 102) // In some cases operator may send EDGE as 102 code (got that for Russia/Beeline)
+                                    type = ServiceState.RIL_RADIO_TECHNOLOGY_EDGE;
                             }
                             if ((states.length >= 5 ) &&
                                     (regState == ServiceState.RIL_REG_STATE_DENIED)) {
