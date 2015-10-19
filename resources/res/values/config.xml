@@ -43,4 +43,16 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <bool name="config_reject_call_via_sms_enabled">true</bool>
     <!-- To disable/enable call barring requests over IMS -->
     <bool name="config_enable_callbarring_over_ims">false</bool>
+    <!-- When set to true, this config enables reading and displaying
+         the contents of EF_SDN present in SIM -->
+    <bool name="config_enable_displaying_sdn">false</bool>
+    <!-- config for showing dial option when fdn contact is selected.
+         By default feature is disabled -->
+    <bool name="config_fdn_direct_dial">false</bool>
+    <!-- FDN contact search is enabled-->
+    <bool name="config_fdn_contact_search">false</bool>
+
+    <string name="sdn"></string>
+    <string name="summary_sdn"></string>
+    <string name="launch_sdn"></string>
 </resources>

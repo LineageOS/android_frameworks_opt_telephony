@@ -38,6 +38,8 @@ import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.gsm.GsmServiceStateTracker;
 import com.android.internal.telephony.TelephonyPluginBase;
 import com.android.internal.telephony.DefaultTelephonyPlugin;
+import com.android.internal.telephony.uicc.SIMRecords;
+import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.R;
 
 import dalvik.system.PathClassLoader;
@@ -138,5 +140,9 @@ public class TelephonyPluginDelegate {
 
     public GsmServiceStateTracker makeGsmServiceStateTracker(GSMPhone phone) {
         return sPlugin.makeGsmServiceStateTracker(phone);
+    }
+
+    public SIMRecords makeSIMRecords (UiccCardApplication app, Context c, CommandsInterface ci) {
+        return sPlugin.makeSIMRecords (app, c, ci);
     }
 }
