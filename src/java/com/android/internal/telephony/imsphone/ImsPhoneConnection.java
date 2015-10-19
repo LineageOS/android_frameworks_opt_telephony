@@ -605,10 +605,11 @@ public class ImsPhoneConnection extends Connection {
         }
 
         boolean updateParent = mParent.update(this, imsCall, state);
+        boolean updateMediaCapabilities = updateMediaCapabilities(imsCall);
         boolean updateWifiState = updateWifiState();
         boolean updateAddressDisplay = updateAddressDisplay(imsCall);
 
-        return updateParent || updateWifiState || updateAddressDisplay;
+        return updateParent || updateMediaCapabilities || updateWifiState || updateAddressDisplay;
     }
 
     @Override
