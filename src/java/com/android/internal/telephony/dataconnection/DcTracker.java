@@ -2531,7 +2531,8 @@ public class DcTracker extends Handler {
                 // request goes away.  This applies to both CDMA and GSM because they both
                 // can declare the DUN APN sharable by default traffic, thus still satisfying
                 // those requests and not torn down organically.
-                if (apnContext.getApnType() == PhoneConstants.APN_TYPE_DUN && teardownForDun()) {
+                if ((apnContext.getApnType() == PhoneConstants.APN_TYPE_DUN && teardownForDun())
+                        || apnContext.getState() != DctConstants.State.CONNECTED) {
                     cleanup = true;
                 } else {
                     cleanup = false;
