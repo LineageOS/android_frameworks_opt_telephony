@@ -136,7 +136,14 @@ public class DcSwitchStateMachine extends StateMachine {
                     }
 
                     if (ddsPhoneId == mId) {
-                        transitionTo(mAttachedState);
+                        if (DBG) {
+                            log("IdleState: DDS sub reported ATTACHed in IDLE state");
+                        }
+                        /* Move to AttachingState and handle this ATTACH msg over there.
+                         * This would ensure that Modem gets a ALLOW_DATA(true)
+                         */
+                        deferMessage(msg);
+                        transitionTo(mAttachingState);
                     }
                     retVal = HANDLED;
                     break;
