@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5f2577a7_81d2ca33",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 2573,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2015-10-20T11:35:18Z",
+      "side": 1,
+      "message": "Are there even multiple threads in play here? I thought mAllApnSettings is only touched from the thread DcTracker (being a Handler) runs on.",
+      "revId": "04373c935b1bc265e02d1c81f850529e5357fd6b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5f2577a7_a11706ee",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 3472,
+      "author": {
+        "id": 1063
+      },
+      "writtenOn": "2015-10-20T11:35:18Z",
+      "side": 1,
+      "message": "This comment is unneeded, I think, as it provides no real additional information about the _current_ state of the code. Information about comparison to previous code belongs in the commit message and/or review comments, not the actual code base.",
+      "revId": "04373c935b1bc265e02d1c81f850529e5357fd6b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
