@@ -34,6 +34,8 @@ import android.telephony.Rlog;
 
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.DctController;
+import com.android.internal.telephony.gsm.GSMPhone;
+import com.android.internal.telephony.gsm.GsmServiceStateTracker;
 import com.android.internal.telephony.TelephonyPluginBase;
 import com.android.internal.telephony.DefaultTelephonyPlugin;
 import com.android.internal.R;
@@ -132,5 +134,9 @@ public class TelephonyPluginDelegate {
     public void initExtTelephonyClasses(Context context,
             Phone[] phoneProxy, CommandsInterface[] commandsInterfaces) {
         sPlugin.initExtTelephonyClasses(context, phoneProxy, commandsInterfaces);
+    }
+
+    public GsmServiceStateTracker makeGsmServiceStateTracker(GSMPhone phone) {
+        return sPlugin.makeGsmServiceStateTracker(phone);
     }
 }
