@@ -91,20 +91,20 @@ import java.util.TimeZone;
 /**
  * {@hide}
  */
-final class GsmServiceStateTracker extends ServiceStateTracker {
+public class GsmServiceStateTracker extends ServiceStateTracker {
     static final String LOG_TAG = "GsmSST";
     static final boolean VDBG = false;
     //CAF_MSIM make it private ??
     private static final int EVENT_ALL_DATA_DISCONNECTED = 1001;
-    private GSMPhone mPhone;
-    GsmCellLocation mCellLoc;
-    GsmCellLocation mNewCellLoc;
+    protected GSMPhone mPhone;
+    protected GsmCellLocation mCellLoc;
+    protected GsmCellLocation mNewCellLoc;
     int mPreferredNetworkType;
 
     private int mMaxDataCalls = 1;
-    private int mNewMaxDataCalls = 1;
+    protected int mNewMaxDataCalls = 1;
     private int mReasonDataDenied = -1;
-    private int mNewReasonDataDenied = -1;
+    protected int mNewReasonDataDenied = -1;
 
     private static final String ACTION_MANAGED_ROAMING_IND =
             "codeaurora.intent.action.ACTION_MANAGED_ROAMING_IND";
@@ -119,12 +119,12 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
      * Data roaming status solely based on TS 27.007 10.1.19 CGREG. Only used by
      * handlePollStateResult to store CGREG roaming result.
      */
-    private boolean mDataRoaming = false;
+    protected boolean mDataRoaming = false;
 
     /**
      * Mark when service state is in emergency call only mode
      */
-    private boolean mEmergencyOnly = false;
+    protected boolean mEmergencyOnly = false;
 
     /**
      * Sometimes we get the NITZ time before we know what country we
@@ -1073,7 +1073,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
     }
 
-    private void pollStateDone() {
+    protected void pollStateDone() {
         if (Build.IS_DEBUGGABLE && SystemProperties.getBoolean(PROP_FORCE_ROAMING, false)) {
             mNewSS.setVoiceRoaming(true);
             mNewSS.setDataRoaming(true);
@@ -1564,7 +1564,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
     }
 
     /** code is registration state 0-5 from TS 27.007 7.2 */
-    private int regCodeToServiceState(int code) {
+    protected int regCodeToServiceState(int code) {
         switch (code) {
             case 0:
             case 2: // 2 is "searching"
@@ -1594,7 +1594,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
      * code is registration state 0-5 from TS 27.007 7.2
      * returns true if registered roam, false otherwise
      */
-    private boolean regCodeIsRoaming (int code) {
+    protected boolean regCodeIsRoaming (int code) {
         return ServiceState.RIL_REG_STATE_ROAMING == code;
     }
 
