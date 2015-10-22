@@ -165,6 +165,11 @@ public class ImsPhoneConnection extends Connection {
 
         updateWifiState();
 
+        // Ensure any extras set on the ImsCallProfile at the start of the call are cached locally
+        // in the ImsPhoneConnection.  This isn't going to inform any listeners (since the original
+        // connection is not likely to be associated with a TelephonyConnection yet).
+        updateExtras(imsCall);
+
         mParent = parent;
         mParent.attach(this,
                 (mIsIncoming? ImsPhoneCall.State.INCOMING: ImsPhoneCall.State.DIALING));
