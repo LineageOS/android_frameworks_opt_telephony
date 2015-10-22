@@ -43,7 +43,7 @@ public class AdnRecordLoader extends Handler {
     // For "load one"
     int mRecordNumber;
 
-    int mNumExtRec;
+    int mNumExtRec = -1;
 
     // for "load all"
     ArrayList<AdnRecord> mAdns; // only valid after EVENT_ADN_LOAD_ALL_DONE
@@ -208,7 +208,7 @@ public class AdnRecordLoader extends Handler {
     handleMessage(Message msg) {
         AsyncResult ar;
         byte data[];
-        int[] extRecord;
+        int[] extRecord = null;
         AdnRecord adn;
 
         try {
@@ -256,21 +256,20 @@ public class AdnRecordLoader extends Handler {
                     String path = (String)(ar.userObj);
 
                     if (ar.exception != null) {
-                        throw new RuntimeException("get EF record size failed",
-                                ar.exception);
+                        Rlog.d(LOG_TAG, "Exception occured while fetching record size for EFEXT1");
+                    } else {
+                        int[] extRecordSize = (int[])ar.result;
+                        // extRecordSize is int[3] array
+                        // int[0]  is the record length
+                        // int[1]  is the total length of the EF file
+                        // int[2]  is the number of records in the EF file
+                        // So int[0] * int[2] = int[1]
+                        if (extRecordSize.length != 3) {
+                            throw new RuntimeException("get wrong EF record size format",
+                                    ar.exception);
+                        }
+                        mNumExtRec = extRecordSize[2]; //Number of EXT records.
                     }
-
-                    int[] extRecordSize = (int[])ar.result;
-                    // extRecordSize is int[3] array
-                    // int[0]  is the record length
-                    // int[1]  is the total length of the EF file
-                    // int[2]  is the number of records in the EF file
-                    // So int[0] * int[2] = int[1]
-                    if (extRecordSize.length != 3) {
-                        throw new RuntimeException("get wrong EF record size format",
-                                ar.exception);
-                    }
-                    mNumExtRec = extRecordSize[2]; //Number of EXT records.
                     mPendingExtLoads = 1;
 
                     /* If we are loading from EF_ADN, specifically
@@ -377,12 +376,14 @@ public class AdnRecordLoader extends Handler {
                     mPendingExtLoads = 0;
 
                     // extRecord has the details of used/free EXT1 records.
-                    extRecord = new int[mNumExtRec];
-                    for (int i = 0; i < mNumExtRec; i++) {
-                        extRecord[i] = 0;
+                    if (mNumExtRec != -1) {
+                        extRecord = new int[mNumExtRec];
+                        for (int i = 0; i < mNumExtRec; i++) {
+                            extRecord[i] = 0;
+                        }
                     }
 
-                    for(int i = 0, s = datas.size() ; i < s ; i++) {
+                    for (int i = 0, s = datas.size() ; i < s ; i++) {
                         adn = new AdnRecord(mEf, 1 + i, datas.get(i));
                         mAdns.add(adn);
 
