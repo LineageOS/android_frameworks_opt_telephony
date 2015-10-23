@@ -48,6 +48,7 @@ import com.android.internal.util.IndentingPrintWriter;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.HashMap;
+import java.lang.reflect.Constructor;
 
 /**
  * {@hide}
@@ -134,6 +135,8 @@ public class PhoneFactory {
                 int[] networkModes = new int[numPhones];
                 sProxyPhones = new PhoneProxy[numPhones];
                 sCommandsInterfaces = new RIL[numPhones];
+                String sRILClassname = SystemProperties.get("ro.telephony.ril_class", "RIL").trim();
+                Rlog.i(LOG_TAG, "RILClassname is " + sRILClassname);
 
                 for (int i = 0; i < numPhones; i++) {
                     // reads the system properties and makes commandsinterface
@@ -148,8 +151,20 @@ public class PhoneFactory {
                         networkModes[i] = RILConstants.PREFERRED_NETWORK_MODE;
                     }
                     Rlog.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkModes[i]));
-                    sCommandsInterfaces[i] = new RIL(context, networkModes[i],
-                            cdmaSubscription, i);
+                    // Use reflection to construct the RIL class (defaults to RIL)
+                    try {
+                        sCommandsInterfaces[i] = instantiateCustomRIL(
+                                                     sRILClassname, context, networkModes[i], cdmaSubscription, i);
+                    } catch (Exception e) {
+                        // 6 different types of exceptions are thrown here that it's
+                        // easier to just catch Exception as our "error handling" is the same.
+                        // Yes, we're blocking the whole thing and making the radio unusable. That's by design.
+                        // The log message should make it clear why the radio is broken
+                        while (true) {
+                            Rlog.e(LOG_TAG, "Unable to construct custom RIL class", e);
+                            try {Thread.sleep(10000);} catch (InterruptedException ie) {}
+                        }
+                    }
                 }
                 Rlog.i(LOG_TAG, "Creating SubscriptionController");
                 TelephonyPluginDelegate.getInstance().initSubscriptionController(context,
@@ -225,6 +240,14 @@ public class PhoneFactory {
                     sCommandsInterfaces[phoneId], sPhoneNotifier, phoneId);
             return phone;
         }
+    }
+
+    private static <T> T instantiateCustomRIL(
+                      String sRILClassname, Context context, int networkMode, int cdmaSubscription, Integer instanceId)
+                      throws Exception {
+        Class<?> clazz = Class.forName("com.android.internal.telephony." + sRILClassname);
+        Constructor<?> constructor = clazz.getConstructor(Context.class, int.class, int.class, Integer.class);
+        return (T) clazz.cast(constructor.newInstance(context, networkMode, cdmaSubscription, instanceId));
     }
 
     public static Phone getDefaultPhone() {
