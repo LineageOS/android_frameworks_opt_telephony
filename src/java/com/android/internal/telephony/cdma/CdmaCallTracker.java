@@ -16,7 +16,10 @@
 
 package com.android.internal.telephony.cdma;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Message;
@@ -40,6 +43,7 @@ import com.android.internal.telephony.LastCallFailCause;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneConnection;
@@ -99,7 +103,41 @@ public final class CdmaCallTracker extends CallTracker {
     private int m3WayCallFlashDelay = 0;
 //    boolean needsPoll;
 
+    /**
+     * Listens for Emergency Callback Mode state change intents
+     */
+    private BroadcastReceiver mEcmExitReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(
+                    TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED)) {
 
+                boolean isInEcm = intent.getBooleanExtra(PhoneConstants.PHONE_IN_ECM_STATE, false);
+                log("Received ACTION_EMERGENCY_CALLBACK_MODE_CHANGED isInEcm = " + isInEcm);
+
+                // If we exit ECM mode, notify all connections.
+                if (!isInEcm) {
+                    // Although mConnections seems to be the place to look, it is not guaranteed
+                    // to have all of the connections we're tracking.  THe best place to look is in
+                    // the CdmaCall objects associated with the tracker.
+                    List<Connection> toNotify = new ArrayList<Connection>();
+                    toNotify.addAll(mRingingCall.getConnections());
+                    toNotify.addAll(mForegroundCall.getConnections());
+                    toNotify.addAll(mBackgroundCall.getConnections());
+                    if (mPendingMO != null) {
+                        toNotify.add(mPendingMO);
+                    }
+
+                    // Notify connections that ECM mode exited.
+                    for (Connection connection : toNotify) {
+                        if (connection != null) {
+                            connection.onExitedEcmMode();
+                        }
+                    }
+                }
+            }
+        }
+    };
 
     //***** Events
 
@@ -112,6 +150,11 @@ public final class CdmaCallTracker extends CallTracker {
         mCi.registerForNotAvailable(this, EVENT_RADIO_NOT_AVAILABLE, null);
         mCi.registerForCallWaitingInfo(this, EVENT_CALL_WAITING_INFO_CDMA, null);
         mForegroundCall.setGeneric(false);
+
+        // Register receiver for ECM exit
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
+        mPhone.getContext().registerReceiver(mEcmExitReceiver, filter);
     }
 
     public void dispose() {
@@ -121,6 +164,7 @@ public final class CdmaCallTracker extends CallTracker {
         mCi.unregisterForOn(this);
         mCi.unregisterForNotAvailable(this);
         mCi.unregisterForCallWaitingInfo(this);
+        mPhone.getContext().unregisterReceiver(mEcmExitReceiver);
 
         clearDisconnected();
 
