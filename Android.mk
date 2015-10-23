@@ -26,6 +26,11 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src/java) \
 
 LOCAL_JAVA_LIBRARIES := voip-common ims-common
 LOCAL_REQUIRED_MODULES := telresources
+
+ifneq ($(BOARD_RIL_CLASS),)
+LOCAL_SRC_FILES += $(call find-other-java-files,$(BOARD_RIL_CLASS))
+endif
+
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := telephony-common
 
