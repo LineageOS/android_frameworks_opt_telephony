@@ -93,9 +93,8 @@ public class UiccController extends Handler {
 
     private static final int EVENT_ICC_STATUS_CHANGED = 1;
     private static final int EVENT_GET_ICC_STATUS_DONE = 2;
-    private static final int EVENT_RADIO_UNAVAILABLE = 3;
-    private static final int EVENT_REFRESH = 4;
-    private static final int EVENT_REFRESH_OEM = 5;
+    private static final int EVENT_REFRESH = 3;
+    private static final int EVENT_REFRESH_OEM = 4;
 
     private CommandsInterface[] mCis;
     private UiccCard[] mUiccCards = new UiccCard[TelephonyManager.getDefault().getPhoneCount()];
@@ -141,7 +140,6 @@ public class UiccController extends Handler {
 
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, index);
             // TODO remove this once modem correctly notifies the unsols
-            mCis[i].registerForNotAvailable(this, EVENT_RADIO_UNAVAILABLE, index);
             if (mOEMHookSimRefresh) {
                 mCis[i].registerForSimRefreshEvent(this, EVENT_REFRESH_OEM, index);
             } else {
@@ -258,14 +256,6 @@ public class UiccController extends Handler {
                     if (DBG) log("Received EVENT_GET_ICC_STATUS_DONE");
                     AsyncResult ar = (AsyncResult)msg.obj;
                     onGetIccCardStatusDone(ar, index);
-                    break;
-                case EVENT_RADIO_UNAVAILABLE:
-                    if (DBG) log("EVENT_RADIO_UNAVAILABLE, dispose card");
-                    if (mUiccCards[index] != null) {
-                        mUiccCards[index].dispose();
-                    }
-                    mUiccCards[index] = null;
-                    mIccChangedRegistrants.notifyRegistrants(new AsyncResult(null, index, null));
                     break;
                 case EVENT_REFRESH:
                     ar = (AsyncResult)msg.obj;
