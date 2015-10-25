@@ -28,6 +28,8 @@
 
 package org.codeaurora.ims.qtiims;
 
+import org.codeaurora.ims.qtiims.QtiViceInfo;
+
 /**
  * Used by client application to get the result from lower layer by
  * communicating with vendor.
@@ -95,4 +97,13 @@ oneway interface IQtiImsInterfaceListener {
      * @return void.
      */
     void receiveCallDeflectResponse(int result);
+
+    /**
+     * Notifies client when Vice Dialog update is received
+     *
+     * @param <QtiViceInfo> - VICE Dialog
+     *
+     * @return void.
+     */
+    void notifyRefreshViceInfo(in QtiViceInfo viceInfo);
 }
