@@ -1926,28 +1926,6 @@ public final class DcTracker extends DcTrackerBase {
                     // Turn off radio to save battery and avoid wasting carrier resources.
                     // The network isn't usable and network validation will just fail anyhow.
                     setRadio(false);
-
-                    Intent intent = new Intent(
-                            TelephonyIntents.ACTION_DATA_CONNECTION_CONNECTED_TO_PROVISIONING_APN);
-                    intent.putExtra(PhoneConstants.DATA_APN_KEY, apnContext.getApnSetting().apn);
-                    intent.putExtra(PhoneConstants.DATA_APN_TYPE_KEY, apnContext.getApnType());
-
-                    String apnType = apnContext.getApnType();
-                    LinkProperties linkProperties = getLinkProperties(apnType);
-                    if (linkProperties != null) {
-                        intent.putExtra(PhoneConstants.DATA_LINK_PROPERTIES_KEY, linkProperties);
-                        String iface = linkProperties.getInterfaceName();
-                        if (iface != null) {
-                            intent.putExtra(PhoneConstants.DATA_IFACE_NAME_KEY, iface);
-                        }
-                    }
-                    NetworkCapabilities networkCapabilities = getNetworkCapabilities(apnType);
-                    if (networkCapabilities != null) {
-                        intent.putExtra(PhoneConstants.DATA_NETWORK_CAPABILITIES_KEY,
-                                networkCapabilities);
-                    }
-
-                    mPhone.getContext().sendBroadcastAsUser(intent, UserHandle.ALL);
                 }
                 if (DBG) {
                     log("onDataSetupComplete: SETUP complete type=" + apnContext.getApnType()
