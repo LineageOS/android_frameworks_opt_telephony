@@ -59,6 +59,7 @@ public class ConfigResourceUtil {
                     + "resourceValue = " + resValue);
             return resValue;
         } catch (NameNotFoundException | NotFoundException e) {
+            Log.v(TAG, "resourceName = ");
             throw new RuntimeException(e.getMessage());
         }
     }
