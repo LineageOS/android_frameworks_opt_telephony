@@ -2543,6 +2543,16 @@ public abstract class PhoneBase extends Handler implements Phone {
         return getLocaleFromCarrierProperties(mContext);
     }
 
+    protected boolean isMatchGid(String gid) {
+        String gid1 = getGroupIdLevel1();
+        int gidLength = gid.length();
+        if (!TextUtils.isEmpty(gid1) && (gid1.length() >= gidLength)
+                && gid1.substring(0, gidLength).equalsIgnoreCase(gid)) {
+            return true;
+        }
+        return false;
+    }
+
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("PhoneBase: subId=" + getSubId());
         pw.println(" mPhoneId=" + mPhoneId);
