@@ -316,14 +316,11 @@ public class DctController extends Handler {
         logd("requestNetwork request=" + request + ", priority=" + priority);
         l.log("Dctc.requestNetwork, priority=" + priority);
 
-        if (mRequestInfos.containsKey(request.requestId)) {
-            logd("requestNetwork replacing " + mRequestInfos.get(request.requestId));
-            // NOTE: executedPhoneId might be reset
+        if (mRequestInfos.containsKey(request.requestId) == false) {
+            RequestInfo requestInfo = new RequestInfo(request, priority, l);
+            mRequestInfos.put(request.requestId, requestInfo);
+            processRequests();
         }
-
-        RequestInfo requestInfo = new RequestInfo(request, priority, l);
-        mRequestInfos.put(request.requestId, requestInfo);
-        processRequests();
 
         return PhoneConstants.APN_REQUEST_STARTED;
     }
@@ -392,12 +389,7 @@ public class DctController extends Handler {
                 + ", activePhoneId=" + activePhoneId);
 
         if (requestedPhoneId == INVALID_PHONE_INDEX) {
-            // either we have no network request
-            // or there is no valid subscription at the moment
-            if (activePhoneId != INVALID_PHONE_INDEX) {
-                // detatch so we can try connecting later
-                mDcSwitchAsyncChannel[activePhoneId].disconnectAll();
-            }
+            // we have no network request - don't bother with this
             return;
         }
 
