@@ -32,4 +32,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
      <!-- Configuration for sending and receiving Mms when mobile data is disabled.-->
      <bool name="config_enable_mms_with_mobile_data_off">true</bool>
+    <!-- To disable/enable call barring requests over IMS -->
+    <bool name="config_enable_callbarring_over_ims">true</bool>
 </resources>
