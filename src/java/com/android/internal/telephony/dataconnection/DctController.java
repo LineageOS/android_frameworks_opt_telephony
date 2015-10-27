@@ -388,44 +388,10 @@ public class DctController extends Handler {
                 RequestInfo requestInfo = mRequestInfos.get(iterator.next());
                 if (getRequestPhoneId(requestInfo.request) == phoneId && !requestInfo.executed) {
                     mDcSwitchAsyncChannel[phoneId].connect(requestInfo);
-                    Phone phone = mPhones[phoneId].getActivePhone();
-                    if ((phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA)
-                            && (activePhoneId == -1)) {
-                        /* Traditionally modem reports data registered on CDMA sub even when it is
-                         * non-dds because CDMA network does not have PS ATTACH/DETACH concept.
-                         *
-                         * So when CDMA sub becomes DDS from non-dds the state-machine is expacting
-                         * onDataConnectionAttach() call from serviceStateTracker. It would never
-                         * happen since cdma SST did not notice change in registration during DDS
-                         * switch.
-                         *
-                         * Hence we need to fake the ATTACH to move/progress DcSwitchStateMachine.
-                         */
-                        logd("Active phone is CDMA, fake ATTACH");
-                        mDcSwitchAsyncChannel[phoneId].notifyDataAttached();
-                    }
-
                 }
             }
         } else {
-            Phone phone = mPhones[activePhoneId].getActivePhone();
             mDcSwitchAsyncChannel[activePhoneId].disconnectAll();
-            if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
-                /* Traditionally modem reports data registered on CDMA sub even when it is
-                 * non-dds because CDMA network does not have PS ATTACH/DETACH concept.
-                 *
-                 * So when CDMA sub becomes non-dds from dds the state-machine is expacting
-                 * onDataConnectionDetached() call from serviceStateTracker. It would never
-                 * happen since cdma SST did not notice change in registration during DDS
-                 * switch.
-                 *
-                 * Hence we need to fake the DETACH to move/progress DcSwitchStateMachine.
-                 */
-
-                logd("Active phone is CDMA, fake DETACH");
-                mDcSwitchAsyncChannel[activePhoneId].notifyDataDetached();
-
-            }
         }
     }
 
