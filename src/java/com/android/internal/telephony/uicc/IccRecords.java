@@ -109,6 +109,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
     protected static final int EVENT_APP_READY = 1;
     private static final int EVENT_AKA_AUTHENTICATE_DONE          = 90;
 
+    public static final int CALL_FORWARDING_STATUS_DISABLED = 0;
+    public static final int CALL_FORWARDING_STATUS_ENABLED = 1;
+    public static final int CALL_FORWARDING_STATUS_UNKNOWN = -1;
+
     @Override
     public String toString() {
         String iccIdToPrint = mIccId != null ? mIccId.substring(0, 9) + "XXXXXXXXXXX" : null;
@@ -577,10 +581,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
     /**
      * Get the current Voice call forwarding flag for GSM/UMTS and the like SIMs
      *
-     * @return true if enabled
+     * @return CALL_FORWARDING_STATUS_XXX (DISABLED/ENABLED/UNKNOWN)
      */
-    public boolean getVoiceCallForwardingFlag() {
-        return false;
+    public int getVoiceCallForwardingFlag() {
+        return CALL_FORWARDING_STATUS_UNKNOWN;
     }
 
     /**
