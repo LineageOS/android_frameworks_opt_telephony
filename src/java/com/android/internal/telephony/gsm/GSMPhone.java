@@ -1587,7 +1587,7 @@ public class GSMPhone extends PhoneBase {
                 IccRecords r = mIccRecords.get();
                 Cfu cfu = (Cfu) ar.userObj;
                 if (ar.exception == null && r != null) {
-                    r.setVoiceCallForwardingFlag(1, msg.arg1 == 1, cfu.mSetCfNumber);
+                    setVoiceCallForwardingFlag(1, msg.arg1 == 1, cfu.mSetCfNumber);
                 }
                 if (cfu.mOnComplete != null) {
                     AsyncResult.forMessage(cfu.mOnComplete, ar.result, ar.exception);
@@ -1749,11 +1749,11 @@ public class GSMPhone extends PhoneBase {
             if (infos == null || infos.length == 0) {
                 // Assume the default is not active
                 // Set unconditional CFF in SIM to false
-                r.setVoiceCallForwardingFlag(1, false, null);
+                setVoiceCallForwardingFlag(1, false, null);
             } else {
                 for (int i = 0, s = infos.length; i < s; i++) {
                     if ((infos[i].serviceClass & SERVICE_CLASS_VOICE) != 0) {
-                        r.setVoiceCallForwardingFlag(1, (infos[i].status == 1),
+                        setVoiceCallForwardingFlag(1, (infos[i].status == 1),
                             infos[i].number);
                         // should only have the one
                         break;
