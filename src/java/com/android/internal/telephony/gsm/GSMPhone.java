@@ -993,7 +993,7 @@ public class GSMPhone extends PhoneBase {
                                 number = defaultVMNumberArray[0];
                             } else if (defaultVMNumberArray.length == 2 &&
                                     !TextUtils.isEmpty(defaultVMNumberArray[1]) &&
-                                    defaultVMNumberArray[1].equalsIgnoreCase(getGroupIdLevel1())) {
+                                    isMatchGid(defaultVMNumberArray[1])) {
                                 number = defaultVMNumberArray[0];
                                 break;
                             }
@@ -1863,7 +1863,7 @@ public class GSMPhone extends PhoneBase {
                     ((configArray.length == 1 && configArray[0].equalsIgnoreCase("true")) ||
                         (configArray.length == 2 && !TextUtils.isEmpty(configArray[1]) &&
                             configArray[0].equalsIgnoreCase("true") &&
-                            configArray[1].equalsIgnoreCase(getGroupIdLevel1())))) {
+                            isMatchGid(configArray[1])))) {
                             isProhibited = true;
             }
         }
