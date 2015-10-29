@@ -104,6 +104,16 @@ public class QtiVideoCallConstants {
     public static final int DOMAIN_PS = 2;
 
     /**
+     * Call supplementary services failures.
+     * TODO: Rename the file to QtiCallConstants.java as generic IMS constants are added. This
+     *  will be handled when we move the file to vendor/codeaurora/telephony project.
+     */
+    public static final int ERROR_CALL_CODE_UNSPECIFIED = -1;
+    public static final int ERROR_CALL_SUPP_SVC_FAILED = 1;
+    public static final int ERROR_CALL_SUPP_SVC_CANCELLED = 2;
+    public static final int ERROR_CALL_SUPP_SVC_REINVITE_COLLISION = 3;
+
+    /**
      * Private constructor. This class should not be instantiated.
      */
     private QtiVideoCallConstants() {
