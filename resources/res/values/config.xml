@@ -51,6 +51,8 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <bool name="config_fdn_direct_dial">false</bool>
     <!-- FDN contact search is enabled-->
     <bool name="config_fdn_contact_search">false</bool>
+    <!-- plmn name override enabled-->
+    <bool name="config_plmn_name_override_enabled">false</bool>
 
     <string name="sdn"></string>
     <string name="summary_sdn"></string>
