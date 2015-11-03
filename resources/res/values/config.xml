@@ -41,4 +41,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <bool name="config_enable_display_14digit_imei">false</bool>
     <!-- Controlling respond call via sms feature via config item -->
     <bool name="config_reject_call_via_sms_enabled">true</bool>
+    <!-- To disable/enable call barring requests over IMS -->
+    <bool name="config_enable_callbarring_over_ims">false</bool>
 </resources>
