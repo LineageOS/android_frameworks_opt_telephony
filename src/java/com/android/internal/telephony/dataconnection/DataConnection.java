@@ -978,7 +978,7 @@ public final class DataConnection extends StateMachine {
                     result.removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
                 }
             }
-            ConnectivityManager.maybeMarkCapabilitiesRestricted(result);
+            result.maybeMarkCapabilitiesRestricted();
         }
         int up = 14;
         int down = 14;
