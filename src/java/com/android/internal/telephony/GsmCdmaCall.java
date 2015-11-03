@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (C) 2015 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.gsm;
+package com.android.internal.telephony;
 
 import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
@@ -27,38 +27,32 @@ import java.util.List;
 /**
  * {@hide}
  */
-class GsmCall extends Call {
+public class GsmCdmaCall extends Call {
     /*************************** Instance Variables **************************/
 
-    /*package*/ GsmCallTracker mOwner;
+    /*package*/ GsmCdmaCallTracker mOwner;
 
     /****************************** Constructors *****************************/
     /*package*/
-    GsmCall (GsmCallTracker owner) {
+    GsmCdmaCall (GsmCdmaCallTracker owner) {
         mOwner = owner;
-    }
-
-    public void dispose() {
     }
 
     /************************** Overridden from Call *************************/
 
     @Override
-    public List<Connection>
-    getConnections() {
+    public List<Connection> getConnections() {
         // FIXME should return Collections.unmodifiableList();
         return mConnections;
     }
 
     @Override
-    public Phone
-    getPhone() {
+    public Phone getPhone() {
         return mOwner.mPhone;
     }
 
     @Override
-    public boolean
-    isMultiparty() {
+    public boolean isMultiparty() {
         return mConnections.size() > 1;
     }
 
@@ -67,47 +61,40 @@ class GsmCall extends Call {
      *  because an AT+CHLD=1 will be sent
      */
     @Override
-    public void
-    hangup() throws CallStateException {
+    public void hangup() throws CallStateException {
         mOwner.hangup(this);
     }
 
     @Override
-    public String
-    toString() {
+    public String toString() {
         return mState.toString();
     }
 
-    //***** Called from GsmConnection
+    //***** Called from GsmCdmaConnection
 
-    /*package*/ void
-    attach(Connection conn, DriverCall dc) {
+    /*package*/ void attach(Connection conn, DriverCall dc) {
         mConnections.add(conn);
 
         mState = stateFromDCState (dc.state);
     }
 
-    /*package*/ void
-    attachFake(Connection conn, State state) {
+    /*package*/ void attachFake(Connection conn, State state) {
         mConnections.add(conn);
 
         mState = state;
     }
 
     /**
-     * Called by GsmConnection when it has disconnected
+     * Called by GsmCdmaConnection when it has disconnected
      */
-    boolean
-    connectionDisconnected(GsmConnection conn) {
+    boolean connectionDisconnected(GsmCdmaConnection conn) {
         if (mState != State.DISCONNECTED) {
             /* If only disconnected connections remain, we are disconnected*/
 
             boolean hasOnlyDisconnectedConnections = true;
 
-            for (int i = 0, s = mConnections.size()  ; i < s; i ++) {
-                if (mConnections.get(i).getState()
-                    != State.DISCONNECTED
-                ) {
+            for (int i = 0, s = mConnections.size(); i < s; i ++) {
+                if (mConnections.get(i).getState() != State.DISCONNECTED) {
                     hasOnlyDisconnectedConnections = false;
                     break;
                 }
@@ -122,8 +109,7 @@ class GsmCall extends Call {
         return false;
     }
 
-    /*package*/ void
-    detach(GsmConnection conn) {
+    /*package*/ void detach(GsmCdmaConnection conn) {
         mConnections.remove(conn);
 
         if (mConnections.size() == 0) {
@@ -131,8 +117,7 @@ class GsmCall extends Call {
         }
     }
 
-    /*package*/ boolean
-    update (GsmConnection conn, DriverCall dc) {
+    /*package*/ boolean update (GsmCdmaConnection conn, DriverCall dc) {
         State newState;
         boolean changed = false;
 
@@ -150,12 +135,15 @@ class GsmCall extends Call {
      * @return true if there's no space in this call for additional
      * connections to be added via "conference"
      */
-    /*package*/ boolean
-    isFull() {
-        return mConnections.size() == GsmCallTracker.MAX_CONNECTIONS_PER_CALL;
+    /*package*/ boolean isFull() {
+        if (mOwner.mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
+            return mConnections.size() == GsmCdmaCallTracker.MAX_CONNECTIONS_PER_CALL_GSM;
+        } else {
+            return mConnections.size() == GsmCdmaCallTracker.MAX_CONNECTIONS_PER_CALL_CDMA;
+        }
     }
 
-    //***** Called from GsmCallTracker
+    //***** Called from GsmCdmaCallTracker
 
 
     /**
@@ -163,12 +151,9 @@ class GsmCall extends Call {
      * Note that at this point, the hangup request has been dispatched to the radio
      * but no response has yet been received so update() has not yet been called
      */
-    void
-    onHangupLocal() {
-        for (int i = 0, s = mConnections.size()
-                ; i < s; i++
-        ) {
-            GsmConnection cn = (GsmConnection)mConnections.get(i);
+    void onHangupLocal() {
+        for (int i = 0, s = mConnections.size(); i < s; i++) {
+            GsmCdmaConnection cn = (GsmCdmaConnection)mConnections.get(i);
 
             cn.onHangupLocal();
         }
@@ -178,10 +163,9 @@ class GsmCall extends Call {
     /**
      * Called when it's time to clean up disconnected Connection objects
      */
-    void
-    clearDisconnected() {
+    void clearDisconnected() {
         for (int i = mConnections.size() - 1 ; i >= 0 ; i--) {
-            GsmConnection cn = (GsmConnection)mConnections.get(i);
+            GsmCdmaConnection cn = (GsmCdmaConnection)mConnections.get(i);
 
             if (cn.getState() == State.DISCONNECTED) {
                 mConnections.remove(i);
@@ -193,4 +177,3 @@ class GsmCall extends Call {
         }
     }
 }
-

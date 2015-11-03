@@ -21,6 +21,7 @@ package com.android.internal.telephony.gsm;
 
 import android.telephony.Rlog;
 import com.android.internal.telephony.CallForwardInfo;
+import com.android.internal.telephony.GsmCdmaPhone;
 
 import java.util.ArrayList;
 
@@ -121,7 +122,7 @@ public class SsData {
         try {
             return ServiceType.values()[type];
         } catch (IndexOutOfBoundsException e) {
-            Rlog.e(GSMPhone.LOG_TAG, "Invalid Service type");
+            Rlog.e(GsmCdmaPhone.LOG_TAG, "Invalid Service type");
             return null;
         }
     }
@@ -130,7 +131,7 @@ public class SsData {
         try {
             return RequestType.values()[type];
         } catch (IndexOutOfBoundsException e) {
-            Rlog.e(GSMPhone.LOG_TAG, "Invalid Request type");
+            Rlog.e(GsmCdmaPhone.LOG_TAG, "Invalid Request type");
             return null;
         }
     }
@@ -139,7 +140,7 @@ public class SsData {
         try {
             return TeleserviceType.values()[type];
         } catch (IndexOutOfBoundsException e) {
-            Rlog.e(GSMPhone.LOG_TAG, "Invalid Teleservice type");
+            Rlog.e(GsmCdmaPhone.LOG_TAG, "Invalid Teleservice type");
             return null;
         }
     }

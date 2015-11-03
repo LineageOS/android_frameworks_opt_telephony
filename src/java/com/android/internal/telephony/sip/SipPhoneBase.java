@@ -456,10 +456,6 @@ abstract class SipPhoneBase extends PhoneBase {
         return false;
     }
 
-    boolean updateCurrentCarrierInProvider() {
-        return false;
-    }
-
     public void saveClirSetting(int commandInterfaceCLIRMode) {
     }
 

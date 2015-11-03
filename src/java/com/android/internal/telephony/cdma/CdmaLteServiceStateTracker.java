@@ -18,6 +18,8 @@ package com.android.internal.telephony.cdma;
 
 import android.content.Context;
 import android.content.Intent;
+
+import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.EventLogTags;
@@ -60,14 +62,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
-    private CDMALTEPhone mCdmaLtePhone;
+    private GsmCdmaPhone mCdmaLtePhone;
     private final CellInfoLte mCellInfoLte;
     private static final int EVENT_ALL_DATA_DISCONNECTED = 1001;
 
     private CellIdentityLte mNewCellIdentityLte = new CellIdentityLte();
     private CellIdentityLte mLasteCellIdentityLte = new CellIdentityLte();
 
-    public CdmaLteServiceStateTracker(CDMALTEPhone phone) {
+    public CdmaLteServiceStateTracker(GsmCdmaPhone phone) {
         super(phone, new CellInfoLte());
         mCdmaLtePhone = phone;
         mCdmaLtePhone.registerForSimRecordsLoaded(this, EVENT_SIM_RECORDS_LOADED, null);
@@ -685,8 +687,8 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
     @Override
     protected UiccCardApplication getUiccCardApplication() {
-            return  mUiccController.getUiccCardApplication(((CDMALTEPhone)mPhone).
-                    getPhoneId(), UiccController.APP_FAM_3GPP2);
+        return mUiccController.getUiccCardApplication(mPhone.getPhoneId(),
+                UiccController.APP_FAM_3GPP2);
     }
 
     protected void updateCdmaSubscription() {

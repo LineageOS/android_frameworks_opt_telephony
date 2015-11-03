@@ -226,11 +226,11 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         }
     }
 
-    private PhoneProxy getPhone(int phoneId) {
+    private PhoneBase getPhone(int phoneId) {
         if (phoneId < 0 || phoneId >= TelephonyManager.getDefault().getPhoneCount()) {
             phoneId = 0;
         }
-        return (PhoneProxy) mPhone[phoneId];
+        return (PhoneBase) mPhone[phoneId];
     }
 
     private int getDefaultSubscription() {

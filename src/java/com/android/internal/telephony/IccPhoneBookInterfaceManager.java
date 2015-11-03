@@ -22,11 +22,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.ServiceManager;
+import android.telephony.Rlog;
 
 import com.android.internal.telephony.uicc.AdnRecord;
 import com.android.internal.telephony.uicc.AdnRecordCache;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccConstants;
+import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
@@ -38,7 +40,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * SimPhoneBookInterfaceManager to provide an inter-process communication to
  * access ADN-like SIM records.
  */
-public abstract class IccPhoneBookInterfaceManager {
+public class IccPhoneBookInterfaceManager {
+    static final String LOG_TAG = "IccPhoneBookIM";
     protected static final boolean DBG = true;
 
     protected PhoneBase mPhone;
@@ -130,9 +133,13 @@ public abstract class IccPhoneBookInterfaceManager {
         }
     }
 
-    protected abstract void logd(String msg);
+    protected void logd(String msg) {
+        Rlog.d(LOG_TAG, "[IccPbInterfaceManager] " + msg);
+    }
 
-    protected abstract void loge(String msg);
+    protected void loge(String msg) {
+        Rlog.e(LOG_TAG, "[IccPbInterfaceManager] " + msg);
+    }
 
     /**
      * Replace oldAdn with newAdn in ADN-like record in EF
@@ -249,7 +256,26 @@ public abstract class IccPhoneBookInterfaceManager {
      *            recordSizes[1]  is the total length of the EF file
      *            recordSizes[2]  is the number of records in the EF file
      */
-    public abstract int[] getAdnRecordsSize(int efid);
+    public int[] getAdnRecordsSize(int efid) {
+        if (DBG) logd("getAdnRecordsSize: efid=" + efid);
+        synchronized(mLock) {
+            checkThread();
+            mRecordSize = new int[3];
+
+            //Using mBaseHandler, no difference in EVENT_GET_SIZE_DONE handling
+            AtomicBoolean status = new AtomicBoolean(false);
+            Message response = mBaseHandler.obtainMessage(EVENT_GET_SIZE_DONE, status);
+
+            IccFileHandler fh = mPhone.getIccFileHandler();
+            if (fh != null) {
+                fh.getEFLinearRecordSize(efid, response);
+                waitForResult(status);
+            }
+        }
+
+        return mRecordSize;
+    }
+
 
     /**
      * Loads the AdnRecords in efid and returns them as a

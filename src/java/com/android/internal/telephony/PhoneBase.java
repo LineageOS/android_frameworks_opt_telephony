@@ -52,6 +52,7 @@ import android.text.TextUtils;
 import com.android.ims.ImsManager;
 import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import com.android.internal.telephony.test.SimulatedRadioControl;
@@ -88,6 +89,8 @@ import java.util.concurrent.atomic.AtomicReference;
 public abstract class PhoneBase extends Handler implements Phone {
     private static final String LOG_TAG = "PhoneBase";
 
+    public final static Object lockForRadioTechnologyChange = new Object();
+
     private boolean mImsIntentReceiverRegistered = false;
     private BroadcastReceiver mImsIntentReceiver = new BroadcastReceiver() {
         @Override
@@ -103,7 +106,7 @@ public abstract class PhoneBase extends Handler implements Phone {
                 }
             }
 
-            synchronized (PhoneProxy.lockForRadioTechnologyChange) {
+            synchronized (PhoneBase.lockForRadioTechnologyChange) {
                 if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_UP)) {
                     mImsServiceReady = true;
                     updateImsPhone();
@@ -173,8 +176,13 @@ public abstract class PhoneBase extends Handler implements Phone {
     protected static final int EVENT_SS                             = 36;
     protected static final int EVENT_CONFIG_LCE                     = 37;
     private static final int EVENT_CHECK_FOR_NETWORK_AUTOMATIC      = 38;
-    protected static final int EVENT_LAST                           =
-            EVENT_CHECK_FOR_NETWORK_AUTOMATIC;
+    protected static final int EVENT_VOICE_RADIO_TECH_CHANGED       = 39;
+    protected static final int EVENT_REQUEST_VOICE_RADIO_TECH_DONE  = 40;
+    protected static final int EVENT_RIL_CONNECTED                  = 41;
+    protected static final int EVENT_UPDATE_PHONE_OBJECT            = 42;
+    protected static final int EVENT_CARRIER_CONFIG_CHANGED         = 43;
+
+    protected static final int EVENT_LAST                           = EVENT_CARRIER_CONFIG_CHANGED;
 
     // For shared prefs.
     private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
@@ -233,7 +241,7 @@ public abstract class PhoneBase extends Handler implements Phone {
             new AtomicReference<UiccCardApplication>();
 
     private TelephonyTester mTelephonyTester;
-    private final String mName;
+    private String mName;
     private final String mActionDetached;
     private final String mActionAttached;
 
@@ -253,6 +261,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     @Override
     public String getPhoneName() {
         return mName;
+    }
+
+    protected void setPhoneName(String name) {
+        mName = name;
     }
 
     public String getNai(){
@@ -488,7 +500,7 @@ public abstract class PhoneBase extends Handler implements Phone {
             return;
         }
 
-        synchronized(PhoneProxy.lockForRadioTechnologyChange) {
+        synchronized(PhoneBase.lockForRadioTechnologyChange) {
             IntentFilter filter = new IntentFilter();
             filter.addAction(ImsManager.ACTION_IMS_SERVICE_UP);
             filter.addAction(ImsManager.ACTION_IMS_SERVICE_DOWN);
@@ -508,7 +520,7 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public void dispose() {
-        synchronized(PhoneProxy.lockForRadioTechnologyChange) {
+        synchronized(PhoneBase.lockForRadioTechnologyChange) {
             if (mImsIntentReceiverRegistered) {
                 mContext.unregisterReceiver(mImsIntentReceiver);
                 mImsIntentReceiverRegistered = false;
@@ -600,7 +612,7 @@ public abstract class PhoneBase extends Handler implements Phone {
                 break;
 
             case EVENT_CALL_RING_CONTINUE:
-                Rlog.d(LOG_TAG, "Event EVENT_CALL_RING_CONTINUE Received stat=" + getState());
+                Rlog.d(LOG_TAG, "Event EVENT_CALL_RING_CONTINUE Received state=" + getState());
                 if (getState() == PhoneConstants.State.RINGING) {
                     sendIncomingCallRingNotification(msg.arg1);
                 }
@@ -1495,6 +1507,10 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public boolean getCallForwardingIndicator() {
+        if (getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+            Rlog.e(LOG_TAG, "getCallForwardingIndicator: not possible in CDMA");
+            return false;
+        }
         IccRecords r = mIccRecords.get();
         int callForwardingIndicator = IccRecords.CALL_FORWARDING_STATUS_UNKNOWN;
         if (r != null) {
@@ -1754,6 +1770,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     @Override
     public abstract int getPhoneType();
 
+    @Override
+    public int getPrecisePhoneType() {
+        return getPhoneType();
+    }
+
     /** @hide */
     /** @return number of voicemails */
     @Override
@@ -1957,7 +1978,7 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public void registerForLineControlInfo(Handler h, int what, Object obj) {
-        mCi.registerForLineControlInfo( h, what, obj);
+        mCi.registerForLineControlInfo(h, what, obj);
     }
 
     @Override
@@ -1977,7 +1998,7 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public void registerForT53AudioControlInfo(Handler h, int what, Object obj) {
-        mCi.registerForT53AudioControlInfo( h, what, obj);
+        mCi.registerForT53AudioControlInfo(h, what, obj);
     }
 
     @Override
@@ -2223,7 +2244,7 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public ImsPhone relinquishOwnershipOfImsPhone() {
-        synchronized (PhoneProxy.lockForRadioTechnologyChange) {
+        synchronized (PhoneBase.lockForRadioTechnologyChange) {
             if (mImsPhone == null)
                 return null;
 
@@ -2244,7 +2265,7 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     @Override
     public void acquireOwnershipOfImsPhone(ImsPhone imsPhone) {
-        synchronized (PhoneProxy.lockForRadioTechnologyChange) {
+        synchronized (PhoneBase.lockForRadioTechnologyChange) {
             if (imsPhone == null)
                 return;
 
@@ -2593,6 +2614,38 @@ public abstract class PhoneBase extends Handler implements Phone {
         }
 
         return getLocaleFromCarrierProperties(mContext);
+    }
+
+    public void updateDataConnectionTracker() {
+        mDcTracker.update();
+    }
+
+    public void setInternalDataEnabled(boolean enable, Message onCompleteMsg) {
+        mDcTracker.setInternalDataEnabled(enable, onCompleteMsg);
+    }
+
+    public boolean updateCurrentCarrierInProvider() {
+        return false;
+    }
+
+    public void registerForAllDataDisconnected(Handler h, int what, Object obj) {
+        mDcTracker.registerForAllDataDisconnected(h, what, obj);
+    }
+
+    public void unregisterForAllDataDisconnected(Handler h) {
+        mDcTracker.unregisterForAllDataDisconnected(h);
+    }
+
+    public IccSmsInterfaceManager getIccSmsInterfaceManager(){
+        return null;
+    }
+
+    public PhoneSubInfoProxy getPhoneSubInfoProxy() {
+        return null;
+    }
+
+    public IccPhoneBookInterfaceManagerProxy getIccPhoneBookInterfaceManagerProxy() {
+        return null;
     }
 
     protected boolean isMatchGid(String gid) {

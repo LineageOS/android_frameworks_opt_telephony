@@ -35,8 +35,7 @@ import com.android.internal.telephony.Call;
 import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.dataconnection.DataConnection;
-import com.android.internal.telephony.cdma.CDMAPhone;
-import com.android.internal.telephony.gsm.GSMPhone;
+import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.CallManager;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
@@ -480,10 +479,6 @@ abstract class ImsPhoneBase extends PhoneBase {
 
     @Override
     public boolean isDataConnectivityPossible() {
-        return false;
-    }
-
-    boolean updateCurrentCarrierInProvider() {
         return false;
     }
 

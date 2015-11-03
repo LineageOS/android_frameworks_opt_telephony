@@ -212,9 +212,6 @@ public final class CallManager {
      * or the Phone itself if Phone is not a PhoneProxy obj
      */
     private static Phone getPhoneBase(Phone phone) {
-        if (phone instanceof PhoneProxy) {
-            return phone.getForegroundCall().getPhone();
-        }
         return phone;
     }
 

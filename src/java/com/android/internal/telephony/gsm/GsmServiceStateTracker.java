@@ -60,6 +60,7 @@ import android.util.TimeUtils;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.ICarrierConfigLoader;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.ProxyController;
@@ -90,12 +91,12 @@ import java.util.TimeZone;
 /**
  * {@hide}
  */
-final class GsmServiceStateTracker extends ServiceStateTracker {
+public final class GsmServiceStateTracker extends ServiceStateTracker {
     static final String LOG_TAG = "GsmSST";
     static final boolean VDBG = false;
     //CAF_MSIM make it private ??
     private static final int EVENT_ALL_DATA_DISCONNECTED = 1001;
-    private GSMPhone mPhone;
+    private GsmCdmaPhone mPhone;
     GsmCellLocation mCellLoc;
     GsmCellLocation mNewCellLoc;
     int mPreferredNetworkType;
@@ -204,7 +205,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         }
     };
 
-    public GsmServiceStateTracker(GSMPhone phone) {
+    public GsmServiceStateTracker(GsmCdmaPhone phone) {
         super(phone, phone.mCi, new CellInfoGsm());
 
         mPhone = phone;

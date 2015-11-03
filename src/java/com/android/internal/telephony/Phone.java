@@ -286,6 +286,13 @@ public interface Phone {
     int getPhoneType();
 
     /**
+     * Return a numerical identifier for the phone radio interface. The only difference between this
+     * and getPhoneType() is that this treats CDMA and CDMA_LTE as separate.
+     * @return PHONE_TYPE_XXX as defined above.
+     */
+    int getPrecisePhoneType();
+
+    /**
      * Returns an array of string identifiers for the APN types serviced by the
      * currently active.
      *  @return The string array will always return at least one entry, Phone.APN_TYPE_DEFAULT.

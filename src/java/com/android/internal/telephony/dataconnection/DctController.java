@@ -41,7 +41,6 @@ import android.util.SparseArray;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.RequestInfo;
 import com.android.internal.util.AsyncChannel;
@@ -74,7 +73,7 @@ public class DctController extends Handler {
     private static DctController sDctController;
 
     private int mPhoneNum;
-    private PhoneProxy[] mPhones;
+    private PhoneBase[] mPhones;
     private DcSwitchStateMachine[] mDcSwitchStateMachine;
     private DcSwitchAsyncChannel[] mDcSwitchAsyncChannel;
     private Handler[] mDcSwitchStateHandler;
@@ -107,13 +106,13 @@ public class DctController extends Handler {
         }
     };
 
-    public void updatePhoneObject(PhoneProxy phone) {
+    public void updatePhoneObject(PhoneBase phone) {
         if (phone == null) {
             loge("updatePhoneObject phone = null");
             return;
         }
 
-        PhoneBase phoneBase = (PhoneBase)phone.getActivePhone();
+        PhoneBase phoneBase = phone;
         if (phoneBase == null) {
             loge("updatePhoneObject phoneBase = null");
             return;
@@ -203,7 +202,7 @@ public class DctController extends Handler {
        return sDctController;
     }
 
-    public static DctController makeDctController(PhoneProxy[] phones) {
+    public static DctController makeDctController(PhoneBase[] phones) {
         if (sDctController == null) {
             logd("makeDctController: new DctController phones.length=" + phones.length);
             sDctController = new DctController(phones);
@@ -212,7 +211,7 @@ public class DctController extends Handler {
         return sDctController;
     }
 
-    private DctController(PhoneProxy[] phones) {
+    private DctController(PhoneBase[] phones) {
         logd("DctController(): phones.length=" + phones.length);
         if (phones == null || phones.length == 0) {
             if (phones == null) {
@@ -250,8 +249,7 @@ public class DctController extends Handler {
             }
 
             // Register for radio state change
-            PhoneBase phoneBase = (PhoneBase)mPhones[i].getActivePhone();
-            updatePhoneBaseForIndex(i, phoneBase);
+            updatePhoneBaseForIndex(i, mPhones[i]);
         }
 
         mContext = mPhones[0].getContext();
@@ -425,8 +423,7 @@ public class DctController extends Handler {
             String apn = apnForNetworkRequest(requestInfo.request);
             final int phoneId = getRequestPhoneId(requestInfo.request);
             requestInfo.executedPhoneId = phoneId;
-            PhoneBase phoneBase = (PhoneBase)mPhones[phoneId].getActivePhone();
-            DcTracker dcTracker = phoneBase.mDcTracker;
+            DcTracker dcTracker = mPhones[phoneId].mDcTracker;
             dcTracker.incApnRefCount(apn, requestInfo.getLog());
         }
     }
@@ -450,8 +447,7 @@ public class DctController extends Handler {
                 String apn = apnForNetworkRequest(requestInfo.request);
                 int phoneId = requestInfo.executedPhoneId;
                 requestInfo.executedPhoneId = INVALID_PHONE_INDEX;
-                PhoneBase phoneBase = (PhoneBase)mPhones[phoneId].getActivePhone();
-                DcTracker dcTracker = phoneBase.mDcTracker;
+                DcTracker dcTracker = mPhones[phoneId].mDcTracker;
                 dcTracker.decApnRefCount(apn, requestInfo.getLog());
             }
         }

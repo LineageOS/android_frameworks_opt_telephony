@@ -70,14 +70,13 @@ import android.view.WindowManager;
 import android.telephony.Rlog;
 
 import com.android.internal.R;
-import com.android.internal.telephony.cdma.CDMALTEPhone;
+import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.TelephonyIntents;
-import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -700,6 +699,33 @@ public final class DcTracker extends Handler {
         mProvisionActionName = "com.android.internal.telephony.PROVISION" + phone.getPhoneId();
     }
 
+    public void registerServiceStateTrackerEvents() {
+        mPhone.getServiceStateTracker().registerForDataConnectionAttached(this,
+                DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null);
+        mPhone.getServiceStateTracker().registerForDataConnectionDetached(this,
+                DctConstants.EVENT_DATA_CONNECTION_DETACHED, null);
+        mPhone.getServiceStateTracker().registerForDataRoamingOn(this,
+                DctConstants.EVENT_ROAMING_ON, null);
+        mPhone.getServiceStateTracker().registerForDataRoamingOff(this,
+                DctConstants.EVENT_ROAMING_OFF, null);
+        mPhone.getServiceStateTracker().registerForPsRestrictedEnabled(this,
+                DctConstants.EVENT_PS_RESTRICT_ENABLED, null);
+        mPhone.getServiceStateTracker().registerForPsRestrictedDisabled(this,
+                DctConstants.EVENT_PS_RESTRICT_DISABLED, null);
+        mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(this,
+                DctConstants.EVENT_DATA_RAT_CHANGED, null);
+    }
+
+    public void unregisterServiceStateTrackerEvents() {
+        mPhone.getServiceStateTracker().unregisterForDataConnectionAttached(this);
+        mPhone.getServiceStateTracker().unregisterForDataConnectionDetached(this);
+        mPhone.getServiceStateTracker().unregisterForDataRoamingOn(this);
+        mPhone.getServiceStateTracker().unregisterForDataRoamingOff(this);
+        mPhone.getServiceStateTracker().unregisterForPsRestrictedEnabled(this);
+        mPhone.getServiceStateTracker().unregisterForPsRestrictedDisabled(this);
+        mPhone.getServiceStateTracker().unregisterForDataRegStateOrRatChanged(this);
+    }
+
     private void registerForAllEvents() {
         mPhone.mCi.registerForAvailable(this, DctConstants.EVENT_RADIO_AVAILABLE, null);
         mPhone.mCi.registerForOffOrNotAvailable(this,
@@ -711,26 +737,13 @@ public final class DcTracker extends Handler {
         // the CS data.  This works well for the purposes this is currently used for
         // but that may not always be the case.  Should probably be redesigned to
         // accurately reflect what we're really interested in (registerForCSVoiceCallEnded).
-        mPhone.getCallTracker().registerForVoiceCallEnded (this,
-               DctConstants.EVENT_VOICE_CALL_ENDED, null);
-        mPhone.getCallTracker().registerForVoiceCallStarted (this,
-               DctConstants.EVENT_VOICE_CALL_STARTED, null);
-        mPhone.getServiceStateTracker().registerForDataConnectionAttached(this,
-               DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null);
-        mPhone.getServiceStateTracker().registerForDataConnectionDetached(this,
-               DctConstants.EVENT_DATA_CONNECTION_DETACHED, null);
-        mPhone.getServiceStateTracker().registerForDataRoamingOn(this,
-               DctConstants.EVENT_ROAMING_ON, null);
-        mPhone.getServiceStateTracker().registerForDataRoamingOff(this,
-               DctConstants.EVENT_ROAMING_OFF, null);
-        mPhone.getServiceStateTracker().registerForPsRestrictedEnabled(this,
-                DctConstants.EVENT_PS_RESTRICT_ENABLED, null);
-        mPhone.getServiceStateTracker().registerForPsRestrictedDisabled(this,
-                DctConstants.EVENT_PS_RESTRICT_DISABLED, null);
+        mPhone.getCallTracker().registerForVoiceCallEnded(this,
+                DctConstants.EVENT_VOICE_CALL_ENDED, null);
+        mPhone.getCallTracker().registerForVoiceCallStarted(this,
+                DctConstants.EVENT_VOICE_CALL_STARTED, null);
+        registerServiceStateTrackerEvents();
      //   SubscriptionManager.registerForDdsSwitch(this,
      //          DctConstants.EVENT_CLEAN_UP_ALL_CONNECTIONS, null);
-        mPhone.getServiceStateTracker().registerForDataRegStateOrRatChanged(this,
-                DctConstants.EVENT_DATA_RAT_CHANGED, null);
     }
 
     public void dispose() {
@@ -781,12 +794,7 @@ public final class DcTracker extends Handler {
         mPhone.mCi.unregisterForDataNetworkStateChanged(this);
         mPhone.getCallTracker().unregisterForVoiceCallEnded(this);
         mPhone.getCallTracker().unregisterForVoiceCallStarted(this);
-        mPhone.getServiceStateTracker().unregisterForDataConnectionAttached(this);
-        mPhone.getServiceStateTracker().unregisterForDataConnectionDetached(this);
-        mPhone.getServiceStateTracker().unregisterForDataRoamingOn(this);
-        mPhone.getServiceStateTracker().unregisterForDataRoamingOff(this);
-        mPhone.getServiceStateTracker().unregisterForPsRestrictedEnabled(this);
-        mPhone.getServiceStateTracker().unregisterForPsRestrictedDisabled(this);
+        unregisterServiceStateTrackerEvents();
         //SubscriptionManager.unregisterForDdsSwitch(this);
     }
 
@@ -2099,9 +2107,9 @@ public final class DcTracker extends Handler {
         boolean isDisconnected = (overallState == DctConstants.State.IDLE ||
                 overallState == DctConstants.State.FAILED);
 
-        if (mPhone instanceof GSMPhone) {
+        if (mPhone instanceof GsmCdmaPhone) {
             // The "current" may no longer be valid.  MMS depends on this to send properly. TBD
-            ((GSMPhone)mPhone).updateCurrentCarrierInProvider();
+            ((GsmCdmaPhone)mPhone).updateCurrentCarrierInProvider();
         }
 
         // TODO: It'd be nice to only do this if the changed entrie(s)
@@ -3869,13 +3877,7 @@ public final class DcTracker extends Handler {
 
         mUserDataEnabled = getDataEnabled();
 
-        if (mPhone instanceof CDMALTEPhone) {
-            ((CDMALTEPhone)mPhone).updateCurrentCarrierInProvider();
-        } else if (mPhone instanceof GSMPhone) {
-            ((GSMPhone)mPhone).updateCurrentCarrierInProvider();
-        } else {
-            log("Phone object is not MultiSim. This should not hit!!!!");
-        }
+        ((GsmCdmaPhone)mPhone).updateCurrentCarrierInProvider();
     }
 
     public void cleanUpAllConnections(String cause) {

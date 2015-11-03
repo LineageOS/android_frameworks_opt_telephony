@@ -138,7 +138,7 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
 
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
         try {
-            return ((PhoneProxy)mPhone[(int)phoneId]).getIccPhoneBookInterfaceManagerProxy();
+            return ((PhoneBase)mPhone[(int)phoneId]).getIccPhoneBookInterfaceManagerProxy();
         } catch (NullPointerException e) {
             Rlog.e(TAG, "Exception is :"+e.toString()+" For subscription :"+subId );
             e.printStackTrace(); //To print stack trace

@@ -59,13 +59,13 @@ public class GsmSmsCbMessage {
      *
      * @param pdus PDU bytes
      */
-    static SmsCbMessage createSmsCbMessage(SmsCbHeader header, SmsCbLocation location,
+    public static SmsCbMessage createSmsCbMessage(SmsCbHeader header, SmsCbLocation location,
             byte[][] pdus) throws IllegalArgumentException {
         if (header.isEtwsPrimaryNotification()) {
             // ETSI TS 23.041 ETWS Primary Notification message
             // ETWS primary message only contains 4 fields including serial number,
             // message identifier, warning type, and warning security information.
-            // There is no field for the content/text. We hardcode "ETWS" in the 
+            // There is no field for the content/text. We hardcode "ETWS" in the
             // text body so the user won't see an empty dialog without any text.
             return new SmsCbMessage(SmsCbMessage.MESSAGE_FORMAT_3GPP,
                     header.getGeographicalScope(), header.getSerialNumber(),

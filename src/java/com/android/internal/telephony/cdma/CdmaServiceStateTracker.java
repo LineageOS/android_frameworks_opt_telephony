@@ -52,6 +52,7 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.CommandsInterface.RadioState;
 import com.android.internal.telephony.EventLogTags;
+import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.ICarrierConfigLoader;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.Phone;
@@ -79,8 +80,8 @@ import java.util.TimeZone;
 public class CdmaServiceStateTracker extends ServiceStateTracker {
     static final String LOG_TAG = "CdmaSST";
 
-    CDMAPhone mPhone;
-    CdmaCellLocation mCellLoc;
+    GsmCdmaPhone mPhone;
+    public CdmaCellLocation mCellLoc;
     CdmaCellLocation mNewCellLoc;
 
     // Min values used to by getOtasp()
@@ -168,11 +169,11 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         }
     };
 
-    public CdmaServiceStateTracker(CDMAPhone phone) {
+    public CdmaServiceStateTracker(GsmCdmaPhone phone) {
         this(phone, new CellInfoCdma());
     }
 
-    protected CdmaServiceStateTracker(CDMAPhone phone, CellInfo cellInfo) {
+    protected CdmaServiceStateTracker(GsmCdmaPhone phone, CellInfo cellInfo) {
         super(phone, phone.mCi, cellInfo);
 
         mPhone = phone;
@@ -781,11 +782,11 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     if ((opNames[2] == null) || (opNames[2].length() < 5)
                             || ("00000".equals(opNames[2]))) {
                         opNames[2] = SystemProperties.get(
-                                CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC, "00000");
+                                GsmCdmaPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC, "00000");
                         if (DBG) {
                             log("RIL_REQUEST_OPERATOR.response[2], the numeric, " +
                                     " is bad. Using SystemProperties '" +
-                                            CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC +
+                                    GsmCdmaPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC +
                                     "'= " + opNames[2]);
                         }
                     }
@@ -998,7 +999,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 getSystemService(Context.TELEPHONY_SERVICE)).
                 getSimOperatorNumericForPhone(mPhoneBase.getPhoneId());
         if (TextUtils.isEmpty(numeric)) {
-            numeric = SystemProperties.get(CDMAPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC, "");
+            numeric = SystemProperties.get(GsmCdmaPhone.PROPERTY_CDMA_HOME_OPERATOR_NUMERIC, "");
         }
         return numeric;
     }
@@ -1918,7 +1919,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     /**
      * Returns IMSI as MCC + MNC + MIN
      */
-    String getImsi() {
+    public String getImsi() {
         // TODO: When RUIM is enabled, IMSI will come from RUIM not build-time props.
         String operatorNumeric = ((TelephonyManager) mPhone.getContext().
                 getSystemService(Context.TELEPHONY_SERVICE)).
@@ -1943,7 +1944,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
     /**
      * Returns OTASP_UNKNOWN, OTASP_NEEDED or OTASP_NOT_NEEDED
      */
-    int getOtasp() {
+    public int getOtasp() {
         int provisioningState;
         // for ruim, min is null means require otasp.
         if (mIsSubscriptionFromRuim && mMin == null) {
