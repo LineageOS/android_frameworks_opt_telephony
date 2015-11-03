@@ -287,7 +287,7 @@ public class SubscriptionController extends ISub.Stub {
         String countryIso = getSubscriptionCountryIso(id);
 
         if (DBG) {
-            String iccIdToPrint = iccId != null ? iccId.substring(0, 9) + "XXXXXXXXXXX" : null;
+            String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
             logd("[getSubInfoRecord] id:" + id + " iccid:" + iccIdToPrint + " simSlotIndex:" + simSlotIndex
                 + " displayName:" + displayName + " nameSource:" + nameSource
                 + " iconTint:" + iconTint + " dataRoaming:" + dataRoaming
