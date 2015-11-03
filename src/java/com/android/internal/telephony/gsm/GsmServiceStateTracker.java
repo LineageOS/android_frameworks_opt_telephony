@@ -655,6 +655,8 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
         if (subIds != null && subIds.length > 0) {
             subId = subIds[0];
         }
+        spn = maybeUpdateHDTagForSpn(showSpn, spn);
+        plmn = maybeUpdateHDTagForPlmn(showPlmn, plmn);
 
         // Update SPN_STRINGS_UPDATED_ACTION IFF any value changes
         if (mSubId != subId ||

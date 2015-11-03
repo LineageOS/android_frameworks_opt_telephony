@@ -53,6 +53,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.android.internal.telephony.dataconnection.DcTrackerBase;
+import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -1166,5 +1167,29 @@ public abstract class ServiceStateTracker extends Handler {
     public boolean isRatLte(int rat) {
         return (rat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE ||
             rat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA);
+    }
+
+    protected String maybeUpdateHDTagForSpn(boolean showSpn, String spn) {
+        if (!showSpn) return spn;
+        return maybeUpdateHDTag(spn);
+    }
+
+    protected String maybeUpdateHDTagForPlmn(boolean showPlmn, String plmn) {
+        if (!showPlmn) return plmn;
+        return maybeUpdateHDTag(plmn);
+    }
+
+    private String maybeUpdateHDTag(String networkName) {
+        if (mPhoneBase.getImsPhone() != null &&
+                (((ImsPhone) mPhoneBase.getImsPhone()).isVolteEnabled() ||
+                ((ImsPhone) mPhoneBase.getImsPhone()).isVideoCallEnabled())) {
+            String hdTag = mPhoneBase.getContext().getText(
+                    com.android.internal.R.string.high_definition_tag).toString();
+            String originalNwName = networkName.trim();
+            networkName = String.format(hdTag, originalNwName);
+            Rlog.d(LOG_TAG, "maybeUpdateHDTag: networkName: " + networkName +
+                    " original name: " + originalNwName);
+        }
+        return networkName;
     }
 }
