@@ -670,12 +670,12 @@ public class ImsPhoneConnection extends Connection {
         }
 
         boolean updateParent = mParent.update(this, imsCall, state);
+        boolean updateMediaCapabilities = updateMediaCapabilities(imsCall);
         boolean updateWifiState = updateWifiState();
         boolean updateAddressDisplay = updateAddressDisplay(imsCall);
         boolean updateExtras = updateExtras(imsCall);
-        boolean updateMediaCapabilities = updateMediaCapabilities(imsCall);
 
-        return updateParent || updateWifiState || updateAddressDisplay || updateMediaCapabilities
+        return updateParent || updateMediaCapabilities || updateWifiState || updateAddressDisplay
                 || updateExtras;
     }
 
