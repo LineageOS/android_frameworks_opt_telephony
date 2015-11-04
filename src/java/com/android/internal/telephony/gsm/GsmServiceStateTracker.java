@@ -70,7 +70,7 @@ import com.android.internal.telephony.ServiceStateTracker;
 import android.telephony.SubscriptionManager;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
-import com.android.internal.telephony.dataconnection.DcTrackerBase;
+import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -182,7 +182,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                 updateSpnDisplay();
             } else if (intent.getAction().equals(ACTION_RADIO_OFF)) {
                 mAlarmSwitch = false;
-                DcTrackerBase dcTracker = mPhone.mDcTracker;
+                DcTracker dcTracker = mPhone.mDcTracker;
                 powerOffRadioSafely(dcTracker);
             }
         }
@@ -547,11 +547,11 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
                     am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                             SystemClock.elapsedRealtime() + 3000, mRadioOffIntent);
                 } else {
-                    DcTrackerBase dcTracker = mPhone.mDcTracker;
+                    DcTracker dcTracker = mPhone.mDcTracker;
                     powerOffRadioSafely(dcTracker);
                 }
             } else {
-                DcTrackerBase dcTracker = mPhone.mDcTracker;
+                DcTracker dcTracker = mPhone.mDcTracker;
                 powerOffRadioSafely(dcTracker);
             }
         } else if (mDeviceShuttingDown && mCi.getRadioState().isAvailable()) {
@@ -2140,7 +2140,7 @@ final class GsmServiceStateTracker extends ServiceStateTracker {
      * Hang up the existing voice calls to decrease call drop rate.
      */
     @Override
-    public void powerOffRadioSafely(DcTrackerBase dcTracker) {
+    public void powerOffRadioSafely(DcTracker dcTracker) {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
                 int dds = SubscriptionManager.getDefaultDataSubId();

@@ -85,7 +85,7 @@ public class ApnContext {
      */
     AtomicBoolean mDependencyMet;
 
-    private final DcTrackerBase mDcTracker;
+    private final DcTracker mDcTracker;
 
     /**
      * Remember this as a change in this value to a more permissive state
@@ -100,7 +100,7 @@ public class ApnContext {
     private final AtomicInteger mConnectionGeneration = new AtomicInteger(0);
 
     public ApnContext(Context context, String apnType, String logTag, NetworkConfig config,
-            DcTrackerBase tracker) {
+            DcTracker tracker) {
         mContext = context;
         mApnType = apnType;
         mState = DctConstants.State.IDLE;

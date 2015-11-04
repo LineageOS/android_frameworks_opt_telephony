@@ -27,7 +27,7 @@ import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
-import com.android.internal.telephony.dataconnection.DcTrackerBase;
+import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.PhoneConstants;
 
 import android.telephony.CellInfo;
@@ -49,7 +49,6 @@ import android.os.SystemProperties;
 import android.telephony.Rlog;
 import android.util.EventLog;
 
-import com.android.internal.telephony.dataconnection.DcTrackerBase;
 import com.android.internal.telephony.ProxyController;
 import android.telephony.SubscriptionManager;
 import com.android.internal.telephony.uicc.UiccCardApplication;
@@ -700,7 +699,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
      * Hang up the existing voice calls to decrease call drop rate.
      */
     @Override
-    public void powerOffRadioSafely(DcTrackerBase dcTracker) {
+    public void powerOffRadioSafely(DcTracker dcTracker) {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
                 int dds = SubscriptionManager.getDefaultDataSubId();

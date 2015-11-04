@@ -52,7 +52,7 @@ class DcController extends StateMachine {
     private static final boolean VDBG = false;
 
     private PhoneBase mPhone;
-    private DcTrackerBase mDct;
+    private DcTracker mDct;
     private DcTesterDeactivateAll mDcTesterDeactivateAll;
 
     // package as its used by Testing code
@@ -91,7 +91,7 @@ class DcController extends StateMachine {
      * @param dct the DataConnectionTracker associated with Dcc
      * @param handler defines the thread/looper to be used with Dcc
      */
-    private DcController(String name, PhoneBase phone, DcTrackerBase dct,
+    private DcController(String name, PhoneBase phone, DcTracker dct,
             Handler handler) {
         super(name, handler);
         setLogRecSize(300);
@@ -116,7 +116,7 @@ class DcController extends StateMachine {
         }
     }
 
-    static DcController makeDcc(PhoneBase phone, DcTrackerBase dct, Handler handler) {
+    static DcController makeDcc(PhoneBase phone, DcTracker dct, Handler handler) {
         DcController dcc = new DcController("Dcc", phone, dct, handler);
         dcc.start();
         return dcc;
@@ -264,9 +264,9 @@ class DcController extends StateMachine {
                     if (DBG) log("onDataStateChanged: Found ConnId=" + newState.cid
                             + " newState=" + newState.toString());
                     if (newState.active == DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE) {
-                        if (mDct.mIsCleanupRequired) {
+                        if (mDct.isCleanupRequired.get()) {
                             apnsToCleanup.addAll(dc.mApnContexts.keySet());
-                            mDct.mIsCleanupRequired = false;
+                            mDct.isCleanupRequired.set(false);
                         } else {
                             DcFailCause failCause = DcFailCause.fromInt(newState.status);
                             if (DBG) log("onDataStateChanged: inactive failCause=" + failCause);

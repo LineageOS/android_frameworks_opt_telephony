@@ -426,7 +426,7 @@ public class DctController extends Handler {
             final int phoneId = getRequestPhoneId(requestInfo.request);
             requestInfo.executedPhoneId = phoneId;
             PhoneBase phoneBase = (PhoneBase)mPhones[phoneId].getActivePhone();
-            DcTrackerBase dcTracker = phoneBase.mDcTracker;
+            DcTracker dcTracker = phoneBase.mDcTracker;
             dcTracker.incApnRefCount(apn, requestInfo.getLog());
         }
     }
@@ -451,7 +451,7 @@ public class DctController extends Handler {
                 int phoneId = requestInfo.executedPhoneId;
                 requestInfo.executedPhoneId = INVALID_PHONE_INDEX;
                 PhoneBase phoneBase = (PhoneBase)mPhones[phoneId].getActivePhone();
-                DcTrackerBase dcTracker = phoneBase.mDcTracker;
+                DcTracker dcTracker = phoneBase.mDcTracker;
                 dcTracker.decApnRefCount(apn, requestInfo.getLog());
             }
         }
@@ -726,7 +726,7 @@ public class DctController extends Handler {
                 return;
             }
 
-            DcTrackerBase dcTracker =((PhoneBase)mPhone).mDcTracker;
+            DcTracker dcTracker =((PhoneBase)mPhone).mDcTracker;
             String apn = apnForNetworkRequest(networkRequest);
             if (dcTracker.isApnSupported(apn)) {
                 requestNetwork(networkRequest, dcTracker.getApnPriority(apn), l);

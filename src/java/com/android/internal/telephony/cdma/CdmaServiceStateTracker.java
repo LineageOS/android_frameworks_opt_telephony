@@ -60,7 +60,7 @@ import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
-import com.android.internal.telephony.dataconnection.DcTrackerBase;
+import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.HbpcdUtils;
@@ -565,7 +565,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             && mCi.getRadioState() == CommandsInterface.RadioState.RADIO_OFF) {
             mCi.setRadioPower(true, null);
         } else if (!mDesiredPowerState && mCi.getRadioState().isOn()) {
-            DcTrackerBase dcTracker = mPhone.mDcTracker;
+            DcTracker dcTracker = mPhone.mDcTracker;
 
             // If it's on and available and we want it off gracefully
             powerOffRadioSafely(dcTracker);
