@@ -41,8 +41,8 @@ public class QtiImsInterfaceUtils {
     public static final String QTI_IMS_CALL_DEFLECT_NUMBER =
             "ims_call_deflect_number";
 
-    /* Call deflect extra key name */
-    public static final String QTI_IMS_DEFLECT_EXTRA_KEY = "Deflect";
+    /* Call deflect setting name */
+    public static final String QTI_IMS_DEFLECT_ENABLED = "qti.ims.call_deflect";
 
     /* Default success value */
     public static final int QTI_IMS_REQUEST_SUCCESS = 0;
