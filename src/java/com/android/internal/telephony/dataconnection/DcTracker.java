@@ -566,6 +566,10 @@ public final class DcTracker extends Handler {
     //        really a lower power mode")
     private boolean mIsScreenOn = true;
 
+    // Indicates if we found mvno-specific APNs in the full APN list.
+    // used to determine if we can accept mno-specific APN for tethering.
+    private boolean mMvnoMatched = false;
+
     /** Allows the generation of unique Id's for DataConnection objects */
     private AtomicInteger mUniqueIdGenerator = new AtomicInteger(0);
 
@@ -1762,7 +1766,7 @@ public final class DcTracker extends Handler {
                         }
                         return dunSetting;
                     }
-                } else {
+                } else if (mMvnoMatched == false) {
                     if (VDBG) log("fetchDunApn: global TETHER_DUN_APN dunSetting=" + dunSetting);
                     return dunSetting;
                 }
@@ -1783,7 +1787,7 @@ public final class DcTracker extends Handler {
                         }
                         return dunSetting;
                     }
-                } else {
+                } else if (mMvnoMatched == false) {
                     retDunSetting = dunSetting;
                 }
             }
@@ -1914,7 +1918,14 @@ public final class DcTracker extends Handler {
             } while (cursor.moveToNext());
         }
 
-        ArrayList<ApnSetting> result = mvnoApns.isEmpty() ? mnoApns : mvnoApns;
+        ArrayList<ApnSetting> result;
+        if (mvnoApns.isEmpty()) {
+            result = mnoApns;
+            mMvnoMatched = false;
+        } else {
+            result = mvnoApns;
+            mMvnoMatched = true;
+        }
         if (DBG) log("createApnList: X result=" + result);
         return result;
     }
@@ -3119,6 +3130,7 @@ public final class DcTracker extends Handler {
      * Data Connections and setup the preferredApn.
      */
     private void createAllApnList() {
+        mMvnoMatched = false;
         mAllApnSettings = new ArrayList<ApnSetting>();
         IccRecords r = mIccRecords.get();
         String operator = (r != null) ? r.getOperatorNumeric() : "";
