@@ -1212,7 +1212,14 @@ public final class DcTracker extends DcTrackerBase {
             } while (cursor.moveToNext());
         }
 
-        ArrayList<ApnSetting> result = mvnoApns.isEmpty() ? mnoApns : mvnoApns;
+        ArrayList<ApnSetting> result;
+        if (mvnoApns.isEmpty()) {
+            result = mnoApns;
+            // mMvnoMatched = false; - not needed as cleared in createAllApnList
+        } else {
+            result = mvnoApns;
+            mMvnoMatched = true;
+        }
         if (DBG) log("createApnList: X result=" + result);
         return result;
     }
@@ -2257,6 +2264,7 @@ public final class DcTracker extends DcTrackerBase {
      * Data Connections and setup the preferredApn.
      */
     private void createAllApnList() {
+        mMvnoMatched = false;
         mAllApnSettings = new ArrayList<ApnSetting>();
         IccRecords r = mIccRecords.get();
         String operator = (r != null) ? r.getOperatorNumeric() : "";
