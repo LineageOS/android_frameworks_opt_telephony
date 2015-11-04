@@ -923,8 +923,20 @@ public final class GsmCallTracker extends CallTracker {
                 operationComplete();
             break;
 
-            case EVENT_SWITCH_RESULT:
             case EVENT_CONFERENCE_RESULT:
+                ar = (AsyncResult)msg.obj;
+                if (ar.exception != null) {
+                    mPhone.notifySuppServiceFailed(getFailedService(msg.what));
+                    List<Connection> conn = mForegroundCall.getConnections();
+                    if (conn != null) {
+                        Rlog.d(LOG_TAG, "Notify merge failure");
+                        conn.get(0).onConferenceMergeFailed();
+                    }
+                }
+                operationComplete();
+            break;
+
+            case EVENT_SWITCH_RESULT:
             case EVENT_SEPARATE_RESULT:
             case EVENT_ECT_RESULT:
                 ar = (AsyncResult)msg.obj;

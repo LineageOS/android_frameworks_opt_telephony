@@ -411,7 +411,8 @@ public class DcTracker extends DcTrackerBase {
         boolean isEmergencyApn = apnContext.getApnType().equals(PhoneConstants.APN_TYPE_EMERGENCY);
         // Set the emergency APN availability status as TRUE irrespective of conditions checked in
         // isDataAllowed() like IN_SERVICE, MOBILE DATA status etc.
-        boolean dataAllowed = isEmergencyApn || isDataAllowed();
+        boolean dataAllowed = isEmergencyApn
+                || (isDataAllowed() && isDataRoamingAllowed(apnContext));
         boolean possible = dataAllowed && apnTypePossible;
 
         if ((apnContext.getApnType().equals(PhoneConstants.APN_TYPE_DEFAULT)
@@ -697,8 +698,20 @@ public class DcTracker extends DcTrackerBase {
             log("Default data call activation not allowed in iwlan.");
             return false;
         } else {
-            return apnContext.isReady() && isDataAllowed();
+            return apnContext.isReady() && isDataAllowed() && isDataRoamingAllowed(apnContext);
         }
+    }
+
+    private boolean isDataRoamingAllowed(ApnContext apnContext) {
+        boolean allowDataRoaming = (!mPhone.getServiceState().getDataRoaming()
+                || apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IMS)
+                || getDataOnRoamingEnabled());
+        if (!allowDataRoaming) {
+            String reason = " - Roaming and data roaming not enabled";
+            if (DBG)
+                log("isDataAllowed: not allowed due to" + reason);
+        }
+        return allowDataRoaming;
     }
 
     //****** Called from ServiceStateTracker
@@ -781,7 +794,6 @@ public class DcTracker extends DcTrackerBase {
                      mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
                     internalDataEnabled &&
                     defaultDataSelected &&
-                    (!mPhone.getServiceState().getDataRoaming() || getDataOnRoamingEnabled()) &&
                     !mIsPsRestricted &&
                     desiredPowerState;
         if (!allowed && DBG) {
@@ -800,9 +812,6 @@ public class DcTracker extends DcTrackerBase {
             }
             if (!internalDataEnabled) reason += " - mInternalDataEnabled= false";
             if (!defaultDataSelected) reason += " - defaultDataSelected= false";
-            if (mPhone.getServiceState().getDataRoaming() && !getDataOnRoamingEnabled()) {
-                reason += " - Roaming and data roaming not enabled";
-            }
             if (mIsPsRestricted) reason += " - mIsPsRestricted= true";
             if (!desiredPowerState) reason += " - desiredPowerState= false";
             if (DBG) log("isDataAllowed: not allowed due to" + reason);
@@ -992,7 +1001,8 @@ public class DcTracker extends DcTrackerBase {
         boolean specificdisable = false;
 
         if (!TextUtils.isEmpty(reason)) {
-            specificdisable = reason.equals(Phone.REASON_DATA_SPECIFIC_DISABLED);
+            specificdisable = reason.equals(Phone.REASON_DATA_SPECIFIC_DISABLED)
+                    || reason.equals(Phone.REASON_ROAMING_ON);
         }
 
         for (ApnContext apnContext : mApnContexts.values()) {
@@ -1649,7 +1659,8 @@ public class DcTracker extends DcTrackerBase {
                 // request goes away.  This applies to both CDMA and GSM because they both
                 // can declare the DUN APN sharable by default traffic, thus still satisfying
                 // those requests and not torn down organically.
-                if (apnContext.getApnType() == PhoneConstants.APN_TYPE_DUN && teardownForDun()) {
+                if ((apnContext.getApnType() == PhoneConstants.APN_TYPE_DUN && teardownForDun())
+                        || apnContext.getState() != DctConstants.State.CONNECTED) {
                     cleanup = true;
                 } else {
                     cleanup = false;
@@ -2089,8 +2100,9 @@ public class DcTracker extends DcTrackerBase {
     /**
      * @return number of milli-seconds to delay between trying apns'
      */
-    private int getApnDelay() {
-        if (mFailFast) {
+    private int getApnDelay(String reason) {
+        if (mFailFast || Phone.REASON_NW_TYPE_CHANGED.equals(reason) ||
+                Phone.REASON_APN_CHANGED.equals(reason)) {
             return SystemProperties.getInt("persist.radio.apn_ff_delay",
                     APN_FAIL_FAST_DELAY_DEFAULT_MILLIS);
         } else {
@@ -2127,7 +2139,7 @@ public class DcTracker extends DcTrackerBase {
                     log("onDataSetupCompleteError: All APN's had permanent failures, stop retrying");
                 }
             } else {
-                int delay = getApnDelay();
+                int delay = getApnDelay(Phone.REASON_APN_FAILED);
                 if (DBG) {
                     log("onDataSetupCompleteError: Not all APN's had permanent failures delay="
                             + delay);
@@ -2139,7 +2151,7 @@ public class DcTracker extends DcTrackerBase {
             apnContext.setState(DctConstants.State.SCANNING);
             // Wait a bit before trying the next APN, so that
             // we're not tying up the RIL command channel
-            startAlarmForReconnect(getApnDelay(), apnContext);
+            startAlarmForReconnect(getApnDelay(Phone.REASON_APN_FAILED), apnContext);
         }
     }
 
@@ -2198,7 +2210,7 @@ public class DcTracker extends DcTrackerBase {
             // we're not tying up the RIL command channel.
             // This also helps in any external dependency to turn off the context.
             if(DBG) log("onDisconnectDone: attached, ready and retry after disconnect");
-            startAlarmForReconnect(getApnDelay(), apnContext);
+            startAlarmForReconnect(getApnDelay(apnContext.getReason()), apnContext);
         } else {
             boolean restartRadioAfterProvisioning = mPhone.getContext().getResources().getBoolean(
                     com.android.internal.R.bool.config_restartRadioAfterProvisioning);

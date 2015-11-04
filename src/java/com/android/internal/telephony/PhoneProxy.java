@@ -19,8 +19,10 @@ package com.android.internal.telephony;
 
 
 import android.app.ActivityManagerNative;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.os.AsyncResult;
@@ -102,6 +104,10 @@ public class PhoneProxy extends Handler implements Phone {
                 new IccSmsInterfaceManager((PhoneBase)this.mActivePhone);
         mIccCardProxy = new IccCardProxy(mActivePhone.getContext(), mCommandsInterface, mActivePhone.getPhoneId());
 
+        IntentFilter intentFilter =
+                new IntentFilter(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
+        mActivePhone.getContext().registerReceiver(sConfigChangeReceiver, intentFilter);
+
         if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
             // For the purpose of IccCardProxy we only care about the technology family
             mIccCardProxy.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
@@ -109,6 +115,17 @@ public class PhoneProxy extends Handler implements Phone {
             mIccCardProxy.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
         }
     }
+
+    private final BroadcastReceiver sConfigChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            logd("Carrier config changed. Reloading config");
+            if (intent.getAction().equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
+                mCommandsInterface.getVoiceRadioTechnology(
+                        obtainMessage(EVENT_REQUEST_VOICE_RADIO_TECH_DONE));
+            }
+        }
+    };
 
     @Override
     public void handleMessage(Message msg) {
@@ -1376,6 +1393,7 @@ public class PhoneProxy extends Handler implements Phone {
     public void dispose() {
         if (mActivePhone != null) {
             mActivePhone.unregisterForSimRecordsLoaded(this);
+            mActivePhone.getContext().unregisterReceiver(sConfigChangeReceiver);
         }
         mCommandsInterface.unregisterForOn(this);
         mCommandsInterface.unregisterForAvailable(this);
