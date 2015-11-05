@@ -190,6 +190,33 @@ public class UiccCard {
                     mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARD_ADDED, null));
                 }
             }
+            if (radioState == RadioState.RADIO_ON
+                    && mCardState == CardState.CARDSTATE_PRESENT
+                    && mUiccApplications.length > 0
+                    && mGsmUmtsSubscriptionAppIndex < 0
+                    && mCdmaSubscriptionAppIndex < 0
+                    && mCi.needsOldRilFeature("simactivation")) {
+                boolean m3GPPAppActivated = false, m3GPP2AppActivated = false;
+
+                // Activate/Deactivate first 3GPP and 3GPP2 app in the sim, if available
+                for (int i = 0; i < mUiccApplications.length; i++) {
+                    if (mUiccApplications[i] == null) continue;
+
+                    AppType appType = mUiccApplications[i].getType();
+                    if (!m3GPPAppActivated &&
+                            (appType == AppType.APPTYPE_USIM || appType == AppType.APPTYPE_SIM)) {
+                        mCi.setUiccSubscription(i, true, null);
+                        m3GPPAppActivated = true;
+                    } else if (!m3GPP2AppActivated &&
+                            (appType == AppType.APPTYPE_CSIM || appType == AppType.APPTYPE_RUIM)) {
+                        mCi.setUiccSubscription(i, true, null);
+                        m3GPP2AppActivated = true;
+                    }
+
+                    if (m3GPPAppActivated && m3GPP2AppActivated) break;
+                }
+            }
+
             mLastRadioState = radioState;
         }
     }
