@@ -1286,8 +1286,7 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     }
 
     @Override
-    public void setUiccSubscription(int slotId, int appIndex, int subId, int subStatus,
-                                    Message result) {
+    public void setUiccSubscription(int appIndex, boolean activate, Message result) {
 
     }
 
@@ -1349,5 +1348,10 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     @Override
     public void getModemActivityInfo(Message result) {
 
+    }
+
+    @Override
+    public boolean needsOldRilFeature(String feature) {
+        return false;
     }
 }
