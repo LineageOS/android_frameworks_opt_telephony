@@ -33,6 +33,7 @@ import android.telephony.Rlog;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
+import com.android.internal.telephony.dataconnection.DataConnection.ConnectionParams;
 import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -265,7 +266,7 @@ class DcController extends StateMachine {
                             + " newState=" + newState.toString());
                     if (newState.active == DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE) {
                         if (mDct.mIsCleanupRequired) {
-                            apnsToCleanup.addAll(dc.mApnContexts);
+                            apnsToCleanup.addAll(dc.mApnContexts.keySet());
                             mDct.mIsCleanupRequired = false;
                         } else {
                             DcFailCause failCause = DcFailCause.fromInt(newState.status);
@@ -275,9 +276,10 @@ class DcController extends StateMachine {
                                 mDct.sendRestartRadio();
                             } else if (mDct.isPermanentFail(failCause)) {
                                 if (DBG) log("onDataStateChanged: inactive, add to cleanup list");
-                                apnsToCleanup.addAll(dc.mApnContexts);
+                                apnsToCleanup.addAll(dc.mApnContexts.keySet());
                             } else {
-                                for (ApnContext apnContext : dc.mApnContexts) {
+                                for (ConnectionParams cp : dc.mApnContexts.values()) {
+                                    ApnContext apnContext = cp.mApnContext;
                                     if (apnContext.isEnabled()) {
                                         if (DBG) {
                                             log("onDataStateChanged: inactive, add to retry list");
@@ -328,11 +330,11 @@ class DcController extends StateMachine {
                                                     " oldLp=" + result.oldLp +
                                                     " newLp=" + result.newLp);
                                         }
-                                        apnsToCleanup.addAll(dc.mApnContexts);
+                                        apnsToCleanup.addAll(dc.mApnContexts.keySet());
                                     } else {
                                         if (DBG) log("onDataStateChanged: simple change");
 
-                                        for (ApnContext apnContext : dc.mApnContexts) {
+                                        for (ApnContext apnContext : dc.mApnContexts.keySet()) {
                                              mPhone.notifyDataConnection(
                                                  PhoneConstants.REASON_LINK_PROPERTIES_CHANGED,
                                                  apnContext.getApnType());
@@ -344,7 +346,7 @@ class DcController extends StateMachine {
                                     }
                                 }
                             } else {
-                                apnsToCleanup.addAll(dc.mApnContexts);
+                                apnsToCleanup.addAll(dc.mApnContexts.keySet());
                                 if (DBG) {
                                     log("onDataStateChanged: interface change, cleanup apns="
                                             + dc.mApnContexts);

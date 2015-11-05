@@ -1167,4 +1167,9 @@ public abstract class ServiceStateTracker extends Handler {
         return (rat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE ||
             rat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA);
     }
+
+    /** Check if the device is shutting down. */
+    public final boolean isDeviceShuttingDown() {
+        return mDeviceShuttingDown;
+    }
 }

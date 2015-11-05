@@ -93,6 +93,12 @@ public class ApnContext {
      */
     private boolean mConcurrentVoiceAndDataAllowed;
 
+    /**
+     * used to track a single connection request so disconnects can get ignored if
+     * obsolete.
+     */
+    private final AtomicInteger mConnectionGeneration = new AtomicInteger(0);
+
     public ApnContext(Context context, String apnType, String logTag, NetworkConfig config,
             DcTrackerBase tracker) {
         mContext = context;
@@ -335,7 +341,10 @@ public class ApnContext {
             if (mRefCount-- == 1) {
                 mDcTracker.setEnabled(mDcTracker.apnTypeToId(mApnType), false);
             }
-            log("decRefCount postDeccrement = " + mRefCount);
+            if (mRefCount < 0) {
+                log.log("ApnContext.decRefCount went to " + mRefCount);
+                mRefCount = 0;
+            }
         }
     }
 
@@ -398,6 +407,14 @@ public class ApnContext {
         if (DBG) log(str);
         requestLog(str);
         return result;
+    }
+
+    public int incAndGetConnectionGeneration() {
+        return mConnectionGeneration.incrementAndGet();
+    }
+
+    public int getConnectionGeneration() {
+        return mConnectionGeneration.get();
     }
 
     @Override

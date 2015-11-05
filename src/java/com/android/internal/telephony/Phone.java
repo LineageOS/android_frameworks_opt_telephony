@@ -144,20 +144,19 @@ public interface Phone {
     int NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA  = RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA;
     int NT_MODE_LTE_ONLY                 = RILConstants.NETWORK_MODE_LTE_ONLY;
     int NT_MODE_LTE_WCDMA                = RILConstants.NETWORK_MODE_LTE_WCDMA;
-    int PREFERRED_NT_MODE                = RILConstants.PREFERRED_NETWORK_MODE;
 
-    int NT_MODE_TD_SCDMA_ONLY            = RILConstants.NETWORK_MODE_TD_SCDMA_ONLY;
-    int NT_MODE_TD_SCDMA_WCDMA           = RILConstants.NETWORK_MODE_TD_SCDMA_WCDMA;
-    int NT_MODE_TD_SCDMA_LTE             = RILConstants.NETWORK_MODE_TD_SCDMA_LTE;
-    int NT_MODE_TD_SCDMA_GSM             = RILConstants.NETWORK_MODE_TD_SCDMA_GSM;
-    int NT_MODE_TD_SCDMA_GSM_LTE         = RILConstants.NETWORK_MODE_TD_SCDMA_GSM_LTE;
-    int NT_MODE_TD_SCDMA_GSM_WCDMA       = RILConstants.NETWORK_MODE_TD_SCDMA_GSM_WCDMA;
-    int NT_MODE_TD_SCDMA_WCDMA_LTE       = RILConstants.NETWORK_MODE_TD_SCDMA_WCDMA_LTE;
-    int NT_MODE_TD_SCDMA_GSM_WCDMA_LTE   = RILConstants.NETWORK_MODE_TD_SCDMA_GSM_WCDMA_LTE;
-    int NT_MODE_TD_SCDMA_GSM_WCDMA_CDMA_EVDO =
-            RILConstants.NETWORK_MODE_TD_SCDMA_GSM_WCDMA_CDMA_EVDO;
-    int NT_MODE_TD_SCDMA_LTE_CDMA_EVDO_GSM_WCDMA =
-            RILConstants.NETWORK_MODE_TD_SCDMA_LTE_CDMA_EVDO_GSM_WCDMA;
+    int NT_MODE_TDSCDMA_ONLY            = RILConstants.NETWORK_MODE_TDSCDMA_ONLY;
+    int NT_MODE_TDSCDMA_WCDMA           = RILConstants.NETWORK_MODE_TDSCDMA_WCDMA;
+    int NT_MODE_LTE_TDSCDMA             = RILConstants.NETWORK_MODE_LTE_TDSCDMA;
+    int NT_MODE_TDSCDMA_GSM             = RILConstants.NETWORK_MODE_TDSCDMA_GSM;
+    int NT_MODE_LTE_TDSCDMA_GSM         = RILConstants.NETWORK_MODE_LTE_TDSCDMA_GSM;
+    int NT_MODE_TDSCDMA_GSM_WCDMA       = RILConstants.NETWORK_MODE_TDSCDMA_GSM_WCDMA;
+    int NT_MODE_LTE_TDSCDMA_WCDMA       = RILConstants.NETWORK_MODE_LTE_TDSCDMA_WCDMA;
+    int NT_MODE_LTE_TDSCDMA_GSM_WCDMA   = RILConstants.NETWORK_MODE_LTE_TDSCDMA_GSM_WCDMA;
+    int NT_MODE_TDSCDMA_CDMA_EVDO_GSM_WCDMA = RILConstants.NETWORK_MODE_TDSCDMA_CDMA_EVDO_GSM_WCDMA;
+    int NT_MODE_LTE_TDSCDMA_CDMA_EVDO_GSM_WCDMA = RILConstants.NETWORK_MODE_LTE_TDSCDMA_CDMA_EVDO_GSM_WCDMA;
+
+    int PREFERRED_NT_MODE                = RILConstants.PREFERRED_NETWORK_MODE;
 
     // Used for CDMA roaming mode
     static final int CDMA_RM_HOME        = 0;  // Home Networks only, as defined in PRL
@@ -1172,8 +1171,7 @@ public interface Phone {
      *
      * @see #setNetworkSelectionModeAutomatic(Message)
      */
-    void selectNetworkManually(OperatorInfo network,
-                            Message response);
+    void selectNetworkManually(OperatorInfo network, boolean persistSelection, Message response);
 
     /**
      * Query the radio for the current network selection mode.
@@ -2022,6 +2020,11 @@ public interface Phone {
      * shutdown Radio gracefully
      */
     public void shutdownRadio();
+
+    /**
+     * Return true if the device is shutting down.
+     */
+    public boolean isShuttingDown();
 
     /**
      *  Set phone radio capability

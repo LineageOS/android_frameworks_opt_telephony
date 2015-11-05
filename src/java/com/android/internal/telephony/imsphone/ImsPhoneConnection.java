@@ -23,10 +23,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
 import android.telecom.Log;
+import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
@@ -85,11 +87,17 @@ public class ImsPhoneConnection extends Connection {
     // The cached connect time of the connection when it turns into a conference.
     private long mConferenceConnectTime = 0;
 
+    // The cached delay to be used between DTMF tones fetched from carrier config.
+    private int mDtmfToneDelay = 0;
+
+    private boolean mIsEmergency = false;
+
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
     private static final int EVENT_PAUSE_DONE = 2;
     private static final int EVENT_NEXT_POST_DIAL = 3;
     private static final int EVENT_WAKE_LOCK_TIMEOUT = 4;
+    private static final int EVENT_DTMF_DELAY_DONE = 5;
 
     //***** Constants
     private static final int PAUSE_DELAY_MILLIS = 3 * 1000;
@@ -106,12 +114,18 @@ public class ImsPhoneConnection extends Connection {
 
             switch (msg.what) {
                 case EVENT_NEXT_POST_DIAL:
-                case EVENT_DTMF_DONE:
+                case EVENT_DTMF_DELAY_DONE:
                 case EVENT_PAUSE_DONE:
                     processNextPostDialChar();
                     break;
                 case EVENT_WAKE_LOCK_TIMEOUT:
                     releaseWakeLock();
+                    break;
+                case EVENT_DTMF_DONE:
+                    // We may need to add a delay specified by carrier between DTMF tones that are
+                    // sent out.
+                    mHandler.sendMessageDelayed(mHandler.obtainMessage(EVENT_DTMF_DELAY_DONE),
+                            mDtmfToneDelay);
                     break;
             }
         }
@@ -121,9 +135,9 @@ public class ImsPhoneConnection extends Connection {
 
     /** This is probably an MT call */
     /*package*/
-    ImsPhoneConnection(Context context, ImsCall imsCall, ImsPhoneCallTracker ct,
+    ImsPhoneConnection(ImsPhone phone, ImsCall imsCall, ImsPhoneCallTracker ct,
            ImsPhoneCall parent, boolean isUnknown) {
-        createWakeLock(context);
+        createWakeLock(phone.getContext());
         acquireWakeLock();
 
         mOwner = ct;
@@ -154,13 +168,15 @@ public class ImsPhoneConnection extends Connection {
         mParent = parent;
         mParent.attach(this,
                 (mIsIncoming? ImsPhoneCall.State.INCOMING: ImsPhoneCall.State.DIALING));
+
+        fetchDtmfToneDelay(phone);
     }
 
     /** This is an MO call, created when dialing */
     /*package*/
-    ImsPhoneConnection(Context context, String dialString, ImsPhoneCallTracker ct,
-            ImsPhoneCall parent, Bundle extras) {
-        createWakeLock(context);
+    ImsPhoneConnection(ImsPhone phone, String dialString, ImsPhoneCallTracker ct,
+            ImsPhoneCall parent, boolean isEmergency, Bundle extras) {
+        createWakeLock(phone.getContext());
         acquireWakeLock();
         boolean isConferenceUri = false;
         boolean isSkipSchemaParsing = false;
@@ -195,6 +211,10 @@ public class ImsPhoneConnection extends Connection {
 
         mParent = parent;
         parent.attachFake(this, ImsPhoneCall.State.DIALING);
+
+        mIsEmergency = isEmergency;
+
+        fetchDtmfToneDelay(phone);
     }
 
     public void dispose() {
@@ -590,6 +610,15 @@ public class ImsPhoneConnection extends Connection {
         }
     }
 
+    private void fetchDtmfToneDelay(ImsPhone phone) {
+        CarrierConfigManager configMgr = (CarrierConfigManager)
+                phone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = configMgr.getConfigForSubId(phone.getSubId());
+        if (b != null) {
+            mDtmfToneDelay = b.getInt(CarrierConfigManager.KEY_IMS_DTMF_TONE_DELAY_INT);
+        }
+    }
+
     @Override
     public int getNumberPresentation() {
         return mNumberPresentation;
@@ -675,7 +704,7 @@ public class ImsPhoneConnection extends Connection {
         boolean updateAddressDisplay = updateAddressDisplay(imsCall);
         boolean updateExtras = updateExtras(imsCall);
 
-        return updateParent || updateMediaCapabilities || updateWifiState || updateAddressDisplay
+        return updateParent || updateWifiState || updateAddressDisplay || updateMediaCapabilities
                 || updateExtras;
     }
 
@@ -943,6 +972,14 @@ public class ImsPhoneConnection extends Connection {
         }
         sb.append("]");
         return sb.toString();
+    }
+
+    /**
+     * Indicates whether current phone connection is emergency or not
+     * @return boolean: true if emergency, false otherwise
+     */
+    protected boolean isEmergency() {
+        return mIsEmergency;
     }
 }
 

@@ -211,6 +211,12 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             mAutoTimeZoneObserver);
         setSignalStrengthDefaultValues();
 
+        // Query signal strength from the modem after service tracker is created (i.e. boot up,
+        // switching between GSM and CDMA phone), because the unsolicited signal strength
+        // information might come late or even never come. This will get the accurate signal
+        // strength information displayed on the UI.
+        mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
+
         mHbpcdUtils = new HbpcdUtils(phone.getContext());
 
         // Reset OTASP state in case previously set by another service
@@ -583,6 +589,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         String plmn = mSS.getOperatorAlphaLong();
         boolean showPlmn = false;
 
+        showPlmn = plmn != null;
+
         int subId = SubscriptionManager.INVALID_SUBSCRIPTION_ID;
         int[] subIds = SubscriptionManager.getSubId(mPhone.getPhoneId());
         if (subIds != null && subIds.length > 0) {
@@ -602,7 +610,6 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
             // would set showPlmn to true only if plmn was not empty, i.e. was not
             // null and not blank. But this would cause us to incorrectly display
             // "No Service". Now showPlmn is set to true for any non null string.
-            showPlmn = plmn != null;
             if (DBG) {
                 log(String.format("updateSpnDisplay: changed sending intent" +
                             " showPlmn='%b' plmn='%s' subId='%d'", showPlmn, plmn, subId));
@@ -654,7 +661,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                 if (states.length > 0) {
                     try {
                         regState = Integer.parseInt(states[0]);
-    
+
                         // states[3] (if present) is the current radio technology
                         if (states.length >= 4 && states[3] != null) {
                             dataRadioTechnology = Integer.parseInt(states[3]);
@@ -1596,8 +1603,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         String onsl = s.getVoiceOperatorAlphaLong();
         String onss = s.getVoiceOperatorAlphaShort();
 
-        boolean equalsOnsl = onsl != null && spn.equals(onsl);
-        boolean equalsOnss = onss != null && spn.equals(onss);
+        boolean equalsOnsl = onsl != null && spn != null && !spn.isEmpty() && spn.equals(onsl);
+        boolean equalsOnss = onss != null && spn != null && !spn.isEmpty() && spn.equals(onss);
 
         return cdmaRoaming && !(equalsOnsl || equalsOnss);
     }

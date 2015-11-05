@@ -238,15 +238,16 @@ class CommandParamsFactory extends Handler {
         int iconIndex = 0;
 
         if (data == null) {
-            if (mloadIcon) {
-                CatLog.d(this, "Optional Icon data is NULL");
-                mCmdParams.mLoadIconFailed = true;
-                mloadIcon = false;
-                /** In case of icon load fail consider the
-                 ** received proactive command as valid (sending RESULT OK) */
-                return ResultCode.OK;
-            }
-            return ResultCode.PRFRMD_ICON_NOT_DISPLAYED;
+            CatLog.d(this, "Optional Icon data is NULL");
+            mCmdParams.mLoadIconFailed = true;
+            mloadIcon = false;
+            /** In case of icon load fail consider the
+            ** received proactive command as valid (sending RESULT OK) as
+            ** The result code, 'PRFRMD_ICON_NOT_DISPLAYED' will be added in the
+            ** terminal response by CatService/StkAppService if needed based on
+            ** the value of mLoadIconFailed.
+            */
+            return ResultCode.OK;
         }
         switch(mIconLoadState) {
         case LOAD_SINGLE_ICON:
