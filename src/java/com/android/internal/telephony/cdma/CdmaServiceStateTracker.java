@@ -597,6 +597,8 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                     "of service, set plmn='" + plmn + "'");
         }
 
+        plmn = maybeUpdateHDTagForPlmn(showPlmn, plmn);
+
         if (mSubId != subId || !TextUtils.equals(plmn, mCurPlmn)) {
             // Allow A blank plmn, "" to set showPlmn to true. Previously, we
             // would set showPlmn to true only if plmn was not empty, i.e. was not
