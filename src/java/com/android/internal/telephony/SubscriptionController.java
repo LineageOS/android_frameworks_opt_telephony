@@ -1396,6 +1396,11 @@ public class SubscriptionController extends ISub.Stub {
         int subId = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION,
                 SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            subId = getDefaultSubId();
+        }
+
         if (VDBG) logd("[getDefaultDataSubId] subId= " + subId);
         return subId;
     }
