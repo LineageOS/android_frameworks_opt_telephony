@@ -113,7 +113,7 @@ public final class DataConnection extends StateMachine {
     private DcRetryAlarmController mDcRetryAlarmController;
 
     // The DCT that's talking to us, we only support one!
-    private DcTrackerBase mDct = null;
+    private DcTracker mDct = null;
 
     protected String[] mPcscfAddr;
 
@@ -269,7 +269,7 @@ public final class DataConnection extends StateMachine {
      * @return DataConnection that was created.
      */
     static DataConnection makeDataConnection(PhoneBase phone, int id,
-            DcTrackerBase dct, DcTesterFailBringUpAll failBringUpAll,
+            DcTracker dct, DcTesterFailBringUpAll failBringUpAll,
             DcController dcc) {
         DataConnection dc = new DataConnection(phone,
                 "DC-" + mInstanceNumber.incrementAndGet(), id, dct, failBringUpAll, dcc);
@@ -420,7 +420,7 @@ public final class DataConnection extends StateMachine {
 
     //***** Constructor (NOTE: uses dcc.getHandler() as its Handler)
     private DataConnection(PhoneBase phone, String name, int id,
-                DcTrackerBase dct, DcTesterFailBringUpAll failBringUpAll,
+                DcTracker dct, DcTesterFailBringUpAll failBringUpAll,
                 DcController dcc) {
         super(name, dcc.getHandler());
         setLogRecSize(300);

@@ -51,7 +51,7 @@ import android.text.TextUtils;
 
 import com.android.ims.ImsManager;
 import com.android.internal.R;
-import com.android.internal.telephony.dataconnection.DcTrackerBase;
+import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import com.android.internal.telephony.test.SimulatedRadioControl;
@@ -215,7 +215,7 @@ public abstract class PhoneBase extends Handler implements Phone {
     public CommandsInterface mCi;
     private int mVmCount = 0;
     boolean mDnsCheckDisabled;
-    public DcTrackerBase mDcTracker;
+    public DcTracker mDcTracker;
     boolean mDoesRilSendMultipleCallRing;
     int mCallRingContinueToken;
     int mCallRingDelay;

@@ -52,7 +52,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.android.internal.telephony.dataconnection.DcTrackerBase;
+import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -768,7 +768,7 @@ public abstract class ServiceStateTracker extends Handler {
      *
      * Hang up the existing voice calls to decrease call drop rate.
      */
-    public void powerOffRadioSafely(DcTrackerBase dcTracker) {
+    public void powerOffRadioSafely(DcTracker dcTracker) {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
                 // In some network, deactivate PDP connection cause releasing of RRC connection,
