@@ -1355,7 +1355,7 @@ public class SubscriptionController extends ISub.Stub {
     public int getDefaultSmsSubId() {
         int subId = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_SMS_SUBSCRIPTION,
-                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+                getDefaultSubId());
         if (VDBG) logd("[getDefaultSmsSubId] subId=" + subId);
         return subId;
     }
@@ -1386,7 +1386,7 @@ public class SubscriptionController extends ISub.Stub {
     public int getDefaultVoiceSubId() {
         int subId = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_VOICE_CALL_SUBSCRIPTION,
-                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+                getDefaultSubId());
         if (VDBG) logd("[getDefaultVoiceSubId] subId=" + subId);
         return subId;
     }
@@ -1395,7 +1395,7 @@ public class SubscriptionController extends ISub.Stub {
     public int getDefaultDataSubId() {
         int subId = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.MULTI_SIM_DATA_CALL_SUBSCRIPTION,
-                SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+                getDefaultSubId());
         if (VDBG) logd("[getDefaultDataSubId] subId= " + subId);
         return subId;
     }
