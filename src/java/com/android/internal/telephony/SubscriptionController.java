@@ -163,6 +163,8 @@ public class SubscriptionController extends ISub.Stub {
     private DdsScheduler mScheduler;
     private DdsSchedulerAc mSchedulerAc;
 
+    private int mPhoneAccounts = -1;
+
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -1839,6 +1841,10 @@ public class SubscriptionController extends ISub.Stub {
         //if activated sub count is less than 2, disable prompt.
         if (mActCount < 2) {
             setSMSPromptEnabled(false);
+        }
+        // for voice prompt we need to check phone accounts too, not only sim accounts
+        if ((mPhoneAccounts != -1 && mPhoneAccounts < 2) ||
+                (mPhoneAccounts == -1 && mActCount < 2)) {
             setVoicePromptEnabled(false);
         }
 
@@ -2018,6 +2024,12 @@ public class SubscriptionController extends ISub.Stub {
 
         logd("getActivatedSubIdList: X subIdArr.length=" + subIdArr.length);
         return subIdArr;
+    }
+
+    /** @hide **/
+    @Override
+    public void updatePhoneAccounts(int phoneAccounts) {
+        mPhoneAccounts = phoneAccounts;
     }
 
     @Override
