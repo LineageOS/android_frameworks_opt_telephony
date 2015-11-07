@@ -46,6 +46,7 @@ import com.android.internal.telephony.dataconnection.DdsSchedulerAc;
 
 import android.provider.BaseColumns;
 import android.provider.Settings;
+import android.telecom.TelecomManager;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
@@ -138,6 +139,7 @@ public class SubscriptionController extends ISub.Stub {
     protected static PhoneProxy[] sProxyPhones;
     protected Context mContext;
     protected TelephonyManager mTelephonyManager;
+    protected TelecomManager mTelecomManager;
     protected CallManager mCM;
 
     // When no valid SIM cards present on device, framework returns DUMMY subIds
@@ -217,6 +219,7 @@ public class SubscriptionController extends ISub.Stub {
         mContext = c;
         mCM = CallManager.getInstance();
         mTelephonyManager = TelephonyManager.from(mContext);
+        mTelecomManager = TelecomManager.from(mContext);
 
         if(ServiceManager.getService("isub") == null) {
                 ServiceManager.addService("isub", this);
@@ -1839,6 +1842,9 @@ public class SubscriptionController extends ISub.Stub {
         //if activated sub count is less than 2, disable prompt.
         if (mActCount < 2) {
             setSMSPromptEnabled(false);
+        }
+        // for voice prompt we need to check phone accounts too, not only sim accounts
+        if (mTelecomManager.getAllPhoneAccountsCount() < 2) {
             setVoicePromptEnabled(false);
         }
 
