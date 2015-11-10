@@ -76,6 +76,7 @@ import com.android.internal.telephony.PhoneBase;
 import com.android.internal.util.HexDump;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
+import cyanogenmod.providers.CMSettings;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
@@ -881,8 +882,9 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
         }
 
-        List<String> regAddresses = Settings.Secure.getDelimitedStringAsList(mContext.getContentResolver(),
-                Settings.Secure.PROTECTED_SMS_ADDRESSES , "|");
+        List<String> regAddresses =
+                CMSettings.Secure.getDelimitedStringAsList(mContext.getContentResolver(),
+                        CMSettings.Secure.PROTECTED_SMS_ADDRESSES , "|");
 
         List<String> allAddresses = Intents
                 .getNormalizedAddressesFromPdus(pdus, tracker.getFormat());
