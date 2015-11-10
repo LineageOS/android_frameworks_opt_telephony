@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1f2f7f8d_a3736e80",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccCard.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 68
+      },
+      "writtenOn": "2015-11-10T01:42:20Z",
+      "side": 1,
+      "message": "Typo, you want m3GPP2AppActivated",
+      "revId": "a9020368fe9533e0064ab3b7a195deafca9a19ba",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
