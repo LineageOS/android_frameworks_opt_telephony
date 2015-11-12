@@ -1468,6 +1468,10 @@ public class SubscriptionController extends ISub.Stub {
 
                 if (id == subId) {
                     networkType1 = getUserNwMode(id);
+                    if (networkType1 == -1) {
+                        /// if user mode is unset, prefer what's set in the db
+                        networkType1 = getNwMode(id);
+                    }
                     phoneId1 = phoneId;
                     if (DBG) logdl("[setDefaultDataSubNetworkType] networkType1: "
                             + networkType1 + ", phoneId1: " + phoneId1);
