@@ -485,6 +485,14 @@ public class PhoneFactory {
             }
             pw.flush();
             pw.println("++++++++++++++++++++++++++++++++");
+
+            try {
+                phoneProxy.getPhoneSubInfo().dump(fd, pw, args);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
         }
 
         try {
