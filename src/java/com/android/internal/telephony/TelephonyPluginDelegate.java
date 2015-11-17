@@ -32,6 +32,7 @@ import android.content.Context;
 import android.util.Log;
 import android.telephony.Rlog;
 
+import com.android.internal.telephony.ConfigResourceUtil;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.DctController;
 import com.android.internal.telephony.TelephonyPluginBase;
@@ -62,20 +63,26 @@ public class TelephonyPluginDelegate {
 
     public static void init(Context context) {
         if (sMe == null) {
-            String fullClsName = context.getResources()
-                .getString(R.string.telephony_plugin_class_name);
-            String libPath = context.getResources().getString(R.string.telephony_plugin_lib_path);
-
-            PathClassLoader classLoader = new PathClassLoader(libPath,
-                    ClassLoader.getSystemClassLoader());
-            Rlog.d(LOG_TAG, "classLoader = " + classLoader);
-
-            if (fullClsName == null || fullClsName.length() == 0) {
-                Rlog.d(LOG_TAG, "No customized TelephonyPlugin available, fallback to default");
-                fullClsName = "com.android.internal.telephony.DefaultTelephonyPlugin";
-            }
-            Class<?> cls = null;
             try {
+                final String dir = "/system/framework/";
+                String jarName = ConfigResourceUtil.getStringValue(
+                        context, "telephony_plugin_jar_name");
+
+                String fullClsName = ConfigResourceUtil.getStringValue(context,
+                        "telephony_plugin_class_name");
+
+                String libPath = dir + jarName;
+                Rlog.d(LOG_TAG, "Extension = " +fullClsName + "@" + libPath);
+
+                PathClassLoader classLoader = new PathClassLoader(libPath,
+                        ClassLoader.getSystemClassLoader());
+                Rlog.d(LOG_TAG, "classLoader = " + classLoader);
+
+                if (fullClsName == null || fullClsName.length() == 0) {
+                    Rlog.d(LOG_TAG, "No customized TelephonyPlugin available, fallback to default");
+                    fullClsName = "com.android.internal.telephony.DefaultTelephonyPlugin";
+                }
+                Class<?> cls = null;
                 cls = Class.forName(fullClsName, false, classLoader);
                 Rlog.d(LOG_TAG, "cls = " + cls);
                 Constructor custMethod = cls.getConstructor();

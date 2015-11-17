@@ -41,4 +41,11 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <bool name="config_enable_display_14digit_imei">false</bool>
     <!-- Controlling respond call via sms feature via config item -->
     <bool name="config_reject_call_via_sms_enabled">true</bool>
+    <!-- To disable/enable call barring requests over IMS -->
+    <bool name="config_enable_callbarring_over_ims">false</bool>
+    <!--The .jar file name which has the extended implementation
+     of telephony base classes.-->
+    <string name="telephony_plugin_jar_name" translatable="false"></string>
+    <!--Fully qualified class name of telephony extended plugin.-->
+    <string name="telephony_plugin_class_name" translatable="false"></string>
 </resources>
