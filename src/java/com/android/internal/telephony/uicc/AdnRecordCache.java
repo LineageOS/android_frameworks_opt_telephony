@@ -355,6 +355,10 @@ public final class AdnRecordCache extends Handler implements IccConstants {
                 useLocalPb ? mUsimLocalPhoneBookManager : mUsimGlobalPhoneBookManager;
     }
 
+    public boolean isPbrPresent() {
+        return (mUsimGlobalPhoneBookManager.isPbrFilePresent() ||
+                mUsimLocalPhoneBookManager.isPbrFilePresent());
+    }
 
     /**
      * Responds with exception (in response) if efid is not a known ADN-like
