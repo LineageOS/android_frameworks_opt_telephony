@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ff5d4b2f_ed8741b6",
+        "filename": "src/java/com/android/internal/telephony/uicc/IccFileHandler.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 362,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2015-11-17T06:36:08Z",
+      "side": 1,
+      "message": "Is this line necessary? It looks like you\u0027re changing a requested number of bytes parameter.",
+      "revId": "ced865baa751bc0aff2b85be9337a601a747ea26",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
