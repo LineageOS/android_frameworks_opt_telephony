@@ -1436,11 +1436,10 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         String idd = mHbpcdUtils.getIddByMcc(
                 Integer.parseInt(operatorNumeric.substring(0,3)));
         if (idd != null && !idd.isEmpty()) {
-            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_IDP_STRING,
-                     idd);
+            SystemProperties.set(TelephonyProperties.PROPERTY_OPERATOR_IDP_STRING, idd);
         } else {
             // use default "+", since we don't know the current IDP
-            mPhone.setSystemProperty(TelephonyProperties.PROPERTY_OPERATOR_IDP_STRING, "+");
+            SystemProperties.set(TelephonyProperties.PROPERTY_OPERATOR_IDP_STRING, "+");
         }
     }
 
