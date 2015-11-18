@@ -157,7 +157,7 @@ public class GSMPhone extends PhoneBase {
         mCi.setPhoneType(PhoneConstants.PHONE_TYPE_GSM);
         mCT = new GsmCallTracker(this);
 
-        mSST = new GsmServiceStateTracker(this);
+        mSST = TelephonyPluginDelegate.getInstance().makeGsmServiceStateTracker(this);
         mDcTracker = TelephonyPluginDelegate.getInstance().makeDcTracker(this);
 
         if (!unitTestMode) {
@@ -192,7 +192,7 @@ public class GSMPhone extends PhoneBase {
         mCi.setPhoneType(PhoneConstants.PHONE_TYPE_GSM);
         mCT = new GsmCallTracker(this);
 
-        mSST = new GsmServiceStateTracker(this);
+        mSST = TelephonyPluginDelegate.getInstance().makeGsmServiceStateTracker(this);
         mDcTracker = TelephonyPluginDelegate.getInstance().makeDcTracker(this);
 
         if (!unitTestMode) {
