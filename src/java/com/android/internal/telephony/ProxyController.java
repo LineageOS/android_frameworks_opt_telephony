@@ -82,9 +82,6 @@ public class ProxyController {
     //UiccPhoneBookController to use proper IccPhoneBookInterfaceManagerProxy object
     private UiccPhoneBookController mUiccPhoneBookController;
 
-    //PhoneSubInfoController to use proper PhoneSubInfoProxy object
-    private PhoneSubInfoController mPhoneSubInfoController;
-
     //UiccSmsController to use proper IccSmsInterfaceManager object
     private UiccSmsController mUiccSmsController;
 
@@ -135,7 +132,6 @@ public class ProxyController {
 
         mDctController = DctController.makeDctController(phoneProxy);
         mUiccPhoneBookController = new UiccPhoneBookController(mProxyPhones);
-        mPhoneSubInfoController = new PhoneSubInfoController(mProxyPhones);
         mUiccSmsController = new UiccSmsController(mProxyPhones);
         mSetRadioAccessFamilyStatus = new int[mProxyPhones.length];
         mNewRadioAccessFamily = new int[mProxyPhones.length];
