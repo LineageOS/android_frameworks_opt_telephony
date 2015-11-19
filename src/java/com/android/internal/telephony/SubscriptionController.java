@@ -1748,6 +1748,34 @@ public class SubscriptionController extends ISub.Stub {
         Binder.restoreCallingIdentity(token);
     }
 
+    @Override
+    public void activateSubId(int subId) {
+        loge("activateSubId: API not supported, subId = " + subId);
+    }
+
+    @Override
+    public void deactivateSubId(int subId) {
+        loge("deactivateSubId: API not supported, subId = " + subId);
+    }
+
+    @Override
+    public int setSubState(int subId, int subStatus) {
+        int result = 0;
+
+        loge("setSubState: API not supported, subId = " + subId + " subStatus = " + subStatus);
+
+        return result;
+    }
+
+    @Override
+    public int getSubState(int subId) {
+        int result = 0;
+
+        loge("getSubState: API not supported, subId = " + subId);
+
+        return result;
+    }
+
     /**
      * Store properties associated with SubscriptionInfo in database
      * @param subId Subscription Id of Subscription
