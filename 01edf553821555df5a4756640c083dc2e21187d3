@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7f515b1d_fa5ed143",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccCard.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 10067
+      },
+      "writtenOn": "2015-11-20T01:06:37Z",
+      "side": 1,
+      "message": "Are you sure we want to activate sims only once? Here on titan it breaks sim hotswap.",
+      "revId": "01edf553821555df5a4756640c083dc2e21187d3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
