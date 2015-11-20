@@ -63,6 +63,7 @@ public interface CallFailCause {
     static final int CALL_FAIL_NO_ANSWER_FROM_USER = 19;
     static final int CALL_REJECTED = 21;
     static final int PREEMPTION = 25;
+    static final int NON_SELECTED_USER_CLEARING = 26;
     static final int CALL_FAIL_DESTINATION_OUT_OF_ORDER = 27;
     static final int INVALID_NUMBER = 28;
     static final int FACILITY_REJECTED = 29;
