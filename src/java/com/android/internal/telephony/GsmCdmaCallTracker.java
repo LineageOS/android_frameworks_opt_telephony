@@ -153,8 +153,6 @@ public class GsmCdmaCallTracker extends CallTracker {
     void init(int phoneType) {
         if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
             mConnections = new GsmCdmaConnection[MAX_CONNECTIONS_GSM];
-            mCi.unregisterForCallStateChanged(this);
-
             mPhone.getContext().unregisterReceiver(mEcmExitReceiver);
         } else {
             mConnections = new GsmCdmaConnection[MAX_CONNECTIONS_CDMA];
