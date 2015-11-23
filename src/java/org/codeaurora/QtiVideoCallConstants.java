@@ -169,5 +169,15 @@ public class QtiVideoCallConstants {
 
     /* Session modification cause extra key name */
     public static final String SESSION_MODIFICATION_CAUSE_EXTRA_KEY = "SessionModificationCause";
+
+    /**
+     * Local device supports downgrade to voice
+     */
+    public static final int CAPABILITY_SUPPORTS_DOWNGRADE_TO_VOICE_LOCAL = 0x00800000;
+
+    /**
+      * Remote device supports downgrade to voice
+      */
+    public static final int CAPABILITY_SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE = 0x01000000;
 }
 
