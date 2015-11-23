@@ -179,5 +179,10 @@ public class QtiVideoCallConstants {
       * Remote device supports downgrade to voice
       */
     public static final int CAPABILITY_SUPPORTS_DOWNGRADE_TO_VOICE_REMOTE = 0x01000000;
+
+    /**
+     * Add participant in an active or conference call option
+     */
+    public static final int CAPABILITY_ADD_PARTICIPANT = 0x02000000;
 }
 
