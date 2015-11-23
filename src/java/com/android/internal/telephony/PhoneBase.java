@@ -227,7 +227,6 @@ public abstract class PhoneBase extends Handler implements Phone {
     boolean mDoesRilSendMultipleCallRing;
     int mCallRingContinueToken;
     int mCallRingDelay;
-    public boolean mIsTheCurrentActivePhone = true;
     boolean mIsVoiceCapable = true;
 
     // Variable to cache the video capability. When RAT changes, we lose this info and are unable
@@ -528,7 +527,6 @@ public abstract class PhoneBase extends Handler implements Phone {
             mCi.unSetOnCallRing(this);
             // Must cleanup all connectionS and needs to use sendMessage!
             mDcTracker.cleanUpAllConnections(null);
-            mIsTheCurrentActivePhone = false;
             // Dispose the SMS usage and storage monitors
             mSmsStorageMonitor.dispose();
             mSmsUsageMonitor.dispose();
@@ -589,11 +587,6 @@ public abstract class PhoneBase extends Handler implements Phone {
                 return;
         }
 
-        if (!mIsTheCurrentActivePhone) {
-            Rlog.e(LOG_TAG, "Received message " + msg +
-                    "[" + msg.what + "] while being destroyed. Ignoring.");
-            return;
-        }
         switch(msg.what) {
             case EVENT_CALL_RING:
                 Rlog.d(LOG_TAG, "Event EVENT_CALL_RING Received state=" + getState());
@@ -2600,10 +2593,8 @@ public abstract class PhoneBase extends Handler implements Phone {
      * LCE service state may get destroyed on the modem when radio becomes unavailable.
      */
     public void startLceAfterRadioIsAvailable() {
-        if (mIsTheCurrentActivePhone) {
-            mCi.startLceService(DEFAULT_REPORT_INTERVAL_MS, LCE_PULL_MODE,
-                obtainMessage(EVENT_CONFIG_LCE));
-        }
+        mCi.startLceService(DEFAULT_REPORT_INTERVAL_MS, LCE_PULL_MODE,
+            obtainMessage(EVENT_CONFIG_LCE));
     }
 
     @Override
@@ -2667,7 +2658,6 @@ public abstract class PhoneBase extends Handler implements Phone {
         pw.println(" mDoesRilSendMultipleCallRing=" + mDoesRilSendMultipleCallRing);
         pw.println(" mCallRingContinueToken=" + mCallRingContinueToken);
         pw.println(" mCallRingDelay=" + mCallRingDelay);
-        pw.println(" mIsTheCurrentActivePhone=" + mIsTheCurrentActivePhone);
         pw.println(" mIsVoiceCapable=" + mIsVoiceCapable);
         pw.println(" mIccRecords=" + mIccRecords.get());
         pw.println(" mUiccApplication=" + mUiccApplication.get());

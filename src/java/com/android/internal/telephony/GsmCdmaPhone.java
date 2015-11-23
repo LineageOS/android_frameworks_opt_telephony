@@ -2071,10 +2071,6 @@ public class GsmCdmaPhone extends PhoneBase {
                 return;
         }
 
-        if (!mIsTheCurrentActivePhone) {
-            loge("Received message " + msg + "[" + msg.what + "] while being destroyed. Ignoring.");
-            return;
-        }
         switch (msg.what) {
             case EVENT_RADIO_AVAILABLE: {
                 mCi.getBasebandVersion(obtainMessage(EVENT_GET_BASEBAND_VERSION_DONE));

@@ -3484,11 +3484,6 @@ public final class DcTracker extends Handler {
     public void handleMessage (Message msg) {
         if (VDBG) log("handleMessage msg=" + msg);
 
-        if (!mPhone.mIsTheCurrentActivePhone || mIsDisposed) {
-            loge("handleMessage: Ignore GSM msgs since GSM phone is inactive");
-            return;
-        }
-
         switch (msg.what) {
             case DctConstants.EVENT_RECORDS_LOADED:
                 // If onRecordsLoadedOrSubIdChanged() is not called here, it should be called on

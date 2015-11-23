@@ -63,6 +63,7 @@ import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.ICarrierConfigLoader;
 import com.android.internal.telephony.MccTable;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.ProxyController;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
@@ -172,7 +173,7 @@ public final class GsmServiceStateTracker extends ServiceStateTracker {
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (!mPhone.mIsTheCurrentActivePhone) {
+            if (mPhone.getPhoneType() != PhoneConstants.PHONE_TYPE_GSM) {
                 Rlog.e(LOG_TAG, "Received Intent " + intent +
                         " while being destroyed. Ignoring.");
                 return;
@@ -275,6 +276,9 @@ public final class GsmServiceStateTracker extends ServiceStateTracker {
         mCr.unregisterContentObserver(mAutoTimeObserver);
         mCr.unregisterContentObserver(mAutoTimeZoneObserver);
         mPhone.getContext().unregisterReceiver(mIntentReceiver);
+
+        int dds = SubscriptionManager.getDefaultDataSubId();
+        ProxyController.getInstance().unregisterForAllDataDisconnected(dds, this);
         super.dispose();
     }
 
@@ -295,7 +299,7 @@ public final class GsmServiceStateTracker extends ServiceStateTracker {
         String[] strings;
         Message message;
 
-        if (!mPhone.mIsTheCurrentActivePhone) {
+        if (mPhone.getPhoneType() != PhoneConstants.PHONE_TYPE_GSM) {
             Rlog.e(LOG_TAG, "Received message " + msg +
                     "[" + msg.what + "] while being destroyed. Ignoring.");
             return;

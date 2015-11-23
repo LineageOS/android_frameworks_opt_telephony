@@ -295,7 +295,7 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
         int[] ints;
         String[] strings;
 
-        if (!mPhone.mIsTheCurrentActivePhone) {
+        if (mPhone.getPhoneType() != PhoneConstants.PHONE_TYPE_CDMA) {
             loge("Received message " + msg + "[" + msg.what + "]" +
                     " while being destroyed. Ignoring.");
             return;

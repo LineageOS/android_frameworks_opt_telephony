@@ -1349,11 +1349,6 @@ public class GsmCdmaCallTracker extends CallTracker {
     handleMessage (Message msg) {
         AsyncResult ar;
 
-        if (!mPhone.mIsTheCurrentActivePhone) {
-            Rlog.e(LOG_TAG, "Received message " + msg +
-                    "[" + msg.what + "] while being destroyed. Ignoring.");
-            return;
-        }
         switch (msg.what) {
             case EVENT_POLL_CALLS_RESULT:
                 Rlog.d(LOG_TAG, "Event EVENT_POLL_CALLS_RESULT Received");

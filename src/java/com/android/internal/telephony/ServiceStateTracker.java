@@ -349,6 +349,7 @@ public abstract class ServiceStateTracker extends Handler {
         mCi.unregisterForCellInfoList(this);
         mSubscriptionManager
             .removeOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
+        mCi.unregisterForImsNetworkStateChanged(this);
     }
 
     public boolean getDesiredPowerState() {

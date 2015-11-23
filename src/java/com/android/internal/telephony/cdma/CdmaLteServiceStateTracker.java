@@ -84,16 +84,18 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
     @Override
     public void dispose() {
         mPhone.unregisterForSimRecordsLoaded(this);
+
+        int dds = SubscriptionManager.getDefaultDataSubId();
+        ProxyController.getInstance().unregisterForAllDataDisconnected(dds, this);
+
         super.dispose();
     }
 
     @Override
     public void handleMessage(Message msg) {
         AsyncResult ar;
-        int[] ints;
-        String[] strings;
 
-        if (!mPhone.mIsTheCurrentActivePhone) {
+        if (mPhone.getPhoneType() != PhoneConstants.PHONE_TYPE_CDMA) {
             loge("Received message " + msg + "[" + msg.what + "]" +
                     " while being destroyed. Ignoring.");
             return;
