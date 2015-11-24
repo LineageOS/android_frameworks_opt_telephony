@@ -28,7 +28,7 @@ import com.android.internal.telephony.CellBroadcastHandler;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.InboundSmsTracker;
-import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsStorageMonitor;
@@ -56,7 +56,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      * Create a new inbound SMS handler for CDMA.
      */
     private CdmaInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
-            PhoneBase phone, CdmaSMSDispatcher smsDispatcher) {
+            Phone phone, CdmaSMSDispatcher smsDispatcher) {
         super("CdmaInboundSmsHandler", context, storageMonitor, phone,
                 CellBroadcastHandler.makeCellBroadcastHandler(context, phone));
         mSmsDispatcher = smsDispatcher;
@@ -81,7 +81,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      * Wait for state machine to enter startup state. We can't send any messages until then.
      */
     public static CdmaInboundSmsHandler makeInboundSmsHandler(Context context,
-            SmsStorageMonitor storageMonitor, PhoneBase phone, CdmaSMSDispatcher smsDispatcher) {
+            SmsStorageMonitor storageMonitor, Phone phone, CdmaSMSDispatcher smsDispatcher) {
         CdmaInboundSmsHandler handler = new CdmaInboundSmsHandler(context, storageMonitor,
                 phone, smsDispatcher);
         handler.start();
@@ -216,7 +216,7 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      * @param phone
      */
     @Override
-    protected void onUpdatePhoneObject(PhoneBase phone) {
+    protected void onUpdatePhoneObject(Phone phone) {
         super.onUpdatePhoneObject(phone);
         mCellBroadcastHandler.updatePhoneObject(phone);
     }

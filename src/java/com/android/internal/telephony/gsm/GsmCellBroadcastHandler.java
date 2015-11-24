@@ -19,7 +19,6 @@ package com.android.internal.telephony.gsm;
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
-import android.os.SystemProperties;
 import android.telephony.CellLocation;
 import android.telephony.SmsCbLocation;
 import android.telephony.SmsCbMessage;
@@ -27,8 +26,7 @@ import android.telephony.gsm.GsmCellLocation;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.CellBroadcastHandler;
-import com.android.internal.telephony.PhoneBase;
-import com.android.internal.telephony.TelephonyProperties;
+import com.android.internal.telephony.Phone;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -43,7 +41,7 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
     private final HashMap<SmsCbConcatInfo, byte[][]> mSmsCbPageMap =
             new HashMap<SmsCbConcatInfo, byte[][]>(4);
 
-    protected GsmCellBroadcastHandler(Context context, PhoneBase phone) {
+    protected GsmCellBroadcastHandler(Context context, Phone phone) {
         super("GsmCellBroadcastHandler", context, phone);
         phone.mCi.setOnNewGsmBroadcastSms(getHandler(), EVENT_NEW_SMS_MESSAGE, null);
     }
@@ -60,7 +58,7 @@ public class GsmCellBroadcastHandler extends CellBroadcastHandler {
      * @return the new handler
      */
     public static GsmCellBroadcastHandler makeGsmCellBroadcastHandler(Context context,
-            PhoneBase phone) {
+            Phone phone) {
         GsmCellBroadcastHandler handler = new GsmCellBroadcastHandler(context, phone);
         handler.start();
         return handler;

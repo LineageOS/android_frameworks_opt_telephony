@@ -20,13 +20,11 @@ import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.util.AsyncChannel;
-import com.android.internal.util.FastPrintWriter;
 import com.android.internal.util.Protocol;
 import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
@@ -44,7 +42,6 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Looper;
 import android.os.Message;
-import android.os.Messenger;
 import android.os.SystemClock;
 import android.os.SystemProperties;
 import android.telephony.Rlog;
@@ -56,11 +53,9 @@ import android.util.Patterns;
 import android.util.TimeUtils;
 
 import java.io.FileDescriptor;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.net.InetAddress;
@@ -179,7 +174,7 @@ public final class DataConnection extends StateMachine {
     private DisconnectParams mDisconnectParams;
     private DcFailCause mDcFailCause;
 
-    private PhoneBase mPhone;
+    private Phone mPhone;
     private LinkProperties mLinkProperties = new LinkProperties();
     private long mCreateTime;
     private long mLastFailTime;
@@ -268,7 +263,7 @@ public final class DataConnection extends StateMachine {
      * @param id the connection id
      * @return DataConnection that was created.
      */
-    static DataConnection makeDataConnection(PhoneBase phone, int id,
+    static DataConnection makeDataConnection(Phone phone, int id,
             DcTracker dct, DcTesterFailBringUpAll failBringUpAll,
             DcController dcc) {
         DataConnection dc = new DataConnection(phone,
@@ -419,7 +414,7 @@ public final class DataConnection extends StateMachine {
     }
 
     //***** Constructor (NOTE: uses dcc.getHandler() as its Handler)
-    private DataConnection(PhoneBase phone, String name, int id,
+    private DataConnection(Phone phone, String name, int id,
                 DcTracker dct, DcTesterFailBringUpAll failBringUpAll,
                 DcController dcc) {
         super(name, dcc.getHandler());

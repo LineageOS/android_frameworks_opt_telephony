@@ -39,7 +39,6 @@ import android.util.LocalLog;
 import android.util.SparseArray;
 
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.RequestInfo;
@@ -73,7 +72,7 @@ public class DctController extends Handler {
     private static DctController sDctController;
 
     private int mPhoneNum;
-    private PhoneBase[] mPhones;
+    private Phone[] mPhones;
     private DcSwitchStateMachine[] mDcSwitchStateMachine;
     private DcSwitchAsyncChannel[] mDcSwitchAsyncChannel;
     private Handler[] mDcSwitchStateHandler;
@@ -106,34 +105,28 @@ public class DctController extends Handler {
         }
     };
 
-    public void updatePhoneObject(PhoneBase phone) {
+    public void updatePhoneObject(Phone phone) {
         if (phone == null) {
             loge("updatePhoneObject phone = null");
             return;
         }
 
-        PhoneBase phoneBase = phone;
-        if (phoneBase == null) {
-            loge("updatePhoneObject phoneBase = null");
-            return;
-        }
-
         for (int i = 0; i < mPhoneNum; i++) {
             if (mPhones[i] == phone) {
-                updatePhoneBaseForIndex(i, phoneBase);
+                updatePhoneForIndex(i, phone);
                 break;
             }
         }
     }
 
-    private void updatePhoneBaseForIndex(int index, PhoneBase phoneBase) {
-        logd("updatePhoneBaseForIndex for phone index=" + index);
+    private void updatePhoneForIndex(int index, Phone phone) {
+        logd("updatePhoneForIndex for phone index=" + index);
 
-        phoneBase.getServiceStateTracker().registerForDataConnectionAttached(mRspHandler,
+        phone.getServiceStateTracker().registerForDataConnectionAttached(mRspHandler,
                    EVENT_DATA_ATTACHED + index, null);
-        phoneBase.getServiceStateTracker().registerForDataConnectionDetached(mRspHandler,
+        phone.getServiceStateTracker().registerForDataConnectionDetached(mRspHandler,
                    EVENT_DATA_DETACHED + index, null);
-        phoneBase.registerForEmergencyCallToggle(mRspHandler,
+        phone.registerForEmergencyCallToggle(mRspHandler,
                 EVENT_EMERGENCY_CALL_TOGGLED + index, null);
 
         ConnectivityManager cm = (ConnectivityManager)mPhones[index].getContext()
@@ -164,7 +157,7 @@ public class DctController extends Handler {
         mNetworkFilter[index].addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
 
         mNetworkFactory[index] = new TelephonyNetworkFactory(this.getLooper(),
-                mPhones[index].getContext(), "TelephonyNetworkFactory", phoneBase,
+                mPhones[index].getContext(), "TelephonyNetworkFactory", phone,
                 mNetworkFilter[index]);
         mNetworkFactory[index].setScoreFilter(50);
         mNetworkFactoryMessenger[index] = new Messenger(mNetworkFactory[index]);
@@ -202,7 +195,7 @@ public class DctController extends Handler {
        return sDctController;
     }
 
-    public static DctController makeDctController(PhoneBase[] phones) {
+    public static DctController makeDctController(Phone[] phones) {
         if (sDctController == null) {
             logd("makeDctController: new DctController phones.length=" + phones.length);
             sDctController = new DctController(phones);
@@ -211,7 +204,7 @@ public class DctController extends Handler {
         return sDctController;
     }
 
-    private DctController(PhoneBase[] phones) {
+    private DctController(Phone[] phones) {
         logd("DctController(): phones.length=" + phones.length);
         if (phones == null || phones.length == 0) {
             if (phones == null) {
@@ -249,7 +242,7 @@ public class DctController extends Handler {
             }
 
             // Register for radio state change
-            updatePhoneBaseForIndex(i, mPhones[i]);
+            updatePhoneForIndex(i, mPhones[i]);
         }
 
         mContext = mPhones[0].getContext();
@@ -722,7 +715,7 @@ public class DctController extends Handler {
                 return;
             }
 
-            DcTracker dcTracker =((PhoneBase)mPhone).mDcTracker;
+            DcTracker dcTracker =((Phone)mPhone).mDcTracker;
             String apn = apnForNetworkRequest(networkRequest);
             if (dcTracker.isApnSupported(apn)) {
                 requestNetwork(networkRequest, dcTracker.getApnPriority(apn), l);

@@ -17,15 +17,11 @@
 package com.android.internal.telephony;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 
 import android.content.Context;
-import android.os.SystemProperties;
 import android.os.Build;
 import android.text.TextUtils;
-import android.content.ContentResolver;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.telephony.PhoneNumberUtils;
@@ -530,7 +526,7 @@ public class SmsNumberUtils {
     /**
      *  Filter the destination number if using VZW sim card.
      */
-    public static String filterDestAddr(PhoneBase phoneBase, String destAddr) {
+    public static String filterDestAddr(Phone phone, String destAddr) {
         if (DBG) Rlog.d(TAG, "enter filterDestAddr. destAddr=\"" + destAddr + "\"" );
 
         if (destAddr == null || !PhoneNumberUtils.isGlobalPhoneNumber(destAddr)) {
@@ -541,12 +537,12 @@ public class SmsNumberUtils {
         final String networkOperator = TelephonyManager.getDefault().getNetworkOperator();
         String result = null;
 
-        if (needToConvert(phoneBase)) {
-            final int networkType = getNetworkType(phoneBase);
+        if (needToConvert(phone)) {
+            final int networkType = getNetworkType(phone);
             if (networkType != -1 && !TextUtils.isEmpty(networkOperator)) {
                 String networkMcc = networkOperator.substring(0, 3);
                 if (networkMcc != null && networkMcc.trim().length() > 0) {
-                    result = formatNumber(phoneBase.getContext(), destAddr, networkMcc, networkType);
+                    result = formatNumber(phone.getContext(), destAddr, networkMcc, networkType);
                 }
             }
         }
@@ -561,14 +557,14 @@ public class SmsNumberUtils {
     /**
      * Returns the current network type
      */
-    private static int getNetworkType(PhoneBase phoneBase) {
+    private static int getNetworkType(Phone phone) {
         int networkType = -1;
         int phoneType = TelephonyManager.getDefault().getPhoneType();
 
         if (phoneType == TelephonyManager.PHONE_TYPE_GSM) {
             networkType = GSM_UMTS_NETWORK;
         } else if (phoneType == TelephonyManager.PHONE_TYPE_CDMA) {
-            if (isInternationalRoaming(phoneBase)) {
+            if (isInternationalRoaming(phone)) {
                 networkType = CDMA_ROAMING_NETWORK;
             } else {
                 networkType = CDMA_HOME_NETWORK;
@@ -580,11 +576,11 @@ public class SmsNumberUtils {
         return networkType;
     }
 
-    private static boolean isInternationalRoaming(PhoneBase phoneBase) {
+    private static boolean isInternationalRoaming(Phone phone) {
         String operatorIsoCountry = TelephonyManager.getDefault().getNetworkCountryIsoForPhone(
-                phoneBase.getPhoneId());
+                phone.getPhoneId());
         String simIsoCountry = TelephonyManager.getDefault().getSimCountryIsoForPhone(
-                phoneBase.getPhoneId());
+                phone.getPhoneId());
         boolean internationalRoaming = !TextUtils.isEmpty(operatorIsoCountry)
                 && !TextUtils.isEmpty(simIsoCountry)
                 && !simIsoCountry.equals(operatorIsoCountry);
@@ -598,9 +594,9 @@ public class SmsNumberUtils {
         return internationalRoaming;
     }
 
-    private static boolean needToConvert(PhoneBase phoneBase) {
+    private static boolean needToConvert(Phone phone) {
         boolean bNeedToConvert  = false;
-        String[] listArray = phoneBase.getContext().getResources()
+        String[] listArray = phone.getContext().getResources()
                 .getStringArray(com.android.internal.R.array
                 .config_sms_convert_destination_number_support);
         if (listArray != null && listArray.length > 0) {
@@ -612,7 +608,7 @@ public class SmsNumberUtils {
                             bNeedToConvert = "true".equalsIgnoreCase(needToConvertArray[0]);
                         } else if (needToConvertArray.length == 2 &&
                                 !TextUtils.isEmpty(needToConvertArray[1]) &&
-                                compareGid1(phoneBase, needToConvertArray[1])) {
+                                compareGid1(phone, needToConvertArray[1])) {
                             bNeedToConvert = "true".equalsIgnoreCase(needToConvertArray[0]);
                             break;
                         }
@@ -623,8 +619,8 @@ public class SmsNumberUtils {
         return bNeedToConvert;
     }
 
-    private static boolean compareGid1(PhoneBase phoneBase, String serviceGid1) {
-        String gid1 = phoneBase.getGroupIdLevel1();
+    private static boolean compareGid1(Phone phone, String serviceGid1) {
+        String gid1 = phone.getGroupIdLevel1();
         boolean ret = true;
 
         if (TextUtils.isEmpty(serviceGid1)) {

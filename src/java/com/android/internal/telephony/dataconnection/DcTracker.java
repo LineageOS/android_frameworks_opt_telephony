@@ -50,7 +50,6 @@ import android.os.RegistrantList;
 import android.os.ServiceManager;
 import android.os.SystemClock;
 import android.os.SystemProperties;
-import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Settings.SettingNotFoundException;
@@ -72,11 +71,9 @@ import android.telephony.Rlog;
 import com.android.internal.R;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.ITelephony;
-import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.IccRecords;
@@ -520,7 +517,7 @@ public final class DcTracker extends Handler {
     private RegistrantList mAllDataDisconnectedRegistrants = new RegistrantList();
 
     // member variables
-    private final PhoneBase mPhone;
+    private final Phone mPhone;
     private final UiccController mUiccController;
     private final AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
     private DctConstants.Activity mActivity = DctConstants.Activity.NONE;
@@ -639,7 +636,7 @@ public final class DcTracker extends Handler {
     private PendingIntent mImsDeregistrationDelayIntent = null;
 
     //***** Constructor
-    public DcTracker(PhoneBase phone) {
+    public DcTracker(Phone phone) {
         super();
         mPhone = phone;
 
@@ -669,7 +666,7 @@ public final class DcTracker extends Handler {
         mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
-        mAutoAttachOnCreation.set(sp.getBoolean(PhoneBase.DATA_DISABLED_ON_BOOT_KEY, false));
+        mAutoAttachOnCreation.set(sp.getBoolean(Phone.DATA_DISABLED_ON_BOOT_KEY, false));
 
         mSubscriptionManager = SubscriptionManager.from(mPhone.getContext());
         mSubscriptionManager.addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);

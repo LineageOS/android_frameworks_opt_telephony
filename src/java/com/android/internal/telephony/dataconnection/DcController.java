@@ -24,14 +24,12 @@ import android.os.AsyncResult;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
-import android.os.SystemClock;
-import android.telephony.DataConnectionRealTimeInfo;
 import android.telephony.TelephonyManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.DctConstants;
-import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.dataconnection.DataConnection.UpdateLinkPropertyResult;
 import com.android.internal.util.State;
@@ -51,7 +49,7 @@ class DcController extends StateMachine {
     private static final boolean DBG = true;
     private static final boolean VDBG = false;
 
-    private PhoneBase mPhone;
+    private Phone mPhone;
     private DcTracker mDct;
     private DcTesterDeactivateAll mDcTesterDeactivateAll;
 
@@ -91,7 +89,7 @@ class DcController extends StateMachine {
      * @param dct the DataConnectionTracker associated with Dcc
      * @param handler defines the thread/looper to be used with Dcc
      */
-    private DcController(String name, PhoneBase phone, DcTracker dct,
+    private DcController(String name, Phone phone, DcTracker dct,
             Handler handler) {
         super(name, handler);
         setLogRecSize(300);
@@ -116,7 +114,7 @@ class DcController extends StateMachine {
         }
     }
 
-    static DcController makeDcc(PhoneBase phone, DcTracker dct, Handler handler) {
+    static DcController makeDcc(Phone phone, DcTracker dct, Handler handler) {
         DcController dcc = new DcController("Dcc", phone, dct, handler);
         dcc.start();
         return dcc;

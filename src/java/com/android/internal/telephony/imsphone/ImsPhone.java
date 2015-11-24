@@ -83,7 +83,6 @@ import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.TelephonyIntents;
@@ -125,7 +124,7 @@ public class ImsPhone extends ImsPhoneBase {
     private static final int DEFAULT_ECM_EXIT_TIMER_VALUE = 300000;
 
     // Instance Variables
-    PhoneBase mDefaultPhone;
+    Phone mDefaultPhone;
     ImsPhoneCallTracker mCT;
     ArrayList <ImsPhoneMmiCode> mPendingMMIs = new ArrayList<ImsPhoneMmiCode>();
 
@@ -178,7 +177,7 @@ public class ImsPhone extends ImsPhoneBase {
     ImsPhone(Context context, PhoneNotifier notifier, Phone defaultPhone) {
         super("ImsPhone", context, notifier);
 
-        mDefaultPhone = (PhoneBase) defaultPhone;
+        mDefaultPhone = (Phone) defaultPhone;
         mCT = new ImsPhoneCallTracker(this);
         mSS.setStateOff();
 
@@ -201,10 +200,10 @@ public class ImsPhone extends ImsPhoneBase {
         updateDataServiceState();
     }
 
-    public void updateParentPhone(PhoneBase parentPhone) {
-        // synchronization is managed at the PhoneBase scope (which calls this function)
+    public void updateParentPhone(Phone parentPhone) {
+        // synchronization is managed at the Phone scope (which calls this function)
         // Above comment is not valid any more. PhoneProxy calls this function directly now
-        synchronized (PhoneBase.lockForRadioTechnologyChange) {
+        synchronized (Phone.lockForRadioTechnologyChange) {
             mDefaultPhone = parentPhone;
             mPhoneId = mDefaultPhone.getPhoneId();
             if (mDefaultPhone.getServiceStateTracker() != null) {
@@ -221,10 +220,9 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
-    @Override
     public void dispose() {
         Rlog.d(LOG_TAG, "dispose");
-        // Nothing to dispose in PhoneBase
+        // Nothing to dispose in Phone
         //super.dispose();
         mPendingMMIs.clear();
         mCT.dispose();
@@ -234,15 +232,6 @@ public class ImsPhone extends ImsPhoneBase {
             mDefaultPhone.getServiceStateTracker().
                     unregisterForDataRegStateOrRatChanged(this);
         }
-    }
-
-    @Override
-    public void removeReferences() {
-        Rlog.d(LOG_TAG, "removeReferences");
-        super.removeReferences();
-
-        mCT = null;
-        mSS = null;
     }
 
     @Override

@@ -25,13 +25,13 @@ import android.content.Context;
  *
  */
 
-public class PhoneProxy extends GsmCdmaPhone {
+public class PhoneProxy extends PhoneBase {
     public PhoneProxy(Context context, CommandsInterface ci, PhoneNotifier notifier, int phoneId,
                        int precisePhoneType) {
         super(context, ci, notifier, phoneId, precisePhoneType);
     }
 
-    public PhoneBase getActivePhone() {
+    public Phone getActivePhone() {
         return this;
     }
 }

@@ -21,7 +21,6 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.os.ServiceManager;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.uicc.AdnRecord;
@@ -30,7 +29,6 @@ import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.IccRecords;
-import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 
 import java.util.List;
@@ -44,7 +42,7 @@ public class IccPhoneBookInterfaceManager {
     static final String LOG_TAG = "IccPhoneBookIM";
     protected static final boolean DBG = true;
 
-    protected PhoneBase mPhone;
+    protected Phone mPhone;
     private   UiccCardApplication mCurrentApp = null;
     protected AdnRecordCache mAdnCache;
     protected final Object mLock = new Object();
@@ -114,7 +112,7 @@ public class IccPhoneBookInterfaceManager {
         }
     };
 
-    public IccPhoneBookInterfaceManager(PhoneBase phone) {
+    public IccPhoneBookInterfaceManager(Phone phone) {
         this.mPhone = phone;
         IccRecords r = phone.mIccRecords.get();
         if (r != null) {

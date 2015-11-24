@@ -39,9 +39,6 @@ import android.os.SystemProperties;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.text.TextUtils;
-import android.widget.Toast;
-import android.telephony.CarrierConfigManager;
-import android.text.TextUtils;
 import android.preference.PreferenceManager;
 import android.telecom.ConferenceParticipant;
 import android.telephony.DisconnectCause;
@@ -69,7 +66,6 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
@@ -299,7 +295,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
     Connection
     dial(String dialString, int videoState, Bundle intentExtras) throws CallStateException {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
-        int oirMode = sp.getInt(PhoneBase.CLIR_KEY, CommandsInterface.CLIR_DEFAULT);
+        int oirMode = sp.getInt(Phone.CLIR_KEY, CommandsInterface.CLIR_DEFAULT);
         return dial(dialString, oirMode, videoState, intentExtras);
     }
 

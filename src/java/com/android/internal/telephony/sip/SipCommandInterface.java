@@ -29,7 +29,7 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 
 /**
  * SIP doesn't need CommandsInterface. The class does nothing but made to work
- * with PhoneBase's constructor.
+ * with Phone's constructor.
  */
 class SipCommandInterface extends BaseCommands implements CommandsInterface {
     SipCommandInterface(Context context) {

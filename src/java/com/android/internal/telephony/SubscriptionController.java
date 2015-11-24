@@ -120,7 +120,7 @@ public class SubscriptionController extends ISub.Stub {
 
     /** The singleton instance. */
     private static SubscriptionController sInstance = null;
-    protected static PhoneBase[] sPhones;
+    protected static Phone[] sPhones;
     protected Context mContext;
     protected TelephonyManager mTelephonyManager;
     protected CallManager mCM;
@@ -1415,7 +1415,7 @@ public class SubscriptionController extends ISub.Stub {
             RadioAccessFamily[] rafs = new RadioAccessFamily[len];
             boolean atLeastOneMatch = false;
             for (int phoneId = 0; phoneId < len; phoneId++) {
-                PhoneBase phone = sPhones[phoneId];
+                Phone phone = sPhones[phoneId];
                 int raf;
                 int id = phone.getSubId();
                 if (id == subId) {
@@ -1626,7 +1626,7 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    public void updatePhonesAvailability(PhoneBase[] phones) {
+    public void updatePhonesAvailability(Phone[] phones) {
         sPhones = phones;
     }
 

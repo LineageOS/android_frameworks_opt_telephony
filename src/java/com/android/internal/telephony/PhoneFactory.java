@@ -58,8 +58,8 @@ public class PhoneFactory {
 
     // lock sLockProxyPhones protects both sPhones and sPhone
     final static Object sLockProxyPhones = new Object();
-    static private PhoneBase[] sPhones = null;
-    static private PhoneBase sPhone = null;
+    static private Phone[] sPhones = null;
+    static private Phone sPhone = null;
 
     static private CommandsInterface[] sCommandsInterfaces = null;
 
@@ -128,7 +128,7 @@ public class PhoneFactory {
                    whether it is single SIM or multi SIM mode */
                 int numPhones = TelephonyManager.getDefault().getPhoneCount();
                 int[] networkModes = new int[numPhones];
-                sPhones = new PhoneBase[numPhones];
+                sPhones = new Phone[numPhones];
                 sCommandsInterfaces = new RIL[numPhones];
 
                 for (int i = 0; i < numPhones; i++) {
@@ -148,7 +148,7 @@ public class PhoneFactory {
                 mUiccController = UiccController.make(context, sCommandsInterfaces);
 
                 for (int i = 0; i < numPhones; i++) {
-                    PhoneBase phone = null;
+                    Phone phone = null;
                     int phoneType = TelephonyManager.getPhoneType(networkModes[i]);
                     if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
                         phone = new PhoneProxy(context,
@@ -442,9 +442,9 @@ public class PhoneFactory {
 
     public static void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("PhoneFactory:");
-        PhoneBase [] phones = (PhoneBase[])PhoneFactory.getPhones();
+        Phone[] phones = (Phone[])PhoneFactory.getPhones();
         int i = -1;
-        for(PhoneBase phone : phones) {
+        for(Phone phone : phones) {
             i += 1;
 
             try {

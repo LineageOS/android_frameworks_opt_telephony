@@ -99,7 +99,7 @@ import java.util.regex.Pattern;
 /**
  * {@hide}
  */
-public class GsmCdmaPhone extends PhoneBase {
+public class GsmCdmaPhone extends Phone {
     // NOTE that LOG_TAG here is "GsmCdma", which means that log messages
     // from this file will go into the radio log rather than the main
     // log.  (Use "adb logcat -b radio" to see them.)
@@ -148,7 +148,7 @@ public class GsmCdmaPhone extends PhoneBase {
 
     //CDMALTE
     /** CdmaLtePhone in addition to RuimRecords available from
-     * PhoneBase needs access to SIMRecords and IsimUiccRecords
+     * Phone needs access to SIMRecords and IsimUiccRecords
      */
     private SIMRecords mSimRecords;
 
@@ -393,56 +393,6 @@ public class GsmCdmaPhone extends PhoneBase {
         setPhoneName(phoneType == PhoneConstants.PHONE_TYPE_GSM ? "GSM" : "CDMA");
         onUpdateIccAvailability();
         mCT.migrate(phoneType);
-    }
-
-    @Override
-    public void dispose() {
-        synchronized(PhoneBase.lockForRadioTechnologyChange) {
-            super.dispose();
-
-            //Unregister from all former registered events
-            mCi.unregisterForAvailable(this); //EVENT_RADIO_AVAILABLE
-            unregisterForIccRecordEvents();
-            mCi.unregisterForOffOrNotAvailable(this); //EVENT_RADIO_OFF_OR_NOT_AVAILABLE
-            mCi.unregisterForOn(this); //EVENT_RADIO_ON
-            mSST.unregisterForNetworkAttached(this); //EVENT_REGISTERED_TO_NETWORK
-            mCi.unSetOnUSSD(this);
-            mCi.unSetOnSuppServiceNotification(this);
-            mCi.unSetOnSs(this);
-            mCi.unregisterForExitEmergencyCallbackMode(this);
-            mContext.unregisterReceiver(mBroadcastReceiver);
-            removeCallbacks(mExitEcmRunnable);
-
-            mPendingMMIs.clear();
-
-            if (mSimRecords != null) {
-                mSimRecords.unregisterForRecordsLoaded(this);
-            }
-
-            //Force all referenced classes to unregister their former registered events
-            mCT.dispose();
-            //todo: cleanUpAllConnections() and destroyDataConnections() may need to be called on
-            // migrate
-            mDcTracker.dispose();
-            mSST.dispose();
-            mIccPhoneBookIntManager.dispose();
-            mSubInfo.dispose();
-            mEriManager.dispose();
-        }
-    }
-
-    @Override
-    public void removeReferences() {
-        logd("removeReferences");
-        mSimulatedRadioControl = null;
-        mIccPhoneBookIntManager = null;
-        mSubInfo = null;
-        mCT = null;
-        mSST = null;
-        mEriManager = null;
-        mExitEcmRunnable = null;
-
-        super.removeReferences();
     }
 
     @Override

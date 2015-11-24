@@ -27,7 +27,6 @@ import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemClock;
-import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellInfo;
@@ -38,23 +37,17 @@ import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
-import android.util.Log;
 import android.util.Pair;
 import android.util.TimeUtils;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.content.Context;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.Arrays;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
-import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
@@ -74,7 +67,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected UiccCardApplication mUiccApplcation = null;
     protected IccRecords mIccRecords = null;
 
-    protected PhoneBase mPhoneBase;
+    protected Phone mPhoneBase;
 
     protected boolean mVoiceCapable;
 
@@ -285,24 +278,24 @@ public abstract class ServiceStateTracker extends Handler {
                     SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(
                             context);
                     String oldNetworkSelection = sp.getString(
-                            PhoneBase.NETWORK_SELECTION_KEY, "");
+                            Phone.NETWORK_SELECTION_KEY, "");
                     String oldNetworkSelectionName = sp.getString(
-                            PhoneBase.NETWORK_SELECTION_NAME_KEY, "");
+                            Phone.NETWORK_SELECTION_NAME_KEY, "");
                     String oldNetworkSelectionShort = sp.getString(
-                            PhoneBase.NETWORK_SELECTION_SHORT_KEY, "");
+                            Phone.NETWORK_SELECTION_SHORT_KEY, "");
                     if (!TextUtils.isEmpty(oldNetworkSelection) ||
                             !TextUtils.isEmpty(oldNetworkSelectionName) ||
                             !TextUtils.isEmpty(oldNetworkSelectionShort)) {
                         SharedPreferences.Editor editor = sp.edit();
-                        editor.putString(PhoneBase.NETWORK_SELECTION_KEY + subId,
+                        editor.putString(Phone.NETWORK_SELECTION_KEY + subId,
                                 oldNetworkSelection);
-                        editor.putString(PhoneBase.NETWORK_SELECTION_NAME_KEY + subId,
+                        editor.putString(Phone.NETWORK_SELECTION_NAME_KEY + subId,
                                 oldNetworkSelectionName);
-                        editor.putString(PhoneBase.NETWORK_SELECTION_SHORT_KEY + subId,
+                        editor.putString(Phone.NETWORK_SELECTION_SHORT_KEY + subId,
                                 oldNetworkSelectionShort);
-                        editor.remove(PhoneBase.NETWORK_SELECTION_KEY);
-                        editor.remove(PhoneBase.NETWORK_SELECTION_NAME_KEY);
-                        editor.remove(PhoneBase.NETWORK_SELECTION_SHORT_KEY);
+                        editor.remove(Phone.NETWORK_SELECTION_KEY);
+                        editor.remove(Phone.NETWORK_SELECTION_NAME_KEY);
+                        editor.remove(Phone.NETWORK_SELECTION_SHORT_KEY);
                         editor.commit();
                     }
 
@@ -315,8 +308,8 @@ public abstract class ServiceStateTracker extends Handler {
         }
     };
 
-    protected ServiceStateTracker(PhoneBase phoneBase, CommandsInterface ci, CellInfo cellInfo) {
-        mPhoneBase = phoneBase;
+    protected ServiceStateTracker(Phone phone, CommandsInterface ci, CellInfo cellInfo) {
+        mPhoneBase = phone;
         mCellInfo = cellInfo;
         mCi = ci;
         mVoiceCapable = mPhoneBase.getContext().getResources().getBoolean(
@@ -327,7 +320,7 @@ public abstract class ServiceStateTracker extends Handler {
         mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
 
         mSubscriptionController = SubscriptionController.getInstance();
-        mSubscriptionManager = SubscriptionManager.from(phoneBase.getContext());
+        mSubscriptionManager = SubscriptionManager.from(phone.getContext());
         mSubscriptionManager
             .addOnSubscriptionsChangedListener(mOnSubscriptionsChangedListener);
 
@@ -870,13 +863,13 @@ public abstract class ServiceStateTracker extends Handler {
     /**
      * Return true if time zone needs fixing.
      *
-     * @param phoneBase
+     * @param phone
      * @param operatorNumeric
      * @param prevOperatorNumeric
      * @param needToFixTimeZone
      * @return true if time zone needs to be fixed
      */
-    protected boolean shouldFixTimeZoneNow(PhoneBase phoneBase, String operatorNumeric,
+    protected boolean shouldFixTimeZoneNow(Phone phone, String operatorNumeric,
             String prevOperatorNumeric, boolean needToFixTimeZone) {
         // Return false if the mcc isn't valid as we don't know where we are.
         // Return true if we have an IccCard and the mcc changed or we
@@ -1005,7 +998,7 @@ public abstract class ServiceStateTracker extends Handler {
      * if not.
      *
      * @exception RuntimeException if the current thread is not
-     * the thread that originally obtained this PhoneBase instance.
+     * the thread that originally obtained this Phone instance.
      */
     protected void checkCorrectThread() {
         if (Thread.currentThread() != getLooper().getThread()) {

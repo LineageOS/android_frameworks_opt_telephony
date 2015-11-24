@@ -30,7 +30,7 @@ import com.android.internal.telephony.UUSInfo;
 
 /**
  * Volte doesn't need CommandsInterface. The class does nothing but made to work
- * with PhoneBase's constructor.
+ * with Phone's constructor.
  */
 class ImsPhoneCommandInterface extends BaseCommands implements CommandsInterface {
     ImsPhoneCommandInterface(Context context) {

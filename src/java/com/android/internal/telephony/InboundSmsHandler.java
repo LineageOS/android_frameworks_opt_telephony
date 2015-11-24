@@ -182,7 +182,7 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     private final boolean mSmsReceiveDisabled;
 
-    protected PhoneBase mPhone;
+    protected Phone mPhone;
 
     protected CellBroadcastHandler mCellBroadcastHandler;
 
@@ -197,7 +197,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param storageMonitor the SmsStorageMonitor to check for storage availability
      */
     protected InboundSmsHandler(String name, Context context, SmsStorageMonitor storageMonitor,
-            PhoneBase phone, CellBroadcastHandler cellBroadcastHandler) {
+            Phone phone, CellBroadcastHandler cellBroadcastHandler) {
         super(name);
 
         mContext = context;
@@ -239,7 +239,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     /**
      * Update the phone object when it changes.
      */
-    public void updatePhoneObject(PhoneBase phone) {
+    public void updatePhoneObject(Phone phone) {
         sendMessage(EVENT_UPDATE_PHONE_OBJECT, phone);
     }
 
@@ -256,7 +256,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     }
 
     // CAF_MSIM Is this used anywhere ? if not remove it
-    public PhoneBase getPhone() {
+    public Phone getPhone() {
         return mPhone;
     }
 
@@ -269,7 +269,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         public boolean processMessage(Message msg) {
             switch (msg.what) {
                 case EVENT_UPDATE_PHONE_OBJECT: {
-                    onUpdatePhoneObject((PhoneBase) msg.obj);
+                    onUpdatePhoneObject((Phone) msg.obj);
                     break;
                 }
                 default: {
@@ -585,7 +585,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      *
      * @param phone
      */
-    protected void onUpdatePhoneObject(PhoneBase phone) {
+    protected void onUpdatePhoneObject(Phone phone) {
         mPhone = phone;
         mStorageMonitor = mPhone.mSmsStorageMonitor;
         log("onUpdatePhoneObject: phone=" + mPhone.getClass().getSimpleName());

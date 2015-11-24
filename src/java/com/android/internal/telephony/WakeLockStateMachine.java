@@ -50,7 +50,7 @@ public abstract class WakeLockStateMachine extends StateMachine {
 
     static final int EVENT_UPDATE_PHONE_OBJECT = 4;
 
-    protected PhoneBase mPhone;
+    protected Phone mPhone;
 
     protected Context mContext;
 
@@ -61,7 +61,7 @@ public abstract class WakeLockStateMachine extends StateMachine {
     private final IdleState mIdleState = new IdleState();
     private final WaitingState mWaitingState = new WaitingState();
 
-    protected WakeLockStateMachine(String debugTag, Context context, PhoneBase phone) {
+    protected WakeLockStateMachine(String debugTag, Context context, Phone phone) {
         super(debugTag);
 
         mContext = context;
@@ -77,7 +77,7 @@ public abstract class WakeLockStateMachine extends StateMachine {
         setInitialState(mIdleState);
     }
 
-    public void updatePhoneObject(PhoneBase phone) {
+    public void updatePhoneObject(Phone phone) {
         sendMessage(EVENT_UPDATE_PHONE_OBJECT, phone);
     }
 
@@ -113,7 +113,7 @@ public abstract class WakeLockStateMachine extends StateMachine {
         public boolean processMessage(Message msg) {
             switch (msg.what) {
                 case EVENT_UPDATE_PHONE_OBJECT: {
-                    mPhone = (PhoneBase) msg.obj;
+                    mPhone = (Phone) msg.obj;
                     log("updatePhoneObject: phone=" + mPhone.getClass().getSimpleName());
                     break;
                 }
