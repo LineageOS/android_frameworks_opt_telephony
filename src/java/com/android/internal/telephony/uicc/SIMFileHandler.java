@@ -66,6 +66,7 @@ public final class SIMFileHandler extends IccFileHandler implements IccConstants
         case EF_INFO_CPHS:
         case EF_CSP_CPHS:
         case EF_PLMNWACT:
+        case EF_HPLMNWACT:
         /* Support for reading user & operator PLMN list from SIM
         (3GPP spec TS 11.11; File EFPLMNsel is read from SIM*/
          case EF_PLMN_SEL:
