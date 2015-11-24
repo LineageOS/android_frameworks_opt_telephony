@@ -162,7 +162,6 @@ public class GsmCdmaCallTracker extends CallTracker {
             mIsEcmTimerCanceled = false;
             m3WayCallFlashDelay = 0;
             mCi.registerForCallWaitingInfo(this, EVENT_CALL_WAITING_INFO_CDMA, null);
-            //todo: check if this setGeneric call is okay
             mForegroundCall.setGeneric(false);
 
             // Register receiver for ECM exit
@@ -254,6 +253,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
     }
 
+    //GSM
     /**
      * clirMode is one of the CLIR_ constants
      */
@@ -305,8 +305,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         mHangupPendingMO = false;
 
         if ( mPendingMO.getAddress() == null || mPendingMO.getAddress().length() == 0
-                || mPendingMO.getAddress().indexOf(PhoneNumberUtils.WILD) >= 0
-        ) {
+                || mPendingMO.getAddress().indexOf(PhoneNumberUtils.WILD) >= 0) {
             // Phone number is invalid
             mPendingMO.mCause = DisconnectCause.INVALID_NUMBER;
 
@@ -491,11 +490,13 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
     }
 
+    //GSM
     Connection
     dial(String dialString, UUSInfo uusInfo, Bundle intentExtras) throws CallStateException {
         return dial(dialString, CommandsInterface.CLIR_DEFAULT, uusInfo, intentExtras);
     }
 
+    //GSM
     Connection
     dial(String dialString, int clirMode, Bundle intentExtras) throws CallStateException {
         return dial(dialString, clirMode, null, intentExtras);
@@ -870,7 +871,11 @@ public class GsmCdmaCallTracker extends CallTracker {
                         newRinging = checkMtFindNewRinging(dc,i);
                         if (newRinging == null) {
                             unknownConnectionAppeared = true;
-                            newUnknownConnectionCdma = mConnections[i];
+                            if (isPhoneTypeGsm()) {
+                                newUnknownConnectionsGsm.add(mConnections[i]);
+                            } else {
+                                newUnknownConnectionCdma = mConnections[i];
+                            }
                         }
                     }
                 }
@@ -931,7 +936,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             } else if (conn != null && dc != null) { /* implicit conn.compareTo(dc) */
                 // Call collision case
                 if (!isPhoneTypeGsm() && conn.isIncoming() != dc.isMT) {
-                    if (dc.isMT == true){
+                    if (dc.isMT == true) {
                         // Mt call takes precedence than Mo,drops Mo
                         mDroppedDuringPoll.add(conn);
                         // find if the MT call is a new ring or unknown connection
@@ -965,8 +970,7 @@ public class GsmCdmaCallTracker extends CallTracker {
                         || (dc.state == DriverCall.State.INCOMING
                             /*&& cm.getOption(cm.OPTION_POLL_INCOMING)*/)
                         || (dc.state == DriverCall.State.WAITING
-                            /*&& cm.getOption(cm.OPTION_POLL_WAITING)*/)
-                    ) {
+                            /*&& cm.getOption(cm.OPTION_POLL_WAITING)*/)) {
                         // Sometimes there's no unsolicited notification
                         // for state transitions
                         needsPollDelay = true;
@@ -1157,6 +1161,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             // the hangup reason is user ignoring or timing out. So conn.onDisconnect()
             // is not called here. Instead, conn.onLocalDisconnect() is called.
             conn.onLocalDisconnect();
+
             updatePhoneState();
             mPhone.notifyPreciseCallStateChanged();
             return;
@@ -1207,8 +1212,7 @@ public class GsmCdmaCallTracker extends CallTracker {
 
     //***** Called from GsmCdmaCall
 
-    /* package */ void
-    hangup (GsmCdmaCall call) throws CallStateException {
+    public void hangup (GsmCdmaCall call) throws CallStateException {
         if (call.getConnections().size() == 0) {
             throw new CallStateException("no connections in call");
         }
@@ -1422,6 +1426,7 @@ public class GsmCdmaCallTracker extends CallTracker {
                     causeCode == CallFailCause.QOS_NOT_AVAIL ||
                     causeCode == CallFailCause.BEARER_NOT_AVAIL ||
                     causeCode == CallFailCause.ERROR_UNSPECIFIED) {
+
                     CellLocation loc = mPhone.getCellLocation();
                     int cid = -1;
                     if (loc != null) {
@@ -1435,9 +1440,7 @@ public class GsmCdmaCallTracker extends CallTracker {
                             TelephonyManager.getDefault().getNetworkType());
                 }
 
-                for (int i = 0, s =  mDroppedDuringPoll.size()
-                        ; i < s ; i++
-                ) {
+                for (int i = 0, s = mDroppedDuringPoll.size(); i < s ; i++) {
                     GsmCdmaConnection conn = mDroppedDuringPoll.get(i);
 
                     conn.onRemoteDisconnect(causeCode, vendorCause);
