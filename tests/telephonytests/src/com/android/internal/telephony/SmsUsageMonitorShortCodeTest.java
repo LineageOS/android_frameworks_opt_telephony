@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.os.Looper;
 import android.test.AndroidTestCase;
 import android.test.suitebuilder.annotation.SmallTest;
 
@@ -457,6 +458,11 @@ public class SmsUsageMonitorShortCodeTest extends AndroidTestCase {
 
     @SmallTest
     public void testSmsUsageMonitor() {
+        // InstrumentationTestRunner prepares a looper, but AndroidJUnitRunner does not.
+        // http://b/25897652 .
+        if (Looper.myLooper() == null) {
+            Looper.prepare();
+        }
         SmsUsageMonitor monitor = new SmsUsageMonitor(getContext());
         for (ShortCodeTest test : sShortCodeTests) {
             assertEquals("country: " + test.countryIso + " number: " + test.address,

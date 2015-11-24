@@ -18,7 +18,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.frameworks.telephonytests">
 
-    <application>
+    <application android:name="com.android.internal.telephony.TestApplication">
         <uses-library android:name="android.test.runner" />
         <activity android:label="TelephonyTest"
                 android:name="TelephonyTest">
@@ -28,12 +28,12 @@
             </intent-filter>
         </activity>
     </application>
-    <instrumentation android:name="android.test.InstrumentationTestRunner"
+    <instrumentation android:name="android.support.test.runner.AndroidJUnitRunner"
         android:targetPackage="com.android.frameworks.telephonytests"
         android:label="Frameworks Telephony Tests">
     </instrumentation>
 
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
-
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
 </manifest>

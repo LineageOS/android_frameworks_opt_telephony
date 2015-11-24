@@ -16,12 +16,6 @@
 
 package com.android.internal.telephony;
 
-import com.android.internal.telephony.Call;
-import com.android.internal.telephony.CallStateException;
-import com.android.internal.telephony.Connection;
-import com.android.internal.telephony.DriverCall;
-import com.android.internal.telephony.Phone;
-
 import java.util.List;
 
 /**
@@ -34,7 +28,7 @@ public class GsmCdmaCall extends Call {
 
     /****************************** Constructors *****************************/
     /*package*/
-    GsmCdmaCall (GsmCdmaCallTracker owner) {
+    public GsmCdmaCall (GsmCdmaCallTracker owner) {
         mOwner = owner;
     }
 
@@ -48,7 +42,7 @@ public class GsmCdmaCall extends Call {
 
     @Override
     public Phone getPhone() {
-        return mOwner.mPhone;
+        return mOwner.getPhone();
     }
 
     @Override
@@ -72,13 +66,13 @@ public class GsmCdmaCall extends Call {
 
     //***** Called from GsmCdmaConnection
 
-    /*package*/ void attach(Connection conn, DriverCall dc) {
+    public void attach(Connection conn, DriverCall dc) {
         mConnections.add(conn);
 
         mState = stateFromDCState (dc.state);
     }
 
-    /*package*/ void attachFake(Connection conn, State state) {
+    public void attachFake(Connection conn, State state) {
         mConnections.add(conn);
 
         mState = state;
@@ -87,7 +81,7 @@ public class GsmCdmaCall extends Call {
     /**
      * Called by GsmCdmaConnection when it has disconnected
      */
-    boolean connectionDisconnected(GsmCdmaConnection conn) {
+    public boolean connectionDisconnected(GsmCdmaConnection conn) {
         if (mState != State.DISCONNECTED) {
             /* If only disconnected connections remain, we are disconnected*/
 
@@ -109,7 +103,7 @@ public class GsmCdmaCall extends Call {
         return false;
     }
 
-    /*package*/ void detach(GsmCdmaConnection conn) {
+    public void detach(GsmCdmaConnection conn) {
         mConnections.remove(conn);
 
         if (mConnections.size() == 0) {
@@ -136,7 +130,7 @@ public class GsmCdmaCall extends Call {
      * connections to be added via "conference"
      */
     /*package*/ boolean isFull() {
-        if (mOwner.mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
+        if (mOwner.getPhone().getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
             return mConnections.size() == GsmCdmaCallTracker.MAX_CONNECTIONS_PER_CALL_GSM;
         } else {
             return mConnections.size() == GsmCdmaCallTracker.MAX_CONNECTIONS_PER_CALL_CDMA;
