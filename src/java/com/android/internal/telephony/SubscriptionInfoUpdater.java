@@ -666,9 +666,17 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
 
-        // Ensure the modems are mapped correctly
-        mSubscriptionManager.setDefaultDataSubId(
-                mSubscriptionManager.getDefaultDataSubscriptionId());
+        if (insertedSimCount == 1) {
+            SubscriptionInfo sir = subInfos.get(0);
+            int subId = sir.getSubscriptionId();
+            mSubscriptionManager.setDefaultDataSubId(subId);
+            mSubscriptionManager.setDefaultVoiceSubId(subId);
+            mSubscriptionManager.setDefaultSmsSubId(subId);
+        } else {
+            // Ensure the modems are mapped correctly
+            mSubscriptionManager.setDefaultDataSubId(
+                    mSubscriptionManager.getDefaultDataSubscriptionId());
+        }
 
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
         logd("updateSubscriptionInfoByIccId:- SsubscriptionInfo update complete");
