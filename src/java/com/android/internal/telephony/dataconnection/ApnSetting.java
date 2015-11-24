@@ -23,6 +23,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.Phone;
@@ -48,6 +49,7 @@ public class ApnSetting {
 
     static final String V2_FORMAT_REGEX = "^\\[ApnSettingV2\\]\\s*";
     static final String V3_FORMAT_REGEX = "^\\[ApnSettingV3\\]\\s*";
+    static final String TAG = "ApnSetting";
 
     public final String carrier;
     public final String apn;
@@ -100,6 +102,7 @@ public class ApnSetting {
       *   "spn": Service provider name.
       *   "imsi": IMSI.
       *   "gid": Group identifier level 1.
+      *   "iccid": ICCID
       */
     public final String mvnoType;
     /**
@@ -107,6 +110,7 @@ public class ApnSetting {
       *   "spn": A MOBILE, BEN NL
       *   "imsi": 302720x94, 2060188
       *   "gid": 4E, 33
+      *   "iccid": 898603 etc.
       */
     public final String mvnoMatchData;
 
@@ -362,6 +366,17 @@ public class ApnSetting {
         return false;
     }
 
+    private static boolean iccidMatches(String mvnoData, String iccId) {
+        String[] mvnoIccidList = mvnoData.split(",");
+        for (String mvnoIccid : mvnoIccidList) {
+            if (iccId.startsWith(mvnoIccid)) {
+                Log.d(TAG, "mvno icc id match found");
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean imsiMatches(String imsiDB, String imsiSIM) {
         // Note: imsiDB value has digit number or 'x' character for seperating USIM information
         // for MVNO operator. And then digit number is matched at same order and 'x' character
@@ -404,7 +419,13 @@ public class ApnSetting {
                     gid1.substring(0, mvno_match_data_length).equalsIgnoreCase(mvnoMatchData)) {
                 return true;
             }
+        } else if (mvnoType.equalsIgnoreCase("iccid")) {
+            String iccId = r.getIccId();
+            if ((iccId != null) && iccidMatches(mvnoMatchData, iccId)) {
+                return true;
+            }
         }
+
         return false;
     }
 
