@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 The Android Open Source Project
+ * Copyright (C) 2015 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,7 +68,6 @@ import com.android.internal.telephony.cdma.CdmaMmiCode;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
-import com.android.internal.telephony.dataconnection.DctController;
 import com.android.internal.telephony.gsm.GsmMmiCode;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsPhone;
@@ -192,37 +191,22 @@ public class GsmCdmaPhone extends Phone {
 
     // Constructors
 
-    public
-    GsmCdmaPhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
-                 boolean unitTestMode, int phoneType) {
-        super(phoneType == PhoneConstants.PHONE_TYPE_GSM ? "GSM" : "CDMA",
-                notifier, context, ci, unitTestMode);
-
-        initOnce(ci, unitTestMode);
-        initRatSpecific(phoneType);
-        mSST = new ServiceStateTracker(this, this.mCi);
-        // DcTracker uses SST so needs to be created after it is instantiated
-        mDcTracker = new DcTracker(this);
-        mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
+    public GsmCdmaPhone(Context context, CommandsInterface ci, PhoneNotifier notifier, int phoneId,
+                        int precisePhoneType, TelephonyComponentFactory telephonyComponentFactory) {
+        this(context, ci, notifier, false, phoneId, precisePhoneType, telephonyComponentFactory);
     }
 
-    public
-    GsmCdmaPhone(Context context, CommandsInterface ci, PhoneNotifier notifier, int phoneId,
-                 int precisePhoneType) {
-        this(context, ci, notifier, false, phoneId, precisePhoneType);
-    }
-
-    public
-    GsmCdmaPhone(Context context, CommandsInterface ci,
-            PhoneNotifier notifier, boolean unitTestMode, int phoneId, int precisePhoneType) {
+    public GsmCdmaPhone(Context context, CommandsInterface ci, PhoneNotifier notifier,
+                        boolean unitTestMode, int phoneId, int precisePhoneType,
+                        TelephonyComponentFactory telephonyComponentFactory) {
         super(precisePhoneType == PhoneConstants.PHONE_TYPE_GSM ? "GSM" : "CDMA",
-                notifier, context, ci, unitTestMode, phoneId);
+                notifier, context, ci, unitTestMode, phoneId, telephonyComponentFactory);
 
         initOnce(ci, unitTestMode);
         initRatSpecific(precisePhoneType);
-        mSST = new ServiceStateTracker(this, this.mCi);
+        mSST = mTelephonyComponentFactory.makeServiceStateTracker(this, this.mCi);
         // DcTracker uses SST so needs to be created after it is instantiated
-        mDcTracker = new DcTracker(this);
+        mDcTracker = mTelephonyComponentFactory.makeDcTracker(this);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         logd("GsmCdmaPhone: constructor: sub = " + mPhoneId);
     }
@@ -242,12 +226,18 @@ public class GsmCdmaPhone extends Phone {
             mSimulatedRadioControl = (SimulatedRadioControl) ci;
         }
 
-        mCT = new GsmCdmaCallTracker(this);
-
-        if (!unitTestMode) {
-            mIccPhoneBookIntManager = new IccPhoneBookInterfaceManager(this);
-            mSubInfo = new PhoneSubInfo(this);
-        }
+        mCT = mTelephonyComponentFactory.makeGsmCdmaCallTracker(this);
+        mIccPhoneBookIntManager = mTelephonyComponentFactory.makeIccPhoneBookInterfaceManager(this);
+        mSubInfo = mTelephonyComponentFactory.makePhoneSubInfo(this);
+        PowerManager pm
+                = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
+        mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
+        mIccPhoneBookInterfaceManagerProxy = mTelephonyComponentFactory.
+                makeIccPhoneBookInterfaceManagerProxy(getIccPhoneBookInterfaceManager());
+        //todo: phonesubinfoproxy is probably not even needed
+        mPhoneSubInfoProxy = mTelephonyComponentFactory.makePhoneSubInfoProxy(getPhoneSubInfo());
+        mIccSmsInterfaceManager = mTelephonyComponentFactory.makeIccSmsInterfaceManager(this);
+        mIccCardProxy = mTelephonyComponentFactory.makeIccCardProxy(mContext, mCi, mPhoneId);
 
         mCi.registerForAvailable(this, EVENT_RADIO_AVAILABLE, null);
         mCi.registerForOffOrNotAvailable(this, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
@@ -259,31 +249,22 @@ public class GsmCdmaPhone extends Phone {
         mCi.setOnSs(this, EVENT_SS, null);
 
         //CDMA
-        mCdmaSSM = CdmaSubscriptionSourceManager.getInstance(mContext, mCi, this,
-                EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
-        mEriManager = new EriManager(this, mContext, EriManager.ERI_FROM_XML);
+        mCdmaSSM = mTelephonyComponentFactory.getCdmaSubscriptionSourceManagerInstance(mContext,
+                mCi, this, EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED, null);
+        mEriManager = mTelephonyComponentFactory.makeEriManager(this, mContext,
+                EriManager.ERI_FROM_XML);
         mCi.setEmergencyCallbackMode(this, EVENT_EMERGENCY_CALLBACK_MODE_ENTER, null);
         mCi.registerForExitEmergencyCallbackMode(this, EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE,
                 null);
-        PowerManager pm
-                = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
-        mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
-
         // get the string that specifies the carrier OTA Sp number
         mCarrierOtaSpNumSchema = TelephonyManager.from(mContext).getOtaSpNumberSchemaForPhone(
                 getPhoneId(), "");
 
         mResetModemOnRadioTechnologyChange = SystemProperties.getBoolean(
                 TelephonyProperties.PROPERTY_RESET_ON_RADIO_TECH_CHANGE, false);
-        mIccPhoneBookInterfaceManagerProxy = new IccPhoneBookInterfaceManagerProxy(
-                getIccPhoneBookInterfaceManager());
-        //todo: phonesubinfoproxy is probably not even needed
-        mPhoneSubInfoProxy = new PhoneSubInfoProxy(getPhoneSubInfo());
 
         mCi.registerForRilConnected(this, EVENT_RIL_CONNECTED, null);
         mCi.registerForVoiceRadioTechChanged(this, EVENT_VOICE_RADIO_TECH_CHANGED, null);
-        mIccSmsInterfaceManager = new IccSmsInterfaceManager(this);
-        mIccCardProxy = new IccCardProxy(mContext, mCi, mPhoneId);
         mContext.registerReceiver(mBroadcastReceiver, new IntentFilter(
                 CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
     }
@@ -375,7 +356,7 @@ public class GsmCdmaPhone extends Phone {
         }
     }
 
-    boolean isPhoneTypeGsm() {
+    public boolean isPhoneTypeGsm() {
         return mPrecisePhoneType == PhoneConstants.PHONE_TYPE_GSM;
     }
 
@@ -3143,7 +3124,10 @@ public class GsmCdmaPhone extends Phone {
         intent.addFlags(Intent.FLAG_RECEIVER_REPLACE_PENDING);
         intent.putExtra(PhoneConstants.PHONE_NAME_KEY, getPhoneName());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhoneId);
-        ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
+        // Unit test cannot send protected broadcasts
+        if (!getUnitTestMode()) {
+            ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
+        }
     }
 
     private void switchVoiceRadioTech(int newVoiceRadioTech) {

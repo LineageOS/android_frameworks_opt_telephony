@@ -84,7 +84,7 @@ public class GsmCdmaCallTracker extends CallTracker {
     GsmCdmaConnection mPendingMO;
     boolean mHangupPendingMO;
 
-    GsmCdmaPhone mPhone;
+    private GsmCdmaPhone mPhone;
 
     boolean mDesiredMute = false;    // false = mute off
 
@@ -150,7 +150,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         updatePhoneType();
     }
 
-    void updatePhoneType() {
+    public void updatePhoneType() {
         if (mPhone.isPhoneTypeGsm()) {
             mConnections = new GsmCdmaConnection[MAX_CONNECTIONS_GSM];
             mPhone.getContext().unregisterReceiver(mEcmExitReceiver);
@@ -1598,6 +1598,10 @@ public class GsmCdmaCallTracker extends CallTracker {
         return mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM;
     }
 
+    public GsmCdmaPhone getPhone() {
+        return mPhone;
+    }
+
     @Override
     protected void log(String msg) {
         Rlog.d(LOG_TAG, "[GsmCdmaCallTracker] " + msg);
@@ -1636,6 +1640,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
 
     }
+
     @Override
     public PhoneConstants.State getState() {
         return mState;

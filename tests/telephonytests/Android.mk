@@ -7,8 +7,10 @@ LOCAL_SRC_FILES := $(call all-subdir-java-files)
 
 #LOCAL_STATIC_JAVA_LIBRARIES := librilproto-java
 
-LOCAL_JAVA_LIBRARIES := android.test.runner telephony-common
-LOCAL_STATIC_JAVA_LIBRARIES := mockito-target
+LOCAL_JAVA_LIBRARIES := android.test.runner telephony-common ims-common
+LOCAL_STATIC_JAVA_LIBRARIES := guava \
+                               mockito-target \
+                               android-support-test
 
 LOCAL_PACKAGE_NAME := FrameworksTelephonyTests
 

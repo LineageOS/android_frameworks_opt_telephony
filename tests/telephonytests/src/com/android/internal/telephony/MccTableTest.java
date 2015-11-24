@@ -28,13 +28,13 @@ public class MccTableTest extends AndroidTestCase {
 
     @SmallTest
     public void testTimeZone() throws Exception {
-        assertEquals(MccTable.defaultTimeZoneForMcc(208), "ECT");
+        assertEquals(MccTable.defaultTimeZoneForMcc(208), "Europe/Paris");
         assertEquals(MccTable.defaultTimeZoneForMcc(232), "Europe/Vienna");
         assertEquals(MccTable.defaultTimeZoneForMcc(655), "Africa/Johannesburg");
         assertEquals(MccTable.defaultTimeZoneForMcc(440), "Asia/Tokyo");
         assertEquals(MccTable.defaultTimeZoneForMcc(441), "Asia/Tokyo");
         assertEquals(MccTable.defaultTimeZoneForMcc(525), "Asia/Singapore");
-        assertEquals(MccTable.defaultTimeZoneForMcc(240), null);  // tz not defined, hence default
+        assertEquals(MccTable.defaultTimeZoneForMcc(240), "Europe/Stockholm");
         assertEquals(MccTable.defaultTimeZoneForMcc(0), null);    // mcc not defined, hence default
         assertEquals(MccTable.defaultTimeZoneForMcc(2000), null); // mcc not defined, hence default
     }
@@ -57,7 +57,7 @@ public class MccTableTest extends AndroidTestCase {
         assertEquals(MccTable.defaultLanguageForMcc(232), "de");
         assertEquals(MccTable.defaultLanguageForMcc(230), "cs");
         assertEquals(MccTable.defaultLanguageForMcc(204), "nl");
-        assertEquals(MccTable.defaultLanguageForMcc(274), null);  // lang not defined, hence default
+        assertEquals(MccTable.defaultLanguageForMcc(274), "is");
         assertEquals(MccTable.defaultLanguageForMcc(0), null);    // mcc not defined, hence default
         assertEquals(MccTable.defaultLanguageForMcc(2000), null); // mcc not defined, hence default
     }

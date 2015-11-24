@@ -27,7 +27,7 @@ import android.content.Context;
 
 public class PhoneBase extends GsmCdmaPhone {
     public PhoneBase(Context context, CommandsInterface ci, PhoneNotifier notifier, int phoneId,
-                      int precisePhoneType) {
-        super(context, ci, notifier, phoneId, precisePhoneType);
+                     int precisePhoneType, TelephonyComponentFactory telephonyComponentFactory) {
+        super(context, ci, notifier, phoneId, precisePhoneType, telephonyComponentFactory);
     }
 }
