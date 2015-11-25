@@ -33,6 +33,8 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Registrant;
 import android.os.RegistrantList;
+import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.preference.PreferenceManager;
@@ -1563,6 +1565,10 @@ public abstract class PhoneBase extends Handler implements Phone {
     public boolean getCallForwardingPreference() {
         Rlog.d(LOG_TAG, "Get callforwarding info from perferences");
 
+        if (!isCurrentSubValid()) {
+            return false;
+        }
+
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
         boolean cf = false;
         // Migrate CF enabled flag from phoneid based preference to subId based.
@@ -1671,6 +1677,29 @@ public abstract class PhoneBase extends Handler implements Phone {
         SharedPreferences.Editor editor = sp.edit();
         editor.putString(SIM_IMSI + getSubId(), imsi);
         editor.apply();
+    }
+
+    private boolean isCurrentSubValid() {
+        final int PROVISIONED = 1;
+        final int INVALID_STATE = -1;
+        int provisionStatus = PROVISIONED;
+        SubscriptionManager subscriptionManager = SubscriptionManager.from(mContext);
+        IExtTelephony mExtTelephony = IExtTelephony.Stub.
+                asInterface(ServiceManager.getService("extphone"));
+        if (TelephonyManager.getDefault().isMultiSimEnabled()) {
+            try {
+                //get current provision state of the SIM.
+                provisionStatus =
+                        mExtTelephony.getCurrentUiccCardProvisioningStatus(mPhoneId);
+            } catch (RemoteException ex) {
+                provisionStatus = INVALID_STATE;
+            } catch (NullPointerException ex) {
+                provisionStatus = INVALID_STATE;
+            }
+        }
+        Rlog.d(LOG_TAG, "ProvisionStatus: " + provisionStatus);
+        return subscriptionManager.isActiveSubId(getSubId()) &&
+                (provisionStatus == PROVISIONED);
     }
 
     /**
