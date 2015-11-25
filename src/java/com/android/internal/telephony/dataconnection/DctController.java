@@ -373,14 +373,7 @@ public class DctController extends Handler {
         //2-2-1. Set data allow on the selected subscription
 
         int requestedPhoneId = getTopPriorityRequestPhoneId();
-        int activePhoneId = INVALID_PHONE_INDEX;
-
-        for (int i=0; i<mDcSwitchStateMachine.length; i++) {
-            if (!mDcSwitchAsyncChannel[i].isIdleSync()) {
-                activePhoneId = i;
-                break;
-            }
-        }
+        int activePhoneId = getActivePhoneId();
 
         logd("onProcessRequest requestedPhoneId=" + requestedPhoneId
                 + ", activePhoneId=" + activePhoneId);
@@ -471,6 +464,17 @@ public class DctController extends Handler {
         }
     }
 
+    private int getActivePhoneId() {
+        int activePhoneId = INVALID_PHONE_INDEX;
+        for (int i=0; i<mDcSwitchStateMachine.length; i++) {
+            if (!mDcSwitchAsyncChannel[i].isIdleSync()) {
+                activePhoneId = i;
+                break;
+            }
+        }
+        return activePhoneId;
+    }
+
     protected void onReleaseAllRequests(int phoneId) {
         logd("onReleaseAllRequests phoneId=" + phoneId);
         Iterator<Integer> iterator = mRequestInfos.keySet().iterator();
@@ -522,13 +526,7 @@ public class DctController extends Handler {
         //Sub Selection
         int dataSubId = mSubController.getDefaultDataSubId();
 
-        int activePhoneId = -1;
-        for (int i=0; i<mDcSwitchStateMachine.length; i++) {
-            if (!mDcSwitchAsyncChannel[i].isIdleSync()) {
-                activePhoneId = i;
-                break;
-            }
-        }
+        int activePhoneId = getActivePhoneId();
 
         logd("onSettingsChange, activePhoneId = " + activePhoneId);
         deactivateDdsRequests();
