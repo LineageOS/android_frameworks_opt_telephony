@@ -64,15 +64,12 @@ import static com.android.internal.telephony.CommandsInterface.CF_REASON_BUSY;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
 import static com.android.internal.telephony.CommandsInterface.SERVICE_CLASS_VOICE;
 
-import com.android.internal.telephony.cdma.CdmaLteServiceStateTracker;
 import com.android.internal.telephony.cdma.CdmaMmiCode;
-import com.android.internal.telephony.cdma.CdmaServiceStateTracker;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.cdma.EriManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.DctController;
 import com.android.internal.telephony.gsm.GsmMmiCode;
-import com.android.internal.telephony.gsm.GsmServiceStateTracker;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.test.SimulatedRadioControl;
@@ -204,7 +201,8 @@ public class GsmCdmaPhone extends Phone {
 
         initOnce(ci, unitTestMode);
         initRatSpecific(phoneType);
-        // DcTracker uses SST so needs to be created after initRatSpecific()
+        mSST = new ServiceStateTracker(this, this.mCi);
+        // DcTracker uses SST so needs to be created after it is instantiated
         mDcTracker = new DcTracker(this);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
     }
@@ -223,7 +221,8 @@ public class GsmCdmaPhone extends Phone {
 
         initOnce(ci, unitTestMode);
         initRatSpecific(precisePhoneType);
-        // DcTracker uses SST so needs to be created after initRatSpecific()
+        mSST = new ServiceStateTracker(this, this.mCi);
+        // DcTracker uses SST so needs to be created after it is instantiated
         mDcTracker = new DcTracker(this);
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         logd("GsmCdmaPhone: constructor: sub = " + mPhoneId);
@@ -294,7 +293,6 @@ public class GsmCdmaPhone extends Phone {
         mIccCardProxy = new IccCardProxy(mContext, mCi, mPhoneId);
         mContext.registerReceiver(mBroadcastReceiver, new IntentFilter(
                 CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED));
-
     }
 
     void initRatSpecific(int precisePhoneType) {
@@ -303,16 +301,10 @@ public class GsmCdmaPhone extends Phone {
         TelephonyManager tm = TelephonyManager.from(mContext);
         if (isPhoneTypeGsm()) {
             mCi.setPhoneType(PhoneConstants.PHONE_TYPE_GSM);
-            mSST = new GsmServiceStateTracker(this);
             tm.setPhoneType(getPhoneId(), PhoneConstants.PHONE_TYPE_GSM);
             mIccCardProxy.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
         } else {
             mCi.setPhoneType(PhoneConstants.PHONE_TYPE_CDMA);
-            if (precisePhoneType == PhoneConstants.PHONE_TYPE_CDMA) {
-                mSST = new CdmaServiceStateTracker(this);
-            } else { // phoneType == PhoneConstants.PHONE_TYPE_CDMA_LTE
-                mSST = new CdmaLteServiceStateTracker(this);
-            }
             tm.setPhoneType(getPhoneId(), PhoneConstants.PHONE_TYPE_CDMA);
             mIccCardProxy.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
             // Sets operator properties by retrieving from build-time system property
@@ -377,18 +369,10 @@ public class GsmCdmaPhone extends Phone {
     }
 
     private void setPhoneType(int phoneType) {
-        //unregister before SST is updated
-        mDcTracker.unregisterServiceStateTrackerEvents();
-        mSST.unregisterForNetworkAttached(this);
-        mSST.dispose();
-
         removeCallbacks(mExitEcmRunnable);
 
         initRatSpecific(phoneType);
-
-        //re-register after SST is updated
-        mDcTracker.registerServiceStateTrackerEvents();
-        mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
+        mSST.updatePhoneType();
 
         setPhoneName(phoneType == PhoneConstants.PHONE_TYPE_GSM ? "GSM" : "CDMA");
         onUpdateIccAvailability();
@@ -425,9 +409,9 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public CellLocation getCellLocation() {
         if (isPhoneTypeGsm()) {
-            return ((GsmServiceStateTracker) mSST).getCellLocation();
+            return mSST.getCellLocation();
         } else {
-            CdmaCellLocation loc = ((CdmaServiceStateTracker)mSST).mCellLoc;
+            CdmaCellLocation loc = (CdmaCellLocation)mSST.mCellLoc;
 
             int mode = Settings.Secure.getInt(getContext().getContentResolver(),
                     Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF);
@@ -1442,7 +1426,7 @@ public class GsmCdmaPhone extends Phone {
             IccRecords r = mIccRecords.get();
             return (r != null) ? r.getIMSI() : null;
         } else if (getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
-            return ((CdmaServiceStateTracker)mSST).getImsi();
+            return mSST.getImsi();
         } else { //getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE
             return (mSimRecords != null) ? mSimRecords.getIMSI() : "";
         }
@@ -1480,7 +1464,7 @@ public class GsmCdmaPhone extends Phone {
             IccRecords r = mIccRecords.get();
             return (r != null) ? r.getMsisdnNumber() : null;
         } else if (getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
-            return ((CdmaServiceStateTracker)mSST).getMdnNumber();
+            return mSST.getMdnNumber();
         } else { //getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE
             return (mSimRecords != null) ? mSimRecords.getMsisdnNumber() : null;
         }
@@ -1492,7 +1476,7 @@ public class GsmCdmaPhone extends Phone {
             loge("getCdmaPrlVersion: not expected on GSM");
             return null;
         } else {
-            return ((CdmaServiceStateTracker)mSST).getPrlVersion();
+            return mSST.getPrlVersion();
         }
     }
 
@@ -1502,7 +1486,7 @@ public class GsmCdmaPhone extends Phone {
             loge("getCdmaMin: not expected on GSM");
             return null;
         } else {
-            return ((CdmaServiceStateTracker) mSST).getCdmaMin();
+            return mSST.getCdmaMin();
         }
     }
 
@@ -1512,7 +1496,7 @@ public class GsmCdmaPhone extends Phone {
             loge("isMinInfoReady: not expected on GSM");
             return false;
         } else {
-            return ((CdmaServiceStateTracker) mSST).isMinInfoReady();
+            return mSST.isMinInfoReady();
         }
     }
 
@@ -1850,7 +1834,7 @@ public class GsmCdmaPhone extends Phone {
         if (isPhoneTypeGsm()) {
             loge("registerForSubscriptionInfoReady: not expected on GSM");
         } else {
-            ((CdmaServiceStateTracker)mSST).registerForSubscriptionInfoReady(h, what, obj);
+            mSST.registerForSubscriptionInfoReady(h, what, obj);
         }
     }
 
@@ -1859,7 +1843,7 @@ public class GsmCdmaPhone extends Phone {
         if (isPhoneTypeGsm()) {
             loge("unregisterForSubscriptionInfoReady: not expected on GSM");
         } else {
-            ((CdmaServiceStateTracker)mSST).unregisterForSubscriptionInfoReady(h);
+            mSST.unregisterForSubscriptionInfoReady(h);
         }
     }
 
@@ -2616,8 +2600,7 @@ public class GsmCdmaPhone extends Phone {
         if (isPhoneTypeGsm()) {
             return false;
         } else {
-            return ((CdmaServiceStateTracker)mSST).getOtasp() !=
-                    ServiceStateTracker.OTASP_NOT_NEEDED;
+            return mSST.getOtasp() != ServiceStateTracker.OTASP_NOT_NEEDED;
         }
     }
 
@@ -3127,9 +3110,6 @@ public class GsmCdmaPhone extends Phone {
         intent.putExtra(PhoneConstants.PHONE_NAME_KEY, getPhoneName());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhoneId);
         ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
-
-        // This is needed because it registers with SST. todo: check if can be reduced to a subset
-        DctController.getInstance().updatePhoneObject(this);
     }
 
     private void switchVoiceRadioTech(int newVoiceRadioTech) {

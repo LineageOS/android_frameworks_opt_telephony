@@ -1503,8 +1503,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param voiceRadioTech The new voice radio technology
      */
     public void updatePhoneObject(int voiceRadioTech) {
-        // Only the PhoneProxy can update the phone object.
-        PhoneFactory.getDefaultPhone().updatePhoneObject(voiceRadioTech);
     }
 
     /**

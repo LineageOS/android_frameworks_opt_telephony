@@ -548,7 +548,7 @@ public abstract class BaseCommands implements CommandsInterface {
 
     @Override
     public void unSetOnRestrictedStateChanged(Handler h) {
-        if (mRestrictedStateRegistrant != null && mRestrictedStateRegistrant.getHandler() != h) {
+        if (mRestrictedStateRegistrant != null && mRestrictedStateRegistrant.getHandler() == h) {
             mRestrictedStateRegistrant.clear();
             mRestrictedStateRegistrant = null;
         }
