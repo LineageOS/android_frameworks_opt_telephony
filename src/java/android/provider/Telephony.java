@@ -1071,6 +1071,39 @@ public final class Telephony {
                 "android.provider.Telephony.MMS_DOWNLOADED";
 
             /**
+             * Broadcast action: When the default SMS package changes,
+             * the previous default SMS package and the new default SMS
+             * package are sent this broadcast to notify them of the change.
+             * A boolean is specified in {@link #EXTRA_IS_DEFAULT_SMS_APP} to
+             * indicate whether the package is the new default SMS package.
+            */
+            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+            public static final String ACTION_DEFAULT_SMS_PACKAGE_CHANGED =
+                            "android.provider.action.DEFAULT_SMS_PACKAGE_CHANGED";
+
+            /**
+             * The IsDefaultSmsApp boolean passed as an
+             * extra for {@link #ACTION_DEFAULT_SMS_PACKAGE_CHANGED} to indicate whether the
+             * SMS app is becoming the default SMS app or is no longer the default.
+             *
+             * @see #ACTION_DEFAULT_SMS_PACKAGE_CHANGED
+             */
+            public static final String EXTRA_IS_DEFAULT_SMS_APP =
+                    "android.provider.extra.IS_DEFAULT_SMS_APP";
+
+            /**
+             * Broadcast action: When a change is made to the SmsProvider or
+             * MmsProvider by a process other than the default SMS application,
+             * this intent is broadcast to the default SMS application so it can
+             * re-sync or update the change. The uri that was used to call the provider
+             * can be retrieved from the intent with getData(). The actual affected uris
+             * (which would depend on the selection specified) are not included.
+            */
+            @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+            public static final String ACTION_EXTERNAL_PROVIDER_CHANGE =
+                          "android.provider.action.EXTERNAL_PROVIDER_CHANGE";
+
+           /**
              * Read the PDUs out of an {@link #SMS_RECEIVED_ACTION} or a
              * {@link #DATA_SMS_RECEIVED_ACTION} intent.
              *

@@ -34,6 +34,7 @@ import android.os.Binder;
 import android.os.Debug;
 import android.os.UserHandle;
 import android.provider.Settings;
+import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.SmsManager;
@@ -98,6 +99,16 @@ public final class SmsApplication {
         public String mSendToClass;
 
         /**
+         * The class name of the ACTION_DEFAULT_SMS_PACKAGE_CHANGED receiver in this app.
+         */
+        public String mSmsAppChangedReceiverClass;
+
+        /**
+         * The class name of the ACTION_EXTERNAL_PROVIDER_CHANGE receiver in this app.
+         */
+        public String mProviderChangedReceiverClass;
+
+        /**
          * The user-id for this application
          */
         public int mUid;
@@ -115,6 +126,19 @@ public final class SmsApplication {
             mApplicationName = applicationName;
             mPackageName = packageName;
             mUid = uid;
+        }
+
+        @Override
+        public String toString() {
+            return "mApplicationName: " + mApplicationName +
+                    " mPackageName: " + mPackageName +
+                    " mSmsReceiverClass: " + mSmsReceiverClass +
+                    " mMmsReceiverClass: " + mMmsReceiverClass +
+                    " mRespondViaMessageClass: " + mRespondViaMessageClass +
+                    " mSendToClass: " + mSendToClass +
+                    " mSmsAppChangedClass: " + mSmsAppChangedReceiverClass +
+                    " mProviderChangedReceiverClass: " + mProviderChangedReceiverClass +
+                    " mUid: " + mUid;
         }
     }
 
@@ -252,6 +276,56 @@ public final class SmsApplication {
             final SmsApplicationData smsApplicationData = receivers.get(packageName);
             if (smsApplicationData != null) {
                 smsApplicationData.mSendToClass = activityInfo.name;
+            }
+        }
+
+        // Update any existing entries with the default sms changed handler.
+        intent = new Intent(Telephony.Sms.Intents.ACTION_DEFAULT_SMS_PACKAGE_CHANGED);
+        List<ResolveInfo> smsAppChangedReceivers = packageManager.queryBroadcastReceivers(intent,
+                0, userId);
+        if (DEBUG_MULTIUSER) {
+            Log.i(LOG_TAG, "getApplicationCollectionInternal smsAppChangedActivities=" +
+                    smsAppChangedReceivers);
+        }
+        for (ResolveInfo resolveInfo : smsAppChangedReceivers) {
+            final ActivityInfo activityInfo = resolveInfo.activityInfo;
+            if (activityInfo == null) {
+                continue;
+            }
+            final String packageName = activityInfo.packageName;
+            final SmsApplicationData smsApplicationData = receivers.get(packageName);
+            if (DEBUG_MULTIUSER) {
+                Log.i(LOG_TAG, "getApplicationCollectionInternal packageName=" +
+                        packageName + " smsApplicationData: " + smsApplicationData +
+                        " activityInfo.name: " + activityInfo.name);
+            }
+            if (smsApplicationData != null) {
+                smsApplicationData.mSmsAppChangedReceiverClass = activityInfo.name;
+            }
+        }
+
+        // Update any existing entries with the external provider changed handler.
+        intent = new Intent(Telephony.Sms.Intents.ACTION_EXTERNAL_PROVIDER_CHANGE);
+        List<ResolveInfo> providerChangedReceivers = packageManager.queryBroadcastReceivers(intent,
+                0, userId);
+        if (DEBUG_MULTIUSER) {
+            Log.i(LOG_TAG, "getApplicationCollectionInternal providerChangedActivities=" +
+                    providerChangedReceivers);
+        }
+        for (ResolveInfo resolveInfo : providerChangedReceivers) {
+            final ActivityInfo activityInfo = resolveInfo.activityInfo;
+            if (activityInfo == null) {
+                continue;
+            }
+            final String packageName = activityInfo.packageName;
+            final SmsApplicationData smsApplicationData = receivers.get(packageName);
+            if (DEBUG_MULTIUSER) {
+                Log.i(LOG_TAG, "getApplicationCollectionInternal packageName=" +
+                        packageName + " smsApplicationData: " + smsApplicationData +
+                        " activityInfo.name: " + activityInfo.name);
+            }
+            if (smsApplicationData != null) {
+                smsApplicationData.mProviderChangedReceiverClass = activityInfo.name;
             }
         }
 
@@ -427,6 +501,11 @@ public final class SmsApplication {
         String oldPackageName = Settings.Secure.getStringForUser(context.getContentResolver(),
                 Settings.Secure.SMS_DEFAULT_APPLICATION, userId);
 
+        if (DEBUG_MULTIUSER) {
+            Log.i(LOG_TAG, "setDefaultApplicationInternal old=" + oldPackageName +
+                    " new=" + packageName);
+        }
+
         if (packageName != null && oldPackageName != null && packageName.equals(oldPackageName)) {
             // No change
             return;
@@ -435,6 +514,8 @@ public final class SmsApplication {
         // We only make the change if the new package is valid
         PackageManager packageManager = context.getPackageManager();
         Collection<SmsApplicationData> applications = getApplicationCollection(context);
+        SmsApplicationData oldAppData = oldPackageName != null ?
+                getApplicationForPackage(applications, oldPackageName) : null;
         SmsApplicationData applicationData = getApplicationForPackage(applications, packageName);
         if (applicationData != null) {
             // Ignore OP_WRITE_SMS for the previously configured default SMS app.
@@ -472,6 +553,41 @@ public final class SmsApplication {
                     MMS_SERVICE_PACKAGE_NAME);
             assignWriteSmsPermissionToSystemApp(context, packageManager, appOps,
                     TELEPHONY_PROVIDER_PACKAGE_NAME);
+
+            if (DEBUG_MULTIUSER) {
+                Log.i(LOG_TAG, "setDefaultApplicationInternal oldAppData=" + oldAppData);
+            }
+            if (oldAppData != null && oldAppData.mSmsAppChangedReceiverClass != null) {
+                // Notify the old sms app that it's no longer the default
+                final Intent oldAppIntent =
+                        new Intent(Telephony.Sms.Intents.ACTION_DEFAULT_SMS_PACKAGE_CHANGED);
+                final ComponentName component = new ComponentName(oldAppData.mPackageName,
+                        oldAppData.mSmsAppChangedReceiverClass);
+                oldAppIntent.setComponent(component);
+                oldAppIntent.putExtra(Telephony.Sms.Intents.EXTRA_IS_DEFAULT_SMS_APP, false);
+                if (DEBUG_MULTIUSER) {
+                    Log.i(LOG_TAG, "setDefaultApplicationInternal old=" + oldAppData.mPackageName);
+                }
+                context.sendBroadcast(oldAppIntent);
+            }
+            // Notify the new sms app that it's now the default (if the new sms app has a receiver
+            // to handle the changed default sms intent).
+            if (DEBUG_MULTIUSER) {
+                Log.i(LOG_TAG, "setDefaultApplicationInternal new applicationData=" +
+                        applicationData);
+            }
+            if (applicationData.mSmsAppChangedReceiverClass != null) {
+                final Intent intent =
+                        new Intent(Telephony.Sms.Intents.ACTION_DEFAULT_SMS_PACKAGE_CHANGED);
+                final ComponentName component = new ComponentName(applicationData.mPackageName,
+                        applicationData.mSmsAppChangedReceiverClass);
+                intent.setComponent(component);
+                intent.putExtra(Telephony.Sms.Intents.EXTRA_IS_DEFAULT_SMS_APP, true);
+                if (DEBUG_MULTIUSER) {
+                    Log.i(LOG_TAG, "setDefaultApplicationInternal new=" + packageName);
+                }
+                context.sendBroadcast(intent);
+            }
         }
     }
 
@@ -699,6 +815,32 @@ public final class SmsApplication {
             if (smsApplicationData != null) {
                 component = new ComponentName(smsApplicationData.mPackageName,
                         smsApplicationData.mSendToClass);
+            }
+            return component;
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    /**
+     * Gets the default application that handles external changes to the SmsProvider and
+     * MmsProvider.
+     * @param context context from the calling app
+     * @param updateIfNeeded update the default app if there is no valid default app configured.
+     * @return component name of the app and class to deliver change intents to
+     */
+    public static ComponentName getDefaultExternalTelephonyProviderChangedApplication(
+            Context context, boolean updateIfNeeded) {
+        int userId = getIncomingUserId(context);
+        final long token = Binder.clearCallingIdentity();
+        try {
+            ComponentName component = null;
+            SmsApplicationData smsApplicationData = getApplication(context, updateIfNeeded,
+                    userId);
+            if (smsApplicationData != null
+                    && smsApplicationData.mProviderChangedReceiverClass != null) {
+                component = new ComponentName(smsApplicationData.mPackageName,
+                        smsApplicationData.mProviderChangedReceiverClass);
             }
             return component;
         } finally {
