@@ -261,7 +261,7 @@ public abstract class ServiceStateTracker extends Handler {
             // Set the network type, in case the radio does not restore it.
             int subId = mPhoneBase.getSubId();
             if (mPreviousSubId.getAndSet(subId) != subId) {
-                if (SubscriptionManager.isValidSubscriptionId(subId)) {
+                if (mSubscriptionController.isActiveSubId(subId)) {
                     Context context = mPhoneBase.getContext();
 
                     mPhoneBase.notifyCallForwardingIndicator();
