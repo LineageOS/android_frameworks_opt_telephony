@@ -47,7 +47,7 @@ import java.util.regex.Pattern;
  *
  * <p class="note"><strong>Note:</strong> These APIs are not available on all Android-powered
  * devices. If your app depends on telephony features such as for managing SMS messages, include
- * a <a href="{@docRoot}guide/topics/manifest/uses-feature-element.html">{@code &lt;uses-feature>}
+ * a <a href="{@docRoot}guide/topics/manifest/uses-feature-element.html">{@code <uses-feature>}
  * </a> element in your manifest that declares the {@code "android.hardware.telephony"} hardware
  * feature. Alternatively, you can check for telephony availability at runtime using either
  * {@link android.content.pm.PackageManager#hasSystemFeature
@@ -845,7 +845,7 @@ public final class Telephony {
              * The broadcast receiver that filters for this intent must declare
              * {@link android.Manifest.permission#BROADCAST_SMS} as a required permission in
              * the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">{@code
-             * &lt;receiver>}</a> tag.
+             * <receiver>}</a> tag.
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SMS_DELIVER_ACTION =
@@ -930,7 +930,7 @@ public final class Telephony {
              * The broadcast receiver that filters for this intent must declare
              * {@link android.Manifest.permission#BROADCAST_WAP_PUSH} as a required permission in
              * the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">{@code
-             * &lt;receiver>}</a> tag.
+             * <receiver>}</a> tag.
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String WAP_PUSH_DELIVER_ACTION =
