@@ -42,6 +42,7 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.android.internal.content.PackageMonitor;
+import com.android.internal.logging.MetricsLogger;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -588,6 +589,8 @@ public final class SmsApplication {
                 }
                 context.sendBroadcast(intent);
             }
+            MetricsLogger.action(context, MetricsLogger.ACTION_DEFAULT_SMS_APP_CHANGED,
+                    applicationData.mPackageName);
         }
     }
 
