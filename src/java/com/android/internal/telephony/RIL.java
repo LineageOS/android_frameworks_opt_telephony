@@ -2923,7 +2923,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return rr;
     }
 
-    private RadioCapability makeStaticRadioCapability() {
+    protected RadioCapability makeStaticRadioCapability() {
         // default to UNKNOWN so we fail fast.
         int raf = RadioAccessFamily.RAF_UNKNOWN;
 
@@ -3546,7 +3546,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return response;
     }
 
-    private Object
+    protected Object
     responseFailCause(Parcel p) {
         LastCallFailCause failCause = new LastCallFailCause();
         failCause.causeCode = p.readInt();
@@ -4239,7 +4239,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
       return response;
    }
 
-    private Object
+    protected Object
     responseRadioCapability(Parcel p) {
         int version = p.readInt();
         int session = p.readInt();
@@ -4259,7 +4259,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return rc;
     }
 
-    private Object responseLceData(Parcel p) {
+    protected Object responseLceData(Parcel p) {
         final ArrayList<Integer> capacityResponse = new ArrayList<Integer>();
         final int capacityDownKbps = p.readInt();
         final int confidenceLevel = p.readByte();
@@ -4276,7 +4276,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return capacityResponse;
     }
 
-    private Object responseLceStatus(Parcel p) {
+    protected Object responseLceStatus(Parcel p) {
         final ArrayList<Integer> statusResponse = new ArrayList<Integer>();
         final int lceStatus = (int)p.readByte();
         final int actualInterval = p.readInt();
@@ -4289,7 +4289,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
         return statusResponse;
     }
 
-    private Object responseActivityData(Parcel p) {
+    protected Object responseActivityData(Parcel p) {
         final int sleepModeTimeMs = p.readInt();
         final int idleModeTimeMs = p.readInt();
         int [] txModeTimeMs = new int[ModemActivityInfo.TX_POWER_LEVELS];
