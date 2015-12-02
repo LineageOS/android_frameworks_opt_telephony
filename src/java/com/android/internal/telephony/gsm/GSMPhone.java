@@ -173,6 +173,7 @@ public class GSMPhone extends PhoneBase {
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         mCi.setOnSs(this, EVENT_SS, null);
         setProperties();
+        notifyPhoneStateChanged();
     }
 
     public
@@ -212,6 +213,7 @@ public class GSMPhone extends PhoneBase {
         log("GSMPhone: constructor: sub = " + mPhoneId);
 
         setProperties();
+        notifyPhoneStateChanged();
     }
 
     protected void setProperties() {
