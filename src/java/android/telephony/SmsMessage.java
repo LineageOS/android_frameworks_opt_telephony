@@ -30,6 +30,7 @@ import com.android.internal.telephony.SmsMessageBase.SubmitPduBase;
 import com.android.internal.telephony.Sms7BitEncodingTranslator;
 
 import java.lang.Math;
+import java.text.BreakIterator;	//[PM99] bug#1136 asing
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -365,6 +366,7 @@ public class SmsMessage {
         // below cleanly if these MAX_* constants were defined more
         // flexibly...
 
+        Rlog.e(LOG_TAG, "fragmentText");
         int limit;
         if (ted.codeUnitSize == SmsConstants.ENCODING_7BIT) {
             int udhLength;
@@ -425,7 +427,18 @@ public class SmsMessage {
                             ted.languageTable, ted.languageShiftTable);
                 }
             } else {  // Assume unicode.
-                nextPos = pos + Math.min(limit / 2, textLen - pos);
+//[PM99] bug#1136 asing s {      
+				
+                nextPos = Math.min(pos + limit / 2, textLen);
+				
+		  if (nextPos < textLen) {
+		      BreakIterator breakIterator = BreakIterator.getCharacterInstance();
+                    breakIterator.setText(newMsgBody.toString());
+                    if (!breakIterator.isBoundary(nextPos)) {
+                        nextPos = breakIterator.preceding(nextPos);
+                    }
+                }
+//[PM99] bug#1136 asing e {
             }
             if ((nextPos <= pos) || (nextPos > textLen)) {
                 Rlog.e(LOG_TAG, "fragmentText failed (" + pos + " >= " + nextPos + " or " +
