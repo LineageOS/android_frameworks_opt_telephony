@@ -16,6 +16,24 @@
       "revId": "85f8759de4c5f8b5450105ba7c65efbe47eee58f",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bf8cb3f7_74b770da",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccController.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 444
+      },
+      "writtenOn": "2015-12-02T02:02:31Z",
+      "side": 1,
+      "message": "This is as it was in previous CM versions, but I\u0027m sure we can move it to the original position to avoid disrupting the flow.\n\nI suggest reading the comments in the original patch: http://review.cyanogenmod.org/#/c/83032/",
+      "parentUuid": "bf8cb3f7_f493805b",
+      "revId": "85f8759de4c5f8b5450105ba7c65efbe47eee58f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
