@@ -165,11 +165,9 @@ public class PhoneFactory {
                     if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
                         phone = TelephonyPluginDelegate.getInstance().makeGSMPhone(context,
                                 sCommandsInterfaces[i], sPhoneNotifier, i);
-                        phone.startMonitoringImsService();
                     } else if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
                         phone = TelephonyPluginDelegate.getInstance().makeCDMALTEPhone(context,
                                 sCommandsInterfaces[i], sPhoneNotifier, i);
-                        phone.startMonitoringImsService();
                     }
                     Rlog.i(LOG_TAG, "Creating Phone with type = " + phoneType + " sub = " + i);
 
@@ -206,6 +204,12 @@ public class PhoneFactory {
 
                 TelephonyPluginDelegate.getInstance().
                         initExtTelephonyClasses(context, sProxyPhones, sCommandsInterfaces);
+                // Start monitoring after defaults have been made.
+                // Default phone must be ready before ImsPhone is created
+                // because ImsService might need it when it is being opened.
+                for (int i = 0; i < numPhones; i++) {
+                    sProxyPhones[i].startMonitoringImsService();
+                }
             }
         }
     }

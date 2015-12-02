@@ -242,6 +242,12 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
 
         setSignalStrengthDefaultValues();
 
+        // Query signal strength from the modem after service tracker is created (i.e. boot up,
+        // switching between GSM and CDMA phone), because the unsolicited signal strength
+        // information might come late or even never come. This will get the accurate signal
+        // strength information displayed on the UI.
+        mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
+
         // Monitor locale change
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_LOCALE_CHANGED);
@@ -1595,8 +1601,8 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
         String onsl = s.getOperatorAlphaLong();
         String onss = s.getOperatorAlphaShort();
 
-        boolean equalsOnsl = onsl != null && spn.equals(onsl);
-        boolean equalsOnss = onss != null && spn.equals(onss);
+        boolean equalsOnsl = onsl != null && spn != null && !spn.isEmpty() && spn.equals(onsl);
+        boolean equalsOnss = onss != null && spn != null && !spn.isEmpty() && spn.equals(onss);
 
         return currentMccEqualsSimMcc(s) && (equalsOnsl || equalsOnss);
     }

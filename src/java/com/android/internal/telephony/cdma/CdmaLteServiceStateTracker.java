@@ -159,7 +159,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                         states.length + " states=" + states);
             }
 
-            int type = 0;
+            int newDataRAT = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
             int regState = -1;
             if (states.length > 0) {
                 try {
@@ -167,7 +167,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
 
                     // states[3] (if present) is the current radio technology
                     if (states.length >= 4 && states[3] != null) {
-                        type = Integer.parseInt(states[3]);
+                        newDataRAT = Integer.parseInt(states[3]);
                     }
                 } catch (NumberFormatException ex) {
                     loge("handlePollStateResultMessage: error parsing GprsRegistrationState: "
@@ -243,7 +243,24 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
                 }
             }
 
-            mNewSS.setRilDataRadioTechnology(type);
+            // If the unsolicited signal strength comes just before data RAT family changes (i.e.
+            // from UNKNOWN to LTE, CDMA to LTE, LTE to CDMA), the signal bar might display
+            // the wrong information until the next unsolicited signal strength information coming
+            // from the modem, which might take a long time to come or even not come at all.
+            // In order to provide the best user experience, we query the latest signal
+            // information so it will show up on the UI on time.
+
+            int oldDataRAT = mSS.getRilDataRadioTechnology();
+            if ((oldDataRAT == ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN &&
+                    newDataRAT != ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN) ||
+                    (ServiceState.isCdma(oldDataRAT) &&
+                            newDataRAT == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) ||
+                    (oldDataRAT == ServiceState.RIL_RADIO_TECHNOLOGY_LTE &&
+                            ServiceState.isCdma(newDataRAT))) {
+                mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
+            }
+
+            mNewSS.setRilDataRadioTechnology(newDataRAT);
             int dataRegState = regCodeToServiceState(regState);
             mNewSS.setDataRegState(dataRegState);
             // voice roaming state in done while handling EVENT_POLL_STATE_REGISTRATION_CDMA
@@ -251,7 +268,7 @@ public class CdmaLteServiceStateTracker extends CdmaServiceStateTracker {
             if (DBG) {
                 log("handlPollStateResultMessage: CdmaLteSST setDataRegState=" + dataRegState
                         + " regState=" + regState
-                        + " dataRadioTechnology=" + type);
+                        + " dataRadioTechnology=" + newDataRAT);
             }
         } else {
             super.handlePollStateResultMessage(what, ar);

@@ -16,6 +16,9 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import static android.telephony.SubscriptionManager.DEFAULT_PHONE_INDEX;
+import static android.telephony.SubscriptionManager.INVALID_PHONE_INDEX;
+
 import android.content.Context;
 import android.database.ContentObserver;
 import android.net.ConnectivityManager;
@@ -369,8 +372,8 @@ public class DctController extends Handler {
         //2-2. If no, set data not allow on the current PS subscription
         //2-2-1. Set data allow on the selected subscription
 
-        int phoneId = getTopPriorityRequestPhoneId();
-        int activePhoneId = -1;
+        int requestedPhoneId = getTopPriorityRequestPhoneId();
+        int activePhoneId = INVALID_PHONE_INDEX;
 
         for (int i=0; i<mDcSwitchStateMachine.length; i++) {
             if (!mDcSwitchAsyncChannel[i].isIdleSync()) {
@@ -379,18 +382,26 @@ public class DctController extends Handler {
             }
         }
 
-        logd("onProcessRequest phoneId=" + phoneId
+        logd("onProcessRequest requestedPhoneId=" + requestedPhoneId
                 + ", activePhoneId=" + activePhoneId);
 
-        if (activePhoneId == -1 || activePhoneId == phoneId) {
+        if (requestedPhoneId == INVALID_PHONE_INDEX) {
+            // we have no network request - don't bother with this
+            return;
+        }
+
+        // if we have no active phones or the active phone is the desired, make requests
+        if (activePhoneId == INVALID_PHONE_INDEX || activePhoneId == requestedPhoneId) {
             Iterator<Integer> iterator = mRequestInfos.keySet().iterator();
             while (iterator.hasNext()) {
                 RequestInfo requestInfo = mRequestInfos.get(iterator.next());
-                if (getRequestPhoneId(requestInfo.request) == phoneId && !requestInfo.executed) {
-                    mDcSwitchAsyncChannel[phoneId].connect(requestInfo);
+                if (getRequestPhoneId(requestInfo.request) == requestedPhoneId &&
+                        !requestInfo.executed) {
+                    mDcSwitchAsyncChannel[requestedPhoneId].connect(requestInfo);
                 }
             }
         } else {
+            // otherwise detatch so we can try connecting to the high-priority phone
             mDcSwitchAsyncChannel[activePhoneId].disconnectAll();
         }
     }
@@ -461,7 +472,7 @@ public class DctController extends Handler {
         final int topPriPhone = getTopPriorityRequestPhoneId();
         logd("onRetryAttach phoneId=" + phoneId + " topPri phone = " + topPriPhone);
 
-        if (phoneId != -1 && phoneId == topPriPhone) {
+        if (phoneId != INVALID_PHONE_INDEX && phoneId == topPriPhone) {
             mDcSwitchAsyncChannel[phoneId].retryConnect();
         }
     }
@@ -517,31 +528,19 @@ public class DctController extends Handler {
     }
 
     protected int getTopPriorityRequestPhoneId() {
-        RequestInfo retRequestInfo = null;
-        int phoneId = 0;
+        int phoneId = INVALID_PHONE_INDEX;
         int priority = -1;
 
         //TODO: Handle SIM Switch
         for (int i=0; i<mPhoneNum; i++) {
-            Iterator<Integer> iterator = mRequestInfos.keySet().iterator();
-            while (iterator.hasNext()) {
-                RequestInfo requestInfo = mRequestInfos.get(iterator.next());
+            for (RequestInfo requestInfo : mRequestInfos.values()) {
                 logd("selectExecPhone requestInfo = " + requestInfo);
                 if (getRequestPhoneId(requestInfo.request) == i &&
                         priority < requestInfo.priority) {
                     priority = requestInfo.priority;
-                    retRequestInfo = requestInfo;
+                    phoneId = i;
                 }
             }
-        }
-
-        if (retRequestInfo != null) {
-            phoneId = getRequestPhoneId(retRequestInfo.request);
-        } else {
-            int defaultDds = mSubController.getDefaultDataSubId();
-            phoneId = mSubController.getPhoneId(defaultDds);
-            logd("getTopPriorityRequestPhoneId: RequestInfo list is empty, " +
-                    "use Dds sub phone id");
         }
 
         logd("getTopPriorityRequestPhoneId = " + phoneId
@@ -653,12 +652,6 @@ public class DctController extends Handler {
             subId = Integer.parseInt(specifier);
         }
         int phoneId = mSubController.getPhoneId(subId);
-        if (!SubscriptionManager.isValidPhoneId(phoneId)) {
-            phoneId = 0;
-            if (!SubscriptionManager.isValidPhoneId(phoneId)) {
-                throw new RuntimeException("Should not happen, no valid phoneId");
-            }
-        }
         return phoneId;
     }
 

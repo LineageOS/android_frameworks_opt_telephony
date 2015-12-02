@@ -295,6 +295,7 @@ class SmsCbHeader {
     private int getCmasMessageClass() {
         switch (mMessageIdentifier) {
             case SmsCbConstants.MESSAGE_ID_CMAS_ALERT_PRESIDENTIAL_LEVEL:
+            case SmsCbConstants.MESSAGE_ID_CMAS_ALERT_PRESIDENTIAL_LEVEL_LANGUAGE:
                 return SmsCbCmasInfo.CMAS_CLASS_PRESIDENTIAL_LEVEL_ALERT;
 
             case SmsCbConstants.MESSAGE_ID_CMAS_ALERT_EXTREME_IMMEDIATE_OBSERVED:
@@ -313,12 +314,15 @@ class SmsCbHeader {
                 return SmsCbCmasInfo.CMAS_CLASS_CHILD_ABDUCTION_EMERGENCY;
 
             case SmsCbConstants.MESSAGE_ID_CMAS_ALERT_REQUIRED_MONTHLY_TEST:
+            case SmsCbConstants.MESSAGE_ID_CMAS_ALERT_REQUIRED_MONTHLY_TEST_LANGUAGE:
                 return SmsCbCmasInfo.CMAS_CLASS_REQUIRED_MONTHLY_TEST;
 
             case SmsCbConstants.MESSAGE_ID_CMAS_ALERT_EXERCISE:
+            case SmsCbConstants.MESSAGE_ID_CMAS_ALERT_EXERCISE_LANGUAGE:
                 return SmsCbCmasInfo.CMAS_CLASS_CMAS_EXERCISE;
 
             case SmsCbConstants.MESSAGE_ID_CMAS_ALERT_OPERATOR_DEFINED_USE:
+            case SmsCbConstants.MESSAGE_ID_CMAS_ALERT_OPERATOR_DEFINED_USE_LANGUAGE:
                 return SmsCbCmasInfo.CMAS_CLASS_OPERATOR_DEFINED_USE;
 
             default:
