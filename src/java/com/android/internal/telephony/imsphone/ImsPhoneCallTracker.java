@@ -1458,7 +1458,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
             // Start plumbing this even through Telecom so other components can take
             // appropriate action.
-            ImsPhoneConnection conn = findConnection(call);
+            ImsPhoneConnection conn = findConnection(mForegroundCall.getImsCall());
             if (conn != null) {
                 conn.onConferenceMergeFailed();
             }
