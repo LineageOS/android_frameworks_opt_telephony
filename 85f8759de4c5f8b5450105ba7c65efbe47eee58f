@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bf8cb3f7_f493805b",
+        "filename": "src/java/com/android/internal/telephony/uicc/UiccController.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2015-12-02T01:41:57Z",
+      "side": 1,
+      "message": "Doesn\u0027t this change the default flow? I see the comment listed says that QC RILs can only do this if that property is set.",
+      "revId": "85f8759de4c5f8b5450105ba7c65efbe47eee58f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
