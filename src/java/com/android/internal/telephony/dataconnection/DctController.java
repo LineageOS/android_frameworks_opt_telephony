@@ -32,6 +32,7 @@ import android.os.Message;
 import android.os.Messenger;
 import android.provider.Settings;
 import android.telephony.Rlog;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.SubscriptionManager.OnSubscriptionsChangedListener;
 import android.text.TextUtils;
@@ -568,6 +569,16 @@ public class DctController extends Handler {
         for (int i = 0; i < mPhoneNum; ++i) {
             int subId = mPhones[i].getSubId();
             logd("onSubInfoReady handle pending requests subId=" + subId);
+            SubscriptionInfo subInfo = mSubMgr.getActiveSubscriptionInfoForSimSlotIndex(i);
+            if (subInfo == null) {  // No sim in slot
+                logd("onSubInfoReady: subInfo = null");
+                PhoneBase phoneBase = (PhoneBase)mPhones[i].getActivePhone();
+                DcTrackerBase dcTracker = phoneBase.mDcTracker;
+                if (dcTracker.isApnTypeActive(PhoneConstants.APN_TYPE_DEFAULT)) {
+                    logd("onSubInfoReady: reset INTERNET request as SIM has been removed");
+                    deactivateDdsRequests();
+                }
+            }
             mNetworkFilter[i].setNetworkSpecifier(String.valueOf(subId));
             ((DctController.TelephonyNetworkFactory)mNetworkFactory[i]).evalPendingRequest();
         }
