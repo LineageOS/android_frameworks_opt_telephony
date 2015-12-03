@@ -1658,7 +1658,7 @@ public interface CommandsInterface {
 
     /**
      *  Requests the radio's system selection module to exit emergency callback mode.
-     *  This function should only be called from CDMAPHone.java.
+     *  This function should only be called from for CDMA.
      *
      * @param response callback message
      */

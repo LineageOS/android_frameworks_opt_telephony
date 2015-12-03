@@ -4344,7 +4344,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setPhoneType(int phoneType) { // Called by CDMAPhone and GSMPhone constructor
+    public void setPhoneType(int phoneType) { // Called by GsmCdmaPhone
         if (RILJ_LOGD) riljLog("setPhoneType=" + phoneType + " old value=" + mPhoneType);
         mPhoneType = phoneType;
     }

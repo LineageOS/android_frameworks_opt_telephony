@@ -539,8 +539,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         // messages to be handled whether or not the phone is being destroyed
         // should only include messages which are being re-directed and do not use
         // resources of the phone being destroyed
-        // Note: make sure to add code in GSMPhone/CDMAPhone to re-direct here before
-        // they check if phone destroyed.
         switch (msg.what) {
             // handle the select network completion callbacks.
             case EVENT_SET_NETWORK_MANUAL_COMPLETE:
@@ -1054,7 +1052,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param obj placed in Message.obj
      */
     public void registerForSimRecordsLoaded(Handler h, int what, Object obj) {
-        logUnexpectedCdmaMethodCall("registerForSimRecordsLoaded");
     }
 
     /**
@@ -1062,7 +1059,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForSimRecordsLoaded(Handler h) {
-        logUnexpectedCdmaMethodCall("unregisterForSimRecordsLoaded");
     }
 
     /**
@@ -1841,8 +1837,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param onComplete a callback message when the action is completed.
      */
     public void enableEnhancedVoicePrivacy(boolean enable, Message onComplete) {
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("enableEnhancedVoicePrivacy");
     }
 
     /**
@@ -1851,8 +1845,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param onComplete a callback message when the action is completed.
      */
     public void getEnhancedVoicePrivacy(Message onComplete) {
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("getEnhancedVoicePrivacy");
     }
 
     /**
@@ -2104,7 +2096,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Returns the CDMA ERI icon index to display
      */
     public int getCdmaEriIconIndex() {
-        logUnexpectedCdmaMethodCall("getCdmaEriIconIndex");
         return -1;
     }
 
@@ -2114,7 +2105,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * 1 - FLASHING
      */
     public int getCdmaEriIconMode() {
-        logUnexpectedCdmaMethodCall("getCdmaEriIconMode");
         return -1;
     }
 
@@ -2122,7 +2112,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Returns the CDMA ERI text,
      */
     public String getCdmaEriText() {
-        logUnexpectedCdmaMethodCall("getCdmaEriText");
         return "GSM nw, no ERI";
     }
 
@@ -2130,8 +2119,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Retrieves the MIN for CDMA phones.
      */
     public String getCdmaMin() {
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("getCdmaMin");
         return null;
     }
 
@@ -2141,8 +2128,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * return true if MIN info is ready; false otherwise.
      */
     public boolean isMinInfoReady() {
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("isMinInfoReady");
         return false;
     }
 
@@ -2150,8 +2135,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *  Retrieves PRL Version for CDMA phones
      */
     public String getCdmaPrlVersion(){
-        //  This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("getCdmaPrlVersion");
         return null;
     }
 
@@ -2170,8 +2153,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      *
      */
     public void sendBurstDtmf(String dtmfString, int on, int off, Message onComplete) {
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("sendBurstDtmf");
     }
 
     /**
@@ -2180,8 +2161,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * to receive the emergency callback mode exit response
      */
     public void exitEmergencyCallbackMode() {
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("exitEmergencyCallbackMode");
     }
 
     /**
@@ -2192,8 +2171,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param obj User object.
      */
     public void registerForCdmaOtaStatusChange(Handler h, int what, Object obj) {
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("registerForCdmaOtaStatusChange");
     }
 
     /**
@@ -2201,8 +2178,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForCdmaOtaStatusChange(Handler h) {
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("unregisterForCdmaOtaStatusChange");
     }
 
     /**
@@ -2212,8 +2187,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param obj placed in Message.obj
      */
     public void registerForSubscriptionInfoReady(Handler h, int what, Object obj) {
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("registerForSubscriptionInfoReady");
     }
 
     /**
@@ -2221,8 +2194,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForSubscriptionInfoReady(Handler h) {
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("unregisterForSubscriptionInfoReady");
     }
 
     /**
@@ -2249,8 +2220,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param obj User object.
      */
     public void registerForCallWaiting(Handler h, int what, Object obj){
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("registerForCallWaiting");
     }
 
     /**
@@ -2258,8 +2227,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForCallWaiting(Handler h){
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("unregisterForCallWaiting");
     }
 
     /**
@@ -2269,8 +2236,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param obj placed in Message.obj
      */
     public void registerForEcmTimerReset(Handler h, int what, Object obj) {
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("registerForEcmTimerReset");
     }
 
     /**
@@ -2278,8 +2243,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unregisterForEcmTimerReset(Handler h) {
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("unregisterForEcmTimerReset");
     }
 
     /**
@@ -2460,8 +2423,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param obj User object.
      */
     public void setOnEcbModeExitResponse(Handler h, int what, Object obj){
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("setOnEcbModeExitResponse");
     }
 
     /**
@@ -2470,8 +2431,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param h Handler to be removed from the registrant list.
      */
     public void unsetOnEcbModeExitResponse(Handler h){
-        // This function should be overridden by the class CDMAPhone. Not implemented in GSMPhone.
-        logUnexpectedCdmaMethodCall("unsetOnEcbModeExitResponse");
     }
 
     /**
@@ -2620,9 +2579,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * false otherwise
      */
     public boolean isCspPlmnEnabled() {
-        // This function should be overridden by the class GSMPhone.
-        // Not implemented in CDMAPhone.
-        logUnexpectedGsmMethodCall("isCspPlmnEnabled");
         return false;
     }
 
@@ -2641,17 +2597,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * the MDN, so this method is provided to return the MSISDN on CDMA/LTE phones.
      */
     public String getMsisdn() {
-        logUnexpectedGsmMethodCall("getMsisdn");
         return null;
-    }
-
-    /**
-     * Common error logger method for unexpected calls to CDMA-only methods.
-     */
-    private static void logUnexpectedCdmaMethodCall(String name)
-    {
-        Rlog.e(LOG_TAG, "Error! " + name + "() in Phone should not be " +
-                "called, CDMAPhone inactive.");
     }
 
     /**
@@ -2663,18 +2609,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return getDataConnectionState(PhoneConstants.APN_TYPE_DEFAULT);
     }
 
-    /**
-     * Common error logger method for unexpected calls to GSM/WCDMA-only methods.
-     */
-    private static void logUnexpectedGsmMethodCall(String name) {
-        Rlog.e(LOG_TAG, "Error! " + name + "() in Phone should not be " +
-                "called, GSMPhone inactive.");
-    }
-
-    // Called by SimRecords which is constructed with a Phone instead of a GSMPhone.
     public void notifyCallForwardingIndicator() {
-        // This function should be overridden by the class GSMPhone. Not implemented in CDMAPhone.
-        Rlog.e(LOG_TAG, "Error! This function should never be executed, inactive CDMAPhone.");
     }
 
     public void notifyDataConnectionFailed(String reason, String apnType) {
@@ -2791,7 +2726,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected Connection dialInternal(
             String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
             throws CallStateException {
-        // dialInternal shall be overriden by GSMPhone and CDMAPhone
+        // dialInternal shall be overriden by GsmCdmaPhone
         return null;
     }
 

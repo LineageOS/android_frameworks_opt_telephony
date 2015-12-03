@@ -1256,7 +1256,7 @@ public class ServiceStateTracker extends Handler {
 
             case EVENT_ERI_FILE_LOADED:
                 // Repoll the state once the ERI file has been loaded.
-                if (DBG) log("[CdmaServiceStateTracker] ERI file has been loaded, repolling.");
+                if (DBG) log("ERI file has been loaded, repolling.");
                 pollState();
                 break;
 
@@ -2833,7 +2833,7 @@ public class ServiceStateTracker extends Handler {
         } else {
             mReportedGprsNoReg = false;
         }
-        // TODO: Add GsmCellIdenity updating, see CdmaLteServiceStateTracker.
+        // TODO: Add GsmCellIdenity updating, see pollStateDoneCdmaLte().
     }
 
     protected void pollStateDoneCdma() {
@@ -2918,7 +2918,7 @@ public class ServiceStateTracker extends Handler {
         if (hasChanged) {
             if ((mCi.getRadioState().isOn()) && (!mIsSubscriptionFromRuim)) {
                 String eriText;
-                // Now the CDMAPhone sees the new ServiceState so it can get the new ERI text
+                // Now the Phone sees the new ServiceState so it can get the new ERI text
                 if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
                     eriText = mPhone.getCdmaEriText();
                 } else {
@@ -3156,8 +3156,7 @@ public class ServiceStateTracker extends Handler {
                                     bool.config_LTE_eri_for_network_name))) {
                 // Only when CDMA is in service, ERI will take effect
                 String eriText = mSS.getOperatorAlphaLong();
-                // Now the CDMAPhone sees the new ServiceState so it can get the
-                // new ERI text
+                // Now the Phone sees the new ServiceState so it can get the new ERI text
                 if (mSS.getVoiceRegState() == ServiceState.STATE_IN_SERVICE) {
                     eriText = mPhone.getCdmaEriText();
                 } else if (mSS.getVoiceRegState() == ServiceState.STATE_POWER_OFF) {

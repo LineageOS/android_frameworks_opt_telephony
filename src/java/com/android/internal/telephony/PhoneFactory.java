@@ -123,7 +123,7 @@ public class PhoneFactory {
                 int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
 
-                /* In case of multi SIM mode two instances of PhoneProxy, RIL are created,
+                /* In case of multi SIM mode two instances of Phone, RIL are created,
                    where as in single SIM mode only instance. isMultiSimEnabled() function checks
                    whether it is single SIM or multi SIM mode */
                 int numPhones = TelephonyManager.getDefault().getPhoneCount();

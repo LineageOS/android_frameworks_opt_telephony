@@ -106,11 +106,11 @@ public class SubscriptionInfoUpdater extends Handler {
     private int mCurrentlyActiveUserId;
     private CarrierServiceBindHelper mCarrierServiceBindHelper;
 
-    public SubscriptionInfoUpdater(Context context, Phone[] phoneProxy, CommandsInterface[] ci) {
+    public SubscriptionInfoUpdater(Context context, Phone[] phone, CommandsInterface[] ci) {
         logd("Constructor invoked");
 
         mContext = context;
-        mPhone = phoneProxy;
+        mPhone = phone;
         mSubscriptionManager = SubscriptionManager.from(mContext);
         mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
 

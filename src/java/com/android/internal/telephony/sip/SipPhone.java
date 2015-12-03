@@ -94,7 +94,7 @@ public class SipPhone extends SipPhoneBase {
     public Connection takeIncomingCall(Object incomingCall) {
         // FIXME: Is synchronizing on the class necessary, should we use a mLockObj?
         // Also there are many things not synchronized, of course
-        // this may be true of CdmaPhone and GsmPhone too!!!
+        // this may be true of GsmCdmaPhone too!!!
         synchronized (SipPhone.class) {
             if (!(incomingCall instanceof SipAudioCall)) {
                 if (DBG) log("takeIncomingCall: ret=null, not a SipAudioCall");

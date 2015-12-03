@@ -201,8 +201,6 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     public void updateParentPhone(Phone parentPhone) {
-        // synchronization is managed at the Phone scope (which calls this function)
-        // Above comment is not valid any more. PhoneProxy calls this function directly now
         synchronized (Phone.lockForRadioTechnologyChange) {
             mDefaultPhone = parentPhone;
             mPhoneId = mDefaultPhone.getPhoneId();
