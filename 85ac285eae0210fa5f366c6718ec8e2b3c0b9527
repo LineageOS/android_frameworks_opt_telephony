@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bf8cb3f7_d54436ba",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DctController.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 68
+      },
+      "writtenOn": "2015-12-03T01:23:25Z",
+      "side": 1,
+      "message": "Could also be a simple array since its size is always fixed and reconstructed when that changes.",
+      "revId": "85ac285eae0210fa5f366c6718ec8e2b3c0b9527",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
