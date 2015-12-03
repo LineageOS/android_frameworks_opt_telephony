@@ -1440,10 +1440,12 @@ public class DcTracker extends DcTrackerBase {
         if (DBG) log("tryRestartDataConnections: createAllApnList and cleanUpAllConnections");
         createAllApnList();
         setInitialAttachApn();
-        cleanUpConnectionsOnUpdatedApns(!isDisconnected);
-
+        if (reason.equalsIgnoreCase(Phone.REASON_APN_CHANGED)) {
+            cleanUpConnectionsOnUpdatedApns(!isDisconnected);
+        } else {
+            cleanUpAllConnections(!isDisconnected, reason);
+        }
         // FIXME: See bug 17426028 maybe no conditional is needed.
-        cleanUpAllConnections(!isDisconnected, reason);
         setupDataOnConnectableApns(reason);
     }
 
@@ -1686,7 +1688,8 @@ public class DcTracker extends DcTrackerBase {
                 // can declare the DUN APN sharable by default traffic, thus still satisfying
                 // those requests and not torn down organically.
                 if ((apnContext.getApnType() == PhoneConstants.APN_TYPE_DUN && teardownForDun())
-                        || apnContext.getState() != DctConstants.State.CONNECTED) {
+                        || apnContext.getState() != DctConstants.State.CONNECTED
+                        || mPhone.getSubId() != SubscriptionManager.getDefaultDataSubId() ) {
                     cleanup = true;
                 } else {
                     cleanup = false;
