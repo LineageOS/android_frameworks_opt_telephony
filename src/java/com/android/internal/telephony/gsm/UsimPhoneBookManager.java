@@ -80,6 +80,7 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
     private static final int USIM_EFCCP1_TAG  = 0xCB;
 
     private static final int INVALID_SFI = -1;
+    private static final byte INVALID_BYTE = -1;
 
     // class File represent a PBR record TLV object which points to the rest of the phonebook EFs
     private class File {
@@ -495,15 +496,24 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             return;
         }
 
-        mPbrRecords = new ArrayList<PbrRecord>(records.size());
+        mPbrRecords = new ArrayList<PbrRecord>();
         for (int i = 0; i < records.size(); i++) {
-            mPbrRecords.add(new PbrRecord(records.get(i)));
+            // Some cards have two records but the 2nd record is filled with all invalid char 0xff.
+            // So we need to check if the record is valid or not before adding into the PBR records.
+            if (records.get(i)[0] != INVALID_BYTE) {
+                mPbrRecords.add(new PbrRecord(records.get(i)));
+            }
         }
 
         for (PbrRecord record : mPbrRecords) {
-            int sfi = record.mFileIds.get(USIM_EFADN_TAG).getSfi();
-            if (sfi != INVALID_SFI)
-                mSfiEfidTable.put(sfi, record.mFileIds.get(USIM_EFADN_TAG).getEfid());
+            File file = record.mFileIds.get(USIM_EFADN_TAG);
+            // If the file does not contain EF_ADN, we'll just skip it.
+            if (file != null) {
+                int sfi = file.getSfi();
+                if (sfi != INVALID_SFI) {
+                    mSfiEfidTable.put(sfi, record.mFileIds.get(USIM_EFADN_TAG).getEfid());
+                }
+            }
         }
     }
 
