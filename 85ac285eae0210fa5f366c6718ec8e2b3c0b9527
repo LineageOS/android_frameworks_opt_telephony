@@ -16,6 +16,24 @@
       "revId": "85ac285eae0210fa5f366c6718ec8e2b3c0b9527",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bf8cb3f7_350d6290",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DctController.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2015-12-03T01:26:58Z",
+      "side": 1,
+      "message": "You can\u0027t create a simple arrays of generics, I tried that first :/ Such is Java life.",
+      "parentUuid": "bf8cb3f7_d54436ba",
+      "revId": "85ac285eae0210fa5f366c6718ec8e2b3c0b9527",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
