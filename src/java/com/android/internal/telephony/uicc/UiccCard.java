@@ -615,6 +615,13 @@ public class UiccCard {
                 mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE, response));
     }
 
+    public void iccOpenLogicalChannel(String AID, byte p2, Message response) {
+        loglocal("Open Logical Channel: " + AID + " , " + p2 + " by pid:" + Binder.getCallingPid()
+                + " uid:" + Binder.getCallingUid());
+        mCi.iccOpenLogicalChannel(AID,
+                p2, mHandler.obtainMessage(EVENT_OPEN_LOGICAL_CHANNEL_DONE, response));
+    }
+
     /**
      * Exposes {@link CommandsInterface.iccCloseLogicalChannel}
      */
