@@ -1733,23 +1733,28 @@ public class DcTracker extends Handler {
         // Either user disable mobile data or under roaming service and user disabled roaming
         if (!TextUtils.isEmpty(reason)) {
             specificDisable = reason.equals(Phone.REASON_DATA_SPECIFIC_DISABLED) ||
-                    reason.equals(Phone.REASON_ROAMING_ON);
+                    reason.equals(Phone.REASON_ROAMING_ON) ||
+                    reason.equals(Phone.REASON_SINGLE_PDN_ARBITRATION);
         }
 
         for (ApnContext apnContext : mApnContexts.values()) {
-            if (apnContext.isDisconnected() == false) didDisconnect = true;
             if (specificDisable) {
-                // Use ApnSetting to decide metered or non-metered.
-                // Tear down all metered data connections.
-                ApnSetting apnSetting = apnContext.getApnSetting();
-                if (apnSetting != null && apnSetting.isMetered(mPhone.getContext(),
+                if (!apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IMS)) {
+                    // Use ApnSetting to decide metered or non-metered.
+                    // Tear down all metered data connections.
+                    ApnSetting apnSetting = apnContext.getApnSetting();
+                    if (apnSetting != null && apnSetting.isMetered(mPhone.getContext(),
                         mPhone.getSubId(), mPhone.getServiceState().getDataRoaming())) {
-                    if (DBG) log("clean up metered ApnContext Type: " + apnContext.getApnType());
-                    apnContext.setReason(reason);
-                    cleanUpConnection(tearDown, apnContext);
+                        if (apnContext.isDisconnected() == false) didDisconnect = true;
+                        if (DBG) log("clean up metered ApnContext Type: " +
+                                apnContext.getApnType());
+                        apnContext.setReason(reason);
+                        cleanUpConnection(tearDown, apnContext);
+                    }
                 }
             } else {
                 // TODO - only do cleanup if not disconnected
+                if (apnContext.isDisconnected() == false) didDisconnect = true;
                 apnContext.setReason(reason);
                 cleanUpConnection(tearDown, apnContext);
             }
@@ -2140,15 +2145,18 @@ public class DcTracker extends Handler {
                     return false;
                 }
 
-                // Only lower priority calls left.  Disconnect them all in this single PDP case
-                // so that we can bring up the requested higher priority call (once we receive
-                // response for deactivate request for the calls we are about to disconnect
-                if (cleanUpAllConnections(true, Phone.REASON_SINGLE_PDN_ARBITRATION)) {
-                    // If any call actually requested to be disconnected, means we can't
-                    // bring up this connection yet as we need to wait for those data calls
-                    // to be disconnected.
-                    if (DBG) log("setupData: Some calls are disconnecting first.  Wait and retry");
-                    return false;
+                if (!apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IMS)) {
+                    // Only lower priority calls left.  Disconnect them all in this single PDP case
+                    // so that we can bring up the requested higher priority call (once we receive
+                    // response for deactivate request for the calls we are about to disconnect
+                    if (cleanUpAllConnections(true, Phone.REASON_SINGLE_PDN_ARBITRATION)) {
+                        // If any call actually requested to be disconnected, means we can't
+                        // bring up this connection yet as we need to wait for those data calls
+                        // to be disconnected.
+                        if (DBG) log("setupData: Some calls are disconnecting first." +
+                                " Wait and retry");
+                        return false;
+                    }
                 }
 
                 // No other calls are active, so proceed
@@ -2297,7 +2305,14 @@ public class DcTracker extends Handler {
      * @return true if higher priority active apn found
      */
     private boolean isHigherPriorityApnContextActive(ApnContext apnContext) {
+        if (apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IMS)) {
+            return false;
+        }
+
         for (ApnContext otherContext : mPrioritySortedApnContexts) {
+            if (otherContext.getApnType().equals(PhoneConstants.APN_TYPE_IMS)) {
+                continue;
+            }
             if (apnContext.getApnType().equalsIgnoreCase(otherContext.getApnType())) return false;
             if (otherContext.isEnabled() && otherContext.getState() != DctConstants.State.FAILED) {
                 return true;
