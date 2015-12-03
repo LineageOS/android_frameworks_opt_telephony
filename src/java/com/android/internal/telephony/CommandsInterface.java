@@ -1805,6 +1805,16 @@ public interface CommandsInterface {
     public void iccOpenLogicalChannel(String AID, Message response);
 
     /**
+     * Open a logical channel to the SIM.
+     *
+     * @param p2 P2 parameter
+     * @param AID application id.
+     * @param response Callback message. response.obj will be an int [1]
+                element [0] set to the id of the logical channel.
+     */
+    public void iccOpenLogicalChannel(String AID, byte p2, Message response);
+
+    /**
      * Close a previously opened logical channel to the SIM.
      *
      * Input parameters equivalent to TS 27.007 AT+CCHC command.
