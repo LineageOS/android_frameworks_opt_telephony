@@ -34,6 +34,47 @@
       "revId": "85ac285eae0210fa5f366c6718ec8e2b3c0b9527",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bf8cb3f7_f5261a17",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DctController.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 68
+      },
+      "writtenOn": "2015-12-03T01:29:10Z",
+      "side": 1,
+      "message": "Forgot about type erasure, damn.",
+      "parentUuid": "bf8cb3f7_350d6290",
+      "revId": "85ac285eae0210fa5f366c6718ec8e2b3c0b9527",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bf8cb3f7_1524de0c",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DctController.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 68
+      },
+      "writtenOn": "2015-12-03T01:29:10Z",
+      "side": 1,
+      "message": "Initialize with mPhoneNum to preallocate exactly what is needed.",
+      "range": {
+        "startLine": 227,
+        "startChar": 66,
+        "endLine": 227,
+        "endChar": 71
+      },
+      "revId": "85ac285eae0210fa5f366c6718ec8e2b3c0b9527",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
