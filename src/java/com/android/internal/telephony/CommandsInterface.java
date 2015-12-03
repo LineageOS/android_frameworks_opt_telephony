@@ -1786,10 +1786,11 @@ public interface CommandsInterface {
      * Input parameters equivalent to TS 27.007 AT+CCHO command.
      *
      * @param AID Application id. See ETSI 102.221 and 101.220.
+     * @param p2 P2 parameter (described in ISO 7816-4).
      * @param response Callback message. response.obj will be an int [1] with
      *            element [0] set to the id of the logical channel.
      */
-    public void iccOpenLogicalChannel(String AID, Message response);
+    public void iccOpenLogicalChannel(String AID, int p2, Message response);
 
     /**
      * Close a previously opened logical channel to the SIM.
