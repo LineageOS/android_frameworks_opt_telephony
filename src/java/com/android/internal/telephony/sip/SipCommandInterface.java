@@ -472,7 +472,7 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setPhoneType(int phoneType) { //Set by CDMAPhone and GSMPhone constructor
+    public void setPhoneType(int phoneType) { //Set by GsmCdmaPhone
     }
 
     @Override

@@ -144,8 +144,8 @@ public class GsmCdmaPhone extends Phone {
     public static String PROPERTY_CDMA_HOME_OPERATOR_NUMERIC = "ro.cdma.home.operator.numeric";
 
     //CDMALTE
-    /** CdmaLtePhone in addition to RuimRecords available from
-     * Phone needs access to SIMRecords and IsimUiccRecords
+    /** PHONE_TYPE_CDMA_LTE in addition to RuimRecords needs access to SIMRecords and
+     * IsimUiccRecords
      */
     private SIMRecords mSimRecords;
 
@@ -231,7 +231,7 @@ public class GsmCdmaPhone extends Phone {
     private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            Rlog.d(LOG_TAG, "mPhoneProxyReceiver: action " + intent.getAction());
+            Rlog.d(LOG_TAG, "mBroadcastReceiver: action " + intent.getAction());
             if (intent.getAction().equals(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED)) {
                 sendMessage(obtainMessage(EVENT_CARRIER_CONFIG_CHANGED));
             }
@@ -1503,8 +1503,15 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public String getMsisdn() {
-        IccRecords r = mIccRecords.get();
-        return (r != null) ? r.getMsisdnNumber() : null;
+        if (isPhoneTypeGsm()) {
+            IccRecords r = mIccRecords.get();
+            return (r != null) ? r.getMsisdnNumber() : null;
+        } else if (getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE) {
+            return (mSimRecords != null) ? mSimRecords.getMsisdnNumber() : null;
+        } else {
+            loge("getMsisdn: not expected on CDMA");
+            return null;
+        }
     }
 
     @Override

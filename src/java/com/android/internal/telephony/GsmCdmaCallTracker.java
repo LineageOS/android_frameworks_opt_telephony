@@ -116,7 +116,7 @@ public class GsmCdmaCallTracker extends CallTracker {
                 if (!isInEcm) {
                     // Although mConnections seems to be the place to look, it is not guaranteed
                     // to have all of the connections we're tracking.  THe best place to look is in
-                    // the CdmaCall objects associated with the tracker.
+                    // the Call objects associated with the tracker.
                     List<Connection> toNotify = new ArrayList<Connection>();
                     toNotify.addAll(mRingingCall.getConnections());
                     toNotify.addAll(mForegroundCall.getConnections());
@@ -521,7 +521,7 @@ public class GsmCdmaCallTracker extends CallTracker {
 
                 // Since there is no network response for supplimentary
                 // service for CDMA, we assume call waiting is answered.
-                // ringing Call state change to idle is in CdmaCall.detach
+                // ringing Call state change to idle is in GsmCdmaCall.detach
                 // triggered by updateParent.
                 cwConn.updateParent(mRingingCall, mForegroundCall);
                 cwConn.onConnectedInOrOut();
@@ -1151,7 +1151,7 @@ public class GsmCdmaCallTracker extends CallTracker {
                 && mRingingCall.getState() == GsmCdmaCall.State.WAITING) {
             // Handle call waiting hang up case.
             //
-            // The ringingCall state will change to IDLE in CdmaCall.detach
+            // The ringingCall state will change to IDLE in GsmCdmaCall.detach
             // if the ringing call connection size is 0. We don't specifically
             // set the ringing call state to IDLE here to avoid a race condition
             // where a new call waiting could get a hang up from an old call
@@ -1182,8 +1182,8 @@ public class GsmCdmaCallTracker extends CallTracker {
     /*package*/ void
     separate (GsmCdmaConnection conn) throws CallStateException {
         if (conn.mOwner != this) {
-            throw new CallStateException ("GsmCdmaConnection Cdma" + conn
-                                    + "does not belong to GsmCallTracker " + this);
+            throw new CallStateException ("GsmCdmaConnection " + conn
+                                    + "does not belong to GsmCdmaCallTracker " + this);
         }
         try {
             mCi.separateConnection (conn.getGsmCdmaIndex(),
@@ -1191,8 +1191,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         } catch (CallStateException ex) {
             // Ignore "connection not found"
             // Call may have hung up already
-            Rlog.w(LOG_TAG,"GsmCdmaCallTracker WARN: separate() on absent connection "
-                          + conn);
+            Rlog.w(LOG_TAG,"GsmCdmaCallTracker WARN: separate() on absent connection " + conn);
         }
     }
 
@@ -1323,7 +1322,7 @@ public class GsmCdmaCallTracker extends CallTracker {
             mForegroundCall.setGeneric(true);
         }
 
-        // Create a new CdmaConnection which attaches itself to ringingCall.
+        // Create a new GsmCdmaConnection which attaches itself to ringingCall.
         mRingingCall.setGeneric(false);
         new GsmCdmaConnection(mPhone.getContext(), cw, this, mRingingCall);
         updatePhoneState();

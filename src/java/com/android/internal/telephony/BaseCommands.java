@@ -101,7 +101,7 @@ public abstract class BaseCommands implements CommandsInterface {
     protected int mPreferredNetworkType;
     // CDMA subscription received from PhoneFactory
     protected int mCdmaSubscription;
-    // Type of Phone, GSM or CDMA. Set by CDMAPhone or GSMPhone.
+    // Type of Phone, GSM or CDMA. Set by GsmCdmaPhone.
     protected int mPhoneType;
     // RIL Version
     protected int mRilVersion = -1;

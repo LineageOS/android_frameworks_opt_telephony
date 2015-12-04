@@ -140,7 +140,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
             // "The value 255 shall be taken to mean 255 or greater"
             voicemailCount = 0xff;
         }
-        // update voice mail count in GsmPhone
+        // update voice mail count in Phone
         mPhone.setVoiceMessageCount(voicemailCount);
         // store voice mail count in SIM & shared preferences
         IccRecords records = UiccController.getInstance().getIccRecords(

@@ -1117,7 +1117,7 @@ public class SIMRecords extends IccRecords {
                         Resources resource = Resources.getSystem();
                         if (ar.exception != null && resource.getBoolean(com.android.internal.
                                     R.bool.editable_voicemailnumber)) {
-                            // GSMPhone will store vm number on device
+                            // GsmCdmaPhone will store vm number on device
                             // when IccVmNotSupportedException occurred
                             AsyncResult.forMessage(((Message) ar.userObj)).exception
                                 = new IccVmNotSupportedException(
@@ -1331,8 +1331,8 @@ public class SIMRecords extends IccRecords {
     }
 
     /**
-     * Dispatch 3GPP format message to registrant ({@code GSMPhone} or {@code CDMALTEPhone})
-     * to pass to the 3GPP SMS dispatcher for delivery.
+     * Dispatch 3GPP format message to registrant ({@code GsmCdmaPhone}) to pass to the 3GPP SMS
+     * dispatcher for delivery.
      */
     private int dispatchGsmMessage(SmsMessage message) {
         mNewSmsRegistrants.notifyResult(message);

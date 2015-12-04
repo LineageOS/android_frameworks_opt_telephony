@@ -993,7 +993,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     }
 
     /**
-     * Called from GSMPhone
+     * Called from GsmCdmaPhone
      *
      * An unsolicited USSD NOTIFY or REQUEST has come in matching
      * up with this pending USSD request
@@ -1020,7 +1020,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     }
 
     /**
-     * Called from GSMPhone
+     * Called from GsmCdmaPhone
      *
      * The radio has reset, and this is still pending
      */
@@ -1036,7 +1036,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     }
 
     /**
-     * Called from GSMPhone
+     * Called from GsmCdmaPhone
      *
      * An unsolicited USSD NOTIFY or REQUEST has come in matching
      * up with this pending USSD request
@@ -1061,13 +1061,13 @@ public final class GsmMmiCode extends Handler implements MmiCode {
         // Note that unlike most everything else, the USSD complete
         // response does not complete this MMI code...we wait for
         // an unsolicited USSD "Notify" or "Request".
-        // The matching up of this is done in GSMPhone.
+        // The matching up of this is done in GsmCdmaPhone.
 
         mPhone.mCi.sendUSSD(ussdMessage,
             obtainMessage(EVENT_USSD_COMPLETE, this));
     }
 
-    /** Called from GSMPhone.handleMessage; not a Handler subclass */
+    /** Called from GsmCdmaPhone.handleMessage; not a Handler subclass */
     @Override
     public void
     handleMessage (Message msg) {
@@ -1125,7 +1125,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 // Note that unlike most everything else, the USSD complete
                 // response does not complete this MMI code...we wait for
                 // an unsolicited USSD "Notify" or "Request".
-                // The matching up of this is done in GSMPhone.
+                // The matching up of this is done in GsmCdmaPhone.
 
             break;
 

@@ -419,7 +419,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public abstract void setVoiceMessageWaiting(int line, int countWaiting);
 
     /**
-     * Called by GsmPhone to update VoiceMail count
+     * Called by GsmCdmaPhone to update VoiceMail count
      */
     public abstract int getVoiceMessageCount();
 
