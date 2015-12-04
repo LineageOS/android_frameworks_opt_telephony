@@ -18,6 +18,9 @@
 
 package com.android.internal.telephony;
 
+import android.app.AppOpsManager;
+import android.content.Context;
+import android.os.Binder;
 import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.telephony.SubscriptionManager;
@@ -28,21 +31,64 @@ import java.lang.NullPointerException;
 
 public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private static final String TAG = "PhoneSubInfoController";
-    private Phone[] mPhone;
+    private final Phone[] mPhone;
+    private final Context mContext;
+    private final AppOpsManager mAppOps;
 
-    public PhoneSubInfoController(Phone[] phone) {
-        mPhone = phone;
+    public PhoneSubInfoController(Phone[] phones) {
+        mPhone = phones;
+        Context context = null;
+        AppOpsManager appOpsManager = null;
+        for (Phone phone : mPhone) {
+            if (phone != null) {
+                context = phone.getContext();
+                appOpsManager = context.getSystemService(AppOpsManager.class);
+                break;
+            }
+        }
+        mContext = context;
+        mAppOps = appOpsManager;
         if (ServiceManager.getService("iphonesubinfo") == null) {
             ServiceManager.addService("iphonesubinfo", this);
         }
     }
 
-    public String getDeviceId(String callingPackage) {
-        return getDeviceIdForPhone(SubscriptionManager.getPhoneId(getDefaultSubscription()));
+    // try-state
+    // either have permission (true), don't (exception), or explicitly turned off (false)
+    private boolean canReadPhoneState(String callingPackage, String message) {
+        if (mContext == null) return false;
+        try {
+            mContext.enforceCallingOrSelfPermission(
+                    android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE, message);
+
+            // SKIP checking for run-time permission since caller or self has PRIVILEDGED permission
+            return true;
+        } catch (SecurityException e) {
+            mContext.enforceCallingOrSelfPermission(android.Manifest.permission.READ_PHONE_STATE,
+                    message);
+        }
+
+
+
+        if (mAppOps.noteOp(AppOpsManager.OP_READ_PHONE_STATE, Binder.getCallingUid(),
+                callingPackage) != AppOpsManager.MODE_ALLOWED) {
+            return false;
+        }
+
+        return true;
     }
 
-    public String getDeviceIdForPhone(int phoneId) {
-        Phone phone = getPhone(phoneId);
+    public String getDeviceId(String callingPackage) {
+        return getDeviceIdForPhone(SubscriptionManager.getPhoneId(getDefaultSubscription()),
+                callingPackage);
+    }
+
+    public String getDeviceIdForPhone(int phoneId, String callingPackage) {
+        if (!canReadPhoneState(callingPackage, "getDeviceId")) {
+            return null;
+        }
+
+        final Phone phone = getPhone(phoneId);
         if (phone != null) {
             return phone.getDeviceId();
         } else {
