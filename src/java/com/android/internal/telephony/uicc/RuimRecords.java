@@ -775,29 +775,26 @@ public final class RuimRecords extends IccRecords {
 
         // Further records that can be inserted are Operator/OEM dependent
 
-        // FIXME: CSIM IMSI may not contain the MNC.
-        if (false) {
-            String operator = getOperatorNumeric();
-            if (!TextUtils.isEmpty(operator)) {
-                log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
-                        operator + "'");
-                log("update icc_operator_numeric=" + operator);
-                mTelephonyManager.setSimOperatorNumericForPhone(
-                        mParentApp.getPhoneId(), operator);
-                setSpnFromConfig(operator);
-            } else {
-                log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
-            }
+        String operator = getOperatorNumeric();
+        if (!TextUtils.isEmpty(operator)) {
+            log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
+                    operator + "'");
+            log("update icc_operator_numeric=" + operator);
+            mTelephonyManager.setSimOperatorNumericForPhone(
+                    mParentApp.getPhoneId(), operator);
+            setSpnFromConfig(operator);
+        } else {
+            log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
+        }
 
-            if (!TextUtils.isEmpty(mImsi)) {
-                log("onAllRecordsLoaded set mcc imsi=" + (VDBG ? ("=" + mImsi) : ""));
-                mTelephonyManager.setSimCountryIsoForPhone(
-                        mParentApp.getPhoneId(),
-                        MccTable.countryCodeForMcc(
-                        Integer.parseInt(mImsi.substring(0,3))));
-            } else {
-                log("onAllRecordsLoaded empty imsi skipping setting mcc");
-            }
+        if (!TextUtils.isEmpty(mImsi)) {
+            log("onAllRecordsLoaded set mcc imsi=" + (VDBG ? ("=" + mImsi) : ""));
+            mTelephonyManager.setSimCountryIsoForPhone(
+                    mParentApp.getPhoneId(),
+                    MccTable.countryCodeForMcc(
+                    Integer.parseInt(mImsi.substring(0,3))));
+        } else {
+            log("onAllRecordsLoaded empty imsi skipping setting mcc");
         }
 
         Resources resource = Resources.getSystem();
