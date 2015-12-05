@@ -195,8 +195,8 @@ public class UiccCard {
                     mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARD_ADDED, null));
                 }
             }
-            if (mGsmUmtsSubscriptionAppIndex < 0
-                    && mCdmaSubscriptionAppIndex < 0
+            if (mGsmUmtsSubscriptionAppIndex <= 0
+                    && mCdmaSubscriptionAppIndex <= 0
                     && mCardState == CardState.CARDSTATE_PRESENT
                     && mCi.needsOldRilFeature("simactivation")) {
                 // Activate/Deactivate first 3GPP and 3GPP2 app in the SIM, if available
