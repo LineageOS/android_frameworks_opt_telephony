@@ -83,7 +83,7 @@ public class UiccCard {
     private CatService mCatService;
     private RadioState mLastRadioState =  RadioState.RADIO_UNAVAILABLE;
     private UiccCarrierPrivilegeRules mCarrierPrivilegeRules;
-    private boolean m3GPPAppActivated, m3GPP2AppActivated;
+    private boolean mDefaultAppsActivated;
     private UICCConfig mUICCConfig = null;
 
     private RegistrantList mAbsentRegistrants = new RegistrantList();
@@ -195,36 +195,17 @@ public class UiccCard {
                     mHandler.sendMessage(mHandler.obtainMessage(EVENT_CARD_ADDED, null));
                 }
             }
-            if (mGsmUmtsSubscriptionAppIndex < 0
-                    && mCdmaSubscriptionAppIndex < 0
-                    && mCardState == CardState.CARDSTATE_PRESENT
-                    && mCi.needsOldRilFeature("simactivation")) {
-                // Activate/Deactivate first 3GPP and 3GPP2 app in the SIM, if available
-                for (int i = 0; i < mUiccApplications.length; i++) {
-                    if (mUiccApplications[i] == null) {
-                        continue;
+            if (mCi.needsOldRilFeature("simactivation")) {
+                if (mCardState == CardState.CARDSTATE_PRESENT) {
+                    if (!mDefaultAppsActivated) {
+                        activateDefaultApps();
+                        mDefaultAppsActivated = true;
                     }
-
-                    AppType appType = mUiccApplications[i].getType();
-                    if (!m3GPPAppActivated &&
-                            (appType == AppType.APPTYPE_USIM || appType == AppType.APPTYPE_SIM)) {
-                        mCi.setUiccSubscription(i, true, null);
-                        m3GPPAppActivated = true;
-                    } else if (!m3GPP2AppActivated &&
-                            (appType == AppType.APPTYPE_CSIM || appType == AppType.APPTYPE_RUIM)) {
-                        mCi.setUiccSubscription(i, true, null);
-                        m3GPP2AppActivated = true;
-                    }
-
-                    if (m3GPPAppActivated && m3GPP2AppActivated) {
-                        break;
-                    }
+                } else {
+                    // SIM removed, reset activation flag to make sure
+                    // to re-run the activation at the next insertion
+                    mDefaultAppsActivated = false;
                 }
-            } else {
-                // SIM removed, reset activation flags to make sure
-                // to re-run the activation at the next insertion
-                m3GPPAppActivated = false;
-                m3GPP2AppActivated = false;
             }
 
             mLastRadioState = radioState;
@@ -290,6 +271,34 @@ public class UiccCard {
 
         // Seems to be valid
         return index;
+    }
+
+    private void activateDefaultApps() {
+        int gsmIndex = mGsmUmtsSubscriptionAppIndex;
+        int cdmaIndex = mCdmaSubscriptionAppIndex;
+
+        if (gsmIndex < 0 || cdmaIndex < 0) {
+            for (int i = 0; i < mUiccApplications.length; i++) {
+                if (mUiccApplications[i] == null) {
+                    continue;
+                }
+
+                AppType appType = mUiccApplications[i].getType();
+                if (gsmIndex < 0
+                        && (appType == AppType.APPTYPE_USIM || appType == AppType.APPTYPE_SIM)) {
+                    gsmIndex = i;
+                } else if (cdmaIndex < 0 &&
+                        (appType == AppType.APPTYPE_CSIM || appType == AppType.APPTYPE_RUIM)) {
+                    cdmaIndex = i;
+                }
+            }
+        }
+        if (gsmIndex >= 0) {
+            mCi.setUiccSubscription(gsmIndex, true, null);
+        }
+        if (cdmaIndex >= 0) {
+            mCi.setUiccSubscription(cdmaIndex, true, null);
+        }
     }
 
     /**
