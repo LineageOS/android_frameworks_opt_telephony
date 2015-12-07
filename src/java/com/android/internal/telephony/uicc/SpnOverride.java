@@ -38,6 +38,7 @@ public class SpnOverride {
     static final String LOG_TAG = "SpnOverride";
     static final String PARTNER_SPN_OVERRIDE_PATH ="etc/spn-conf.xml";
     static final String OEM_SPN_OVERRIDE_PATH = "telephony/spn-conf.xml";
+    static final String SELECTIVE_SPN_OVERRIDE_PATH = "etc/selective-spn-conf.xml";
 
     SpnOverride () {
         mCarrierSpnMap = new HashMap<String, String>();
@@ -59,8 +60,14 @@ public class SpnOverride {
                 PARTNER_SPN_OVERRIDE_PATH);
         File oemSpnFile = new File(Environment.getOemDirectory(),
                 OEM_SPN_OVERRIDE_PATH);
+        File selectiveSpnFile = new File(Environment.getOemDirectory(),
+                SELECTIVE_SPN_OVERRIDE_PATH);
 
-        if (oemSpnFile.exists()) {
+        // Override OEM and Vendor SPN if we have a selective SPN xml
+        if (selectiveSpnFile.exists()) {
+            Rlog.d(LOG_TAG, "Selective SPN xml found");
+            spnFile = selectiveSpnFile;
+        } else if (oemSpnFile.exists()) {
             // OEM image exist SPN xml, get the timestamp from OEM & System image for comparison.
             long oemSpnTime = oemSpnFile.lastModified();
             long sysSpnTime = spnFile.lastModified();
