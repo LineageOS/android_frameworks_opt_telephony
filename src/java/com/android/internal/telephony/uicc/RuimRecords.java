@@ -775,16 +775,19 @@ public final class RuimRecords extends IccRecords {
 
         // Further records that can be inserted are Operator/OEM dependent
 
+        String operator = getOperatorNumeric();
+        if (!TextUtils.isEmpty(operator)) {
+            setSpnFromConfig(operator);
+        }
+
         // FIXME: CSIM IMSI may not contain the MNC.
         if (false) {
-            String operator = getOperatorNumeric();
             if (!TextUtils.isEmpty(operator)) {
                 log("onAllRecordsLoaded set 'gsm.sim.operator.numeric' to operator='" +
                         operator + "'");
                 log("update icc_operator_numeric=" + operator);
                 mTelephonyManager.setSimOperatorNumericForPhone(
                         mParentApp.getPhoneId(), operator);
-                setSpnFromConfig(operator);
             } else {
                 log("onAllRecordsLoaded empty 'gsm.sim.operator.numeric' skipping");
             }
