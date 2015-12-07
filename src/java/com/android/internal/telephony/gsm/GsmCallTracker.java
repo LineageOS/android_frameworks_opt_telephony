@@ -938,7 +938,7 @@ public final class GsmCallTracker extends CallTracker {
                 if (ar.exception != null) {
                     mPhone.notifySuppServiceFailed(getFailedService(msg.what));
                     List<Connection> conn = mForegroundCall.getConnections();
-                    if (conn != null) {
+                    if (conn.size() != 0) {
                         Rlog.d(LOG_TAG, "Notify merge failure");
                         conn.get(0).onConferenceMergeFailed();
                     }
