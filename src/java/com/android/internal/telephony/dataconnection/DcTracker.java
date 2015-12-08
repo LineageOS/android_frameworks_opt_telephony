@@ -789,9 +789,8 @@ public class DcTracker extends DcTrackerBase {
         boolean allowed =
                     (attachedState || (mAutoAttachOnCreation.get() &&
                             (mPhone.getSubId() == dataSub))) &&
-                    recordsLoaded &&
-                    (state == PhoneConstants.State.IDLE ||
                     (subscriptionFromNv || recordsLoaded) &&
+                    (state == PhoneConstants.State.IDLE ||
                      mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) &&
                     internalDataEnabled &&
                     defaultDataSelected &&
@@ -802,7 +801,6 @@ public class DcTracker extends DcTrackerBase {
             if (!(attachedState || mAutoAttachOnCreation.get())) {
                 reason += " - Attached= " + attachedState;
             }
-            if (!recordsLoaded) reason += " - SIM not loaded";
             if (!(subscriptionFromNv || recordsLoaded)) {
                 reason += " - SIM not loaded and not NV subscription";
             }
