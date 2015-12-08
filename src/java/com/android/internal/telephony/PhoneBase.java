@@ -198,6 +198,11 @@ public abstract class PhoneBase extends Handler implements Phone {
     // Key used to read/write the ID for storing the voice mail
     public static final String VM_ID = "vm_id_key";
 
+    // Key used for storing call forwarding status
+    public static final String CF_STATUS = "cf_status_key";
+    // Key used to read/write the ID for storing the call forwarding status
+    public static final String CF_ID = "cf_id_key";
+
     // Key used to read/write the SIM IMSI used for storing the imsi
     public static final String SIM_IMSI = "sim_imsi_key";
     // Key used to read/write SIM IMSI used for storing the imsi
@@ -1478,10 +1483,58 @@ public abstract class PhoneBase extends Handler implements Phone {
         return mVmCount != 0;
     }
 
+    private int getCallForwardingIndicatorFromSharedPref() {
+        int status = IccRecords.CALL_FORWARDING_STATUS_DISABLED;
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        String subscriberId = sp.getString(CF_ID, null);
+        String currentSubscriberId = getSubscriberId();
+
+        if (currentSubscriberId != null && currentSubscriberId.equals(subscriberId)) {
+            // get call forwarding status from preferences
+            status = sp.getInt(CF_STATUS, IccRecords.CALL_FORWARDING_STATUS_DISABLED);
+            Rlog.d(LOG_TAG, "Call forwarding status from preference = " + status);
+        } else {
+            Rlog.d(LOG_TAG, "Call forwarding status retrieval returning DISABLED as status for " +
+                    "matching subscriberId not found");
+
+        }
+        return status;
+    }
+
+    private void setCallForwardingIndicatorInSharedPref(boolean enable) {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor editor = sp.edit();
+
+        String imsi = getSubscriberId();
+
+        editor.putInt(CF_STATUS, enable ? IccRecords.CALL_FORWARDING_STATUS_ENABLED :
+                IccRecords.CALL_FORWARDING_STATUS_DISABLED);
+        editor.putString(CF_ID, imsi);
+        editor.apply();
+    }
+
+    public void setVoiceCallForwardingFlag(int line, boolean enable, String number) {
+        setCallForwardingIndicatorInSharedPref(enable);
+        mIccRecords.get().setVoiceCallForwardingFlag(line, enable, number);
+    }
+
+    protected void setVoiceCallForwardingFlag(IccRecords r, int line, boolean enable,
+                                              String number) {
+        setCallForwardingIndicatorInSharedPref(enable);
+        r.setVoiceCallForwardingFlag(line, enable, number);
+    }
+
     @Override
     public boolean getCallForwardingIndicator() {
         IccRecords r = mIccRecords.get();
-        return (r != null) ? r.getVoiceCallForwardingFlag() : false;
+        int callForwardingIndicator = IccRecords.CALL_FORWARDING_STATUS_UNKNOWN;
+        if (r != null) {
+            callForwardingIndicator = r.getVoiceCallForwardingFlag();
+        }
+        if (callForwardingIndicator == IccRecords.CALL_FORWARDING_STATUS_UNKNOWN) {
+            callForwardingIndicator = getCallForwardingIndicatorFromSharedPref();
+        }
+        return (callForwardingIndicator == IccRecords.CALL_FORWARDING_STATUS_ENABLED);
     }
 
     /**
@@ -1842,8 +1895,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         String subscriberId = sp.getString(VM_ID, null);
         String currentSubscriberId = getSubscriberId();
 
-        if ((subscriberId != null) && (currentSubscriberId != null)
-                && (currentSubscriberId.equals(subscriberId))) {
+        if (currentSubscriberId != null && currentSubscriberId.equals(subscriberId)) {
             // get voice mail count from preferences
             countVoiceMessages = sp.getInt(VM_COUNT, 0);
             Rlog.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages);
@@ -2677,6 +2729,16 @@ public abstract class PhoneBase extends Handler implements Phone {
         }
 
         return getLocaleFromCarrierProperties(mContext);
+    }
+
+    protected boolean isMatchGid(String gid) {
+        String gid1 = getGroupIdLevel1();
+        int gidLength = gid.length();
+        if (!TextUtils.isEmpty(gid1) && (gid1.length() >= gidLength)
+                && gid1.substring(0, gidLength).equalsIgnoreCase(gid)) {
+            return true;
+        }
+        return false;
     }
 
     /* Validate the given extras if the call is for CS domain or not */

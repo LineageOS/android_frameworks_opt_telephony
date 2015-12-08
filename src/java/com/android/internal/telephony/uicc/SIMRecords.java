@@ -19,8 +19,6 @@ package com.android.internal.telephony.uicc;
 import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
-import android.os.SystemProperties;
-import android.telephony.TelephonyManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsMessage;
 import android.text.TextUtils;
@@ -56,7 +54,7 @@ public class SIMRecords extends IccRecords {
 
     // ***** Cached SIM State; cleared on channel close
 
-    private boolean mCallForwardingEnabled;
+    private int mCallForwardingStatus;
 
 
     /**
@@ -92,7 +90,7 @@ public class SIMRecords extends IccRecords {
     public String toString() {
         return "SimRecords: " + super.toString()
                 + " mVmConfig" + mVmConfig
-                + " callForwardingEnabled=" + mCallForwardingEnabled
+                + " callForwardingEnabled=" + mCallForwardingStatus
                 + " spnState=" + mSpnState
                 + " mCphsInfo=" + mCphsInfo
                 + " mCspPlmnEnabled=" + mCspPlmnEnabled
@@ -508,8 +506,8 @@ public class SIMRecords extends IccRecords {
      * {@inheritDoc}
      */
     @Override
-    public boolean getVoiceCallForwardingFlag() {
-        return mCallForwardingEnabled;
+    public int getVoiceCallForwardingFlag() {
+        return mCallForwardingStatus;
     }
 
     /**
@@ -520,7 +518,8 @@ public class SIMRecords extends IccRecords {
 
         if (line != 1) return; // only line 1 is supported
 
-        mCallForwardingEnabled = enable;
+        mCallForwardingStatus = enable ? CALL_FORWARDING_STATUS_ENABLED :
+                CALL_FORWARDING_STATUS_DISABLED;
 
         mRecordsEventsRegistrants.notifyResult(EVENT_CFI);
 
@@ -975,21 +974,12 @@ public class SIMRecords extends IccRecords {
                 data = (byte[]) ar.result;
 
                 if (ar.exception != null) {
-                    break;
-                }
-
-                log("EF_CFF_CPHS: " + IccUtils.bytesToHexString(data));
-                mEfCff = data;
-
-                // if EF_CFIS is valid, prefer it to EF_CFF_CPHS
-                if (!validEfCfis(mEfCfis)) {
-                    mCallForwardingEnabled =
-                        ((data[0] & CFF_LINE1_MASK) == CFF_UNCONDITIONAL_ACTIVE);
-
-                    mRecordsEventsRegistrants.notifyResult(EVENT_CFI);
+                    mEfCff = null;
                 } else {
-                    log("EVENT_GET_CFF_DONE: EF_CFIS is valid, ignoring EF_CFF_CPHS");
+                    log("EF_CFF_CPHS: " + IccUtils.bytesToHexString(data));
+                    mEfCff = data;
                 }
+
                 break;
 
             case EVENT_GET_SPDI_DONE:
@@ -1180,22 +1170,12 @@ public class SIMRecords extends IccRecords {
                 data = (byte[])ar.result;
 
                 if (ar.exception != null) {
-                    break;
-                }
-
-                log("EF_CFIS: " + IccUtils.bytesToHexString(data));
-
-                if (validEfCfis(data)) {
-                    mEfCfis = data;
-
-                    // Refer TS 51.011 Section 10.3.46 for the content description
-                    mCallForwardingEnabled = ((data[1] & 0x01) != 0);
-                    log("EF_CFIS: callForwardingEnabled=" + mCallForwardingEnabled);
-
-                    mRecordsEventsRegistrants.notifyResult(EVENT_CFI);
+                    mEfCfis = null;
                 } else {
-                    log("EF_CFIS: invalid data=" + IccUtils.bytesToHexString(data));
+                    log("EF_CFIS: " + IccUtils.bytesToHexString(data));
+                    mEfCfis = data;
                 }
+
                 break;
 
             case EVENT_GET_CSP_CPHS_DONE:
@@ -1312,16 +1292,9 @@ public class SIMRecords extends IccRecords {
                         obtainMessage(EVENT_GET_MSISDN_DONE));
                 break;
             case EF_CFIS:
-                mRecordsToLoad++;
-                log("SIM Refresh called for EF_CFIS");
-                mFh.loadEFLinearFixed(EF_CFIS,
-                        1, obtainMessage(EVENT_GET_CFIS_DONE));
-                break;
             case EF_CFF_CPHS:
-                mRecordsToLoad++;
-                log("SIM Refresh called for EF_CFF_CPHS");
-                mFh.loadEFTransparent(EF_CFF_CPHS,
-                        obtainMessage(EVENT_GET_CFF_DONE));
+                log("SIM Refresh called for EF_CFIS or EF_CFF_CPHS");
+                loadCallForwardingRecords();
                 break;
             default:
                 // For now, fetch all records if this is not a
@@ -1413,6 +1386,22 @@ public class SIMRecords extends IccRecords {
         }
     }
 
+    private void setVoiceCallForwardingFlagFromSimRecords() {
+        if (validEfCfis(mEfCfis)) {
+            // Refer TS 51.011 Section 10.3.46 for the content description
+            mCallForwardingStatus = (mEfCfis[1] & 0x01);
+            log("EF_CFIS: callForwardingEnabled=" + mCallForwardingStatus);
+        } else if (mEfCff != null) {
+            mCallForwardingStatus =
+                    ((mEfCff[0] & CFF_LINE1_MASK) == CFF_UNCONDITIONAL_ACTIVE) ?
+                            CALL_FORWARDING_STATUS_ENABLED : CALL_FORWARDING_STATUS_DISABLED;
+            log("EF_CFF: callForwardingEnabled=" + mCallForwardingStatus);
+        } else {
+            mCallForwardingStatus = CALL_FORWARDING_STATUS_UNKNOWN;
+            log("EF_CFIS and EF_CFF not valid. callForwardingEnabled=" + mCallForwardingStatus);
+        }
+    }
+
     @Override
     protected void onAllRecordsLoaded() {
         if (DBG) log("record load complete");
@@ -1423,6 +1412,8 @@ public class SIMRecords extends IccRecords {
         } else {
             if (DBG) log ("Not using EF LI/EF PL");
         }
+
+        setVoiceCallForwardingFlagFromSimRecords();
 
         if (mParentApp.getState() == AppState.APPSTATE_PIN ||
                mParentApp.getState() == AppState.APPSTATE_PUK) {
@@ -1496,6 +1487,14 @@ public class SIMRecords extends IccRecords {
         }
     }
 
+    private void loadCallForwardingRecords() {
+        mRecordsRequested = true;
+        mFh.loadEFLinearFixed(EF_CFIS, 1, obtainMessage(EVENT_GET_CFIS_DONE));
+        mRecordsToLoad++;
+        mFh.loadEFTransparent(EF_CFF_CPHS, obtainMessage(EVENT_GET_CFF_DONE));
+        mRecordsToLoad++;
+    }
+
     protected void fetchSimRecords() {
         mRecordsRequested = true;
 
@@ -1536,11 +1535,7 @@ public class SIMRecords extends IccRecords {
 
         // Same goes for Call Forward Status indicator: fetch both
         // EF[CFIS] and CPHS-EF, with EF[CFIS] preferred.
-        mFh.loadEFLinearFixed(EF_CFIS, 1, obtainMessage(EVENT_GET_CFIS_DONE));
-        mRecordsToLoad++;
-        mFh.loadEFTransparent(EF_CFF_CPHS, obtainMessage(EVENT_GET_CFF_DONE));
-        mRecordsToLoad++;
-
+        loadCallForwardingRecords();
 
         getSpnFsm(true, null);
 
@@ -1886,7 +1881,7 @@ public class SIMRecords extends IccRecords {
         pw.println(" extends:");
         super.dump(fd, pw, args);
         pw.println(" mVmConfig=" + mVmConfig);
-        pw.println(" mCallForwardingEnabled=" + mCallForwardingEnabled);
+        pw.println(" mCallForwardingStatus=" + mCallForwardingStatus);
         pw.println(" mSpnState=" + mSpnState);
         pw.println(" mCphsInfo=" + mCphsInfo);
         pw.println(" mCspPlmnEnabled=" + mCspPlmnEnabled);

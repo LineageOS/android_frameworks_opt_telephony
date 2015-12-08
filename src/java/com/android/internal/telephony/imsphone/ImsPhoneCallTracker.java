@@ -1635,7 +1635,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 boolean tmpIsVideoCallEnabled = isVideoCallEnabled();
                 // Check enabledFeatures to determine capabilities. We ignore disabledFeatures.
                 for (int  i = ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE;
-                        i <= ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_WIFI; i++) {
+                        i <= ImsConfig.FeatureConstants.FEATURE_TYPE_UT_OVER_WIFI &&
+                        i < enabledFeatures.length; i++) {
                     if (enabledFeatures[i] == i) {
                         // If the feature is set to its own integer value it is enabled.
                         if (DBG) log("onFeatureCapabilityChanged(" + i + ", " +
