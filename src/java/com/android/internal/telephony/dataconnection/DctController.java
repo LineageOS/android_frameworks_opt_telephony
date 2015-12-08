@@ -49,7 +49,6 @@ import com.android.internal.util.IndentingPrintWriter;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
@@ -78,7 +77,7 @@ public class DctController extends Handler {
     private DcSwitchStateMachine[] mDcSwitchStateMachine;
     protected DcSwitchAsyncChannel[] mDcSwitchAsyncChannel;
     private Handler[] mDcSwitchStateHandler;
-    protected ArrayList<HashMap<Integer, RequestInfo>> mRequestInfos;
+    protected HashMap<Integer, RequestInfo> mRequestInfos = new HashMap<Integer, RequestInfo>();
     protected Context mContext;
 
     /** Used to send us NetworkRequests from ConnectivityService.  Remember it so we can
@@ -224,7 +223,6 @@ public class DctController extends Handler {
         mPhoneNum = phones.length;
         mPhones = phones;
 
-        mRequestInfos = new ArrayList<HashMap<Integer, RequestInfo>>(mPhoneNum);
         mDcSwitchStateMachine = new DcSwitchStateMachine[mPhoneNum];
         mDcSwitchAsyncChannel = new DcSwitchAsyncChannel[mPhoneNum];
         mDcSwitchStateHandler = new Handler[mPhoneNum];
@@ -234,7 +232,6 @@ public class DctController extends Handler {
 
         for (int i = 0; i < mPhoneNum; ++i) {
             int phoneId = i;
-            mRequestInfos.add(new HashMap<Integer, RequestInfo>());
             mDcSwitchStateMachine[i] = new DcSwitchStateMachine(mPhones[i],
                     "DcSwitchStateMachine-" + phoneId, phoneId);
             mDcSwitchStateMachine[i].start();
@@ -319,22 +316,20 @@ public class DctController extends Handler {
         l.log("Dctc.requestNetwork, priority=" + priority);
 
         RequestInfo requestInfo = new RequestInfo(request, priority, l, phoneId);
-        mRequestInfos.get(phoneId).put(request.requestId, requestInfo);
+        mRequestInfos.put(request.requestId, requestInfo);
         processRequests();
 
         return PhoneConstants.APN_REQUEST_STARTED;
     }
 
     private int releaseNetwork(NetworkRequest request) {
-        for (HashMap<Integer, RequestInfo> phoneInfos : mRequestInfos) {
-            RequestInfo requestInfo = phoneInfos.get(request.requestId);
-            logd("releaseNetwork request=" + request + ", requestInfo=" + requestInfo);
-            if (requestInfo != null) requestInfo.log("DctController.releaseNetwork");
+        RequestInfo requestInfo = mRequestInfos.get(request.requestId);
+        logd("releaseNetwork request=" + request + ", requestInfo=" + requestInfo);
+        if (requestInfo != null) requestInfo.log("DctController.releaseNetwork");
 
-            phoneInfos.remove(request.requestId);
-            releaseRequest(requestInfo);
-            processRequests();
-        }
+        mRequestInfos.remove(request.requestId);
+        releaseRequest(requestInfo);
+        processRequests();
         return PhoneConstants.APN_REQUEST_STARTED;
     }
 
@@ -397,9 +392,9 @@ public class DctController extends Handler {
 
         // if we have no active phones or the active phone is the desired, make requests
         if (activePhoneId == INVALID_PHONE_INDEX || activePhoneId == requestedPhoneId) {
-            Iterator<Integer> iterator = mRequestInfos.get(requestedPhoneId).keySet().iterator();
+            Iterator<Integer> iterator = mRequestInfos.keySet().iterator();
             while (iterator.hasNext()) {
-                RequestInfo requestInfo = mRequestInfos.get(requestedPhoneId).get(iterator.next());
+                RequestInfo requestInfo = mRequestInfos.get(iterator.next());
                 if (getRequestPhoneId(requestInfo.request) == requestedPhoneId && !requestInfo.executed) {
                     mDcSwitchAsyncChannel[requestedPhoneId].connect(requestInfo);
                     Phone phone = mPhones[requestedPhoneId].getActivePhone();
@@ -427,14 +422,7 @@ public class DctController extends Handler {
     }
 
     private void onExecuteRequest(RequestInfo requestInfo) {
-        boolean validRequest = false;
-        for (HashMap<Integer, RequestInfo> phoneInfos : mRequestInfos) {
-            if (phoneInfos.containsKey(requestInfo.request.requestId)) {
-                validRequest = true;
-                break;
-            }
-        }
-        if (!requestInfo.executed && validRequest) {
+        if (!requestInfo.executed && mRequestInfos.containsKey(requestInfo.request.requestId)) {
             logd("onExecuteRequest request=" + requestInfo);
             requestInfo.log("DctController.onExecuteRequest - executed=" + requestInfo.executed);
             requestInfo.executed = true;
@@ -448,9 +436,9 @@ public class DctController extends Handler {
 
     private void onExecuteAllRequests(int phoneId) {
         logd("onExecuteAllRequests phoneId=" + phoneId);
-        Iterator<Integer> iterator = mRequestInfos.get(phoneId).keySet().iterator();
+        Iterator<Integer> iterator = mRequestInfos.keySet().iterator();
         while (iterator.hasNext()) {
-            RequestInfo requestInfo = mRequestInfos.get(phoneId).get(iterator.next());
+            RequestInfo requestInfo = mRequestInfos.get(iterator.next());
             if (requestInfo.phoneId == phoneId) {
                 onExecuteRequest(requestInfo);
             }
@@ -485,9 +473,9 @@ public class DctController extends Handler {
 
     protected void onReleaseAllRequests(int phoneId) {
         logd("onReleaseAllRequests phoneId=" + phoneId);
-        Iterator<Integer> iterator = mRequestInfos.get(phoneId).keySet().iterator();
+        Iterator<Integer> iterator = mRequestInfos.keySet().iterator();
         while (iterator.hasNext()) {
-            RequestInfo requestInfo = mRequestInfos.get(phoneId).get(iterator.next());
+            RequestInfo requestInfo = mRequestInfos.get(iterator.next());
             if ((getRequestPhoneId(requestInfo.request) == phoneId)
                 || isWithOutSpecifier(requestInfo)) {
                 onReleaseRequest(requestInfo);
@@ -507,18 +495,18 @@ public class DctController extends Handler {
     private void deactivateDdsRequests() {
         int dataSubId = mSubController.getDefaultDataSubId();
 
-        for (int i = 0; i < mPhoneNum; i++) {
-            Iterator<Integer> iterator = mRequestInfos.get(i).keySet().iterator();
-            while (iterator.hasNext()) {
-                RequestInfo requestInfo = mRequestInfos.get(i).get(iterator.next());
-                String specifier = requestInfo.request.networkCapabilities
-                    .getNetworkSpecifier();
-                if (specifier == null || specifier.equals("")) {
-                    if (requestInfo.executed) {
-                        String apn = apnForNetworkRequest(requestInfo.request);
-                        logd("[setDataSubId] subId =" + dataSubId);
-                        requestInfo.log(
-                                "DctController.onSettingsChange releasing request");
+        Iterator<Integer> iterator = mRequestInfos.keySet().iterator();
+        while (iterator.hasNext()) {
+            RequestInfo requestInfo = mRequestInfos.get(iterator.next());
+            String specifier = requestInfo.request.networkCapabilities
+                .getNetworkSpecifier();
+            if (specifier == null || specifier.equals("")) {
+                if (requestInfo.executed) {
+                    String apn = apnForNetworkRequest(requestInfo.request);
+                    logd("[setDataSubId] subId =" + dataSubId);
+                    requestInfo.log(
+                            "DctController.onSettingsChange releasing request");
+                    for (int i = 0; i < mPhoneNum; i++) {
                         PhoneBase phoneBase =
                             (PhoneBase)mPhones[i].getActivePhone();
                         DcTrackerBase dcTracker = phoneBase.mDcTracker;
@@ -558,13 +546,12 @@ public class DctController extends Handler {
         RequestInfo retRequestInfo = null;
         int phoneId = 0;
         int priority = -1;
-        int dataSubId = mSubController.getDefaultDataSubId();
 
+        //TODO: Handle SIM Switch
         for (int i=0; i<mPhoneNum; i++) {
-            for (RequestInfo requestInfo : mRequestInfos.get(i).values()) {
+            for (RequestInfo requestInfo : mRequestInfos.values()) {
                 logd("selectExecPhone requestInfo = " + requestInfo);
                 if (requestInfo.phoneId == i &&
-                        requestInfo.phoneId == SubscriptionManager.getPhoneId(dataSubId) &&
                         priority < requestInfo.priority) {
                     priority = requestInfo.priority;
                     phoneId = i;
@@ -851,10 +838,8 @@ public class DctController extends Handler {
         pw.println("++++++++++++++++++++++++++++++++");
 
         try {
-            for (HashMap<Integer, RequestInfo> phoneInfos : mRequestInfos) {
-                for (Entry<Integer, RequestInfo> entry : phoneInfos.entrySet()) {
-                    pw.println("mRequestInfos[" + entry.getKey() + "]=" + entry.getValue());
-                }
+            for (Entry<Integer, RequestInfo> entry : mRequestInfos.entrySet()) {
+                pw.println("mRequestInfos[" + entry.getKey() + "]=" + entry.getValue());
             }
         } catch (Exception e) {
             e.printStackTrace();
