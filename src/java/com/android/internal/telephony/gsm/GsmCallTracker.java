@@ -913,6 +913,12 @@ public final class GsmCallTracker extends CallTracker {
         if (!mPhone.mIsTheCurrentActivePhone) {
             Rlog.e(LOG_TAG, "Received message " + msg +
                     "[" + msg.what + "] while being destroyed. Ignoring.");
+            for (int i = 0; i < mConnections.length; i++) {
+                GsmConnection conn = mConnections[i];
+                if ((conn != null) && (conn.mCause != DisconnectCause.NOT_DISCONNECTED)) {
+                    conn.onDisconnect(conn.mCause);
+                }
+            }
             return;
         }
         switch (msg.what) {
