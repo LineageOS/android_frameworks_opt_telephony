@@ -2850,6 +2850,13 @@ public final class Telephony {
         public static final String EDITED = "edited";
 
         /**
+         * Is this APN visible to the user?
+         * <p>Type: INTEGER (boolean) </p>
+         * @hide
+         */
+        public static final String USER_VISIBLE = "user_visible";
+
+        /**
          * <P>Type: INTEGER (boolean)</P>
          * @hide
          */

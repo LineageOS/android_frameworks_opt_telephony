@@ -1032,7 +1032,7 @@ public class GSMPhone extends PhoneBase {
                                 number = defaultVMNumberArray[0];
                             } else if (defaultVMNumberArray.length == 2 &&
                                     !TextUtils.isEmpty(defaultVMNumberArray[1]) &&
-                                    defaultVMNumberArray[1].equalsIgnoreCase(getGroupIdLevel1())) {
+                                    isMatchGid(defaultVMNumberArray[1])) {
                                 number = defaultVMNumberArray[0];
                                 break;
                             }
@@ -1648,7 +1648,7 @@ public class GSMPhone extends PhoneBase {
                 IccRecords r = mIccRecords.get();
                 Cfu cfu = (Cfu) ar.userObj;
                 if (ar.exception == null && r != null) {
-                    r.setVoiceCallForwardingFlag(1, msg.arg1 == 1, cfu.mSetCfNumber);
+                    setVoiceCallForwardingFlag(1, msg.arg1 == 1, cfu.mSetCfNumber);
                     setCallForwardingPreference(msg.arg1 == 1);
                 }
                 if (cfu.mOnComplete != null) {
@@ -1816,12 +1816,12 @@ public class GSMPhone extends PhoneBase {
             if (infos == null || infos.length == 0) {
                 // Assume the default is not active
                 // Set unconditional CFF in SIM to false
-                r.setVoiceCallForwardingFlag(1, false, null);
+                setVoiceCallForwardingFlag(1, false, null);
             } else {
                 for (int i = 0, s = infos.length; i < s; i++) {
                     if ((infos[i].serviceClass & SERVICE_CLASS_VOICE) != 0) {
                         setCallForwardingPreference(infos[i].status == 1);
-                        r.setVoiceCallForwardingFlag(1, (infos[i].status == 1),
+                        setVoiceCallForwardingFlag(1, (infos[i].status == 1),
                             infos[i].number);
                         // should only have the one
                         break;
@@ -1931,7 +1931,7 @@ public class GSMPhone extends PhoneBase {
                     ((configArray.length == 1 && configArray[0].equalsIgnoreCase("true")) ||
                         (configArray.length == 2 && !TextUtils.isEmpty(configArray[1]) &&
                             configArray[0].equalsIgnoreCase("true") &&
-                            configArray[1].equalsIgnoreCase(getGroupIdLevel1())))) {
+                            isMatchGid(configArray[1])))) {
                             isProhibited = true;
             }
         }

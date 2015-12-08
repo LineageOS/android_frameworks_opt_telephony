@@ -22,6 +22,7 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
@@ -29,6 +30,7 @@ import android.telephony.DisconnectCause;
 import android.telephony.Rlog;
 import android.text.TextUtils;
 
+import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.ServiceState;
 
@@ -70,11 +72,15 @@ public class CdmaConnection extends Connection {
 
     private PowerManager.WakeLock mPartialWakeLock;
 
+    // The cached delay to be used between DTMF tones fetched from carrier config.
+    private int mDtmfToneDelay = 0;
+
     //***** Event Constants
     static final int EVENT_DTMF_DONE = 1;
     static final int EVENT_PAUSE_DONE = 2;
     static final int EVENT_NEXT_POST_DIAL = 3;
     static final int EVENT_WAKE_LOCK_TIMEOUT = 4;
+    static final int EVENT_DTMF_DELAY_DONE = 5;
 
     //***** Constants
     static final int WAKE_LOCK_TIMEOUT_MILLIS = 60*1000;
@@ -91,13 +97,20 @@ public class CdmaConnection extends Connection {
 
             switch (msg.what) {
                 case EVENT_NEXT_POST_DIAL:
-                case EVENT_DTMF_DONE:
+                case EVENT_DTMF_DELAY_DONE:
                 case EVENT_PAUSE_DONE:
                     processNextPostDialChar();
                     break;
                 case EVENT_WAKE_LOCK_TIMEOUT:
                     releaseWakeLock();
                     break;
+                case EVENT_DTMF_DONE:
+                    // We may need to add a delay specified by carrier between DTMF tones that are
+                    // sent out.
+                    mHandler.sendMessageDelayed(mHandler.obtainMessage(EVENT_DTMF_DELAY_DONE),
+                            mDtmfToneDelay);
+                    break;
+
             }
         }
     }
@@ -106,8 +119,8 @@ public class CdmaConnection extends Connection {
 
     /** This is probably an MT call that we first saw in a CLCC response */
     /*package*/
-    CdmaConnection (Context context, DriverCall dc, CdmaCallTracker ct, int index) {
-        createWakeLock(context);
+    CdmaConnection (CDMAPhone phone, DriverCall dc, CdmaCallTracker ct, int index) {
+        createWakeLock(phone.getContext());
         acquireWakeLock();
 
         mOwner = ct;
@@ -125,12 +138,14 @@ public class CdmaConnection extends Connection {
 
         mParent = parentFromDCState (dc.state);
         mParent.attach(this, dc);
+
+        fetchDtmfToneDelay(phone);
     }
 
     /** This is an MO call/three way call, created when dialing */
     /*package*/
-    CdmaConnection(Context context, String dialString, CdmaCallTracker ct, CdmaCall parent) {
-        createWakeLock(context);
+    CdmaConnection(CDMAPhone phone, String dialString, CdmaCallTracker ct, CdmaCall parent) {
+        createWakeLock(phone.getContext());
         acquireWakeLock();
 
         mOwner = ct;
@@ -163,6 +178,8 @@ public class CdmaConnection extends Connection {
                 parent.attachFake(this, CdmaCall.State.DIALING);
             }
         }
+
+        fetchDtmfToneDelay(phone);
     }
 
     /** This is a Call waiting call*/
@@ -936,6 +953,16 @@ public class CdmaConnection extends Connection {
 
         return "<MASKED>";
     }
+
+    private void fetchDtmfToneDelay(CDMAPhone phone) {
+        CarrierConfigManager configMgr = (CarrierConfigManager)
+                phone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = configMgr.getConfigForSubId(phone.getSubId());
+        if (b != null) {
+            mDtmfToneDelay = b.getInt(CarrierConfigManager.KEY_CDMA_DTMF_TONE_DELAY_INT);
+        }
+    }
+
 
     @Override
     public int getNumberPresentation() {

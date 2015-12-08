@@ -292,7 +292,8 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.USER_NETWORK_MODE));
 
         if (DBG) {
-            logd("[getSubInfoRecord] id:" + id + " iccid:" + iccId + " simSlotIndex:" + simSlotIndex
+            String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
+            logd("[getSubInfoRecord] id:" + id + " iccid:" + iccIdToPrint + " simSlotIndex:" + simSlotIndex
                 + " displayName:" + displayName + " nameSource:" + nameSource
                 + " iconTint:" + iconTint + " dataRoaming:" + dataRoaming
                 + " mcc:" + mcc + " mnc:" + mnc + " countIso:" + countryIso + " userNwMode:" + userNwMode);

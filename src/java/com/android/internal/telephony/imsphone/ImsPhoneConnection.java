@@ -32,6 +32,7 @@ import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 import android.text.TextUtils;
 
 import com.android.ims.ImsException;
@@ -91,6 +92,16 @@ public class ImsPhoneConnection extends Connection {
     private int mDtmfToneDelay = 0;
 
     private boolean mIsEmergency = false;
+
+    /**
+     * Used to indicate whether the wifi state is based on
+     * {@link com.android.ims.ImsConnectionStateListener#
+     *      onFeatureCapabilityChanged(int, int[], int[])} callbacks, or values received via the
+     * {@link ImsCallProfile#EXTRA_CALL_RAT_TYPE} extra.  Util we receive a value via the extras,
+     * we will use the wifi state based on the {@code onFeatureCapabilityChanged}.  Once a value
+     * is received via the extras, we will prefer those values going forward.
+     */
+    private boolean mIsWifiStateFromExtras = false;
 
     //***** Event Constants
     private static final int EVENT_DTMF_DONE = 1;
@@ -161,9 +172,12 @@ public class ImsPhoneConnection extends Connection {
         mCreateTime = System.currentTimeMillis();
         mUusInfo = null;
 
-        //mIndex = index;
-
         updateWifiState();
+
+        // Ensure any extras set on the ImsCallProfile at the start of the call are cached locally
+        // in the ImsPhoneConnection.  This isn't going to inform any listeners (since the original
+        // connection is not likely to be associated with a TelephonyConnection yet).
+        updateExtras(imsCall);
 
         mParent = parent;
         mParent.attach(this,
@@ -871,12 +885,51 @@ public class ImsPhoneConnection extends Connection {
      * @return Whether the ImsPhoneCallTracker's usage of wifi has been changed.
      */
     public boolean updateWifiState() {
+        // If we've received the wifi state via the ImsCallProfile.EXTRA_CALL_RAT_TYPE extra, we
+        // will no longer use state updates which are based on the onFeatureCapabilityChanged
+        // callback.
+        if (mIsWifiStateFromExtras) {
+            return false;
+        }
+
         Rlog.d(LOG_TAG, "updateWifiState: " + mOwner.isVowifiEnabled());
         if (isWifi() != mOwner.isVowifiEnabled()) {
             setWifi(mOwner.isVowifiEnabled());
             return true;
         }
         return false;
+    }
+
+    /**
+     * Updates the wifi state based on the {@link ImsCallProfile#EXTRA_CALL_RAT_TYPE}.
+     * The call is considered to be a WIFI call if the extra value is
+     * {@link ServiceState#RIL_RADIO_TECHNOLOGY_IWLAN}.
+     *
+     * @param extras The ImsCallProfile extras.
+     */
+    private void updateWifiStateFromExtras(Bundle extras) {
+        if (extras.containsKey(ImsCallProfile.EXTRA_CALL_RAT_TYPE)) {
+            // The RIL (sadly) sends us the EXTRA_CALL_RAT_TYPE as a string extra, rather than an
+            // integer extra, so we need to parse it.
+            int radioTechnology;
+            try {
+                radioTechnology = Integer.parseInt(extras.getString(
+                        ImsCallProfile.EXTRA_CALL_RAT_TYPE));
+            } catch (NumberFormatException nfe) {
+                radioTechnology = ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN;
+            }
+
+            // We've received the extra indicating the radio technology, so we will continue to
+            // prefer the radio technology received via this extra going forward.
+            mIsWifiStateFromExtras = true;
+
+            boolean isWifi = radioTechnology == ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN;
+
+            // Report any changes
+            if (isWifi() != isWifi) {
+                setWifi(isWifi);
+            }
+        }
     }
 
     /**
@@ -899,6 +952,8 @@ public class ImsPhoneConnection extends Connection {
 
         final boolean changed = !areBundlesEqual(extras, mExtras);
         if (changed) {
+            updateWifiStateFromExtras(extras);
+
             mExtras.clear();
             mExtras.putAll(extras);
             setConnectionExtras(mExtras);
