@@ -1022,6 +1022,12 @@ public final class CdmaCallTracker extends CallTracker {
 
         if (!mPhone.mIsTheCurrentActivePhone) {
             Rlog.w(LOG_TAG, "Ignoring events received on inactive CdmaPhone");
+            for (int i = 0; i < mConnections.length; i++) {
+                CdmaConnection conn = mConnections[i];
+                if ((conn != null) && (conn.mCause != DisconnectCause.NOT_DISCONNECTED)) {
+                    conn.onDisconnect(conn.mCause);
+                }
+            }
             return;
         }
         switch (msg.what) {
