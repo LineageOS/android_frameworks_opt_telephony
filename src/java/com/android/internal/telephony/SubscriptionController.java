@@ -88,7 +88,7 @@ import java.util.Set;
 public class SubscriptionController extends ISub.Stub {
     static final String LOG_TAG = "SubscriptionController";
     static final boolean DBG = true;
-    static final boolean VDBG = false;
+    static final boolean VDBG = true;
     static final int MAX_LOCAL_LOG_LINES = 500; // TODO: Reduce to 100 when 17678050 is fixed
     private ScLocalLog mLocalLog = new ScLocalLog(MAX_LOCAL_LOG_LINES);
 
