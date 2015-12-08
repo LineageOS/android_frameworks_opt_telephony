@@ -331,7 +331,7 @@ public class GSMPhone extends PhoneBase {
         boolean cf = false;
         IccRecords r = mIccRecords.get();
         if (r != null && r.isCallForwardStatusStored()) {
-            cf = r.getVoiceCallForwardingFlag();
+            cf = r.getVoiceCallForwardingFlag() == IccRecords.CALL_FORWARDING_STATUS_ENABLED;
         } else {
             cf = getCallForwardingPreference();
         }

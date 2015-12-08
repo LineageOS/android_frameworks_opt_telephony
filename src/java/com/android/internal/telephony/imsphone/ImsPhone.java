@@ -268,7 +268,7 @@ public class ImsPhone extends ImsPhoneBase {
         boolean cf = false;
         IccRecords r = getIccRecords();
         if (r != null && r.isCallForwardStatusStored()) {
-            cf = r.getVoiceCallForwardingFlag();
+            cf = r.getVoiceCallForwardingFlag() == IccRecords.CALL_FORWARDING_STATUS_ENABLED;
         } else {
             cf = getCallForwardingPreference();
         }
