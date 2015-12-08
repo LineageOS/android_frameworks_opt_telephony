@@ -119,6 +119,8 @@ public class UiccController extends Handler {
         if (DBG) log("Creating UiccController");
         mContext = c;
         mCis = ci;
+        boolean radioApmSimNotPwdn = SystemProperties.getBoolean(
+                "persist.radio.apm_sim_not_pwdn", false);
         for (int i = 0; i < mCis.length; i++) {
             Integer index = new Integer(i);
             mCis[i].registerForIccStatusChanged(this, EVENT_ICC_STATUS_CHANGED, index);
@@ -128,7 +130,9 @@ public class UiccController extends Handler {
             // Else wait for radio to be on. This is needed for the scenario when SIM is locked --
             // to avoid overlap of CryptKeeper and SIM unlock screen.
             if (DECRYPT_STATE.equals(SystemProperties.get("vold.decrypt")) ||
-                    StorageManager.isFileEncryptedNativeOrEmulated()) {
+                    StorageManager.isFileEncryptedNativeOrEmulated() || radioApmSimNotPwdn) {
+                // Reading ICC status in airplane mode is only supported in QCOM
+                // RILs when this property is set to true
                 mCis[i].registerForAvailable(this, EVENT_ICC_STATUS_CHANGED, index);
             } else {
                 mCis[i].registerForOn(this, EVENT_ICC_STATUS_CHANGED, index);
