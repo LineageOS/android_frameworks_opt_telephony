@@ -124,6 +124,11 @@ public final class CdmaCallTracker extends CallTracker {
 
         clearDisconnected();
 
+        for (CdmaConnection cdmaConnection : mConnections) {
+            if (cdmaConnection != null) {
+                cdmaConnection.dispose();
+            }
+        }
     }
 
     @Override
@@ -358,6 +363,7 @@ public final class CdmaCallTracker extends CallTracker {
 
         updatePhoneState();
         mPhone.notifyPreciseCallStateChanged();
+
     }
 
     boolean
@@ -523,6 +529,8 @@ public final class CdmaCallTracker extends CallTracker {
         boolean needsPollDelay = false;
         boolean unknownConnectionAppeared = false;
 
+        boolean noConnectionExists = true;
+
         for (int i = 0, curDC = 0, dcSize = polledCalls.size()
                 ; i < mConnections.length; i++) {
             CdmaConnection conn = mConnections[i];
@@ -537,6 +545,10 @@ public final class CdmaCallTracker extends CallTracker {
                 } else {
                     dc = null;
                 }
+            }
+
+            if (conn != null || dc != null) {
+                noConnectionExists = false;
             }
 
             if (DBG_POLL) log("poll: conn[i=" + i + "]=" +
@@ -601,7 +613,6 @@ public final class CdmaCallTracker extends CallTracker {
                             newUnknown = mConnections[i];
                         }
                     }
-                    checkAndEnableDataCallAfterEmergencyCallDropped();
                 }
                 hasNonHangupStateChanged = true;
             } else if (conn != null && dc == null) {
@@ -683,6 +694,12 @@ public final class CdmaCallTracker extends CallTracker {
             }
         }
 
+        // Safety check so that obj is not stuck with mIsInEmergencyCall set to true (and data
+        // disabled). This should never happen though.
+        if (noConnectionExists) {
+            checkAndEnableDataCallAfterEmergencyCallDropped();
+        }
+
         // This is the first poll after an ATD.
         // We expect the pending call to appear in the list
         // If it does not, we land here
@@ -708,6 +725,7 @@ public final class CdmaCallTracker extends CallTracker {
         // These cases need no "last call fail" reason
         for (int i = mDroppedDuringPoll.size() - 1; i >= 0 ; i--) {
             CdmaConnection conn = mDroppedDuringPoll.get(i);
+            boolean wasDisconnected = false;
 
             if (conn.isIncoming() && conn.getConnectTime() == 0) {
                 // Missed or rejected call
@@ -724,10 +742,17 @@ public final class CdmaCallTracker extends CallTracker {
                 }
                 mDroppedDuringPoll.remove(i);
                 hasAnyCallDisconnected |= conn.onDisconnect(cause);
+                wasDisconnected = true;
             } else if (conn.mCause == DisconnectCause.LOCAL
                     || conn.mCause == DisconnectCause.INVALID_NUMBER) {
                 mDroppedDuringPoll.remove(i);
                 hasAnyCallDisconnected |= conn.onDisconnect(conn.mCause);
+                wasDisconnected = true;
+            }
+
+            if (wasDisconnected && unknownConnectionAppeared && conn == newUnknown) {
+                unknownConnectionAppeared = false;
+                newUnknown = null;
             }
         }
 
@@ -1134,12 +1159,15 @@ public final class CdmaCallTracker extends CallTracker {
     private void disableDataCallInEmergencyCall(String dialString) {
         if (PhoneNumberUtils.isLocalEmergencyNumber(mPhone.getContext(), dialString)) {
             if (Phone.DEBUG_PHONE) log("disableDataCallInEmergencyCall");
-            mIsInEmergencyCall = true;
-            mPhone.mDcTracker.setInternalDataEnabled(false);
-            mPhone.notifyEmergencyCallRegistrants(true);
+            setIsInEmergencyCall();
         }
     }
 
+    protected void setIsInEmergencyCall() {
+        mIsInEmergencyCall = true;
+        mPhone.mDcTracker.setInternalDataEnabled(false);
+        mPhone.notifyEmergencyCallRegistrants(true);
+    }
     /**
      * Check and enable data call after an emergency call is dropped if it's
      * not in ECM

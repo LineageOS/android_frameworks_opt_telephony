@@ -1144,6 +1144,11 @@ public abstract class ServiceStateTracker extends Handler {
         return isInNetwork(b, network, CarrierConfigManager.KEY_CDMA_NONROAMING_NETWORKS_STRING_ARRAY);
     }
 
+    /** Check if the device is shutting down. */
+    public final boolean isDeviceShuttingDown() {
+        return mDeviceShuttingDown;
+    }
+
     /**
      * Consider dataRegState if voiceRegState is OOS to determine SPN to be
      * displayed

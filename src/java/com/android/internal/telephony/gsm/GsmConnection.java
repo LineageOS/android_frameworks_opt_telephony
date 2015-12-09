@@ -20,9 +20,11 @@ import android.os.AsyncResult;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
+import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.Rlog;
 import android.telephony.PhoneNumberUtils;
@@ -72,11 +74,15 @@ public class GsmConnection extends Connection {
 
     private PowerManager.WakeLock mPartialWakeLock;
 
+    // The cached delay to be used between DTMF tones fetched from carrier config.
+    private int mDtmfToneDelay = 0;
+
     //***** Event Constants
     static final int EVENT_DTMF_DONE = 1;
     static final int EVENT_PAUSE_DONE = 2;
     static final int EVENT_NEXT_POST_DIAL = 3;
     static final int EVENT_WAKE_LOCK_TIMEOUT = 4;
+    static final int EVENT_DTMF_DELAY_DONE = 5;
 
     //***** Constants
     static final int PAUSE_DELAY_MILLIS = 3 * 1000;
@@ -93,12 +99,18 @@ public class GsmConnection extends Connection {
 
             switch (msg.what) {
                 case EVENT_NEXT_POST_DIAL:
-                case EVENT_DTMF_DONE:
+                case EVENT_DTMF_DELAY_DONE:
                 case EVENT_PAUSE_DONE:
                     processNextPostDialChar();
                     break;
                 case EVENT_WAKE_LOCK_TIMEOUT:
                     releaseWakeLock();
+                    break;
+                case EVENT_DTMF_DONE:
+                    // We may need to add a delay specified by carrier between DTMF tones that are
+                    // sent out.
+                    mHandler.sendMessageDelayed(mHandler.obtainMessage(EVENT_DTMF_DELAY_DONE),
+                            mDtmfToneDelay);
                     break;
             }
         }
@@ -108,8 +120,8 @@ public class GsmConnection extends Connection {
 
     /** This is probably an MT call that we first saw in a CLCC response */
     /*package*/
-    GsmConnection (Context context, DriverCall dc, GsmCallTracker ct, int index) {
-        createWakeLock(context);
+    GsmConnection (GSMPhone phone, DriverCall dc, GsmCallTracker ct, int index) {
+        createWakeLock(phone.getContext());
         acquireWakeLock();
 
         mOwner = ct;
@@ -128,12 +140,14 @@ public class GsmConnection extends Connection {
 
         mParent = parentFromDCState (dc.state);
         mParent.attach(this, dc);
+
+        fetchDtmfToneDelay(phone);
     }
 
     /** This is an MO call, created when dialing */
     /*package*/
-    GsmConnection (Context context, String dialString, GsmCallTracker ct, GsmCall parent) {
-        createWakeLock(context);
+    GsmConnection (GSMPhone phone, String dialString, GsmCallTracker ct, GsmCall parent) {
+        createWakeLock(phone.getContext());
         acquireWakeLock();
 
         mOwner = ct;
@@ -154,9 +168,13 @@ public class GsmConnection extends Connection {
 
         mParent = parent;
         parent.attachFake(this, GsmCall.State.DIALING);
+
+        fetchDtmfToneDelay(phone);
     }
 
     public void dispose() {
+        clearPostDialListeners();
+        releaseAllWakeLocks();
     }
 
     static boolean
@@ -870,6 +888,24 @@ public class GsmConnection extends Connection {
                 log("releaseWakeLock");
                 mPartialWakeLock.release();
             }
+        }
+    }
+
+    private void
+    releaseAllWakeLocks() {
+        synchronized(mPartialWakeLock) {
+            while (mPartialWakeLock.isHeld()) {
+                mPartialWakeLock.release();
+            }
+        }
+    }
+
+    private void fetchDtmfToneDelay(GSMPhone phone) {
+        CarrierConfigManager configMgr = (CarrierConfigManager)
+                phone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+        PersistableBundle b = configMgr.getConfigForSubId(phone.getSubId());
+        if (b != null) {
+            mDtmfToneDelay = b.getInt(CarrierConfigManager.KEY_GSM_DTMF_TONE_DELAY_INT);
         }
     }
 

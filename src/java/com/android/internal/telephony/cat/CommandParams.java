@@ -24,7 +24,7 @@ import android.graphics.Bitmap;
  */
 class CommandParams {
     CommandDetails mCmdDet;
- // Variable to track if an optional icon load has failed.
+    // Variable to track if an optional icon load has failed.
     boolean mLoadIconFailed = false;
 
     CommandParams(CommandDetails cmdDet) {

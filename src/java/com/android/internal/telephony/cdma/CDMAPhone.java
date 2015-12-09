@@ -449,21 +449,23 @@ public class CDMAPhone extends PhoneBase {
                  && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)
                  && !shallDialOnCircuitSwitch(intentExtras);
 
-        boolean useImsForEmergency = ImsManager.isVolteEnabledByPlatform(mContext)
-                && imsPhone != null
+        boolean useImsForEmergency = imsPhone != null
                 && isEmergency
                 &&  mContext.getResources().getBoolean(
                         com.android.internal.R.bool.useImsAlwaysForEmergencyCall)
                 && ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext)
                 && (imsPhone.getServiceState().getState() != ServiceState.STATE_POWER_OFF);
 
-        boolean useImsForUt = imsPhone != null && imsPhone.isUtEnabled()
-                && dialString.endsWith("#");
+        boolean isUt = PhoneNumberUtils.extractNetworkPortionAlt(PhoneNumberUtils.
+                stripSeparators(dialString)).endsWith("#");
+
+        boolean useImsForUt = imsPhone != null && imsPhone.isUtEnabled();
 
         if (DBG) {
             Rlog.d(LOG_TAG, "imsUseEnabled=" + imsUseEnabled
                     + ", useImsForEmergency=" + useImsForEmergency
                     + ", useImsForUt=" + useImsForUt
+                    + ", isUt=" + isUt
                     + ", imsPhone=" + imsPhone
                     + ", imsPhone.isVolteEnabled()="
                     + ((imsPhone != null) ? imsPhone.isVolteEnabled() : "N/A")
@@ -477,7 +479,7 @@ public class CDMAPhone extends PhoneBase {
 
         ImsPhone.checkWfcWifiOnlyModeBeforeDial(mImsPhone, mContext);
 
-        if (imsUseEnabled || useImsForEmergency || useImsForUt) {
+        if ((imsUseEnabled && (!isUt || useImsForUt)) || useImsForEmergency) {
             try {
                 if (DBG) Rlog.d(LOG_TAG, "Trying IMS PS call");
                 return imsPhone.dial(dialString, uusInfo, videoState, intentExtras);
@@ -708,7 +710,7 @@ public class CDMAPhone extends PhoneBase {
 
     @Override
     public void
-    selectNetworkManually(OperatorInfo network,
+    selectNetworkManually(OperatorInfo network, boolean persistSelection,
             Message response) {
         Rlog.e(LOG_TAG, "selectNetworkManually: not possible in CDMA");
         if (response != null) {
@@ -1133,6 +1135,11 @@ public class CDMAPhone extends PhoneBase {
     }
 
     @Override
+    protected void setIsInEmergencyCall() {
+        mCT.setIsInEmergencyCall();
+    }
+
+    @Override
     public boolean isInEcm() {
         return mIsPhoneInEcmState;
     }
@@ -1203,7 +1210,7 @@ public class CDMAPhone extends PhoneBase {
         }
     }
 
-    protected void notifyEmergencyCallRegistrants(boolean started) {
+    public void notifyEmergencyCallRegistrants(boolean started) {
         mEmergencyCallToggledRegistrants.notifyResult(started ? 1 : 0);
     }
 

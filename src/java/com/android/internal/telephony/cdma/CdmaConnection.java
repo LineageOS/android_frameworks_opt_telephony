@@ -186,6 +186,8 @@ public class CdmaConnection extends Connection {
     }
 
     public void dispose() {
+        clearPostDialListeners();
+        releaseAllWakeLocks();
     }
 
     static boolean
@@ -793,6 +795,14 @@ public class CdmaConnection extends Connection {
         synchronized (mPartialWakeLock) {
             if (mPartialWakeLock.isHeld()) {
                 log("releaseWakeLock");
+                mPartialWakeLock.release();
+            }
+        }
+    }
+
+    private void releaseAllWakeLocks() {
+        synchronized (mPartialWakeLock) {
+            while (mPartialWakeLock.isHeld()) {
                 mPartialWakeLock.release();
             }
         }

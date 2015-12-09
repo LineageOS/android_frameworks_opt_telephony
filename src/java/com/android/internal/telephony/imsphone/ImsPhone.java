@@ -111,7 +111,7 @@ public class ImsPhone extends ImsPhoneBase {
     protected static final int EVENT_GET_CALL_WAITING_DONE          = EVENT_LAST + 4;
     protected static final int EVENT_SET_CLIR_DONE                  = EVENT_LAST + 5;
     protected static final int EVENT_GET_CLIR_DONE                  = EVENT_LAST + 6;
-    private static final int EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED  = EVENT_LAST + 7;
+    protected static final int EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED  = EVENT_LAST + 7;
 
     public static final String CS_FALLBACK = "cs_fallback";
 
@@ -149,7 +149,7 @@ public class ImsPhone extends ImsPhoneBase {
     private boolean mImsRegistered = false;
 
     // List of Registrants to send supplementary service notifications to.
-    RegistrantList mSsnRegistrants = new RegistrantList();
+    private RegistrantList mSsnRegistrants = new RegistrantList();
 
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
@@ -793,7 +793,10 @@ public class ImsPhone extends ImsPhoneBase {
     public void setOutgoingCallerIdDisplay(int clirMode, Message onComplete) {
         if (DBG) Rlog.d(LOG_TAG, "setCLIR action= " + clirMode);
         Message resp;
-        resp = obtainMessage(EVENT_SET_CLIR_DONE, onComplete);
+        // Packing CLIR value in the message. This will be required for
+        // SharedPreference caching, if the message comes back as part of
+        // a success response.
+        resp = obtainMessage(EVENT_SET_CLIR_DONE, clirMode, 0, onComplete);
         try {
             ImsUtInterface ut = mCT.getUtInterface();
             ut.updateCLIR(clirMode, resp);
@@ -1250,6 +1253,9 @@ public class ImsPhone extends ImsPhoneBase {
             CommandException ex = null;
             if (e != null) {
                 ex = getCommandException(e);
+                AsyncResult.forMessage(onComplete, result, ex);
+            } else {
+                AsyncResult.forMessage(onComplete, result, null);
             }
             AsyncResult.forMessage(onComplete, result, ex);
             onComplete.sendToTarget();
@@ -1316,6 +1322,10 @@ public class ImsPhone extends ImsPhoneBase {
                 break;
 
              case EVENT_SET_CLIR_DONE:
+                 if (ar.exception == null) {
+                     saveClirSetting(msg.arg1);
+                 }
+                 // (Intentional fallthrough)
              case EVENT_SET_CALL_BARRING_DONE:
              case EVENT_SET_CALL_WAITING_DONE:
                 sendResponse((Message) ar.userObj, null, ar.exception);

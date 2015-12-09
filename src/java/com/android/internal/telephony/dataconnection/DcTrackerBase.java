@@ -232,9 +232,6 @@ public abstract class DcTrackerBase extends Handler {
     /** Intent sent when the reconnect alarm fires. */
     protected PendingIntent mReconnectIntent = null;
 
-    /** CID of active data connection */
-    protected int mCidActive;
-
     // When false we will not auto attach and manually attaching is required.
     protected boolean mAutoAttachOnCreationConfig = false;
     protected AtomicBoolean mAutoAttachOnCreation = new AtomicBoolean(false);
@@ -459,6 +456,10 @@ public abstract class DcTrackerBase extends Handler {
         // Get default value from system property or use DEFAULT_MDC_INITIAL_RETRY
         int value = SystemProperties.getInt(
                 Settings.Global.MDC_INITIAL_MAX_RETRY, DEFAULT_MDC_INITIAL_RETRY);
+        if (value == DEFAULT_MDC_INITIAL_RETRY) {
+            value = mPhone.getContext().getResources().getInteger(
+                R.integer.config_mdc_initial_max_retry);
+        }
 
         // Check if its been overridden
         return Settings.Global.getInt(mResolver,
@@ -879,8 +880,8 @@ public abstract class DcTrackerBase extends Handler {
     protected abstract void onRadioOffOrNotAvailable();
     protected abstract void onDataSetupComplete(AsyncResult ar);
     protected abstract void onDataSetupCompleteError(AsyncResult ar);
-    protected abstract void onDisconnectDone(int connId, AsyncResult ar);
-    protected abstract void onDisconnectDcRetrying(int connId, AsyncResult ar);
+    protected abstract void onDisconnectDone(AsyncResult ar);
+    protected abstract void onDisconnectDcRetrying(AsyncResult ar);
     protected abstract void onVoiceCallStarted();
     protected abstract void onVoiceCallEnded();
     protected abstract void onCleanUpConnection(boolean tearDown, int apnId, String reason);
@@ -936,7 +937,6 @@ public abstract class DcTrackerBase extends Handler {
                 break;
 
             case DctConstants.EVENT_DATA_SETUP_COMPLETE:
-                mCidActive = msg.arg1;
                 onDataSetupComplete((AsyncResult) msg.obj);
                 break;
 
@@ -946,12 +946,12 @@ public abstract class DcTrackerBase extends Handler {
 
             case DctConstants.EVENT_DISCONNECT_DONE:
                 log("DataConnectionTracker.handleMessage: EVENT_DISCONNECT_DONE msg=" + msg);
-                onDisconnectDone(msg.arg1, (AsyncResult) msg.obj);
+                onDisconnectDone((AsyncResult) msg.obj);
                 break;
 
             case DctConstants.EVENT_DISCONNECT_DC_RETRYING:
                 log("DataConnectionTracker.handleMessage: EVENT_DISCONNECT_DC_RETRYING msg=" + msg);
-                onDisconnectDcRetrying(msg.arg1, (AsyncResult) msg.obj);
+                onDisconnectDcRetrying((AsyncResult) msg.obj);
                 break;
 
             case DctConstants.EVENT_VOICE_CALL_STARTED:
@@ -1966,7 +1966,6 @@ public abstract class DcTrackerBase extends Handler {
         pw.println(" mResolver=" + mResolver);
         pw.println(" mIsWifiConnected=" + mIsWifiConnected);
         pw.println(" mReconnectIntent=" + mReconnectIntent);
-        pw.println(" mCidActive=" + mCidActive);
         pw.println(" mAutoAttachOnCreation=" + mAutoAttachOnCreation.get());
         pw.println(" mIsScreenOn=" + mIsScreenOn);
         pw.println(" mUniqueIdGenerator=" + mUniqueIdGenerator);

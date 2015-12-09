@@ -144,6 +144,7 @@ public interface Phone {
     int NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA  = RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA;
     int NT_MODE_LTE_ONLY                 = RILConstants.NETWORK_MODE_LTE_ONLY;
     int NT_MODE_LTE_WCDMA                = RILConstants.NETWORK_MODE_LTE_WCDMA;
+
     int PREFERRED_NT_MODE                = RILConstants.PREFERRED_NETWORK_MODE;
 
     int NT_MODE_TD_SCDMA_ONLY            = RILConstants.NETWORK_MODE_TD_SCDMA_ONLY;
@@ -1172,8 +1173,7 @@ public interface Phone {
      *
      * @see #setNetworkSelectionModeAutomatic(Message)
      */
-    void selectNetworkManually(OperatorInfo network,
-                            Message response);
+    void selectNetworkManually(OperatorInfo network, boolean persistSelection, Message response);
 
     /**
      * Query the radio for the current network selection mode.
@@ -2016,6 +2016,11 @@ public interface Phone {
      * shutdown Radio gracefully
      */
     public void shutdownRadio();
+
+    /**
+     * Return true if the device is shutting down.
+     */
+    public boolean isShuttingDown();
 
     /**
      *  Set phone radio capability
