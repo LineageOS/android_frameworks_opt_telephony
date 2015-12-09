@@ -106,8 +106,8 @@ public class ServiceStateTracker extends Handler {
 
     private boolean mVoiceCapable;
 
-    public ServiceState mSS = new ServiceState();
-    private ServiceState mNewSS = new ServiceState();
+    public ServiceState mSS;
+    private ServiceState mNewSS;
 
     private static final long LAST_CELL_INFO_LIST_MAX_AGE_MS = 2000;
     private long mLastCellInfoListTime;
@@ -115,10 +115,10 @@ public class ServiceStateTracker extends Handler {
 
     private CellInfo mCellInfo;
 
-    private SignalStrength mSignalStrength = new SignalStrength();
+    private SignalStrength mSignalStrength;
 
     // TODO - this should not be public, right now used externally GsmConnetion.
-    public RestrictedState mRestrictedState = new RestrictedState();
+    public RestrictedState mRestrictedState;
 
     /* The otaspMode passed to PhoneStateListener#onOtaspChanged */
     static public final int OTASP_UNINITIALIZED = 0;
@@ -203,6 +203,7 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_IMS_STATE_DONE                    = 47;
     protected static final int EVENT_IMS_CAPABILITY_CHANGED            = 48;
     protected static final int EVENT_ALL_DATA_DISCONNECTED             = 49;
+    protected static final int EVENT_PHONE_TYPE_SWITCHED               = 50;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -246,7 +247,6 @@ public class ServiceStateTracker extends Handler {
 
     private boolean mImsRegistrationOnOff = false;
     private boolean mAlarmSwitch = false;
-    private IntentFilter mIntentFilter = null;
     private PendingIntent mRadioOffIntent = null;
     private static final String ACTION_RADIO_OFF = "android.intent.action.ACTION_RADIO_OFF";
     private boolean mPowerOffDelayNeed = true;
@@ -485,6 +485,7 @@ public class ServiceStateTracker extends Handler {
         mVoiceCapable = mPhone.getContext().getResources().getBoolean(
                 com.android.internal.R.bool.config_voice_capable);
         mUiccController = UiccController.getInstance();
+
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         mCi.setOnSignalStrengthUpdate(this, EVENT_SIGNAL_STRENGTH_UPDATE, null);
         mCi.registerForCellInfoList(this, EVENT_UNSOL_CELL_INFO_LIST, null);
@@ -530,9 +531,24 @@ public class ServiceStateTracker extends Handler {
     }
 
     protected void updatePhoneType() {
+        mSS = new ServiceState();
+        mNewSS = new ServiceState();
+        mLastCellInfoListTime = 0;
+        mLastCellInfoList = null;
+        mSignalStrength = new SignalStrength();
+        mRestrictedState = new RestrictedState();
+        mReportedGprsNoReg = false;
+        //todo: these can always be queried from gsmcdmaphone now (regardless of phone type)
+        mMdn = null;
+        mMin = null;
+        mPrlVersion = null;
+        mIsMinInfoReady = false;
+
         onUpdateIccAvailability();
+
         //cancel any pending pollstate request on voice tech switching
         cancelPollState();
+
         if (mPhone.isPhoneTypeGsm()) {
             //clear CDMA registrations first
             if (mCdmaSSM != null) {
@@ -579,6 +595,7 @@ public class ServiceStateTracker extends Handler {
             // Reset OTASP state in case previously set by another service
             mPhone.notifyOtaspChanged(OTASP_UNINITIALIZED);
         }
+
         mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
                 ServiceState.rilRadioTechnologyToString(ServiceState.RIL_RADIO_TECHNOLOGY_UNKNOWN));
         // Query signal strength from the modem after service tracker is created (i.e. boot up,
@@ -586,6 +603,7 @@ public class ServiceStateTracker extends Handler {
         // information might come late or even never come. This will get the accurate signal
         // strength information displayed on the UI.
         mCi.getSignalStrength(obtainMessage(EVENT_GET_SIGNAL_STRENGTH));
+        sendMessage(obtainMessage(EVENT_PHONE_TYPE_SWITCHED));
     }
 
     void requestShutdown() {
@@ -907,6 +925,7 @@ public class ServiceStateTracker extends Handler {
                 break;
 
             case EVENT_RADIO_STATE_CHANGED:
+            case EVENT_PHONE_TYPE_SWITCHED:
                 if(!mPhone.isPhoneTypeGsm() &&
                         mCi.getRadioState() == CommandsInterface.RadioState.RADIO_ON) {
                     handleCdmaSubscriptionSource(mCdmaSSM.getCdmaSubscriptionSource());
@@ -2707,6 +2726,7 @@ public class ServiceStateTracker extends Handler {
 
                 if (shouldFixTimeZoneNow(mPhone, operatorNumeric, prevOperatorNumeric,
                         mNeedFixZoneAfterNitz)) {
+                    //todo: code below is very similar to fixTimeZone(). try to reuse that.
                     // If the offset is (0, false) and the timezone property
                     // is set, use the timezone property rather than
                     // GMT.
@@ -2723,7 +2743,7 @@ public class ServiceStateTracker extends Handler {
                         // Get a TimeZone based only on the NITZ parameters (best guess).
                         zone = getNitzTimeZone(mZoneOffset, mZoneDst, mZoneTime);
                         if (DBG) log("pollStateDone: using NITZ TimeZone");
-                    } else
+                    } else {
                         // "(mZoneOffset == 0) && (mZoneDst == false) &&
                         //  (Arrays.binarySearch(GMT_COUNTRY_CODES, iso) < 0)"
                         // means that we received a NITZ string telling
@@ -2758,6 +2778,7 @@ public class ServiceStateTracker extends Handler {
                             zone = TimeUtils.getTimeZone(mZoneOffset, mZoneDst, mZoneTime, iso);
                             if (DBG) log("pollStateDone: using getTimeZone(off, dst, time, iso)");
                         }
+                    }
 
                     mNeedFixZoneAfterNitz = false;
 

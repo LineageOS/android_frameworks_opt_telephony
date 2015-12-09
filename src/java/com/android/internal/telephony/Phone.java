@@ -90,7 +90,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     public final static Object lockForRadioTechnologyChange = new Object();
 
-    private boolean mImsIntentReceiverRegistered = false;
     private BroadcastReceiver mImsIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -220,7 +219,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     /* Instance Variables */
     public CommandsInterface mCi;
-    private int mVmCount = 0;
+    protected int mVmCount = 0;
     boolean mDnsCheckDisabled;
     public DcTracker mDcTracker;
     boolean mDoesRilSendMultipleCallRing;
@@ -512,7 +511,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             filter.addAction(ImsManager.ACTION_IMS_SERVICE_UP);
             filter.addAction(ImsManager.ACTION_IMS_SERVICE_DOWN);
             mContext.registerReceiver(mImsIntentReceiver, filter);
-            mImsIntentReceiverRegistered = true;
 
             // Monitor IMS service - but first poll to see if already up (could miss
             // intent)
@@ -2674,6 +2672,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Set IMS registration state
      */
     public void setImsRegistrationState(boolean registered) {
+        //todo: not needed. this only calls the function in sst, which gsmcdmaphone already does
         mDcTracker.setImsRegistrationState(registered);
     }
 
