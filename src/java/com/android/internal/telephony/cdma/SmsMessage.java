@@ -713,7 +713,7 @@ public class SmsMessage extends SmsMessageBase {
     /**
      * Parses a SMS message from its BearerData stream. (mobile-terminated only)
      */
-    protected void parseSms() {
+    public void parseSms() {
         // Message Waiting Info Record defined in 3GPP2 C.S-0005, 3.7.5.6
         // It contains only an 8-bit number with the number of messages waiting
         if (mEnvelope.teleService == SmsEnvelope.TELESERVICE_MWI) {
@@ -790,7 +790,7 @@ public class SmsMessage extends SmsMessageBase {
     /**
      * Parses a broadcast SMS, possibly containing a CMAS alert.
      */
-    SmsCbMessage parseBroadcastSms() {
+    public SmsCbMessage parseBroadcastSms() {
         BearerData bData = BearerData.decode(mEnvelope.bearerData, mEnvelope.serviceCategory);
         if (bData == null) {
             Rlog.w(LOG_TAG, "BearerData.decode() returned null");

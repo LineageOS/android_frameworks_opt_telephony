@@ -272,17 +272,6 @@ public class WapPushOverSms implements ServiceConnection {
                 return Intents.RESULT_SMS_GENERIC_ERROR;
             }
 
-            String permission;
-            int appOp;
-
-            if (mimeType.equals(WspTypeDecoder.CONTENT_TYPE_B_MMS)) {
-                permission = android.Manifest.permission.RECEIVE_MMS;
-                appOp = AppOpsManager.OP_RECEIVE_MMS;
-            } else {
-                permission = android.Manifest.permission.RECEIVE_WAP_PUSH;
-                appOp = AppOpsManager.OP_RECEIVE_WAP_PUSH;
-            }
-
             Intent intent = new Intent(Intents.WAP_PUSH_DELIVER_ACTION);
             intent.setType(mimeType);
             intent.putExtra("transactionId", transactionId);
@@ -311,7 +300,8 @@ public class WapPushOverSms implements ServiceConnection {
                 }
             }
 
-            handler.dispatchIntent(intent, permission, appOp, options, receiver, UserHandle.OWNER);
+            handler.dispatchIntent(intent, getPermissionForType(mimeType),
+                    getAppOpsPermissionForIntent(mimeType), options, receiver, UserHandle.SYSTEM);
             return Activity.RESULT_OK;
         } catch (ArrayIndexOutOfBoundsException aie) {
             // 0-byte WAP PDU or other unexpected WAP PDU contents can easily throw this;
@@ -491,5 +481,25 @@ public class WapPushOverSms implements ServiceConnection {
             }
         }
         return false;
+    }
+
+    protected static String getPermissionForType(String mimeType) {
+        String permission;
+        if (WspTypeDecoder.CONTENT_TYPE_B_MMS.equals(mimeType)) {
+            permission = android.Manifest.permission.RECEIVE_MMS;
+        } else {
+            permission = android.Manifest.permission.RECEIVE_WAP_PUSH;
+        }
+        return permission;
+    }
+
+    protected static int getAppOpsPermissionForIntent(String mimeType) {
+        int appOp;
+        if (WspTypeDecoder.CONTENT_TYPE_B_MMS.equals(mimeType)) {
+            appOp = AppOpsManager.OP_RECEIVE_MMS;
+        } else {
+            appOp = AppOpsManager.OP_RECEIVE_WAP_PUSH;
+        }
+        return appOp;
     }
 }

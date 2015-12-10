@@ -30,7 +30,7 @@ import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.gsm.CallFailCause;
+import com.android.internal.telephony.CallFailCause;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 

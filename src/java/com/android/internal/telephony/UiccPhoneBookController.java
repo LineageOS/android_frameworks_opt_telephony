@@ -19,12 +19,9 @@
 package com.android.internal.telephony;
 
 import android.os.ServiceManager;
-import android.os.RemoteException;
 import android.telephony.Rlog;
 
-import com.android.internal.telephony.IccPhoneBookInterfaceManagerProxy;
 import com.android.internal.telephony.IIccPhoneBook;
-import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.uicc.AdnRecord;
 
 import java.lang.ArrayIndexOutOfBoundsException;
@@ -138,7 +135,7 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
 
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
         try {
-            return ((PhoneProxy)mPhone[(int)phoneId]).getIccPhoneBookInterfaceManagerProxy();
+            return ((Phone)mPhone[(int)phoneId]).getIccPhoneBookInterfaceManagerProxy();
         } catch (NullPointerException e) {
             Rlog.e(TAG, "Exception is :"+e.toString()+" For subscription :"+subId );
             e.printStackTrace(); //To print stack trace

@@ -142,13 +142,15 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
         int extensionEF = extensionEfForEf(efid);
         if (extensionEF < 0) {
-            sendErrorResponse(response, "EF is not known ADN-like EF:" + efid);
+            sendErrorResponse(response, "EF is not known ADN-like EF:0x" +
+                    Integer.toHexString(efid).toUpperCase());
             return;
         }
 
         Message pendingResponse = mUserWriteResponse.get(efid);
         if (pendingResponse != null) {
-            sendErrorResponse(response, "Have pending update for EF:" + efid);
+            sendErrorResponse(response, "Have pending update for EF:0x" +
+                    Integer.toHexString(efid).toUpperCase());
             return;
         }
 
@@ -180,7 +182,8 @@ public final class AdnRecordCache extends Handler implements IccConstants {
         extensionEF = extensionEfForEf(efid);
 
         if (extensionEF < 0) {
-            sendErrorResponse(response, "EF is not known ADN-like EF:" + efid);
+            sendErrorResponse(response, "EF is not known ADN-like EF:0x" +
+                    Integer.toHexString(efid).toUpperCase());
             return;
         }
 
@@ -193,7 +196,8 @@ public final class AdnRecordCache extends Handler implements IccConstants {
         }
 
         if (oldAdnList == null) {
-            sendErrorResponse(response, "Adn list not exist for EF:" + efid);
+            sendErrorResponse(response, "Adn list not exist for EF:0x" +
+                    Integer.toHexString(efid).toUpperCase());
             return;
         }
 
@@ -226,7 +230,8 @@ public final class AdnRecordCache extends Handler implements IccConstants {
         Message pendingResponse = mUserWriteResponse.get(efid);
 
         if (pendingResponse != null) {
-            sendErrorResponse(response, "Have pending update for EF:" + efid);
+            sendErrorResponse(response, "Have pending update for EF:0x" +
+                    Integer.toHexString(efid).toUpperCase());
             return;
         }
 
@@ -288,7 +293,8 @@ public final class AdnRecordCache extends Handler implements IccConstants {
 
             if (response != null) {
                 AsyncResult.forMessage(response).exception
-                    = new RuntimeException("EF is not known ADN-like EF:" + efid);
+                    = new RuntimeException("EF is not known ADN-like EF:0x" +
+                        Integer.toHexString(efid).toUpperCase());
                 response.sendToTarget();
             }
 
@@ -357,8 +363,5 @@ public final class AdnRecordCache extends Handler implements IccConstants {
                 response.sendToTarget();
                 break;
         }
-
     }
-
-
 }

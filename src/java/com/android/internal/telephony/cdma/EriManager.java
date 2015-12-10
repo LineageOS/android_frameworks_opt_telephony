@@ -22,7 +22,7 @@ import android.content.res.XmlResourceParser;
 import android.telephony.Rlog;
 import android.util.Xml;
 
-import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.Phone;
 import com.android.internal.util.XmlUtils;
 
 
@@ -87,7 +87,7 @@ public final class EriManager {
     private static final boolean DBG = true;
     private static final boolean VDBG = false;
 
-    static final int ERI_FROM_XML          = 0;
+    public static final int ERI_FROM_XML   = 0;
     static final int ERI_FROM_FILE_SYSTEM  = 1;
     static final int ERI_FROM_MODEM        = 2;
 
@@ -96,7 +96,7 @@ public final class EriManager {
     private boolean mIsEriFileLoaded;
     private EriFile mEriFile;
 
-    public EriManager(PhoneBase phone, Context context, int eriFileSource) {
+    public EriManager(Phone phone, Context context, int eriFileSource) {
         mContext = context;
         mEriFileSource = eriFileSource;
         mEriFile = new EriFile();

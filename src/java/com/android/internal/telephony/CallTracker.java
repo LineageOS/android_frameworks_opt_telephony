@@ -21,7 +21,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.SystemProperties;
 import android.text.TextUtils;
-import com.android.internal.telephony.CommandException;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -187,7 +186,10 @@ public abstract class CallTracker extends Handler {
             if (values.length == 2) {
                 if (values[0].equals(
                         android.telephony.PhoneNumberUtils.stripSeparators(dialString))) {
-                    mCi.testingEmergencyCall();
+                    // mCi will be null for ImsPhoneCallTracker.
+                    if (mCi != null) {
+                        mCi.testingEmergencyCall();
+                    }
                     log("checkForTestEmergencyNumber: remap " +
                             dialString + " to " + values[1]);
                     dialString = values[1];
@@ -197,11 +199,11 @@ public abstract class CallTracker extends Handler {
         return dialString;
     }
 
-    protected String convertNumberIfNecessary(PhoneBase phoneBase, String dialNumber) {
+    protected String convertNumberIfNecessary(Phone phone, String dialNumber) {
         if (dialNumber == null) {
             return dialNumber;
         }
-        String[] convertMaps = phoneBase.getContext().getResources().getStringArray(
+        String[] convertMaps = phone.getContext().getResources().getStringArray(
                 com.android.internal.R.array.dial_string_replace);
         log("convertNumberIfNecessary Roaming"
             + " convertMaps.length " + convertMaps.length
@@ -222,7 +224,7 @@ public abstract class CallTracker extends Handler {
                 tmpArray = entry[1].split(",");
                 if (!TextUtils.isEmpty(entry[0]) && dialNumber.equals(entry[0])) {
                     if (tmpArray.length >= 2 && !TextUtils.isEmpty(tmpArray[1])) {
-                        if (compareGid1(phoneBase, tmpArray[1])) {
+                        if (compareGid1(phone, tmpArray[1])) {
                             needConvert = true;
                         }
                     } else if (outNumber.isEmpty()) {
@@ -231,7 +233,7 @@ public abstract class CallTracker extends Handler {
 
                     if (needConvert) {
                         if(!TextUtils.isEmpty(tmpArray[0]) && tmpArray[0].endsWith("MDN")) {
-                            String mdn = phoneBase.getLine1Number();
+                            String mdn = phone.getLine1Number();
                             if (!TextUtils.isEmpty(mdn) ) {
                                 if (mdn.startsWith("+")) {
                                     outNumber = mdn;
@@ -259,8 +261,8 @@ public abstract class CallTracker extends Handler {
 
     }
 
-    private boolean compareGid1(PhoneBase phoneBase, String serviceGid1) {
-        String gid1 = phoneBase.getGroupIdLevel1();
+    private boolean compareGid1(Phone phone, String serviceGid1) {
+        String gid1 = phone.getGroupIdLevel1();
         int gid_length = serviceGid1.length();
         boolean ret = true;
 

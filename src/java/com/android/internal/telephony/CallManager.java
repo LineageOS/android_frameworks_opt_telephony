@@ -90,7 +90,7 @@ public final class CallManager {
     // Singleton instance
     private static final CallManager INSTANCE = new CallManager();
 
-    // list of registered phones, which are PhoneBase objs
+    // list of registered phones, which are Phone objs
     private final ArrayList<Phone> mPhones;
 
     // list of supported ringing calls
@@ -108,7 +108,7 @@ public final class CallManager {
     // mapping of phones to registered handler instances used for callbacks from RIL
     private final HashMap<Phone, CallManagerHandler> mHandlerMap = new HashMap<>();
 
-    // default phone as the first phone registered, which is PhoneBase obj
+    // default phone as the first phone registered, which is Phone obj
     private Phone mDefaultPhone;
 
     private boolean mSpeedUpAudioForMtCall = false;
@@ -204,28 +204,25 @@ public final class CallManager {
     }
 
     /**
-     * Get the corresponding PhoneBase obj
+     * Get the corresponding Phone obj
      *
      * @param phone a Phone object
-     * @return the corresponding PhoneBase obj in Phone if Phone
+     * @return the corresponding Phone obj in Phone if Phone
      * is a PhoneProxy obj
      * or the Phone itself if Phone is not a PhoneProxy obj
      */
     private static Phone getPhoneBase(Phone phone) {
-        if (phone instanceof PhoneProxy) {
-            return phone.getForegroundCall().getPhone();
-        }
         return phone;
     }
 
     /**
-     * Check if two phones refer to the same PhoneBase obj
+     * Check if two phones refer to the same Phone obj
      *
-     * Note: PhoneBase, not PhoneProxy, is to be used inside of CallManager
+     * Note: Phone, not PhoneProxy, is to be used inside of CallManager
      *
-     * Both PhoneBase and PhoneProxy implement Phone interface, so
+     * Both Phone and PhoneProxy implement Phone interface, so
      * they have same phone APIs, such as dial(). The real implementation, for
-     * example in GSM,  is in GSMPhone as extend from PhoneBase, so that
+     * example in GSM,  is in GSMPhone as extend from Phone, so that
      * foregroundCall.getPhone() returns GSMPhone obj. On the other hand,
      * PhoneFactory.getDefaultPhone() returns PhoneProxy obj, which has a class
      * member of GSMPhone.
@@ -615,7 +612,7 @@ public final class CallManager {
         mHandlerMap.put(phone, handler);
 
         // for common events supported by all phones
-        // The mRegistrantIdentifier passed here, is to identify in the PhoneBase
+        // The mRegistrantIdentifier passed here, is to identify in the Phone
         // that the registrants are coming from the CallManager.
         phone.registerForPreciseCallStateChanged(handler, EVENT_PRECISE_CALL_STATE_CHANGED,
                 mRegistrantidentifier);

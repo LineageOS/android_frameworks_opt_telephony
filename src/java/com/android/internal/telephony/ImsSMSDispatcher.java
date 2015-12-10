@@ -32,7 +32,6 @@ import com.android.internal.telephony.gsm.GsmSMSDispatcher;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -50,7 +49,7 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
     private boolean mIms = false;
     private String mImsSmsFormat = SmsConstants.FORMAT_UNKNOWN;
 
-    public ImsSMSDispatcher(PhoneBase phone, SmsStorageMonitor storageMonitor,
+    public ImsSMSDispatcher(Phone phone, SmsStorageMonitor storageMonitor,
             SmsUsageMonitor usageMonitor) {
         super(phone, usageMonitor, null);
         Rlog.d(TAG, "ImsSMSDispatcher created");
@@ -73,7 +72,7 @@ public final class ImsSMSDispatcher extends SMSDispatcher {
 
     /* Updates the phone object when there is a change */
     @Override
-    protected void updatePhoneObject(PhoneBase phone) {
+    protected void updatePhoneObject(Phone phone) {
         Rlog.d(TAG, "In IMS updatePhoneObject ");
         super.updatePhoneObject(phone);
         mCdmaDispatcher.updatePhoneObject(phone);

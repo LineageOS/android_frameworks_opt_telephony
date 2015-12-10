@@ -21,7 +21,6 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -121,7 +120,7 @@ public class SubscriptionController extends ISub.Stub {
 
     /** The singleton instance. */
     private static SubscriptionController sInstance = null;
-    protected static PhoneProxy[] sProxyPhones;
+    protected static Phone[] sPhones;
     protected Context mContext;
     protected TelephonyManager mTelephonyManager;
     protected CallManager mCM;
@@ -540,7 +539,6 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public List<SubscriptionInfo> getActiveSubscriptionInfoList(String callingPackage) {
-        if (DBG) logdl("[getActiveSubInfoList]+");
 
         if (!canReadPhoneState(callingPackage, "getActiveSubscriptionInfoList")) {
             return null;
@@ -1141,7 +1139,7 @@ public class SubscriptionController extends ISub.Stub {
         // getDefaultSubId which makes a best guess.
         if (slotIdx == SubscriptionManager.DEFAULT_SIM_SLOT_INDEX) {
             slotIdx = getSlotId(getDefaultSubId());
-            if (DBG) logd("[getSubId] map default slotIdx=" + slotIdx);
+            if (VDBG) logd("[getSubId] map default slotIdx=" + slotIdx);
         }
 
         // Check that we have a valid SlotIdx
@@ -1153,7 +1151,7 @@ public class SubscriptionController extends ISub.Stub {
         // Check if we've got any SubscriptionInfo records using slotIdToSubId as a surrogate.
         int size = sSlotIdxToSubId.size();
         if (size == 0) {
-            if (DBG) {
+            if (VDBG) {
                 logd("[getSubId]- sSlotIdxToSubId.size == 0, return DummySubIds slotIdx="
                         + slotIdx);
             }
@@ -1409,7 +1407,7 @@ public class SubscriptionController extends ISub.Stub {
         if (DBG) logdl("[setDefaultDataSubId] subId=" + subId);
 
         ProxyController proxyController = ProxyController.getInstance();
-        int len = sProxyPhones.length;
+        int len = sPhones.length;
         logdl("[setDefaultDataSubId] num phones=" + len);
 
         if (SubscriptionManager.isValidSubscriptionId(subId)) {
@@ -1417,7 +1415,7 @@ public class SubscriptionController extends ISub.Stub {
             RadioAccessFamily[] rafs = new RadioAccessFamily[len];
             boolean atLeastOneMatch = false;
             for (int phoneId = 0; phoneId < len; phoneId++) {
-                PhoneProxy phone = sProxyPhones[phoneId];
+                Phone phone = sPhones[phoneId];
                 int raf;
                 int id = phone.getSubId();
                 if (id == subId) {
@@ -1448,11 +1446,11 @@ public class SubscriptionController extends ISub.Stub {
 
     private void updateAllDataConnectionTrackers() {
         // Tell Phone Proxies to update data connection tracker
-        int len = sProxyPhones.length;
-        if (DBG) logdl("[updateAllDataConnectionTrackers] sProxyPhones.length=" + len);
+        int len = sPhones.length;
+        if (DBG) logdl("[updateAllDataConnectionTrackers] sPhones.length=" + len);
         for (int phoneId = 0; phoneId < len; phoneId++) {
             if (DBG) logdl("[updateAllDataConnectionTrackers] phoneId=" + phoneId);
-            sProxyPhones[phoneId].updateDataConnectionTracker();
+            sPhones[phoneId].updateDataConnectionTracker();
         }
     }
 
@@ -1628,8 +1626,8 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    public void updatePhonesAvailability(PhoneProxy[] phones) {
-        sProxyPhones = phones;
+    public void updatePhonesAvailability(Phone[] phones) {
+        sPhones = phones;
     }
 
     /**

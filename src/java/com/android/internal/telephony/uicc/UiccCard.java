@@ -16,8 +16,6 @@
 
 package com.android.internal.telephony.uicc;
 
-import static android.Manifest.permission.READ_PHONE_STATE;
-import android.app.ActivityManagerNative;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
@@ -43,19 +41,11 @@ import android.util.LocalLog;
 import android.view.WindowManager;
 
 import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.CommandsInterface.RadioState;
-import com.android.internal.telephony.IccCardConstants.State;
-import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccCardStatus.CardState;
 import com.android.internal.telephony.uicc.IccCardStatus.PinState;
 import com.android.internal.telephony.cat.CatService;
-import com.android.internal.telephony.cdma.CDMALTEPhone;
-import com.android.internal.telephony.cdma.CDMAPhone;
-import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
-
-import android.os.SystemProperties;
 
 import com.android.internal.R;
 

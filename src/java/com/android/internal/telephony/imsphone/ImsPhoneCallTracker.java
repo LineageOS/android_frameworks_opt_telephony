@@ -39,9 +39,6 @@ import android.os.SystemProperties;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.text.TextUtils;
-import android.widget.Toast;
-import android.telephony.CarrierConfigManager;
-import android.text.TextUtils;
 import android.preference.PreferenceManager;
 import android.telecom.ConferenceParticipant;
 import android.telephony.DisconnectCause;
@@ -69,7 +66,6 @@ import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
@@ -299,7 +295,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
     Connection
     dial(String dialString, int videoState, Bundle intentExtras) throws CallStateException {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
-        int oirMode = sp.getInt(PhoneBase.CLIR_KEY, CommandsInterface.CLIR_DEFAULT);
+        int oirMode = sp.getInt(Phone.CLIR_KEY, CommandsInterface.CLIR_DEFAULT);
         return dial(dialString, oirMode, videoState, intentExtras);
     }
 
@@ -1184,6 +1180,30 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     sendEmptyMessage(EVENT_DIAL_PENDINGMO);
                 }
             }
+
+            if (mSwitchingFgAndBgCalls) {
+                if (DBG) {
+                    log("onCallTerminated: Call terminated in the midst of Switching " +
+                            "Fg and Bg calls.");
+                }
+                // If we are the in midst of swapping FG and BG calls and the call that was
+                // terminated was the one that we expected to resume, we need to swap the FG and
+                // BG calls back.
+                if (imsCall == mCallExpectedToResume) {
+                    if (DBG) {
+                        log("onCallTerminated: switching " + mForegroundCall + " with "
+                                + mBackgroundCall);
+                    }
+                    mForegroundCall.switchWith(mBackgroundCall);
+                }
+                // This call terminated in the midst of a switch after the other call was held, so
+                // resume it back to ACTIVE state since the switch failed.
+                if (mForegroundCall.getState() == ImsPhoneCall.State.HOLDING) {
+                    sendEmptyMessage(EVENT_RESUME_BACKGROUND);
+                    mSwitchingFgAndBgCalls = false;
+                    mCallExpectedToResume = null;
+                }
+            }
         }
 
         @Override
@@ -1211,7 +1231,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     // The EVENT_RESUME_BACKGROUND causes resumeWaitingOrHolding to be called.
                     if ((mForegroundCall.getState() == ImsPhoneCall.State.HOLDING)
                             || (mRingingCall.getState() == ImsPhoneCall.State.WAITING)) {
-
                             sendEmptyMessage(EVENT_RESUME_BACKGROUND);
                     } else {
                         //when multiple connections belong to background call,
@@ -1226,6 +1245,14 @@ public final class ImsPhoneCallTracker extends CallTracker {
                         // This may happen if there is no BG call and we are holding a call so that
                         // we can dial another one.
                         mSwitchingFgAndBgCalls = false;
+                    }
+                } else if (oldState == ImsPhoneCall.State.IDLE && mSwitchingFgAndBgCalls) {
+                    // The other call terminated in the midst of a switch before this call was held,
+                    // so resume the foreground call back to ACTIVE state since the switch failed.
+                    if (mForegroundCall.getState() == ImsPhoneCall.State.HOLDING) {
+                        sendEmptyMessage(EVENT_RESUME_BACKGROUND);
+                        mSwitchingFgAndBgCalls = false;
+                        mCallExpectedToResume = null;
                     }
                 }
             }

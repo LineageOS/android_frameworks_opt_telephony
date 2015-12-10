@@ -96,8 +96,11 @@ public class DefaultPhoneNotifier implements PhoneNotifier {
     @Override
     public void notifySignalStrength(Phone sender) {
         int subId = sender.getSubId();
-        Rlog.d(LOG_TAG, "notifySignalStrength: mRegistry=" + mRegistry
-                + " ss=" + sender.getSignalStrength() + " sender=" + sender);
+        if (DBG) {
+            // too chatty to log constantly
+            Rlog.d(LOG_TAG, "notifySignalStrength: mRegistry=" + mRegistry
+                    + " ss=" + sender.getSignalStrength() + " sender=" + sender);
+        }
         try {
             if (mRegistry != null) {
                 mRegistry.notifySignalStrengthForSubscriber(subId, sender.getSignalStrength());

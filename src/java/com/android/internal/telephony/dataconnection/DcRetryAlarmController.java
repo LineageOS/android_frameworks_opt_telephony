@@ -26,7 +26,7 @@ import android.os.SystemClock;
 import android.telephony.Rlog;
 import android.text.TextUtils;
 
-import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.RILConstants;
 
 /**
@@ -36,7 +36,7 @@ public class DcRetryAlarmController {
     private String mLogTag = "DcRac";
     private static final boolean DBG = true;
 
-    private PhoneBase mPhone;
+    private Phone mPhone;
     private DataConnection mDc;
     private AlarmManager mAlarmManager;
 
@@ -75,7 +75,7 @@ public class DcRetryAlarmController {
         }
     };
 
-    DcRetryAlarmController(PhoneBase phone, DataConnection dc) {
+    DcRetryAlarmController(Phone phone, DataConnection dc) {
         mLogTag = dc.getName();
         mPhone = phone;
         mDc = dc;

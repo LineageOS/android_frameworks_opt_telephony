@@ -19,10 +19,8 @@ package com.android.internal.telephony.imsphone;
 import android.content.Context;
 import android.net.LinkProperties;
 import android.os.AsyncResult;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.os.Registrant;
 import android.os.RegistrantList;
 import android.os.SystemProperties;
 import android.telephony.CellInfo;
@@ -32,29 +30,23 @@ import android.telephony.SignalStrength;
 import android.telephony.Rlog;
 
 import com.android.internal.telephony.Call;
-import com.android.internal.telephony.CallStateException;
 import com.android.internal.telephony.Connection;
 import com.android.internal.telephony.dataconnection.DataConnection;
-import com.android.internal.telephony.cdma.CDMAPhone;
-import com.android.internal.telephony.gsm.GSMPhone;
-import com.android.internal.telephony.CallManager;
 import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.IccPhoneBookInterfaceManager;
 import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
 import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.TelephonyProperties;
-import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.uicc.IccFileHandler;
 
 import java.util.ArrayList;
 import java.util.List;
 
-abstract class ImsPhoneBase extends PhoneBase {
+abstract class ImsPhoneBase extends Phone {
     private static final String LOG_TAG = "ImsPhoneBase";
 
     private RegistrantList mRingbackRegistrants = new RegistrantList();
@@ -67,7 +59,7 @@ abstract class ImsPhoneBase extends PhoneBase {
     }
 
     @Override
-    public void migrateFrom(PhoneBase from) {
+    public void migrateFrom(Phone from) {
         super.migrateFrom(from);
         migrate(mRingbackRegistrants, ((ImsPhoneBase)from).mRingbackRegistrants);
     }
@@ -480,10 +472,6 @@ abstract class ImsPhoneBase extends PhoneBase {
 
     @Override
     public boolean isDataConnectivityPossible() {
-        return false;
-    }
-
-    boolean updateCurrentCarrierInProvider() {
         return false;
     }
 

@@ -29,7 +29,7 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 
 /**
  * SIP doesn't need CommandsInterface. The class does nothing but made to work
- * with PhoneBase's constructor.
+ * with Phone's constructor.
  */
 class SipCommandInterface extends BaseCommands implements CommandsInterface {
     SipCommandInterface(Context context) {
@@ -472,7 +472,7 @@ class SipCommandInterface extends BaseCommands implements CommandsInterface {
     }
 
     @Override
-    public void setPhoneType(int phoneType) { //Set by CDMAPhone and GSMPhone constructor
+    public void setPhoneType(int phoneType) { //Set by GsmCdmaPhone
     }
 
     @Override

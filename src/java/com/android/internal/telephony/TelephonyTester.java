@@ -52,7 +52,7 @@ public class TelephonyTester {
             "com.android.internal.telephony.TestConferenceEventPackage";
     private static final String EXTRA_FILENAME = "filename";
 
-    private PhoneBase mPhone;
+    private Phone mPhone;
 
     // The static intent receiver one for all instances and we assume this
     // is running on the same thread as Dcc.
@@ -76,7 +76,7 @@ public class TelephonyTester {
         }
     };
 
-    TelephonyTester(PhoneBase phone) {
+    TelephonyTester(Phone phone) {
         mPhone = phone;
 
         if (Build.IS_DEBUGGABLE) {

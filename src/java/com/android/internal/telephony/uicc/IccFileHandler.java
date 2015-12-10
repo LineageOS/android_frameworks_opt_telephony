@@ -257,7 +257,7 @@ public abstract class IccFileHandler extends Handler implements IccConstants {
         Message response = obtainMessage(EVENT_GET_RECORD_SIZE_DONE,
                         new LoadLinearFixedContext(fileid, efPath, onLoaded));
 
-        mCi.iccIOForApp(COMMAND_GET_RESPONSE, fileid, efPath,
+        mCi.iccIOForApp(COMMAND_GET_RESPONSE, fileid, path,
                         0, 0, GET_RESPONSE_EF_SIZE_BYTES, null, null, mAid, response);
     }
 

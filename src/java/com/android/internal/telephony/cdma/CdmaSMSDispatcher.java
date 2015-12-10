@@ -30,8 +30,9 @@ import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.GsmAlphabet;
+import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.ImsSMSDispatcher;
-import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsConstants;
@@ -48,7 +49,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "CdmaSMSDispatcher";
     private static final boolean VDBG = false;
 
-    public CdmaSMSDispatcher(PhoneBase phone, SmsUsageMonitor usageMonitor,
+    public CdmaSMSDispatcher(Phone phone, SmsUsageMonitor usageMonitor,
             ImsSMSDispatcher imsSMSDispatcher) {
         super(phone, usageMonitor, imsSMSDispatcher);
         Rlog.d(TAG, "CdmaSMSDispatcher created");
@@ -263,7 +264,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
                     && !mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()))
                     && mPhone.getServiceState().getVoiceNetworkType()
                     == TelephonyManager.NETWORK_TYPE_1xRTT
-                    && ((CDMAPhone) mPhone).mCT.mState != PhoneConstants.State.IDLE;
+                    && ((GsmCdmaPhone) mPhone).mCT.mState != PhoneConstants.State.IDLE;
 
         // sms over cdma is used:
         //   if sms over IMS is not supported AND

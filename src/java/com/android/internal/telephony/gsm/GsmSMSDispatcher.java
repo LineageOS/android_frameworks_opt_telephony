@@ -31,7 +31,7 @@ import android.telephony.ServiceState;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.InboundSmsHandler;
-import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsHeader;
@@ -58,7 +58,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     /** Status report received */
     private static final int EVENT_NEW_SMS_STATUS_REPORT = 100;
 
-    public GsmSMSDispatcher(PhoneBase phone, SmsUsageMonitor usageMonitor,
+    public GsmSMSDispatcher(Phone phone, SmsUsageMonitor usageMonitor,
             ImsSMSDispatcher imsSMSDispatcher,
             GsmInboundSmsHandler gsmInboundSmsHandler) {
         super(phone, usageMonitor, imsSMSDispatcher);

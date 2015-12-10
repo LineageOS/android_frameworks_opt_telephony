@@ -23,7 +23,7 @@ import android.provider.Telephony.Sms.Intents;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.InboundSmsHandler;
-import com.android.internal.telephony.PhoneBase;
+import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsStorageMonitor;
@@ -44,7 +44,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
      * Create a new GSM inbound SMS handler.
      */
     private GsmInboundSmsHandler(Context context, SmsStorageMonitor storageMonitor,
-            PhoneBase phone) {
+            Phone phone) {
         super("GsmInboundSmsHandler", context, storageMonitor, phone,
                 GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(context, phone));
         phone.mCi.setOnNewGsmSms(getHandler(), EVENT_NEW_SMS, null);
@@ -67,7 +67,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
      * Wait for state machine to enter startup state. We can't send any messages until then.
      */
     public static GsmInboundSmsHandler makeInboundSmsHandler(Context context,
-            SmsStorageMonitor storageMonitor, PhoneBase phone) {
+            SmsStorageMonitor storageMonitor, Phone phone) {
         GsmInboundSmsHandler handler = new GsmInboundSmsHandler(context, storageMonitor, phone);
         handler.start();
         return handler;
@@ -140,7 +140,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
             // "The value 255 shall be taken to mean 255 or greater"
             voicemailCount = 0xff;
         }
-        // update voice mail count in GsmPhone
+        // update voice mail count in Phone
         mPhone.setVoiceMessageCount(voicemailCount);
         // store voice mail count in SIM & shared preferences
         IccRecords records = UiccController.getInstance().getIccRecords(
@@ -173,7 +173,7 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
      * @param phone
      */
     @Override
-    protected void onUpdatePhoneObject(PhoneBase phone) {
+    protected void onUpdatePhoneObject(Phone phone) {
         super.onUpdatePhoneObject(phone);
         log("onUpdatePhoneObject: dispose of old CellBroadcastHandler and make a new one");
         mCellBroadcastHandler.dispose();

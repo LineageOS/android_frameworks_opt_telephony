@@ -55,6 +55,7 @@ public abstract class Connection {
         public void onMultipartyStateChanged(boolean isMultiParty);
         public void onConferenceMergedFailed();
         public void onExtrasChanged(Bundle extras);
+        public void onExitedEcmMode();
     }
 
     /**
@@ -84,10 +85,18 @@ public abstract class Connection {
         public void onConferenceMergedFailed() {}
         @Override
         public void onExtrasChanged(Bundle extras) {}
+        @Override
+        public void onExitedEcmMode() {}
     }
 
     public static final int AUDIO_QUALITY_STANDARD = 1;
     public static final int AUDIO_QUALITY_HIGH_DEFINITION = 2;
+
+    /**
+     * The telecom internal call ID associated with this connection.  Only to be used for debugging
+     * purposes.
+     */
+    private String mTelecomCallId;
 
     //Caller Name Display
     protected String mCnapName;
@@ -132,6 +141,23 @@ public abstract class Connection {
     private Bundle mExtras;
 
     /* Instance Methods */
+
+    /**
+     * @return The telecom internal call ID associated with this connection.  Only to be used for
+     * debugging purposes.
+     */
+    public String getTelecomCallId() {
+        return mTelecomCallId;
+    }
+
+    /**
+     * Sets the telecom call ID associated with this connection.
+     *
+     * @param telecomCallId The telecom call ID.
+     */
+    public void setTelecomCallId(String telecomCallId) {
+        mTelecomCallId = telecomCallId;
+    }
 
     /**
      * Gets address (e.g. phone number) associated with connection.
@@ -711,6 +737,15 @@ public abstract class Connection {
     }
 
     /**
+     * Notifies that the underlying phone has exited ECM mode.
+     */
+    public void onExitedEcmMode() {
+        for (Listener l : mListeners) {
+            l.onExitedEcmMode();
+        }
+    }
+
+    /**
      * Notifies this Connection of a request to disconnect a participant of the conference managed
      * by the connection.
      *
@@ -727,6 +762,7 @@ public abstract class Connection {
     public String toString() {
         StringBuilder str = new StringBuilder(128);
 
+        str.append(" callId: " + getTelecomCallId());
         if (Rlog.isLoggable(LOG_TAG, Log.DEBUG)) {
             str.append("addr: " + getAddress())
                     .append(" pres.: " + getNumberPresentation())

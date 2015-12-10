@@ -81,16 +81,13 @@ import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.Connection;
+import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneBase;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
-import com.android.internal.telephony.ServiceStateTracker;
 import com.android.internal.telephony.TelephonyIntents;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
-import com.android.internal.telephony.cdma.CDMAPhone;
-import com.android.internal.telephony.gsm.GSMPhone;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.IccRecords;
 
@@ -127,7 +124,7 @@ public class ImsPhone extends ImsPhoneBase {
     private static final int DEFAULT_ECM_EXIT_TIMER_VALUE = 300000;
 
     // Instance Variables
-    PhoneBase mDefaultPhone;
+    Phone mDefaultPhone;
     ImsPhoneCallTracker mCT;
     ArrayList <ImsPhoneMmiCode> mPendingMMIs = new ArrayList<ImsPhoneMmiCode>();
 
@@ -180,7 +177,7 @@ public class ImsPhone extends ImsPhoneBase {
     ImsPhone(Context context, PhoneNotifier notifier, Phone defaultPhone) {
         super("ImsPhone", context, notifier);
 
-        mDefaultPhone = (PhoneBase) defaultPhone;
+        mDefaultPhone = (Phone) defaultPhone;
         mCT = new ImsPhoneCallTracker(this);
         mSS.setStateOff();
 
@@ -203,31 +200,27 @@ public class ImsPhone extends ImsPhoneBase {
         updateDataServiceState();
     }
 
-    public void updateParentPhone(PhoneBase parentPhone) {
-        // synchronization is managed at the PhoneBase scope (which calls this function)
-        if (mDefaultPhone != null && mDefaultPhone.getServiceStateTracker() != null) {
-            mDefaultPhone.getServiceStateTracker().
-                    unregisterForDataRegStateOrRatChanged(this);
-        }
-        mDefaultPhone = parentPhone;
-        mPhoneId = mDefaultPhone.getPhoneId();
-        if (mDefaultPhone.getServiceStateTracker() != null) {
-            mDefaultPhone.getServiceStateTracker()
-                    .registerForDataRegStateOrRatChanged(this,
-                    EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED, null);
-        }
-        updateDataServiceState();
+    public void updateParentPhone(Phone parentPhone) {
+        synchronized (Phone.lockForRadioTechnologyChange) {
+            mDefaultPhone = parentPhone;
+            mPhoneId = mDefaultPhone.getPhoneId();
+            if (mDefaultPhone.getServiceStateTracker() != null) {
+                mDefaultPhone.getServiceStateTracker()
+                        .registerForDataRegStateOrRatChanged(this,
+                                EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED, null);
+            }
+            updateDataServiceState();
 
-        // When the parent phone is updated, we need to notify listeners of the cached video
-        // capability.
-        Rlog.d(LOG_TAG, "updateParentPhone - Notify video capability changed " + mIsVideoCapable);
-        notifyForVideoCapabilityChanged(mIsVideoCapable);
+            // When the parent phone is updated, we need to notify listeners of the cached video
+            // capability.
+            Rlog.d(LOG_TAG, "updateParentPhone - Notify video capability changed " + mIsVideoCapable);
+            notifyForVideoCapabilityChanged(mIsVideoCapable);
+        }
     }
 
-    @Override
     public void dispose() {
         Rlog.d(LOG_TAG, "dispose");
-        // Nothing to dispose in PhoneBase
+        // Nothing to dispose in Phone
         //super.dispose();
         mPendingMMIs.clear();
         mCT.dispose();
@@ -237,15 +230,6 @@ public class ImsPhone extends ImsPhoneBase {
             mDefaultPhone.getServiceStateTracker().
                     unregisterForDataRegStateOrRatChanged(this);
         }
-    }
-
-    @Override
-    public void removeReferences() {
-        Rlog.d(LOG_TAG, "removeReferences");
-        super.removeReferences();
-
-        mCT = null;
-        mSS = null;
     }
 
     @Override
@@ -1388,21 +1372,13 @@ public class ImsPhone extends ImsPhoneBase {
         switch (action) {
             case CANCEL_ECM_TIMER:
                 removeCallbacks(mExitEcmRunnable);
-                if (mDefaultPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
-                    ((GSMPhone) mDefaultPhone).notifyEcbmTimerReset(Boolean.TRUE);
-                } else { // Should be CDMA - also go here by default
-                    ((CDMAPhone) mDefaultPhone).notifyEcbmTimerReset(Boolean.TRUE);
-                }
+                ((GsmCdmaPhone) mDefaultPhone).notifyEcbmTimerReset(Boolean.TRUE);
                 break;
             case RESTART_ECM_TIMER:
                 long delayInMillis = SystemProperties.getLong(
                         TelephonyProperties.PROPERTY_ECM_EXIT_TIMER, DEFAULT_ECM_EXIT_TIMER_VALUE);
                 postDelayed(mExitEcmRunnable, delayInMillis);
-                if (mDefaultPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
-                    ((GSMPhone) mDefaultPhone).notifyEcbmTimerReset(Boolean.FALSE);
-                } else { // Should be CDMA - also go here by default
-                    ((CDMAPhone) mDefaultPhone).notifyEcbmTimerReset(Boolean.FALSE);
-                }
+                ((GsmCdmaPhone) mDefaultPhone).notifyEcbmTimerReset(Boolean.FALSE);
                 break;
             default:
                 Rlog.e(LOG_TAG, "handleTimerInEmergencyCallbackMode, unsupported action " + action);

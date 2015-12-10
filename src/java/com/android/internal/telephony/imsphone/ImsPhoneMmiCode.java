@@ -616,7 +616,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     /**
      * @return true if the Service Code is PIN/PIN2/PUK/PUK2-related
      */
-    boolean isPinPukCommand() {
+    public boolean isPinPukCommand() {
         return mSc != null && (mSc.equals(SC_PIN) || mSc.equals(SC_PIN2)
                               || mSc.equals(SC_PUK) || mSc.equals(SC_PUK2));
     }
@@ -738,7 +738,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     }
 
     /** Process a MMI code or short code...anything that isn't a dialing number */
-    void
+    public void
     processCode () throws CallStateException {
         try {
             if (isShortCode()) {

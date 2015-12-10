@@ -23,9 +23,6 @@ import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneConstants;
-import com.android.internal.telephony.PhoneBase;
-import com.android.internal.telephony.PhoneProxy;
 import com.android.internal.telephony.dataconnection.DcSwitchAsyncChannel.RequestInfo;
 
 import android.os.AsyncResult;
@@ -150,7 +147,7 @@ public class DcSwitchStateMachine extends StateMachine {
     private class EmergencyState extends State {
         @Override
         public boolean processMessage(Message msg) {
-            final PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
+            final Phone pb = (Phone)mPhone;
             if (!pb.mDcTracker.isEmergency()) {
                 loge("EmergencyState: isEmergency() is false. deferMessage msg.what=0x" +
                         Integer.toHexString(msg.what));
@@ -204,7 +201,7 @@ public class DcSwitchStateMachine extends StateMachine {
         }
 
         private void doEnter() {
-            final PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
+            final Phone pb = (Phone)mPhone;
             pb.mCi.setDataAllowed(true, obtainMessage(EVENT_DATA_ALLOWED,
                     ++mCurrentAllowedSequence, 0));
             // if we're on a carrier that unattaches us if we're idle for too long
@@ -226,7 +223,7 @@ public class DcSwitchStateMachine extends StateMachine {
                     apnRequest.log("DcSwitchStateMachine.AttachingState: REQ_CONNECT");
                     if (DBG) log("AttachingState: REQ_CONNECT, apnRequest=" + apnRequest);
 
-                    final PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
+                    final Phone pb = (Phone)mPhone;
                     if (pb.mDcTracker.getAutoAttachOnCreation() == false) {
                         // do nothing - wait til we attach and then we'll execute all requests
                     } else {
@@ -279,7 +276,7 @@ public class DcSwitchStateMachine extends StateMachine {
                     if (DBG) {
                         log("AttachingState: REQ_DISCONNECT_ALL" );
                     }
-                    final PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
+                    final Phone pb = (Phone)mPhone;
                     if (pb.mDcTracker.getAutoAttachOnCreation()) {
                         // if AutoAttachOnCreation, then we may have executed requests
                         // without ever actually getting to Attached, so release the request
@@ -367,7 +364,7 @@ public class DcSwitchStateMachine extends StateMachine {
         @Override
         public void enter() {
             if (DBG) log("DetachingState: enter");
-            PhoneBase pb = (PhoneBase)((PhoneProxy)mPhone).getActivePhone();
+            Phone pb = (Phone)mPhone;
             pb.mCi.setDataAllowed(false, obtainMessage(EVENT_DATA_DISALLOWED,
                     ++mCurrentDisallowedSequence, 0));
         }

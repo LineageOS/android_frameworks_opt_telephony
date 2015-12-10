@@ -33,11 +33,11 @@ import android.telephony.SmsCbMessage;
  */
 public class CellBroadcastHandler extends WakeLockStateMachine {
 
-    private CellBroadcastHandler(Context context, PhoneBase phone) {
+    private CellBroadcastHandler(Context context, Phone phone) {
         this("CellBroadcastHandler", context, phone);
     }
 
-    protected CellBroadcastHandler(String debugTag, Context context, PhoneBase phone) {
+    protected CellBroadcastHandler(String debugTag, Context context, Phone phone) {
         super(debugTag, context, phone);
     }
 
@@ -46,7 +46,7 @@ public class CellBroadcastHandler extends WakeLockStateMachine {
      * @param context the context to use for dispatching Intents
      * @return the new handler
      */
-    public static CellBroadcastHandler makeCellBroadcastHandler(Context context, PhoneBase phone) {
+    public static CellBroadcastHandler makeCellBroadcastHandler(Context context, Phone phone) {
         CellBroadcastHandler handler = new CellBroadcastHandler(context, phone);
         handler.start();
         return handler;

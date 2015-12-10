@@ -16,338 +16,703 @@
 
 package com.android.internal.telephony;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
+import android.net.wifi.WifiManager;
+import android.os.AsyncResult;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
+import android.os.Registrant;
+import android.os.RegistrantList;
+import android.os.SystemProperties;
+import android.preference.PreferenceManager;
+import android.provider.Settings;
+import android.telecom.VideoProfile;
+import android.telephony.CellIdentityCdma;
 import android.telephony.CellInfo;
-import android.telephony.CellLocation;
+import android.telephony.CellInfoCdma;
+import android.telephony.DataConnectionRealTimeInfo;
 import android.telephony.PhoneStateListener;
+import android.telephony.RadioAccessFamily;
+import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
+import android.telephony.SubscriptionManager;
+import android.telephony.VoLteServiceState;
+import android.text.TextUtils;
 
+import com.android.ims.ImsManager;
+import com.android.internal.R;
+import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
-import com.android.internal.telephony.RadioCapability;
+import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import com.android.internal.telephony.test.SimulatedRadioControl;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
+import com.android.internal.telephony.uicc.IccFileHandler;
+import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.IsimRecords;
 import com.android.internal.telephony.uicc.UiccCard;
+import com.android.internal.telephony.uicc.UiccCardApplication;
+import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.telephony.uicc.UsimServiceTable;
 
-import com.android.internal.telephony.PhoneConstants.*; // ????
-
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Internal interface used to control the phone; SDK developers cannot
- * obtain this interface.
+ * (<em>Not for SDK use</em>)
+ * A base implementation for the com.android.internal.telephony.Phone interface.
  *
- * {@hide}
+ * Note that implementations of Phone.java are expected to be used
+ * from a single application thread. This should be the same thread that
+ * originally called PhoneFactory to obtain the interface.
+ *
+ *  {@hide}
  *
  */
-public interface Phone {
 
-    /** used to enable additional debug messages */
-    static final boolean DEBUG_PHONE = true;
+public abstract class Phone extends Handler implements PhoneInternalInterface {
+    private static final String LOG_TAG = "Phone";
 
-    public enum DataActivityState {
-        /**
-         * The state of a data activity.
-         * <ul>
-         * <li>NONE = No traffic</li>
-         * <li>DATAIN = Receiving IP ppp traffic</li>
-         * <li>DATAOUT = Sending IP ppp traffic</li>
-         * <li>DATAINANDOUT = Both receiving and sending IP ppp traffic</li>
-         * <li>DORMANT = The data connection is still active,
-                                     but physical link is down</li>
-         * </ul>
-         */
-        NONE, DATAIN, DATAOUT, DATAINANDOUT, DORMANT;
+    public final static Object lockForRadioTechnologyChange = new Object();
+
+    private BroadcastReceiver mImsIntentReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Rlog.d(LOG_TAG, "mImsIntentReceiver: action " + intent.getAction());
+            if (intent.hasExtra(ImsManager.EXTRA_PHONE_ID)) {
+                int extraPhoneId = intent.getIntExtra(ImsManager.EXTRA_PHONE_ID,
+                        SubscriptionManager.INVALID_PHONE_INDEX);
+                Rlog.d(LOG_TAG, "mImsIntentReceiver: extraPhoneId = " + extraPhoneId);
+                if (extraPhoneId == SubscriptionManager.INVALID_PHONE_INDEX ||
+                        extraPhoneId != getPhoneId()) {
+                    return;
+                }
+            }
+
+            synchronized (Phone.lockForRadioTechnologyChange) {
+                if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_UP)) {
+                    mImsServiceReady = true;
+                    updateImsPhone();
+                    ImsManager.updateImsServiceConfig(mContext, mPhoneId, false);
+                } else if (intent.getAction().equals(ImsManager.ACTION_IMS_SERVICE_DOWN)) {
+                    mImsServiceReady = false;
+                    updateImsPhone();
+                }
+            }
+        }
+    };
+
+    // Key used to read and write the saved network selection numeric value
+    public static final String NETWORK_SELECTION_KEY = "network_selection_key";
+    // Key used to read and write the saved network selection operator name
+    public static final String NETWORK_SELECTION_NAME_KEY = "network_selection_name_key";
+    // Key used to read and write the saved network selection operator short name
+    public static final String NETWORK_SELECTION_SHORT_KEY = "network_selection_short_key";
+
+
+    // Key used to read/write "disable data connection on boot" pref (used for testing)
+    public static final String DATA_DISABLED_ON_BOOT_KEY = "disabled_on_boot_key";
+
+    /* Event Constants */
+    protected static final int EVENT_RADIO_AVAILABLE             = 1;
+    /** Supplementary Service Notification received. */
+    protected static final int EVENT_SSN                         = 2;
+    protected static final int EVENT_SIM_RECORDS_LOADED          = 3;
+    protected static final int EVENT_MMI_DONE                    = 4;
+    protected static final int EVENT_RADIO_ON                    = 5;
+    protected static final int EVENT_GET_BASEBAND_VERSION_DONE   = 6;
+    protected static final int EVENT_USSD                        = 7;
+    protected static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE  = 8;
+    protected static final int EVENT_GET_IMEI_DONE               = 9;
+    protected static final int EVENT_GET_IMEISV_DONE             = 10;
+    protected static final int EVENT_GET_SIM_STATUS_DONE         = 11;
+    protected static final int EVENT_SET_CALL_FORWARD_DONE       = 12;
+    protected static final int EVENT_GET_CALL_FORWARD_DONE       = 13;
+    protected static final int EVENT_CALL_RING                   = 14;
+    protected static final int EVENT_CALL_RING_CONTINUE          = 15;
+
+    // Used to intercept the carrier selection calls so that
+    // we can save the values.
+    protected static final int EVENT_SET_NETWORK_MANUAL_COMPLETE    = 16;
+    protected static final int EVENT_SET_NETWORK_AUTOMATIC_COMPLETE = 17;
+    protected static final int EVENT_SET_CLIR_COMPLETE              = 18;
+    protected static final int EVENT_REGISTERED_TO_NETWORK          = 19;
+    protected static final int EVENT_SET_VM_NUMBER_DONE             = 20;
+    // Events for CDMA support
+    protected static final int EVENT_GET_DEVICE_IDENTITY_DONE       = 21;
+    protected static final int EVENT_RUIM_RECORDS_LOADED            = 22;
+    protected static final int EVENT_NV_READY                       = 23;
+    protected static final int EVENT_SET_ENHANCED_VP                = 24;
+    protected static final int EVENT_EMERGENCY_CALLBACK_MODE_ENTER  = 25;
+    protected static final int EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE = 26;
+    protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 27;
+    // other
+    protected static final int EVENT_SET_NETWORK_AUTOMATIC          = 28;
+    protected static final int EVENT_ICC_RECORD_EVENTS              = 29;
+    protected static final int EVENT_ICC_CHANGED                    = 30;
+    // Single Radio Voice Call Continuity
+    protected static final int EVENT_SRVCC_STATE_CHANGED            = 31;
+    protected static final int EVENT_INITIATE_SILENT_REDIAL         = 32;
+    protected static final int EVENT_RADIO_NOT_AVAILABLE            = 33;
+    protected static final int EVENT_UNSOL_OEM_HOOK_RAW             = 34;
+    protected static final int EVENT_GET_RADIO_CAPABILITY           = 35;
+    protected static final int EVENT_SS                             = 36;
+    protected static final int EVENT_CONFIG_LCE                     = 37;
+    private static final int EVENT_CHECK_FOR_NETWORK_AUTOMATIC      = 38;
+    protected static final int EVENT_VOICE_RADIO_TECH_CHANGED       = 39;
+    protected static final int EVENT_REQUEST_VOICE_RADIO_TECH_DONE  = 40;
+    protected static final int EVENT_RIL_CONNECTED                  = 41;
+    protected static final int EVENT_UPDATE_PHONE_OBJECT            = 42;
+    protected static final int EVENT_CARRIER_CONFIG_CHANGED         = 43;
+
+    protected static final int EVENT_LAST                           = EVENT_CARRIER_CONFIG_CHANGED;
+
+    // For shared prefs.
+    private static final String GSM_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_roaming_list_";
+    private static final String GSM_NON_ROAMING_LIST_OVERRIDE_PREFIX = "gsm_non_roaming_list_";
+    private static final String CDMA_ROAMING_LIST_OVERRIDE_PREFIX = "cdma_roaming_list_";
+    private static final String CDMA_NON_ROAMING_LIST_OVERRIDE_PREFIX = "cdma_non_roaming_list_";
+
+    // Key used to read/write current CLIR setting
+    public static final String CLIR_KEY = "clir_key";
+
+    // Key used for storing voice mail count
+    public static final String VM_COUNT = "vm_count_key";
+    // Key used to read/write the ID for storing the voice mail
+    public static final String VM_ID = "vm_id_key";
+
+    // Key used for storing call forwarding status
+    public static final String CF_STATUS = "cf_status_key";
+    // Key used to read/write the ID for storing the call forwarding status
+    public static final String CF_ID = "cf_id_key";
+
+    // Key used to read/write "disable DNS server check" pref (used for testing)
+    public static final String DNS_SERVER_CHECK_DISABLED_KEY = "dns_server_check_disabled_key";
+
+    /**
+     * Small container class used to hold information relevant to
+     * the carrier selection process. operatorNumeric can be ""
+     * if we are looking for automatic selection. operatorAlphaLong is the
+     * corresponding operator name.
+     */
+    protected static class NetworkSelectMessage {
+        public Message message;
+        public String operatorNumeric;
+        public String operatorAlphaLong;
+        public String operatorAlphaShort;
     }
 
-    enum SuppService {
-      UNKNOWN, SWITCH, SEPARATE, TRANSFER, CONFERENCE, REJECT, HANGUP, RESUME;
-    }
+    /* Instance Variables */
+    public CommandsInterface mCi;
+    protected int mVmCount = 0;
+    boolean mDnsCheckDisabled;
+    public DcTracker mDcTracker;
+    boolean mDoesRilSendMultipleCallRing;
+    int mCallRingContinueToken;
+    int mCallRingDelay;
+    boolean mIsVoiceCapable = true;
 
-    // "Features" accessible through the connectivity manager
-    static final String FEATURE_ENABLE_MMS = "enableMMS";
-    static final String FEATURE_ENABLE_SUPL = "enableSUPL";
-    static final String FEATURE_ENABLE_DUN = "enableDUN";
-    static final String FEATURE_ENABLE_HIPRI = "enableHIPRI";
-    static final String FEATURE_ENABLE_DUN_ALWAYS = "enableDUNAlways";
-    static final String FEATURE_ENABLE_FOTA = "enableFOTA";
-    static final String FEATURE_ENABLE_IMS = "enableIMS";
-    static final String FEATURE_ENABLE_CBS = "enableCBS";
-    static final String FEATURE_ENABLE_EMERGENCY = "enableEmergency";
+    // Variable to cache the video capability. When RAT changes, we lose this info and are unable
+    // to recover from the state. We cache it and notify listeners when they register.
+    protected boolean mIsVideoCapable = false;
+    protected UiccController mUiccController = null;
+    public final AtomicReference<IccRecords> mIccRecords = new AtomicReference<IccRecords>();
+    public SmsStorageMonitor mSmsStorageMonitor;
+    public SmsUsageMonitor mSmsUsageMonitor;
+    protected AtomicReference<UiccCardApplication> mUiccApplication =
+            new AtomicReference<UiccCardApplication>();
 
-    /**
-     * Optional reasons for disconnect and connect
-     */
-    static final String REASON_ROAMING_ON = "roamingOn";
-    static final String REASON_ROAMING_OFF = "roamingOff";
-    static final String REASON_DATA_DISABLED = "dataDisabled";
-    static final String REASON_DATA_ENABLED = "dataEnabled";
-    static final String REASON_DATA_ATTACHED = "dataAttached";
-    static final String REASON_DATA_DETACHED = "dataDetached";
-    static final String REASON_CDMA_DATA_ATTACHED = "cdmaDataAttached";
-    static final String REASON_CDMA_DATA_DETACHED = "cdmaDataDetached";
-    static final String REASON_APN_CHANGED = "apnChanged";
-    static final String REASON_APN_SWITCHED = "apnSwitched";
-    static final String REASON_APN_FAILED = "apnFailed";
-    static final String REASON_RESTORE_DEFAULT_APN = "restoreDefaultApn";
-    static final String REASON_RADIO_TURNED_OFF = "radioTurnedOff";
-    static final String REASON_PDP_RESET = "pdpReset";
-    static final String REASON_VOICE_CALL_ENDED = "2GVoiceCallEnded";
-    static final String REASON_VOICE_CALL_STARTED = "2GVoiceCallStarted";
-    static final String REASON_PS_RESTRICT_ENABLED = "psRestrictEnabled";
-    static final String REASON_PS_RESTRICT_DISABLED = "psRestrictDisabled";
-    static final String REASON_SIM_LOADED = "simLoaded";
-    static final String REASON_NW_TYPE_CHANGED = "nwTypeChanged";
-    static final String REASON_DATA_DEPENDENCY_MET = "dependencyMet";
-    static final String REASON_DATA_DEPENDENCY_UNMET = "dependencyUnmet";
-    static final String REASON_LOST_DATA_CONNECTION = "lostDataConnection";
-    static final String REASON_CONNECTED = "connected";
-    static final String REASON_SINGLE_PDN_ARBITRATION = "SinglePdnArbitration";
-    static final String REASON_DATA_SPECIFIC_DISABLED = "specificDisabled";
-    static final String REASON_SIM_NOT_READY = "simNotReady";
-    static final String REASON_IWLAN_AVAILABLE = "iwlanAvailable";
-    static final String REASON_CARRIER_CHANGE = "carrierChange";
+    private TelephonyTester mTelephonyTester;
+    private String mName;
+    private final String mActionDetached;
+    private final String mActionAttached;
 
-    // Used for band mode selection methods
-    static final int BM_UNSPECIFIED = 0; // selected by baseband automatically
-    static final int BM_EURO_BAND   = 1; // GSM-900 / DCS-1800 / WCDMA-IMT-2000
-    static final int BM_US_BAND     = 2; // GSM-850 / PCS-1900 / WCDMA-850 / WCDMA-PCS-1900
-    static final int BM_JPN_BAND    = 3; // WCDMA-800 / WCDMA-IMT-2000
-    static final int BM_AUS_BAND    = 4; // GSM-900 / DCS-1800 / WCDMA-850 / WCDMA-IMT-2000
-    static final int BM_AUS2_BAND   = 5; // GSM-900 / DCS-1800 / WCDMA-850
-    static final int BM_BOUNDARY    = 6; // upper band boundary
+    protected int mPhoneId;
 
-    // Used for preferred network type
-    // Note NT_* substitute RILConstants.NETWORK_MODE_* above the Phone
-    int NT_MODE_WCDMA_PREF   = RILConstants.NETWORK_MODE_WCDMA_PREF;
-    int NT_MODE_GSM_ONLY     = RILConstants.NETWORK_MODE_GSM_ONLY;
-    int NT_MODE_WCDMA_ONLY   = RILConstants.NETWORK_MODE_WCDMA_ONLY;
-    int NT_MODE_GSM_UMTS     = RILConstants.NETWORK_MODE_GSM_UMTS;
+    private boolean mImsServiceReady = false;
+    protected ImsPhone mImsPhone = null;
 
-    int NT_MODE_CDMA         = RILConstants.NETWORK_MODE_CDMA;
+    private final AtomicReference<RadioCapability> mRadioCapability =
+            new AtomicReference<RadioCapability>();
 
-    int NT_MODE_CDMA_NO_EVDO = RILConstants.NETWORK_MODE_CDMA_NO_EVDO;
-    int NT_MODE_EVDO_NO_CDMA = RILConstants.NETWORK_MODE_EVDO_NO_CDMA;
-    int NT_MODE_GLOBAL       = RILConstants.NETWORK_MODE_GLOBAL;
-
-    int NT_MODE_LTE_CDMA_AND_EVDO        = RILConstants.NETWORK_MODE_LTE_CDMA_EVDO;
-    int NT_MODE_LTE_GSM_WCDMA            = RILConstants.NETWORK_MODE_LTE_GSM_WCDMA;
-    int NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA  = RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA;
-    int NT_MODE_LTE_ONLY                 = RILConstants.NETWORK_MODE_LTE_ONLY;
-    int NT_MODE_LTE_WCDMA                = RILConstants.NETWORK_MODE_LTE_WCDMA;
-
-    int NT_MODE_TDSCDMA_ONLY            = RILConstants.NETWORK_MODE_TDSCDMA_ONLY;
-    int NT_MODE_TDSCDMA_WCDMA           = RILConstants.NETWORK_MODE_TDSCDMA_WCDMA;
-    int NT_MODE_LTE_TDSCDMA             = RILConstants.NETWORK_MODE_LTE_TDSCDMA;
-    int NT_MODE_TDSCDMA_GSM             = RILConstants.NETWORK_MODE_TDSCDMA_GSM;
-    int NT_MODE_LTE_TDSCDMA_GSM         = RILConstants.NETWORK_MODE_LTE_TDSCDMA_GSM;
-    int NT_MODE_TDSCDMA_GSM_WCDMA       = RILConstants.NETWORK_MODE_TDSCDMA_GSM_WCDMA;
-    int NT_MODE_LTE_TDSCDMA_WCDMA       = RILConstants.NETWORK_MODE_LTE_TDSCDMA_WCDMA;
-    int NT_MODE_LTE_TDSCDMA_GSM_WCDMA   = RILConstants.NETWORK_MODE_LTE_TDSCDMA_GSM_WCDMA;
-    int NT_MODE_TDSCDMA_CDMA_EVDO_GSM_WCDMA = RILConstants.NETWORK_MODE_TDSCDMA_CDMA_EVDO_GSM_WCDMA;
-    int NT_MODE_LTE_TDSCDMA_CDMA_EVDO_GSM_WCDMA = RILConstants.NETWORK_MODE_LTE_TDSCDMA_CDMA_EVDO_GSM_WCDMA;
-
-    int PREFERRED_NT_MODE                = RILConstants.PREFERRED_NETWORK_MODE;
-
-    // Used for CDMA roaming mode
-    static final int CDMA_RM_HOME        = 0;  // Home Networks only, as defined in PRL
-    static final int CDMA_RM_AFFILIATED  = 1;  // Roaming an Affiliated networks, as defined in PRL
-    static final int CDMA_RM_ANY         = 2;  // Roaming on Any Network, as defined in PRL
-
-    // Used for CDMA subscription mode
-    static final int CDMA_SUBSCRIPTION_UNKNOWN  =-1; // Unknown
-    static final int CDMA_SUBSCRIPTION_RUIM_SIM = 0; // RUIM/SIM (default)
-    static final int CDMA_SUBSCRIPTION_NV       = 1; // NV -> non-volatile memory
-
-    static final int PREFERRED_CDMA_SUBSCRIPTION = CDMA_SUBSCRIPTION_NV;
-
-    static final int TTY_MODE_OFF = 0;
-    static final int TTY_MODE_FULL = 1;
-    static final int TTY_MODE_HCO = 2;
-    static final int TTY_MODE_VCO = 3;
-
-     /**
-     * CDMA OTA PROVISION STATUS, the same as RIL_CDMA_OTA_Status in ril.h
-     */
-
-    public static final int CDMA_OTA_PROVISION_STATUS_SPL_UNLOCKED = 0;
-    public static final int CDMA_OTA_PROVISION_STATUS_SPC_RETRIES_EXCEEDED = 1;
-    public static final int CDMA_OTA_PROVISION_STATUS_A_KEY_EXCHANGED = 2;
-    public static final int CDMA_OTA_PROVISION_STATUS_SSD_UPDATED = 3;
-    public static final int CDMA_OTA_PROVISION_STATUS_NAM_DOWNLOADED = 4;
-    public static final int CDMA_OTA_PROVISION_STATUS_MDN_DOWNLOADED = 5;
-    public static final int CDMA_OTA_PROVISION_STATUS_IMSI_DOWNLOADED = 6;
-    public static final int CDMA_OTA_PROVISION_STATUS_PRL_DOWNLOADED = 7;
-    public static final int CDMA_OTA_PROVISION_STATUS_COMMITTED = 8;
-    public static final int CDMA_OTA_PROVISION_STATUS_OTAPA_STARTED = 9;
-    public static final int CDMA_OTA_PROVISION_STATUS_OTAPA_STOPPED = 10;
-    public static final int CDMA_OTA_PROVISION_STATUS_OTAPA_ABORTED = 11;
-
-
-    /**
-     * Get the current ServiceState. Use
-     * <code>registerForServiceStateChanged</code> to be informed of
-     * updates.
-     */
-    ServiceState getServiceState();
-
-    /**
-     * Get the current CellLocation.
-     */
-    CellLocation getCellLocation();
-
-    /**
-     * @return all available cell information or null if none.
-     */
-    public List<CellInfo> getAllCellInfo();
-
-    /**
-     * Sets the minimum time in milli-seconds between {@link PhoneStateListener#onCellInfoChanged
-     * PhoneStateListener.onCellInfoChanged} will be invoked.
-     *
-     * The default, 0, means invoke onCellInfoChanged when any of the reported
-     * information changes. Setting the value to INT_MAX(0x7fffffff) means never issue
-     * A onCellInfoChanged.
-     *
-     * @param rateInMillis the rate
-     */
-    public void setCellInfoListRate(int rateInMillis);
-
-    /**
-     * Get the current for the default apn DataState. No change notification
-     * exists at this interface -- use
-     * {@link android.telephony.PhoneStateListener} instead.
-     */
-    DataState getDataConnectionState();
-
-    /**
-     * Get the current DataState. No change notification exists at this
-     * interface -- use
-     * {@link android.telephony.PhoneStateListener} instead.
-     * @param apnType specify for which apn to get connection state info.
-     */
-    DataState getDataConnectionState(String apnType);
-
-    /**
-     * Get the current DataActivityState. No change notification exists at this
-     * interface -- use
-     * {@link android.telephony.TelephonyManager} instead.
-     */
-    DataActivityState getDataActivityState();
-
-    /**
-     * Gets the context for the phone, as set at initialization time.
-     */
-    Context getContext();
-
-    /**
-     * Disables the DNS check (i.e., allows "0.0.0.0").
-     * Useful for lab testing environment.
-     * @param b true disables the check, false enables.
-     */
-    void disableDnsCheck(boolean b);
-
-    /**
-     * Returns true if the DNS check is currently disabled.
-     */
-    boolean isDnsCheckDisabled();
-
-    /**
-     * Get current coarse-grained voice call state.
-     * Use {@link #registerForPreciseCallStateChanged(Handler, int, Object)
-     * registerForPreciseCallStateChanged()} for change notification. <p>
-     * If the phone has an active call and call waiting occurs,
-     * then the phone state is RINGING not OFFHOOK
-     * <strong>Note:</strong>
-     * This registration point provides notification of finer-grained
-     * changes.<p>
-     *
-     */
-    State getState();
+    protected static final int DEFAULT_REPORT_INTERVAL_MS = 200;
+    protected static final boolean LCE_PULL_MODE = true;
+    protected int mReportInterval = 0;  // ms
+    protected int mLceStatus = RILConstants.LCE_NOT_AVAILABLE;
 
     /**
      * Returns a string identifier for this phone interface for parties
      *  outside the phone app process.
      *  @return The string name.
      */
-    String getPhoneName();
+    public String getPhoneName() {
+        return mName;
+    }
+
+    protected void setPhoneName(String name) {
+        mName = name;
+    }
 
     /**
-     * Return a numerical identifier for the phone radio interface.
-     * @return PHONE_TYPE_XXX as defined above.
+     * Retrieves Nai for phones. Returns null if Nai is not set.
      */
-    int getPhoneType();
+    public String getNai(){
+         return null;
+    }
 
     /**
-     * Returns an array of string identifiers for the APN types serviced by the
-     * currently active.
-     *  @return The string array will always return at least one entry, Phone.APN_TYPE_DEFAULT.
-     * TODO: Revisit if we always should return at least one entry.
-     */
-    String[] getActiveApnTypes();
-
-    /**
-     * Check if TETHER_DUN_APN setting or config_tether_apndata includes APN that matches
-     * current operator.
-     * @return true if there is a matching DUN APN.
-     */
-    boolean hasMatchedTetherApnSetting();
-
-    /**
-     * Returns string for the active APN host.
-     *  @return type as a string or null if none.
-     */
-    String getActiveApnHost(String apnType);
-
-    /**
-     * Return the LinkProperties for the named apn or null if not available
-     */
-    LinkProperties getLinkProperties(String apnType);
-
-    /**
-     * Return the NetworkCapabilities
-     */
-    NetworkCapabilities getNetworkCapabilities(String apnType);
-
-    /**
-     * Get current signal strength. No change notification available on this
-     * interface. Use <code>PhoneStateNotifier</code> or an equivalent.
-     * An ASU is 0-31 or -1 if unknown (for GSM, dBm = -113 - 2 * asu).
-     * The following special values are defined:</p>
-     * <ul><li>0 means "-113 dBm or less".</li>
-     * <li>31 means "-51 dBm or greater".</li></ul>
+     * Return the ActionDetached string. When this action is received by components
+     * they are to simulate detaching from the network.
      *
-     * @return Current signal strength as SignalStrength
+     * @return com.android.internal.telephony.{mName}.action_detached
+     *          {mName} is GSM, CDMA ...
      */
-    SignalStrength getSignalStrength();
+    public String getActionDetached() {
+        return mActionDetached;
+    }
 
     /**
-     * Notifies when a previously untracked non-ringing/waiting connection has appeared.
-     * This is likely due to some other entity (eg, SIM card application) initiating a call.
+     * Return the ActionAttached string. When this action is received by components
+     * they are to simulate attaching to the network.
+     *
+     * @return com.android.internal.telephony.{mName}.action_detached
+     *          {mName} is GSM, CDMA ...
      */
-    void registerForUnknownConnection(Handler h, int what, Object obj);
+    public String getActionAttached() {
+        return mActionAttached;
+    }
 
     /**
-     * Unregisters for unknown connection notifications.
+     * Set a system property, unless we're in unit test mode
      */
-    void unregisterForUnknownConnection(Handler h);
+    // CAF_MSIM TODO this need to be replated with TelephonyManager API ?
+    public void setSystemProperty(String property, String value) {
+        if(getUnitTestMode()) {
+            return;
+        }
+        SystemProperties.set(property, value);
+    }
 
     /**
-     * Notifies when a Handover happens due to SRVCC or Silent Redial
+     * Set a system property, unless we're in unit test mode
      */
-    void registerForHandoverStateChanged(Handler h, int what, Object obj);
+    // CAF_MSIM TODO this need to be replated with TelephonyManager API ?
+    public String getSystemProperty(String property, String defValue) {
+        if(getUnitTestMode()) {
+            return null;
+        }
+        return SystemProperties.get(property, defValue);
+    }
+
+
+    protected final RegistrantList mPreciseCallStateRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mHandoverRegistrants
+             = new RegistrantList();
+
+    protected final RegistrantList mNewRingingConnectionRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mIncomingRingRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mDisconnectRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mServiceStateRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mMmiCompleteRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mMmiRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mUnknownConnectionRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mSuppServiceFailedRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mRadioOffOrNotAvailableRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mSimRecordsLoadedRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mVideoCapabilityChangedRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mEmergencyCallToggledRegistrants
+            = new RegistrantList();
+
+
+    protected Looper mLooper; /* to insure registrants are in correct thread*/
+
+    protected final Context mContext;
 
     /**
-     * Unregisters for handover state notifications
+     * PhoneNotifier is an abstraction for all system-wide
+     * state change notification. DefaultPhoneNotifier is
+     * used here unless running we're inside a unit test.
      */
-    void unregisterForHandoverStateChanged(Handler h);
+    protected PhoneNotifier mNotifier;
+
+    protected SimulatedRadioControl mSimulatedRadioControl;
+
+    boolean mUnitTestMode;
+
+    /**
+     * Constructs a Phone in normal (non-unit test) mode.
+     *
+     * @param notifier An instance of DefaultPhoneNotifier,
+     * @param context Context object from hosting application
+     * unless unit testing.
+     * @param ci the CommandsInterface
+     */
+    protected Phone(String name, PhoneNotifier notifier, Context context, CommandsInterface ci) {
+        this(name, notifier, context, ci, false);
+    }
+
+    /**
+     * Constructs a Phone in normal (non-unit test) mode.
+     *
+     * @param notifier An instance of DefaultPhoneNotifier,
+     * @param context Context object from hosting application
+     * unless unit testing.
+     * @param ci is CommandsInterface
+     * @param unitTestMode when true, prevents notifications
+     * of state change events
+     */
+    protected Phone(String name, PhoneNotifier notifier, Context context, CommandsInterface ci,
+                    boolean unitTestMode) {
+        this(name, notifier, context, ci, unitTestMode, SubscriptionManager.DEFAULT_PHONE_INDEX);
+    }
+
+    /**
+     * Constructs a Phone in normal (non-unit test) mode.
+     *
+     * @param notifier An instance of DefaultPhoneNotifier,
+     * @param context Context object from hosting application
+     * unless unit testing.
+     * @param ci is CommandsInterface
+     * @param unitTestMode when true, prevents notifications
+     * of state change events
+     * @param phoneId the phone-id of this phone.
+     */
+    protected Phone(String name, PhoneNotifier notifier, Context context, CommandsInterface ci,
+                    boolean unitTestMode, int phoneId) {
+        mPhoneId = phoneId;
+        mName = name;
+        mNotifier = notifier;
+        mContext = context;
+        mLooper = Looper.myLooper();
+        mCi = ci;
+        mActionDetached = this.getClass().getPackage().getName() + ".action_detached";
+        mActionAttached = this.getClass().getPackage().getName() + ".action_attached";
+
+        if (Build.IS_DEBUGGABLE) {
+            mTelephonyTester = new TelephonyTester(this);
+        }
+
+        setUnitTestMode(unitTestMode);
+
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
+        mDnsCheckDisabled = sp.getBoolean(DNS_SERVER_CHECK_DISABLED_KEY, false);
+        mCi.setOnCallRing(this, EVENT_CALL_RING, null);
+
+        /* "Voice capable" means that this device supports circuit-switched
+        * (i.e. voice) phone calls over the telephony network, and is allowed
+        * to display the in-call UI while a cellular voice call is active.
+        * This will be false on "data only" devices which can't make voice
+        * calls and don't support any in-call UI.
+        */
+        mIsVoiceCapable = mContext.getResources().getBoolean(
+                com.android.internal.R.bool.config_voice_capable);
+
+        /**
+         *  Some RIL's don't always send RIL_UNSOL_CALL_RING so it needs
+         *  to be generated locally. Ideally all ring tones should be loops
+         * and this wouldn't be necessary. But to minimize changes to upper
+         * layers it is requested that it be generated by lower layers.
+         *
+         * By default old phones won't have the property set but do generate
+         * the RIL_UNSOL_CALL_RING so the default if there is no property is
+         * true.
+         */
+        mDoesRilSendMultipleCallRing = SystemProperties.getBoolean(
+                TelephonyProperties.PROPERTY_RIL_SENDS_MULTIPLE_CALL_RING, true);
+        Rlog.d(LOG_TAG, "mDoesRilSendMultipleCallRing=" + mDoesRilSendMultipleCallRing);
+
+        mCallRingDelay = SystemProperties.getInt(
+                TelephonyProperties.PROPERTY_CALL_RING_DELAY, 3000);
+        Rlog.d(LOG_TAG, "mCallRingDelay=" + mCallRingDelay);
+
+        if (getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
+            return;
+        }
+
+        // The locale from the "ro.carrier" system property or R.array.carrier_properties.
+        // This will be overwritten by the Locale from the SIM language settings (EF-PL, EF-LI)
+        // if applicable.
+        final Locale carrierLocale = getLocaleFromCarrierProperties(mContext);
+        if (carrierLocale != null && !TextUtils.isEmpty(carrierLocale.getCountry())) {
+            final String country = carrierLocale.getCountry();
+            try {
+                Settings.Global.getInt(mContext.getContentResolver(),
+                        Settings.Global.WIFI_COUNTRY_CODE);
+            } catch (Settings.SettingNotFoundException e) {
+                // note this is not persisting
+                WifiManager wM = (WifiManager)
+                        mContext.getSystemService(Context.WIFI_SERVICE);
+                wM.setCountryCode(country, false);
+            }
+        }
+
+        // Initialize device storage and outgoing SMS usage monitors for SMSDispatchers.
+        mSmsStorageMonitor = new SmsStorageMonitor(this);
+        mSmsUsageMonitor = new SmsUsageMonitor(context);
+        mUiccController = UiccController.getInstance();
+        mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
+        if (getPhoneType() != PhoneConstants.PHONE_TYPE_SIP) {
+            mCi.registerForSrvccStateChanged(this, EVENT_SRVCC_STATE_CHANGED, null);
+        }
+        mCi.setOnUnsolOemHookRaw(this, EVENT_UNSOL_OEM_HOOK_RAW, null);
+        mCi.startLceService(DEFAULT_REPORT_INTERVAL_MS, LCE_PULL_MODE,
+                obtainMessage(EVENT_CONFIG_LCE));
+    }
+
+    /**
+     * Start listening for IMS service UP/DOWN events.
+     */
+    public void startMonitoringImsService() {
+        if (getPhoneType() == PhoneConstants.PHONE_TYPE_SIP) {
+            return;
+        }
+
+        synchronized(Phone.lockForRadioTechnologyChange) {
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(ImsManager.ACTION_IMS_SERVICE_UP);
+            filter.addAction(ImsManager.ACTION_IMS_SERVICE_DOWN);
+            mContext.registerReceiver(mImsIntentReceiver, filter);
+
+            // Monitor IMS service - but first poll to see if already up (could miss
+            // intent)
+            ImsManager imsManager = ImsManager.getInstance(mContext, getPhoneId());
+            if (imsManager != null && imsManager.isServiceAvailable()) {
+                mImsServiceReady = true;
+                updateImsPhone();
+                ImsManager.updateImsServiceConfig(mContext, mPhoneId, false);
+            }
+        }
+    }
+
+    /**
+     * When overridden the derived class needs to call
+     * super.handleMessage(msg) so this method has a
+     * a chance to process the message.
+     *
+     * @param msg
+     */
+    @Override
+    public void handleMessage(Message msg) {
+        AsyncResult ar;
+
+        // messages to be handled whether or not the phone is being destroyed
+        // should only include messages which are being re-directed and do not use
+        // resources of the phone being destroyed
+        switch (msg.what) {
+            // handle the select network completion callbacks.
+            case EVENT_SET_NETWORK_MANUAL_COMPLETE:
+            case EVENT_SET_NETWORK_AUTOMATIC_COMPLETE:
+                handleSetSelectNetwork((AsyncResult) msg.obj);
+                return;
+        }
+
+        switch(msg.what) {
+            case EVENT_CALL_RING:
+                Rlog.d(LOG_TAG, "Event EVENT_CALL_RING Received state=" + getState());
+                ar = (AsyncResult)msg.obj;
+                if (ar.exception == null) {
+                    PhoneConstants.State state = getState();
+                    if ((!mDoesRilSendMultipleCallRing)
+                            && ((state == PhoneConstants.State.RINGING) ||
+                                    (state == PhoneConstants.State.IDLE))) {
+                        mCallRingContinueToken += 1;
+                        sendIncomingCallRingNotification(mCallRingContinueToken);
+                    } else {
+                        notifyIncomingRing();
+                    }
+                }
+                break;
+
+            case EVENT_CALL_RING_CONTINUE:
+                Rlog.d(LOG_TAG, "Event EVENT_CALL_RING_CONTINUE Received state=" + getState());
+                if (getState() == PhoneConstants.State.RINGING) {
+                    sendIncomingCallRingNotification(msg.arg1);
+                }
+                break;
+
+            case EVENT_ICC_CHANGED:
+                onUpdateIccAvailability();
+                break;
+
+            case EVENT_INITIATE_SILENT_REDIAL:
+                Rlog.d(LOG_TAG, "Event EVENT_INITIATE_SILENT_REDIAL Received");
+                ar = (AsyncResult) msg.obj;
+                if ((ar.exception == null) && (ar.result != null)) {
+                    String dialString = (String) ar.result;
+                    if (TextUtils.isEmpty(dialString)) return;
+                    try {
+                        dialInternal(dialString, null, VideoProfile.STATE_AUDIO_ONLY, null);
+                    } catch (CallStateException e) {
+                        Rlog.e(LOG_TAG, "silent redial failed: " + e);
+                    }
+                }
+                break;
+
+            case EVENT_SRVCC_STATE_CHANGED:
+                ar = (AsyncResult)msg.obj;
+                if (ar.exception == null) {
+                    handleSrvccStateChanged((int[]) ar.result);
+                } else {
+                    Rlog.e(LOG_TAG, "Srvcc exception: " + ar.exception);
+                }
+                break;
+
+            case EVENT_UNSOL_OEM_HOOK_RAW:
+                ar = (AsyncResult)msg.obj;
+                if (ar.exception == null) {
+                    byte[] data = (byte[])ar.result;
+                    Rlog.d(LOG_TAG, "EVENT_UNSOL_OEM_HOOK_RAW data="
+                            + IccUtils.bytesToHexString(data));
+                    mNotifier.notifyOemHookRawEventForSubscriber(getSubId(), data);
+                } else {
+                    Rlog.e(LOG_TAG, "OEM hook raw exception: " + ar.exception);
+                }
+                break;
+
+            case EVENT_GET_RADIO_CAPABILITY:
+                ar = (AsyncResult) msg.obj;
+                RadioCapability rc = (RadioCapability) ar.result;
+                if (ar.exception != null) {
+                    Rlog.d(LOG_TAG, "get phone radio capability fail,"
+                            + "no need to change mRadioCapability");
+                } else {
+                    radioCapabilityUpdated(rc);
+                }
+                Rlog.d(LOG_TAG, "EVENT_GET_RADIO_CAPABILITY :"
+                        + "phone rc : " + rc);
+                break;
+
+            case EVENT_CONFIG_LCE:
+                ar = (AsyncResult) msg.obj;
+                if (ar.exception != null) {
+                    Rlog.d(LOG_TAG, "config LCE service failed: " + ar.exception);
+                } else {
+                    final ArrayList<Integer> statusInfo = (ArrayList<Integer>)ar.result;
+                    mLceStatus = statusInfo.get(0);
+                    mReportInterval = statusInfo.get(1);
+                }
+                break;
+
+            case EVENT_CHECK_FOR_NETWORK_AUTOMATIC: {
+                onCheckForNetworkSelectionModeAutomatic(msg);
+                break;
+            }
+            default:
+                throw new RuntimeException("unexpected event not handled");
+        }
+    }
+
+    private void handleSrvccStateChanged(int[] ret) {
+        Rlog.d(LOG_TAG, "handleSrvccStateChanged");
+
+        ArrayList<Connection> conn = null;
+        ImsPhone imsPhone = mImsPhone;
+        Call.SrvccState srvccState = Call.SrvccState.NONE;
+        if (ret != null && ret.length != 0) {
+            int state = ret[0];
+            switch(state) {
+                case VoLteServiceState.HANDOVER_STARTED:
+                    srvccState = Call.SrvccState.STARTED;
+                    if (imsPhone != null) {
+                        conn = imsPhone.getHandoverConnection();
+                        migrateFrom(imsPhone);
+                    } else {
+                        Rlog.d(LOG_TAG, "HANDOVER_STARTED: mImsPhone null");
+                    }
+                    break;
+                case VoLteServiceState.HANDOVER_COMPLETED:
+                    srvccState = Call.SrvccState.COMPLETED;
+                    if (imsPhone != null) {
+                        imsPhone.notifySrvccState(srvccState);
+                    } else {
+                        Rlog.d(LOG_TAG, "HANDOVER_COMPLETED: mImsPhone null");
+                    }
+                    break;
+                case VoLteServiceState.HANDOVER_FAILED:
+                case VoLteServiceState.HANDOVER_CANCELED:
+                    srvccState = Call.SrvccState.FAILED;
+                    break;
+
+                default:
+                    //ignore invalid state
+                    return;
+            }
+
+            getCallTracker().notifySrvccState(srvccState, conn);
+
+            VoLteServiceState lteState = new VoLteServiceState(state);
+            notifyVoLteServiceStateChanged(lteState);
+        }
+    }
+
+    /**
+     * Gets the context for the phone, as set at initialization time.
+     */
+    public Context getContext() {
+        return mContext;
+    }
+
+    // Will be called when icc changed
+    protected abstract void onUpdateIccAvailability();
+
+    /**
+     * Disables the DNS check (i.e., allows "0.0.0.0").
+     * Useful for lab testing environment.
+     * @param b true disables the check, false enables.
+     */
+    public void disableDnsCheck(boolean b) {
+        mDnsCheckDisabled = b;
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putBoolean(DNS_SERVER_CHECK_DISABLED_KEY, b);
+        editor.apply();
+    }
+
+    /**
+     * Returns true if the DNS check is currently disabled.
+     */
+    public boolean isDnsCheckDisabled() {
+        return mDnsCheckDisabled;
+    }
 
     /**
      * Register for getting notifications for change in the Call State {@link Call.State}
@@ -358,13 +723,112 @@ public interface Phone {
      * AsyncResult.userData will be set to the obj argument here.
      * The <em>h</em> parameter is held only by a weak reference.
      */
-    void registerForPreciseCallStateChanged(Handler h, int what, Object obj);
+    public void registerForPreciseCallStateChanged(Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+
+        mPreciseCallStateRegistrants.addUnique(h, what, obj);
+    }
 
     /**
      * Unregisters for voice call state change notifications.
      * Extraneous calls are tolerated silently.
      */
-    void unregisterForPreciseCallStateChanged(Handler h);
+    public void unregisterForPreciseCallStateChanged(Handler h) {
+        mPreciseCallStateRegistrants.remove(h);
+    }
+
+    /**
+     * Subclasses of Phone probably want to replace this with a
+     * version scoped to their packages
+     */
+    protected void notifyPreciseCallStateChangedP() {
+        AsyncResult ar = new AsyncResult(null, this, null);
+        mPreciseCallStateRegistrants.notifyRegistrants(ar);
+
+        mNotifier.notifyPreciseCallState(this);
+    }
+
+    /**
+     * Notifies when a Handover happens due to SRVCC or Silent Redial
+     */
+    public void registerForHandoverStateChanged(Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+        mHandoverRegistrants.addUnique(h, what, obj);
+    }
+
+    /**
+     * Unregisters for handover state notifications
+     */
+    public void unregisterForHandoverStateChanged(Handler h) {
+        mHandoverRegistrants.remove(h);
+    }
+
+    /**
+     * Subclasses of Phone probably want to replace this with a
+     * version scoped to their packages
+     */
+    public void notifyHandoverStateChanged(Connection cn) {
+       AsyncResult ar = new AsyncResult(null, cn, null);
+       mHandoverRegistrants.notifyRegistrants(ar);
+    }
+
+    protected void setIsInEmergencyCall() {
+    }
+
+    public void migrateFrom(Phone from) {
+        migrate(mHandoverRegistrants, from.mHandoverRegistrants);
+        migrate(mPreciseCallStateRegistrants, from.mPreciseCallStateRegistrants);
+        migrate(mNewRingingConnectionRegistrants, from.mNewRingingConnectionRegistrants);
+        migrate(mIncomingRingRegistrants, from.mIncomingRingRegistrants);
+        migrate(mDisconnectRegistrants, from.mDisconnectRegistrants);
+        migrate(mServiceStateRegistrants, from.mServiceStateRegistrants);
+        migrate(mMmiCompleteRegistrants, from.mMmiCompleteRegistrants);
+        migrate(mMmiRegistrants, from.mMmiRegistrants);
+        migrate(mUnknownConnectionRegistrants, from.mUnknownConnectionRegistrants);
+        migrate(mSuppServiceFailedRegistrants, from.mSuppServiceFailedRegistrants);
+        if (from.isInEmergencyCall()) {
+            setIsInEmergencyCall();
+        }
+    }
+
+    public void migrate(RegistrantList to, RegistrantList from) {
+        from.removeCleared();
+        for (int i = 0, n = from.size(); i < n; i++) {
+            Registrant r = (Registrant) from.get(i);
+            Message msg = r.messageForRegistrant();
+            // Since CallManager has already registered with both CS and IMS phones,
+            // the migrate should happen only for those registrants which are not
+            // registered with CallManager.Hence the below check is needed to add
+            // only those registrants to the registrant list which are not
+            // coming from the CallManager.
+            if (msg != null) {
+                if (msg.obj == CallManager.getInstance().getRegistrantIdentifier()) {
+                    continue;
+                } else {
+                    to.add((Registrant) from.get(i));
+                }
+            } else {
+                Rlog.d(LOG_TAG, "msg is null");
+            }
+        }
+    }
+
+    /**
+     * Notifies when a previously untracked non-ringing/waiting connection has appeared.
+     * This is likely due to some other entity (eg, SIM card application) initiating a call.
+     */
+    public void registerForUnknownConnection(Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+
+        mUnknownConnectionRegistrants.addUnique(h, what, obj);
+    }
+
+    /**
+     * Unregisters for unknown connection notifications.
+     */
+    public void unregisterForUnknownConnection(Handler h) {
+        mUnknownConnectionRegistrants.remove(h);
+    }
 
     /**
      * Notifies when a new ringing or waiting connection has appeared.<p>
@@ -378,14 +842,20 @@ public interface Phone {
      *  If Connection.isRinging() is true, then
      *   Connection.getCall() == Phone.getRingingCall()
      */
-    void registerForNewRingingConnection(Handler h, int what, Object obj);
+    public void registerForNewRingingConnection(
+            Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+
+        mNewRingingConnectionRegistrants.addUnique(h, what, obj);
+    }
 
     /**
      * Unregisters for new ringing connection notification.
      * Extraneous calls are tolerated silently
      */
-
-    void unregisterForNewRingingConnection(Handler h);
+    public void unregisterForNewRingingConnection(Handler h) {
+        mNewRingingConnectionRegistrants.remove(h);
+    }
 
     /**
      * Notifies when phone's video capabilities changes <p>
@@ -395,13 +865,63 @@ public interface Phone {
      *  AsyncResult.userObj = obj
      *  AsyncResult.result = true if phone supports video calling <p>
      */
-    public void registerForVideoCapabilityChanged(Handler h, int what, Object obj);
+    public void registerForVideoCapabilityChanged(
+            Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+
+        mVideoCapabilityChangedRegistrants.addUnique(h, what, obj);
+
+        // Notify any registrants of the cached video capability as soon as they register.
+        notifyForVideoCapabilityChanged(mIsVideoCapable);
+    }
 
     /**
      * Unregisters for video capability changed notification.
      * Extraneous calls are tolerated silently
      */
-    public void unregisterForVideoCapabilityChanged(Handler h);
+    public void unregisterForVideoCapabilityChanged(Handler h) {
+        mVideoCapabilityChangedRegistrants.remove(h);
+    }
+
+    /**
+     * Register for notifications when a sInCall VoicePrivacy is enabled
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj){
+        mCi.registerForInCallVoicePrivacyOn(h, what, obj);
+    }
+
+    /**
+     * Unegister for notifications when a sInCall VoicePrivacy is enabled
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForInCallVoicePrivacyOn(Handler h){
+        mCi.unregisterForInCallVoicePrivacyOn(h);
+    }
+
+    /**
+     * Register for notifications when a sInCall VoicePrivacy is disabled
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForInCallVoicePrivacyOff(Handler h, int what, Object obj){
+        mCi.registerForInCallVoicePrivacyOff(h, what, obj);
+    }
+
+    /**
+     * Unregister for notifications when a sInCall VoicePrivacy is disabled
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForInCallVoicePrivacyOff(Handler h){
+        mCi.unregisterForInCallVoicePrivacyOff(h);
+    }
 
     /**
      * Notifies when an incoming call rings.<p>
@@ -411,59 +931,20 @@ public interface Phone {
      *  AsyncResult.userObj = obj
      *  AsyncResult.result = a Connection. <p>
      */
-    void registerForIncomingRing(Handler h, int what, Object obj);
+    public void registerForIncomingRing(
+            Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+
+        mIncomingRingRegistrants.addUnique(h, what, obj);
+    }
 
     /**
      * Unregisters for ring notification.
      * Extraneous calls are tolerated silently
      */
-
-    void unregisterForIncomingRing(Handler h);
-
-    /**
-     * Notifies when out-band ringback tone is needed.<p>
-     *
-     *  Messages received from this:
-     *  Message.obj will be an AsyncResult
-     *  AsyncResult.userObj = obj
-     *  AsyncResult.result = boolean, true to start play ringback tone
-     *                       and false to stop. <p>
-     */
-    void registerForRingbackTone(Handler h, int what, Object obj);
-
-    /**
-     * Unregisters for ringback tone notification.
-     */
-
-    void unregisterForRingbackTone(Handler h);
-
-    /**
-     * Notifies when out-band on-hold tone is needed.<p>
-     *
-     *  Messages received from this:
-     *  Message.obj will be an AsyncResult
-     *  AsyncResult.userObj = obj
-     *  AsyncResult.result = boolean, true to start play on-hold tone
-     *                       and false to stop. <p>
-     */
-    void registerForOnHoldTone(Handler h, int what, Object obj);
-
-    /**
-     * Unregisters for on-hold tone notification.
-     */
-
-    void unregisterForOnHoldTone(Handler h);
-
-    /**
-     * Registers the handler to reset the uplink mute state to get
-     * uplink audio.
-     */
-    void registerForResendIncallMute(Handler h, int what, Object obj);
-
-    /**
-     * Unregisters for resend incall mute notifications.
-     */
-    void unregisterForResendIncallMute(Handler h);
+    public void unregisterForIncomingRing(Handler h) {
+        mIncomingRingRegistrants.remove(h);
+    }
 
     /**
      * Notifies when a voice connection has disconnected, either due to local
@@ -475,14 +956,43 @@ public interface Phone {
      *  <li>AsyncResult.result = a Connection object that is
      *  no longer connected.</li></ul>
      */
-    void registerForDisconnect(Handler h, int what, Object obj);
+    public void registerForDisconnect(Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+
+        mDisconnectRegistrants.addUnique(h, what, obj);
+    }
 
     /**
      * Unregisters for voice disconnection notification.
      * Extraneous calls are tolerated silently
      */
-    void unregisterForDisconnect(Handler h);
+    public void unregisterForDisconnect(Handler h) {
+        mDisconnectRegistrants.remove(h);
+    }
 
+    /**
+     * Register for notifications when a supplementary service attempt fails.
+     * Message.obj will contain an AsyncResult.
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForSuppServiceFailed(Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+
+        mSuppServiceFailedRegistrants.addUnique(h, what, obj);
+    }
+
+    /**
+     * Unregister for notifications when a supplementary service attempt fails.
+     * Extraneous calls are tolerated silently
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForSuppServiceFailed(Handler h) {
+        mSuppServiceFailedRegistrants.remove(h);
+    }
 
     /**
      * Register for notifications of initiation of a new MMI code request.
@@ -495,13 +1005,19 @@ public interface Phone {
      *
      * <code>obj.result</code> will be an "MmiCode" object.
      */
-    void registerForMmiInitiate(Handler h, int what, Object obj);
+    public void registerForMmiInitiate(Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+
+        mMmiRegistrants.addUnique(h, what, obj);
+    }
 
     /**
      * Unregisters for new MMI initiate notification.
      * Extraneous calls are tolerated silently
      */
-    void unregisterForMmiInitiate(Handler h);
+    public void unregisterForMmiInitiate(Handler h) {
+        mMmiRegistrants.remove(h);
+    }
 
     /**
      * Register for notifications that an MMI request has completed
@@ -511,156 +1027,21 @@ public interface Phone {
      * <code>Message.obj</code> will contain an AsyncResult.
      * <code>obj.result</code> will be an "MmiCode" object
      */
-    void registerForMmiComplete(Handler h, int what, Object obj);
+    public void registerForMmiComplete(Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+
+        mMmiCompleteRegistrants.addUnique(h, what, obj);
+    }
 
     /**
      * Unregisters for MMI complete notification.
      * Extraneous calls are tolerated silently
      */
-    void unregisterForMmiComplete(Handler h);
+    public void unregisterForMmiComplete(Handler h) {
+        checkCorrectThread(h);
 
-    /**
-     * Registration point for Ecm timer reset
-     * @param h handler to notify
-     * @param what user-defined message code
-     * @param obj placed in Message.obj
-     */
-    public void registerForEcmTimerReset(Handler h, int what, Object obj);
-
-    /**
-     * Unregister for notification for Ecm timer reset
-     * @param h Handler to be removed from the registrant list.
-     */
-    public void unregisterForEcmTimerReset(Handler h);
-
-    /**
-     * Returns a list of MMI codes that are pending. (They have initiated
-     * but have not yet completed).
-     * Presently there is only ever one.
-     * Use <code>registerForMmiInitiate</code>
-     * and <code>registerForMmiComplete</code> for change notification.
-     */
-    public List<? extends MmiCode> getPendingMmiCodes();
-
-    /**
-     * Sends user response to a USSD REQUEST message.  An MmiCode instance
-     * representing this response is sent to handlers registered with
-     * registerForMmiInitiate.
-     *
-     * @param ussdMessge    Message to send in the response.
-     */
-    public void sendUssdResponse(String ussdMessge);
-
-    /**
-     * Register for ServiceState changed.
-     * Message.obj will contain an AsyncResult.
-     * AsyncResult.result will be a ServiceState instance
-     */
-    void registerForServiceStateChanged(Handler h, int what, Object obj);
-
-    /**
-     * Unregisters for ServiceStateChange notification.
-     * Extraneous calls are tolerated silently
-     */
-    void unregisterForServiceStateChanged(Handler h);
-
-    /**
-     * Register for Supplementary Service notifications from the network.
-     * Message.obj will contain an AsyncResult.
-     * AsyncResult.result will be a SuppServiceNotification instance.
-     *
-     * @param h Handler that receives the notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    void registerForSuppServiceNotification(Handler h, int what, Object obj);
-
-    /**
-     * Unregisters for Supplementary Service notifications.
-     * Extraneous calls are tolerated silently
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    void unregisterForSuppServiceNotification(Handler h);
-
-    /**
-     * Register for notifications when a supplementary service attempt fails.
-     * Message.obj will contain an AsyncResult.
-     *
-     * @param h Handler that receives the notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    void registerForSuppServiceFailed(Handler h, int what, Object obj);
-
-    /**
-     * Unregister for notifications when a supplementary service attempt fails.
-     * Extraneous calls are tolerated silently
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    void unregisterForSuppServiceFailed(Handler h);
-
-    /**
-     * Register for notifications when a sInCall VoicePrivacy is enabled
-     *
-     * @param h Handler that receives the notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    void registerForInCallVoicePrivacyOn(Handler h, int what, Object obj);
-
-    /**
-     * Unegister for notifications when a sInCall VoicePrivacy is enabled
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    void unregisterForInCallVoicePrivacyOn(Handler h);
-
-    /**
-     * Register for notifications when a sInCall VoicePrivacy is disabled
-     *
-     * @param h Handler that receives the notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    void registerForInCallVoicePrivacyOff(Handler h, int what, Object obj);
-
-    /**
-     * Unregister for notifications when a sInCall VoicePrivacy is disabled
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    void unregisterForInCallVoicePrivacyOff(Handler h);
-
-    /**
-     * Register for notifications when CDMA OTA Provision status change
-     *
-     * @param h Handler that receives the notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    void registerForCdmaOtaStatusChange(Handler h, int what, Object obj);
-
-    /**
-     * Unregister for notifications when CDMA OTA Provision status change
-     * @param h Handler to be removed from the registrant list.
-     */
-    void unregisterForCdmaOtaStatusChange(Handler h);
-
-    /**
-     * Registration point for subscription info ready
-     * @param h handler to notify
-     * @param what what code of message when delivered
-     * @param obj placed in Message.obj
-     */
-    public void registerForSubscriptionInfoReady(Handler h, int what, Object obj);
-
-    /**
-     * Unregister for notifications for subscription info
-     * @param h Handler to be removed from the registrant list.
-     */
-    public void unregisterForSubscriptionInfoReady(Handler h);
+        mMmiCompleteRegistrants.remove(h);
+    }
 
     /**
      * Registration point for Sim records loaded
@@ -668,13 +1049,15 @@ public interface Phone {
      * @param what what code of message when delivered
      * @param obj placed in Message.obj
      */
-    public void registerForSimRecordsLoaded(Handler h, int what, Object obj);
+    public void registerForSimRecordsLoaded(Handler h, int what, Object obj) {
+    }
 
     /**
      * Unregister for notifications for Sim records loaded
      * @param h Handler to be removed from the registrant list.
      */
-    public void unregisterForSimRecordsLoaded(Handler h);
+    public void unregisterForSimRecordsLoaded(Handler h) {
+    }
 
     /**
      * Register for TTY mode change notifications from the network.
@@ -685,7 +1068,8 @@ public interface Phone {
      * @param what User-defined message code.
      * @param obj User object.
      */
-    public void registerForTtyModeReceived(Handler h, int what, Object obj);
+    public void registerForTtyModeReceived(Handler h, int what, Object obj) {
+    }
 
     /**
      * Unregisters for TTY mode change notifications.
@@ -693,449 +1077,8 @@ public interface Phone {
      *
      * @param h Handler to be removed from the registrant list.
      */
-    public void unregisterForTtyModeReceived(Handler h);
-
-    /**
-     * Returns SIM record load state. Use
-     * <code>getSimCard().registerForReady()</code> for change notification.
-     *
-     * @return true if records from the SIM have been loaded and are
-     * available (if applicable). If not applicable to the underlying
-     * technology, returns true as well.
-     */
-    boolean getIccRecordsLoaded();
-
-    /**
-     * Returns the ICC card interface for this phone, or null
-     * if not applicable to underlying technology.
-     */
-    IccCard getIccCard();
-
-    /**
-     * Answers a ringing or waiting call. Active calls, if any, go on hold.
-     * Answering occurs asynchronously, and final notification occurs via
-     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
-     * java.lang.Object) registerForPreciseCallStateChanged()}.
-     *
-     * @param videoState The video state in which to answer the call.
-     * @exception CallStateException when no call is ringing or waiting
-     */
-    void acceptCall(int videoState) throws CallStateException;
-
-    /**
-     * Reject (ignore) a ringing call. In GSM, this means UDUB
-     * (User Determined User Busy). Reject occurs asynchronously,
-     * and final notification occurs via
-     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
-     * java.lang.Object) registerForPreciseCallStateChanged()}.
-     *
-     * @exception CallStateException when no call is ringing or waiting
-     */
-    void rejectCall() throws CallStateException;
-
-    /**
-     * Places any active calls on hold, and makes any held calls
-     *  active. Switch occurs asynchronously and may fail.
-     * Final notification occurs via
-     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
-     * java.lang.Object) registerForPreciseCallStateChanged()}.
-     *
-     * @exception CallStateException if a call is ringing, waiting, or
-     * dialing/alerting. In these cases, this operation may not be performed.
-     */
-    void switchHoldingAndActive() throws CallStateException;
-
-    /**
-     * Whether or not the phone can conference in the current phone
-     * state--that is, one call holding and one call active.
-     * @return true if the phone can conference; false otherwise.
-     */
-    boolean canConference();
-
-    /**
-     * Conferences holding and active. Conference occurs asynchronously
-     * and may fail. Final notification occurs via
-     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
-     * java.lang.Object) registerForPreciseCallStateChanged()}.
-     *
-     * @exception CallStateException if canConference() would return false.
-     * In these cases, this operation may not be performed.
-     */
-    void conference() throws CallStateException;
-
-    /**
-     * Enable or disable enhanced Voice Privacy (VP). If enhanced VP is
-     * disabled, normal VP is enabled.
-     *
-     * @param enable whether true or false to enable or disable.
-     * @param onComplete a callback message when the action is completed.
-     */
-    void enableEnhancedVoicePrivacy(boolean enable, Message onComplete);
-
-    /**
-     * Get the currently set Voice Privacy (VP) mode.
-     *
-     * @param onComplete a callback message when the action is completed.
-     */
-    void getEnhancedVoicePrivacy(Message onComplete);
-
-    /**
-     * Whether or not the phone can do explicit call transfer in the current
-     * phone state--that is, one call holding and one call active.
-     * @return true if the phone can do explicit call transfer; false otherwise.
-     */
-    boolean canTransfer();
-
-    /**
-     * Connects the two calls and disconnects the subscriber from both calls
-     * Explicit Call Transfer occurs asynchronously
-     * and may fail. Final notification occurs via
-     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
-     * java.lang.Object) registerForPreciseCallStateChanged()}.
-     *
-     * @exception CallStateException if canTransfer() would return false.
-     * In these cases, this operation may not be performed.
-     */
-    void explicitCallTransfer() throws CallStateException;
-
-    /**
-     * Clears all DISCONNECTED connections from Call connection lists.
-     * Calls that were in the DISCONNECTED state become idle. This occurs
-     * synchronously.
-     */
-    void clearDisconnected();
-
-
-    /**
-     * Gets the foreground call object, which represents all connections that
-     * are dialing or active (all connections
-     * that have their audio path connected).<p>
-     *
-     * The foreground call is a singleton object. It is constant for the life
-     * of this phone. It is never null.<p>
-     *
-     * The foreground call will only ever be in one of these states:
-     * IDLE, ACTIVE, DIALING, ALERTING, or DISCONNECTED.
-     *
-     * State change notification is available via
-     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
-     * java.lang.Object) registerForPreciseCallStateChanged()}.
-     */
-    Call getForegroundCall();
-
-    /**
-     * Gets the background call object, which represents all connections that
-     * are holding (all connections that have been accepted or connected, but
-     * do not have their audio path connected). <p>
-     *
-     * The background call is a singleton object. It is constant for the life
-     * of this phone object . It is never null.<p>
-     *
-     * The background call will only ever be in one of these states:
-     * IDLE, HOLDING or DISCONNECTED.
-     *
-     * State change notification is available via
-     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
-     * java.lang.Object) registerForPreciseCallStateChanged()}.
-     */
-    Call getBackgroundCall();
-
-    /**
-     * Gets the ringing call object, which represents an incoming
-     * connection (if present) that is pending answer/accept. (This connection
-     * may be RINGING or WAITING, and there may be only one.)<p>
-
-     * The ringing call is a singleton object. It is constant for the life
-     * of this phone. It is never null.<p>
-     *
-     * The ringing call will only ever be in one of these states:
-     * IDLE, INCOMING, WAITING or DISCONNECTED.
-     *
-     * State change notification is available via
-     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
-     * java.lang.Object) registerForPreciseCallStateChanged()}.
-     */
-    Call getRingingCall();
-
-    /**
-     * Initiate a new voice connection. This happens asynchronously, so you
-     * cannot assume the audio path is connected (or a call index has been
-     * assigned) until PhoneStateChanged notification has occurred.
-     *
-     * @param dialString The dial string.
-     * @param videoState The desired video state for the connection.
-     * @exception CallStateException if a new outgoing call is not currently
-     * possible because no more call slots exist or a call exists that is
-     * dialing, alerting, ringing, or waiting.  Other errors are
-     * handled asynchronously.
-     */
-    Connection dial(String dialString, int videoState) throws CallStateException;
-
-    /**
-     * Initiate a new voice connection with supplementary User to User
-     * Information. This happens asynchronously, so you cannot assume the audio
-     * path is connected (or a call index has been assigned) until
-     * PhoneStateChanged notification has occurred.
-     *
-     * NOTE: If adding another parameter, consider creating a DialArgs parameter instead to
-     * encapsulate all dial arguments and decrease scaffolding headache.
-     *
-     * @param dialString The dial string.
-     * @param uusInfo The UUSInfo.
-     * @param videoState The desired video state for the connection.
-     * @param intentExtras The extras from the original CALL intent.
-     * @exception CallStateException if a new outgoing call is not currently
-     *                possible because no more call slots exist or a call exists
-     *                that is dialing, alerting, ringing, or waiting. Other
-     *                errors are handled asynchronously.
-     */
-    Connection dial(String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
-            throws CallStateException;
-
-    /**
-     * Handles PIN MMI commands (PIN/PIN2/PUK/PUK2), which are initiated
-     * without SEND (so <code>dial</code> is not appropriate).
-     *
-     * @param dialString the MMI command to be executed.
-     * @return true if MMI command is executed.
-     */
-    boolean handlePinMmi(String dialString);
-
-    /**
-     * Handles in-call MMI commands. While in a call, or while receiving a
-     * call, use this to execute MMI commands.
-     * see 3GPP 20.030, section 6.5.5.1 for specs on the allowed MMI commands.
-     *
-     * @param command the MMI command to be executed.
-     * @return true if the MMI command is executed.
-     * @throws CallStateException
-     */
-    boolean handleInCallMmiCommands(String command) throws CallStateException;
-
-    /**
-     * Play a DTMF tone on the active call. Ignored if there is no active call.
-     * @param c should be one of 0-9, '*' or '#'. Other values will be
-     * silently ignored.
-     */
-    void sendDtmf(char c);
-
-    /**
-     * Start to paly a DTMF tone on the active call. Ignored if there is no active call
-     * or there is a playing DTMF tone.
-     * @param c should be one of 0-9, '*' or '#'. Other values will be
-     * silently ignored.
-     */
-    void startDtmf(char c);
-
-    /**
-     * Stop the playing DTMF tone. Ignored if there is no playing DTMF
-     * tone or no active call.
-     */
-    void stopDtmf();
-
-    /**
-     * send burst DTMF tone, it can send the string as single character or multiple character
-     * ignore if there is no active call or not valid digits string.
-     * Valid digit means only includes characters ISO-LATIN characters 0-9, *, #
-     * The difference between sendDtmf and sendBurstDtmf is sendDtmf only sends one character,
-     * this api can send single character and multiple character, also, this api has response
-     * back to caller.
-     *
-     * @param dtmfString is string representing the dialing digit(s) in the active call
-     * @param on the DTMF ON length in milliseconds, or 0 for default
-     * @param off the DTMF OFF length in milliseconds, or 0 for default
-     * @param onComplete is the callback message when the action is processed by BP
-     *
-     */
-    void sendBurstDtmf(String dtmfString, int on, int off, Message onComplete);
-
-    /**
-     * Sets the radio power on/off state (off is sometimes
-     * called "airplane mode"). Current state can be gotten via
-     * {@link #getServiceState()}.{@link
-     * android.telephony.ServiceState#getState() getState()}.
-     * <strong>Note: </strong>This request is asynchronous.
-     * getServiceState().getState() will not change immediately after this call.
-     * registerForServiceStateChanged() to find out when the
-     * request is complete.
-     *
-     * @param power true means "on", false means "off".
-     */
-    void setRadioPower(boolean power);
-
-    /**
-     * Get voice message waiting indicator status. No change notification
-     * available on this interface. Use PhoneStateNotifier or similar instead.
-     *
-     * @return true if there is a voice message waiting
-     */
-    boolean getMessageWaitingIndicator();
-
-    /**
-     * Get voice call forwarding indicator status. No change notification
-     * available on this interface. Use PhoneStateNotifier or similar instead.
-     *
-     * @return true if there is a voice call forwarding
-     */
-    boolean getCallForwardingIndicator();
-
-    /**
-     * Get the line 1 phone number (MSISDN). For CDMA phones, the MDN is returned
-     * and {@link #getMsisdn()} will return the MSISDN on CDMA/LTE phones.<p>
-     *
-     * @return phone number. May return null if not
-     * available or the SIM is not ready
-     */
-    String getLine1Number();
-
-    /**
-     * Returns the alpha tag associated with the msisdn number.
-     * If there is no alpha tag associated or the record is not yet available,
-     * returns a default localized string. <p>
-     */
-    String getLine1AlphaTag();
-
-    /**
-     * Sets the MSISDN phone number in the SIM card.
-     *
-     * @param alphaTag the alpha tag associated with the MSISDN phone number
-     *        (see getMsisdnAlphaTag)
-     * @param number the new MSISDN phone number to be set on the SIM.
-     * @param onComplete a callback message when the action is completed.
-     *
-     * @return true if req is sent, false otherwise. If req is not sent there will be no response,
-     * that is, onComplete will never be sent.
-     */
-    boolean setLine1Number(String alphaTag, String number, Message onComplete);
-
-    /**
-     * Get the voice mail access phone number. Typically dialed when the
-     * user holds the "1" key in the phone app. May return null if not
-     * available or the SIM is not ready.<p>
-     */
-    String getVoiceMailNumber();
-
-    /**
-     * Returns unread voicemail count. This count is shown when the  voicemail
-     * notification is expanded.<p>
-     */
-    int getVoiceMessageCount();
-
-    /**
-     * Returns the alpha tag associated with the voice mail number.
-     * If there is no alpha tag associated or the record is not yet available,
-     * returns a default localized string. <p>
-     *
-     * Please use this value instead of some other localized string when
-     * showing a name for this number in the UI. For example, call log
-     * entries should show this alpha tag. <p>
-     *
-     * Usage of this alpha tag in the UI is a common carrier requirement.
-     */
-    String getVoiceMailAlphaTag();
-
-    /**
-     * setVoiceMailNumber
-     * sets the voicemail number in the SIM card.
-     *
-     * @param alphaTag the alpha tag associated with the voice mail number
-     *        (see getVoiceMailAlphaTag)
-     * @param voiceMailNumber the new voicemail number to be set on the SIM.
-     * @param onComplete a callback message when the action is completed.
-     */
-    void setVoiceMailNumber(String alphaTag,
-                            String voiceMailNumber,
-                            Message onComplete);
-
-    /**
-     * getCallForwardingOptions
-     * gets a call forwarding option. The return value of
-     * ((AsyncResult)onComplete.obj) is an array of CallForwardInfo.
-     *
-     * @param commandInterfaceCFReason is one of the valid call forwarding
-     *        CF_REASONS, as defined in
-     *        <code>com.android.internal.telephony.CommandsInterface.</code>
-     * @param onComplete a callback message when the action is completed.
-     *        @see com.android.internal.telephony.CallForwardInfo for details.
-     */
-    void getCallForwardingOption(int commandInterfaceCFReason,
-                                  Message onComplete);
-
-    /**
-     * setCallForwardingOptions
-     * sets a call forwarding option.
-     *
-     * @param commandInterfaceCFReason is one of the valid call forwarding
-     *        CF_REASONS, as defined in
-     *        <code>com.android.internal.telephony.CommandsInterface.</code>
-     * @param commandInterfaceCFAction is one of the valid call forwarding
-     *        CF_ACTIONS, as defined in
-     *        <code>com.android.internal.telephony.CommandsInterface.</code>
-     * @param dialingNumber is the target phone number to forward calls to
-     * @param timerSeconds is used by CFNRy to indicate the timeout before
-     *        forwarding is attempted.
-     * @param onComplete a callback message when the action is completed.
-     */
-    void setCallForwardingOption(int commandInterfaceCFReason,
-                                 int commandInterfaceCFAction,
-                                 String dialingNumber,
-                                 int timerSeconds,
-                                 Message onComplete);
-
-    /**
-     * getOutgoingCallerIdDisplay
-     * gets outgoing caller id display. The return value of
-     * ((AsyncResult)onComplete.obj) is an array of int, with a length of 2.
-     *
-     * @param onComplete a callback message when the action is completed.
-     *        @see com.android.internal.telephony.CommandsInterface#getCLIR for details.
-     */
-    void getOutgoingCallerIdDisplay(Message onComplete);
-
-    /**
-     * setOutgoingCallerIdDisplay
-     * sets a call forwarding option.
-     *
-     * @param commandInterfaceCLIRMode is one of the valid call CLIR
-     *        modes, as defined in
-     *        <code>com.android.internal.telephony.CommandsInterface./code>
-     * @param onComplete a callback message when the action is completed.
-     */
-    void setOutgoingCallerIdDisplay(int commandInterfaceCLIRMode,
-                                    Message onComplete);
-
-    /**
-     * getCallWaiting
-     * gets call waiting activation state. The return value of
-     * ((AsyncResult)onComplete.obj) is an array of int, with a length of 1.
-     *
-     * @param onComplete a callback message when the action is completed.
-     *        @see com.android.internal.telephony.CommandsInterface#queryCallWaiting for details.
-     */
-    void getCallWaiting(Message onComplete);
-
-    /**
-     * setCallWaiting
-     * sets a call forwarding option.
-     *
-     * @param enable is a boolean representing the state that you are
-     *        requesting, true for enabled, false for disabled.
-     * @param onComplete a callback message when the action is completed.
-     */
-    void setCallWaiting(boolean enable, Message onComplete);
-
-    /**
-     * Scan available networks. This method is asynchronous; .
-     * On completion, <code>response.obj</code> is set to an AsyncResult with
-     * one of the following members:.<p>
-     *<ul>
-     * <li><code>response.obj.result</code> will be a <code>List</code> of
-     * <code>OperatorInfo</code> objects, or</li>
-     * <li><code>response.obj.exception</code> will be set with an exception
-     * on failure.</li>
-     * </ul>
-     */
-    void getAvailableNetworks(Message response);
+    public void unregisterForTtyModeReceived(Handler h) {
+    }
 
     /**
      * Switches network selection mode to "automatic", re-scanning and
@@ -1146,7 +1089,63 @@ public interface Phone {
      *
      * @see #selectNetworkManually(OperatorInfo, android.os.Message )
      */
-    void setNetworkSelectionModeAutomatic(Message response);
+    public void setNetworkSelectionModeAutomatic(Message response) {
+        Rlog.d(LOG_TAG, "setNetworkSelectionModeAutomatic, querying current mode");
+        // we don't want to do this unecesarily - it acutally causes
+        // the radio to repeate network selection and is costly
+        // first check if we're already in automatic mode
+        Message msg = obtainMessage(EVENT_CHECK_FOR_NETWORK_AUTOMATIC);
+        msg.obj = response;
+        mCi.getNetworkSelectionMode(msg);
+    }
+
+    private void onCheckForNetworkSelectionModeAutomatic(Message fromRil) {
+        AsyncResult ar = (AsyncResult)fromRil.obj;
+        Message response = (Message)ar.userObj;
+        boolean doAutomatic = true;
+        if (ar.exception == null && ar.result != null) {
+            try {
+                int[] modes = (int[])ar.result;
+                if (modes[0] == 0) {
+                    // already confirmed to be in automatic mode - don't resend
+                    doAutomatic = false;
+                }
+            } catch (Exception e) {
+                // send the setting on error
+            }
+        }
+
+        // wrap the response message in our own message along with
+        // an empty string (to indicate automatic selection) for the
+        // operator's id.
+        NetworkSelectMessage nsm = new NetworkSelectMessage();
+        nsm.message = response;
+        nsm.operatorNumeric = "";
+        nsm.operatorAlphaLong = "";
+        nsm.operatorAlphaShort = "";
+
+        if (doAutomatic) {
+            Message msg = obtainMessage(EVENT_SET_NETWORK_AUTOMATIC_COMPLETE, nsm);
+            mCi.setNetworkSelectionModeAutomatic(msg);
+        } else {
+            Rlog.d(LOG_TAG, "setNetworkSelectionModeAutomatic - already auto, ignoring");
+            ar.userObj = nsm;
+            handleSetSelectNetwork(ar);
+        }
+
+        updateSavedNetworkOperator(nsm);
+    }
+
+    /**
+     * Query the radio for the current network selection mode.
+     *
+     * Return values:
+     *     0 - automatic.
+     *     1 - manual.
+     */
+    public void getNetworkSelectionMode(Message message) {
+        mCi.getNetworkSelectionMode(message);
+    }
 
     /**
      * Manually selects a network. <code>response</code> is
@@ -1156,16 +1155,575 @@ public interface Phone {
      *
      * @see #setNetworkSelectionModeAutomatic(Message)
      */
-    void selectNetworkManually(OperatorInfo network, boolean persistSelection, Message response);
+    public void selectNetworkManually(OperatorInfo network, boolean persistSelection,
+            Message response) {
+        // wrap the response message in our own message along with
+        // the operator's id.
+        NetworkSelectMessage nsm = new NetworkSelectMessage();
+        nsm.message = response;
+        nsm.operatorNumeric = network.getOperatorNumeric();
+        nsm.operatorAlphaLong = network.getOperatorAlphaLong();
+        nsm.operatorAlphaShort = network.getOperatorAlphaShort();
+
+        Message msg = obtainMessage(EVENT_SET_NETWORK_MANUAL_COMPLETE, nsm);
+        mCi.setNetworkSelectionModeManual(network.getOperatorNumeric(), msg);
+
+        if (persistSelection) {
+            updateSavedNetworkOperator(nsm);
+        } else {
+            clearSavedNetworkSelection();
+        }
+    }
 
     /**
-     * Query the radio for the current network selection mode.
-     *
-     * Return values:
-     *     0 - automatic.
-     *     1 - manual.
+     * Registration point for emergency call/callback mode start. Message.obj is AsyncResult and
+     * Message.obj.result will be Integer indicating start of call by value 1 or end of call by
+     * value 0
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj.userObj
      */
-    void getNetworkSelectionMode(Message response);
+    public void registerForEmergencyCallToggle(Handler h, int what, Object obj) {
+        Registrant r = new Registrant(h, what, obj);
+        mEmergencyCallToggledRegistrants.add(r);
+    }
+
+    public void unregisterForEmergencyCallToggle(Handler h) {
+        mEmergencyCallToggledRegistrants.remove(h);
+    }
+
+    private void updateSavedNetworkOperator(NetworkSelectMessage nsm) {
+        int subId = getSubId();
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+            // open the shared preferences editor, and write the value.
+            // nsm.operatorNumeric is "" if we're in automatic.selection.
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+            SharedPreferences.Editor editor = sp.edit();
+            editor.putString(NETWORK_SELECTION_KEY + subId, nsm.operatorNumeric);
+            editor.putString(NETWORK_SELECTION_NAME_KEY + subId, nsm.operatorAlphaLong);
+            editor.putString(NETWORK_SELECTION_SHORT_KEY + subId, nsm.operatorAlphaShort);
+
+            // commit and log the result.
+            if (!editor.commit()) {
+                Rlog.e(LOG_TAG, "failed to commit network selection preference");
+            }
+        } else {
+            Rlog.e(LOG_TAG, "Cannot update network selection preference due to invalid subId " +
+                    subId);
+        }
+    }
+
+    /**
+     * Used to track the settings upon completion of the network change.
+     */
+    private void handleSetSelectNetwork(AsyncResult ar) {
+        // look for our wrapper within the asyncresult, skip the rest if it
+        // is null.
+        if (!(ar.userObj instanceof NetworkSelectMessage)) {
+            Rlog.e(LOG_TAG, "unexpected result from user object.");
+            return;
+        }
+
+        NetworkSelectMessage nsm = (NetworkSelectMessage) ar.userObj;
+
+        // found the object, now we send off the message we had originally
+        // attached to the request.
+        if (nsm.message != null) {
+            AsyncResult.forMessage(nsm.message, ar.result, ar.exception);
+            nsm.message.sendToTarget();
+        }
+    }
+
+    /**
+     * Method to retrieve the saved operator from the Shared Preferences
+     */
+    private OperatorInfo getSavedNetworkSelection() {
+        // open the shared preferences and search with our key.
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        String numeric = sp.getString(NETWORK_SELECTION_KEY + getSubId(), "");
+        String name = sp.getString(NETWORK_SELECTION_NAME_KEY + getSubId(), "");
+        String shrt = sp.getString(NETWORK_SELECTION_SHORT_KEY + getSubId(), "");
+        return new OperatorInfo(numeric, name, shrt);
+    }
+
+    /**
+     * Clears the saved network selection.
+     */
+    private void clearSavedNetworkSelection() {
+        // open the shared preferences and search with our key.
+        PreferenceManager.getDefaultSharedPreferences(getContext()).edit().
+                remove(NETWORK_SELECTION_KEY + getSubId()).
+                remove(NETWORK_SELECTION_NAME_KEY + getSubId()).
+                remove(NETWORK_SELECTION_SHORT_KEY + getSubId()).commit();
+    }
+
+    /**
+     * Method to restore the previously saved operator id, or reset to
+     * automatic selection, all depending upon the value in the shared
+     * preferences.
+     */
+    public void restoreSavedNetworkSelection(Message response) {
+        // retrieve the operator
+        OperatorInfo networkSelection = getSavedNetworkSelection();
+
+        // set to auto if the id is empty, otherwise select the network.
+        if (networkSelection == null || TextUtils.isEmpty(networkSelection.getOperatorNumeric())) {
+            setNetworkSelectionModeAutomatic(response);
+        } else {
+            selectNetworkManually(networkSelection, true, response);
+        }
+    }
+
+    /**
+     * Saves CLIR setting so that we can re-apply it as necessary
+     * (in case the RIL resets it across reboots).
+     */
+    public void saveClirSetting(int commandInterfaceCLIRMode) {
+        // Open the shared preferences editor, and write the value.
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putInt(CLIR_KEY + getPhoneId(), commandInterfaceCLIRMode);
+
+        // Commit and log the result.
+        if (!editor.commit()) {
+            Rlog.e(LOG_TAG, "Failed to commit CLIR preference");
+        }
+    }
+
+    /**
+     * For unit tests; don't send notifications to "Phone"
+     * mailbox registrants if true.
+     */
+    public void setUnitTestMode(boolean f) {
+        mUnitTestMode = f;
+    }
+
+    /**
+     * @return true If unit test mode is enabled
+     */
+    public boolean getUnitTestMode() {
+        return mUnitTestMode;
+    }
+
+    /**
+     * To be invoked when a voice call Connection disconnects.
+     *
+     * Subclasses of Phone probably want to replace this with a
+     * version scoped to their packages
+     */
+    protected void notifyDisconnectP(Connection cn) {
+        AsyncResult ar = new AsyncResult(null, cn, null);
+        mDisconnectRegistrants.notifyRegistrants(ar);
+    }
+
+    /**
+     * Register for ServiceState changed.
+     * Message.obj will contain an AsyncResult.
+     * AsyncResult.result will be a ServiceState instance
+     */
+    public void registerForServiceStateChanged(
+            Handler h, int what, Object obj) {
+        checkCorrectThread(h);
+
+        mServiceStateRegistrants.add(h, what, obj);
+    }
+
+    /**
+     * Unregisters for ServiceStateChange notification.
+     * Extraneous calls are tolerated silently
+     */
+    public void unregisterForServiceStateChanged(Handler h) {
+        mServiceStateRegistrants.remove(h);
+    }
+
+    /**
+     * Notifies when out-band ringback tone is needed.<p>
+     *
+     *  Messages received from this:
+     *  Message.obj will be an AsyncResult
+     *  AsyncResult.userObj = obj
+     *  AsyncResult.result = boolean, true to start play ringback tone
+     *                       and false to stop. <p>
+     */
+    public void registerForRingbackTone(Handler h, int what, Object obj) {
+        mCi.registerForRingbackTone(h, what, obj);
+    }
+
+    /**
+     * Unregisters for ringback tone notification.
+     */
+    public void unregisterForRingbackTone(Handler h) {
+        mCi.unregisterForRingbackTone(h);
+    }
+
+    /**
+     * Notifies when out-band on-hold tone is needed.<p>
+     *
+     *  Messages received from this:
+     *  Message.obj will be an AsyncResult
+     *  AsyncResult.userObj = obj
+     *  AsyncResult.result = boolean, true to start play on-hold tone
+     *                       and false to stop. <p>
+     */
+    public void registerForOnHoldTone(Handler h, int what, Object obj) {
+    }
+
+    /**
+     * Unregisters for on-hold tone notification.
+     */
+    public void unregisterForOnHoldTone(Handler h) {
+    }
+
+    /**
+     * Registers the handler to reset the uplink mute state to get
+     * uplink audio.
+     */
+    public void registerForResendIncallMute(Handler h, int what, Object obj) {
+        mCi.registerForResendIncallMute(h, what, obj);
+    }
+
+    /**
+     * Unregisters for resend incall mute notifications.
+     */
+    public void unregisterForResendIncallMute(Handler h) {
+        mCi.unregisterForResendIncallMute(h);
+    }
+
+    /**
+     * Enables or disables echo suppression.
+     */
+    public void setEchoSuppressionEnabled() {
+        // no need for regular phone
+    }
+
+    /**
+     * Subclasses of Phone probably want to replace this with a
+     * version scoped to their packages
+     */
+    protected void notifyServiceStateChangedP(ServiceState ss) {
+        AsyncResult ar = new AsyncResult(null, ss, null);
+        mServiceStateRegistrants.notifyRegistrants(ar);
+
+        mNotifier.notifyServiceState(this);
+    }
+
+    /**
+     * If this is a simulated phone interface, returns a SimulatedRadioControl.
+     * @return SimulatedRadioControl if this is a simulated interface;
+     * otherwise, null.
+     */
+    public SimulatedRadioControl getSimulatedRadioControl() {
+        return mSimulatedRadioControl;
+    }
+
+    /**
+     * Verifies the current thread is the same as the thread originally
+     * used in the initialization of this instance. Throws RuntimeException
+     * if not.
+     *
+     * @exception RuntimeException if the current thread is not
+     * the thread that originally obtained this Phone instance.
+     */
+    private void checkCorrectThread(Handler h) {
+        if (h.getLooper() != mLooper) {
+            throw new RuntimeException(
+                    "com.android.internal.telephony.Phone must be used from within one thread");
+        }
+    }
+
+    /**
+     * Set the properties by matching the carrier string in
+     * a string-array resource
+     */
+    private static Locale getLocaleFromCarrierProperties(Context ctx) {
+        String carrier = SystemProperties.get("ro.carrier");
+
+        if (null == carrier || 0 == carrier.length() || "unknown".equals(carrier)) {
+            return null;
+        }
+
+        CharSequence[] carrierLocales = ctx.getResources().getTextArray(R.array.carrier_properties);
+
+        for (int i = 0; i < carrierLocales.length; i+=3) {
+            String c = carrierLocales[i].toString();
+            if (carrier.equals(c)) {
+                return Locale.forLanguageTag(carrierLocales[i + 1].toString().replace('_', '-'));
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get current coarse-grained voice call state.
+     * Use {@link #registerForPreciseCallStateChanged(Handler, int, Object)
+     * registerForPreciseCallStateChanged()} for change notification. <p>
+     * If the phone has an active call and call waiting occurs,
+     * then the phone state is RINGING not OFFHOOK
+     * <strong>Note:</strong>
+     * This registration point provides notification of finer-grained
+     * changes.<p>
+     */
+    public abstract PhoneConstants.State getState();
+
+    /**
+     * Retrieves the IccFileHandler of the Phone instance
+     */
+    public IccFileHandler getIccFileHandler(){
+        UiccCardApplication uiccApplication = mUiccApplication.get();
+        IccFileHandler fh;
+
+        if (uiccApplication == null) {
+            Rlog.d(LOG_TAG, "getIccFileHandler: uiccApplication == null, return null");
+            fh = null;
+        } else {
+            fh = uiccApplication.getIccFileHandler();
+        }
+
+        Rlog.d(LOG_TAG, "getIccFileHandler: fh=" + fh);
+        return fh;
+    }
+
+    /*
+     * Retrieves the Handler of the Phone instance
+     */
+    public Handler getHandler() {
+        return this;
+    }
+
+    /**
+     * Update the phone object if the voice radio technology has changed
+     *
+     * @param voiceRadioTech The new voice radio technology
+     */
+    public void updatePhoneObject(int voiceRadioTech) {
+    }
+
+    /**
+    * Retrieves the ServiceStateTracker of the phone instance.
+    */
+    public ServiceStateTracker getServiceStateTracker() {
+        return null;
+    }
+
+    /**
+    * Get call tracker
+    */
+    public CallTracker getCallTracker() {
+        return null;
+    }
+
+    public AppType getCurrentUiccAppType() {
+        UiccCardApplication currentApp = mUiccApplication.get();
+        if (currentApp != null) {
+            return currentApp.getType();
+        }
+        return AppType.APPTYPE_UNKNOWN;
+    }
+
+    /**
+     * Returns the ICC card interface for this phone, or null
+     * if not applicable to underlying technology.
+     */
+    public IccCard getIccCard() {
+        return null;
+        //throw new Exception("getIccCard Shouldn't be called from Phone");
+    }
+
+    /**
+     * Retrieves the serial number of the ICC, if applicable.
+     */
+    public String getIccSerialNumber() {
+        IccRecords r = mIccRecords.get();
+        return (r != null) ? r.getIccId() : null;
+    }
+
+    /**
+     * Returns SIM record load state. Use
+     * <code>getSimCard().registerForReady()</code> for change notification.
+     *
+     * @return true if records from the SIM have been loaded and are
+     * available (if applicable). If not applicable to the underlying
+     * technology, returns true as well.
+     */
+    public boolean getIccRecordsLoaded() {
+        IccRecords r = mIccRecords.get();
+        return (r != null) ? r.getRecordsLoaded() : false;
+    }
+
+    /**
+     * @return all available cell information or null if none.
+     */
+    public List<CellInfo> getAllCellInfo() {
+        List<CellInfo> cellInfoList = getServiceStateTracker().getAllCellInfo();
+        return privatizeCellInfoList(cellInfoList);
+    }
+
+    /**
+     * Clear CDMA base station lat/long values if location setting is disabled.
+     * @param cellInfoList the original cell info list from the RIL
+     * @return the original list with CDMA lat/long cleared if necessary
+     */
+    private List<CellInfo> privatizeCellInfoList(List<CellInfo> cellInfoList) {
+        if (cellInfoList == null) return null;
+        int mode = Settings.Secure.getInt(getContext().getContentResolver(),
+                Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF);
+        if (mode == Settings.Secure.LOCATION_MODE_OFF) {
+            ArrayList<CellInfo> privateCellInfoList = new ArrayList<CellInfo>(cellInfoList.size());
+            // clear lat/lon values for location privacy
+            for (CellInfo c : cellInfoList) {
+                if (c instanceof CellInfoCdma) {
+                    CellInfoCdma cellInfoCdma = (CellInfoCdma) c;
+                    CellIdentityCdma cellIdentity = cellInfoCdma.getCellIdentity();
+                    CellIdentityCdma maskedCellIdentity = new CellIdentityCdma(
+                            cellIdentity.getNetworkId(),
+                            cellIdentity.getSystemId(),
+                            cellIdentity.getBasestationId(),
+                            Integer.MAX_VALUE, Integer.MAX_VALUE);
+                    CellInfoCdma privateCellInfoCdma = new CellInfoCdma(cellInfoCdma);
+                    privateCellInfoCdma.setCellIdentity(maskedCellIdentity);
+                    privateCellInfoList.add(privateCellInfoCdma);
+                } else {
+                    privateCellInfoList.add(c);
+                }
+            }
+            cellInfoList = privateCellInfoList;
+        }
+        return cellInfoList;
+    }
+
+    /**
+     * Sets the minimum time in milli-seconds between {@link PhoneStateListener#onCellInfoChanged
+     * PhoneStateListener.onCellInfoChanged} will be invoked.
+     *
+     * The default, 0, means invoke onCellInfoChanged when any of the reported
+     * information changes. Setting the value to INT_MAX(0x7fffffff) means never issue
+     * A onCellInfoChanged.
+     *
+     * @param rateInMillis the rate
+     */
+    public void setCellInfoListRate(int rateInMillis) {
+        mCi.setCellInfoListRate(rateInMillis, null);
+    }
+
+    /**
+     * Get voice message waiting indicator status. No change notification
+     * available on this interface. Use PhoneStateNotifier or similar instead.
+     *
+     * @return true if there is a voice message waiting
+     */
+    public boolean getMessageWaitingIndicator() {
+        return mVmCount != 0;
+    }
+
+    private int getCallForwardingIndicatorFromSharedPref() {
+        int status = IccRecords.CALL_FORWARDING_STATUS_DISABLED;
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        String subscriberId = sp.getString(CF_ID, null);
+        String currentSubscriberId = getSubscriberId();
+
+        if (currentSubscriberId != null && currentSubscriberId.equals(subscriberId)) {
+            // get call forwarding status from preferences
+            status = sp.getInt(CF_STATUS, IccRecords.CALL_FORWARDING_STATUS_DISABLED);
+            Rlog.d(LOG_TAG, "Call forwarding status from preference = " + status);
+        } else {
+            Rlog.d(LOG_TAG, "Call forwarding status retrieval returning DISABLED as status for " +
+                    "matching subscriberId not found");
+
+        }
+        return status;
+    }
+
+    private void setCallForwardingIndicatorInSharedPref(boolean enable) {
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor editor = sp.edit();
+
+        String imsi = getSubscriberId();
+
+        editor.putInt(CF_STATUS, enable ? IccRecords.CALL_FORWARDING_STATUS_ENABLED :
+                IccRecords.CALL_FORWARDING_STATUS_DISABLED);
+        editor.putString(CF_ID, imsi);
+        editor.apply();
+    }
+
+    public void setVoiceCallForwardingFlag(int line, boolean enable, String number) {
+        setCallForwardingIndicatorInSharedPref(enable);
+        mIccRecords.get().setVoiceCallForwardingFlag(line, enable, number);
+    }
+
+    protected void setVoiceCallForwardingFlag(IccRecords r, int line, boolean enable,
+                                              String number) {
+        setCallForwardingIndicatorInSharedPref(enable);
+        r.setVoiceCallForwardingFlag(line, enable, number);
+    }
+
+    /**
+     * Get voice call forwarding indicator status. No change notification
+     * available on this interface. Use PhoneStateNotifier or similar instead.
+     *
+     * @return true if there is a voice call forwarding
+     */
+    public boolean getCallForwardingIndicator() {
+        if (getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+            Rlog.e(LOG_TAG, "getCallForwardingIndicator: not possible in CDMA");
+            return false;
+        }
+        IccRecords r = mIccRecords.get();
+        int callForwardingIndicator = IccRecords.CALL_FORWARDING_STATUS_UNKNOWN;
+        if (r != null) {
+            callForwardingIndicator = r.getVoiceCallForwardingFlag();
+        }
+        if (callForwardingIndicator == IccRecords.CALL_FORWARDING_STATUS_UNKNOWN) {
+            callForwardingIndicator = getCallForwardingIndicatorFromSharedPref();
+        }
+        return (callForwardingIndicator == IccRecords.CALL_FORWARDING_STATUS_ENABLED);
+    }
+
+    /**
+     *  Query the CDMA roaming preference setting
+     *
+     * @param response is callback message to report one of  CDMA_RM_*
+     */
+    public void queryCdmaRoamingPreference(Message response) {
+        mCi.queryCdmaRoamingPreference(response);
+    }
+
+    /**
+     * Get current signal strength. No change notification available on this
+     * interface. Use <code>PhoneStateNotifier</code> or an equivalent.
+     * An ASU is 0-31 or -1 if unknown (for GSM, dBm = -113 - 2 * asu).
+     * The following special values are defined:</p>
+     * <ul><li>0 means "-113 dBm or less".</li>
+     * <li>31 means "-51 dBm or greater".</li></ul>
+     *
+     * @return Current signal strength as SignalStrength
+     */
+    public SignalStrength getSignalStrength() {
+        ServiceStateTracker sst = getServiceStateTracker();
+        if (sst == null) {
+            return new SignalStrength();
+        } else {
+            return sst.getSignalStrength();
+        }
+    }
+
+    /**
+     *  Requests to set the CDMA roaming preference
+     * @param cdmaRoamingType one of  CDMA_RM_*
+     * @param response is callback message
+     */
+    public void setCdmaRoamingPreference(int cdmaRoamingType, Message response) {
+        mCi.setCdmaRoamingPreference(cdmaRoamingType, response);
+    }
+
+    /**
+     *  Requests to set the CDMA subscription mode
+     * @param cdmaSubscriptionType one of  CDMA_SUBSCRIPTION_*
+     * @param response is callback message
+     */
+    public void setCdmaSubscription(int cdmaSubscriptionType, Message response) {
+        mCi.setCdmaSubscriptionSource(cdmaSubscriptionType, response);
+    }
 
     /**
      *  Requests to set the preferred network type for searching and registering
@@ -1173,21 +1731,53 @@ public interface Phone {
      * @param networkType one of  NT_*_TYPE
      * @param response is callback message
      */
-    void setPreferredNetworkType(int networkType, Message response);
+    public void setPreferredNetworkType(int networkType, Message response) {
+        // Only set preferred network types to that which the modem supports
+        int modemRaf = getRadioAccessFamily();
+        int rafFromType = RadioAccessFamily.getRafFromNetworkType(networkType);
+
+        if (modemRaf == RadioAccessFamily.RAF_UNKNOWN
+                || rafFromType == RadioAccessFamily.RAF_UNKNOWN) {
+            Rlog.d(LOG_TAG, "setPreferredNetworkType: Abort, unknown RAF: "
+                    + modemRaf + " " + rafFromType);
+            if (response != null) {
+                CommandException ex;
+
+                ex = new CommandException(CommandException.Error.GENERIC_FAILURE);
+                AsyncResult.forMessage(response, null, ex);
+                response.sendToTarget();
+            }
+            return;
+        }
+
+        int filteredRaf = (rafFromType & modemRaf);
+        int filteredType = RadioAccessFamily.getNetworkTypeFromRaf(filteredRaf);
+
+        Rlog.d(LOG_TAG, "setPreferredNetworkType: networkType = " + networkType
+                + " modemRaf = " + modemRaf
+                + " rafFromType = " + rafFromType
+                + " filteredType = " + filteredType);
+
+        mCi.setPreferredNetworkType(filteredType, response);
+    }
 
     /**
      *  Query the preferred network type setting
      *
      * @param response is callback message to report one of  NT_*_TYPE
      */
-    void getPreferredNetworkType(Message response);
+    public void getPreferredNetworkType(Message response) {
+        mCi.getPreferredNetworkType(response);
+    }
 
     /**
      * Gets the default SMSC address.
      *
      * @param result Callback message contains the SMSC address.
      */
-    void getSmscAddress(Message result);
+    public void getSmscAddress(Message result) {
+        mCi.getSmscAddress(result);
+    }
 
     /**
      * Sets the default SMSC address.
@@ -1195,84 +1785,87 @@ public interface Phone {
      * @param address new SMSC address
      * @param result Callback message is empty on completion
      */
-    void setSmscAddress(String address, Message result);
+    public void setSmscAddress(String address, Message result) {
+        mCi.setSmscAddress(address, result);
+    }
 
     /**
-     * Query neighboring cell IDs.  <code>response</code> is dispatched when
-     * this is complete.  <code>response.obj</code> will be an AsyncResult,
-     * and <code>response.obj.exception</code> will be non-null on failure.
-     * On success, <code>AsyncResult.result</code> will be a <code>String[]</code>
-     * containing the neighboring cell IDs.  Index 0 will contain the count
-     * of available cell IDs.  Cell IDs are in hexadecimal format.
-     *
-     * @param response callback message that is dispatched when the query
-     * completes.
+     * setTTYMode
+     * sets a TTY mode option.
+     * @param ttyMode is a one of the following:
+     * - {@link com.android.internal.telephony.Phone#TTY_MODE_OFF}
+     * - {@link com.android.internal.telephony.Phone#TTY_MODE_FULL}
+     * - {@link com.android.internal.telephony.Phone#TTY_MODE_HCO}
+     * - {@link com.android.internal.telephony.Phone#TTY_MODE_VCO}
+     * @param onComplete a callback message when the action is completed
      */
-    void getNeighboringCids(Message response);
+    public void setTTYMode(int ttyMode, Message onComplete) {
+        mCi.setTTYMode(ttyMode, onComplete);
+    }
 
     /**
-     * Sets an event to be fired when the telephony system processes
-     * a post-dial character on an outgoing call.<p>
-     *
-     * Messages of type <code>what</code> will be sent to <code>h</code>.
-     * The <code>obj</code> field of these Message's will be instances of
-     * <code>AsyncResult</code>. <code>Message.obj.result</code> will be
-     * a Connection object.<p>
-     *
-     * Message.arg1 will be the post dial character being processed,
-     * or 0 ('\0') if end of string.<p>
-     *
-     * If Connection.getPostDialState() == WAIT,
-     * the application must call
-     * {@link com.android.internal.telephony.Connection#proceedAfterWaitChar()
-     * Connection.proceedAfterWaitChar()} or
-     * {@link com.android.internal.telephony.Connection#cancelPostDial()
-     * Connection.cancelPostDial()}
-     * for the telephony system to continue playing the post-dial
-     * DTMF sequence.<p>
-     *
-     * If Connection.getPostDialState() == WILD,
-     * the application must call
-     * {@link com.android.internal.telephony.Connection#proceedAfterWildChar
-     * Connection.proceedAfterWildChar()}
-     * or
-     * {@link com.android.internal.telephony.Connection#cancelPostDial()
-     * Connection.cancelPostDial()}
-     * for the telephony system to continue playing the
-     * post-dial DTMF sequence.<p>
-     *
-     * Only one post dial character handler may be set. <p>
-     * Calling this method with "h" equal to null unsets this handler.<p>
+     * setUiTTYMode
+     * sets a TTY mode option.
+     * @param ttyMode is a one of the following:
+     * - {@link com.android.internal.telephony.Phone#TTY_MODE_OFF}
+     * - {@link com.android.internal.telephony.Phone#TTY_MODE_FULL}
+     * - {@link com.android.internal.telephony.Phone#TTY_MODE_HCO}
+     * - {@link com.android.internal.telephony.Phone#TTY_MODE_VCO}
+     * @param onComplete a callback message when the action is completed
      */
-    void setOnPostDialCharacter(Handler h, int what, Object obj);
-
+    public void setUiTTYMode(int uiTtyMode, Message onComplete) {
+        Rlog.d(LOG_TAG, "unexpected setUiTTYMode method call");
+    }
 
     /**
-     * Mutes or unmutes the microphone for the active call. The microphone
-     * is automatically unmuted if a call is answered, dialed, or resumed
-     * from a holding state.
+     * queryTTYMode
+     * query the status of the TTY mode
      *
-     * @param muted true to mute the microphone,
-     * false to activate the microphone.
+     * @param onComplete a callback message when the action is completed.
      */
-
-    void setMute(boolean muted);
+    public void queryTTYMode(Message onComplete) {
+        mCi.queryTTYMode(onComplete);
+    }
 
     /**
-     * Gets current mute status. Use
-     * {@link #registerForPreciseCallStateChanged(android.os.Handler, int,
-     * java.lang.Object) registerForPreciseCallStateChanged()}
-     * as a change notifcation, although presently phone state changed is not
-     * fired when setMute() is called.
+     * Enable or disable enhanced Voice Privacy (VP). If enhanced VP is
+     * disabled, normal VP is enabled.
      *
-     * @return true is muting, false is unmuting
+     * @param enable whether true or false to enable or disable.
+     * @param onComplete a callback message when the action is completed.
      */
-    boolean getMute();
+    public void enableEnhancedVoicePrivacy(boolean enable, Message onComplete) {
+    }
 
     /**
-     * Enables or disables echo suppression.
+     * Get the currently set Voice Privacy (VP) mode.
+     *
+     * @param onComplete a callback message when the action is completed.
      */
-    void setEchoSuppressionEnabled();
+    public void getEnhancedVoicePrivacy(Message onComplete) {
+    }
+
+    /**
+     * Assign a specified band for RF configuration.
+     *
+     * @param bandMode one of BM_*_BAND
+     * @param response is callback message
+     */
+    public void setBandMode(int bandMode, Message response) {
+        mCi.setBandMode(bandMode, response);
+    }
+
+    /**
+     * Query the list of band mode supported by RF.
+     *
+     * @param response is callback message
+     *        ((AsyncResult)response.obj).result  is an int[] where int[0] is
+     *        the size of the array and the rest of each element representing
+     *        one available BM_*_BAND
+     */
+    public void queryAvailableBandMode(Message response) {
+        mCi.queryAvailableBandMode(response);
+    }
 
     /**
      * Invokes RIL_REQUEST_OEM_HOOK_RAW on RIL implementation.
@@ -1287,7 +1880,9 @@ public interface Phone {
      *
      * @see #invokeOemRilRequestRaw(byte[], android.os.Message)
      */
-    void invokeOemRilRequestRaw(byte[] data, Message response);
+    public void invokeOemRilRequestRaw(byte[] data, Message response) {
+        mCi.invokeOemRilRequestRaw(data, response);
+    }
 
     /**
      * Invokes RIL_REQUEST_OEM_HOOK_Strings on RIL implementation.
@@ -1303,307 +1898,317 @@ public interface Phone {
      *
      * @see #invokeOemRilRequestStrings(java.lang.String[], android.os.Message)
      */
-    void invokeOemRilRequestStrings(String[] strings, Message response);
+    public void invokeOemRilRequestStrings(String[] strings, Message response) {
+        mCi.invokeOemRilRequestStrings(strings, response);
+    }
 
     /**
-     * Get the current active Data Call list
+     * Read one of the NV items defined in {@link RadioNVItems} / {@code ril_nv_items.h}.
+     * Used for device configuration by some CDMA operators.
      *
-     * @param response <strong>On success</strong>, "response" bytes is
-     * made available as:
-     * (String[])(((AsyncResult)response.obj).result).
-     * <strong>On failure</strong>,
-     * (((AsyncResult)response.obj).result) == null and
-     * (((AsyncResult)response.obj).exception) being an instance of
-     * com.android.internal.telephony.gsm.CommandException
+     * @param itemID the ID of the item to read
+     * @param response callback message with the String response in the obj field
      */
-    void getDataCallList(Message response);
+    public void nvReadItem(int itemID, Message response) {
+        mCi.nvReadItem(itemID, response);
+    }
 
     /**
-     * Update the ServiceState CellLocation for current network registration.
-     */
-    void updateServiceLocation();
-
-    /**
-     * Enable location update notifications.
-     */
-    void enableLocationUpdates();
-
-    /**
-     * Disable location update notifications.
-     */
-    void disableLocationUpdates();
-
-    /**
-     * For unit tests; don't send notifications to "Phone"
-     * mailbox registrants if true.
-     */
-    void setUnitTestMode(boolean f);
-
-    /**
-     * @return true If unit test mode is enabled
-     */
-    boolean getUnitTestMode();
-
-    /**
-     * Assign a specified band for RF configuration.
+     * Write one of the NV items defined in {@link RadioNVItems} / {@code ril_nv_items.h}.
+     * Used for device configuration by some CDMA operators.
      *
-     * @param bandMode one of BM_*_BAND
-     * @param response is callback message
+     * @param itemID the ID of the item to read
+     * @param itemValue the value to write, as a String
+     * @param response Callback message.
      */
-    void setBandMode(int bandMode, Message response);
+    public void nvWriteItem(int itemID, String itemValue, Message response) {
+        mCi.nvWriteItem(itemID, itemValue, response);
+    }
 
     /**
-     * Query the list of band mode supported by RF.
+     * Update the CDMA Preferred Roaming List (PRL) in the radio NV storage.
+     * Used for device configuration by some CDMA operators.
      *
-     * @param response is callback message
-     *        ((AsyncResult)response.obj).result  is an int[] where int[0] is
-     *        the size of the array and the rest of each element representing
-     *        one available BM_*_BAND
+     * @param preferredRoamingList byte array containing the new PRL
+     * @param response Callback message.
      */
-    void queryAvailableBandMode(Message response);
+    public void nvWriteCdmaPrl(byte[] preferredRoamingList, Message response) {
+        mCi.nvWriteCdmaPrl(preferredRoamingList, response);
+    }
 
     /**
-     * @return true if enable data connection on roaming
-     */
-    boolean getDataRoamingEnabled();
-
-    /**
-     * @param enable set true if enable data connection on roaming
-     */
-    void setDataRoamingEnabled(boolean enable);
-
-    /**
-     * @return true if user has enabled data
-     */
-    boolean getDataEnabled();
-
-    /**
-     * @param @enable set {@code true} if enable data connection
-     */
-    void setDataEnabled(boolean enable);
-
-    /**
-     *  Query the CDMA roaming preference setting
+     * Perform the specified type of NV config reset. The radio will be taken offline
+     * and the device must be rebooted after erasing the NV. Used for device
+     * configuration by some CDMA operators.
      *
-     * @param response is callback message to report one of  CDMA_RM_*
+     * @param resetType reset type: 1: reload NV reset, 2: erase NV reset, 3: factory NV reset
+     * @param response Callback message.
      */
-    void queryCdmaRoamingPreference(Message response);
+    public void nvResetConfig(int resetType, Message response) {
+        mCi.nvResetConfig(resetType, response);
+    }
+
+    public void notifyDataActivity() {
+        mNotifier.notifyDataActivity(this);
+    }
+
+    public void notifyMessageWaitingIndicator() {
+        // Do not notify voice mail waiting if device doesn't support voice
+        if (!mIsVoiceCapable)
+            return;
+
+        // This function is added to send the notification to DefaultPhoneNotifier.
+        mNotifier.notifyMessageWaitingChanged(this);
+    }
+
+    public void notifyDataConnection(String reason, String apnType,
+            PhoneConstants.DataState state) {
+        mNotifier.notifyDataConnection(this, reason, apnType, state);
+    }
+
+    public void notifyDataConnection(String reason, String apnType) {
+        mNotifier.notifyDataConnection(this, reason, apnType, getDataConnectionState(apnType));
+    }
+
+    public void notifyDataConnection(String reason) {
+        String types[] = getActiveApnTypes();
+        for (String apnType : types) {
+            mNotifier.notifyDataConnection(this, reason, apnType, getDataConnectionState(apnType));
+        }
+    }
+
+    public void notifyOtaspChanged(int otaspMode) {
+        mNotifier.notifyOtaspChanged(this, otaspMode);
+    }
+
+    public void notifySignalStrength() {
+        mNotifier.notifySignalStrength(this);
+    }
+
+    public void notifyCellInfo(List<CellInfo> cellInfo) {
+        mNotifier.notifyCellInfo(this, privatizeCellInfoList(cellInfo));
+    }
+
+    public void notifyDataConnectionRealTimeInfo(DataConnectionRealTimeInfo dcRtInfo) {
+        mNotifier.notifyDataConnectionRealTimeInfo(this, dcRtInfo);
+    }
+
+    public void notifyVoLteServiceStateChanged(VoLteServiceState lteState) {
+        mNotifier.notifyVoLteServiceStateChanged(this, lteState);
+    }
 
     /**
-     *  Requests to set the CDMA roaming preference
-     * @param cdmaRoamingType one of  CDMA_RM_*
-     * @param response is callback message
+     * @return true if a mobile originating emergency call is active
      */
-    void setCdmaRoamingPreference(int cdmaRoamingType, Message response);
+    public boolean isInEmergencyCall() {
+        return false;
+    }
 
     /**
-     *  Requests to set the CDMA subscription mode
-     * @param cdmaSubscriptionType one of  CDMA_SUBSCRIPTION_*
-     * @param response is callback message
+     * @return {@code true} if we are in emergency call back mode. This is a period where the phone
+     * should be using as little power as possible and be ready to receive an incoming call from the
+     * emergency operator.
      */
-    void setCdmaSubscription(int cdmaSubscriptionType, Message response);
+    public boolean isInEcm() {
+        return false;
+    }
+
+    private static int getVideoState(Call call) {
+        int videoState = VideoProfile.STATE_AUDIO_ONLY;
+        ImsPhoneConnection conn = (ImsPhoneConnection) call.getEarliestConnection();
+        if (conn != null) {
+            videoState = conn.getVideoState();
+        }
+        return videoState;
+    }
+
+    private boolean isVideoCall(Call call) {
+        int videoState = getVideoState(call);
+        return (VideoProfile.isVideo(videoState));
+    }
 
     /**
-     * If this is a simulated phone interface, returns a SimulatedRadioControl.
-     * @return SimulatedRadioControl if this is a simulated interface;
-     * otherwise, null.
+     * @return {@code true} if video call is present, false otherwise.
      */
-    SimulatedRadioControl getSimulatedRadioControl();
+    public boolean isVideoCallPresent() {
+        boolean isVideoCallActive = false;
+        if (mImsPhone != null) {
+            isVideoCallActive = isVideoCall(mImsPhone.getForegroundCall()) ||
+                    isVideoCall(mImsPhone.getBackgroundCall()) ||
+                    isVideoCall(mImsPhone.getRingingCall());
+        }
+        Rlog.d(LOG_TAG, "isVideoCallActive: " + isVideoCallActive);
+        return isVideoCallActive;
+    }
 
     /**
-     * Report on whether data connectivity is allowed.
+     * Return a numerical identifier for the phone radio interface.
+     * @return PHONE_TYPE_XXX as defined above.
      */
-    boolean isDataConnectivityPossible();
+    public abstract int getPhoneType();
 
     /**
-     * Report on whether data connectivity is allowed for an APN.
+     * Return a numerical identifier for the phone radio interface. The only difference between this
+     * and getPhoneType() is that this treats CDMA and CDMA_LTE as separate.
+     * @return PHONE_TYPE_XXX as defined above.
      */
-    boolean isDataConnectivityPossible(String apnType);
+    public int getPrecisePhoneType() {
+        return getPhoneType();
+    }
 
     /**
-     * Retrieves the unique device ID, e.g., IMEI for GSM phones and MEID for CDMA phones.
+     * Returns unread voicemail count. This count is shown when the  voicemail
+     * notification is expanded.<p>
      */
-    String getDeviceId();
+    public int getVoiceMessageCount(){
+        return mVmCount;
+    }
 
-    /**
-     * Retrieves the software version number for the device, e.g., IMEI/SV
-     * for GSM phones.
-     */
-    String getDeviceSvn();
+    /** sets the voice mail count of the phone and notifies listeners. */
+    public void setVoiceMessageCount(int countWaiting) {
+        mVmCount = countWaiting;
+        // notify listeners of voice mail
+        notifyMessageWaitingIndicator();
+    }
 
-    /**
-     * Retrieves the unique subscriber ID, e.g., IMSI for GSM phones.
-     */
-    String getSubscriberId();
+    /** gets the voice mail count from preferences */
+    protected int getStoredVoiceMessageCount() {
+        int countVoiceMessages = 0;
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        String subscriberId = sp.getString(VM_ID, null);
+        String currentSubscriberId = getSubscriberId();
 
-    /**
-     * Retrieves the Group Identifier Level1 for GSM phones.
-     */
-    String getGroupIdLevel1();
+        if (currentSubscriberId != null && currentSubscriberId.equals(subscriberId)) {
+            // get voice mail count from preferences
+            countVoiceMessages = sp.getInt(VM_COUNT, 0);
+            Rlog.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages);
+        } else {
+            Rlog.d(LOG_TAG, "Voicemail count retrieval returning 0 as count for matching " +
+                    "subscriberId not found");
 
-    /**
-     * Retrieves the Group Identifier Level2 for phones.
-     */
-    String getGroupIdLevel2();
-
-    /**
-     * Retrieves the serial number of the ICC, if applicable.
-     */
-    String getIccSerialNumber();
-
-    /* CDMA support methods */
-
-    /**
-     * Retrieves the MIN for CDMA phones.
-     */
-    String getCdmaMin();
-
-    /**
-     * Check if subscription data has been assigned to mMin
-     *
-     * return true if MIN info is ready; false otherwise.
-     */
-    boolean isMinInfoReady();
-
-    /**
-     *  Retrieves PRL Version for CDMA phones
-     */
-    String getCdmaPrlVersion();
-
-    /**
-     * Retrieves the ESN for CDMA phones.
-     */
-    String getEsn();
-
-    /**
-     * Retrieves MEID for CDMA phones.
-     */
-    String getMeid();
-
-    /**
-     * Retrieves the MSISDN from the UICC. For GSM/UMTS phones, this is equivalent to
-     * {@link #getLine1Number()}. For CDMA phones, {@link #getLine1Number()} returns
-     * the MDN, so this method is provided to return the MSISDN on CDMA/LTE phones.
-     */
-    String getMsisdn();
-
-    /**
-     * Retrieves IMEI for phones. Returns null if IMEI is not set.
-     */
-    String getImei();
-
-    /**
-     * Retrieves Nai for phones. Returns null if Nai is not set.
-     */
-    String getNai();
-
-    /**
-     * Retrieves the PhoneSubInfo of the Phone
-     */
-    public PhoneSubInfo getPhoneSubInfo();
-
-    /**
-     * Retrieves the IccPhoneBookInterfaceManager of the Phone
-     */
-    public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager();
-
-    /**
-     * setTTYMode
-     * sets a TTY mode option.
-     * @param ttyMode is a one of the following:
-     * - {@link com.android.internal.telephony.Phone#TTY_MODE_OFF}
-     * - {@link com.android.internal.telephony.Phone#TTY_MODE_FULL}
-     * - {@link com.android.internal.telephony.Phone#TTY_MODE_HCO}
-     * - {@link com.android.internal.telephony.Phone#TTY_MODE_VCO}
-     * @param onComplete a callback message when the action is completed
-     */
-    void setTTYMode(int ttyMode, Message onComplete);
-
-   /**
-     * setUiTTYMode
-     * sets a TTY mode option.
-     * @param ttyMode is a one of the following:
-     * - {@link com.android.internal.telephony.Phone#TTY_MODE_OFF}
-     * - {@link com.android.internal.telephony.Phone#TTY_MODE_FULL}
-     * - {@link com.android.internal.telephony.Phone#TTY_MODE_HCO}
-     * - {@link com.android.internal.telephony.Phone#TTY_MODE_VCO}
-     * @param onComplete a callback message when the action is completed
-     */
-    void setUiTTYMode(int uiTtyMode, Message onComplete);
-
-    /**
-     * queryTTYMode
-     * query the status of the TTY mode
-     *
-     * @param onComplete a callback message when the action is completed.
-     */
-    void queryTTYMode(Message onComplete);
-
-    /**
-     * Activate or deactivate cell broadcast SMS.
-     *
-     * @param activate
-     *            0 = activate, 1 = deactivate
-     * @param response
-     *            Callback message is empty on completion
-     */
-    void activateCellBroadcastSms(int activate, Message response);
-
-    /**
-     * Query the current configuration of cdma cell broadcast SMS.
-     *
-     * @param response
-     *            Callback message is empty on completion
-     */
-    void getCellBroadcastSmsConfig(Message response);
-
-    /**
-     * Configure cell broadcast SMS.
-     *
-     * TODO: Change the configValuesArray to a RIL_BroadcastSMSConfig
-     *
-     * @param response
-     *            Callback message is empty on completion
-     */
-    public void setCellBroadcastSmsConfig(int[] configValuesArray, Message response);
-
-    public void notifyDataActivity();
+        }
+        return countVoiceMessages;
+    }
 
     /**
      * Returns the CDMA ERI icon index to display
      */
-    public int getCdmaEriIconIndex();
+    public int getCdmaEriIconIndex() {
+        return -1;
+    }
 
     /**
      * Returns the CDMA ERI icon mode,
      * 0 - ON
      * 1 - FLASHING
      */
-    public int getCdmaEriIconMode();
+    public int getCdmaEriIconMode() {
+        return -1;
+    }
 
     /**
      * Returns the CDMA ERI text,
      */
-    public String getCdmaEriText();
+    public String getCdmaEriText() {
+        return "GSM nw, no ERI";
+    }
+
+    /**
+     * Retrieves the MIN for CDMA phones.
+     */
+    public String getCdmaMin() {
+        return null;
+    }
+
+    /**
+     * Check if subscription data has been assigned to mMin
+     *
+     * return true if MIN info is ready; false otherwise.
+     */
+    public boolean isMinInfoReady() {
+        return false;
+    }
+
+    /**
+     *  Retrieves PRL Version for CDMA phones
+     */
+    public String getCdmaPrlVersion(){
+        return null;
+    }
+
+    /**
+     * send burst DTMF tone, it can send the string as single character or multiple character
+     * ignore if there is no active call or not valid digits string.
+     * Valid digit means only includes characters ISO-LATIN characters 0-9, *, #
+     * The difference between sendDtmf and sendBurstDtmf is sendDtmf only sends one character,
+     * this api can send single character and multiple character, also, this api has response
+     * back to caller.
+     *
+     * @param dtmfString is string representing the dialing digit(s) in the active call
+     * @param on the DTMF ON length in milliseconds, or 0 for default
+     * @param off the DTMF OFF length in milliseconds, or 0 for default
+     * @param onComplete is the callback message when the action is processed by BP
+     *
+     */
+    public void sendBurstDtmf(String dtmfString, int on, int off, Message onComplete) {
+    }
 
     /**
      * request to exit emergency call back mode
      * the caller should use setOnECMModeExitResponse
      * to receive the emergency callback mode exit response
      */
-    void exitEmergencyCallbackMode();
+    public void exitEmergencyCallbackMode() {
+    }
+
+    /**
+     * Register for notifications when CDMA OTA Provision status change
+     *
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
+     */
+    public void registerForCdmaOtaStatusChange(Handler h, int what, Object obj) {
+    }
+
+    /**
+     * Unregister for notifications when CDMA OTA Provision status change
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForCdmaOtaStatusChange(Handler h) {
+    }
+
+    /**
+     * Registration point for subscription info ready
+     * @param h handler to notify
+     * @param what what code of message when delivered
+     * @param obj placed in Message.obj
+     */
+    public void registerForSubscriptionInfoReady(Handler h, int what, Object obj) {
+    }
+
+    /**
+     * Unregister for notifications for subscription info
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForSubscriptionInfoReady(Handler h) {
+    }
+
+    /**
+     * Returns true if OTA Service Provisioning needs to be performed.
+     */
+    public boolean needsOtaServiceProvisioning() {
+        return false;
+    }
 
     /**
      * this decides if the dial number is OTA(Over the air provision) number or not
      * @param dialStr is string representing the dialing digit(s)
      * @return  true means the dialStr is OTA number, and false means the dialStr is not OTA number
      */
-    boolean isOtaSpNumber(String dialStr);
-
-    /**
-     * Returns true if OTA Service Provisioning needs to be performed.
-     */
-    boolean needsOtaServiceProvisioning();
+    public  boolean isOtaSpNumber(String dialStr) {
+        return false;
+    }
 
     /**
      * Register for notifications when CDMA call waiting comes
@@ -1612,14 +2217,31 @@ public interface Phone {
      * @param what User-defined message code.
      * @param obj User object.
      */
-    void registerForCallWaiting(Handler h, int what, Object obj);
+    public void registerForCallWaiting(Handler h, int what, Object obj){
+    }
 
     /**
      * Unegister for notifications when CDMA Call waiting comes
      * @param h Handler to be removed from the registrant list.
      */
-    void unregisterForCallWaiting(Handler h);
+    public void unregisterForCallWaiting(Handler h){
+    }
 
+    /**
+     * Registration point for Ecm timer reset
+     * @param h handler to notify
+     * @param what user-defined message code
+     * @param obj placed in Message.obj
+     */
+    public void registerForEcmTimerReset(Handler h, int what, Object obj) {
+    }
+
+    /**
+     * Unregister for notification for Ecm timer reset
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForEcmTimerReset(Handler h) {
+    }
 
     /**
      * Register for signal information notifications from the network.
@@ -1630,15 +2252,19 @@ public interface Phone {
      * @param what User-defined message code.
      * @param obj User object.
      */
+    public void registerForSignalInfo(Handler h, int what, Object obj) {
+        mCi.registerForSignalInfo(h, what, obj);
+    }
 
-    void registerForSignalInfo(Handler h, int what, Object obj) ;
     /**
      * Unregisters for signal information notifications.
      * Extraneous calls are tolerated silently
      *
      * @param h Handler to be removed from the registrant list.
      */
-    void unregisterForSignalInfo(Handler h);
+    public void unregisterForSignalInfo(Handler h) {
+        mCi.unregisterForSignalInfo(h);
+    }
 
     /**
      * Register for display information notifications from the network.
@@ -1649,7 +2275,9 @@ public interface Phone {
      * @param what User-defined message code.
      * @param obj User object.
      */
-    void registerForDisplayInfo(Handler h, int what, Object obj);
+    public void registerForDisplayInfo(Handler h, int what, Object obj) {
+        mCi.registerForDisplayInfo(h, what, obj);
+    }
 
     /**
      * Unregisters for display information notifications.
@@ -1657,7 +2285,9 @@ public interface Phone {
      *
      * @param h Handler to be removed from the registrant list.
      */
-    void unregisterForDisplayInfo(Handler h) ;
+    public void unregisterForDisplayInfo(Handler h) {
+         mCi.unregisterForDisplayInfo(h);
+    }
 
     /**
      * Register for CDMA number information record notification from the network.
@@ -1669,7 +2299,9 @@ public interface Phone {
      * @param what User-defined message code.
      * @param obj User object.
      */
-    void registerForNumberInfo(Handler h, int what, Object obj);
+    public void registerForNumberInfo(Handler h, int what, Object obj) {
+        mCi.registerForNumberInfo(h, what, obj);
+    }
 
     /**
      * Unregisters for number information record notifications.
@@ -1677,7 +2309,9 @@ public interface Phone {
      *
      * @param h Handler to be removed from the registrant list.
      */
-    void unregisterForNumberInfo(Handler h);
+    public void unregisterForNumberInfo(Handler h) {
+        mCi.unregisterForNumberInfo(h);
+    }
 
     /**
      * Register for CDMA redirected number information record notification
@@ -1690,7 +2324,9 @@ public interface Phone {
      * @param what User-defined message code.
      * @param obj User object.
      */
-    void registerForRedirectedNumberInfo(Handler h, int what, Object obj);
+    public void registerForRedirectedNumberInfo(Handler h, int what, Object obj) {
+        mCi.registerForRedirectedNumberInfo(h, what, obj);
+    }
 
     /**
      * Unregisters for redirected number information record notification.
@@ -1698,7 +2334,9 @@ public interface Phone {
      *
      * @param h Handler to be removed from the registrant list.
      */
-    void unregisterForRedirectedNumberInfo(Handler h);
+    public void unregisterForRedirectedNumberInfo(Handler h) {
+        mCi.unregisterForRedirectedNumberInfo(h);
+    }
 
     /**
      * Register for CDMA line control information record notification
@@ -1711,7 +2349,9 @@ public interface Phone {
      * @param what User-defined message code.
      * @param obj User object.
      */
-    void registerForLineControlInfo(Handler h, int what, Object obj);
+    public void registerForLineControlInfo(Handler h, int what, Object obj) {
+        mCi.registerForLineControlInfo(h, what, obj);
+    }
 
     /**
      * Unregisters for line control information notifications.
@@ -1719,7 +2359,9 @@ public interface Phone {
      *
      * @param h Handler to be removed from the registrant list.
      */
-    void unregisterForLineControlInfo(Handler h);
+    public void unregisterForLineControlInfo(Handler h) {
+        mCi.unregisterForLineControlInfo(h);
+    }
 
     /**
      * Register for CDMA T53 CLIR information record notifications
@@ -1732,7 +2374,9 @@ public interface Phone {
      * @param what User-defined message code.
      * @param obj User object.
      */
-    void registerFoT53ClirlInfo(Handler h, int what, Object obj);
+    public void registerFoT53ClirlInfo(Handler h, int what, Object obj) {
+        mCi.registerFoT53ClirlInfo(h, what, obj);
+    }
 
     /**
      * Unregisters for T53 CLIR information record notification
@@ -1740,7 +2384,9 @@ public interface Phone {
      *
      * @param h Handler to be removed from the registrant list.
      */
-    void unregisterForT53ClirInfo(Handler h);
+    public void unregisterForT53ClirInfo(Handler h) {
+        mCi.unregisterForT53ClirInfo(h);
+    }
 
     /**
      * Register for CDMA T53 audio control information record notifications
@@ -1753,7 +2399,9 @@ public interface Phone {
      * @param what User-defined message code.
      * @param obj User object.
      */
-    void registerForT53AudioControlInfo(Handler h, int what, Object obj);
+    public void registerForT53AudioControlInfo(Handler h, int what, Object obj) {
+        mCi.registerForT53AudioControlInfo(h, what, obj);
+    }
 
     /**
      * Unregisters for T53 audio control information record notifications.
@@ -1761,23 +2409,9 @@ public interface Phone {
      *
      * @param h Handler to be removed from the registrant list.
      */
-    void unregisterForT53AudioControlInfo(Handler h);
-
-    /**
-     * Register for radio off or not available
-     *
-     * @param h Handler that receives the notification message.
-     * @param what User-defined message code.
-     * @param obj User object.
-     */
-    public void registerForRadioOffOrNotAvailable(Handler h, int what, Object obj);
-
-    /**
-     * Unregisters for radio off or not available
-     *
-     * @param h Handler to be removed from the registrant list.
-     */
-    public void unregisterForRadioOffOrNotAvailable(Handler h);
+    public void unregisterForT53AudioControlInfo(Handler h) {
+        mCi.unregisterForT53AudioControlInfo(h);
+    }
 
     /**
      * registers for exit emergency call back mode request response
@@ -1786,25 +2420,151 @@ public interface Phone {
      * @param what User-defined message code.
      * @param obj User object.
      */
-
-    void setOnEcbModeExitResponse(Handler h, int what, Object obj);
+    public void setOnEcbModeExitResponse(Handler h, int what, Object obj){
+    }
 
     /**
      * Unregisters for exit emergency call back mode request response
      *
      * @param h Handler to be removed from the registrant list.
      */
-    void unsetOnEcbModeExitResponse(Handler h);
+    public void unsetOnEcbModeExitResponse(Handler h){
+    }
 
     /**
-     * Return if the current radio is LTE on CDMA. This
-     * is a tri-state return value as for a period of time
-     * the mode may be unknown.
+     * Register for radio off or not available
      *
-     * @return {@link PhoneConstants#LTE_ON_CDMA_UNKNOWN}, {@link PhoneConstants#LTE_ON_CDMA_FALSE}
-     * or {@link PhoneConstants#LTE_ON_CDMA_TRUE}
+     * @param h Handler that receives the notification message.
+     * @param what User-defined message code.
+     * @param obj User object.
      */
-    public int getLteOnCdmaMode();
+    public void registerForRadioOffOrNotAvailable(Handler h, int what, Object obj) {
+        mRadioOffOrNotAvailableRegistrants.addUnique(h, what, obj);
+    }
+
+    /**
+     * Unregisters for radio off or not available
+     *
+     * @param h Handler to be removed from the registrant list.
+     */
+    public void unregisterForRadioOffOrNotAvailable(Handler h) {
+        mRadioOffOrNotAvailableRegistrants.remove(h);
+    }
+
+    /**
+     * Returns an array of string identifiers for the APN types serviced by the
+     * currently active.
+     *  @return The string array will always return at least one entry, Phone.APN_TYPE_DEFAULT.
+     * TODO: Revisit if we always should return at least one entry.
+     */
+    public String[] getActiveApnTypes() {
+        return mDcTracker.getActiveApnTypes();
+    }
+
+    /**
+     * Check if TETHER_DUN_APN setting or config_tether_apndata includes APN that matches
+     * current operator.
+     * @return true if there is a matching DUN APN.
+     */
+    public boolean hasMatchedTetherApnSetting() {
+        return mDcTracker.hasMatchedTetherApnSetting();
+    }
+
+    /**
+     * Returns string for the active APN host.
+     *  @return type as a string or null if none.
+     */
+    public String getActiveApnHost(String apnType) {
+        return mDcTracker.getActiveApnString(apnType);
+    }
+
+    /**
+     * Return the LinkProperties for the named apn or null if not available
+     */
+    public LinkProperties getLinkProperties(String apnType) {
+        return mDcTracker.getLinkProperties(apnType);
+    }
+
+    /**
+     * Return the NetworkCapabilities
+     */
+    public NetworkCapabilities getNetworkCapabilities(String apnType) {
+        return mDcTracker.getNetworkCapabilities(apnType);
+    }
+
+    /**
+     * Report on whether data connectivity is allowed.
+     */
+    public boolean isDataConnectivityPossible() {
+        return isDataConnectivityPossible(PhoneConstants.APN_TYPE_DEFAULT);
+    }
+
+    /**
+     * Report on whether data connectivity is allowed for an APN.
+     */
+    public boolean isDataConnectivityPossible(String apnType) {
+        return ((mDcTracker != null) &&
+                (mDcTracker.isDataPossible(apnType)));
+    }
+
+    /**
+     * Notify registrants of a new ringing Connection.
+     * Subclasses of Phone probably want to replace this with a
+     * version scoped to their packages
+     */
+    public void notifyNewRingingConnectionP(Connection cn) {
+        if (!mIsVoiceCapable)
+            return;
+        AsyncResult ar = new AsyncResult(null, cn, null);
+        mNewRingingConnectionRegistrants.notifyRegistrants(ar);
+    }
+
+    /**
+     * Notify registrants of a new unknown connection.
+     */
+    public void notifyUnknownConnectionP(Connection cn) {
+        mUnknownConnectionRegistrants.notifyResult(cn);
+    }
+
+    /**
+     * Notify registrants if phone is video capable.
+     */
+    public void notifyForVideoCapabilityChanged(boolean isVideoCallCapable) {
+        // Cache the current video capability so that we don't lose the information.
+        mIsVideoCapable = isVideoCallCapable;
+
+        AsyncResult ar = new AsyncResult(null, isVideoCallCapable, null);
+        mVideoCapabilityChangedRegistrants.notifyRegistrants(ar);
+    }
+
+    /**
+     * Notify registrants of a RING event.
+     */
+    private void notifyIncomingRing() {
+        if (!mIsVoiceCapable)
+            return;
+        AsyncResult ar = new AsyncResult(null, this, null);
+        mIncomingRingRegistrants.notifyRegistrants(ar);
+    }
+
+    /**
+     * Send the incoming call Ring notification if conditions are right.
+     */
+    private void sendIncomingCallRingNotification(int token) {
+        if (mIsVoiceCapable && !mDoesRilSendMultipleCallRing &&
+                (token == mCallRingContinueToken)) {
+            Rlog.d(LOG_TAG, "Sending notifyIncomingRing");
+            notifyIncomingRing();
+            sendMessageDelayed(
+                    obtainMessage(EVENT_CALL_RING_CONTINUE, token, 0), mCallRingDelay);
+        } else {
+            Rlog.d(LOG_TAG, "Ignoring ring notification request,"
+                    + " mDoesRilSendMultipleCallRing=" + mDoesRilSendMultipleCallRing
+                    + " token=" + token
+                    + " mCallRingContinueToken=" + mCallRingContinueToken
+                    + " mIsVoiceCapable=" + mIsVoiceCapable);
+        }
+    }
 
     /**
      * TODO: Adding a function for each property is not good.
@@ -1816,13 +2576,60 @@ public interface Phone {
      * @return true if this bit is set or EF_CSP data is unavailable,
      * false otherwise
      */
-    boolean isCspPlmnEnabled();
+    public boolean isCspPlmnEnabled() {
+        return false;
+    }
 
     /**
      * Return an interface to retrieve the ISIM records for IMS, if available.
      * @return the interface to retrieve the ISIM records, or null if not supported
      */
-    IsimRecords getIsimRecords();
+    public IsimRecords getIsimRecords() {
+        Rlog.e(LOG_TAG, "getIsimRecords() is only supported on LTE devices");
+        return null;
+    }
+
+    /**
+     * Retrieves the MSISDN from the UICC. For GSM/UMTS phones, this is equivalent to
+     * {@link #getLine1Number()}. For CDMA phones, {@link #getLine1Number()} returns
+     * the MDN, so this method is provided to return the MSISDN on CDMA/LTE phones.
+     */
+    public String getMsisdn() {
+        return null;
+    }
+
+    /**
+     * Get the current for the default apn DataState. No change notification
+     * exists at this interface -- use
+     * {@link android.telephony.PhoneStateListener} instead.
+     */
+    public PhoneConstants.DataState getDataConnectionState() {
+        return getDataConnectionState(PhoneConstants.APN_TYPE_DEFAULT);
+    }
+
+    public void notifyCallForwardingIndicator() {
+    }
+
+    public void notifyDataConnectionFailed(String reason, String apnType) {
+        mNotifier.notifyDataConnectionFailed(this, reason, apnType);
+    }
+
+    public void notifyPreciseDataConnectionFailed(String reason, String apnType, String apn,
+            String failCause) {
+        mNotifier.notifyPreciseDataConnectionFailed(this, reason, apnType, apn, failCause);
+    }
+
+    /**
+     * Return if the current radio is LTE on CDMA. This
+     * is a tri-state return value as for a period of time
+     * the mode may be unknown.
+     *
+     * @return {@link PhoneConstants#LTE_ON_CDMA_UNKNOWN}, {@link PhoneConstants#LTE_ON_CDMA_FALSE}
+     * or {@link PhoneConstants#LTE_ON_CDMA_TRUE}
+     */
+    public int getLteOnCdmaMode() {
+        return mCi.getLteOnCdmaMode();
+    }
 
     /**
      * Sets the SIM voice message waiting indicator records.
@@ -1831,163 +2638,271 @@ public interface Phone {
      *                     -1 to indicate that an unknown number of
      *                      messages are waiting
      */
-    void setVoiceMessageWaiting(int line, int countWaiting);
+    public void setVoiceMessageWaiting(int line, int countWaiting) {
+        // This function should be overridden by class GsmCdmaPhone.
+        Rlog.e(LOG_TAG, "Error! This function should never be executed, inactive Phone.");
+    }
 
     /**
      * Gets the USIM service table from the UICC, if present and available.
      * @return an interface to the UsimServiceTable record, or null if not available
      */
-    UsimServiceTable getUsimServiceTable();
+    public UsimServiceTable getUsimServiceTable() {
+        IccRecords r = mIccRecords.get();
+        return (r != null) ? r.getUsimServiceTable() : null;
+    }
 
     /**
      * Gets the Uicc card corresponding to this phone.
      * @return the UiccCard object corresponding to the phone ID.
      */
-    UiccCard getUiccCard();
-
-    /**
-     * Unregister from all events it registered for and dispose objects
-     * created by this object.
-     */
-    void dispose();
-
-    /**
-     * Remove references to external object stored in this object.
-     */
-    void removeReferences();
-
-    /**
-     * Update the phone object if the voice radio technology has changed
-     *
-     * @param voiceRadioTech The new voice radio technology
-     */
-    void updatePhoneObject(int voiceRadioTech);
-
-    /**
-     * Read one of the NV items defined in {@link RadioNVItems} / {@code ril_nv_items.h}.
-     * Used for device configuration by some CDMA operators.
-     *
-     * @param itemID the ID of the item to read
-     * @param response callback message with the String response in the obj field
-     */
-    void nvReadItem(int itemID, Message response);
-
-    /**
-     * Write one of the NV items defined in {@link RadioNVItems} / {@code ril_nv_items.h}.
-     * Used for device configuration by some CDMA operators.
-     *
-     * @param itemID the ID of the item to read
-     * @param itemValue the value to write, as a String
-     * @param response Callback message.
-     */
-    void nvWriteItem(int itemID, String itemValue, Message response);
-
-    /**
-     * Update the CDMA Preferred Roaming List (PRL) in the radio NV storage.
-     * Used for device configuration by some CDMA operators.
-     *
-     * @param preferredRoamingList byte array containing the new PRL
-     * @param response Callback message.
-     */
-    void nvWriteCdmaPrl(byte[] preferredRoamingList, Message response);
-
-    /**
-     * Perform the specified type of NV config reset. The radio will be taken offline
-     * and the device must be rebooted after erasing the NV. Used for device
-     * configuration by some CDMA operators.
-     *
-     * @param resetType reset type: 1: reload NV reset, 2: erase NV reset, 3: factory NV reset
-     * @param response Callback message.
-     */
-    void nvResetConfig(int resetType, Message response);
-
-    /*
-     * Returns the subscription id.
-     */
-    public int getSubId();
-
-    /*
-     * Returns the phone id.
-     */
-    public int getPhoneId();
+    public UiccCard getUiccCard() {
+        return mUiccController.getUiccCard(mPhoneId);
+    }
 
     /**
      * Get P-CSCF address from PCO after data connection is established or modified.
      * @param apnType the apnType, "ims" for IMS APN, "emergency" for EMERGENCY APN
      */
-    public String[] getPcscfAddress(String apnType);
+    public String[] getPcscfAddress(String apnType) {
+        return mDcTracker.getPcscfAddress(apnType);
+    }
 
     /**
      * Set IMS registration state
      */
-    public void setImsRegistrationState(boolean registered);
+    public void setImsRegistrationState(boolean registered) {
+        //todo: not needed. this only calls the function in sst, which gsmcdmaphone already does
+        mDcTracker.setImsRegistrationState(registered);
+    }
 
     /**
-     * Return the ImsPhone phone co-managed with this phone
-     * @return an instance of an ImsPhone phone
+     * Return an instance of a IMS phone
      */
-    public Phone getImsPhone();
-
-    /**
-     * Start listening for IMS service UP/DOWN events.
-     */
-    public void startMonitoringImsService();
+    public Phone getImsPhone() {
+        return mImsPhone;
+    }
 
     /**
      * Return if UT capability of ImsPhone is enabled or not
      */
-    public boolean isUtEnabled();
+    public boolean isUtEnabled() {
+        return false;
+    }
+
+    protected void updateImsPhone() {
+        Rlog.d(LOG_TAG, "updateImsPhone"
+                + " mImsServiceReady=" + mImsServiceReady);
+
+        if (mImsServiceReady && (mImsPhone == null)) {
+            mImsPhone = PhoneFactory.makeImsPhone(mNotifier, this);
+            CallManager.getInstance().registerPhone(mImsPhone);
+            mImsPhone.registerForSilentRedial(
+                    this, EVENT_INITIATE_SILENT_REDIAL, null);
+        } else if (!mImsServiceReady && (mImsPhone != null)) {
+            CallManager.getInstance().unregisterPhone(mImsPhone);
+            mImsPhone.unregisterForSilentRedial(this);
+
+            mImsPhone.dispose();
+            // Potential GC issue if someone keeps a reference to ImsPhone.
+            // However: this change will make sure that such a reference does
+            // not access functions through NULL pointer.
+            //mImsPhone.removeReferences();
+            mImsPhone = null;
+        }
+    }
 
     /**
-     * Release the local instance of the ImsPhone and disconnect from
-     * the phone.
-     * @return the instance of the ImsPhone phone previously owned
+     * Dials a number.
+     *
+     * @param dialString The number to dial.
+     * @param uusInfo The UUSInfo.
+     * @param videoState The video state for the call.
+     * @param intentExtras Extras from the original CALL intent.
+     * @return The Connection.
+     * @throws CallStateException
      */
-    public ImsPhone relinquishOwnershipOfImsPhone();
+    protected Connection dialInternal(
+            String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
+            throws CallStateException {
+        // dialInternal shall be overriden by GsmCdmaPhone
+        return null;
+    }
+
+    /*
+     * Returns the subscription id.
+     */
+    public int getSubId() {
+        return SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhoneId);
+    }
 
     /**
-     * Take ownership and wire-up the input ImsPhone
-     * @param imsPhone ImsPhone to be used.
+     * Returns the phone id.
      */
-    public void acquireOwnershipOfImsPhone(ImsPhone imsPhone);
+    public int getPhoneId() {
+        return mPhoneId;
+    }
 
     /**
      * Return the service state of mImsPhone if it is STATE_IN_SERVICE
      * otherwise return the current voice service state
      */
-    int getVoicePhoneServiceState();
+    public int getVoicePhoneServiceState() {
+        ImsPhone imsPhone = mImsPhone;
+        if (imsPhone != null
+                && imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
+            return ServiceState.STATE_IN_SERVICE;
+        }
+        return getServiceState().getState();
+    }
 
     /**
      * Override the service provider name and the operator name for the current ICCID.
      */
-    public boolean setOperatorBrandOverride(String brand);
+    public boolean setOperatorBrandOverride(String brand) {
+        return false;
+    }
 
     /**
      * Override the roaming indicator for the current ICCID.
      */
     public boolean setRoamingOverride(List<String> gsmRoamingList,
             List<String> gsmNonRoamingList, List<String> cdmaRoamingList,
-            List<String> cdmaNonRoamingList);
+            List<String> cdmaNonRoamingList) {
+        String iccId = getIccSerialNumber();
+        if (TextUtils.isEmpty(iccId)) {
+            return false;
+        }
+
+        setRoamingOverrideHelper(gsmRoamingList, GSM_ROAMING_LIST_OVERRIDE_PREFIX, iccId);
+        setRoamingOverrideHelper(gsmNonRoamingList, GSM_NON_ROAMING_LIST_OVERRIDE_PREFIX, iccId);
+        setRoamingOverrideHelper(cdmaRoamingList, CDMA_ROAMING_LIST_OVERRIDE_PREFIX, iccId);
+        setRoamingOverrideHelper(cdmaNonRoamingList, CDMA_NON_ROAMING_LIST_OVERRIDE_PREFIX, iccId);
+
+        // Refresh.
+        ServiceStateTracker tracker = getServiceStateTracker();
+        if (tracker != null) {
+            tracker.pollState();
+        }
+        return true;
+    }
+
+    private void setRoamingOverrideHelper(List<String> list, String prefix, String iccId) {
+        SharedPreferences.Editor spEditor =
+                PreferenceManager.getDefaultSharedPreferences(mContext).edit();
+        String key = prefix + iccId;
+        if (list == null || list.isEmpty()) {
+            spEditor.remove(key).commit();
+        } else {
+            spEditor.putStringSet(key, new HashSet<String>(list)).commit();
+        }
+    }
+
+    public boolean isMccMncMarkedAsRoaming(String mccMnc) {
+        return getRoamingOverrideHelper(GSM_ROAMING_LIST_OVERRIDE_PREFIX, mccMnc);
+    }
+
+    public boolean isMccMncMarkedAsNonRoaming(String mccMnc) {
+        return getRoamingOverrideHelper(GSM_NON_ROAMING_LIST_OVERRIDE_PREFIX, mccMnc);
+    }
+
+    public boolean isSidMarkedAsRoaming(int SID) {
+        return getRoamingOverrideHelper(CDMA_ROAMING_LIST_OVERRIDE_PREFIX,
+                Integer.toString(SID));
+    }
+
+    public boolean isSidMarkedAsNonRoaming(int SID) {
+        return getRoamingOverrideHelper(CDMA_NON_ROAMING_LIST_OVERRIDE_PREFIX,
+                Integer.toString(SID));
+    }
+
+    /**
+     * Query the IMS Registration Status.
+     *
+     * @return true if IMS is Registered
+     */
+    public boolean isImsRegistered() {
+        ImsPhone imsPhone = mImsPhone;
+        boolean isImsRegistered = false;
+        if (imsPhone != null) {
+            isImsRegistered = imsPhone.isImsRegistered();
+        } else {
+            ServiceStateTracker sst = getServiceStateTracker();
+            if (sst != null) {
+                isImsRegistered = sst.isImsRegistered();
+            }
+        }
+        Rlog.d(LOG_TAG, "isImsRegistered =" + isImsRegistered);
+        return isImsRegistered;
+    }
+
+    /**
+     * Get Wifi Calling Feature Availability
+     */
+    public boolean isWifiCallingEnabled() {
+        ImsPhone imsPhone = mImsPhone;
+        boolean isWifiCallingEnabled = false;
+        if (imsPhone != null) {
+            isWifiCallingEnabled = imsPhone.isVowifiEnabled();
+        }
+        Rlog.d(LOG_TAG, "isWifiCallingEnabled =" + isWifiCallingEnabled);
+        return isWifiCallingEnabled;
+    }
+
+    /**
+     * Get Volte Feature Availability
+     */
+    public boolean isVolteEnabled() {
+        ImsPhone imsPhone = mImsPhone;
+        boolean isVolteEnabled = false;
+        if (imsPhone != null) {
+            isVolteEnabled = imsPhone.isVolteEnabled();
+        }
+        Rlog.d(LOG_TAG, "isImsRegistered =" + isVolteEnabled);
+        return isVolteEnabled;
+    }
+
+    private boolean getRoamingOverrideHelper(String prefix, String key) {
+        String iccId = getIccSerialNumber();
+        if (TextUtils.isEmpty(iccId) || TextUtils.isEmpty(key)) {
+            return false;
+        }
+
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        Set<String> value = sp.getStringSet(prefix + iccId, null);
+        if (value == null) {
+            return false;
+        }
+        return value.contains(key);
+    }
 
     /**
      * Is Radio Present on the device and is it accessible
      */
-    public boolean isRadioAvailable();
+    public boolean isRadioAvailable() {
+        return mCi.getRadioState().isAvailable();
+    }
 
     /**
      * Is Radio turned on
      */
-    public boolean isRadioOn();
+    public boolean isRadioOn() {
+        return mCi.getRadioState().isOn();
+    }
 
     /**
      * shutdown Radio gracefully
      */
-    public void shutdownRadio();
+    public void shutdownRadio() {
+        getServiceStateTracker().requestShutdown();
+    }
 
     /**
      * Return true if the device is shutting down.
      */
-    public boolean isShuttingDown();
+    public boolean isShuttingDown() {
+        return getServiceStateTracker().isDeviceShuttingDown();
+    }
 
     /**
      *  Set phone radio capability
@@ -1996,28 +2911,38 @@ public interface Phone {
      *         RadioCapability. It's a input object used to transfer parameter to logic modem
      *  @param response Callback message.
      */
-    public void setRadioCapability(RadioCapability rc, Message response);
-
-    /**
-     *  Get phone radio capability
-     *
-     *  @return the capability of the radio defined in RadioCapability
-     */
-    public RadioCapability getRadioCapability();
+    public void setRadioCapability(RadioCapability rc, Message response) {
+        mCi.setRadioCapability(rc, response);
+    }
 
     /**
      *  Get phone radio access family
      *
      *  @return a bit mask to identify the radio access family.
      */
-    public int getRadioAccessFamily();
+    public int getRadioAccessFamily() {
+        final RadioCapability rc = getRadioCapability();
+        return (rc == null ? RadioAccessFamily.RAF_UNKNOWN : rc.getRadioAccessFamily());
+    }
 
     /**
      *  Get the associated data modems Id.
      *
      *  @return a String containing the id of the data modem
      */
-    public String getModemUuId();
+    public String getModemUuId() {
+        final RadioCapability rc = getRadioCapability();
+        return (rc == null ? "" : rc.getLogicalModemUuid());
+    }
+
+    /**
+     *  Get phone radio capability
+     *
+     *  @return the capability of the radio defined in RadioCapability
+     */
+    public RadioCapability getRadioCapability() {
+        return mRadioCapability.get();
+    }
 
     /**
      *  The RadioCapability has changed. This comes up from the RIL and is called when radios first
@@ -2027,7 +2952,34 @@ public interface Phone {
      *
      *  @param rc the phone radio capability currently in effect for this phone.
      */
-    public void radioCapabilityUpdated(RadioCapability rc);
+    public void radioCapabilityUpdated(RadioCapability rc) {
+        // Called when radios first become available or after a capability switch
+        // Update the cached value
+        mRadioCapability.set(rc);
+
+        if (SubscriptionManager.isValidSubscriptionId(getSubId())) {
+            sendSubscriptionSettings(true);
+        }
+    }
+
+    public void sendSubscriptionSettings(boolean restoreNetworkSelection) {
+        // Send settings down
+        int type = PhoneFactory.calculatePreferredNetworkType(mContext, getSubId());
+        setPreferredNetworkType(type, null);
+
+        if (restoreNetworkSelection) {
+            restoreSavedNetworkSelection(null);
+        }
+        mDcTracker.setDataEnabled(getDataEnabled());
+    }
+
+    protected void setPreferredNetworkTypeIfSimLoaded() {
+        int subId = getSubId();
+        if (SubscriptionManager.isValidSubscriptionId(subId)) {
+            int type = PhoneFactory.calculatePreferredNetworkType(mContext, getSubId());
+            setPreferredNetworkType(type, null);
+        }
+    }
 
     /**
      * Registers the handler when phone radio  capability is changed.
@@ -2036,66 +2988,195 @@ public interface Phone {
      * @param what User-defined message code.
      * @param obj User object.
      */
-    public void registerForRadioCapabilityChanged(Handler h, int what, Object obj);
+    public void registerForRadioCapabilityChanged(Handler h, int what, Object obj) {
+        mCi.registerForRadioCapabilityChanged(h, what, obj);
+    }
 
     /**
      * Unregister for notifications when phone radio type and access technology is changed.
      *
      * @param h Handler to be removed from the registrant list.
      */
-    public void unregisterForRadioCapabilityChanged(Handler h);
+    public void unregisterForRadioCapabilityChanged(Handler h) {
+        mCi.unregisterForRadioCapabilityChanged(this);
+    }
 
     /**
-     * Query the IMS Registration Status.
+     * Determines if  IMS is enabled for call.
      *
-     * @return true if IMS is Registered
+     * @return {@code true} if IMS calling is enabled.
      */
-    public boolean isImsRegistered();
+    public boolean isImsUseEnabled() {
+        boolean imsUseEnabled =
+                ((ImsManager.isVolteEnabledByPlatform(mContext) &&
+                ImsManager.isEnhanced4gLteModeSettingEnabledByUser(mContext)) ||
+                (ImsManager.isWfcEnabledByPlatform(mContext) &&
+                ImsManager.isWfcEnabledByUser(mContext)) &&
+                ImsManager.isNonTtyOrTtyOnVolteEnabled(mContext));
+        return imsUseEnabled;
+    }
 
     /**
      * Determines if video calling is enabled for the phone.
      *
      * @return {@code true} if video calling is enabled, {@code false} otherwise.
      */
-    public boolean isVideoEnabled();
-
-    /**
-     * @return {@code true} if we are in emergency call back mode. This is a period where the phone
-     * should be using as little power as possible and be ready to receive an incoming call from the
-     * emergency operator.
-     */
-    public boolean isInEcm();
-
-    /**
-     * Returns the Status of Wi-Fi Calling
-     *@hide
-     */
-    public boolean isWifiCallingEnabled();
-
-     /**
-     * Returns the Status of Volte
-     *@hide
-     */
-    public boolean isVolteEnabled();
-
-    /**
-     * @return {@code true} if video call is present, false otherwise.
-     */
-    public boolean isVideoCallPresent();
+    public boolean isVideoEnabled() {
+        ImsPhone imsPhone = mImsPhone;
+        if ((imsPhone != null)
+                && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
+            return imsPhone.isVideoCallEnabled();
+        }
+        return false;
+    }
 
     /**
      * Returns the status of Link Capacity Estimation (LCE) service.
      */
-    public int getLceStatus();
+    public int getLceStatus() {
+        return mLceStatus;
+    }
+
+    /**
+     * Returns the modem activity information
+     */
+    public void getModemActivityInfo(Message response)  {
+        mCi.getModemActivityInfo(response);
+    }
+
+    /**
+     * Starts LCE service after radio becomes available.
+     * LCE service state may get destroyed on the modem when radio becomes unavailable.
+     */
+    public void startLceAfterRadioIsAvailable() {
+        mCi.startLceService(DEFAULT_REPORT_INTERVAL_MS, LCE_PULL_MODE,
+            obtainMessage(EVENT_CONFIG_LCE));
+    }
 
     /**
      * Returns the locale based on the carrier properties (such as {@code ro.carrier}) and
      * SIM preferences.
      */
-    public Locale getLocaleFromSimAndCarrierPrefs();
+    public Locale getLocaleFromSimAndCarrierPrefs() {
+        final IccRecords records = mIccRecords.get();
+        if (records != null && records.getSimLanguage() != null) {
+            return new Locale(records.getSimLanguage());
+        }
 
-    /**
-     * Returns the modem activity information
-     */
-    public void getModemActivityInfo(Message response);
+        return getLocaleFromCarrierProperties(mContext);
+    }
+
+    public void updateDataConnectionTracker() {
+        mDcTracker.update();
+    }
+
+    public void setInternalDataEnabled(boolean enable, Message onCompleteMsg) {
+        mDcTracker.setInternalDataEnabled(enable, onCompleteMsg);
+    }
+
+    public boolean updateCurrentCarrierInProvider() {
+        return false;
+    }
+
+    public void registerForAllDataDisconnected(Handler h, int what, Object obj) {
+        mDcTracker.registerForAllDataDisconnected(h, what, obj);
+    }
+
+    public void unregisterForAllDataDisconnected(Handler h) {
+        mDcTracker.unregisterForAllDataDisconnected(h);
+    }
+
+    public IccSmsInterfaceManager getIccSmsInterfaceManager(){
+        return null;
+    }
+
+    public PhoneSubInfoProxy getPhoneSubInfoProxy() {
+        return null;
+    }
+
+    public IccPhoneBookInterfaceManagerProxy getIccPhoneBookInterfaceManagerProxy() {
+        return null;
+    }
+
+    protected boolean isMatchGid(String gid) {
+        String gid1 = getGroupIdLevel1();
+        int gidLength = gid.length();
+        if (!TextUtils.isEmpty(gid1) && (gid1.length() >= gidLength)
+                && gid1.substring(0, gidLength).equalsIgnoreCase(gid)) {
+            return true;
+        }
+        return false;
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("Phone: subId=" + getSubId());
+        pw.println(" mPhoneId=" + mPhoneId);
+        pw.println(" mCi=" + mCi);
+        pw.println(" mDnsCheckDisabled=" + mDnsCheckDisabled);
+        pw.println(" mDcTracker=" + mDcTracker);
+        pw.println(" mDoesRilSendMultipleCallRing=" + mDoesRilSendMultipleCallRing);
+        pw.println(" mCallRingContinueToken=" + mCallRingContinueToken);
+        pw.println(" mCallRingDelay=" + mCallRingDelay);
+        pw.println(" mIsVoiceCapable=" + mIsVoiceCapable);
+        pw.println(" mIccRecords=" + mIccRecords.get());
+        pw.println(" mUiccApplication=" + mUiccApplication.get());
+        pw.println(" mSmsStorageMonitor=" + mSmsStorageMonitor);
+        pw.println(" mSmsUsageMonitor=" + mSmsUsageMonitor);
+        pw.flush();
+        pw.println(" mLooper=" + mLooper);
+        pw.println(" mContext=" + mContext);
+        pw.println(" mNotifier=" + mNotifier);
+        pw.println(" mSimulatedRadioControl=" + mSimulatedRadioControl);
+        pw.println(" mUnitTestMode=" + mUnitTestMode);
+        pw.println(" isDnsCheckDisabled()=" + isDnsCheckDisabled());
+        pw.println(" getUnitTestMode()=" + getUnitTestMode());
+        pw.println(" getState()=" + getState());
+        pw.println(" getIccSerialNumber()=" + getIccSerialNumber());
+        pw.println(" getIccRecordsLoaded()=" + getIccRecordsLoaded());
+        pw.println(" getMessageWaitingIndicator()=" + getMessageWaitingIndicator());
+        pw.println(" getCallForwardingIndicator()=" + getCallForwardingIndicator());
+        pw.println(" isInEmergencyCall()=" + isInEmergencyCall());
+        pw.flush();
+        pw.println(" isInEcm()=" + isInEcm());
+        pw.println(" getPhoneName()=" + getPhoneName());
+        pw.println(" getPhoneType()=" + getPhoneType());
+        pw.println(" getVoiceMessageCount()=" + getVoiceMessageCount());
+        pw.println(" getActiveApnTypes()=" + getActiveApnTypes());
+        pw.println(" isDataConnectivityPossible()=" + isDataConnectivityPossible());
+        pw.println(" needsOtaServiceProvisioning=" + needsOtaServiceProvisioning());
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            mDcTracker.dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            getServiceStateTracker().dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            getCallTracker().dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            ((RIL)mCi).dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+    }
 }

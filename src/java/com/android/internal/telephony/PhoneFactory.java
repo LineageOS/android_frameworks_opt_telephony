@@ -31,12 +31,8 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 
-import com.android.internal.telephony.cdma.CDMALTEPhone;
-import com.android.internal.telephony.cdma.CDMAPhone;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.DctController;
-import com.android.internal.telephony.gsm.GSMPhone;
-import com.android.internal.telephony.SubscriptionInfoUpdater;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.sip.SipPhone;
@@ -60,10 +56,10 @@ public class PhoneFactory {
 
     //***** Class Variables
 
-    // lock sLockProxyPhones protects both sProxyPhones and sProxyPhone
+    // lock sLockProxyPhones protects both sPhones and sPhone
     final static Object sLockProxyPhones = new Object();
-    static private PhoneProxy[] sProxyPhones = null;
-    static private PhoneProxy sProxyPhone = null;
+    static private Phone[] sPhones = null;
+    static private Phone sPhone = null;
 
     static private CommandsInterface[] sCommandsInterfaces = null;
 
@@ -127,12 +123,12 @@ public class PhoneFactory {
                 int cdmaSubscription = CdmaSubscriptionSourceManager.getDefault(context);
                 Rlog.i(LOG_TAG, "Cdma Subscription set to " + cdmaSubscription);
 
-                /* In case of multi SIM mode two instances of PhoneProxy, RIL are created,
+                /* In case of multi SIM mode two instances of Phone, RIL are created,
                    where as in single SIM mode only instance. isMultiSimEnabled() function checks
                    whether it is single SIM or multi SIM mode */
                 int numPhones = TelephonyManager.getDefault().getPhoneCount();
                 int[] networkModes = new int[numPhones];
-                sProxyPhones = new PhoneProxy[numPhones];
+                sPhones = new Phone[numPhones];
                 sCommandsInterfaces = new RIL[numPhones];
 
                 for (int i = 0; i < numPhones; i++) {
@@ -152,26 +148,28 @@ public class PhoneFactory {
                 mUiccController = UiccController.make(context, sCommandsInterfaces);
 
                 for (int i = 0; i < numPhones; i++) {
-                    PhoneBase phone = null;
+                    Phone phone = null;
                     int phoneType = TelephonyManager.getPhoneType(networkModes[i]);
                     if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
-                        phone = new GSMPhone(context,
-                                sCommandsInterfaces[i], sPhoneNotifier, i);
+                        phone = new PhoneProxy(context,
+                                sCommandsInterfaces[i], sPhoneNotifier, i,
+                                PhoneConstants.PHONE_TYPE_GSM);
                     } else if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
-                        phone = new CDMALTEPhone(context,
-                                sCommandsInterfaces[i], sPhoneNotifier, i);
+                        phone = new PhoneProxy(context,
+                                sCommandsInterfaces[i], sPhoneNotifier, i,
+                                PhoneConstants.PHONE_TYPE_CDMA_LTE);
                     }
                     Rlog.i(LOG_TAG, "Creating Phone with type = " + phoneType + " sub = " + i);
 
-                    sProxyPhones[i] = new PhoneProxy(phone);
+                    sPhones[i] = phone;
                 }
-                mProxyController = ProxyController.getInstance(context, sProxyPhones,
+                mProxyController = ProxyController.getInstance(context, sPhones,
                         mUiccController, sCommandsInterfaces);
 
                 // Set the default phone in base class.
                 // FIXME: This is a first best guess at what the defaults will be. It
                 // FIXME: needs to be done in a more controlled manner in the future.
-                sProxyPhone = sProxyPhones[0];
+                sPhone = sPhones[0];
                 sCommandsInterface = sCommandsInterfaces[0];
 
                 // Ensure that we have a default SMS app. Requesting the app with
@@ -191,33 +189,16 @@ public class PhoneFactory {
 
                 Rlog.i(LOG_TAG, "Creating SubInfoRecordUpdater ");
                 sSubInfoRecordUpdater = new SubscriptionInfoUpdater(context,
-                        sProxyPhones, sCommandsInterfaces);
-                SubscriptionController.getInstance().updatePhonesAvailability(sProxyPhones);
+                        sPhones, sCommandsInterfaces);
+                SubscriptionController.getInstance().updatePhonesAvailability(sPhones);
 
                 // Start monitoring after defaults have been made.
                 // Default phone must be ready before ImsPhone is created
                 // because ImsService might need it when it is being opened.
                 for (int i = 0; i < numPhones; i++) {
-                    sProxyPhones[i].startMonitoringImsService();
+                    sPhones[i].startMonitoringImsService();
                 }
             }
-        }
-    }
-
-    public static Phone getCdmaPhone(int phoneId) {
-        Phone phone;
-        synchronized(PhoneProxy.lockForRadioTechnologyChange) {
-            phone = new CDMALTEPhone(sContext, sCommandsInterfaces[phoneId],
-                    sPhoneNotifier, phoneId);
-        }
-        return phone;
-    }
-
-    public static Phone getGsmPhone(int phoneId) {
-        synchronized(PhoneProxy.lockForRadioTechnologyChange) {
-            Phone phone = new GSMPhone(sContext, sCommandsInterfaces[phoneId],
-                    sPhoneNotifier, phoneId);
-            return phone;
         }
     }
 
@@ -226,7 +207,7 @@ public class PhoneFactory {
             if (!sMadeDefaults) {
                 throw new IllegalStateException("Default phones haven't been made yet!");
             }
-            return sProxyPhone;
+            return sPhone;
         }
     }
 
@@ -239,13 +220,13 @@ public class PhoneFactory {
                 throw new IllegalStateException("Default phones haven't been made yet!");
                 // CAF_MSIM FIXME need to introduce default phone id ?
             } else if (phoneId == SubscriptionManager.DEFAULT_PHONE_INDEX) {
-                if (DBG) dbgInfo = "phoneId == DEFAULT_PHONE_ID return sProxyPhone";
-                phone = sProxyPhone;
+                if (DBG) dbgInfo = "phoneId == DEFAULT_PHONE_ID return sPhone";
+                phone = sPhone;
             } else {
-                if (DBG) dbgInfo = "phoneId != DEFAULT_PHONE_ID return sProxyPhones[phoneId]";
+                if (DBG) dbgInfo = "phoneId != DEFAULT_PHONE_ID return sPhones[phoneId]";
                 phone = (((phoneId >= 0)
                                 && (phoneId < TelephonyManager.getDefault().getPhoneCount()))
-                        ? sProxyPhones[phoneId] : null);
+                        ? sPhones[phoneId] : null);
             }
             if (DBG) {
                 Rlog.d(LOG_TAG, "getPhone:- " + dbgInfo + " phoneId=" + phoneId +
@@ -260,7 +241,7 @@ public class PhoneFactory {
             if (!sMadeDefaults) {
                 throw new IllegalStateException("Default phones haven't been made yet!");
             }
-            return sProxyPhones;
+            return sPhones;
         }
     }
 
@@ -283,8 +264,8 @@ public class PhoneFactory {
 
         synchronized (sLockProxyPhones) {
             // Set the default phone in base class
-            if (phoneId >= 0 && phoneId < sProxyPhones.length) {
-                sProxyPhone = sProxyPhones[phoneId];
+            if (phoneId >= 0 && phoneId < sPhones.length) {
+                sPhone = sPhones[phoneId];
                 sCommandsInterface = sCommandsInterfaces[phoneId];
                 sMadeDefaults = true;
             }
@@ -461,15 +442,13 @@ public class PhoneFactory {
 
     public static void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("PhoneFactory:");
-        PhoneProxy [] phones = (PhoneProxy[])PhoneFactory.getPhones();
+        Phone[] phones = (Phone[])PhoneFactory.getPhones();
         int i = -1;
-        for(PhoneProxy phoneProxy : phones) {
-            PhoneBase phoneBase;
+        for(Phone phone : phones) {
             i += 1;
 
             try {
-                phoneBase = (PhoneBase)phoneProxy.getActivePhone();
-                phoneBase.dump(fd, pw, args);
+                phone.dump(fd, pw, args);
             } catch (Exception e) {
                 pw.println("Telephony DebugService: Could not get Phone[" + i + "] e=" + e);
                 continue;
@@ -479,7 +458,7 @@ public class PhoneFactory {
             pw.println("++++++++++++++++++++++++++++++++");
 
             try {
-                ((IccCardProxy)phoneProxy.getIccCard()).dump(fd, pw, args);
+                ((IccCardProxy)phone.getIccCard()).dump(fd, pw, args);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -487,7 +466,7 @@ public class PhoneFactory {
             pw.println("++++++++++++++++++++++++++++++++");
 
             try {
-                phoneProxy.getPhoneSubInfo().dump(fd, pw, args);
+                phone.getPhoneSubInfo().dump(fd, pw, args);
             } catch (Exception e) {
                 e.printStackTrace();
             }

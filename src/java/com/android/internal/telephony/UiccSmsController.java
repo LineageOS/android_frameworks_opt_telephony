@@ -337,7 +337,7 @@ public class UiccSmsController extends ISms.Stub {
 
         try {
             return (IccSmsInterfaceManager)
-                ((PhoneProxy)mPhone[(int)phoneId]).getIccSmsInterfaceManager();
+                ((Phone)mPhone[(int)phoneId]).getIccSmsInterfaceManager();
         } catch (NullPointerException e) {
             Rlog.e(LOG_TAG, "Exception is :"+e.toString()+" For subscription :"+subId );
             e.printStackTrace();

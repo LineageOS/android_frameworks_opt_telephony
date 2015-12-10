@@ -38,7 +38,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Process;
 import android.os.RemoteException;
-import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
@@ -135,7 +134,7 @@ public abstract class SMSDispatcher extends Handler {
     protected static final int EVENT_NEW_ICC_SMS = 14;
     protected static final int EVENT_ICC_CHANGED = 15;
 
-    protected PhoneBase mPhone;
+    protected Phone mPhone;
     protected final Context mContext;
     protected final ContentResolver mResolver;
     protected final CommandsInterface mCi;
@@ -180,7 +179,7 @@ public abstract class SMSDispatcher extends Handler {
      * @param phone the Phone to use
      * @param usageMonitor the SmsUsageMonitor to use
      */
-    protected SMSDispatcher(PhoneBase phone, SmsUsageMonitor usageMonitor,
+    protected SMSDispatcher(Phone phone, SmsUsageMonitor usageMonitor,
             ImsSMSDispatcher imsSMSDispatcher) {
         mPhone = phone;
         mImsSMSDispatcher = imsSMSDispatcher;
@@ -221,7 +220,7 @@ public abstract class SMSDispatcher extends Handler {
         }
     }
 
-    protected void updatePhoneObject(PhoneBase phone) {
+    protected void updatePhoneObject(Phone phone) {
         mPhone = phone;
         mUsageMonitor = phone.mSmsUsageMonitor;
         Rlog.d(TAG, "Active phone changed to " + mPhone.getPhoneName() );

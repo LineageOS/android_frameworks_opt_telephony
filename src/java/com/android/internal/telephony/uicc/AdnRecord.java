@@ -138,8 +138,20 @@ public class AdnRecord implements Parcelable {
         return mAlphaTag;
     }
 
+    public int getEfid() {
+        return mEfid;
+    }
+
+    public int getRecId() {
+        return mRecordNumber;
+    }
+
     public String getNumber() {
         return mNumber;
+    }
+
+    public void setNumber(String number) {
+        mNumber = number;
     }
 
     public String[] getEmails() {

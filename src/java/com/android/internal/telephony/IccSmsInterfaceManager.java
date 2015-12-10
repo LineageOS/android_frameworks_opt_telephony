@@ -40,7 +40,6 @@ import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.uicc.IccConstants;
 import com.android.internal.telephony.uicc.IccFileHandler;
 import com.android.internal.telephony.uicc.UiccController;
-import com.android.internal.telephony.SmsNumberUtils;
 import com.android.internal.util.HexDump;
 
 import java.util.ArrayList;
@@ -77,7 +76,7 @@ public class IccSmsInterfaceManager {
     private static final int SMS_CB_CODE_SCHEME_MIN = 0;
     private static final int SMS_CB_CODE_SCHEME_MAX = 255;
 
-    protected PhoneBase mPhone;
+    protected Phone mPhone;
     final protected Context mContext;
     final protected AppOpsManager mAppOps;
     final private UserManager mUserManager;
@@ -125,7 +124,7 @@ public class IccSmsInterfaceManager {
         }
     };
 
-    protected IccSmsInterfaceManager(PhoneBase phone) {
+    protected IccSmsInterfaceManager(Phone phone) {
         mPhone = phone;
         mContext = phone.getContext();
         mAppOps = (AppOpsManager) mContext.getSystemService(Context.APP_OPS_SERVICE);
@@ -167,7 +166,7 @@ public class IccSmsInterfaceManager {
         }
     }
 
-    protected void updatePhoneObject(PhoneBase phone) {
+    protected void updatePhoneObject(Phone phone) {
         mPhone = phone;
         mDispatcher.updatePhoneObject(phone);
     }
