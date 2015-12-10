@@ -265,14 +265,16 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     public boolean getCallForwardingIndicator() {
-        boolean cf = false;
+        int callForwardingIndicator = IccRecords.CALL_FORWARDING_STATUS_UNKNOWN;
         IccRecords r = getIccRecords();
         if (r != null && r.isCallForwardStatusStored()) {
-            cf = r.getVoiceCallForwardingFlag();
-        } else {
-            cf = getCallForwardingPreference();
+            callForwardingIndicator = r.getVoiceCallForwardingFlag();
         }
-        return cf;
+
+        if (callForwardingIndicator == IccRecords.CALL_FORWARDING_STATUS_UNKNOWN) {
+            callForwardingIndicator = getVoiceCallForwardingFlag();
+        }
+        return (callForwardingIndicator == IccRecords.CALL_FORWARDING_STATUS_ENABLED);
     }
 
     /**
@@ -1206,14 +1208,14 @@ public class ImsPhone extends ImsPhoneBase {
             if (r != null) {
                 // Assume the default is not active
                 // Set unconditional CFF in SIM to false
-                r.setVoiceCallForwardingFlag(1, false, null);
+                setVoiceCallForwardingFlag(r, 1, false, null);
             }
         } else {
             for (int i = 0, s = infos.length; i < s; i++) {
                 if (infos[i].mCondition == ImsUtInterface.CDIV_CF_UNCONDITIONAL) {
                     if (r != null) {
                         setCallForwardingPreference(infos[i].mStatus == 1);
-                        r.setVoiceCallForwardingFlag(1, (infos[i].mStatus == 1),
+                        setVoiceCallForwardingFlag(r, 1, (infos[i].mStatus == 1),
                             infos[i].mNumber);
                     }
                 }
@@ -1284,7 +1286,7 @@ public class ImsPhone extends ImsPhoneBase {
                 Cf cf = (Cf) ar.userObj;
                 if (cf.mIsCfu && ar.exception == null && r != null) {
                     setCallForwardingPreference(msg.arg1 == 1);
-                    r.setVoiceCallForwardingFlag(1, msg.arg1 == 1, cf.mSetCfNumber);
+                    setVoiceCallForwardingFlag(r, 1, msg.arg1 == 1, cf.mSetCfNumber);
                 }
                 sendResponse(cf.mOnComplete, null, ar.exception);
                 updateCallForwardStatus();

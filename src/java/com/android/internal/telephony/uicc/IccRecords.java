@@ -26,6 +26,7 @@ import android.os.RegistrantList;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.telephony.SubscriptionInfo;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -117,8 +118,13 @@ public abstract class IccRecords extends Handler implements IccConstants {
     public static final int DEFAULT_VOICE_MESSAGE_COUNT = -2;
     public static final int UNKNOWN_VOICE_MESSAGE_COUNT = -1;
 
+    public static final int CALL_FORWARDING_STATUS_DISABLED = 0;
+    public static final int CALL_FORWARDING_STATUS_ENABLED = 1;
+    public static final int CALL_FORWARDING_STATUS_UNKNOWN = -1;
+
     @Override
     public String toString() {
+        String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mIccId);
         return "mDestroyed=" + mDestroyed
                 + " mContext=" + mContext
                 + " mCi=" + mCi
@@ -133,7 +139,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
                 + " recordsToLoad=" + mRecordsToLoad
                 + " adnCache=" + mAdnCache
                 + " recordsRequested=" + mRecordsRequested
-                + " iccid=" + mIccId
+                + " iccid=" + iccIdToPrint
                 + " msisdnTag=" + mMsisdnTag
                 + " voiceMailNum=" + mVoiceMailNum
                 + " voiceMailTag=" + mVoiceMailTag
@@ -663,10 +669,10 @@ public abstract class IccRecords extends Handler implements IccConstants {
     /**
      * Get the current Voice call forwarding flag for GSM/UMTS and the like SIMs
      *
-     * @return true if enabled
+     * @return CALL_FORWARDING_STATUS_XXX (DISABLED/ENABLED/UNKNOWN)
      */
-    public boolean getVoiceCallForwardingFlag() {
-        return false;
+    public int getVoiceCallForwardingFlag() {
+        return CALL_FORWARDING_STATUS_UNKNOWN;
     }
 
     /**
@@ -809,7 +815,9 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mRecordsRequested=" + mRecordsRequested);
         pw.println(" mRecordsToLoad=" + mRecordsToLoad);
         pw.println(" mRdnCache=" + mAdnCache);
-        pw.println(" iccid=" + mIccId);
+        String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mIccId);
+
+        pw.println(" iccid=" + iccIdToPrint);
         if (TextUtils.isEmpty(mMsisdn)) {
             pw.println(" mMsisdn=null");
         } else {

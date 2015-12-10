@@ -136,6 +136,7 @@ public abstract class Connection {
     private int mCallSubstate;
     private android.telecom.Connection.VideoProvider mVideoProvider;
     public Call.State mPreHandoverState = Call.State.IDLE;
+    private Bundle mExtras;
 
     /* Instance Methods */
 
@@ -642,9 +643,18 @@ public abstract class Connection {
      * @param extras New connection extras.
      */
     public void setConnectionExtras(Bundle extras) {
+        mExtras = extras;
         for (Listener l : mListeners) {
             l.onExtrasChanged(extras);
         }
+    }
+
+    /**
+     * Retrieves the current connection extras.
+     * @return the connection extras.
+     */
+    public Bundle getConnectionExtras() {
+        return mExtras;
     }
 
     /**
