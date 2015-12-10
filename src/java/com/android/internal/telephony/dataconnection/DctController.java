@@ -406,12 +406,7 @@ public class DctController extends Handler {
                 + ", activePhoneId=" + activePhoneId);
 
         if (requestedPhoneId == INVALID_PHONE_INDEX) {
-            // either we have no network request
-            // or there is no valid subscription at the moment
-            if (activePhoneId != INVALID_PHONE_INDEX) {
-                // detatch so we can try connecting later
-                mDcSwitchAsyncChannel[activePhoneId].disconnectAll();
-            }
+            // we have no network request - don't bother with this
             return;
         }
 
