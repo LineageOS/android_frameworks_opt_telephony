@@ -190,8 +190,13 @@ public class PhoneFactory {
                         phone = TelephonyPluginDelegate.getInstance().makeGSMPhone(context,
                                 sCommandsInterfaces[i], sPhoneNotifier, i);
                     } else if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
-                        phone = TelephonyPluginDelegate.getInstance().makeCDMALTEPhone(context,
-                                sCommandsInterfaces[i], sPhoneNotifier, i);
+                        if (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE) {
+                            phone = TelephonyPluginDelegate.getInstance().makeCDMALTEPhone(context,
+                                    sCommandsInterfaces[i], sPhoneNotifier, i);
+                        } else {
+                            phone = TelephonyPluginDelegate.getInstance().makeCDMAPhone(context,
+                                    sCommandsInterfaces[i], sPhoneNotifier, i);
+                        }
                     }
                     Rlog.i(LOG_TAG, "Creating Phone with type = " + phoneType + " sub = " + i);
 

@@ -132,6 +132,11 @@ public class TelephonyPluginDelegate {
         return sPlugin.makeCDMALTEPhone(context, ci, notifier, phoneId);
     }
 
+    public PhoneBase makeCDMAPhone(Context context, CommandsInterface ci,
+            PhoneNotifier notifier, int phoneId) {
+        return sPlugin.makeCDMAPhone(context, ci, notifier, phoneId);
+    }
+
     public void initExtTelephonyClasses(Context context,
             Phone[] phoneProxy, CommandsInterface[] commandsInterfaces) {
         sPlugin.initExtTelephonyClasses(context, phoneProxy, commandsInterfaces);
