@@ -57,4 +57,14 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <string name="sdn"></string>
     <string name="summary_sdn"></string>
     <string name="launch_sdn"></string>
+    <!-- pdp data retry for cause 29 and 33 is disabled-->
+    <bool name="config_pdp_retry_for_29_33_enabled">false</bool>
+    <!--pdp data reject retry delay can be configured here -->
+    <integer name="data_retry_delay">0</integer>
+    <!-- pdp data reject idle timeout delay-->
+    <integer name="data_retry_idle_delay">0</integer>
+    <!-- pdp data reject dialog string for cause 29 and 33 -->
+    <string name="data_conn_status_title"></string>
+    <string name="user_authentication_failed"></string>
+    <string name="service_not_subscribed"></string>
 </resources>
