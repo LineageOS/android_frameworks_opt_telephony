@@ -54,9 +54,8 @@ public abstract class TelephonyPluginBase implements TelephonyPluginInterface {
     }
 
     @Override
-    public void initSubscriptionController(Context context,
-            CommandsInterface[] commandsInterfaces) {
-        SubscriptionController.init(context, commandsInterfaces);
+    public void initSubscriptionController(Context context) {
+        SubscriptionController.init(context);
     }
 
     @Override

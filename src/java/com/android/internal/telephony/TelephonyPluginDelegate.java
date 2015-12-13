@@ -112,9 +112,8 @@ public class TelephonyPluginDelegate {
         return sPlugin.makeDctController(phones);
     }
 
-    public void initSubscriptionController(Context context,
-            CommandsInterface[] commandsInterfaces) {
-        sPlugin.initSubscriptionController(context, commandsInterfaces);
+    public void initSubscriptionController(Context context) {
+        sPlugin.initSubscriptionController(context);
     }
 
     public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Context context,
