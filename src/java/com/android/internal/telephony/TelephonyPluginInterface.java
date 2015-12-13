@@ -43,6 +43,8 @@ public interface TelephonyPluginInterface {
     public void initSubscriptionController(Context context,
             CommandsInterface[] commandsInterfaces);
 
+    public void initSubscriptionController(Context context);
+
     public SubscriptionInfoUpdater makeSubscriptionInfoUpdater(Context context,
             Phone[] phoneProxy, CommandsInterface[] commandsInterfaces);
 

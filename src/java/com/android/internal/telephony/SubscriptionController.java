@@ -150,7 +150,7 @@ public class SubscriptionController extends ISub.Stub {
         }
     }
 
-    public static SubscriptionController init(Context c, CommandsInterface[] ci) {
+    public static SubscriptionController init(Context c) {
         synchronized (SubscriptionController.class) {
             if (sInstance == null) {
                 sInstance = new SubscriptionController(c);

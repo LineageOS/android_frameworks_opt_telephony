@@ -125,6 +125,9 @@ public class PhoneFactory {
 
                 sPhoneNotifier = new DefaultPhoneNotifier();
 
+                Rlog.i(LOG_TAG, "Creating SubscriptionController");
+                TelephonyPluginDelegate.getInstance().initSubscriptionController(context);
+
                 // Get preferred network mode
                 int preferredNetworkMode = RILConstants.PREFERRED_NETWORK_MODE;
                 if (TelephonyManager.getLteOnCdmaModeStatic() == PhoneConstants.LTE_ON_CDMA_TRUE) {
@@ -175,9 +178,6 @@ public class PhoneFactory {
                         }
                     }
                 }
-                Rlog.i(LOG_TAG, "Creating SubscriptionController");
-                TelephonyPluginDelegate.getInstance().initSubscriptionController(context,
-                        sCommandsInterfaces);
 
                 // Instantiate UiccController so that all other classes can just
                 // call getInstance()
