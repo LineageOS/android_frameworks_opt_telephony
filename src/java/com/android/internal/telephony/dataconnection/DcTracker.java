@@ -1425,10 +1425,12 @@ public class DcTracker extends DcTrackerBase {
         if (DBG) log("tryRestartDataConnections: createAllApnList and cleanUpAllConnections");
         createAllApnList();
         setInitialAttachApn();
-        cleanUpConnectionsOnUpdatedApns(!isDisconnected);
-
+        if (reason.equalsIgnoreCase(Phone.REASON_APN_CHANGED)) {
+            cleanUpConnectionsOnUpdatedApns(!isDisconnected);
+        } else {
+            cleanUpAllConnections(!isDisconnected, reason);
+        }
         // FIXME: See bug 17426028 maybe no conditional is needed.
-        cleanUpAllConnections(!isDisconnected, reason);
         setupDataOnConnectableApns(reason);
     }
 
