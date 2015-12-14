@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.sip.SipPhone;
 
 import android.content.Context;
@@ -218,7 +217,8 @@ public class CallManager {
     private Phone getPhone(int subId) {
         Phone p = null;
         for (Phone phone : mPhones) {
-            if (phone.getSubId() == subId && !(phone instanceof ImsPhone)) {
+            if (phone.getSubId() == subId &&
+                    phone.getPhoneType() != PhoneConstants.PHONE_TYPE_IMS) {
                 p = phone;
                 break;
             }

@@ -236,24 +236,6 @@ public class ImsPhoneCall extends Call {
         mState = State.DISCONNECTING;
     }
 
-    /**
-     * Called when it's time to clean up disconnected Connection objects
-     */
-    void
-    clearDisconnected() {
-        for (int i = mConnections.size() - 1 ; i >= 0 ; i--) {
-            ImsPhoneConnection cn = (ImsPhoneConnection)mConnections.get(i);
-
-            if (cn.getState() == State.DISCONNECTED) {
-                mConnections.remove(i);
-            }
-        }
-
-        if (mConnections.size() == 0) {
-            mState = State.IDLE;
-        }
-    }
-
     /*package*/ ImsPhoneConnection
     getFirstConnection() {
         if (mConnections.size() == 0) return null;

@@ -56,6 +56,7 @@ abstract class SipConnectionBase extends Connection {
     private PostDialState mPostDialState = PostDialState.NOT_STARTED;
 
     SipConnectionBase(String dialString) {
+        super(PhoneConstants.PHONE_TYPE_SIP);
         if (DBG) log("SipConnectionBase: ctor dialString=" + dialString);
         mPostDialString = PhoneNumberUtils.extractPostDialPortion(dialString);
 

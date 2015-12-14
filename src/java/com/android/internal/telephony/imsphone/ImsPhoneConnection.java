@@ -146,8 +146,9 @@ public class ImsPhoneConnection extends Connection {
 
     /** This is probably an MT call */
     /*package*/
-    ImsPhoneConnection(ImsPhone phone, ImsCall imsCall, ImsPhoneCallTracker ct,
+    ImsPhoneConnection(Phone phone, ImsCall imsCall, ImsPhoneCallTracker ct,
            ImsPhoneCall parent, boolean isUnknown) {
+        super(PhoneConstants.PHONE_TYPE_IMS);
         createWakeLock(phone.getContext());
         acquireWakeLock();
 
@@ -188,8 +189,9 @@ public class ImsPhoneConnection extends Connection {
 
     /** This is an MO call, created when dialing */
     /*package*/
-    ImsPhoneConnection(ImsPhone phone, String dialString, ImsPhoneCallTracker ct,
+    ImsPhoneConnection(Phone phone, String dialString, ImsPhoneCallTracker ct,
             ImsPhoneCall parent, boolean isEmergency) {
+        super(PhoneConstants.PHONE_TYPE_IMS);
         createWakeLock(phone.getContext());
         acquireWakeLock();
 
@@ -353,8 +355,8 @@ public class ImsPhoneConnection extends Connection {
     }
 
     /** Called when the connection has been disconnected */
-    public boolean
-    onDisconnect(int cause) {
+    @Override
+    public boolean onDisconnect(int cause) {
         Rlog.d(LOG_TAG, "onDisconnect: cause=" + cause);
         if (mCause != DisconnectCause.LOCAL) mCause = cause;
         return onDisconnect();
@@ -564,7 +566,7 @@ public class ImsPhoneConnection extends Connection {
         }
     }
 
-    private void fetchDtmfToneDelay(ImsPhone phone) {
+    private void fetchDtmfToneDelay(Phone phone) {
         CarrierConfigManager configMgr = (CarrierConfigManager)
                 phone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
         PersistableBundle b = configMgr.getConfigForSubId(phone.getSubId());
@@ -601,11 +603,17 @@ public class ImsPhoneConnection extends Connection {
      * @return {@code true} if this call is the origin of the conference call it is a member of,
      *      {@code false} otherwise.
      */
+    @Override
     public boolean isConferenceHost() {
         if (mImsCall == null) {
             return false;
         }
         return mImsCall.isConferenceHost();
+    }
+
+    @Override
+    public boolean isMemberOfPeerConference() {
+        return !isConferenceHost();
     }
 
     /*package*/ ImsCall getImsCall() {
