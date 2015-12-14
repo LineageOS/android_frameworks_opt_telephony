@@ -2396,7 +2396,10 @@ public class DcTracker extends DcTrackerBase {
     protected void createAllApnList() {
         mAllApnSettings = new ArrayList<ApnSetting>();
         String operator = getOperatorNumeric();
-        if (operator != null && !operator.isEmpty()) {
+
+        if (isDummyProfileNeeded()) {
+            addDummyApnSettings(operator);
+        } else if (operator != null && !operator.isEmpty()) {
             String selection = "numeric = '" + operator + "'";
             String orderBy = "_id";
             // query only enabled apn.
@@ -2418,10 +2421,6 @@ public class DcTracker extends DcTrackerBase {
         addEmergencyApnSetting();
 
         dedupeApnSettings();
-
-        if (mAllApnSettings.isEmpty() && isDummyProfileNeeded()) {
-            addDummyApnSettings(operator);
-        }
 
         if (mAllApnSettings.isEmpty()) {
             if (DBG) log("createAllApnList: No APN found for carrier: " + operator);
