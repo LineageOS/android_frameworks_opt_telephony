@@ -2406,7 +2406,7 @@ public class DcTracker extends DcTrackerBase {
             String orderBy = "_id";
             // query only enabled apn.
             // carrier_enabled : 1 means enabled apn, 0 disabled apn.
-            // selection += " and carrier_enabled = 1";
+            selection += " and carrier_enabled = 1";
             if (DBG) log("createAllApnList: selection=" + selection);
 
             Cursor cursor = mPhone.getContext().getContentResolver().query(
