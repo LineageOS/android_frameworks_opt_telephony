@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1f9dbf25_5e8e1128",
+        "filename": "src/java/com/android/internal/telephony/TelephonyPluginBase.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2015-12-14T07:41:09Z",
+      "side": 1,
+      "message": "I hate that it needs to be mentioned, but I\u0027m not sure we can change this function prototype yet, since QC proprietary stuff relies on the CommandsInterface[] parameter being passed down...\n\nThis looks like an incidental change to the earlier initialization though, so it should be safe to leave this code alone for now.",
+      "revId": "50a156316e02bf2f8f0aed4def7dea2ba567abf2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
