@@ -59,6 +59,7 @@ import android.util.TimeUtils;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.ConfigResourceUtil;
 import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.ICarrierConfigLoader;
 import com.android.internal.telephony.MccTable;
@@ -155,6 +156,8 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
      * The Notification object given to the NotificationManager.
      */
     private Notification mNotification;
+
+    private ConfigResourceUtil mConfigResUtil = new ConfigResourceUtil();
 
     /** Wake lock used while setting time of day. */
     private PowerManager.WakeLock mWakeLock;
@@ -668,6 +671,11 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
         }
         spn = maybeUpdateHDTagForSpn(showSpn, spn);
         plmn = maybeUpdateHDTagForPlmn(showPlmn, plmn);
+
+        if (mConfigResUtil.getBooleanValue(mPhone.getContext(), "config_spn_display_control")) {
+            // Control not to show SPN.
+            showSpn = false;
+        }
 
         // Update SPN_STRINGS_UPDATED_ACTION IFF any value changes
         if (mSubId != subId ||
