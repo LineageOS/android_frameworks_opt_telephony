@@ -48,4 +48,31 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <string name="telephony_plugin_jar_name" translatable="false"></string>
     <!--Fully qualified class name of telephony extended plugin.-->
     <string name="telephony_plugin_class_name" translatable="false"></string>
+    <!-- When set to true, this config enables reading and displaying
+         the contents of EF_SDN present in SIM -->
+    <bool name="config_enable_displaying_sdn">false</bool>
+    <!-- config for showing dial option when fdn contact is selected.
+         By default feature is disabled -->
+    <bool name="config_fdn_direct_dial">false</bool>
+    <!-- FDN contact search is enabled-->
+    <bool name="config_fdn_contact_search">false</bool>
+    <!-- plmn name override enabled-->
+    <bool name="config_plmn_name_override_enabled">false</bool>
+
+    <!-- control not to show SPN in carrier text -->
+    <bool name="config_spn_display_control">false</bool>
+
+    <string name="sdn"></string>
+    <string name="summary_sdn"></string>
+    <string name="launch_sdn"></string>
+    <!-- pdp data retry for cause 29 and 33 is disabled-->
+    <bool name="config_pdp_retry_for_29_33_enabled">false</bool>
+    <!--pdp data reject retry delay can be configured here -->
+    <integer name="data_retry_delay">0</integer>
+    <!-- pdp data reject idle timeout delay-->
+    <integer name="data_retry_idle_delay">0</integer>
+    <!-- pdp data reject dialog string for cause 29 and 33 -->
+    <string name="data_conn_status_title"></string>
+    <string name="user_authentication_failed"></string>
+    <string name="service_not_subscribed"></string>
 </resources>
