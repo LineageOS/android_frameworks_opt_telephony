@@ -23,8 +23,6 @@ import java.util.List;
 
 abstract class SipCallBase extends Call {
 
-    protected abstract void setState(State newState);
-
     @Override
     public List<Connection> getConnections() {
         // FIXME should return Collections.unmodifiableList();
@@ -39,14 +37,5 @@ abstract class SipCallBase extends Call {
     @Override
     public String toString() {
         return mState.toString() + ":" + super.toString();
-    }
-
-    void clearDisconnected() {
-        for (Iterator<Connection> it = mConnections.iterator(); it.hasNext(); ) {
-            Connection c = it.next();
-            if (c.getState() == State.DISCONNECTED) it.remove();
-        }
-
-        if (mConnections.isEmpty()) setState(State.IDLE);
     }
 }

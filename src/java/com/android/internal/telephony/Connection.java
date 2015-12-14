@@ -139,6 +139,11 @@ public abstract class Connection {
     private android.telecom.Connection.VideoProvider mVideoProvider;
     public Call.State mPreHandoverState = Call.State.IDLE;
     private Bundle mExtras;
+    private int mPhoneType;
+
+    protected Connection(int phoneType) {
+        mPhoneType = phoneType;
+    }
 
     /* Instance Methods */
 
@@ -465,6 +470,11 @@ public abstract class Connection {
      */
     public abstract void cancelPostDial();
 
+    /** Called when the connection has been disconnected */
+    public boolean onDisconnect(int cause) {
+        return false;
+    }
+
     /**
      * Returns the caller id presentation type for incoming and waiting calls
      * @return one of PRESENTATION_*
@@ -498,6 +508,28 @@ public abstract class Connection {
      * @return valid only when getOrigConnection() is not null
      */
     public abstract boolean isMultiparty();
+
+    /**
+     * Applicable only for IMS Call. Determines if this call is the origin of the conference call
+     * (i.e. {@code #isConferenceHost()} is {@code true}), or if it is a member of a conference
+     * hosted on another device.
+     *
+     * @return {@code true} if this call is the origin of the conference call it is a member of,
+     *      {@code false} otherwise.
+     */
+    public boolean isConferenceHost() {
+        return false;
+    }
+
+    /**
+     * Applicable only for IMS Call. Determines if a connection is a member of a conference hosted
+     * on another device.
+     *
+     * @return {@code true} if the connection is a member of a conference hosted on another device.
+     */
+    public boolean isMemberOfPeerConference() {
+        return false;
+    }
 
     public void migrateFrom(Connection c) {
         if (c == null) return;
@@ -752,6 +784,13 @@ public abstract class Connection {
      * @param endpoint the {@link Uri} of the participant to disconnect.
      */
     public void onDisconnectConferenceParticipant(Uri endpoint) {
+    }
+
+    /**
+     *
+     */
+    public int getPhoneType() {
+        return mPhoneType;
     }
 
     /**

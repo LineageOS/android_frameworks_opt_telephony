@@ -401,7 +401,7 @@ public class PhoneFactory {
      * Makes a {@link ImsPhone} object.
      * @return the {@code ImsPhone} object or null if the exception occured
      */
-    public static ImsPhone makeImsPhone(PhoneNotifier phoneNotifier, Phone defaultPhone) {
+    public static Phone makeImsPhone(PhoneNotifier phoneNotifier, Phone defaultPhone) {
         return ImsPhoneFactory.makePhone(sContext, phoneNotifier, defaultPhone);
     }
 

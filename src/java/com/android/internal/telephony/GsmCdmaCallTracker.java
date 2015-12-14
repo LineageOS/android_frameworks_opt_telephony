@@ -41,8 +41,6 @@ import android.util.EventLog;
 
 import com.android.internal.telephony.cdma.CdmaCallWaitingNotification;
 import com.android.internal.telephony.EventLogTags;
-import com.android.internal.telephony.imsphone.ImsPhone;
-import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -716,7 +714,7 @@ public class GsmCdmaCallTracker extends CallTracker {
                 !(mForegroundCall.isIdle() && mBackgroundCall.isIdle())) {
             mState = PhoneConstants.State.OFFHOOK;
         } else {
-            ImsPhone imsPhone = (ImsPhone)mPhone.getImsPhone();
+            Phone imsPhone = mPhone.getImsPhone();
             if ( mState == PhoneConstants.State.OFFHOOK && (imsPhone != null)){
                 imsPhone.callEndCleanupHandOverCallIfAny();
             }
@@ -1047,7 +1045,7 @@ public class GsmCdmaCallTracker extends CallTracker {
                 it.hasNext();) {
             Connection hoConnection = it.next();
             log("handlePollCalls - disconnect hoConn= " + hoConnection);
-            ((ImsPhoneConnection)hoConnection).onDisconnect(DisconnectCause.NOT_VALID);
+            hoConnection.onDisconnect(DisconnectCause.NOT_VALID);
             it.remove();
         }
 
