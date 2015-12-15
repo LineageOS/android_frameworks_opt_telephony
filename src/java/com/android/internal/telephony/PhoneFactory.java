@@ -22,6 +22,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.LocalServerSocket;
+import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.provider.Settings;
@@ -200,6 +201,12 @@ public class PhoneFactory {
                 for (int i = 0; i < numPhones; i++) {
                     sPhones[i].startMonitoringImsService();
                 }
+
+                SubscriptionMonitor subscriptionMonitor = new SubscriptionMonitor(
+                        ITelephonyRegistry.Stub.asInterface(
+                        ServiceManager.getService("telephony.registry")),
+                        sContext,
+                        SubscriptionController.getInstance(), numPhones);
             }
         }
     }

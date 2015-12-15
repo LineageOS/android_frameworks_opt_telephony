@@ -320,8 +320,8 @@ public class ContextFixture implements TestFixture<Context> {
             return "com.android.internal.telephony";
         }
 
-        public int testMethod() {
-            return 0;
+        public boolean testMethod() {
+            return true;
         }
 
         public int testMethod1() {
