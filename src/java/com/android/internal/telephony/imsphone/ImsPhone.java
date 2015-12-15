@@ -43,7 +43,6 @@ import android.text.TextUtils;
 
 import com.android.ims.ImsCallForwardInfo;
 import com.android.ims.ImsCallProfile;
-import com.android.ims.ImsConfig;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsEcbmStateListener;
 import com.android.ims.ImsException;
@@ -109,13 +108,6 @@ public class ImsPhone extends ImsPhoneBase {
     protected static final int EVENT_SET_CLIR_DONE                  = EVENT_LAST + 5;
     protected static final int EVENT_GET_CLIR_DONE                  = EVENT_LAST + 6;
     protected static final int EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED  = EVENT_LAST + 7;
-
-    public static final String CS_FALLBACK = "cs_fallback";
-
-    public static final String EXTRA_KEY_ALERT_TITLE = "alertTitle";
-    public static final String EXTRA_KEY_ALERT_MESSAGE = "alertMessage";
-    public static final String EXTRA_KEY_ALERT_SHOW = "alertShow";
-    public static final String EXTRA_KEY_NOTIFICATION_MESSAGE = "notificationMessage";
 
     static final int RESTART_ECM_TIMER = 0; // restart Ecm timer
     static final int CANCEL_ECM_TIMER = 1; // cancel Ecm timer
@@ -195,11 +187,12 @@ public class ImsPhone extends ImsPhoneBase {
         if (mDefaultPhone.getServiceStateTracker() != null) {
             mDefaultPhone.getServiceStateTracker()
                     .registerForDataRegStateOrRatChanged(this,
-                    EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED, null);
+                            EVENT_DEFAULT_PHONE_DATA_STATE_CHANGED, null);
         }
         updateDataServiceState();
     }
 
+    @Override
     public void updateParentPhone(Phone parentPhone) {
         synchronized (Phone.lockForRadioTechnologyChange) {
             mDefaultPhone = parentPhone;
@@ -218,6 +211,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @Override
     public void dispose() {
         Rlog.d(LOG_TAG, "dispose");
         // Nothing to dispose in Phone
@@ -504,22 +498,6 @@ public class ImsPhone extends ImsPhoneBase {
         mDefaultPhone.notifyNewRingingConnectionP(c);
     }
 
-    public static void checkWfcWifiOnlyModeBeforeDial(ImsPhone imsPhone, Context context)
-            throws CallStateException {
-        if (imsPhone == null ||
-                !imsPhone.isVowifiEnabled()) {
-            boolean wfcWiFiOnly = (ImsManager.isWfcEnabledByPlatform(context) &&
-                    ImsManager.isWfcEnabledByUser(context) &&
-                    (ImsManager.getWfcMode(context) ==
-                            ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY));
-            if (wfcWiFiOnly) {
-                throw new CallStateException(
-                        CallStateException.ERROR_DISCONNECTED,
-                        "WFC Wi-Fi Only Mode: IMS not registered");
-            }
-        }
-    }
-
     void notifyUnknownConnection(Connection c) {
         mDefaultPhone.notifyUnknownConnectionP(c);
     }
@@ -756,7 +734,7 @@ public class ImsPhone extends ImsPhoneBase {
 
             try {
                 ImsUtInterface ut = mCT.getUtInterface();
-                ut.queryCallForward(getConditionFromCFReason(commandInterfaceCFReason),null,resp);
+                ut.queryCallForward(getConditionFromCFReason(commandInterfaceCFReason), null, resp);
             } catch (ImsException e) {
                 sendErrorResponse(onComplete, e);
             }
@@ -914,8 +892,8 @@ public class ImsPhone extends ImsPhoneBase {
         mCT.sendUSSD(ussdString, response);
     }
 
-    /* package */
-    void cancelUSSD() {
+    @Override
+    public void cancelUSSD() {
         mCT.cancelUSSD();
     }
 
@@ -1031,7 +1009,7 @@ public class ImsPhone extends ImsPhoneBase {
                 ImsPhoneMmiCode mmi;
                 mmi = ImsPhoneMmiCode.newNetworkInitiatedUssd(ussdMessage,
                         isUssdRequest,
-                        ImsPhone.this);
+                        this);
                 onNetworkInitiatedUssd(mmi);
             }
         }
@@ -1042,8 +1020,7 @@ public class ImsPhone extends ImsPhoneBase {
      * registrants that it is complete.
      * @param mmi MMI that is done
      */
-    /*package*/ void
-    onMMIDone(ImsPhoneMmiCode mmi) {
+    public void onMMIDone(ImsPhoneMmiCode mmi) {
         /* Only notify complete if it's on the pending list.
          * Otherwise, it's already been handled (eg, previously canceled).
          * The exception is cancellation of an incoming USSD-REQUEST, which is
@@ -1055,6 +1032,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @Override
     public ArrayList<Connection> getHandoverConnection() {
         ArrayList<Connection> connList = new ArrayList<Connection>();
         // Add all foreground call connections
@@ -1070,6 +1048,7 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @Override
     public void notifySrvccState(Call.SrvccState state) {
         mCT.notifySrvccState(state);
     }
@@ -1083,10 +1062,12 @@ public class ImsPhone extends ImsPhoneBase {
         }
     }
 
+    @Override
     public void registerForSilentRedial(Handler h, int what, Object obj) {
         mSilentRedialRegistrants.addUnique(h, what, obj);
     }
 
+    @Override
     public void unregisterForSilentRedial(Handler h) {
         mSilentRedialRegistrants.remove(h);
     }
@@ -1401,14 +1382,17 @@ public class ImsPhone extends ImsPhoneBase {
         return mCT.isVolteEnabled();
     }
 
-    public boolean isVowifiEnabled() {
+    @Override
+    public boolean isWifiCallingEnabled() {
         return mCT.isVowifiEnabled();
     }
 
-    public boolean isVideoCallEnabled() {
+    @Override
+    public boolean isVideoEnabled() {
         return mCT.isVideoCallEnabled();
     }
 
+    @Override
     public Phone getDefaultPhone() {
         return mDefaultPhone;
     }
@@ -1421,6 +1405,7 @@ public class ImsPhone extends ImsPhoneBase {
         mImsRegistered = value;
     }
 
+    @Override
     public void callEndCleanupHandOverCallIfAny() {
         mCT.callEndCleanupHandOverCallIfAny();
     }

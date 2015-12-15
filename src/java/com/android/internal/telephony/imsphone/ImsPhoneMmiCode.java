@@ -283,8 +283,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
     }
 
     static ImsPhoneMmiCode
-    newNetworkInitiatedUssd (String ussdMessage,
-                                boolean isUssdRequest, ImsPhone phone) {
+    newNetworkInitiatedUssd(String ussdMessage, boolean isUssdRequest, ImsPhone phone) {
         ImsPhoneMmiCode ret;
 
         ret = new ImsPhoneMmiCode(phone);
@@ -303,8 +302,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
         return ret;
     }
 
-    static ImsPhoneMmiCode newFromUssdUserInput(String ussdMessge,
-                                           ImsPhone phone) {
+    static ImsPhoneMmiCode newFromUssdUserInput(String ussdMessge, ImsPhone phone) {
         ImsPhoneMmiCode ret = new ImsPhoneMmiCode(phone);
 
         ret.mMessage = ussdMessge;
@@ -747,7 +745,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 // These just get treated as USSD.
                 Rlog.d(LOG_TAG, "Sending short code '"
                        + mDialingNumber + "' over CS pipe.");
-                throw new CallStateException(ImsPhone.CS_FALLBACK);
+                throw new CallStateException(Phone.CS_FALLBACK);
             } else if (isServiceCodeCallForwarding(mSc)) {
                 Rlog.d(LOG_TAG, "is CF");
 
@@ -959,7 +957,7 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
             } else if (mPoundString != null) {
                 Rlog.d(LOG_TAG, "Sending pound string '"
                        + mDialingNumber + "' over CS pipe.");
-                throw new CallStateException(ImsPhone.CS_FALLBACK);
+                throw new CallStateException(Phone.CS_FALLBACK);
             } else {
                 throw new RuntimeException ("Invalid or Unsupported MMI Code");
             }

@@ -89,12 +89,14 @@ abstract class SipPhoneBase extends Phone {
         mRingbackRegistrants.remove(h);
     }
 
-    protected void startRingbackTone() {
+    @Override
+    public void startRingbackTone() {
         AsyncResult result = new AsyncResult(null, Boolean.TRUE, null);
         mRingbackRegistrants.notifyRegistrants(result);
     }
 
-    protected void stopRingbackTone() {
+    @Override
+    public void stopRingbackTone() {
         AsyncResult result = new AsyncResult(null, Boolean.FALSE, null);
         mRingbackRegistrants.notifyRegistrants(result);
     }

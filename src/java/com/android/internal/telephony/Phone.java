@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 The Android Open Source Project
+ * Copyright (C) 2015 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,11 +49,10 @@ import android.telephony.SubscriptionManager;
 import android.telephony.VoLteServiceState;
 import android.text.TextUtils;
 
+import com.android.ims.ImsConfig;
 import com.android.ims.ImsManager;
 import com.android.internal.R;
 import com.android.internal.telephony.dataconnection.DcTracker;
-import com.android.internal.telephony.imsphone.ImsPhone;
-import com.android.internal.telephony.imsphone.ImsPhoneConnection;
 import com.android.internal.telephony.test.SimulatedRadioControl;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppType;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -245,7 +244,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected int mPhoneId;
 
     private boolean mImsServiceReady = false;
-    protected ImsPhone mImsPhone = null;
+    protected Phone mImsPhone = null;
 
     private final AtomicReference<RadioCapability> mRadioCapability =
             new AtomicReference<RadioCapability>();
@@ -255,6 +254,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected int mReportInterval = 0;  // ms
     protected int mLceStatus = RILConstants.LCE_NOT_AVAILABLE;
     protected TelephonyComponentFactory mTelephonyComponentFactory;
+
+    //IMS
+    public static final String CS_FALLBACK = "cs_fallback";
+    public static final String EXTRA_KEY_ALERT_TITLE = "alertTitle";
+    public static final String EXTRA_KEY_ALERT_MESSAGE = "alertMessage";
+    public static final String EXTRA_KEY_ALERT_SHOW = "alertShow";
+    public static final String EXTRA_KEY_NOTIFICATION_MESSAGE = "notificationMessage";
 
     /**
      * Returns a string identifier for this phone interface for parties
@@ -613,19 +619,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 }
                 break;
 
-            case EVENT_GET_RADIO_CAPABILITY:
-                ar = (AsyncResult) msg.obj;
-                RadioCapability rc = (RadioCapability) ar.result;
-                if (ar.exception != null) {
-                    Rlog.d(LOG_TAG, "get phone radio capability fail,"
-                            + "no need to change mRadioCapability");
-                } else {
-                    radioCapabilityUpdated(rc);
-                }
-                Rlog.d(LOG_TAG, "EVENT_GET_RADIO_CAPABILITY :"
-                        + "phone rc : " + rc);
-                break;
-
             case EVENT_CONFIG_LCE:
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception != null) {
@@ -646,11 +639,24 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         }
     }
 
+    public ArrayList<Connection> getHandoverConnection() {
+        return null;
+    }
+
+    public void notifySrvccState(Call.SrvccState state) {
+    }
+
+    public void registerForSilentRedial(Handler h, int what, Object obj) {
+    }
+
+    public void unregisterForSilentRedial(Handler h) {
+    }
+
     private void handleSrvccStateChanged(int[] ret) {
         Rlog.d(LOG_TAG, "handleSrvccStateChanged");
 
         ArrayList<Connection> conn = null;
-        ImsPhone imsPhone = mImsPhone;
+        Phone imsPhone = mImsPhone;
         Call.SrvccState srvccState = Call.SrvccState.NONE;
         if (ret != null && ret.length != 0) {
             int state = ret[0];
@@ -2020,7 +2026,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
 
     private static int getVideoState(Call call) {
         int videoState = VideoProfile.STATE_AUDIO_ONLY;
-        ImsPhoneConnection conn = (ImsPhoneConnection) call.getEarliestConnection();
+        Connection conn = call.getEarliestConnection();
         if (conn != null) {
             videoState = conn.getVideoState();
         }
@@ -2695,6 +2701,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return false;
     }
 
+    public void dispose() {
+    }
+
     protected void updateImsPhone() {
         Rlog.d(LOG_TAG, "updateImsPhone"
                 + " mImsServiceReady=" + mImsServiceReady);
@@ -2753,7 +2762,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * otherwise return the current voice service state
      */
     public int getVoicePhoneServiceState() {
-        ImsPhone imsPhone = mImsPhone;
+        Phone imsPhone = mImsPhone;
         if (imsPhone != null
                 && imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE) {
             return ServiceState.STATE_IN_SERVICE;
@@ -2827,7 +2836,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @return true if IMS is Registered
      */
     public boolean isImsRegistered() {
-        ImsPhone imsPhone = mImsPhone;
+        Phone imsPhone = mImsPhone;
         boolean isImsRegistered = false;
         if (imsPhone != null) {
             isImsRegistered = imsPhone.isImsRegistered();
@@ -2845,10 +2854,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Get Wifi Calling Feature Availability
      */
     public boolean isWifiCallingEnabled() {
-        ImsPhone imsPhone = mImsPhone;
+        Phone imsPhone = mImsPhone;
         boolean isWifiCallingEnabled = false;
         if (imsPhone != null) {
-            isWifiCallingEnabled = imsPhone.isVowifiEnabled();
+            isWifiCallingEnabled = imsPhone.isWifiCallingEnabled();
         }
         Rlog.d(LOG_TAG, "isWifiCallingEnabled =" + isWifiCallingEnabled);
         return isWifiCallingEnabled;
@@ -2858,7 +2867,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Get Volte Feature Availability
      */
     public boolean isVolteEnabled() {
-        ImsPhone imsPhone = mImsPhone;
+        Phone imsPhone = mImsPhone;
         boolean isVolteEnabled = false;
         if (imsPhone != null) {
             isVolteEnabled = imsPhone.isVolteEnabled();
@@ -3027,10 +3036,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @return {@code true} if video calling is enabled, {@code false} otherwise.
      */
     public boolean isVideoEnabled() {
-        ImsPhone imsPhone = mImsPhone;
+        Phone imsPhone = mImsPhone;
         if ((imsPhone != null)
                 && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE)) {
-            return imsPhone.isVideoCallEnabled();
+            return imsPhone.isVideoEnabled();
         }
         return false;
     }
@@ -3055,7 +3064,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     public void startLceAfterRadioIsAvailable() {
         mCi.startLceService(DEFAULT_REPORT_INTERVAL_MS, LCE_PULL_MODE,
-            obtainMessage(EVENT_CONFIG_LCE));
+                obtainMessage(EVENT_CONFIG_LCE));
     }
 
     /**
@@ -3111,6 +3120,46 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             return true;
         }
         return false;
+    }
+
+    public static void checkWfcWifiOnlyModeBeforeDial(Phone imsPhone, Context context)
+            throws CallStateException {
+        if (imsPhone == null || !imsPhone.isWifiCallingEnabled()) {
+            boolean wfcWiFiOnly = (ImsManager.isWfcEnabledByPlatform(context) &&
+                    ImsManager.isWfcEnabledByUser(context) &&
+                    (ImsManager.getWfcMode(context) ==
+                            ImsConfig.WfcModeFeatureValueConstants.WIFI_ONLY));
+            if (wfcWiFiOnly) {
+                throw new CallStateException(
+                        CallStateException.ERROR_DISCONNECTED,
+                        "WFC Wi-Fi Only Mode: IMS not registered");
+            }
+        }
+    }
+
+    public void updateParentPhone(Phone parentPhone) {
+    }
+
+    public void startRingbackTone() {
+    }
+
+    public void stopRingbackTone() {
+    }
+
+    public void callEndCleanupHandOverCallIfAny() {
+    }
+
+    public void cancelUSSD() {
+    }
+
+    /**
+     * This function returns the parent phone of the current phone. It is applicable
+     * only for IMS phone (function is overridden by ImsPhone). For others the phone
+     * object itself is returned.
+     * @return
+     */
+    public Phone getDefaultPhone() {
+        return this;
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

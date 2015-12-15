@@ -123,6 +123,7 @@ public class GsmCdmaConnection extends Connection {
 
     /** This is probably an MT call that we first saw in a CLCC response */
     public GsmCdmaConnection (GsmCdmaPhone phone, DriverCall dc, GsmCdmaCallTracker ct, int index) {
+        super(phone.getPhoneType());
         createWakeLock(phone.getContext());
         acquireWakeLock();
 
@@ -149,6 +150,7 @@ public class GsmCdmaConnection extends Connection {
     /** This is an MO call, created when dialing */
     public GsmCdmaConnection (GsmCdmaPhone phone, String dialString, GsmCdmaCallTracker ct,
                               GsmCdmaCall parent) {
+        super(phone.getPhoneType());
         createWakeLock(phone.getContext());
         acquireWakeLock();
 
@@ -197,6 +199,7 @@ public class GsmCdmaConnection extends Connection {
     /** This is a Call waiting call*/
     public GsmCdmaConnection(Context context, CdmaCallWaitingNotification cw, GsmCdmaCallTracker ct,
                              GsmCdmaCall parent) {
+        super(parent.getPhone().getPhoneType());
         createWakeLock(context);
         acquireWakeLock();
 
@@ -553,7 +556,8 @@ public class GsmCdmaConnection extends Connection {
      * Called when the radio indicates the connection has been disconnected.
      * @param cause call disconnect cause; values are defined in {@link DisconnectCause}
      */
-    /*package*/ boolean onDisconnect(int cause) {
+    @Override
+    public boolean onDisconnect(int cause) {
         boolean changed = false;
 
         mCause = cause;
