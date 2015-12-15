@@ -254,6 +254,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final boolean LCE_PULL_MODE = true;
     protected int mReportInterval = 0;  // ms
     protected int mLceStatus = RILConstants.LCE_NOT_AVAILABLE;
+    protected TelephonyComponentFactory mTelephonyComponentFactory;
 
     /**
      * Returns a string identifier for this phone interface for parties
@@ -402,7 +403,8 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      */
     protected Phone(String name, PhoneNotifier notifier, Context context, CommandsInterface ci,
                     boolean unitTestMode) {
-        this(name, notifier, context, ci, unitTestMode, SubscriptionManager.DEFAULT_PHONE_INDEX);
+        this(name, notifier, context, ci, unitTestMode, SubscriptionManager.DEFAULT_PHONE_INDEX,
+                TelephonyComponentFactory.getInstance());
     }
 
     /**
@@ -417,12 +419,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param phoneId the phone-id of this phone.
      */
     protected Phone(String name, PhoneNotifier notifier, Context context, CommandsInterface ci,
-                    boolean unitTestMode, int phoneId) {
+                    boolean unitTestMode, int phoneId,
+                    TelephonyComponentFactory telephonyComponentFactory) {
+        super(Looper.getMainLooper());
         mPhoneId = phoneId;
         mName = name;
         mNotifier = notifier;
         mContext = context;
-        mLooper = Looper.myLooper();
+        mLooper = Looper.getMainLooper();
         mCi = ci;
         mActionDetached = this.getClass().getPackage().getName() + ".action_detached";
         mActionAttached = this.getClass().getPackage().getName() + ".action_attached";
@@ -486,8 +490,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         }
 
         // Initialize device storage and outgoing SMS usage monitors for SMSDispatchers.
-        mSmsStorageMonitor = new SmsStorageMonitor(this);
-        mSmsUsageMonitor = new SmsUsageMonitor(context);
+        mTelephonyComponentFactory = telephonyComponentFactory;
+        mSmsStorageMonitor = mTelephonyComponentFactory.makeSmsStorageMonitor(this);
+        mSmsUsageMonitor = mTelephonyComponentFactory.makeSmsUsageMonitor(context);
         mUiccController = UiccController.getInstance();
         mUiccController.registerForIccChanged(this, EVENT_ICC_CHANGED, null);
         if (getPhoneType() != PhoneConstants.PHONE_TYPE_SIP) {

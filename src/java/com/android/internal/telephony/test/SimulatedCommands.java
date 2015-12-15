@@ -36,7 +36,7 @@ import com.android.internal.telephony.gsm.SuppServiceNotification;
 
 import java.util.ArrayList;
 
-public final class SimulatedCommands extends BaseCommands
+public class SimulatedCommands extends BaseCommands
         implements CommandsInterface, SimulatedRadioControl {
     private final static String LOG_TAG = "SimulatedCommands";
 
@@ -77,6 +77,7 @@ public final class SimulatedCommands extends BaseCommands
     int mNetworkType;
     String mPin2Code;
     boolean mSsnNotifyOn = false;
+    int mVoiceRadioTech;
 
     int mPausedResponseCount;
     ArrayList<Message> mPausedResponses = new ArrayList<Message>();
@@ -1677,7 +1678,9 @@ public final class SimulatedCommands extends BaseCommands
 
     @Override
     public void getVoiceRadioTechnology(Message response) {
-        unimplemented(response);
+        int ret[] = new int[1];
+        ret[0] = mVoiceRadioTech;
+        resultSuccess(response, ret);
     }
 
     @Override
@@ -1786,5 +1789,9 @@ public final class SimulatedCommands extends BaseCommands
     @Override
     public void getModemActivityInfo(Message result) {
         unimplemented(result);
+    }
+
+    public void setVoiceRadioTech(int voiceRadioTech) {
+        mVoiceRadioTech = voiceRadioTech;
     }
 }

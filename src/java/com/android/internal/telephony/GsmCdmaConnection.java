@@ -122,8 +122,7 @@ public class GsmCdmaConnection extends Connection {
     //***** Constructors
 
     /** This is probably an MT call that we first saw in a CLCC response */
-    /*package*/
-    GsmCdmaConnection (GsmCdmaPhone phone, DriverCall dc, GsmCdmaCallTracker ct, int index) {
+    public GsmCdmaConnection (GsmCdmaPhone phone, DriverCall dc, GsmCdmaCallTracker ct, int index) {
         createWakeLock(phone.getContext());
         acquireWakeLock();
 
@@ -148,8 +147,8 @@ public class GsmCdmaConnection extends Connection {
     }
 
     /** This is an MO call, created when dialing */
-    /*package*/
-    GsmCdmaConnection (GsmCdmaPhone phone, String dialString, GsmCdmaCallTracker ct, GsmCdmaCall parent) {
+    public GsmCdmaConnection (GsmCdmaPhone phone, String dialString, GsmCdmaCallTracker ct,
+                              GsmCdmaCall parent) {
         createWakeLock(phone.getContext());
         acquireWakeLock();
 
@@ -196,8 +195,8 @@ public class GsmCdmaConnection extends Connection {
 
     //CDMA
     /** This is a Call waiting call*/
-    GsmCdmaConnection(Context context, CdmaCallWaitingNotification cw, GsmCdmaCallTracker ct,
-                   GsmCdmaCall parent) {
+    public GsmCdmaConnection(Context context, CdmaCallWaitingNotification cw, GsmCdmaCallTracker ct,
+                             GsmCdmaCall parent) {
         createWakeLock(context);
         acquireWakeLock();
 
@@ -497,7 +496,7 @@ public class GsmCdmaConnection extends Connection {
             case CallFailCause.ERROR_UNSPECIFIED:
             case CallFailCause.NORMAL_CLEARING:
             default:
-                GsmCdmaPhone phone = mOwner.mPhone;
+                GsmCdmaPhone phone = mOwner.getPhone();
                 int serviceState = phone.getServiceState().getState();
                 UiccCardApplication cardApp = phone.getUiccCardApplication();
                 AppState uiccAppState = (cardApp != null) ? cardApp.getState() :
@@ -564,7 +563,7 @@ public class GsmCdmaConnection extends Connection {
 
             if (DBG) Rlog.d(LOG_TAG, "onDisconnect: cause=" + cause);
 
-            mOwner.mPhone.notifyDisconnect(this);
+            mOwner.getPhone().notifyDisconnect(this);
 
             if (mParent != null) {
                 changed = mParent.connectionDisconnected(this);
@@ -876,7 +875,7 @@ public class GsmCdmaConnection extends Connection {
         notifyPostDialListenersNextChar(c);
 
         // TODO: remove the following code since the handler no longer executes anything.
-        postDialHandler = mOwner.mPhone.mPostDialHandler;
+        postDialHandler = mOwner.getPhone().mPostDialHandler;
 
         Message notifyMessage;
 
@@ -1089,7 +1088,7 @@ public class GsmCdmaConnection extends Connection {
     }
 
     private boolean isPhoneTypeGsm() {
-        return mOwner.mPhone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM;
+        return mOwner.getPhone().getPhoneType() == PhoneConstants.PHONE_TYPE_GSM;
     }
 
     private void log(String msg) {

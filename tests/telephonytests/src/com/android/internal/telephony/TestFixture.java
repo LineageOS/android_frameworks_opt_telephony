@@ -16,22 +16,19 @@
 
 package com.android.internal.telephony;
 
-import android.content.Context;
-
 /**
- * TEMPORARY DUMMY CLASS. GET RID OF IT ONCE VENDOR SPECIFIC CODE STOPS USING IT.
- *
- *  {@hide}
- *
+ * An object that provides supporting methods, fields, and other functionality for configuring
+ * and inspecting the results of operations on a test double (mock, fake or stub). The test double
+ * is an object of type {@code T}.
  */
+public interface TestFixture<T> {
 
-public class PhoneProxy extends PhoneBase {
-    public PhoneProxy(Context context, CommandsInterface ci, PhoneNotifier notifier, int phoneId,
-                      int precisePhoneType, TelephonyComponentFactory telephonyComponentFactory) {
-        super(context, ci, notifier, phoneId, precisePhoneType, telephonyComponentFactory);
-    }
-
-    public Phone getActivePhone() {
-        return this;
-    }
+    /**
+     * Obtain the actual test double provided by this holder. It is a requirement of this API
+     * that the test double as returned from this method be a Mockito mock or spy, so that a test
+     * can use Mockito APIs to directly instrument its behavior where needed.
+     *
+     * @return the test double.
+     */
+    T getTestDouble();
 }

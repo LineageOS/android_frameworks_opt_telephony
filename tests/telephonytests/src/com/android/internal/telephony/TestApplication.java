@@ -16,22 +16,18 @@
 
 package com.android.internal.telephony;
 
+import android.app.Application;
 import android.content.Context;
 
-/**
- * TEMPORARY DUMMY CLASS. GET RID OF IT ONCE VENDOR SPECIFIC CODE STOPS USING IT.
- *
- *  {@hide}
- *
- */
+public class TestApplication extends Application {
+    private static Context context;
 
-public class PhoneProxy extends PhoneBase {
-    public PhoneProxy(Context context, CommandsInterface ci, PhoneNotifier notifier, int phoneId,
-                      int precisePhoneType, TelephonyComponentFactory telephonyComponentFactory) {
-        super(context, ci, notifier, phoneId, precisePhoneType, telephonyComponentFactory);
+    public void onCreate() {
+        super.onCreate();
+        TestApplication.context = getApplicationContext();
     }
 
-    public Phone getActivePhone() {
-        return this;
+    public static Context getAppContext() {
+        return TestApplication.context;
     }
 }

@@ -4962,7 +4962,7 @@ public class ServiceStateTracker extends Handler {
     }
 
     /** Check if the device is shutting down. */
-    public final boolean isDeviceShuttingDown() {
+    public boolean isDeviceShuttingDown() {
         return mDeviceShuttingDown;
     }
 }
