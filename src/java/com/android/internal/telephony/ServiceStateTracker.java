@@ -414,7 +414,7 @@ public class ServiceStateTracker extends Handler {
     private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (mPhone.getPhoneType() != PhoneConstants.PHONE_TYPE_GSM) {
+            if (!mPhone.isPhoneTypeGsm()) {
                 loge("Ignoring intent " + intent + " received on CDMA phone");
                 return;
             }
@@ -569,7 +569,7 @@ public class ServiceStateTracker extends Handler {
             mCi.unregisterForAvailable(this);
             mCi.unSetOnRestrictedStateChanged(this);
 
-            if (mPhone.getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+            if (mPhone.isPhoneTypeCdma()) {
                 mCellInfo = new CellInfoCdma();
             } else {
                 mCellInfo = new CellInfoLte();
@@ -1240,7 +1240,7 @@ public class ServiceStateTracker extends Handler {
             case EVENT_RUIM_RECORDS_LOADED:
                 log("EVENT_RUIM_RECORDS_LOADED: what=" + msg.what);
                 updatePhoneObject();
-                if (mPhone.getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+                if (mPhone.isPhoneTypeCdma()) {
                     updateSpnDisplay();
                 } else {
                     RuimRecords ruim = (RuimRecords)mIccRecords;
@@ -1772,7 +1772,7 @@ public class ServiceStateTracker extends Handler {
                                 + " regState=" + regState
                                 + " dataRadioTechnology=" + type);
                     }
-                } else if (mPhone.getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+                } else if (mPhone.isPhoneTypeCdma()) {
                     states = (String[])ar.result;
                     if (DBG) {
                         log("handlePollStateResultMessage: EVENT_POLL_STATE_GPRS states.length=" +
@@ -2412,7 +2412,7 @@ public class ServiceStateTracker extends Handler {
     public boolean isConcurrentVoiceAndDataAllowed() {
         if (mPhone.isPhoneTypeGsm()) {
             return (mSS.getRilVoiceRadioTechnology() >= ServiceState.RIL_RADIO_TECHNOLOGY_UMTS);
-        } else if (mPhone.getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+        } else if (mPhone.isPhoneTypeCdma()) {
             // Note: it needs to be confirmed which CDMA network types
             // can support voice and data calls concurrently.
             // For the time-being, the return value will be false.
@@ -2512,7 +2512,7 @@ public class ServiceStateTracker extends Handler {
     private void pollStateDone() {
         if (mPhone.isPhoneTypeGsm()) {
             pollStateDoneGsm();
-        } else if (mPhone.getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+        } else if (mPhone.isPhoneTypeCdma()) {
             pollStateDoneCdma();
         } else {
             pollStateDoneCdmaLte();
@@ -4223,8 +4223,7 @@ public class ServiceStateTracker extends Handler {
     public void powerOffRadioSafely(DcTracker dcTracker) {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
-                if (mPhone.isPhoneTypeGsm() || mPhone.getPrecisePhoneType() ==
-                        PhoneConstants.PHONE_TYPE_CDMA_LTE) {
+                if (mPhone.isPhoneTypeGsm() || mPhone.isPhoneTypeCdmaLte()) {
                     int dds = SubscriptionManager.getDefaultDataSubId();
                     // To minimize race conditions we call cleanUpAllConnections on
                     // both if else paths instead of before this isDisconnected test.
@@ -4336,7 +4335,7 @@ public class ServiceStateTracker extends Handler {
      */
     protected boolean onSignalStrengthResult(AsyncResult ar, boolean isGsm) {
         //override isGsm for CDMA LTE
-        if (mPhone.getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE &&
+        if (mPhone.isPhoneTypeCdmaLte() &&
                 mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
             isGsm = true;
         }
@@ -4355,7 +4354,7 @@ public class ServiceStateTracker extends Handler {
 
         boolean ssChanged = notifySignalStrength();
 
-        if (mPhone.getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE) {
+        if (mPhone.isPhoneTypeCdmaLte()) {
             synchronized (mCellInfo) {
                 if (mSS.getRilDataRadioTechnology() == ServiceState.RIL_RADIO_TECHNOLOGY_LTE) {
                     mCellInfoLte.setTimeStamp(SystemClock.elapsedRealtime() * 1000);
@@ -4487,7 +4486,7 @@ public class ServiceStateTracker extends Handler {
             }
         } else {
             //TODO: Remove when we get new ril/modem for Galaxy Nexus.
-            if (mPhone.getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE) {
+            if (mPhone.isPhoneTypeCdmaLte()) {
                 ArrayList<CellInfo> arrayList = new ArrayList<CellInfo>();
                 synchronized(mCellInfo) {
                     arrayList.add(mCellInfoLte);

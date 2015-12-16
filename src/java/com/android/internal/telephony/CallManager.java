@@ -400,7 +400,7 @@ public class CallManager {
 
             Phone imsPhone = phone.getImsPhone();
             if (imsPhone != null) {
-               unregisterPhone(imsPhone);
+                unregisterPhone(imsPhone);
             }
 
             mPhones.remove(phone);
@@ -608,26 +608,18 @@ public class CallManager {
         //phone.registerForRadioOffOrNotAvailable(handler, EVENT_RADIO_OFF_OR_NOT_AVAILABLE, null);
 
         // for events supported only by GSM, CDMA and IMS phone
-        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM ||
-                phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA ||
-                phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
-            phone.setOnPostDialCharacter(handler, EVENT_POST_DIAL_CHARACTER, null);
-        }
+        phone.setOnPostDialCharacter(handler, EVENT_POST_DIAL_CHARACTER, null);
 
         // for events supported only by CDMA phone
-        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA ){
-            phone.registerForCdmaOtaStatusChange(handler, EVENT_CDMA_OTA_STATUS_CHANGE, null);
-            phone.registerForSubscriptionInfoReady(handler, EVENT_SUBSCRIPTION_INFO_READY, null);
-            phone.registerForCallWaiting(handler, EVENT_CALL_WAITING, null);
-            phone.registerForEcmTimerReset(handler, EVENT_ECM_TIMER_RESET, null);
-        }
+        phone.registerForCdmaOtaStatusChange(handler, EVENT_CDMA_OTA_STATUS_CHANGE, null);
+        phone.registerForSubscriptionInfoReady(handler, EVENT_SUBSCRIPTION_INFO_READY, null);
+        phone.registerForCallWaiting(handler, EVENT_CALL_WAITING, null);
+        phone.registerForEcmTimerReset(handler, EVENT_ECM_TIMER_RESET, null);
 
         // for events supported only by IMS phone
-        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
-            phone.registerForOnHoldTone(handler, EVENT_ONHOLD_TONE, null);
-            phone.registerForSuppServiceFailed(handler, EVENT_SUPP_SERVICE_FAILED, null);
-            phone.registerForTtyModeReceived(handler, EVENT_TTY_MODE_RECEIVED, null);
-        }
+        phone.registerForOnHoldTone(handler, EVENT_ONHOLD_TONE, null);
+        phone.registerForSuppServiceFailed(handler, EVENT_SUPP_SERVICE_FAILED, null);
+        phone.registerForTtyModeReceived(handler, EVENT_TTY_MODE_RECEIVED, null);
     }
 
     private void unregisterForPhoneStates(Phone phone) {
@@ -660,25 +652,17 @@ public class CallManager {
         //phone.unregisterForRadioOffOrNotAvailable(handler);
 
         // for events supported only by GSM, CDMA and IMS phone
-        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM ||
-                phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA ||
-                phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
-            phone.setOnPostDialCharacter(null, EVENT_POST_DIAL_CHARACTER, null);
-        }
+        phone.setOnPostDialCharacter(null, EVENT_POST_DIAL_CHARACTER, null);
 
         // for events supported only by CDMA phone
-        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_CDMA ){
-            phone.unregisterForCdmaOtaStatusChange(handler);
-            phone.unregisterForSubscriptionInfoReady(handler);
-            phone.unregisterForCallWaiting(handler);
-            phone.unregisterForEcmTimerReset(handler);
-        }
+        phone.unregisterForCdmaOtaStatusChange(handler);
+        phone.unregisterForSubscriptionInfoReady(handler);
+        phone.unregisterForCallWaiting(handler);
+        phone.unregisterForEcmTimerReset(handler);
 
         // for events supported only by IMS phone
-        if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_IMS) {
-            phone.unregisterForOnHoldTone(handler);
-            phone.unregisterForSuppServiceFailed(handler);
-        }
+        phone.unregisterForOnHoldTone(handler);
+        phone.unregisterForSuppServiceFailed(handler);
     }
 
     /**

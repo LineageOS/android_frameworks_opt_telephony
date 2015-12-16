@@ -130,11 +130,7 @@ public class GsmCdmaCall extends Call {
      * connections to be added via "conference"
      */
     /*package*/ boolean isFull() {
-        if (mOwner.getPhone().getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
-            return mConnections.size() == GsmCdmaCallTracker.MAX_CONNECTIONS_PER_CALL_GSM;
-        } else {
-            return mConnections.size() == GsmCdmaCallTracker.MAX_CONNECTIONS_PER_CALL_CDMA;
-        }
+        return mConnections.size() == mOwner.getMaxConnectionsPerCall();
     }
 
     //***** Called from GsmCdmaCallTracker

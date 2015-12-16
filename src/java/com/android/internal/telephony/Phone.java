@@ -2059,15 +2059,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public abstract int getPhoneType();
 
     /**
-     * Return a numerical identifier for the phone radio interface. The only difference between this
-     * and getPhoneType() is that this treats CDMA and CDMA_LTE as separate.
-     * @return PHONE_TYPE_XXX as defined above.
-     */
-    public int getPrecisePhoneType() {
-        return getPhoneType();
-    }
-
-    /**
      * Returns unread voicemail count. This count is shown when the  voicemail
      * notification is expanded.<p>
      */

@@ -132,7 +132,7 @@ public class GsmCdmaPhoneTest {
 
     @Test @SmallTest
     public void testPhoneTypeSwitch() {
-        assertEquals(PhoneConstants.PHONE_TYPE_GSM, mPhone.getPrecisePhoneType());
+        assertTrue(mPhone.isPhoneTypeGsm());
         mPhone.sendMessage(mPhone.obtainMessage(GsmCdmaPhone.EVENT_VOICE_RADIO_TECH_CHANGED,
                 new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_IS95A}, null)));
         //wait for voice RAT to be updated
@@ -141,7 +141,7 @@ public class GsmCdmaPhoneTest {
         } catch (InterruptedException e) {
             logd("InterruptedException while waiting for voice rat to change: " + e);
         }
-        assertEquals(PhoneConstants.PHONE_TYPE_CDMA_LTE, mPhone.getPrecisePhoneType());
+        assertTrue(mPhone.isPhoneTypeCdmaLte());
     }
 
     @Test @SmallTest
@@ -149,7 +149,7 @@ public class GsmCdmaPhoneTest {
         // set voice radio tech in RIL to 1xRTT. ACTION_CARRIER_CONFIG_CHANGED should trigger a
         // query and change phone type
         simulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
-        assertEquals(PhoneConstants.PHONE_TYPE_GSM, mPhone.getPrecisePhoneType());
+        assertTrue(mPhone.isPhoneTypeGsm());
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         contextFixture.sendBroadcast(intent);
         try {
@@ -157,7 +157,7 @@ public class GsmCdmaPhoneTest {
         } catch (InterruptedException e) {
             logd("InterruptedException while waiting: " + e);
         }
-        assertEquals(PhoneConstants.PHONE_TYPE_CDMA_LTE, mPhone.getPrecisePhoneType());
+        assertTrue(mPhone.isPhoneTypeCdmaLte());
     }
 
     private static void logd(String s) {
