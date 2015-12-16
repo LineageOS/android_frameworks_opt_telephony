@@ -930,6 +930,11 @@ public final class DataConnection extends StateMachine {
             }
         }
         mLinkProperties.setTcpBufferSizes(sizes);
+
+        int segments = SystemProperties.getInt("net.tcp.delack." + ratName, 1);
+        mLinkProperties.setTcpDelayedAckSegments(segments);
+        int usercfg = SystemProperties.getInt("net.tcp.usercfg." + ratName, 0);
+        mLinkProperties.setTcpUserCfg(usercfg);
     }
 
     private NetworkCapabilities makeNetworkCapabilities() {
