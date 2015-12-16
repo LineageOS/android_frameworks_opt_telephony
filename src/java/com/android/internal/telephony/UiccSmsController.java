@@ -391,6 +391,13 @@ public class UiccSmsController extends ISms.Stub {
         return PhoneFactory.isSMSPromptEnabled();
     }
 
+    /**
+     * Set SMS prompt property, enabled ornot
+     **/
+    public void setSMSPromptEnabled(boolean bool) {
+        PhoneFactory.setSMSPromptEnabled(bool);
+    }
+
     @Override
     public void sendStoredText(int subId, String callingPkg, Uri messageUri, String scAddress,
             PendingIntent sentIntent, PendingIntent deliveryIntent) throws RemoteException {
