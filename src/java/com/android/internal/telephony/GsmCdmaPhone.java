@@ -304,7 +304,7 @@ public class GsmCdmaPhone extends Phone {
             logd("init: operatorAlpha='" + operatorAlpha
                     + "' operatorNumeric='" + operatorNumeric + "'");
             if (mUiccController.getUiccCardApplication(mPhoneId, UiccController.APP_FAM_3GPP) ==
-                    null || getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE) {
+                    null || isPhoneTypeCdmaLte()) {
                 if (!TextUtils.isEmpty(operatorAlpha)) {
                     logd("init: set 'gsm.sim.operator.alpha' to operator='" + operatorAlpha + "'");
                     tm.setSimOperatorNameForPhone(mPhoneId, operatorAlpha);
@@ -357,6 +357,14 @@ public class GsmCdmaPhone extends Phone {
 
     public boolean isPhoneTypeGsm() {
         return mPrecisePhoneType == PhoneConstants.PHONE_TYPE_GSM;
+    }
+
+    public boolean isPhoneTypeCdma() {
+        return mPrecisePhoneType == PhoneConstants.PHONE_TYPE_CDMA;
+    }
+
+    public boolean isPhoneTypeCdmaLte() {
+        return mPrecisePhoneType == PhoneConstants.PHONE_TYPE_CDMA_LTE;
     }
 
     private void switchPhoneType(int precisePhoneType) {
@@ -452,11 +460,6 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public int getPrecisePhoneType() {
-        return mPrecisePhoneType;
-    }
-
-    @Override
     public ServiceStateTracker getServiceStateTracker() {
         return mSST;
     }
@@ -503,7 +506,7 @@ public class GsmCdmaPhone extends Phone {
 
             ret = PhoneConstants.DataState.DISCONNECTED;
         } else if (mSST.getCurrentDataConnectionState() != ServiceState.STATE_IN_SERVICE
-                && (getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA ||
+                && (isPhoneTypeCdma() ||
                 (isPhoneTypeGsm() && !apnType.equals(PhoneConstants.APN_TYPE_EMERGENCY)))) {
             // If we're out of service, open TCP sockets may still work
             // but no data will flow
@@ -513,8 +516,7 @@ public class GsmCdmaPhone extends Phone {
 
             ret = PhoneConstants.DataState.DISCONNECTED;
         } else if (mDcTracker.isApnTypeEnabled(apnType) == false ||
-                (getPrecisePhoneType() != PhoneConstants.PHONE_TYPE_CDMA_LTE &&
-                        mDcTracker.isApnTypeActive(apnType) == false)) {
+                (!isPhoneTypeCdmaLte() && mDcTracker.isApnTypeActive(apnType) == false)) {
             //TODO: isApnTypeActive() is just checking whether ApnContext holds
             //      Dataconnection or not. Checking each ApnState below should
             //      provide the same state. Calling isApnTypeActive() can be removed.
@@ -678,7 +680,7 @@ public class GsmCdmaPhone extends Phone {
         if (getUnitTestMode()) {
             return;
         }
-        if (isPhoneTypeGsm() || (getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE)) {
+        if (isPhoneTypeGsm() || isPhoneTypeCdmaLte()) {
             TelephonyManager.setTelephonyProperty(mPhoneId, property, value);
         } else {
             super.setSystemProperty(property, value);
@@ -688,22 +690,14 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public void registerForSuppServiceNotification(
             Handler h, int what, Object obj) {
-        if (isPhoneTypeGsm()) {
-            mSsnRegistrants.addUnique(h, what, obj);
-            if (mSsnRegistrants.size() == 1) mCi.setSuppServiceNotifications(true, null);
-        } else {
-            loge("method registerForSuppServiceNotification is NOT supported in CDMA!");
-        }
+        mSsnRegistrants.addUnique(h, what, obj);
+        if (mSsnRegistrants.size() == 1) mCi.setSuppServiceNotifications(true, null);
     }
 
     @Override
     public void unregisterForSuppServiceNotification(Handler h) {
-        if (isPhoneTypeGsm()) {
-            mSsnRegistrants.remove(h);
-            if (mSsnRegistrants.size() == 0) mCi.setSuppServiceNotifications(false, null);
-        } else {
-            loge("method unregisterForSuppServiceNotification is NOT supported in CDMA!");
-        }
+        mSsnRegistrants.remove(h);
+        if (mSsnRegistrants.size() == 0) mCi.setSuppServiceNotifications(false, null);
     }
 
     @Override
@@ -1379,7 +1373,7 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public String getDeviceSvn() {
-        if (isPhoneTypeGsm() || getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE) {
+        if (isPhoneTypeGsm() || isPhoneTypeCdmaLte()) {
             return mImeiSv;
         } else {
             loge("getDeviceSvn(): return 0");
@@ -1431,9 +1425,9 @@ public class GsmCdmaPhone extends Phone {
         if (isPhoneTypeGsm()) {
             IccRecords r = mIccRecords.get();
             return (r != null) ? r.getIMSI() : null;
-        } else if (getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+        } else if (isPhoneTypeCdma()) {
             return mSST.getImsi();
-        } else { //getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE
+        } else { //isPhoneTypeCdmaLte()
             return (mSimRecords != null) ? mSimRecords.getIMSI() : "";
         }
     }
@@ -1443,10 +1437,10 @@ public class GsmCdmaPhone extends Phone {
         if (isPhoneTypeGsm()) {
             IccRecords r = mIccRecords.get();
             return (r != null) ? r.getGid1() : null;
-        } else if (getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+        } else if (isPhoneTypeCdma()) {
             loge("GID1 is not available in CDMA");
             return null;
-        } else { //getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE
+        } else { //isPhoneTypeCdmaLte()
             return (mSimRecords != null) ? mSimRecords.getGid1() : "";
         }
     }
@@ -1456,10 +1450,10 @@ public class GsmCdmaPhone extends Phone {
         if (isPhoneTypeGsm()) {
             IccRecords r = mIccRecords.get();
             return (r != null) ? r.getGid2() : null;
-        } else if (getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+        } else if (isPhoneTypeCdma()) {
             loge("GID2 is not available in CDMA");
             return null;
-        } else { //getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE
+        } else { //isPhoneTypeCdmaLte()
             return (mSimRecords != null) ? mSimRecords.getGid2() : "";
         }
     }
@@ -1469,50 +1463,34 @@ public class GsmCdmaPhone extends Phone {
         if (isPhoneTypeGsm()) {
             IccRecords r = mIccRecords.get();
             return (r != null) ? r.getMsisdnNumber() : null;
-        } else if (getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA) {
+        } else if (isPhoneTypeCdma()) {
             return mSST.getMdnNumber();
-        } else { //getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE
+        } else { //isPhoneTypeCdmaLte()
             return (mSimRecords != null) ? mSimRecords.getMsisdnNumber() : null;
         }
     }
 
     @Override
     public String getCdmaPrlVersion() {
-        if (isPhoneTypeGsm()) {
-            loge("getCdmaPrlVersion: not expected on GSM");
-            return null;
-        } else {
-            return mSST.getPrlVersion();
-        }
+        return mSST.getPrlVersion();
     }
 
     @Override
     public String getCdmaMin() {
-        if (isPhoneTypeGsm()) {
-            loge("getCdmaMin: not expected on GSM");
-            return null;
-        } else {
-            return mSST.getCdmaMin();
-        }
+        return mSST.getCdmaMin();
     }
 
     @Override
     public boolean isMinInfoReady() {
-        if (isPhoneTypeGsm()) {
-            loge("isMinInfoReady: not expected on GSM");
-            return false;
-        } else {
-            return mSST.isMinInfoReady();
-        }
+        return mSST.isMinInfoReady();
     }
-
 
     @Override
     public String getMsisdn() {
         if (isPhoneTypeGsm()) {
             IccRecords r = mIccRecords.get();
             return (r != null) ? r.getMsisdnNumber() : null;
-        } else if (getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE) {
+        } else if (isPhoneTypeCdmaLte()) {
             return (mSimRecords != null) ? mSimRecords.getMsisdnNumber() : null;
         } else {
             loge("getMsisdn: not expected on CDMA");
@@ -1577,7 +1555,7 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public String getSystemProperty(String property, String defValue) {
-        if (isPhoneTypeGsm() || getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE) {
+        if (isPhoneTypeGsm() || isPhoneTypeCdmaLte()) {
             if (getUnitTestMode()) {
                 return null;
             }
@@ -1742,7 +1720,7 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public void
     getAvailableNetworks(Message response) {
-        if (isPhoneTypeGsm() || getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE) {
+        if (isPhoneTypeGsm() || isPhoneTypeCdmaLte()) {
             mCi.getAvailableNetworks(response);
         } else {
             loge("getAvailableNetworks: not possible in CDMA");
@@ -1826,38 +1804,22 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void registerForCdmaOtaStatusChange(Handler h, int what, Object obj) {
-        if (isPhoneTypeGsm()) {
-            loge("registerForCdmaOtaStatusChange: not expected on GSM");
-        } else {
-            mCi.registerForCdmaOtaProvision(h, what, obj);
-        }
+        mCi.registerForCdmaOtaProvision(h, what, obj);
     }
 
     @Override
     public void unregisterForCdmaOtaStatusChange(Handler h) {
-        if (isPhoneTypeGsm()) {
-            loge("unregisterForCdmaOtaStatusChange: not expected on GSM");
-        } else {
-            mCi.unregisterForCdmaOtaProvision(h);
-        }
+        mCi.unregisterForCdmaOtaProvision(h);
     }
 
     @Override
     public void registerForSubscriptionInfoReady(Handler h, int what, Object obj) {
-        if (isPhoneTypeGsm()) {
-            loge("registerForSubscriptionInfoReady: not expected on GSM");
-        } else {
-            mSST.registerForSubscriptionInfoReady(h, what, obj);
-        }
+        mSST.registerForSubscriptionInfoReady(h, what, obj);
     }
 
     @Override
     public void unregisterForSubscriptionInfoReady(Handler h) {
-        if (isPhoneTypeGsm()) {
-            loge("unregisterForSubscriptionInfoReady: not expected on GSM");
-        } else {
-            mSST.unregisterForSubscriptionInfoReady(h);
-        }
+        mSST.unregisterForSubscriptionInfoReady(h);
     }
 
     @Override
@@ -1872,20 +1834,12 @@ public class GsmCdmaPhone extends Phone {
 
     @Override
     public void registerForCallWaiting(Handler h, int what, Object obj) {
-        if (isPhoneTypeGsm()) {
-            loge("registerForCallWaiting: not expected on GSM");
-        } else {
-            mCT.registerForCallWaiting(h, what, obj);
-        }
+        mCT.registerForCallWaiting(h, what, obj);
     }
 
     @Override
     public void unregisterForCallWaiting(Handler h) {
-        if (isPhoneTypeGsm()) {
-            loge("unregisterForCallWaiting: not expected on GSM");
-        } else {
-            mCT.unregisterForCallWaiting(h);
-        }
+        mCT.unregisterForCallWaiting(h);
     }
 
     @Override
@@ -2353,7 +2307,7 @@ public class GsmCdmaPhone extends Phone {
         UiccCardApplication newUiccApplication = null;
 
         // Update mIsimUiccRecords
-        if (isPhoneTypeGsm() || getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE) {
+        if (isPhoneTypeGsm() || isPhoneTypeCdmaLte()) {
             newUiccApplication =
                     mUiccController.getUiccCardApplication(mPhoneId, UiccController.APP_FAM_IMS);
             IsimUiccRecords newIsimUiccRecords = null;
@@ -2369,7 +2323,7 @@ public class GsmCdmaPhone extends Phone {
         if (mSimRecords != null) {
             mSimRecords.unregisterForRecordsLoaded(this);
         }
-        if (getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE) {
+        if (isPhoneTypeCdmaLte()) {
             newUiccApplication = mUiccController.getUiccCardApplication(mPhoneId,
                     UiccController.APP_FAM_3GPP);
             SIMRecords newSimRecords = null;
@@ -2428,7 +2382,7 @@ public class GsmCdmaPhone extends Phone {
      */
     @Override
     public boolean updateCurrentCarrierInProvider() {
-        if (isPhoneTypeGsm() || getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE) {
+        if (isPhoneTypeGsm() || isPhoneTypeCdmaLte()) {
             long currentDds = SubscriptionManager.getDefaultDataSubId();
             String operatorNumeric = getOperatorNumeric();
 
@@ -2476,9 +2430,9 @@ public class GsmCdmaPhone extends Phone {
      * @return true for success; false otherwise.
      */
     boolean updateCurrentCarrierInProvider(String operatorNumeric) {
-        if (getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA ||
-                (getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE &&
-                        mUiccController.getUiccCardApplication(mPhoneId, UiccController.APP_FAM_3GPP) == null)) {
+        if (isPhoneTypeCdma()
+                || (isPhoneTypeCdmaLte() && mUiccController.getUiccCardApplication(mPhoneId,
+                        UiccController.APP_FAM_3GPP) == null)) {
             logd("CDMAPhone: updateCurrentCarrierInProvider called");
             if (!TextUtils.isEmpty(operatorNumeric)) {
                 try {
@@ -2498,7 +2452,7 @@ public class GsmCdmaPhone extends Phone {
                 }
             }
             return false;
-        } else { // getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE
+        } else { // isPhoneTypeCdmaLte()
             if (DBG) logd("updateCurrentCarrierInProvider not updated X retVal=" + true);
             return true;
         }
@@ -3123,6 +3077,7 @@ public class GsmCdmaPhone extends Phone {
         intent.putExtra(PhoneConstants.PHONE_NAME_KEY, getPhoneName());
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhoneId);
         // Unit test cannot send protected broadcasts
+        // todo: get rid of unitTestMode check
         if (!getUnitTestMode()) {
             ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
         }
@@ -3135,9 +3090,6 @@ public class GsmCdmaPhone extends Phone {
         logd("Switching Voice Phone : " + outgoingPhoneName + " >>> "
                 + (ServiceState.isGsm(newVoiceRadioTech) ? "GSM" : "CDMA"));
 
-        //unregister before migrating
-        CallManager.getInstance().unregisterPhone(this);
-
         if (ServiceState.isCdma(newVoiceRadioTech)) {
             switchPhoneType(PhoneConstants.PHONE_TYPE_CDMA_LTE);
         } else if (ServiceState.isGsm(newVoiceRadioTech)) {
@@ -3148,9 +3100,6 @@ public class GsmCdmaPhone extends Phone {
             return;
         }
 
-        //todo: try to clean this up. Registration is based on phone type so this is still
-        // needed (maybe register for all events regardless of phone type??)
-        CallManager.getInstance().registerPhone(this);
         if (mImsPhone != null) {
             mImsPhone.updateParentPhone(this);
         }
@@ -3278,7 +3227,7 @@ public class GsmCdmaPhone extends Phone {
             if (r != null) {
                 operatorNumeric = r.getOperatorNumeric();
             }
-        } else { //getPrecisePhoneType() == PhoneConstants.PHONE_TYPE_CDMA_LTE
+        } else { //isPhoneTypeCdmaLte()
             IccRecords curIccRecords = null;
             if (mCdmaSubscriptionSource == CDMA_SUBSCRIPTION_NV) {
                 operatorNumeric = SystemProperties.get("ro.cdma.home.operator.numeric");
@@ -3370,5 +3319,11 @@ public class GsmCdmaPhone extends Phone {
             logd("isUtEnabled: called for GsmCdma");
             return false;
         }
+    }
+
+    public String getDtmfToneDelayKey() {
+        return isPhoneTypeGsm() ?
+                CarrierConfigManager.KEY_GSM_DTMF_TONE_DELAY_INT :
+                CarrierConfigManager.KEY_CDMA_DTMF_TONE_DELAY_INT;
     }
 }

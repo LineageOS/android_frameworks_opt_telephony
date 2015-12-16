@@ -1083,11 +1083,7 @@ public class GsmCdmaConnection extends Connection {
                 phone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
         PersistableBundle b = configMgr.getConfigForSubId(phone.getSubId());
         if (b != null) {
-            if (phone.getPhoneType() == PhoneConstants.PHONE_TYPE_GSM) {
-                mDtmfToneDelay = b.getInt(CarrierConfigManager.KEY_GSM_DTMF_TONE_DELAY_INT);
-            } else {
-                mDtmfToneDelay = b.getInt(CarrierConfigManager.KEY_CDMA_DTMF_TONE_DELAY_INT);
-            }
+            mDtmfToneDelay = b.getInt(phone.getDtmfToneDelayKey());
         }
     }
 

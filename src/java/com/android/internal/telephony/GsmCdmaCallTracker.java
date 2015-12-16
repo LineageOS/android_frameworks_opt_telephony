@@ -160,7 +160,6 @@ public class GsmCdmaCallTracker extends CallTracker {
             mIsEcmTimerCanceled = false;
             m3WayCallFlashDelay = 0;
             mCi.registerForCallWaitingInfo(this, EVENT_CALL_WAITING_INFO_CDMA, null);
-            mForegroundCall.setGeneric(false);
 
             // Register receiver for ECM exit
             IntentFilter filter = new IntentFilter();
@@ -398,11 +397,6 @@ public class GsmCdmaCallTracker extends CallTracker {
             handleEcmTimer(GsmCdmaPhone.CANCEL_ECM_TIMER);
         }
 
-        // We are initiating a call therefore even if we previously
-        // didn't know the state (i.e. Generic was true) we now know
-        // and therefore can set Generic to false.
-        mForegroundCall.setGeneric(false);
-
         // The new call must be assigned to the foreground call.
         // That call must be idle, so place anything that's
         // there on hold
@@ -542,10 +536,6 @@ public class GsmCdmaCallTracker extends CallTracker {
     private void flashAndSetGenericTrue() {
         mCi.sendCDMAFeatureCode("", obtainMessage(EVENT_SWITCH_RESULT));
 
-        // Set generic to true because in CDMA it is not known what
-        // the status of the call is after a call waiting is answered,
-        // 3 way call merged or a switch between calls.
-        mForegroundCall.setGeneric(true);
         mPhone.notifyPreciseCallStateChanged();
     }
 
@@ -901,8 +891,6 @@ public class GsmCdmaCallTracker extends CallTracker {
                         GsmCdmaConnection cn = (GsmCdmaConnection)mRingingCall.mConnections.get(n);
                         mDroppedDuringPoll.add(cn);
                     }
-                    mForegroundCall.setGeneric(false);
-                    mRingingCall.setGeneric(false);
 
                     // Re-start Ecm timer when the connected emergency call ends
                     if (mIsEcmTimerCanceled) {
@@ -1306,18 +1294,7 @@ public class GsmCdmaCallTracker extends CallTracker {
 
     //CDMA
     private void handleCallWaitingInfo (CdmaCallWaitingNotification cw) {
-        // Check how many connections in foregroundCall.
-        // If the connection in foregroundCall is more
-        // than one, then the connection information is
-        // not reliable anymore since it means either
-        // call waiting is connected or 3 way call is
-        // dialed before, so set generic.
-        if (mForegroundCall.mConnections.size() > 1 ) {
-            mForegroundCall.setGeneric(true);
-        }
-
         // Create a new GsmCdmaConnection which attaches itself to ringingCall.
-        mRingingCall.setGeneric(false);
         new GsmCdmaConnection(mPhone.getContext(), cw, this, mRingingCall);
         updatePhoneState();
 
@@ -1642,5 +1619,11 @@ public class GsmCdmaCallTracker extends CallTracker {
     @Override
     public PhoneConstants.State getState() {
         return mState;
+    }
+
+    public int getMaxConnectionsPerCall() {
+        return mPhone.isPhoneTypeGsm() ?
+                MAX_CONNECTIONS_PER_CALL_GSM :
+                MAX_CONNECTIONS_PER_CALL_CDMA;
     }
 }
