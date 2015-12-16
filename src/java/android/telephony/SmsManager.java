@@ -1246,6 +1246,22 @@ public final class SmsManager {
     }
 
     /**
+     * Set SMS prompt property, enabled or not
+     * @hide
+     */
+    public void setSMSPromptEnabled(boolean bool) {
+        ISms iccISms = null;
+        try {
+            iccISms = ISms.Stub.asInterface(ServiceManager.getService("isms"));
+            iccISms.setSMSPromptEnabled(bool);
+        } catch (RemoteException ex) {
+            //ignore it
+        } catch (NullPointerException ex) {
+            //ignore it
+        }
+    }
+
+    /**
      * Get the capacity count of sms on Icc card
      *
      * @return the capacity count of sms on Icc card
