@@ -34,6 +34,7 @@ import android.os.IRemoteCallback;
 import android.os.Message;
 import android.os.RemoteException;
 import android.os.ServiceManager;
+import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
@@ -61,6 +62,8 @@ import java.util.List;
 public class SubscriptionInfoUpdater extends Handler {
     private static final String LOG_TAG = "SubscriptionInfoUpdater";
     private static final int PROJECT_SIM_NUM = TelephonyManager.getDefault().getPhoneCount();
+
+    private static final boolean DBG = false;
 
     private static final int EVENT_SIM_LOCKED_QUERY_ICCID_DONE = 1;
     private static final int EVENT_GET_NETWORK_SELECTION_MODE_DONE = 2;
@@ -429,37 +432,7 @@ public class SubscriptionInfoUpdater extends Handler {
             int storedSubId = sp.getInt(CURR_SUBID + slotId, -1);
 
             if (storedSubId != subId) {
-                int networkType = RILConstants.PREFERRED_NETWORK_MODE;
-                //Get previous network mode for this slot,
-                // to be more relevant instead of default mode
-                try {
-                    networkType  = android.provider.Settings.Global.getInt(
-                            mContext.getContentResolver(),
-                            Settings.Global.PREFERRED_NETWORK_MODE + subId);
-                } catch (SettingNotFoundException snfe) {
-
-                    logd("Settings Exception reading value at subid for"+
-                         " Settings.Global.PREFERRED_NETWORK_MODE");
-                    try {
-                        networkType  = TelephonyManager.getIntAtIndex(
-                                mContext.getContentResolver(),
-                               Settings.Global.PREFERRED_NETWORK_MODE, slotId);
-                    } catch (SettingNotFoundException retrySnfe) {
-                        Rlog.e(LOG_TAG, "Settings Exception Reading Value At Index for"+
-                               " Settings.Global.PREFERRED_NETWORK_MODE");
-                    }
-                }
-
-                // Set the modem network mode
-                mPhone[slotId].setPreferredNetworkType(networkType, null);
-                Settings.Global.putInt(mPhone[slotId].getContext().getContentResolver(),
-                        Settings.Global.PREFERRED_NETWORK_MODE + subId,
-                        networkType);
-
-                // Only support automatic selection mode on SIM change.
-                mPhone[slotId].getNetworkSelectionMode(
-                        obtainMessage(EVENT_GET_NETWORK_SELECTION_MODE_DONE, new Integer(slotId)));
-
+                setDefaultDataSubNetworkType(slotId, subId);
                 // Update stored subId
                 SharedPreferences.Editor editor = sp.edit();
                 editor.putInt(CURR_SUBID + slotId, subId);
@@ -476,6 +449,87 @@ public class SubscriptionInfoUpdater extends Handler {
         broadcastSimStateChanged(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED, null);
         updateCarrierServices(slotId, IccCardConstants.INTENT_VALUE_ICC_LOADED);
     }
+
+    private void setDefaultDataSubNetworkType(int slotId, int subId) {
+        if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
+            Rlog.e(LOG_TAG, "setDefaultDataSubNetworkType called with DEFAULT_SUB_ID");
+            return;
+        }
+
+        int networkType = RILConstants.PREFERRED_NETWORK_MODE;
+        //Get previous network mode for this slot,
+        //to be more relevant instead of default mode
+        try {
+            networkType  = android.provider.Settings.Global.getInt(
+                    mContext.getContentResolver(),
+                    Settings.Global.PREFERRED_NETWORK_MODE + subId);
+        } catch (SettingNotFoundException snfe) {
+
+            logd("Settings Exception reading value at subid for"+
+                    " Settings.Global.PREFERRED_NETWORK_MODE");
+            try {
+                networkType  = TelephonyManager.getIntAtIndex(
+                        mContext.getContentResolver(),
+                        Settings.Global.PREFERRED_NETWORK_MODE, slotId);
+            } catch (SettingNotFoundException retrySnfe) {
+                Rlog.d(LOG_TAG, "Settings Exception Reading Value At Index for"+
+                        " Settings.Global.PREFERRED_NETWORK_MODE");
+            }
+        }
+
+        // Get users NW type, let it override if its not the default NW mode (-1)
+        int userNwType = SubscriptionController.getInstance().getUserNwMode(subId);
+        if (userNwType != SubscriptionManager.DEFAULT_NW_MODE && userNwType != networkType) {
+            networkType = userNwType;
+        }
+        boolean isDsds = TelephonyManager.getDefault().getMultiSimConfiguration()
+                == TelephonyManager.MultiSimVariants.DSDS;
+        if (DBG) Rlog.d(LOG_TAG, "[setDefaultDataSubNetworkType] subId=" + subId);
+        if (DBG) Rlog.d(LOG_TAG, "[setDefaultDataSubNetworkType] isDSDS=" + isDsds);
+        boolean isMultiRat = SystemProperties.getBoolean("ro.ril.multi_rat_capable", false);
+
+        if (isDsds && !isMultiRat) {
+            int networkType2 = Phone.NT_MODE_GSM_ONLY; // Hardcoded due to modem limitation
+            int slotId1 = SubscriptionManager.DEFAULT_SIM_SLOT_INDEX;
+            int slotId2 = SubscriptionManager.DEFAULT_SIM_SLOT_INDEX;
+            int subId1 = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
+            int subId2 = SubscriptionManager.DEFAULT_SUBSCRIPTION_ID;
+            // Since this is DSDS, there are 2 phones
+            for (int targetSlotId = 0; targetSlotId < PROJECT_SIM_NUM; targetSlotId++) {
+                Phone phone = mPhone[targetSlotId];
+                int id = phone.getSubId();
+
+                if (id == subId) {
+                    slotId1 = targetSlotId;
+                    subId1 = id;
+                    if (DBG) Rlog.d(LOG_TAG, "[setDefaultDataSubNetworkType] networkType1: "
+                            + networkType + ", slotId1: " + slotId1);
+                } else {
+                    subId2 = id;
+                    slotId2 = targetSlotId;
+                    if (DBG) Rlog.d(LOG_TAG, "[setDefaultDataSubNetworkType] networkType2: "
+                            + networkType2 + ", slotId2: " + slotId2);
+                }
+            }
+            setPreferredNwModeForSlot(slotId1, subId1, networkType);
+            setPreferredNwModeForSlot(slotId2, subId2, networkType2);
+        } else {
+            // Set the modem network mode
+            setPreferredNwModeForSlot(slotId, subId, networkType);
+        }
+
+        // Only support automatic selection mode on SIM change.
+        mPhone[slotId].getNetworkSelectionMode(
+                obtainMessage(EVENT_GET_NETWORK_SELECTION_MODE_DONE, new Integer(slotId)));
+    }
+
+    private void setPreferredNwModeForSlot(int slotId, int subId, int networkType) {
+        mPhone[slotId].setPreferredNetworkType(networkType, null);
+        Settings.Global.putInt(mPhone[slotId].getContext().getContentResolver(),
+                Settings.Global.PREFERRED_NETWORK_MODE + subId,
+                networkType);
+    }
+
 
     private void updateCarrierServices(int slotId, String simState) {
         CarrierConfigManager configManager = (CarrierConfigManager)
