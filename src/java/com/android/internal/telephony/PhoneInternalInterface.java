@@ -790,11 +790,6 @@ public interface PhoneInternalInterface {
     String getImei();
 
     /**
-     * Retrieves the PhoneSubInfo of the Phone
-     */
-    public PhoneSubInfo getPhoneSubInfo();
-
-    /**
      * Retrieves the IccPhoneBookInterfaceManager of the Phone
      */
     public IccPhoneBookInterfaceManager getIccPhoneBookInterfaceManager();

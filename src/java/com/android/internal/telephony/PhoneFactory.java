@@ -466,14 +466,6 @@ public class PhoneFactory {
             }
             pw.flush();
             pw.println("++++++++++++++++++++++++++++++++");
-
-            try {
-                phone.getPhoneSubInfo().dump(fd, pw, args);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            pw.flush();
-            pw.println("++++++++++++++++++++++++++++++++");
         }
 
         try {

@@ -153,7 +153,6 @@ public class GsmCdmaPhone extends Phone {
     ServiceStateTracker mSST;
     ArrayList <MmiCode> mPendingMMIs = new ArrayList<MmiCode>();
     IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
-    PhoneSubInfo mSubInfo;
 
     private int mPrecisePhoneType;
 
@@ -180,8 +179,6 @@ public class GsmCdmaPhone extends Phone {
     }
 
     private IccSmsInterfaceManager mIccSmsInterfaceManager;
-    private IccPhoneBookInterfaceManagerProxy mIccPhoneBookInterfaceManagerProxy;
-    private PhoneSubInfoProxy mPhoneSubInfoProxy;
     private IccCardProxy mIccCardProxy;
 
     private boolean mResetModemOnRadioTechnologyChange = false;
@@ -227,14 +224,9 @@ public class GsmCdmaPhone extends Phone {
 
         mCT = mTelephonyComponentFactory.makeGsmCdmaCallTracker(this);
         mIccPhoneBookIntManager = mTelephonyComponentFactory.makeIccPhoneBookInterfaceManager(this);
-        mSubInfo = mTelephonyComponentFactory.makePhoneSubInfo(this);
         PowerManager pm
                 = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOG_TAG);
-        mIccPhoneBookInterfaceManagerProxy = mTelephonyComponentFactory.
-                makeIccPhoneBookInterfaceManagerProxy(getIccPhoneBookInterfaceManager());
-        //todo: phonesubinfoproxy is probably not even needed
-        mPhoneSubInfoProxy = mTelephonyComponentFactory.makePhoneSubInfoProxy(getPhoneSubInfo());
         mIccSmsInterfaceManager = mTelephonyComponentFactory.makeIccSmsInterfaceManager(this);
         mIccCardProxy = mTelephonyComponentFactory.makeIccCardProxy(mContext, mCi, mPhoneId);
 
@@ -2479,14 +2471,6 @@ public class GsmCdmaPhone extends Phone {
     }
 
     /**
-     * Retrieves the PhoneSubInfo of the GsmCdmaPhone
-     */
-    @Override
-    public PhoneSubInfo getPhoneSubInfo(){
-        return mSubInfo;
-    }
-
-    /**
      * Retrieves the IccPhoneBookInterfaceManager of the GsmCdmaPhone
      */
     @Override
@@ -3111,16 +3095,6 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public PhoneSubInfoProxy getPhoneSubInfoProxy() {
-        return mPhoneSubInfoProxy;
-    }
-
-    @Override
-    public IccPhoneBookInterfaceManagerProxy getIccPhoneBookInterfaceManagerProxy() {
-        return mIccPhoneBookInterfaceManagerProxy;
-    }
-
-    @Override
     public void updatePhoneObject(int voiceRadioTech) {
         logd("updatePhoneObject: radioTechnology=" + voiceRadioTech);
         sendMessage(obtainMessage(EVENT_UPDATE_PHONE_OBJECT, voiceRadioTech, 0, null));
@@ -3151,7 +3125,6 @@ public class GsmCdmaPhone extends Phone {
         pw.println(" mSST=" + mSST);
         pw.println(" mPendingMMIs=" + mPendingMMIs);
         pw.println(" mIccPhoneBookIntManager=" + mIccPhoneBookIntManager);
-        pw.println(" mSubInfo=" + mSubInfo);
         if (VDBG) pw.println(" mImei=" + mImei);
         if (VDBG) pw.println(" mImeiSv=" + mImeiSv);
         pw.println(" mVmNumber=" + mVmNumber);
@@ -3170,14 +3143,6 @@ public class GsmCdmaPhone extends Phone {
             pw.println(" isMinInfoReady()=" + isMinInfoReady());
         }
         pw.println(" isCspPlmnEnabled()=" + isCspPlmnEnabled());
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
-
-        try {
-            mPhoneSubInfoProxy.dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
 
