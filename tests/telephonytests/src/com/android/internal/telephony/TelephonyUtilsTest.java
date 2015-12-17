@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (C) 2015 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,204 +16,976 @@
 
 package com.android.internal.telephony;
 
-import com.android.internal.telephony.RetryManager;
-import junit.framework.TestCase;
+import android.os.PersistableBundle;
+import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.telephony.dataconnection.ApnSetting;
+import com.android.internal.telephony.test.SimulatedCommands;
+import com.android.internal.telephony.uicc.UiccController;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+
+import junit.framework.TestCase;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
+
+/**
+ * APN retry manager tests
+ */
 public class TelephonyUtilsTest extends TestCase {
 
+    @Mock
+    private GsmCdmaPhone mPhone;
+    @Mock
+    private UiccController mUiccController;
+    @Mock
+    private SubscriptionController mSubscriptionController;
+
+    // This is the real APN data for the Japanese carrier NTT Docomo.
+    private ApnSetting mApn1 = new ApnSetting(
+            2163,                   // id
+            "44010",                // numeric
+            "sp-mode",              // name
+            "spmode.ne.jp",         // apn
+            "",                     // proxy
+            "",                     // port
+            "",                     // mmsc
+            "",                     // mmsproxy
+            "",                     // mmsport
+            "",                     // user
+            "",                     // password
+            -1,                     // authtype
+            new String[]{"default", "supl"},     // types
+            "IP",                   // protocol
+            "IP",                   // roaming_protocol
+            true,                   // carrier_enabled
+            0,                      // bearer
+            0,                      // bearer_bitmask
+            0,                      // profile_id
+            false,                  // modem_cognitive
+            0,                      // max_conns
+            0,                      // wait_time
+            0,                      // max_conns_time
+            0,                      // mtu
+            "",                     // mvno_type
+            "");                    // mnvo_match_data
+
+    private ApnSetting mApn2 = new ApnSetting(
+            2164,                   // id
+            "44010",                // numeric
+            "mopera U",             // name
+            "mopera.net",           // apn
+            "",                     // proxy
+            "",                     // port
+            "",                     // mmsc
+            "",                     // mmsproxy
+            "",                     // mmsport
+            "",                     // user
+            "",                     // password
+            -1,                     // authtype
+            new String[]{"default", "supl"},     // types
+            "IP",                   // protocol
+            "IP",                   // roaming_protocol
+            true,                   // carrier_enabled
+            0,                      // bearer
+            0,                      // bearer_bitmask
+            0,                      // profile_id
+            false,                  // modem_cognitive
+            0,                      // max_conns
+            0,                      // wait_time
+            0,                      // max_conns_time
+            0,                      // mtu
+            "",                     // mvno_type
+            "");                    // mnvo_match_data
+
+    private ApnSetting mApn3 = new ApnSetting(
+            2165,                   // id
+            "44010",                // numeric
+            "b-mobile for Nexus",   // name
+            "bmobile.ne.jp",        // apn
+            "",                     // proxy
+            "",                     // port
+            "",                     // mmsc
+            "",                     // mmsproxy
+            "",                     // mmsport
+            "",                     // user
+            "",                     // password
+            3,                      // authtype
+            new String[]{"default", "supl"},     // types
+            "IP",                   // protocol
+            "IP",                   // roaming_protocol
+            true,                   // carrier_enabled
+            0,                      // bearer
+            0,                      // bearer_bitmask
+            0,                      // profile_id
+            false,                  // modem_cognitive
+            0,                      // max_conns
+            0,                      // wait_time
+            0,                      // max_conns_time
+            0,                      // mtu
+            "",                     // mvno_type
+            "");                    // mnvo_match_data
+
+    private SimulatedCommands mSimulatedCommands;
+    private ContextFixture mContextFixture;
+    private PersistableBundle mBundle;
+
+    @Before
+    public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+        mContextFixture = new ContextFixture();
+        mSimulatedCommands = new SimulatedCommands();
+        mBundle = mContextFixture.getCarrierConfigBundle();
+
+        doReturn(mContextFixture.getTestDouble()).when(mPhone).getContext();
+        doReturn(true).when(mPhone).getUnitTestMode();
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+
+        //Use reflection to mock singleton
+        Field field = SubscriptionController.class.getDeclaredField("sInstance");
+        field.setAccessible(true);
+        field.set(null, mSubscriptionController);
+
+        //Use reflection to mock singleton
+        field = UiccController.class.getDeclaredField("mInstance");
+        field.setAccessible(true);
+        field.set(null, mUiccController);
+    }
+
     /**
-     * After first creating the RetryManager
-     * isRetryNeeded should be false and the time 0
+     * Test the behavior of a retry manager with no waiting APNs set.
      */
     @SmallTest
     public void testRetryManagerEmpty() throws Exception {
-        RetryManager rm = new RetryManager();
 
-        assertEquals(0, rm.getRetryCount());
-        assertFalse(rm.isRetryForever());
-        assertFalse(rm.isRetryNeeded());
-        assertEquals(0, rm.getRetryCount());
-        assertEquals(0, rm.getRetryTimer());
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "2000");
 
-        rm.increaseRetryCount();
-        assertFalse(rm.isRetryForever());
-        assertFalse(rm.isRetryNeeded());
-        assertEquals(0, rm.getRetryCount());
-        assertEquals(0, rm.getRetryTimer());
+        RetryManager rm = new RetryManager(mPhone, "default");
 
-        rm.setRetryCount(123);
-        assertFalse(rm.isRetryForever());
-        assertFalse(rm.isRetryNeeded());
-        assertEquals(0, rm.getRetryCount());
-        assertEquals(0, rm.getRetryTimer());
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
 
-        rm.retryForeverUsingLastTimeout();
-        assertTrue(rm.isRetryForever());
-        assertTrue(rm.isRetryNeeded());
-        assertEquals(0, rm.getRetryCount());
-        assertEquals(0, rm.getRetryTimer());
-
-        rm.setRetryCount(2);
-        assertTrue(rm.isRetryForever());
-        assertTrue(rm.isRetryNeeded());
-        assertEquals(0, rm.getRetryCount());
-        assertEquals(0, rm.getRetryTimer());
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn == null);
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
     }
 
     /**
-     * A simple test and that randomization is doing something.
+     * Test the basic retry scenario where only one APN and no retry configured.
      */
     @SmallTest
-    public void testRetryManagerSimplest() throws Exception {
-        RetryManager rm = new RetryManager();
+    public void testRetryManagerOneApnNoRetry() throws Exception {
 
-        assertTrue(rm.configure(1, 500, 10));
-        int loops = 10;
-        int count = 0;
-        for (int i = 0; i < loops; i++) {
-            assertTrue(rm.isRetryNeeded());
-            int time = rm.getRetryTimer();
-            assertTrue((time >= 500) && (time < 600));
-            if (time == 500) {
-                count++;
-            }
-        }
-        assertFalse(count == loops);
-        rm.increaseRetryCount();
-        assertFalse(rm.isRetryNeeded());
-        rm.setRetryCount(0);
-        assertTrue(rm.isRetryNeeded());
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        waitingApns.add(new ApnSetting(mApn1));
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
     }
 
     /**
-     * Test multiple values using simple configuration.
+     * Test the basic retry scenario where only one APN with two retries configured.
      */
     @SmallTest
-    public void testRetryManagerSimple() throws Exception {
-        RetryManager rm = new RetryManager();
+    public void testRetryManagerOneApnTwoRetries() throws Exception {
 
-        assertTrue(rm.configure(3, 1000, 0));
-        assertTrue(rm.isRetryNeeded());
-        assertEquals(1000, rm.getRetryTimer());
-        assertEquals(rm.getRetryTimer(), 1000);
-        rm.increaseRetryCount();
-        assertTrue(rm.isRetryNeeded());
-        assertEquals(1000, rm.getRetryTimer());
-        rm.increaseRetryCount();
-        assertTrue(rm.isRetryNeeded());
-        assertEquals(1000, rm.getRetryTimer());
-        rm.increaseRetryCount();
-        assertFalse(rm.isRetryNeeded());
-        assertEquals(1000, rm.getRetryTimer());
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "2000,3000");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        waitingApns.add(new ApnSetting(mApn1));
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(2000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(3000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
+
+        // No matter how many times we call getNextApnSetting, it should always return the next APN
+        // with NO_RETRY because we've already reached the maximum retry count.
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
     }
 
     /**
-     * Test string configuration, simplest
+     * Test the basic retry scenario where two waiting APNs with one retry configured.
      */
     @SmallTest
-    public void testRetryManageSimpleString() throws Exception {
-        RetryManager rm = new RetryManager();
+    public void testRetryManagerTwoApnsOneRetry() throws Exception {
 
-        assertTrue(rm.configure("101"));
-        assertTrue(rm.isRetryNeeded());
-        assertEquals(101, rm.getRetryTimer());
-        rm.increaseRetryCount();
-        assertFalse(rm.isRetryNeeded());
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "2000");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        waitingApns.add(new ApnSetting(mApn1));
+        waitingApns.add(new ApnSetting(mApn2));
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(2000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
     }
 
     /**
-     * Test infinite retires
+     * Test the basic retry scenario where two waiting APNs with two retries configured.
      */
     @SmallTest
-    public void testRetryManageInfinite() throws Exception {
-        RetryManager rm = new RetryManager();
+    public void testRetryManagerTwoApnsTwoRetries() throws Exception {
 
-        assertTrue(rm.configure("1000,2000,3000,max_retries=infinite"));
-        assertTrue(rm.isRetryNeeded());
-        assertEquals(1000, rm.getRetryTimer());
-        rm.increaseRetryCount();
-        assertTrue(rm.isRetryNeeded());
-        assertEquals(2000, rm.getRetryTimer());
-        rm.increaseRetryCount();
-        assertTrue(rm.isRetryNeeded());
-        // All others are 3000 and isRetryNeeded is always true
-        for (int i=0; i < 100; i++) {
-            assertEquals(3000, rm.getRetryTimer());
-            rm.increaseRetryCount();
-            assertTrue(rm.isRetryNeeded());
-        }
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "2000,5000");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        waitingApns.add(new ApnSetting(mApn1));
+        waitingApns.add(new ApnSetting(mApn2));
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(2000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(5000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
     }
 
     /**
-     * Test string configuration using all options and with quotes.
+     * Test the basic retry scenario where two mms (non-default) APNs with two retries configured.
      */
     @SmallTest
-    public void testRetryManageString() throws Exception {
-        RetryManager rm = new RetryManager();
-        int time;
+    public void testRetryManagerTwoMmsApnsTwoRetries() throws Exception {
 
-        assertTrue(rm.configure(
-                "\"max_retries=4, default_randomization=100,1000, 2000 :200 , 3000\""));
-        assertTrue(rm.isRetryNeeded());
-        time = rm.getRetryTimer();
-        assertTrue((time >= 1000) && (time < 1100));
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_OTHERS_STRING,
+                "3000,6000");
 
-        rm.increaseRetryCount();
-        assertTrue(rm.isRetryNeeded());
-        time = rm.getRetryTimer();
-        assertTrue((time >= 2000) && (time < 2200));
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        waitingApns.add(new ApnSetting(mApn1));
+        waitingApns.add(new ApnSetting(mApn2));
 
-        rm.increaseRetryCount();
-        assertTrue(rm.isRetryNeeded());
-        time = rm.getRetryTimer();
-        assertTrue((time >= 3000) && (time < 3100));
+        RetryManager rm = new RetryManager(mPhone, "mms");
+        rm.setWaitingApns(waitingApns);
 
-        rm.increaseRetryCount();
-        assertTrue(rm.isRetryNeeded());
-        time = rm.getRetryTimer();
-        assertTrue((time >= 3000) && (time < 3100));
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
 
-        rm.increaseRetryCount();
-        assertFalse(rm.isRetryNeeded());
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(3000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(6000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
     }
 
     /**
-     * Test string configuration using all options.
+     * Test the permanent fail scenario with one APN configured.
      */
     @SmallTest
-    public void testRetryManageForever() throws Exception {
-        RetryManager rm = new RetryManager();
-        int time;
+    public void testRetryManagerApnPermanentFailed() throws Exception {
 
-        assertTrue(rm.configure("1000, 2000, 3000"));
-        assertTrue(rm.isRetryNeeded());
-        assertFalse(rm.isRetryForever());
-        assertEquals(0, rm.getRetryCount());
-        assertEquals(1000, rm.getRetryTimer());
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "1000,4000,7000");
 
-        rm.retryForeverUsingLastTimeout();
-        rm.increaseRetryCount();
-        rm.increaseRetryCount();
-        rm.increaseRetryCount();
-        assertTrue(rm.isRetryNeeded());
-        assertTrue(rm.isRetryForever());
-        assertEquals(3, rm.getRetryCount());
-        assertEquals(3000, rm.getRetryTimer());
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        ApnSetting apn = new ApnSetting(mApn1);
+        waitingApns.add(apn);
 
-        rm.setRetryCount(1);
-        assertTrue(rm.isRetryNeeded());
-        assertTrue(rm.isRetryForever());
-        assertEquals(1, rm.getRetryCount());
-        assertEquals(2000, rm.getRetryTimer());
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
 
-        rm.retryForeverUsingLastTimeout();
-        assertTrue(rm.isRetryNeeded());
-        assertTrue(rm.isRetryForever());
-        rm.resetRetryCount();
-        assertTrue(rm.isRetryNeeded());
-        assertTrue(rm.isRetryForever());
-        assertEquals(0, rm.getRetryCount());
-        assertEquals(1000, rm.getRetryTimer());
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(1000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(4000, delay);
+
+        rm.markApnPermanentFailed(apn);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn == null);
+    }
+
+    /**
+     * Test the permanent fail scenario with two APNs configured.
+     */
+    @SmallTest
+    public void testRetryManagerApnPermanentFailedWithTwoApns() throws Exception {
+
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "1000,4000,7000");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        ApnSetting myApn1 = new ApnSetting(mApn1);
+        ApnSetting myApn2 = new ApnSetting(mApn2);
+        waitingApns.add(myApn1);
+        waitingApns.add(myApn2);
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(1000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        rm.markApnPermanentFailed(myApn1);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(4000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(7000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
+    }
+
+    /**
+     * Test the permanent fail scenario with three APNs configured.
+     */
+    @SmallTest
+    public void testRetryManagerApnPermanentFailedWithThreeApns() throws Exception {
+
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "1000,4000");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        ApnSetting myApn1 = new ApnSetting(mApn1);
+        ApnSetting myApn2 = new ApnSetting(mApn2);
+        ApnSetting myApn3 = new ApnSetting(mApn3);
+        waitingApns.add(myApn1);
+        waitingApns.add(myApn2);
+        waitingApns.add(myApn3);
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        rm.markApnPermanentFailed(myApn2);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn3));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(1000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn3));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(4000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn3));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
+    }
+
+    /**
+     * Test the permanent fail scenario with two APN all failed
+     */
+    @SmallTest
+    public void testRetryManagerApnPermanentFailedAll() throws Exception {
+
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "1000,4000,7000,9000");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        ApnSetting myApn1 = new ApnSetting(mApn1);
+        ApnSetting myApn2 = new ApnSetting(mApn2);
+        waitingApns.add(myApn1);
+        waitingApns.add(myApn2);
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(1000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        rm.markApnPermanentFailed(myApn1);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(4000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(7000, delay);
+
+        rm.markApnPermanentFailed(myApn2);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn == null);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn == null);
+    }
+
+    /**
+     * Test the randomized delay scenario.
+     */
+    @SmallTest
+    public void testRetryManagerDelayWithRandomization() throws Exception {
+
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "default_randomization=1000,3000:2000,6000:3000,10000");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        waitingApns.add(new ApnSetting(mApn1));
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertTrue(delay >= 3000 && delay < 5000);    // 3s + 2s rand
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertTrue(delay >= 6000 && delay < 9000);    // 6s + 3s rand
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertTrue(delay >= 10000 && delay < 11000);  // 10s + 1s default rand
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
+    }
+
+    /**
+     * Test the retry forever scenario
+     */
+    @SmallTest
+    public void testRetryManagerRetryForever() throws Exception {
+
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "max_retries=infinite,1000,2000");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        waitingApns.add(new ApnSetting(mApn1));
+        waitingApns.add(new ApnSetting(mApn2));
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(1000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(2000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(2000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(2000, delay);
+    }
+
+    /**
+     * Test the explicit max retry scenario.
+     */
+    @SmallTest
+    public void testRetryManagerExplicitMaxRetry() throws Exception {
+
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "max_retries=4,1000,2000");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        waitingApns.add(new ApnSetting(mApn1));
+        waitingApns.add(new ApnSetting(mApn2));
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(1000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(2000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(2000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(2000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
+    }
+
+    /**
+     * Test the fail fast scenario.
+     */
+    @SmallTest
+    public void testRetryManagerFailFast() throws Exception {
+
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "1000,5000");
+
+        mBundle.putLong(CarrierConfigManager.KEY_CARRIER_DATA_CALL_APN_DELAY_FASTER_LONG, 2000);
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        waitingApns.add(new ApnSetting(mApn1));
+        waitingApns.add(new ApnSetting(mApn2));
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(true);
+        assertEquals(2000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(true);
+        assertEquals(1000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(true);
+        assertEquals(2000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(true);
+        assertEquals(2000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(true);
+        assertEquals(RetryManager.NO_RETRY, delay);
+    }
+
+    /**
+     * Test the permanent fail scenario with two APN all failed and then reset
+     */
+    @SmallTest
+    public void testRetryManagerApnPermanentFailedAllAndThenReset() throws Exception {
+
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "1000,4000,7000,9000");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        ApnSetting myApn1 = new ApnSetting(mApn1);
+        ApnSetting myApn2 = new ApnSetting(mApn2);
+        waitingApns.add(myApn1);
+        waitingApns.add(myApn2);
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(1000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        rm.markApnPermanentFailed(myApn1);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(4000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(7000, delay);
+
+        rm.markApnPermanentFailed(myApn2);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn == null);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn == null);
+
+        // reset the retry manager
+
+        ApnSetting myApn3 = new ApnSetting(mApn3);
+        waitingApns.clear();
+        waitingApns.add(myApn3);
+
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "3000,8000");
+
+        rm.setWaitingApns(waitingApns);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn3));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(3000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn3));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(8000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn3));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(RetryManager.NO_RETRY, delay);
+    }
+
+    /**
+     * Test the scenario where modem suggests retry the current APN once
+     */
+    @SmallTest
+    public void testRetryManagerModemSuggestedRetryOnce() throws Exception {
+
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "1000,4000,7000,9000");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        ApnSetting myApn1 = new ApnSetting(mApn1);
+        ApnSetting myApn2 = new ApnSetting(mApn2);
+        waitingApns.add(myApn1);
+        waitingApns.add(myApn2);
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(1000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        // Modem suggests retrying the current APN
+        rm.setModemSuggestedDelay(2500);
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(2500, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        rm.setModemSuggestedDelay(RetryManager.NO_SUGGESTED_RETRY_DELAY);
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        // Modem suggests retrying the current APN
+        rm.setModemSuggestedDelay(30000);
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(30000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        rm.setModemSuggestedDelay(RetryManager.NO_SUGGESTED_RETRY_DELAY);
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(4000, delay);
+    }
+
+    /**
+     * Test the scenario where modem suggests the same retry for too many times
+     */
+    @SmallTest
+    public void testRetryManagerModemSuggestedRetryTooManyTimes() throws Exception {
+
+        mBundle.putString(CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                "1000,4000,7000,9000");
+
+        ArrayList<ApnSetting> waitingApns = new ArrayList<ApnSetting>();
+        ApnSetting myApn1 = new ApnSetting(mApn1);
+        ApnSetting myApn2 = new ApnSetting(mApn2);
+        waitingApns.add(myApn1);
+        waitingApns.add(myApn2);
+
+        RetryManager rm = new RetryManager(mPhone, "default");
+        rm.setWaitingApns(waitingApns);
+
+        ApnSetting nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        long delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(1000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        rm.setModemSuggestedDelay(2500);
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(2500, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        rm.setModemSuggestedDelay(2500);
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(2500, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        rm.setModemSuggestedDelay(2500);
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(2500, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn1));
+        rm.setModemSuggestedDelay(2500);
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(20000, delay);
+
+        nextApn = rm.getNextApnSetting();
+        assertTrue(nextApn.equals(mApn2));
+        rm.setModemSuggestedDelay(RetryManager.NO_SUGGESTED_RETRY_DELAY);
+        delay = rm.getDelayForNextApn(false);
+        assertEquals(4000, delay);
     }
 }

@@ -17,7 +17,6 @@
 package com.android.internal.telephony.dataconnection;
 
 import android.app.PendingIntent;
-import android.content.Context;
 import android.content.res.Resources;
 import android.net.NetworkConfig;
 import android.telephony.Rlog;
@@ -28,6 +27,7 @@ import android.util.SparseIntArray;
 import com.android.internal.R;
 import com.android.internal.telephony.DctConstants;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.RetryManager;
 import com.android.internal.util.IndentingPrintWriter;
 
 import java.io.FileDescriptor;
@@ -45,24 +45,13 @@ public class ApnContext {
 
     protected static final boolean DBG = false;
 
-    private final Context mContext;
+    private final Phone mPhone;
 
     private final String mApnType;
 
     private DctConstants.State mState;
 
-    private ArrayList<ApnSetting> mWaitingApns = null;
-
-    /**
-     * Used to check if conditions (new RAT) are resulting in a new list which warrants a retry.
-     * Set in the last trySetupData call.
-     */
-    private ArrayList<ApnSetting> mOriginalWaitingApns = null;
-
     public final int priority;
-
-    /** A zero indicates that all waiting APNs had a permanent error */
-    private AtomicInteger mWaitingApnsPermanentFailureCountDown;
 
     private ApnSetting mApnSetting;
 
@@ -99,28 +88,53 @@ public class ApnContext {
      */
     private final AtomicInteger mConnectionGeneration = new AtomicInteger(0);
 
-    public ApnContext(Context context, String apnType, String logTag, NetworkConfig config,
+    /**
+     * Retry manager that handles the APN retry and delays.
+     */
+    private final RetryManager mRetryManager;
+
+    /**
+     * AonContext constructor
+     * @param phone phone object
+     * @param apnType APN type (e.g. default, supl, mms, etc...)
+     * @param logTag Tag for logging
+     * @param config Network configuration
+     * @param tracker Data call tracker
+     */
+    public ApnContext(Phone phone, String apnType, String logTag, NetworkConfig config,
             DcTracker tracker) {
-        mContext = context;
+        mPhone = phone;
         mApnType = apnType;
         mState = DctConstants.State.IDLE;
         setReason(Phone.REASON_DATA_ENABLED);
         mDataEnabled = new AtomicBoolean(false);
         mDependencyMet = new AtomicBoolean(config.dependencyMet);
-        mWaitingApnsPermanentFailureCountDown = new AtomicInteger(0);
         priority = config.priority;
         LOG_TAG = logTag;
         mDcTracker = tracker;
+        mRetryManager = new RetryManager(phone, apnType);
     }
 
+    /**
+     * Get the APN type
+     * @return The APN type
+     */
     public String getApnType() {
         return mApnType;
     }
 
+    /**
+     * Get the data call async channel.
+     * @return The data call async channel
+     */
     public synchronized DcAsyncChannel getDcAc() {
         return mDcAc;
     }
 
+    /**
+     * Set the data call async channel.
+     * @param dcac The data call async channel
+     */
     public synchronized void setDataConnectionAc(DcAsyncChannel dcac) {
         if (DBG) {
             log("setDataConnectionAc: old dcac=" + mDcAc + " new dcac=" + dcac
@@ -129,6 +143,10 @@ public class ApnContext {
         mDcAc = dcac;
     }
 
+    /**
+     * Release data connection.
+     * @param reason The reason of releasing data connection
+     */
     public synchronized void releaseDataConnection(String reason) {
         if (mDcAc != null) {
             mDcAc.tearDown(this, reason, null);
@@ -137,72 +155,112 @@ public class ApnContext {
         setState(DctConstants.State.IDLE);
     }
 
+    /**
+     * Get the reconnect intent.
+     * @return The reconnect intent
+     */
     public synchronized PendingIntent getReconnectIntent() {
         return mReconnectAlarmIntent;
     }
 
+    /**
+     * Save the reconnect intent which can be used for cancelling later.
+     * @param intent The reconnect intent
+     */
     public synchronized void setReconnectIntent(PendingIntent intent) {
         mReconnectAlarmIntent = intent;
     }
 
+    /**
+     * Get the current APN setting.
+     * @return APN setting
+     */
     public synchronized ApnSetting getApnSetting() {
         if (DBG) log("getApnSetting: apnSetting=" + mApnSetting);
         return mApnSetting;
     }
 
+    /**
+     * Set the APN setting.
+     * @param apnSetting APN setting
+     */
     public synchronized void setApnSetting(ApnSetting apnSetting) {
         if (DBG) log("setApnSetting: apnSetting=" + apnSetting);
         mApnSetting = apnSetting;
     }
 
+    /**
+     * Set the list of APN candidates which will be used for data call setup later.
+     * @param waitingApns List of APN candidates
+     */
     public synchronized void setWaitingApns(ArrayList<ApnSetting> waitingApns) {
-        mWaitingApns = waitingApns;
-        mOriginalWaitingApns = new ArrayList<ApnSetting>(waitingApns);
-        mWaitingApnsPermanentFailureCountDown.set(mWaitingApns.size());
+        mRetryManager.setWaitingApns(waitingApns);
     }
 
-    public int getWaitingApnsPermFailCount() {
-        return mWaitingApnsPermanentFailureCountDown.get();
+    /**
+     * Get the next available APN to try.
+     * @return APN setting which will be used for data call setup. Return null if there is no
+     * APN can be retried.
+     */
+    public ApnSetting getNextApnSetting() {
+        return mRetryManager.getNextApnSetting();
     }
 
-    public void decWaitingApnsPermFailCount() {
-        mWaitingApnsPermanentFailureCountDown.decrementAndGet();
+    /**
+     * Save the modem suggested delay for retrying the current APN.
+     * This method is called when we get the suggested delay from RIL.
+     * @param delay The delay in milliseconds
+     */
+    public void setModemSuggestedDelay(long delay) {
+        mRetryManager.setModemSuggestedDelay(delay);
     }
 
-    public synchronized ApnSetting getNextWaitingApn() {
-        ArrayList<ApnSetting> list = mWaitingApns;
-        ApnSetting apn = null;
-
-        if (list != null) {
-            if (!list.isEmpty()) {
-                apn = list.get(0);
-            }
-        }
-        return apn;
+    /**
+     * Get the delay for trying the next APN setting if the current one failed.
+     * @param failFastEnabled True if fail fast mode enabled. In this case we'll use a shorter
+     *                        delay.
+     * @return The delay in milliseconds
+     */
+    public long getDelayForNextApn(boolean failFastEnabled) {
+        return mRetryManager.getDelayForNextApn(failFastEnabled);
     }
 
-    public synchronized void removeWaitingApn(ApnSetting apn) {
-        if (mWaitingApns != null) {
-            mWaitingApns.remove(apn);
-        }
+    /**
+     * Mark the current APN setting permanently failed, which means it will not be retried anymore.
+     * @param apn APN setting
+     */
+    public void markApnPermanentFailed(ApnSetting apn) {
+        mRetryManager.markApnPermanentFailed(apn);
     }
 
-    public synchronized ArrayList<ApnSetting> getOriginalWaitingApns() {
-        return mOriginalWaitingApns;
+    /**
+     * Get the list of waiting APNs.
+     * @return the list of waiting APNs
+     */
+    public ArrayList<ApnSetting> getWaitingApns() {
+        return mRetryManager.getWaitingApns();
     }
 
-    public synchronized ArrayList<ApnSetting> getWaitingApns() {
-        return mWaitingApns;
-    }
-
+    /**
+     * Save the state indicating concurrent voice/data allowed.
+     * @param allowed True if concurrent voice/data is allowed
+     */
     public synchronized void setConcurrentVoiceAndDataAllowed(boolean allowed) {
         mConcurrentVoiceAndDataAllowed = allowed;
     }
 
+    /**
+     * Get the state indicating concurrent voice/data allowed.
+     * @return True if concurrent voice/data is allowed
+     */
     public synchronized boolean isConcurrentVoiceAndDataAllowed() {
         return mConcurrentVoiceAndDataAllowed;
     }
 
+    /**
+     * Set the current data call state.
+     * @param s Current data call state
+     */
     public synchronized void setState(DctConstants.State s) {
         if (DBG) {
             log("setState: " + s + ", previous state:" + mState);
@@ -211,22 +269,34 @@ public class ApnContext {
         mState = s;
 
         if (mState == DctConstants.State.FAILED) {
-            if (mWaitingApns != null) {
-                mWaitingApns.clear(); // when teardown the connection and set to IDLE
+            if (mRetryManager.getWaitingApns() != null) {
+                mRetryManager.getWaitingApns().clear(); // when teardown the connection and set to IDLE
             }
         }
     }
 
+    /**
+     * Get the current data call state.
+     * @return The current data call state
+     */
     public synchronized DctConstants.State getState() {
         return mState;
     }
 
+    /**
+     * Check whether the data call is disconnected or not.
+     * @return True if the data call is disconnected
+     */
     public boolean isDisconnected() {
         DctConstants.State currentState = getState();
         return ((currentState == DctConstants.State.IDLE) ||
                     currentState == DctConstants.State.FAILED);
     }
 
+    /**
+     * Set the reason for data call connection.
+     * @param reason Reason for data call connection
+     */
     public synchronized void setReason(String reason) {
         if (DBG) {
             log("set reason as " + reason + ",current state " + mState);
@@ -234,14 +304,26 @@ public class ApnContext {
         mReason = reason;
     }
 
+    /**
+     * Get the reason for data call connection.
+     * @return The reason for data call connection
+     */
     public synchronized String getReason() {
         return mReason;
     }
 
+    /**
+     * Check if ready for data call connection
+     * @return True if ready, otherwise false.
+     */
     public boolean isReady() {
         return mDataEnabled.get() && mDependencyMet.get();
     }
 
+    /**
+     * Check if the data call is in the state which allow connecting.
+     * @return True if allowed, otherwise false.
+     */
     public boolean isConnectable() {
         return isReady() && ((mState == DctConstants.State.IDLE)
                                 || (mState == DctConstants.State.SCANNING)
@@ -249,6 +331,9 @@ public class ApnContext {
                                 || (mState == DctConstants.State.FAILED));
     }
 
+    /** Check if the data call is in connected or connecting state.
+     * @return True if the data call is in connected or connecting state
+     */
     public boolean isConnectedOrConnecting() {
         return isReady() && ((mState == DctConstants.State.CONNECTED)
                                 || (mState == DctConstants.State.CONNECTING)
@@ -256,6 +341,10 @@ public class ApnContext {
                                 || (mState == DctConstants.State.RETRYING));
     }
 
+    /**
+     * Set data call enabled/disabled state.
+     * @param enabled True if data call is enabled
+     */
     public void setEnabled(boolean enabled) {
         if (DBG) {
             log("set enabled as " + enabled + ", current state is " + mDataEnabled.get());
@@ -263,6 +352,10 @@ public class ApnContext {
         mDataEnabled.set(enabled);
     }
 
+    /**
+     * Check if the data call is enabled or not.
+     * @return True if enabled
+     */
     public boolean isEnabled() {
         return mDataEnabled.get();
     }
@@ -279,7 +372,7 @@ public class ApnContext {
     }
 
     public boolean isProvisioningApn() {
-        String provisioningApn = mContext.getResources()
+        String provisioningApn = mPhone.getContext().getResources()
                 .getString(R.string.mobile_provisioning_apn);
         if (!TextUtils.isEmpty(provisioningApn) &&
                 (mApnSetting != null) && (mApnSetting.apn != null)) {
@@ -410,12 +503,15 @@ public class ApnContext {
         return mConnectionGeneration.get();
     }
 
+    public long getInterApnDelay(boolean failFastEnabled) {
+        return mRetryManager.getInterApnDelay(failFastEnabled);
+    }
+
     @Override
     public synchronized String toString() {
         // We don't print mDataConnection because its recursive.
         return "{mApnType=" + mApnType + " mState=" + getState() + " mWaitingApns={" +
-                mWaitingApns + "} mWaitingApnsPermanentFailureCountDown=" +
-                mWaitingApnsPermanentFailureCountDown + " mApnSetting={" + mApnSetting +
+                mRetryManager.getWaitingApns() + "}" + " mApnSetting={" + mApnSetting +
                 "} mReason=" + mReason + " mDataEnabled=" + mDataEnabled + " mDependencyMet=" +
                 mDependencyMet + "}";
     }
@@ -436,5 +532,7 @@ public class ApnContext {
                 pw.decreaseIndent();
             }
         }
+
+        mRetryManager.dump(fd, pw, args);
     }
 }
