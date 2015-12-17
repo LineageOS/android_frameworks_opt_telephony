@@ -30,6 +30,7 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.UserHandle;
+import android.provider.BaseColumns;
 import android.provider.Settings;
 import android.telephony.RadioAccessFamily;
 import android.telephony.Rlog;
@@ -1785,6 +1786,26 @@ public class SubscriptionController extends ISub.Stub {
                 SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID +
                         "=" + Integer.toString(subId), null);
         Binder.restoreCallingIdentity(token);
+    }
+
+    /* {@hide} */
+    public void setUserNwMode(int subId, int nwMode) {
+        logd("setUserNwMode, nwMode: " + nwMode + " subId: " + subId);
+        ContentValues value = new ContentValues(1);
+        value.put(SubscriptionManager.USER_NETWORK_MODE, nwMode);
+        mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+                value, BaseColumns._ID + "=" + Integer.toString(subId), null);
+    }
+
+    /* {@hide} */
+    public int getUserNwMode(int subId) {
+        SubscriptionInfo subInfo = getActiveSubscriptionInfo(subId, mContext.getOpPackageName());
+        if (subInfo != null)  {
+            return subInfo.mUserNwMode;
+        } else {
+            loge("getUserNwMode: invalid subId = " + subId);
+            return SubscriptionManager.DEFAULT_NW_MODE;
+        }
     }
 
     /**
