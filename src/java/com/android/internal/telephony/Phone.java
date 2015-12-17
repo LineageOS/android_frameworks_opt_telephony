@@ -3095,14 +3095,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return null;
     }
 
-    public PhoneSubInfoProxy getPhoneSubInfoProxy() {
-        return null;
-    }
-
-    public IccPhoneBookInterfaceManagerProxy getIccPhoneBookInterfaceManagerProxy() {
-        return null;
-    }
-
     protected boolean isMatchGid(String gid) {
         String gid1 = getGroupIdLevel1();
         int gidLength = gid.length();

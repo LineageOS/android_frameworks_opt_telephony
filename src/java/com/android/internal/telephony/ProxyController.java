@@ -129,7 +129,7 @@ public class ProxyController {
 
         mDctController = DctController.makeDctController(phone);
         mUiccPhoneBookController = new UiccPhoneBookController(mPhones);
-        mPhoneSubInfoController = new PhoneSubInfoController(mPhones);
+        mPhoneSubInfoController = new PhoneSubInfoController(mContext, mPhones);
         mUiccSmsController = new UiccSmsController(mPhones);
         mSetRadioAccessFamilyStatus = new int[mPhones.length];
         mNewRadioAccessFamily = new int[mPhones.length];
