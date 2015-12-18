@@ -52,6 +52,24 @@
       "revId": "e8573d3ea6d00936c813ba33e899bc9deeb21e25",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bf659307_5bbb77e4",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 482,
+      "author": {
+        "id": 9045
+      },
+      "writtenOn": "2015-12-18T05:52:31Z",
+      "side": 1,
+      "message": "wrong constant, I meant SubscriptionManager.DEFAULT_NW_MODE, both are -1",
+      "parentUuid": "bf659307_9b1a6f15",
+      "revId": "e8573d3ea6d00936c813ba33e899bc9deeb21e25",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
