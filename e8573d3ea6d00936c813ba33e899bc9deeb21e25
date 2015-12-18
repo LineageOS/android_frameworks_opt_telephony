@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bf659307_bb5093d6",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 482,
+      "author": {
+        "id": 9045
+      },
+      "writtenOn": "2015-12-18T05:09:54Z",
+      "side": 1,
+      "message": "if userNwType \u003d\u003d SubscriptionManager.DEFAULT_SUBSCRIPTION_ID then it is unset and shouldn\u0027t override networkType",
+      "revId": "e8573d3ea6d00936c813ba33e899bc9deeb21e25",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
