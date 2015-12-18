@@ -2930,9 +2930,6 @@ public class DcTracker extends DcTrackerBase {
 
             case DctConstants.EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED: // fall thru
             case DctConstants.EVENT_DATA_RAT_CHANGED:
-                //May new Network allow setupData, so try it here
-                setupDataOnConnectableApns(Phone.REASON_NW_TYPE_CHANGED,
-                        RetryFailures.ONLY_ON_CHANGE);
                 // When data rat changes we might need to load different
                 // set of apns (example, LTE->1x)
                 if (onUpdateIcc()) {
@@ -2942,6 +2939,10 @@ public class DcTracker extends DcTrackerBase {
                     // If cdma subscription source changed to NV or data rat changed to cdma
                     // (while subscription source was NV) - we need to trigger NV ready
                     onNvReady();
+                } else {
+                    //May new Network allow setupData, so try it here
+                    setupDataOnConnectableApns(Phone.REASON_NW_TYPE_CHANGED,
+                            RetryFailures.ONLY_ON_CHANGE);
                 }
                 break;
 
