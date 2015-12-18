@@ -16,6 +16,24 @@
       "revId": "44c80fdb7a33560ace1e561126ab3c8ca9c684d6",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bf659307_d83d4d2d",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1480,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2015-12-18T01:44:25Z",
+      "side": 1,
+      "message": "When the next swap occurs, it\u0027ll set the correct default nw mode. This is called on every sim change.",
+      "parentUuid": "bf659307_d8f8ed7d",
+      "revId": "44c80fdb7a33560ace1e561126ab3c8ca9c684d6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
