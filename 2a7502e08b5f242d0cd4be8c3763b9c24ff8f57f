@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bf659307_7e9f49b4",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 482,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2015-12-18T06:19:26Z",
+      "side": 1,
+      "message": "I think Roman wants this line to be if (userNwType !\u003d -1 \u0026\u0026 userNwType !\u003d networkType)",
+      "revId": "2a7502e08b5f242d0cd4be8c3763b9c24ff8f57f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
