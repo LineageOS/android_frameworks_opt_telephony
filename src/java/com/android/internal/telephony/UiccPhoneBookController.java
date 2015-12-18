@@ -53,13 +53,13 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
     updateAdnRecordsInEfBySearchForSubscriber(int subId, int efid, String oldTag,
             String oldPhoneNumber, String newTag, String newPhoneNumber,
             String pin2) throws android.os.RemoteException {
-        IccPhoneBookInterfaceManagerProxy iccPbkIntMgrProxy =
-                             getIccPhoneBookInterfaceManagerProxy(subId);
-        if (iccPbkIntMgrProxy != null) {
-            return iccPbkIntMgrProxy.updateAdnRecordsInEfBySearch(efid, oldTag,
+        IccPhoneBookInterfaceManager iccPbkIntMgr =
+                             getIccPhoneBookInterfaceManager(subId);
+        if (iccPbkIntMgr != null) {
+            return iccPbkIntMgr.updateAdnRecordsInEfBySearch(efid, oldTag,
                     oldPhoneNumber, newTag, newPhoneNumber, pin2);
         } else {
-            Rlog.e(TAG,"updateAdnRecordsInEfBySearch iccPbkIntMgrProxy is" +
+            Rlog.e(TAG,"updateAdnRecordsInEfBySearch iccPbkIntMgr is" +
                       " null for Subscription:"+subId);
             return false;
         }
@@ -77,13 +77,13 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
     public boolean
     updateAdnRecordsInEfByIndexForSubscriber(int subId, int efid, String newTag,
             String newPhoneNumber, int index, String pin2) throws android.os.RemoteException {
-        IccPhoneBookInterfaceManagerProxy iccPbkIntMgrProxy =
-                             getIccPhoneBookInterfaceManagerProxy(subId);
-        if (iccPbkIntMgrProxy != null) {
-            return iccPbkIntMgrProxy.updateAdnRecordsInEfByIndex(efid, newTag,
+        IccPhoneBookInterfaceManager iccPbkIntMgr =
+                             getIccPhoneBookInterfaceManager(subId);
+        if (iccPbkIntMgr != null) {
+            return iccPbkIntMgr.updateAdnRecordsInEfByIndex(efid, newTag,
                     newPhoneNumber, index, pin2);
         } else {
-            Rlog.e(TAG,"updateAdnRecordsInEfByIndex iccPbkIntMgrProxy is" +
+            Rlog.e(TAG,"updateAdnRecordsInEfByIndex iccPbkIntMgr is" +
                       " null for Subscription:"+subId);
             return false;
         }
@@ -97,12 +97,12 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
     @Override
     public int[]
     getAdnRecordsSizeForSubscriber(int subId, int efid) throws android.os.RemoteException {
-        IccPhoneBookInterfaceManagerProxy iccPbkIntMgrProxy =
-                             getIccPhoneBookInterfaceManagerProxy(subId);
-        if (iccPbkIntMgrProxy != null) {
-            return iccPbkIntMgrProxy.getAdnRecordsSize(efid);
+        IccPhoneBookInterfaceManager iccPbkIntMgr =
+                             getIccPhoneBookInterfaceManager(subId);
+        if (iccPbkIntMgr != null) {
+            return iccPbkIntMgr.getAdnRecordsSize(efid);
         } else {
-            Rlog.e(TAG,"getAdnRecordsSize iccPbkIntMgrProxy is" +
+            Rlog.e(TAG,"getAdnRecordsSize iccPbkIntMgr is" +
                       " null for Subscription:"+subId);
             return null;
         }
@@ -116,26 +116,26 @@ public class UiccPhoneBookController extends IIccPhoneBook.Stub {
     @Override
     public List<AdnRecord> getAdnRecordsInEfForSubscriber(int subId, int efid)
            throws android.os.RemoteException {
-        IccPhoneBookInterfaceManagerProxy iccPbkIntMgrProxy =
-                             getIccPhoneBookInterfaceManagerProxy(subId);
-        if (iccPbkIntMgrProxy != null) {
-            return iccPbkIntMgrProxy.getAdnRecordsInEf(efid);
+        IccPhoneBookInterfaceManager iccPbkIntMgr =
+                             getIccPhoneBookInterfaceManager(subId);
+        if (iccPbkIntMgr != null) {
+            return iccPbkIntMgr.getAdnRecordsInEf(efid);
         } else {
-            Rlog.e(TAG,"getAdnRecordsInEf iccPbkIntMgrProxy is" +
+            Rlog.e(TAG,"getAdnRecordsInEf iccPbkIntMgr is" +
                       "null for Subscription:"+subId);
             return null;
         }
     }
 
     /**
-     * get phone book interface manager proxy object based on subscription.
+     * get phone book interface manager object based on subscription.
      **/
-    private IccPhoneBookInterfaceManagerProxy
-            getIccPhoneBookInterfaceManagerProxy(int subId) {
+    private IccPhoneBookInterfaceManager
+            getIccPhoneBookInterfaceManager(int subId) {
 
         int phoneId = SubscriptionController.getInstance().getPhoneId(subId);
         try {
-            return ((Phone)mPhone[(int)phoneId]).getIccPhoneBookInterfaceManagerProxy();
+            return mPhone[phoneId].getIccPhoneBookInterfaceManager();
         } catch (NullPointerException e) {
             Rlog.e(TAG, "Exception is :"+e.toString()+" For subscription :"+subId );
             e.printStackTrace(); //To print stack trace

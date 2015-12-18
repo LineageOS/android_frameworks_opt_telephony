@@ -65,19 +65,6 @@ public class TelephonyComponentFactory {
         return new IccPhoneBookInterfaceManager(phone);
     }
 
-    public PhoneSubInfo makePhoneSubInfo(Phone phone) {
-        return new PhoneSubInfo(phone);
-    }
-
-    public IccPhoneBookInterfaceManagerProxy makeIccPhoneBookInterfaceManagerProxy(
-            IccPhoneBookInterfaceManager iccPhoneBookInterfaceManager) {
-        return new IccPhoneBookInterfaceManagerProxy(iccPhoneBookInterfaceManager);
-    }
-
-    public PhoneSubInfoProxy makePhoneSubInfoProxy(PhoneSubInfo phoneSubInfo) {
-        return new PhoneSubInfoProxy(phoneSubInfo);
-    }
-
     public IccSmsInterfaceManager makeIccSmsInterfaceManager(Phone phone) {
         return new IccSmsInterfaceManager(phone);
     }

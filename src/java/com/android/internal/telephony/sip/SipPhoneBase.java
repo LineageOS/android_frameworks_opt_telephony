@@ -40,7 +40,6 @@ import com.android.internal.telephony.MmiCode;
 import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneNotifier;
-import com.android.internal.telephony.PhoneSubInfo;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.uicc.IccFileHandler;
@@ -456,11 +455,6 @@ abstract class SipPhoneBase extends Phone {
     }
 
     public void saveClirSetting(int commandInterfaceCLIRMode) {
-    }
-
-    @Override
-    public PhoneSubInfo getPhoneSubInfo(){
-        return null;
     }
 
     @Override
