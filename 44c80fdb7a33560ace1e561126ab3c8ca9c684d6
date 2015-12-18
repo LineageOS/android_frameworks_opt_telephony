@@ -34,6 +34,24 @@
       "revId": "44c80fdb7a33560ace1e561126ab3c8ca9c684d6",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bf659307_9847d5bd",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionController.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1480,
+      "author": {
+        "id": 9045
+      },
+      "writtenOn": "2015-12-18T01:44:34Z",
+      "side": 1,
+      "message": "if it\u0027s null, wouldn\u0027t that imply that the sim isn\u0027t ready and there\u0027s no need to set the network mode on that slot anyways?",
+      "parentUuid": "bf659307_d8f8ed7d",
+      "revId": "44c80fdb7a33560ace1e561126ab3c8ca9c684d6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
