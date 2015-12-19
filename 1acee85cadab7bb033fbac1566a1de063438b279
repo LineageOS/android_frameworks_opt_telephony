@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9f6a8fd7_d7751cce",
+        "filename": "src/java/android/telephony/SmsManager.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 1255,
+      "author": {
+        "id": 9045
+      },
+      "writtenOn": "2015-12-19T03:20:42Z",
+      "side": 1,
+      "message": "check if iccISms isn\u0027t null?",
+      "revId": "1acee85cadab7bb033fbac1566a1de063438b279",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
