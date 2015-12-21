@@ -529,7 +529,7 @@ public final class MccTable {
 		sTable.add(new MccEntry(457,"la",2));	//Lao People's Democratic Republic
 		sTable.add(new MccEntry(460,"cn",2));	//China (People's Republic of)
 		sTable.add(new MccEntry(461,"cn",2));	//China (People's Republic of)
-		sTable.add(new MccEntry(466,"tw",2));	//"Taiwan, China"
+		sTable.add(new MccEntry(466,"tw",2));	//Taiwan
 		sTable.add(new MccEntry(467,"kp",2));	//Democratic People's Republic of Korea
 		sTable.add(new MccEntry(470,"bd",2));	//Bangladesh (People's Republic of)
 		sTable.add(new MccEntry(472,"mv",2));	//Maldives (Republic of)
@@ -590,7 +590,7 @@ public final class MccTable {
 		sTable.add(new MccEntry(627,"gq",2));	//Equatorial Guinea (Republic of)
 		sTable.add(new MccEntry(628,"ga",2));	//Gabonese Republic
 		sTable.add(new MccEntry(629,"cg",2));	//Congo (Republic of the)
-		sTable.add(new MccEntry(630,"cg",2));	//Democratic Republic of the Congo
+		sTable.add(new MccEntry(630,"cd",2));	//Democratic Republic of the Congo
 		sTable.add(new MccEntry(631,"ao",2));	//Angola (Republic of)
 		sTable.add(new MccEntry(632,"gw",2));	//Guinea-Bissau (Republic of)
 		sTable.add(new MccEntry(633,"sc",2));	//Seychelles (Republic of)
