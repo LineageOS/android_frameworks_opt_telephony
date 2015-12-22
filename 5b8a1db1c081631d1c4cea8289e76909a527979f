@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7f7f9b97_ff2033b3",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 13513
+      },
+      "writtenOn": "2015-12-22T06:23:55Z",
+      "side": 1,
+      "message": "isNVSubAvailable \u003d true\n\nprivate void updateIccAvailability(int slotId) {\n        if (newCard !\u003d null) {\n            newState \u003d newCard.getCardState();\n            if (!newState.isCardPresent() \u0026\u0026 isNVSubAvailable) {\n                Rlog.i(LOG_TAG, \"updateIccAvailability: Returning NV mode \");\n                return;\n            }\n        }\n}",
+      "range": {
+        "startLine": 504,
+        "startChar": 41,
+        "endLine": 504,
+        "endChar": 44
+      },
+      "revId": "5b8a1db1c081631d1c4cea8289e76909a527979f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
