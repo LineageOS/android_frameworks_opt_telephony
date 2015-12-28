@@ -2460,6 +2460,10 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * TODO: Revisit if we always should return at least one entry.
      */
     public String[] getActiveApnTypes() {
+        if (mDcTracker == null) {
+            return null;
+        }
+
         return mDcTracker.getActiveApnTypes();
     }
 
@@ -3181,6 +3185,14 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         pw.println(" getActiveApnTypes()=" + getActiveApnTypes());
         pw.println(" isDataConnectivityPossible()=" + isDataConnectivityPossible());
         pw.println(" needsOtaServiceProvisioning=" + needsOtaServiceProvisioning());
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            mImsPhone.dump(fd, pw, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
 

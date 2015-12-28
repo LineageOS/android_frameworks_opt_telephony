@@ -4571,17 +4571,24 @@ public class ServiceStateTracker extends Handler {
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("ServiceStateTracker:");
+        pw.println(" mSubId=" + mSubId);
         pw.println(" mSS=" + mSS);
         pw.println(" mNewSS=" + mNewSS);
+        pw.println(" mVoiceCapable=" + mVoiceCapable);
         pw.println(" mCellInfo=" + mCellInfo);
+        pw.println(" mCellInfoLte=" + mCellInfoLte);
         pw.println(" mRestrictedState=" + mRestrictedState);
         pw.println(" mPollingContext=" + mPollingContext);
         pw.println(" mDesiredPowerState=" + mDesiredPowerState);
         pw.println(" mDontPollSignalStrength=" + mDontPollSignalStrength);
+        pw.println(" mSignalStrength=" + mSignalStrength);
+        pw.println(" mLastSignalStrength=" + mLastSignalStrength);
+        pw.println(" mRestrictedState=" + mRestrictedState);
         pw.println(" mPendingRadioPowerOffAfterDataOff=" + mPendingRadioPowerOffAfterDataOff);
         pw.println(" mPendingRadioPowerOffAfterDataOffTag=" + mPendingRadioPowerOffAfterDataOffTag);
         pw.println(" mCellLoc=" + mCellLoc);
         pw.println(" mNewCellLoc=" + mNewCellLoc);
+        pw.println(" mLastCellInfoListTime=" + mLastCellInfoListTime);
         pw.println(" mPreferredNetworkType=" + mPreferredNetworkType);
         pw.println(" mMaxDataCalls=" + mMaxDataCalls);
         pw.println(" mNewMaxDataCalls=" + mNewMaxDataCalls);
@@ -4627,6 +4634,13 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mRegistrationDeniedReason=" + mRegistrationDeniedReason);
         pw.println(" mCurrentCarrier=" + mCurrentCarrier);
         pw.flush();
+        pw.println(" mImsRegistered=" + mImsRegistered);
+        pw.println(" mImsRegistrationOnOff=" + mImsRegistrationOnOff);
+        pw.println(" mAlarmSwitch=" + mAlarmSwitch);
+        pw.println(" mPowerOffDelayNeed=" + mPowerOffDelayNeed);
+        pw.println(" mDeviceShuttingDown=" + mDeviceShuttingDown);
+        pw.println(" mSpnUpdatePending=" + mSpnUpdatePending);
+
 
     }
 

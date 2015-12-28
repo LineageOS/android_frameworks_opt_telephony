@@ -90,6 +90,8 @@ import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.uicc.IccRecords;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -1528,5 +1530,25 @@ public class ImsPhone extends ImsPhoneBase {
 
     public boolean isUtEnabled() {
         return mCT.isUtEnabled();
+    }
+
+    @Override
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("ImsPhone extends:");
+        super.dump(fd, pw, args);
+        pw.flush();
+
+        pw.println("ImsPhone:");
+        pw.println("  mDefaultPhone = " + mDefaultPhone);
+        pw.println("  mPendingMMIs = " + mPendingMMIs);
+        pw.println("  mPostDialHandler = " + mPostDialHandler);
+        pw.println("  mSS = " + mSS);
+        pw.println("  mWakeLock = " + mWakeLock);
+        pw.println("  mIsPhoneInEcmState = " + mIsPhoneInEcmState);
+        pw.println("  mEcmExitRespRegistrant = " + mEcmExitRespRegistrant);
+        pw.println("  mSilentRedialRegistrants = " + mSilentRedialRegistrants);
+        pw.println("  mImsRegistered = " + mImsRegistered);
+        pw.println("  mSsnRegistrants = " + mSsnRegistrants);
+        pw.flush();
     }
 }

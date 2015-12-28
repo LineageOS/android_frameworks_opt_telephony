@@ -444,6 +444,7 @@ public class PhoneFactory {
 
     public static void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("PhoneFactory:");
+        pw.println(" sMadeDefaults=" + sMadeDefaults);
         Phone[] phones = (Phone[])PhoneFactory.getPhones();
         int i = -1;
         for(Phone phone : phones) {
