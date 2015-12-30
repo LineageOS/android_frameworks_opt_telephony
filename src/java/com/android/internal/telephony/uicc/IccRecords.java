@@ -359,18 +359,17 @@ public abstract class IccRecords extends Handler implements IccConstants {
             if (card != null) {
                 String brandOverride = card.getOperatorBrandOverride();
                 if (brandOverride != null) {
-                    log("getServiceProviderName: override");
+                    log("getServiceProviderName: override, providerName=" + providerName);
                     providerName = brandOverride;
                 } else {
-                    log("getServiceProviderName: no brandOverride");
+                    log("getServiceProviderName: no brandOverride, providerName=" + providerName);
                 }
             } else {
-                log("getServiceProviderName: card is null");
+                log("getServiceProviderName: card is null, providerName=" + providerName);
             }
         } else {
-            log("getServiceProviderName: mParentApp is null");
+            log("getServiceProviderName: mParentApp is null, providerName=" + providerName);
         }
-        log("getServiceProviderName: providerName=" + providerName);
         return providerName;
     }
 

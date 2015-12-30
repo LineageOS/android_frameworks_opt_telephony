@@ -21,6 +21,7 @@ import android.os.AsyncResult;
 import android.os.Message;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsMessage;
+import android.telephony.SubscriptionInfo;
 import android.text.TextUtils;
 import android.telephony.Rlog;
 import android.content.res.Resources;
@@ -866,7 +867,7 @@ public class SIMRecords extends IccRecords {
 
                 mIccId = IccUtils.bcdToString(data, 0, data.length);
 
-                log("iccid: " + mIccId);
+                log("iccid: " + SubscriptionInfo.givePrintableIccid(mIccId));
 
             break;
 
