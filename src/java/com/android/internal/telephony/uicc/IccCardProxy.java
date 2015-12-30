@@ -245,7 +245,6 @@ public class IccCardProxy extends Handler implements IccCard {
                     log("operator=" + operator + " mPhoneId=" + mPhoneId);
 
                     if (operator != null) {
-                        log("update icc_operator_numeric=" + operator);
                         mTelephonyManager.setSimOperatorNumericForPhone(mPhoneId, operator);
                         String countryCode = operator.substring(0,3);
                         if (countryCode != null) {

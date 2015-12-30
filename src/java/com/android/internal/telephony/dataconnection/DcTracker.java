@@ -244,13 +244,15 @@ public final class DcTracker extends Handler {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            if (DBG) log("onReceive: action=" + action);
+
             if (action.equals(Intent.ACTION_SCREEN_ON)) {
+                if (DBG) log("screen on");
                 mIsScreenOn = true;
                 stopNetStatPoll();
                 startNetStatPoll();
                 restartDataStallAlarm();
             } else if (action.equals(Intent.ACTION_SCREEN_OFF)) {
+                if (DBG) log("screen off");
                 mIsScreenOn = false;
                 stopNetStatPoll();
                 startNetStatPoll();
@@ -262,8 +264,10 @@ public final class DcTracker extends Handler {
                 if (DBG) log("Restart trySetup alarm");
                 onActionIntentRestartTrySetupAlarm(intent);
             } else if (action.equals(INTENT_DATA_STALL_ALARM)) {
+                if (DBG) log("Data stall alarm");
                 onActionIntentDataStallAlarm(intent);
             } else if (action.equals(INTENT_PROVISIONING_APN_ALARM)) {
+                if (DBG) log("Provisioning apn alarm");
                 onActionIntentProvisioningApnAlarm(intent);
             } else if (action.equals(WifiManager.NETWORK_STATE_CHANGED_ACTION)) {
                 final android.net.NetworkInfo networkInfo = (NetworkInfo)
@@ -271,6 +275,7 @@ public final class DcTracker extends Handler {
                 mIsWifiConnected = (networkInfo != null && networkInfo.isConnected());
                 if (DBG) log("NETWORK_STATE_CHANGED_ACTION: mIsWifiConnected=" + mIsWifiConnected);
             } else if (action.equals(WifiManager.WIFI_STATE_CHANGED_ACTION)) {
+                if (DBG) log("Wifi state changed");
                 final boolean enabled = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE,
                         WifiManager.WIFI_STATE_UNKNOWN) == WifiManager.WIFI_STATE_ENABLED;
                 if (!enabled) {
@@ -282,6 +287,8 @@ public final class DcTracker extends Handler {
                     log("WIFI_STATE_CHANGED_ACTION: enabled=" + enabled
                             + " mIsWifiConnected=" + mIsWifiConnected);
                 }
+            } else {
+                if (DBG) log("onReceive: Unknown action=" + action);
             }
         }
     };
@@ -1406,7 +1413,7 @@ public final class DcTracker extends Handler {
             }
             if (mIsPsRestricted) reason += " - mIsPsRestricted= true";
             if (!desiredPowerState) reason += " - desiredPowerState= false";
-            if (DBG) log("isDataAllowed: not allowed due to" + reason);
+            log("isDataAllowed: No" + reason);
         }
         return allowed;
     }
@@ -1428,10 +1435,24 @@ public final class DcTracker extends Handler {
     private void setupDataOnConnectableApns(String reason, RetryFailures retryFailures) {
         if (DBG) log("setupDataOnConnectableApns: " + reason);
 
+        if (DBG && !VDBG) {
+            StringBuilder sb = new StringBuilder(120);
+            for (ApnContext apnContext : mPrioritySortedApnContexts) {
+                sb.append(apnContext.getApnType());
+                sb.append(":[state=");
+                sb.append(apnContext.getState());
+                sb.append(",enabled=");
+                sb.append(apnContext.isEnabled());
+                sb.append("] ");
+            }
+            log("setupDataOnConnectableApns: " + sb);
+        }
+
         for (ApnContext apnContext : mPrioritySortedApnContexts) {
             ArrayList<ApnSetting> waitingApns = null;
 
-            if (DBG) log("setupDataOnConnectableApns: apnContext " + apnContext);
+            if (VDBG) log("setupDataOnConnectableApns: apnContext " + apnContext);
+
             if (apnContext.getState() == DctConstants.State.FAILED
                     || apnContext.getState() == DctConstants.State.RETRYING) {
                 if (retryFailures == RetryFailures.ALWAYS) {

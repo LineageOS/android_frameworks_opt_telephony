@@ -27,6 +27,7 @@ import android.content.Context;
 import android.os.AsyncResult;
 import android.os.Message;
 import android.os.SystemProperties;
+import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
 import android.telephony.Rlog;
 import android.text.TextUtils;
@@ -670,7 +671,7 @@ public final class RuimRecords extends IccRecords {
 
                 mIccId = IccUtils.bcdToString(data, 0, data.length);
 
-                log("iccid: " + mIccId);
+                log("iccid: " + SubscriptionInfo.givePrintableIccid(mIccId));
 
             break;
 

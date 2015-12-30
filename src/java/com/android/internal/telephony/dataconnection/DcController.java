@@ -267,15 +267,23 @@ class DcController extends StateMachine {
                             mDct.isCleanupRequired.set(false);
                         } else {
                             DcFailCause failCause = DcFailCause.fromInt(newState.status);
-                            if (DBG) log("onDataStateChanged: inactive failCause=" + failCause);
                             if (failCause.isRestartRadioFail()) {
-                                if (DBG) log("onDataStateChanged: X restart radio");
+                                if (DBG) {
+                                    log("onDataStateChanged: X restart radio, failCause="
+                                            + failCause);
+                                }
                                 mDct.sendRestartRadio();
                             } else if (mDct.isPermanentFail(failCause)) {
-                                if (DBG) log("onDataStateChanged: inactive, add to cleanup list");
+                                if (DBG) {
+                                    log("onDataStateChanged: inactive, add to cleanup list. "
+                                            + "failCause=" + failCause);
+                                }
                                 apnsToCleanup.addAll(dc.mApnContexts.keySet());
                             } else {
-                                if (DBG) log("onDataStateChanged: inactive, add to retry list");
+                                if (DBG) {
+                                    log("onDataStateChanged: inactive, add to retry list. "
+                                            + "failCause=" + failCause);
+                                }
                                 dcsToRetry.add(dc);
                             }
                         }

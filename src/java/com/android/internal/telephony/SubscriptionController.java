@@ -285,7 +285,7 @@ public class SubscriptionController extends ISub.Stub {
         // FIXME: consider stick this into database too
         String countryIso = getSubscriptionCountryIso(id);
 
-        if (DBG) {
+        if (VDBG) {
             String iccIdToPrint = SubscriptionInfo.givePrintableIccid(iccId);
             logd("[getSubInfoRecord] id:" + id + " iccid:" + iccIdToPrint + " simSlotIndex:" + simSlotIndex
                 + " displayName:" + displayName + " nameSource:" + nameSource
@@ -323,7 +323,7 @@ public class SubscriptionController extends ISub.Stub {
      * @return Array list of queried result from database
      */
      private List<SubscriptionInfo> getSubInfo(String selection, Object queryKey) {
-        if (DBG) logd("selection:" + selection + " " + queryKey);
+        if (VDBG) logd("selection:" + selection + " " + queryKey);
         String[] selectionArgs = null;
         if (queryKey != null) {
             selectionArgs = new String[] {queryKey.toString()};
@@ -403,9 +403,10 @@ public class SubscriptionController extends ISub.Stub {
             if (subList != null) {
                 for (SubscriptionInfo si : subList) {
                     if (si.getSubscriptionId() == subId) {
-                        if (DBG)
-                            logd("[getActiveSubInfoForSubscriber]+ subId=" + subId
-                                    + " subInfo=" + si);
+                        if (DBG) {
+                            logd("[getActiveSubscriptionInfo]+ subId=" + subId + " subInfo=" + si);
+                        }
+
                         return si;
                     }
                 }
@@ -570,7 +571,7 @@ public class SubscriptionController extends ISub.Stub {
                     }
                 });
 
-                if (DBG) logdl("[getActiveSubInfoList]- " + subList.size() + " infos return");
+                if (VDBG) logdl("[getActiveSubInfoList]- " + subList.size() + " infos return");
             } else {
                 if (DBG) logdl("[getActiveSubInfoList]- no info return");
             }
@@ -1194,7 +1195,7 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         if (!SubscriptionManager.isValidSubscriptionId(subId)) {
-            if (DBG) {
+            if (VDBG) {
                 logdl("[getPhoneId]- invalid subId return="
                         + SubscriptionManager.INVALID_PHONE_INDEX);
             }
@@ -1258,8 +1259,6 @@ public class SubscriptionController extends ISub.Stub {
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
         try {
-            if (DBG) logd("[clearSubInfo]+");
-
             int size = sSlotIdxToSubId.size();
 
             if (size == 0) {
@@ -1404,11 +1403,10 @@ public class SubscriptionController extends ISub.Stub {
         if (subId == SubscriptionManager.DEFAULT_SUBSCRIPTION_ID) {
             throw new RuntimeException("setDefaultDataSubId called with DEFAULT_SUB_ID");
         }
-        if (DBG) logdl("[setDefaultDataSubId] subId=" + subId);
 
         ProxyController proxyController = ProxyController.getInstance();
         int len = sPhones.length;
-        logdl("[setDefaultDataSubId] num phones=" + len);
+        logdl("[setDefaultDataSubId] num phones=" + len + ", subId=" + subId);
 
         if (SubscriptionManager.isValidSubscriptionId(subId)) {
             // Only re-map modems if the new default data sub is valid
@@ -1636,7 +1634,6 @@ public class SubscriptionController extends ISub.Stub {
     @Override
     public int[] getActiveSubIdList() {
         Set<Entry<Integer, Integer>> simInfoSet = sSlotIdxToSubId.entrySet();
-        if (DBG) logdl("[getActiveSubIdList] simInfoSet=" + simInfoSet);
 
         int[] subIdArr = new int[simInfoSet.size()];
         int i = 0;
@@ -1646,7 +1643,10 @@ public class SubscriptionController extends ISub.Stub {
             i++;
         }
 
-        if (DBG) logdl("[getActiveSubIdList] X subIdArr.length=" + subIdArr.length);
+        if (VDBG) {
+            logdl("[getActiveSubIdList] simInfoSet=" + simInfoSet + " subIdArr.length="
+                    + subIdArr.length);
+        }
         return subIdArr;
     }
 
@@ -1686,8 +1686,10 @@ public class SubscriptionController extends ISub.Stub {
                 }
             }
         }
-        if (DBG) logd("getSimStateForSlotIdx: " + err + " simState=" + simState
-                + " ordinal=" + simState.ordinal());
+        if (DBG) {
+            logd("getSimStateForSlotIdx: " + err + " simState=" + simState
+                    + " ordinal=" + simState.ordinal() + " slotIdx=" + slotIdx);
+        }
         return simState.ordinal();
     }
 
