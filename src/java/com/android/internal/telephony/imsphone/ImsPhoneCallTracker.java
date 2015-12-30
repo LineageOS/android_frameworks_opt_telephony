@@ -1849,6 +1849,27 @@ public final class ImsPhoneCallTracker extends CallTracker {
         pw.println(" mPhone=" + mPhone);
         pw.println(" mDesiredMute=" + mDesiredMute);
         pw.println(" mState=" + mState);
+        for (int i = 0; i < mImsFeatureEnabled.length; i++) {
+            pw.println(" " + mImsFeatureStrings[i] + ": "
+                    + ((mImsFeatureEnabled[i]) ? "enabled" : "disabled"));
+        }
+        pw.flush();
+        pw.println("++++++++++++++++++++++++++++++++");
+
+        try {
+            if (mImsManager != null) {
+                mImsManager.dump(fd, pw, args);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if (mConnections != null && mConnections.size() > 0) {
+            pw.println("mConnections:");
+            for (int i = 0; i < mConnections.size(); i++) {
+                pw.println("  [" + i + "]: " + mConnections.get(i));
+            }
+        }
     }
 
     @Override
