@@ -1525,7 +1525,10 @@ public abstract class PhoneBase extends Handler implements Phone {
 
     public void setVoiceCallForwardingFlag(int line, boolean enable, String number) {
         setCallForwardingIndicatorInSharedPref(enable);
-        mIccRecords.get().setVoiceCallForwardingFlag(line, enable, number);
+        IccRecords r = mIccRecords.get();
+        if (r != null) {
+            r.setVoiceCallForwardingFlag(line, enable, number);
+        }
     }
 
     protected void setVoiceCallForwardingFlag(IccRecords r, int line, boolean enable,
