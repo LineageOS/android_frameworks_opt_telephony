@@ -53,6 +53,26 @@ public class IccRecordsTest extends TelephonyTest {
     private IccRecords mIccRecords;
 
     private SIMFileHandler mSIMFileHandler;
+    private SIMRecordsExt mSimRecordsExt;
+
+    private class SIMRecordsExt extends SIMRecords {
+        public SIMRecordsExt(UiccCardApplication app, Context c, CommandsInterface ci) {
+            super(app, c, ci);
+        }
+
+        @Override
+        public void onAllRecordsLoaded() {
+            super.onAllRecordsLoaded();
+        }
+        @Override
+        protected void setSimLanguage(byte[] efLi, byte[] efPl) {
+        }
+
+        @Override
+        public String getOperatorNumeric() {
+            return "311480";
+        }
+    }
 
     private class IccRecordsTestHandler extends HandlerThread {
         private IccRecordsTestHandler(String name) {
@@ -63,6 +83,7 @@ public class IccRecordsTest extends TelephonyTest {
         public void onLooperPrepared() {
             mIccRecords = new SIMRecords(mUiccCardApplication3gpp, mContext, mMockCI);
             mSIMFileHandler = new SIMFileHandler(mUiccCardApplication3gpp, null, mMockCI);
+            mSimRecordsExt = new SIMRecordsExt(mUiccCardApplication3gpp, mContext, mMockCI);
             setReady(true);
         }
     }
@@ -111,6 +132,12 @@ public class IccRecordsTest extends TelephonyTest {
         // verify whether the count is 500
         waitForMs(200);
         assertEquals(mIccRecords.getSmsCapacityOnIcc(), 500);
+    }
+
+    @Test
+    public void testIccRecordsLoaded() {
+        mSimRecordsExt.onAllRecordsLoaded();
+        verify(mSubscriptionController).getSubIdUsingPhoneId(anyInt());
     }
 
 }
