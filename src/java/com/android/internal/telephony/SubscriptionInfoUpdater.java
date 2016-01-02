@@ -495,7 +495,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 == TelephonyManager.MultiSimVariants.DSDS;
         if (DBG) Rlog.d(LOG_TAG, "[setDefaultDataSubNetworkType] subId=" + subId);
         if (DBG) Rlog.d(LOG_TAG, "[setDefaultDataSubNetworkType] isDSDS=" + isDsds);
-        boolean isMultiRat = SystemProperties.getBoolean("ro.ril.multi_rat_capable", false);
+        boolean isMultiRat = SystemProperties.getBoolean("ro.ril.multi_rat_capable", true);
 
         if (isDsds && !isMultiRat) {
             int networkType2 = Phone.NT_MODE_GSM_ONLY; // Hardcoded due to modem limitation
