@@ -1611,7 +1611,7 @@ public class ServiceStateTracker extends Handler {
                     }
 
                     mGsmRoaming = regCodeIsRoaming(regState);
-                    mNewSS.setState(regCodeToServiceState(regState));
+                    mNewSS.setVoiceRegState(regCodeToServiceState(regState));
                     mNewSS.setRilVoiceRadioTechnology(type);
 
                     boolean isVoiceCapable = mPhone.getContext().getResources()
@@ -1706,7 +1706,7 @@ public class ServiceStateTracker extends Handler {
                     boolean cdmaRoaming =
                             regCodeIsRoaming(registrationState) && !isRoamIndForHomeSystem(states[10]);
                     mNewSS.setVoiceRoaming(cdmaRoaming);
-                    mNewSS.setState (regCodeToServiceState(registrationState));
+                    mNewSS.setVoiceRegState(regCodeToServiceState(registrationState));
 
                     mNewSS.setRilVoiceRadioTechnology(radioTechnology);
 
