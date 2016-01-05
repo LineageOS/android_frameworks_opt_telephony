@@ -125,7 +125,7 @@ abstract class ImsPhoneBase extends Phone {
         // FIXME: we may need to provide this when data connectivity is lost
         // or when server is down
         ServiceState s = new ServiceState();
-        s.setState(ServiceState.STATE_IN_SERVICE);
+        s.setVoiceRegState(ServiceState.STATE_IN_SERVICE);
         return s;
     }
 
