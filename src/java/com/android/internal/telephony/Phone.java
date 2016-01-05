@@ -611,8 +611,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 ar = (AsyncResult)msg.obj;
                 if (ar.exception == null) {
                     byte[] data = (byte[])ar.result;
-                    Rlog.d(LOG_TAG, "EVENT_UNSOL_OEM_HOOK_RAW data="
-                            + IccUtils.bytesToHexString(data));
                     mNotifier.notifyOemHookRawEventForSubscriber(getSubId(), data);
                 } else {
                     Rlog.e(LOG_TAG, "OEM hook raw exception: " + ar.exception);
