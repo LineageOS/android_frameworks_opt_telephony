@@ -34,6 +34,24 @@
       "revId": "746957d8a6f968766dc08c08e1b58e414986ead0",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3fce034c_b84e2ebf",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 489,
+      "author": {
+        "id": 9045
+      },
+      "writtenOn": "2016-01-05T05:16:45Z",
+      "side": 1,
+      "message": "you\u0027d fall into those routines, but don\u0027t most of them check for more than 1 subscription anyways?",
+      "parentUuid": "3fce034c_b8014eb2",
+      "revId": "746957d8a6f968766dc08c08e1b58e414986ead0",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
