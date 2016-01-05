@@ -16,6 +16,24 @@
       "revId": "746957d8a6f968766dc08c08e1b58e414986ead0",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3fce034c_b8014eb2",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 489,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2016-01-05T04:38:42Z",
+      "side": 1,
+      "message": "Well currently, this is opt-out in the sense that if you don\u0027t define this system property as true, you\u0027d fall into every !isMultiRat subroutine -- which IMO, seemed a bit like excessive overhead especially since I don\u0027t think there are many devices out there that need the lte-\u003e2g workaround for msim.",
+      "parentUuid": "3fce034c_780446c7",
+      "revId": "746957d8a6f968766dc08c08e1b58e414986ead0",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
