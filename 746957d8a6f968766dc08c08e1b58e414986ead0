@@ -52,6 +52,24 @@
       "revId": "746957d8a6f968766dc08c08e1b58e414986ead0",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3fce034c_38d0fec9",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 489,
+      "author": {
+        "id": 9045
+      },
+      "writtenOn": "2016-01-05T05:22:02Z",
+      "side": 1,
+      "message": "oh nvm. yeah i think this works.",
+      "parentUuid": "3fce034c_b84e2ebf",
+      "revId": "746957d8a6f968766dc08c08e1b58e414986ead0",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
