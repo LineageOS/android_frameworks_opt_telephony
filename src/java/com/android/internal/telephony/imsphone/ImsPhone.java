@@ -235,7 +235,7 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     /* package */ void setServiceState(int state) {
-        mSS.setState(state);
+        mSS.setVoiceRegState(state);
         updateDataServiceState();
     }
 
