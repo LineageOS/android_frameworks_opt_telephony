@@ -199,7 +199,7 @@ public final class SmsApplication {
 
         // Get the list of apps registered for SMS
         Intent intent = new Intent(Intents.SMS_DELIVER_ACTION);
-        List<ResolveInfo> smsReceivers = packageManager.queryBroadcastReceivers(intent, 0,
+        List<ResolveInfo> smsReceivers = packageManager.queryBroadcastReceiversAsUser(intent, 0,
                 userId);
 
         HashMap<String, SmsApplicationData> receivers = new HashMap<String, SmsApplicationData>();
@@ -226,7 +226,7 @@ public final class SmsApplication {
         // Update any existing entries with mms receiver class
         intent = new Intent(Intents.WAP_PUSH_DELIVER_ACTION);
         intent.setDataAndType(null, "application/vnd.wap.mms-message");
-        List<ResolveInfo> mmsReceivers = packageManager.queryBroadcastReceivers(intent, 0,
+        List<ResolveInfo> mmsReceivers = packageManager.queryBroadcastReceiversAsUser(intent, 0,
                 userId);
         for (ResolveInfo resolveInfo : mmsReceivers) {
             final ActivityInfo activityInfo = resolveInfo.activityInfo;
@@ -282,7 +282,7 @@ public final class SmsApplication {
 
         // Update any existing entries with the default sms changed handler.
         intent = new Intent(Telephony.Sms.Intents.ACTION_DEFAULT_SMS_PACKAGE_CHANGED);
-        List<ResolveInfo> smsAppChangedReceivers = packageManager.queryBroadcastReceivers(intent,
+        List<ResolveInfo> smsAppChangedReceivers = packageManager.queryBroadcastReceiversAsUser(intent,
                 0, userId);
         if (DEBUG_MULTIUSER) {
             Log.i(LOG_TAG, "getApplicationCollectionInternal smsAppChangedActivities=" +
@@ -307,7 +307,7 @@ public final class SmsApplication {
 
         // Update any existing entries with the external provider changed handler.
         intent = new Intent(Telephony.Sms.Intents.ACTION_EXTERNAL_PROVIDER_CHANGE);
-        List<ResolveInfo> providerChangedReceivers = packageManager.queryBroadcastReceivers(intent,
+        List<ResolveInfo> providerChangedReceivers = packageManager.queryBroadcastReceiversAsUser(intent,
                 0, userId);
         if (DEBUG_MULTIUSER) {
             Log.i(LOG_TAG, "getApplicationCollectionInternal providerChangedActivities=" +
