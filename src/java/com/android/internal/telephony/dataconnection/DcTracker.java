@@ -2956,7 +2956,7 @@ public class DcTracker extends DcTrackerBase {
         return cid;
     }
 
-    private IccRecords getUiccRecords(int appFamily) {
+    protected IccRecords getUiccRecords(int appFamily) {
         return mUiccController.getIccRecords(mPhone.getPhoneId(), appFamily);
     }
 
