@@ -234,6 +234,16 @@ public class PhoneFactory {
                 for (int i = 0; i < numPhones; i++) {
                     sProxyPhones[i].startMonitoringImsService();
                 }
+
+                for (int i = 0; i < numPhones; i++) {
+                    // Get users NW type, let it override if its not the default NW mode (-1)
+                    int userNwType = SubscriptionController.getInstance().getUserNwMode(
+                            sProxyPhones[i].getSubId());
+                    if (userNwType != SubscriptionManager.DEFAULT_NW_MODE
+                            && userNwType != networkModes[i]) {
+                        sProxyPhones[i].setPreferredNetworkType(userNwType, null);
+                    }
+                }
             }
         }
     }
