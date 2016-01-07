@@ -18,6 +18,7 @@ package android.provider;
 
 import android.annotation.SdkConstant;
 import android.annotation.SdkConstant.SdkConstantType;
+import android.annotation.TestApi;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentValues;
@@ -993,6 +994,7 @@ public final class Telephony {
              * @hide
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
+            @TestApi
             public static final String SMS_CARRIER_PROVISION_ACTION =
                     "android.provider.Telephony.SMS_CARRIER_PROVISION";
 
