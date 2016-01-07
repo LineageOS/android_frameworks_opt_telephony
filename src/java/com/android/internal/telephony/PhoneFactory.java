@@ -159,6 +159,7 @@ public class PhoneFactory {
                                " Settings.Global.PREFERRED_NETWORK_MODE");
                         networkModes[i] = preferredNetworkMode;
                     }
+
                     Rlog.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkModes[i]));
                     // Use reflection to construct the RIL class (defaults to RIL)
                     try {
@@ -233,6 +234,16 @@ public class PhoneFactory {
                 // because ImsService might need it when it is being opened.
                 for (int i = 0; i < numPhones; i++) {
                     sProxyPhones[i].startMonitoringImsService();
+                }
+
+                for (int i = 0; i < numPhones; i++) {
+                    // Get users NW type, let it override if its not the default NW mode (-1)
+                    int userNwType = SubscriptionController.getInstance().getUserNwMode(
+                            sProxyPhones[i].getSubId());
+                    if (userNwType != SubscriptionManager.DEFAULT_NW_MODE
+                            && userNwType != networkModes[i]) {
+                        sProxyPhones[i].setPreferredNetworkType(userNwType, null);
+                    }
                 }
             }
         }
