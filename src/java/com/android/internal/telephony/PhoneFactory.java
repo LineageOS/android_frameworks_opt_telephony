@@ -159,6 +159,15 @@ public class PhoneFactory {
                                " Settings.Global.PREFERRED_NETWORK_MODE");
                         networkModes[i] = preferredNetworkMode;
                     }
+
+                    // Get users NW type, let it override if its not the default NW mode (-1)
+                    int userNwType = SubscriptionController.getInstance().getUserNwMode(
+                            sProxyPhones[i].getSubId());
+                    if (userNwType != SubscriptionManager.DEFAULT_NW_MODE
+                            && userNwType != networkModes[i]) {
+                        networkModes[i] = userNwType;
+                    }
+
                     Rlog.i(LOG_TAG, "Network Mode set to " + Integer.toString(networkModes[i]));
                     // Use reflection to construct the RIL class (defaults to RIL)
                     try {
