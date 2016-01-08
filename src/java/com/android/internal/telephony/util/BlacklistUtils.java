@@ -54,19 +54,30 @@ public class BlacklistUtils {
             Settings.System.BLACKLIST_BLOCK << Settings.System.BLACKLIST_MESSAGE_SHIFT;
 
     public static boolean addOrUpdate(Context context, String number, int flags, int valid) {
-        ContentValues cv = new ContentValues();
+        ContentValues cv = getValuesForFlags(flags, valid);
+        Uri uri = Uri.withAppendedPath(Blacklist.CONTENT_FILTER_BYNUMBER_URI, number);
+        int count = context.getContentResolver().update(uri, cv, null, null);
+        return count > 0;
+    }
 
+    public static boolean update(Context context, String originalNumber, String newNumber,
+                                      int flags, int valid) {
+        ContentValues cv = getValuesForFlags(flags, valid);
+        cv.put(Blacklist.NUMBER, newNumber);
+        Uri uri = Uri.withAppendedPath(Blacklist.CONTENT_FILTER_BYNUMBER_URI, newNumber);
+        int count = context.getContentResolver().update(uri, cv, null, null);
+        return count > 0;
+    }
+
+    private static ContentValues getValuesForFlags(int flags, int valid) {
+        ContentValues cv = new ContentValues();
         if ((valid & BLOCK_CALLS) != 0) {
             cv.put(Blacklist.PHONE_MODE, (flags & BLOCK_CALLS) != 0 ? 1 : 0);
         }
         if ((valid & BLOCK_MESSAGES) != 0) {
             cv.put(Blacklist.MESSAGE_MODE, (flags & BLOCK_MESSAGES) != 0 ? 1 : 0);
         }
-
-        Uri uri = Uri.withAppendedPath(Blacklist.CONTENT_FILTER_BYNUMBER_URI, number);
-        int count = context.getContentResolver().update(uri, cv, null, null);
-
-        return count > 0;
+        return cv;
     }
 
     /**
