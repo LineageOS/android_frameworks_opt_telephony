@@ -16,6 +16,24 @@
       "revId": "bf7e9932f7d9c3af02eda11e55919a6b1607f9bb",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3fce034c_88b75a87",
+        "filename": "src/java/com/android/internal/telephony/PhoneFactory.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 165,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-01-08T06:26:45Z",
+      "side": 1,
+      "message": "Ah, you don\u0027t actually create the phone at sProxyPhones[i] until line 207.",
+      "parentUuid": "3fce034c_288f46cd",
+      "revId": "bf7e9932f7d9c3af02eda11e55919a6b1607f9bb",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
