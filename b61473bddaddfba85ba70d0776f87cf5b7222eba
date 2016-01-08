@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3fce034c_88451a73",
+        "filename": "src/java/com/android/internal/telephony/PhoneFactory.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-01-08T06:51:01Z",
+      "side": 1,
+      "message": "Don\u0027t want to join the loops?",
+      "revId": "b61473bddaddfba85ba70d0776f87cf5b7222eba",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
