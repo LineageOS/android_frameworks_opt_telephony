@@ -54,8 +54,18 @@ public class BlacklistUtils {
             Settings.System.BLACKLIST_BLOCK << Settings.System.BLACKLIST_MESSAGE_SHIFT;
 
     public static boolean addOrUpdate(Context context, String number, int flags, int valid) {
-        ContentValues cv = new ContentValues();
+        return addOrUpdate(context, number, number, flags, valid);
+    }
 
+    public static boolean addOrUpdate(Context context, String originalNumber, String newNumber,
+                                      int flags, int valid) {
+        ContentValues cv = new ContentValues();
+        String number = originalNumber;
+        if (TextUtils.isEmpty(originalNumber)) {
+            number = newNumber;
+        } else if (!TextUtils.equals(originalNumber, newNumber)) {
+            cv.put(Blacklist.NUMBER, newNumber);
+        }
         if ((valid & BLOCK_CALLS) != 0) {
             cv.put(Blacklist.PHONE_MODE, (flags & BLOCK_CALLS) != 0 ? 1 : 0);
         }
