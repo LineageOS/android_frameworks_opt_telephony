@@ -550,7 +550,6 @@ public class ServiceStateTracker extends Handler {
         mSignalStrength = new SignalStrength();
         mRestrictedState = new RestrictedState();
         mReportedGprsNoReg = false;
-        //todo: these can always be queried from gsmcdmaphone now (regardless of phone type)
         mMdn = null;
         mMin = null;
         mPrlVersion = null;

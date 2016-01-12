@@ -4146,18 +4146,6 @@ public final class DcTracker extends Handler {
         return null;
     }
 
-    public void setImsRegistrationState(boolean registered) {
-        log("setImsRegistrationState - mImsRegistrationState(before): "+ mImsRegistrationState
-                + ", registered(current) : " + registered);
-
-        if (mPhone == null) return;
-
-        ServiceStateTracker sst = mPhone.getServiceStateTracker();
-        if (sst == null) return;
-
-        sst.setImsRegistrationState(registered);
-    }
-
     /**
      * Read APN configuration from Telephony.db for Emergency APN
      * All opertors recognize the connection request for EPDN based on APN type

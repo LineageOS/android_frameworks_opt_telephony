@@ -2676,8 +2676,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * Set IMS registration state
      */
     public void setImsRegistrationState(boolean registered) {
-        //todo: not needed. this only calls the function in sst, which gsmcdmaphone already does
-        mDcTracker.setImsRegistrationState(registered);
     }
 
     /**
