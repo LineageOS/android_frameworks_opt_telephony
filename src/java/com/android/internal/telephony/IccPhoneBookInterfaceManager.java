@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.content.ContentValues;
 import android.content.pm.PackageManager;
 import android.os.AsyncResult;
+import android.os.HandlerThread;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -59,7 +60,18 @@ public abstract class IccPhoneBookInterfaceManager {
     protected static final int EVENT_LOAD_DONE = 2;
     protected static final int EVENT_UPDATE_DONE = 3;
 
-    protected Handler mBaseHandler = new Handler() {
+    protected final IccPbHandler mBaseHandler;
+
+    private static final HandlerThread  mHandlerThread  = new HandlerThread("IccPbHandlerLoader");
+    static {
+        mHandlerThread.start();
+    }
+
+    protected class IccPbHandler extends Handler {
+        public IccPbHandler(Looper looper) {
+            super(looper);
+        }
+
         @Override
         public void handleMessage(Message msg) {
             AsyncResult ar;
@@ -119,6 +131,8 @@ public abstract class IccPhoneBookInterfaceManager {
         if (r != null) {
             mAdnCache = r.getAdnCache();
         }
+
+        mBaseHandler = new IccPbHandler(mHandlerThread.getLooper());
     }
 
     public void dispose() {
@@ -335,7 +349,7 @@ public abstract class IccPhoneBookInterfaceManager {
     protected void checkThread() {
         if (!ALLOW_SIM_OP_IN_UI_THREAD) {
             // Make sure this isn't the UI thread, since it will block
-            if (mBaseHandler.getLooper().equals(Looper.myLooper())) {
+            if (Looper.getMainLooper().equals(Looper.myLooper())) {
                 loge("query() called on the main UI thread!");
                 throw new IllegalStateException(
                         "You cannot call query on this provder from the main UI thread.");
