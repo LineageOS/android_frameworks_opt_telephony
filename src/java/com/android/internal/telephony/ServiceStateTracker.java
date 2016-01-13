@@ -32,6 +32,7 @@ import android.os.AsyncResult;
 import android.os.BaseBundle;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.os.PersistableBundle;
 import android.os.PowerManager;
@@ -269,6 +270,15 @@ public class ServiceStateTracker extends Handler {
     private class SstSubscriptionsChangedListener extends OnSubscriptionsChangedListener {
         public final AtomicInteger mPreviousSubId =
                 new AtomicInteger(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
+
+        /**
+         * Explicitly set looper to mainLooper. This is needed only for tests; in real scenario
+         * this code is called only on the main thread which makes this constructor a no-op.
+         */
+        protected SstSubscriptionsChangedListener() {
+            super(Looper.getMainLooper());
+        }
+
         /**
          * Callback invoked when there is any change to any SubscriptionInfo. Typically
          * this method would invoke {@link SubscriptionManager#getActiveSubscriptionInfoList}
