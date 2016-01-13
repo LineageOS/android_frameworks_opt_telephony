@@ -269,6 +269,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     private Integer mInstanceId;
 
+    private TelephonyEventLog mEventLog;
+
     //***** Events
 
     static final int EVENT_SEND                 = 1;
@@ -680,6 +682,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         TelephonyDevController tdc = TelephonyDevController.getInstance();
         tdc.registerRIL(this);
+
+        mEventLog = TelephonyEventLog.getInstance(mContext, mInstanceId);
     }
 
     //***** CommandsInterface implementation
@@ -960,6 +964,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
+        mEventLog.writeRilDial(rr.mSerial, clirMode, uusInfo);
+
         send(rr);
     }
 
@@ -1015,6 +1021,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest) + " " +
                 gsmIndex);
 
+        mEventLog.writeRilHangup(rr.mSerial, RIL_REQUEST_HANGUP, gsmIndex);
+
         rr.mParcel.writeInt(1);
         rr.mParcel.writeInt(gsmIndex);
 
@@ -1029,6 +1037,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
+        mEventLog.writeRilHangup(rr.mSerial, RIL_REQUEST_HANGUP_WAITING_OR_BACKGROUND, -1);
+
         send(rr);
     }
 
@@ -1040,6 +1050,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                         RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND,
                                         result);
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        mEventLog.writeRilHangup(rr.mSerial, RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND, -1);
 
         send(rr);
     }
@@ -1108,6 +1120,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 = RILRequest.obtain(RIL_REQUEST_ANSWER, result);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        mEventLog.writeRilAnswer(rr.mSerial);
 
         send(rr);
     }
@@ -1318,6 +1332,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
+        mEventLog.writeRilSendSms(rr.mSerial, rr.mRequest);
+
         send(rr);
     }
 
@@ -1330,6 +1346,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         constructGsmSendSmsRilRequest(rr, smscPDU, pdu);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        mEventLog.writeRilSendSms(rr.mSerial, rr.mRequest);
 
         send(rr);
     }
@@ -1383,6 +1401,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
+        mEventLog.writeRilSendSms(rr.mSerial, rr.mRequest);
+
         send(rr);
     }
 
@@ -1399,6 +1419,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
+        mEventLog.writeRilSendSms(rr.mSerial, rr.mRequest);
+
         send(rr);
     }
 
@@ -1413,6 +1435,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         constructCdmaSendSmsRilRequest(rr, pdu);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        mEventLog.writeRilSendSms(rr.mSerial, rr.mRequest);
 
         send(rr);
     }
@@ -1525,6 +1549,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 + profile + " " + apn + " " + user + " "
                 + password + " " + authType + " " + protocol);
 
+        mEventLog.writeRilSetupDataCall(rr.mSerial, radioTechnology, profile, apn,
+                user, password, authType, protocol);
+
         send(rr);
     }
 
@@ -1540,6 +1567,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " +
                 requestToString(rr.mRequest) + " " + cid + " " + reason);
+
+        mEventLog.writeRilDeactivateDataCall(rr.mSerial, cid, reason);
 
         send(rr);
     }
@@ -2688,6 +2717,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 rr.mResult.sendToTarget();
             }
         }
+
+        mEventLog.writeOnRilSolicitedResponse(rr.mSerial, error, rr.mRequest, ret);
+
         return rr;
     }
 
@@ -2888,6 +2920,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RESPONSE_NEW_SMS: {
                 if (RILJ_LOGD) unsljLog(response);
 
+                mEventLog.writeRilNewSms(response);
+
                 // FIXME this should move up a layer
                 String a[] = new String[2];
 
@@ -3074,6 +3108,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_UNSOL_RESPONSE_CDMA_NEW_SMS:
                 if (RILJ_LOGD) unsljLog(response);
 
+                mEventLog.writeRilNewSms(response);
+
                 SmsMessage sms = (SmsMessage) ret;
 
                 if (mCdmaSmsRegistrant != null) {
@@ -3232,6 +3268,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             }
             case RIL_UNSOL_SRVCC_STATE_NOTIFY: {
                 if (RILJ_LOGD) unsljLogRet(response, ret);
+
+                mEventLog.writeRilSrvcc(((int[])ret)[0]);
 
                 if (mSrvccStateRegistrants != null) {
                     mSrvccStateRegistrants
@@ -3631,6 +3669,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             response.add(getDataCallResponse(p, ver));
         }
 
+        mEventLog.writeRilDataCallList(response);
+
         return response;
     }
 
@@ -3869,6 +3909,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         response[1] = (char) p.readInt();    // signalType
         response[2] = (char) p.readInt();    // alertPitch
         response[3] = (char) p.readInt();    // signal
+
+        mEventLog.writeRilCallRing(response);
 
         return response;
     }
