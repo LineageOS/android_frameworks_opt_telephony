@@ -1,0 +1,481 @@
+package com.android.internal.telephony;
+
+import com.android.ims.ImsReasonInfo;
+import com.android.ims.internal.ImsCallSession;
+import com.android.internal.telephony.dataconnection.DataCallResponse;
+import com.android.internal.telephony.imsphone.ImsPhoneCall;
+import com.android.internal.telephony.ITelephonyDebug;
+
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.os.Bundle;
+import android.os.IBinder;
+import android.os.RemoteException;
+import android.telephony.ServiceState;
+import android.util.Log;
+import android.util.SparseArray;
+
+import java.util.ArrayList;
+
+import static com.android.internal.telephony.RILConstants.*;
+
+/**
+ * Log telephony events
+ *
+ * @hide
+ */
+public class TelephonyEventLog {
+    private static String TAG = "TelephonyEventLog";
+    private static final boolean DBG = true;
+
+    public static final int TAG_SETTINGS = 1;
+    public static final int TAG_SERVICE_STATE = 2;
+    public static final int TAG_IMS_CONNECTION_STATE = 3;
+    public static final int TAG_IMS_CAPABILITIES = 4;
+
+    public static final int TAG_DATA_CALL_LIST = 5;
+
+    public static final int TAG_PHONE_STATE = 8;
+    public static final int TAG_SMS = 10;
+
+    public static final int TAG_RIL_REQUEST = 1001;
+    public static final int TAG_RIL_RESPONSE = 1002;
+    public static final int TAG_RIL_UNSOL_RESPONSE = 1003;
+
+    // IImsCallSession
+    public static final int TAG_IMS_CALL_START = 2001;
+    public static final int TAG_IMS_CALL_START_CONFERENCE = 2002;
+    public static final int TAG_IMS_CALL_RECEIVE = 2003;
+    public static final int TAG_IMS_CALL_ACCEPT = 2004;
+    public static final int TAG_IMS_CALL_REJECT = 2005;
+    public static final int TAG_IMS_CALL_TERMINATE = 2006;
+    public static final int TAG_IMS_CALL_HOLD = 2007;
+    public static final int TAG_IMS_CALL_RESUME = 2008;
+    public static final int TAG_IMS_CALL_MERGE = 2009;
+    public static final int TAG_IMS_CALL_UPDATE = 2010;
+
+    // IImsCallSessionListener
+    public static final int TAG_IMS_CALL_PROGRESSING = 2011;
+    public static final int TAG_IMS_CALL_STARTED = 2012;
+    public static final int TAG_IMS_CALL_START_FAILED = 2013;
+    public static final int TAG_IMS_CALL_TERMINATED = 2014;
+    public static final int TAG_IMS_CALL_HELD = 2015;
+    public static final int TAG_IMS_CALL_HOLD_FAILED = 2016;
+    public static final int TAG_IMS_CALL_HOLD_RECEIVED = 2017;
+    public static final int TAG_IMS_CALL_RESUMED = 2018;
+    public static final int TAG_IMS_CALL_RESUME_FAILED = 2019;
+    public static final int TAG_IMS_CALL_RESUME_RECEIVED = 2020;
+    public static final int TAG_IMS_CALL_UPDATED = 2021;
+    public static final int TAG_IMS_CALL_UPDATE_FAILED = 2022;
+    public static final int TAG_IMS_CALL_MERGED = 2023;
+    public static final int TAG_IMS_CALL_MERGE_FAILED = 2024;
+    public static final int TAG_IMS_CALL_HANDOVER = 2025;
+    public static final int TAG_IMS_CALL_HANDOVER_FAILED = 2026;
+
+    public static final int TAG_IMS_CALL_TTY_MODE_RECEIVED = 2027;
+
+    public static final int TAG_IMS_CONFERENCE_PARTICIPANTS_STATE_CHANGED = 2028;
+    public static final int TAG_IMS_MULTIPARTY_STATE_CHANGED = 2029;
+
+    public static final int TAG_IMS_CALL_STATE = 2030;
+
+    public static final int IMS_CONNECTION_STATE_CONNECTED = 1;
+    public static final int IMS_CONNECTION_STATE_PROGRESSING = 2;
+    public static final int IMS_CONNECTION_STATE_DISCONNECTED = 3;
+    public static final int IMS_CONNECTION_STATE_RESUMED = 4;
+    public static final int IMS_CONNECTION_STATE_SUSPENDED = 5;
+
+    public static final String DATA_KEY_REASONINFO_CODE = "code";
+    public static final String DATA_KEY_REASONINFO_EXTRA_CODE = "extra-code";
+    public static final String DATA_KEY_REASONINFO_EXTRA_MESSAGE = "extra-message";
+    public static final String DATA_KEY_VOLTE = "VoLTE";
+    public static final String DATA_KEY_VILTE = "ViLTE";
+    public static final String DATA_KEY_VOWIFI = "VoWiFi";
+    public static final String DATA_KEY_VIWIFI = "ViWiFi";
+    public static final String DATA_KEY_UTLTE = "UTLTE";
+    public static final String DATA_KEY_UTWIFI = "UTWiFi";
+    public static final String DATA_KEY_RAT = "rat";
+    public static final String DATA_KEY_DATA_PROFILE = "profile";
+    public static final String DATA_KEY_APN = "apn";
+    public static final String DATA_KEY_PROTOCOL = "protocol";
+    public static final String DATA_KEY_DATA_DEACTIVATE_REASON = "reason";
+    public static final String DATA_KEY_DATA_CALL_STATUSES = "statuses";
+    public static final String DATA_KEY_DATA_CALL_CIDS = "cids";
+    public static final String DATA_KEY_DATA_CALL_ACTIVES = "actives";
+    public static final String DATA_KEY_DATA_CALL_TYPES = "types";
+    public static final String DATA_KEY_DATA_CALL_IFNAMES = "ifnames";
+    public static final String DATA_KEY_CLIR_MODE = "clirMode";
+    public static final String DATA_KEY_RIL_CALL_RING_RESPONSE = "response";
+    public static final String DATA_KEY_RIL_HANGUP_GSM_INDEX = "gsmIndex";
+    public static final String DATA_KEY_RIL_ERROR = "error";
+    public static final String DATA_KEY_DATA_CALL_STATUS = "status";
+    public static final String DATA_KEY_DATA_CALL_RETRY = "retry";
+    public static final String DATA_KEY_DATA_CALL_CID = "cid";
+    public static final String DATA_KEY_DATA_CALL_ACTIVE = "active";
+    public static final String DATA_KEY_DATA_CALL_TYPE = "type";
+    public static final String DATA_KEY_DATA_CALL_IFNAME = "ifname";
+    public static final String DATA_KEY_SMS_MESSAGE_REF = "messageRef";
+    public static final String DATA_KEY_SMS_ACK_PDU = "ackPDU";
+    public static final String DATA_KEY_SMS_ERROR_CODE = "errorCode";
+    public static final String DATA_KEY_CALLEE = "callee";
+    public static final String DATA_KEY_PARTICIPANTS = "participants";
+    public static final String DATA_KEY_SRC_TECH = "src-tech";
+    public static final String DATA_KEY_TARGET_TECH = "target-tech";
+
+    int mPhoneId;
+    private ITelephonyDebug mService;
+
+    private static final SparseArray<TelephonyEventLog> sInstances =
+            new SparseArray<TelephonyEventLog>();
+
+    public static TelephonyEventLog getInstance(Context context, int phoneId) {
+        synchronized (sInstances) {
+            if (sInstances.get(phoneId) == null) {
+                TelephonyEventLog mgr = new TelephonyEventLog(context, phoneId);
+                sInstances.put(phoneId, mgr);
+            }
+
+            return sInstances.get(phoneId);
+        }
+    }
+
+    private TelephonyEventLog(Context context, int phoneId) {
+        mPhoneId = phoneId;
+
+        final Intent intent = new Intent();
+        intent.setClassName(context, "com.android.phone.TelephonyDebugService");
+
+        ServiceConnection mConnection = new ServiceConnection() {
+            public void onServiceConnected(ComponentName className, IBinder service) {
+                if (DBG) Log.d(TAG, "onServiceConnected()");
+                mService = ITelephonyDebug.Stub.asInterface(service);
+            }
+
+            public void onServiceDisconnected(ComponentName className) {
+                if (DBG) Log.d(TAG, "onServiceDisconnected()");
+                mService = null;
+            }
+        };
+
+        context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    private void writeEvent(int tag, Bundle data) {
+        writeEvent(System.currentTimeMillis(), tag, -1, -1, data);
+    }
+
+    private void writeEvent(int tag, int param1, int param2) {
+        writeEvent(System.currentTimeMillis(), tag, param1, param2, null);
+    }
+
+    private void writeEvent(int tag, int param1, int param2, Bundle data) {
+        writeEvent(System.currentTimeMillis(), tag, param1, param2, data);
+    }
+
+    private void writeEvent(long timestamp, int tag, int param1, int param2, Bundle data) {
+        if (mService == null) {
+            if (DBG) {
+                Log.d(TAG, "writeEvent("+tag+","+param1+","+param2+","+data+")"
+                        + " Service not ready");
+            }
+            return;
+        }
+
+        try {
+            mService.writeEvent(timestamp, mPhoneId, tag, param1, param2, data);
+        } catch (RemoteException e) {
+            Log.e(TAG, e.toString());
+        }
+    }
+
+    public void writeServiceStateChanged(ServiceState serviceState) {
+        Bundle b = new Bundle();
+        serviceState.fillInNotifierBundle(b);
+        writeEvent(TAG_SERVICE_STATE, b);
+    }
+
+    public void writeOnImsConnectionState(int state, ImsReasonInfo reasonInfo) {
+        writeEvent(TAG_IMS_CONNECTION_STATE, state, -1, imsReasonInfoToBundle(reasonInfo));
+    }
+
+    public void writeOnImsCapabilities(boolean[] capabilities) {
+        Bundle b = new Bundle();
+        b.putBoolean(DATA_KEY_VOLTE, capabilities[0]);
+        b.putBoolean(DATA_KEY_VILTE, capabilities[1]);
+        b.putBoolean(DATA_KEY_VOWIFI, capabilities[2]);
+        b.putBoolean(DATA_KEY_VIWIFI, capabilities[3]);
+        b.putBoolean(DATA_KEY_UTLTE, capabilities[4]);
+        b.putBoolean(DATA_KEY_UTWIFI, capabilities[5]);
+        writeEvent(TAG_IMS_CAPABILITIES, b);
+    }
+
+    public void writeRilSetupDataCall(int rilSerial,
+            String radioTechnology, String profile, String apn,
+            String user, String password, String authType, String protocol) {
+        Bundle b = new Bundle();
+        b.putString(DATA_KEY_RAT, radioTechnology);
+        b.putString(DATA_KEY_DATA_PROFILE, profile);
+        b.putString(DATA_KEY_APN, apn);
+        b.putString(DATA_KEY_PROTOCOL, protocol);
+        writeEvent(TAG_RIL_REQUEST, RIL_REQUEST_SETUP_DATA_CALL, rilSerial, b);
+    }
+
+    public void writeRilDeactivateDataCall(int rilSerial,
+            int cid, int reason) {
+        Bundle b = new Bundle();
+        b.putInt(DATA_KEY_DATA_CALL_CID, cid);
+        b.putInt(DATA_KEY_DATA_DEACTIVATE_REASON, reason);
+        writeEvent(TAG_RIL_REQUEST, RIL_REQUEST_DEACTIVATE_DATA_CALL, rilSerial, b);
+    }
+
+    public void writeRilDataCallList(ArrayList<DataCallResponse> dcsList) {
+        Bundle b = new Bundle();
+        int[] statuses = new int[dcsList.size()];
+        int[] cids = new int[dcsList.size()];
+        int[] actives = new int[dcsList.size()];
+        String[] types = new String[dcsList.size()];
+        String[] ifnames = new String[dcsList.size()];
+        for (int i = 0; i < dcsList.size(); i++) {
+            DataCallResponse dcs = dcsList.get(i);
+            statuses[i] = dcs.status;
+            cids[i] = dcs.cid;
+            actives[i] = dcs.active;
+            types[i] = dcs.type;
+            ifnames[i] = dcs.ifname;
+        }
+        b.putIntArray(DATA_KEY_DATA_CALL_STATUSES, statuses);
+        b.putIntArray(DATA_KEY_DATA_CALL_CIDS, cids);
+        b.putIntArray(DATA_KEY_DATA_CALL_ACTIVES, actives);
+        b.putStringArray(DATA_KEY_DATA_CALL_TYPES, types);
+        b.putStringArray(DATA_KEY_DATA_CALL_IFNAMES, ifnames);
+        writeEvent(TAG_DATA_CALL_LIST, -1, -1, b);
+    }
+
+    public void writeRilDial(int rilSerial,
+            int clirMode, UUSInfo uusInfo) {
+        Bundle b = new Bundle();
+        b.putInt(DATA_KEY_CLIR_MODE, clirMode);
+        writeEvent(TAG_RIL_REQUEST, RIL_REQUEST_DIAL, rilSerial, b);
+    }
+
+    public void writeRilCallRing(char[] response) {
+        Bundle b = new Bundle();
+        b.putCharArray(DATA_KEY_RIL_CALL_RING_RESPONSE, response);
+        writeEvent(TAG_RIL_UNSOL_RESPONSE, RIL_UNSOL_CALL_RING, -1, b);
+    }
+
+    public void writeRilHangup(int rilSerial, int req,
+            int gsmIndex) {
+        Bundle b = new Bundle();
+        b.putInt(DATA_KEY_RIL_HANGUP_GSM_INDEX, gsmIndex);
+        writeEvent(TAG_RIL_REQUEST, req, rilSerial, b);
+    }
+
+    public void writeRilAnswer(int rilSerial) {
+        writeEvent(TAG_RIL_REQUEST, RIL_REQUEST_ANSWER, rilSerial, null);
+    }
+
+    public void writeRilSrvcc(int rilSrvccState) {
+        writeEvent(TAG_RIL_UNSOL_RESPONSE, RIL_UNSOL_SRVCC_STATE_NOTIFY, rilSrvccState, null);
+    }
+
+    public void writeRilSendSms(int rilSerial, int req) {
+        writeEvent(TAG_RIL_REQUEST, req, rilSerial, null);
+    }
+
+    public void writeRilNewSms(int response) {
+        writeEvent(TAG_RIL_UNSOL_RESPONSE, response, -1, null);
+    }
+
+    public void writeOnRilSolicitedResponse(int rilSerial, int rilError, int rilRequest, Object ret) {
+        Bundle b = new Bundle();
+        if (rilError != 0) b.putInt(DATA_KEY_RIL_ERROR, rilError);
+        switch (rilRequest) {
+            case RIL_REQUEST_SETUP_DATA_CALL:
+                DataCallResponse dataCall = (DataCallResponse)ret;
+                b.putInt(DATA_KEY_DATA_CALL_STATUS, dataCall.status);
+                b.putInt(DATA_KEY_DATA_CALL_RETRY, dataCall.suggestedRetryTime);
+                b.putInt(DATA_KEY_DATA_CALL_CID, dataCall.cid);
+                b.putInt(DATA_KEY_DATA_CALL_ACTIVE, dataCall.active);
+                b.putString(DATA_KEY_DATA_CALL_TYPE, dataCall.type);
+                b.putString(DATA_KEY_DATA_CALL_IFNAME, dataCall.ifname);
+                writeEvent(TAG_RIL_RESPONSE, rilRequest, rilSerial, b);
+                break;
+
+            case RIL_REQUEST_DEACTIVATE_DATA_CALL:
+            case RIL_REQUEST_HANGUP:
+            case RIL_REQUEST_HANGUP_WAITING_OR_BACKGROUND:
+            case RIL_REQUEST_HANGUP_FOREGROUND_RESUME_BACKGROUND:
+            case RIL_REQUEST_DIAL:
+            case RIL_REQUEST_ANSWER:
+                writeEvent(TAG_RIL_RESPONSE, rilRequest, rilSerial, b);
+                break;
+
+            case RIL_REQUEST_SEND_SMS:
+            case RIL_REQUEST_SEND_SMS_EXPECT_MORE:
+            case RIL_REQUEST_CDMA_SEND_SMS:
+            case RIL_REQUEST_IMS_SEND_SMS:
+                SmsResponse smsResponse = (SmsResponse)ret;
+                b.putInt(DATA_KEY_SMS_MESSAGE_REF, smsResponse.mMessageRef);
+                b.putString(DATA_KEY_SMS_ACK_PDU, smsResponse.mAckPdu);
+                b.putInt(DATA_KEY_SMS_ERROR_CODE, smsResponse.mErrorCode);
+                writeEvent(TAG_RIL_RESPONSE, rilRequest, rilSerial, b);
+                break;
+        }
+    }
+
+    public void writeImsPhoneState(PhoneConstants.State phoneState) {
+        int state;
+        switch (phoneState) {
+            case IDLE: state = 0; break;
+            case RINGING: state = 1; break;
+            case OFFHOOK: state = 2; break;
+            default: state = -1; break;
+        }
+        writeEvent(TAG_PHONE_STATE, state, -1);
+    }
+
+    /**
+     * Initial state
+     * @param session
+     * @param callState
+     */
+    public void writeImsCallState(ImsCallSession session, ImsPhoneCall.State callState) {
+        int state;
+        switch (callState) {
+            case IDLE: state = 0; break;
+            case ACTIVE: state = 1; break;
+            case HOLDING: state = 2; break;
+            case DIALING: state = 3; break;
+            case ALERTING: state = 4; break;
+            case INCOMING: state = 5; break;
+            case WAITING: state = 6; break;
+            case DISCONNECTED: state = 7; break;
+            case DISCONNECTING: state = 8; break;
+            default: state = -1; break;
+        }
+        writeEvent(TAG_IMS_CALL_STATE, Integer.parseInt(session.getCallId()), state);
+    }
+
+    private void writeImsCallEvent(int tag, ImsCallSession session) {
+        writeEvent(tag, Integer.parseInt(session.getCallId()), -1);
+    }
+
+    private void writeImsCallEvent(int tag, ImsCallSession session, ImsReasonInfo reasonInfo) {
+        writeEvent(tag, Integer.parseInt(session.getCallId()), -1,
+                imsReasonInfoToBundle(reasonInfo));
+    }
+
+    private Bundle imsReasonInfoToBundle(ImsReasonInfo reasonInfo) {
+        if (reasonInfo != null) {
+            Bundle b = new Bundle();
+            b.putInt(DATA_KEY_REASONINFO_CODE, reasonInfo.mCode);
+            b.putInt(DATA_KEY_REASONINFO_EXTRA_CODE, reasonInfo.mExtraCode);
+            b.putString(DATA_KEY_REASONINFO_EXTRA_MESSAGE, reasonInfo.mExtraMessage);
+            return b;
+        }
+        return null;
+    }
+
+    public void writeOnImsCallStart(ImsCallSession session, String callee) {
+        Bundle b = new Bundle();
+        b.putString(DATA_KEY_CALLEE, callee);
+        writeEvent(TAG_IMS_CALL_START, Integer.parseInt(session.getCallId()), -1, b);
+    }
+
+    public void writeOnImsCallStartConference(ImsCallSession session, String[] participants) {
+        Bundle b = new Bundle();
+        b.putStringArray(DATA_KEY_PARTICIPANTS, participants);
+        writeEvent(TAG_IMS_CALL_START_CONFERENCE, Integer.parseInt(session.getCallId()), -1, b);
+    }
+
+    public void writeOnImsCallReceive(ImsCallSession session) {
+        writeImsCallEvent(TAG_IMS_CALL_RECEIVE, session);
+    }
+
+    public void writeOnImsCallAccept(ImsCallSession session) {
+        writeImsCallEvent(TAG_IMS_CALL_ACCEPT, session);
+    }
+
+    public void writeOnImsCallReject(ImsCallSession session) {
+        writeImsCallEvent(TAG_IMS_CALL_REJECT, session);
+    }
+
+    public void writeOnImsCallTerminate(ImsCallSession session) {
+        writeImsCallEvent(TAG_IMS_CALL_TERMINATE, session);
+    }
+
+    public void writeOnImsCallHold(ImsCallSession session) {
+        writeImsCallEvent(TAG_IMS_CALL_HOLD, session);
+    }
+
+    public void writeOnImsCallResume(ImsCallSession session) {
+        writeImsCallEvent(TAG_IMS_CALL_RESUME, session);
+    }
+
+    public void writeOnImsCallProgressing(ImsCallSession session) {
+        writeImsCallEvent(TAG_IMS_CALL_PROGRESSING, session);
+    }
+
+    public void writeOnImsCallStarted(ImsCallSession session) {
+        writeImsCallEvent(TAG_IMS_CALL_STARTED, session);
+    }
+
+    public void writeOnImsCallStartFailed(ImsCallSession session, ImsReasonInfo reasonInfo) {
+        writeImsCallEvent(TAG_IMS_CALL_START_FAILED, session, reasonInfo);
+    }
+
+    public void writeOnImsCallTerminated(ImsCallSession session, ImsReasonInfo reasonInfo) {
+        writeImsCallEvent(TAG_IMS_CALL_TERMINATED, session, reasonInfo);
+    }
+
+    public void writeOnImsCallHeld(ImsCallSession session) {
+        writeImsCallEvent(TAG_IMS_CALL_HELD, session);
+    }
+
+    public void writeOnImsCallHoldReceived(ImsCallSession session) {
+        writeImsCallEvent(TAG_IMS_CALL_HOLD_RECEIVED, session);
+    }
+
+    public void writeOnImsCallHoldFailed(ImsCallSession session, ImsReasonInfo reasonInfo) {
+        writeImsCallEvent(TAG_IMS_CALL_HOLD_FAILED, session, reasonInfo);
+    }
+
+    public void writeOnImsCallResumed(ImsCallSession session) {
+        writeImsCallEvent(TAG_IMS_CALL_RESUMED, session);
+    }
+
+    public void writeOnImsCallResumeReceived(ImsCallSession session) {
+        writeImsCallEvent(TAG_IMS_CALL_RESUME_RECEIVED, session);
+    }
+
+    public void writeOnImsCallResumeFailed(ImsCallSession session, ImsReasonInfo reasonInfo) {
+        writeImsCallEvent(TAG_IMS_CALL_RESUME_FAILED, session, reasonInfo);
+    }
+
+    public void writeOnImsCallHandover(ImsCallSession session,
+            int srcAccessTech, int targetAccessTech, ImsReasonInfo reasonInfo) {
+        Bundle b = imsHandoverToBundle(srcAccessTech, targetAccessTech, reasonInfo);
+        writeEvent(TAG_IMS_CALL_HANDOVER, Integer.parseInt(session.getCallId()), -1, b);
+    }
+
+    public void writeOnImsCallHandoverFailed(ImsCallSession session,
+            int srcAccessTech, int targetAccessTech, ImsReasonInfo reasonInfo) {
+        Bundle b = imsHandoverToBundle(srcAccessTech, targetAccessTech, reasonInfo);
+        writeEvent(TAG_IMS_CALL_HANDOVER_FAILED,
+                Integer.parseInt(session.getCallId()), -1, b);
+    }
+
+    private Bundle imsHandoverToBundle(int srcAccessTech, int targetAccessTech,
+            ImsReasonInfo reasonInfo) {
+        Bundle b = new Bundle();
+        b.putInt(DATA_KEY_SRC_TECH, srcAccessTech);
+        b.putInt(DATA_KEY_TARGET_TECH, targetAccessTech);
+        b.putInt(DATA_KEY_REASONINFO_CODE, reasonInfo.mCode);
+        b.putInt(DATA_KEY_REASONINFO_EXTRA_CODE, reasonInfo.mExtraCode);
+        b.putString(DATA_KEY_REASONINFO_EXTRA_MESSAGE, reasonInfo.mExtraMessage);
+        return b;
+    }
+}

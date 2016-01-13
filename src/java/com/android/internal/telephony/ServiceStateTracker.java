@@ -103,6 +103,7 @@ public class ServiceStateTracker extends Handler {
     private UiccController mUiccController = null;
     private UiccCardApplication mUiccApplcation = null;
     private IccRecords mIccRecords = null;
+    private TelephonyEventLog mEventLog;
 
     private boolean mVoiceCapable;
 
@@ -537,6 +538,8 @@ public class ServiceStateTracker extends Handler {
         filter = new IntentFilter();
         filter.addAction(ACTION_RADIO_OFF);
         context.registerReceiver(mIntentReceiver, filter);
+
+        mEventLog = TelephonyEventLog.getInstance(mPhone.getContext(), mPhone.getPhoneId());
     }
 
     protected void updatePhoneType() {
@@ -2728,6 +2731,8 @@ public class ServiceStateTracker extends Handler {
             setRoamingType(mSS);
             log("Broadcasting ServiceState : " + mSS);
             mPhone.notifyServiceStateChanged(mSS);
+
+            mEventLog.writeServiceStateChanged(mSS);
         }
 
         if (hasGprsAttached) {
