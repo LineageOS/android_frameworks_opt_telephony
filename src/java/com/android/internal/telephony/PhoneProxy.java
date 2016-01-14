@@ -175,6 +175,21 @@ public class PhoneProxy extends Handler implements Phone {
             }
             // Force update IMS service
             ImsManager.updateImsServiceConfig(mContext, mPhoneId, true);
+
+            // Update broadcastEmergencyCallStateChanges
+            CarrierConfigManager configMgr = (CarrierConfigManager)
+                    mActivePhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            PersistableBundle b = configMgr.getConfigForSubId(mActivePhone.getSubId());
+            if (b != null) {
+                boolean broadcastEmergencyCallStateChanges = b.getBoolean(
+                        CarrierConfigManager.KEY_BROADCAST_EMERGENCY_CALL_STATE_CHANGES_BOOL);
+                logd("broadcastEmergencyCallStateChanges =" + broadcastEmergencyCallStateChanges);
+                mActivePhone.setBroadcastEmergencyCallStateChanges(
+                        broadcastEmergencyCallStateChanges);
+            } else {
+                loge("didn't get broadcastEmergencyCallStateChanges from carrier config");
+            }
+
             break;
 
         default:
@@ -1637,6 +1652,11 @@ public class PhoneProxy extends Handler implements Phone {
 
     public boolean isWifiCallingEnabled() {
         return mActivePhone.isWifiCallingEnabled();
+    }
+
+    @Override
+    public void setBroadcastEmergencyCallStateChanges(boolean broadcast) {
+        mActivePhone.setBroadcastEmergencyCallStateChanges(broadcast);
     }
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {

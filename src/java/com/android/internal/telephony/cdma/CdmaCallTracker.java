@@ -1164,7 +1164,9 @@ public final class CdmaCallTracker extends CallTracker {
         mIsInEmergencyCall = true;
         mPhone.mDcTracker.setInternalDataEnabled(false);
         mPhone.notifyEmergencyCallRegistrants(true);
+        mPhone.sendEmergencyCallStateChange(true);
     }
+
     /**
      * Check and enable data call after an emergency call is dropped if it's
      * not in ECM
@@ -1181,6 +1183,7 @@ public final class CdmaCallTracker extends CallTracker {
                 mPhone.mDcTracker.setInternalDataEnabled(true);
                 mPhone.notifyEmergencyCallRegistrants(false);
             }
+            mPhone.sendEmergencyCallStateChange(false);
         }
     }
 

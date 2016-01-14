@@ -1519,7 +1519,7 @@ public interface Phone {
      */
     void setTTYMode(int ttyMode, Message onComplete);
 
-   /**
+    /**
      * setUiTTYMode
      * sets a TTY mode option.
      * @param ttyMode is a one of the following:
@@ -2098,4 +2098,9 @@ public interface Phone {
      * Returns the modem activity information
      */
     public void getModemActivityInfo(Message response);
+
+    /**
+     * Set boolean broadcastEmergencyCallStateChanges
+     */
+    public void setBroadcastEmergencyCallStateChanges(boolean broadcast);
 }
