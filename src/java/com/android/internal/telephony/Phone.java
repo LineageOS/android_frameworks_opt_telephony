@@ -3138,6 +3138,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     }
 
     /**
+     * Set boolean broadcastEmergencyCallStateChanges
+     */
+    public abstract void setBroadcastEmergencyCallStateChanges(boolean broadcast);
+
+    public abstract void sendEmergencyCallStateChange(boolean callActive);
+
+    /**
      * This function returns the parent phone of the current phone. It is applicable
      * only for IMS phone (function is overridden by ImsPhone). For others the phone
      * object itself is returned.

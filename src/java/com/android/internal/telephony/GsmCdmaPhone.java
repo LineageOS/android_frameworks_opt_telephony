@@ -184,6 +184,7 @@ public class GsmCdmaPhone extends Phone {
     private boolean mResetModemOnRadioTechnologyChange = false;
 
     private int mRilVersion;
+    private boolean mBroadcastEmergencyCallStateChanges = false;
 
     // Constructors
 
@@ -639,6 +640,22 @@ public class GsmCdmaPhone extends Phone {
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
         ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
         if (DBG) logd("sendEmergencyCallbackModeChange");
+    }
+
+    @Override
+    public void sendEmergencyCallStateChange(boolean callActive) {
+        if (mBroadcastEmergencyCallStateChanges) {
+            Intent intent = new Intent(TelephonyIntents.ACTION_EMERGENCY_CALL_STATE_CHANGED);
+            intent.putExtra(PhoneConstants.PHONE_IN_EMERGENCY_CALL, callActive);
+            SubscriptionManager.putPhoneIdAndSubIdExtra(intent, getPhoneId());
+            ActivityManagerNative.broadcastStickyIntent(intent, null, UserHandle.USER_ALL);
+            if (DBG) Rlog.d(LOG_TAG, "sendEmergencyCallStateChange");
+        }
+    }
+
+    @Override
+    public void setBroadcastEmergencyCallStateChanges(boolean broadcast) {
+        mBroadcastEmergencyCallStateChanges = broadcast;
     }
 
     void notifySuppServiceFailed(SuppService code) {
@@ -2078,6 +2095,20 @@ public class GsmCdmaPhone extends Phone {
                 }
                 // Force update IMS service
                 ImsManager.updateImsServiceConfig(mContext, mPhoneId, true);
+
+                // Update broadcastEmergencyCallStateChanges
+                CarrierConfigManager configMgr = (CarrierConfigManager)
+                        getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+                PersistableBundle b = configMgr.getConfigForSubId(getSubId());
+                if (b != null) {
+                    boolean broadcastEmergencyCallStateChanges = b.getBoolean(
+                            CarrierConfigManager.KEY_BROADCAST_EMERGENCY_CALL_STATE_CHANGES_BOOL);
+                    logd("broadcastEmergencyCallStateChanges =" + broadcastEmergencyCallStateChanges);
+                    setBroadcastEmergencyCallStateChanges(broadcastEmergencyCallStateChanges);
+                } else {
+                    loge("didn't get broadcastEmergencyCallStateChanges from carrier config");
+                }
+
                 break;
 
             case EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED:
