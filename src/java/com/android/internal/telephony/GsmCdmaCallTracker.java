@@ -353,6 +353,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         mIsInEmergencyCall = true;
         mPhone.mDcTracker.setInternalDataEnabled(false);
         mPhone.notifyEmergencyCallRegistrants(true);
+        mPhone.sendEmergencyCallStateChange(true);
     }
 
     //CDMA
@@ -1523,6 +1524,7 @@ public class GsmCdmaCallTracker extends CallTracker {
                 mPhone.mDcTracker.setInternalDataEnabled(true);
                 mPhone.notifyEmergencyCallRegistrants(false);
             }
+            mPhone.sendEmergencyCallStateChange(false);
         }
     }
 
