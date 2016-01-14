@@ -1360,11 +1360,17 @@ public class ImsPhone extends ImsPhoneBase {
     @Override
     public void registerForSuppServiceNotification(Handler h, int what, Object obj) {
         mSsnRegistrants.addUnique(h, what, obj);
+        if (mSsnRegistrants.size() == 1) {
+            mDefaultPhone.mCi.setSuppServiceNotifications(true, null);
+        }
     }
 
     @Override
     public void unregisterForSuppServiceNotification(Handler h) {
         mSsnRegistrants.remove(h);
+        if (mSsnRegistrants.size() == 0) {
+            mDefaultPhone.mCi.setSuppServiceNotifications(false, null);
+        }
     }
 
     @Override
