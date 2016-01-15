@@ -16,6 +16,24 @@
       "revId": "6d6213a36b26dcdbc9971f569051d551513b3b0f",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fcbff3d_1952e668",
+        "filename": "src/java/com/android/internal/telephony/PhoneBase.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1066,
+      "author": {
+        "id": 6351
+      },
+      "writtenOn": "2016-01-15T19:12:51Z",
+      "side": 1,
+      "message": "Maybe?\n\nBut, updateSavedNetworkOperator matches the aosp code and gets us back to having no diffs in this method.",
+      "parentUuid": "1fcbff3d_395b2288",
+      "revId": "6d6213a36b26dcdbc9971f569051d551513b3b0f",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
