@@ -1063,6 +1063,7 @@ public abstract class PhoneBase extends Handler implements Phone {
             handleSetSelectNetwork(ar);
         }
 
+        updateSavedNetworkOperator(nsm);
     }
 
     @Override
