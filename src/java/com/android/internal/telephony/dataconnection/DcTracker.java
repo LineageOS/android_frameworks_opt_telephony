@@ -102,7 +102,7 @@ import com.android.internal.telephony.ServiceStateTracker;
 /**
  * {@hide}
  */
-public final class DcTracker extends Handler {
+public class DcTracker extends Handler {
     private static final String LOG_TAG = "DCT";
     private static final boolean DBG = true;
     private static final boolean VDBG = false; // STOPSHIP if true
