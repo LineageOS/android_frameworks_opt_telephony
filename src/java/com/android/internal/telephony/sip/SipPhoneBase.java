@@ -527,4 +527,12 @@ abstract class SipPhoneBase extends Phone {
     @Override
     protected void onUpdateIccAvailability() {
     }
+
+    @Override
+    public void sendEmergencyCallStateChange(boolean callActive) {
+    }
+
+    @Override
+    public void setBroadcastEmergencyCallStateChanges(boolean broadcast) {
+    }
 }

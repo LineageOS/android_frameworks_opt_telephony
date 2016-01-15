@@ -1533,6 +1533,16 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
+    public void sendEmergencyCallStateChange(boolean callActive) {
+        mDefaultPhone.sendEmergencyCallStateChange(callActive);
+    }
+
+    @Override
+    public void setBroadcastEmergencyCallStateChanges(boolean broadcast) {
+        mDefaultPhone.setBroadcastEmergencyCallStateChanges(broadcast);
+    }
+
+    @Override
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("ImsPhone extends:");
         super.dump(fd, pw, args);
