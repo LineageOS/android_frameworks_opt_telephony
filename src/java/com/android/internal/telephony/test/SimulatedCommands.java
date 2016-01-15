@@ -21,6 +21,7 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.telephony.Rlog;
+import android.telephony.SignalStrength;
 
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandException;
@@ -789,22 +790,28 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getMute (Message result) {unimplemented(result);}
-
-    /**
-     * response.obj is an AsyncResult
-     * response.obj.result is an int[2]
-     * response.obj.result[0] is received signal strength (0-31, 99)
-     * response.obj.result[1] is  bit error rate (0-7, 99)
-     * as defined in TS 27.007 8.5
-     */
+    
     @Override
     public void getSignalStrength (Message result) {
-        int ret[] = new int[2];
 
-        ret[0] = 23;
-        ret[1] = 0;
+        SignalStrength ss = new SignalStrength(
+                20, // gsmSignalStrength
+                0,  // gsmBitErrorRate
+                -1, // cdmaDbm
+                -1, // cdmaEcio
+                -1, // evdoDbm
+                -1, // evdoEcio
+                -1, // evdoSnr
+                99, // lteSignalStrength
+                SignalStrength.INVALID,     // lteRsrp
+                SignalStrength.INVALID,     // lteRsrq
+                SignalStrength.INVALID,     // lteRssnr
+                SignalStrength.INVALID,     // lteCqi
+                SignalStrength.INVALID,     // tdScdmaRscp
+                true                        // gsmFlag
+        );
 
-        resultSuccess(result, ret);
+        resultSuccess(result, ss);
     }
 
      /**

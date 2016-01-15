@@ -16,10 +16,12 @@
 
 package com.android.internal.telephony;
 
-import android.os.Looper;
+import android.os.HandlerThread;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
+import android.util.SparseArray;
 
+import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.UiccController;
 
@@ -31,7 +33,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.mockito.Spy;
 
 import java.lang.reflect.Field;
 
@@ -44,13 +45,49 @@ public class ServiceStateTrackerTest {
     private UiccController mUiccController;
     @Mock
     private SubscriptionController mSubscriptionController;
+    @Mock
+    private SparseArray<TelephonyEventLog> mLogInstances;
+    @Mock
+    private TelephonyEventLog mTelephonyEventLog;
+    @Mock
+    private DcTracker mDct;
 
     private SimulatedCommands simulatedCommands;
     private ContextFixture contextFixture;
     private ServiceStateTracker sst;
 
+    private Object mLock = new Object();
+    private boolean mReady = false;
+
+    private class ServiceStateTrackerTestHandler extends HandlerThread {
+
+        private ServiceStateTrackerTestHandler(String name) {
+            super(name);
+        }
+
+        @Override
+        public void onLooperPrepared() {
+            sst = new ServiceStateTracker(mPhone, simulatedCommands);
+            synchronized (mLock) {
+                mReady = true;
+            }
+        }
+    }
+
+    private void waitUntilReady() {
+        while(true) {
+            synchronized (mLock) {
+                if (mReady) {
+                    break;
+                }
+            }
+        }
+    }
+
     @Before
     public void setUp() throws Exception {
+
+        logd("ServiceStateTrackerTest +Setup!");
         MockitoAnnotations.initMocks(this);
         contextFixture = new ContextFixture();
         simulatedCommands = new SimulatedCommands();
@@ -58,6 +95,7 @@ public class ServiceStateTrackerTest {
         doReturn(contextFixture.getTestDouble()).when(mPhone).getContext();
         doReturn(true).when(mPhone).getUnitTestMode();
         doReturn(true).when(mPhone).isPhoneTypeGsm();
+        mPhone.mDcTracker = mDct;
 
         //Use reflection to mock singleton
         Field field = SubscriptionController.class.getDeclaredField("sInstance");
@@ -69,8 +107,23 @@ public class ServiceStateTrackerTest {
         field.setAccessible(true);
         field.set(null, mUiccController);
 
-        Looper.prepare();
-        sst = new ServiceStateTracker(mPhone, simulatedCommands);
+        doReturn(mTelephonyEventLog).when(mLogInstances).get(anyInt());
+
+        // Use reflection to replace TelephonyEventLog.sInstances with our mocked mLogInstances
+        field = TelephonyEventLog.class.getDeclaredField("sInstances");
+        field.setAccessible(true);
+        field.set(null, mLogInstances);
+
+        contextFixture.putStringArrayResource(
+                com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming,
+                new String[]{"123456"});
+
+        contextFixture.putStringArrayResource(
+                com.android.internal.R.array.config_operatorConsideredNonRoaming,
+                new String[]{"123456"});
+
+        new ServiceStateTrackerTestHandler(TAG).start();
+        logd("ServiceStateTrackerTest -Setup!");
     }
 
     @After
@@ -80,6 +133,7 @@ public class ServiceStateTrackerTest {
 
     @Test @SmallTest
     public void testSetRadioPower() {
+        waitUntilReady();
         boolean oldState = simulatedCommands.getRadioState().isOn();
         sst.setRadioPower(!oldState);
         assertTrue(oldState != simulatedCommands.getRadioState().isOn());

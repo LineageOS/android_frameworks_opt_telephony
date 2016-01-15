@@ -273,14 +273,6 @@ public class ServiceStateTracker extends Handler {
                 new AtomicInteger(SubscriptionManager.INVALID_SUBSCRIPTION_ID);
 
         /**
-         * Explicitly set looper to mainLooper. This is needed only for tests; in real scenario
-         * this code is called only on the main thread which makes this constructor a no-op.
-         */
-        protected SstSubscriptionsChangedListener() {
-            super(Looper.getMainLooper());
-        }
-
-        /**
          * Callback invoked when there is any change to any SubscriptionInfo. Typically
          * this method would invoke {@link SubscriptionManager#getActiveSubscriptionInfoList}
          */
@@ -663,6 +655,7 @@ public class ServiceStateTracker extends Handler {
         int rat = mSS.getRilDataRadioTechnology();
         int drs = mSS.getDataRegState();
         if (DBG) log("notifyDataRegStateRilRadioTechnologyChanged: drs=" + drs + " rat=" + rat);
+
         mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
                 ServiceState.rilRadioTechnologyToString(rat));
         mDataRegStateOrRatChangedRegistrants.notifyResult(new Pair<Integer, Integer>(drs, rat));
@@ -2068,8 +2061,9 @@ public class ServiceStateTracker extends Handler {
             // Save the roaming state before carrier config possibly overrides it.
             mNewSS.setDataRoamingFromRegistration(roaming);
 
-            ICarrierConfigLoader configLoader =
-                    (ICarrierConfigLoader) ServiceManager.getService(Context.CARRIER_CONFIG_SERVICE);
+            CarrierConfigManager configLoader = (CarrierConfigManager)
+                    mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+
             if (configLoader != null) {
                 try {
                     PersistableBundle b = configLoader.getConfigForSubId(mPhone.getSubId());
@@ -2086,7 +2080,7 @@ public class ServiceStateTracker extends Handler {
                                 + mNewSS.getOperatorNumeric());
                         roaming = true;
                     }
-                } catch (RemoteException e) {
+                } catch (Exception e) {
                     loge("updateRoamingState: unable to access carrier config service");
                 }
             } else {
