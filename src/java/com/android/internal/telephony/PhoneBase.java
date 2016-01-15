@@ -2641,7 +2641,19 @@ public abstract class PhoneBase extends Handler implements Phone {
         }
     }
 
+    private void updatePreferredType() {
+        int preferredRaf = getRadioAccessFamily();
+        int userNwType = SubscriptionController.getInstance().getUserNwMode(getPhoneId());
+        if (userNwType != SubscriptionManager.DEFAULT_NW_MODE) {
+            preferredRaf &= RadioAccessFamily.getRafFromNetworkType(userNwType);
+        }
+        int filteredType = RadioAccessFamily.getNetworkTypeFromRaf(preferredRaf);
+        TelephonyManager.putIntAtIndex(mContext.getContentResolver(),
+                Settings.Global.PREFERRED_NETWORK_MODE, getPhoneId(), filteredType);
+    }
+
     public void sendSubscriptionSettings(boolean restoreNetworkSelection) {
+        updatePreferredType();
         // Send settings down
         int type = PhoneFactory.calculatePreferredNetworkType(mContext, getSubId());
         setPreferredNetworkType(type, null);
