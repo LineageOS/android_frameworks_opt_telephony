@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1fcbff3d_9db7a1d9",
+        "filename": "src/java/com/android/internal/telephony/PhoneBase.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2640,
+      "author": {
+        "id": 68
+      },
+      "writtenOn": "2016-01-16T01:21:21Z",
+      "side": 1,
+      "message": "updatePreferredType should be called above this line instead.",
+      "revId": "e5bc325cb703f3a6f03c427b8a1436d4777f3dde",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
