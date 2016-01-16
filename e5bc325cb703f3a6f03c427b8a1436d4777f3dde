@@ -39,6 +39,30 @@
       "revId": "e5bc325cb703f3a6f03c427b8a1436d4777f3dde",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fcbff3d_bde13dd3",
+        "filename": "src/java/com/android/internal/telephony/PhoneBase.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2651,
+      "author": {
+        "id": 68
+      },
+      "writtenOn": "2016-01-16T01:37:03Z",
+      "side": 1,
+      "message": "No, this is for devices that are using DDS switching (http://review.cyanogenmod.org/#/c/128511/) or modem-initiated capability changes.",
+      "parentUuid": "1fcbff3d_fdc10530",
+      "range": {
+        "startLine": 2651,
+        "startChar": 8,
+        "endLine": 2651,
+        "endChar": 39
+      },
+      "revId": "e5bc325cb703f3a6f03c427b8a1436d4777f3dde",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
