@@ -16,6 +16,24 @@
       "revId": "1054a2ab0678c53508a723d39a085f9a22b23dee",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fcbff3d_31525669",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 805,
+      "author": {
+        "id": 13897
+      },
+      "writtenOn": "2016-01-18T00:51:00Z",
+      "side": 0,
+      "message": "May I ask why? I got rid of this because it\u0027s misleading.\n\nThe line here below includes this one. recordsLoaded doesn\u0027t have to be true if subscriptionFromNv is true. If subscriptionFromNv is true, but data is not allowed, the log will include \" - SIM not loaded\", which is wrong.\n\nI just noticed it because I was trying something new and the log was filled with this line.",
+      "parentUuid": "3fce034c_34dc7b73",
+      "revId": "1054a2ab0678c53508a723d39a085f9a22b23dee",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
