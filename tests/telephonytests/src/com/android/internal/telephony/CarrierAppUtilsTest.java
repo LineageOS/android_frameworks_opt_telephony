@@ -29,6 +29,7 @@ import org.mockito.MockitoAnnotations;
 public class CarrierAppUtilsTest extends InstrumentationTestCase {
     private static final String CARRIER_APP = "com.example.carrier";
     private static final String[] CARRIER_APPS = new String[] { CARRIER_APP };
+    private static final String[] CARRIER_APPS_ENABLED = new String[0];
     private static final int USER_ID = 12345;
     private static final String CALLING_PACKAGE = "phone";
 
@@ -47,7 +48,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     /** No apps configured - should do nothing. */
     public void testDisableCarrierAppsUntilPrivileged_EmptyList() {
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, new String[0]);
+                mTelephonyManager, USER_ID, new String[0], CARRIER_APPS_ENABLED);
         Mockito.verifyNoMoreInteractions(mPackageManager, mTelephonyManager);
     }
 
@@ -56,7 +57,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mPackageManager.getApplicationInfo("com.example.missing.app",
                 PackageManager.GET_DISABLED_UNTIL_USED_COMPONENTS, USER_ID)).thenReturn(null);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, new String[] { "com.example.missing.app" });
+                mTelephonyManager, USER_ID, new String[] { "com.example.missing.app" }, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
@@ -72,7 +73,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mPackageManager.getApplicationInfo(CARRIER_APP,
                 PackageManager.GET_DISABLED_UNTIL_USED_COMPONENTS, USER_ID)).thenReturn(appInfo);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, CARRIER_APPS);
+                mTelephonyManager, USER_ID, CARRIER_APPS, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
@@ -97,7 +98,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, CARRIER_APPS);
+                mTelephonyManager, USER_ID, CARRIER_APPS, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
@@ -116,7 +117,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, CARRIER_APPS);
+                mTelephonyManager, USER_ID, CARRIER_APPS, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
@@ -135,7 +136,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, CARRIER_APPS);
+                mTelephonyManager, USER_ID, CARRIER_APPS, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
@@ -154,7 +155,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, CARRIER_APPS);
+                mTelephonyManager, USER_ID, CARRIER_APPS, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
@@ -173,7 +174,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, CARRIER_APPS);
+                mTelephonyManager, USER_ID, CARRIER_APPS, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager).setApplicationEnabledSetting(
                 CARRIER_APP, PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                 PackageManager.DONT_KILL_APP, USER_ID, CALLING_PACKAGE);
@@ -193,7 +194,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, CARRIER_APPS);
+                mTelephonyManager, USER_ID, CARRIER_APPS, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager).setApplicationEnabledSetting(
                 CARRIER_APP, PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                 PackageManager.DONT_KILL_APP, USER_ID, CALLING_PACKAGE);
@@ -212,7 +213,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, CARRIER_APPS);
+                mTelephonyManager, USER_ID, CARRIER_APPS, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
@@ -232,7 +233,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, CARRIER_APPS);
+                mTelephonyManager, USER_ID, CARRIER_APPS, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
@@ -252,7 +253,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, CARRIER_APPS);
+                mTelephonyManager, USER_ID, CARRIER_APPS, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
@@ -272,7 +273,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, CARRIER_APPS);
+                mTelephonyManager, USER_ID, CARRIER_APPS, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
@@ -292,7 +293,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, CARRIER_APPS);
+                mTelephonyManager, USER_ID, CARRIER_APPS, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager).setApplicationEnabledSetting(
                 CARRIER_APP, PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED, 0, USER_ID,
                 CALLING_PACKAGE);
@@ -313,7 +314,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
         Mockito.when(mTelephonyManager.checkCarrierPrivilegesForPackageAnyPhone(CARRIER_APP))
                 .thenReturn(TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS);
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
-                mTelephonyManager, USER_ID, CARRIER_APPS);
+                mTelephonyManager, USER_ID, CARRIER_APPS, CARRIER_APPS_ENABLED);
         Mockito.verify(mPackageManager, Mockito.never()).setApplicationEnabledSetting(
                 Mockito.anyString(), Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt(),
                 Mockito.anyString());
