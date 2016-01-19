@@ -83,6 +83,8 @@ public class GsmCdmaPhoneTest {
     DcTracker mDcTracker;
     @Mock
     GsmCdmaCall mGsmCdmaCall;
+    @Mock
+    SubscriptionController mSubscriptionController;
 
     private SimulatedCommands simulatedCommands;
     private ContextFixture contextFixture;
@@ -162,6 +164,11 @@ public class GsmCdmaPhoneTest {
         field = ImsManager.class.getDeclaredField("sImsManagerInstances");
         field.setAccessible(true);
         field.set(null, mImsManagerInstances);
+
+        //Use reflection to mock singleton
+        field = SubscriptionController.class.getDeclaredField("sInstance");
+        field.setAccessible(true);
+        field.set(null, mSubscriptionController);
 
         field = CdmaSubscriptionSourceManager.class.getDeclaredField(
                 "mCdmaSubscriptionSourceChangedRegistrants");
