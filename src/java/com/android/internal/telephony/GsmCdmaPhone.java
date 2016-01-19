@@ -1003,12 +1003,10 @@ public class GsmCdmaPhone extends Phone {
         char ch = dialString.charAt(0);
         switch (ch) {
             case '0':
-                result = handleCallDeflectionIncallSupplementaryService(
-                        dialString);
+                result = handleCallDeflectionIncallSupplementaryService(dialString);
                 break;
             case '1':
-                result = handleCallWaitingIncallSupplementaryService(
-                        dialString);
+                result = handleCallWaitingIncallSupplementaryService(dialString);
                 break;
             case '2':
                 result = handleCallHoldIncallSupplementaryService(dialString);

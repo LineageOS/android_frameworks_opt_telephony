@@ -427,12 +427,11 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected Phone(String name, PhoneNotifier notifier, Context context, CommandsInterface ci,
                     boolean unitTestMode, int phoneId,
                     TelephonyComponentFactory telephonyComponentFactory) {
-        super(Looper.getMainLooper());
         mPhoneId = phoneId;
         mName = name;
         mNotifier = notifier;
         mContext = context;
-        mLooper = Looper.getMainLooper();
+        mLooper = Looper.myLooper();
         mCi = ci;
         mActionDetached = this.getClass().getPackage().getName() + ".action_detached";
         mActionAttached = this.getClass().getPackage().getName() + ".action_attached";
