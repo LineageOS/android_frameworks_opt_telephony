@@ -27,9 +27,10 @@ import android.app.AppOpsManager;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.ContentProvider;
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
-import android.content.IContentProvider;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
@@ -38,15 +39,20 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.content.res.Resources;
+import android.database.Cursor;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IInterface;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
+import android.test.mock.MockContentProvider;
+import android.test.mock.MockContentResolver;
 import android.test.mock.MockContext;
 import android.util.Log;
 
@@ -77,6 +83,27 @@ import static org.mockito.Mockito.when;
  */
 public class ContextFixture implements TestFixture<Context> {
     private static final String TAG = "ContextFixture";
+
+    public class FakeContentProvider extends MockContentProvider {
+        @Override
+        public int delete(Uri uri, String selection, String[] selectionArgs) {
+            return 0;
+        }
+
+        @Override
+        public Uri insert(Uri uri, ContentValues values) {
+            if (uri.compareTo(Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw")) == 0) {
+                return Uri.withAppendedPath(uri, "1");
+            }
+            return null;
+        }
+
+        @Override
+        public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
+                            String sortOrder) {
+            return null;
+        }
+    }
 
     public class FakeContext extends MockContext {
         @Override
@@ -154,33 +181,7 @@ public class ContextFixture implements TestFixture<Context> {
 
         @Override
         public ContentResolver getContentResolver() {
-            return new ContentResolver(mContext) {
-                @Override
-                protected IContentProvider acquireProvider(Context c, String name) {
-                    Log.i(TAG, "acquireProvider " + name);
-                    return mContentProvider;
-                }
-
-                @Override
-                public boolean releaseProvider(IContentProvider icp) {
-                    return true;
-                }
-
-                @Override
-                protected IContentProvider acquireUnstableProvider(Context c, String name) {
-                    Log.i(TAG, "acquireUnstableProvider " + name);
-                    return mContentProvider;
-                }
-
-                @Override
-                public boolean releaseUnstableProvider(IContentProvider icp) {
-                    return false;
-                }
-
-                @Override
-                public void unstableProviderDied(IContentProvider icp) {
-                }
-            };
+            return mContentResolver;
         }
 
         @Override
@@ -199,7 +200,11 @@ public class ContextFixture implements TestFixture<Context> {
 
         @Override
         public void sendBroadcast(Intent intent) {
-            // TODO -- need to ensure this is captured
+            logd("sendBroadcast called for " + intent.getAction());
+            for (BroadcastReceiver broadcastReceiver :
+                    mBroadcastReceiversByAction.get(intent.getAction())) {
+                broadcastReceiver.onReceive(mContext, intent);
+            }
         }
 
         @Override
@@ -218,6 +223,18 @@ public class ContextFixture implements TestFixture<Context> {
         public void sendOrderedBroadcastAsUser(Intent intent, UserHandle user,
                 String receiverPermission, int appOp, BroadcastReceiver resultReceiver,
                 Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
+        }
+
+        @Override
+        public void sendOrderedBroadcastAsUser(Intent intent, UserHandle user,
+                String receiverPermission, int appOp, Bundle options,
+                BroadcastReceiver resultReceiver, Handler scheduler, int initialCode,
+                String initialData, Bundle initialExtras) {
+            logd("sendOrderedBroadcastAsUser called for " + intent.getAction());
+            sendBroadcast(intent);
+            if (resultReceiver != null) {
+                resultReceiver.onReceive(this, intent);
+            }
         }
 
         @Override
@@ -245,7 +262,11 @@ public class ContextFixture implements TestFixture<Context> {
             return "com.android.internal.telephony";
         }
 
-        public boolean testMethod() {
+        public int testMethod() {
+            return 0;
+        }
+
+        public boolean testMethod1() {
             return true;
         }
     };
@@ -279,8 +300,9 @@ public class ContextFixture implements TestFixture<Context> {
     private final CarrierConfigManager mCarrierConfigManager = mock(CarrierConfigManager.class);
     private final SubscriptionManager mSubscriptionManager = mock(SubscriptionManager.class);
     private final WifiManager mWifiManager = mock(WifiManager.class);
-    private final IContentProvider mContentProvider = mock(IContentProvider.class);
+    private final ContentProvider mContentProvider = spy(new FakeContentProvider());
     private final SharedPreferences mSharedPreferences = mock(SharedPreferences.class);
+    private final MockContentResolver mContentResolver = new MockContentResolver();
 
     public ContextFixture() {
         MockitoAnnotations.initMocks(this);
@@ -311,6 +333,8 @@ public class ContextFixture implements TestFixture<Context> {
                 return args[1];
             }
         }).when(mSharedPreferences).getBoolean(anyString(), anyBoolean());
+
+        mContentResolver.addProvider(Telephony.Sms.CONTENT_URI.getAuthority(), mContentProvider);
     }
 
     @Override
@@ -354,10 +378,7 @@ public class ContextFixture implements TestFixture<Context> {
         return result;
     }
 
-    public void sendBroadcast(Intent intent) {
-        for (BroadcastReceiver broadcastReceiver :
-                mBroadcastReceiversByAction.get(intent.getAction())) {
-            broadcastReceiver.onReceive(mContext, intent);
-        }
+    private static void logd(String s) {
+        Log.d(TAG, s);
     }
 }

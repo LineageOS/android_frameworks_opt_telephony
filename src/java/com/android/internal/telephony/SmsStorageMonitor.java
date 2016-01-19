@@ -35,7 +35,7 @@ import android.telephony.SubscriptionManager;
  * into a separate class to support instantiation of multiple SMSDispatchers on
  * dual-mode devices that require support for both 3GPP and 3GPP2 format messages.
  */
-public final class SmsStorageMonitor extends Handler {
+public class SmsStorageMonitor extends Handler {
     private static final String TAG = "SmsStorageMonitor";
 
     /** SIM/RUIM storage is full */
