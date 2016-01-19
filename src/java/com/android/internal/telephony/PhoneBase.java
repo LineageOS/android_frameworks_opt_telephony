@@ -1165,7 +1165,7 @@ public abstract class PhoneBase extends Handler implements Phone {
         String numeric = sp.getString(NETWORK_SELECTION_KEY + getSubId(), "");
         String name = sp.getString(NETWORK_SELECTION_NAME_KEY + getSubId(), "");
         String shrt = sp.getString(NETWORK_SELECTION_SHORT_KEY + getSubId(), "");
-        return new OperatorInfo(numeric, name, shrt);
+        return new OperatorInfo(name, shrt, numeric);
     }
 
     /**
