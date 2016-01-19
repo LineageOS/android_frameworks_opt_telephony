@@ -233,7 +233,9 @@ public final class CarrierAppUtils {
 
             for (String carrierApp : systemCarrierAppsEnabled) {
                 ApplicationInfo ai = packageManager.getApplicationInfo(carrierApp, 0, userId);
-                apps.add(ai);
+                if (ai != null) {
+                    apps.add(ai);
+                }
             }
         } catch (RemoteException e) {
             Slog.w(TAG, "Could not reach PackageManager", e);
