@@ -20,15 +20,21 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Message;
 import android.os.RegistrantList;
+import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
+import android.telephony.CellLocation;
 import android.telephony.ServiceState;
+import android.telephony.cdma.CdmaCellLocation;
+import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
 
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
+import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.UiccController;
@@ -73,10 +79,65 @@ public class GsmCdmaPhoneTest {
     IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
     @Mock
     HashMap<Integer, ImsManager> mImsManagerInstances;
+    @Mock
+    DcTracker mDcTracker;
+    @Mock
+    GsmCdmaCall mGsmCdmaCall;
 
     private SimulatedCommands simulatedCommands;
     private ContextFixture contextFixture;
     private GsmCdmaPhone mPhone;
+    private Object mLock = new Object();
+    private boolean mReady;
+
+    private class GsmCdmaPhoneTestHandler extends HandlerThread {
+
+        private GsmCdmaPhoneTestHandler(String name) {
+            super(name);
+        }
+
+        @Override
+        public void onLooperPrepared() {
+            mPhone = new GsmCdmaPhone(contextFixture.getTestDouble(), simulatedCommands, mNotifier,
+                    true, 0, PhoneConstants.PHONE_TYPE_GSM, telephonyComponentFactory);
+            synchronized (mLock) {
+                mReady = true;
+            }
+        }
+    }
+
+    private void waitUntilReady() {
+        while(true) {
+            synchronized (mLock) {
+                if (mReady) {
+                    break;
+                }
+            }
+        }
+    }
+
+    private void waitForMs(long ms) {
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {
+            logd("InterruptedException while waiting for voice rat to change: " + e);
+        }
+    }
+
+    private void switchToGsm() {
+        mPhone.sendMessage(mPhone.obtainMessage(GsmCdmaPhone.EVENT_VOICE_RADIO_TECH_CHANGED,
+                new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_GSM},
+                        null)));
+        //wait for voice RAT to be updated
+        waitForMs(50);
+    }
+
+    private void switchToCdma() {
+        mPhone.sendMessage(mPhone.obtainMessage(GsmCdmaPhone.EVENT_VOICE_RADIO_TECH_CHANGED,
+                new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_IS95A}, null)));
+        //wait for voice RAT to be updated
+        waitForMs(50);
+    }
 
     @Before
     public void setUp() throws Exception {
@@ -115,14 +176,16 @@ public class GsmCdmaPhoneTest {
                 makeGsmCdmaCallTracker(any(GsmCdmaPhone.class));
         doReturn(mIccPhoneBookIntManager).when(telephonyComponentFactory).
                 makeIccPhoneBookInterfaceManager(any(Phone.class));
+        doReturn(mDcTracker).when(telephonyComponentFactory).
+                makeDcTracker(any(Phone.class));
         doReturn(true).when(mImsManagerInstances).containsKey(anyInt());
 
         simulatedCommands = new SimulatedCommands();
         contextFixture = new ContextFixture();
-        mPhone = new GsmCdmaPhone(contextFixture.getTestDouble(), simulatedCommands, mNotifier,
-                true, 0, PhoneConstants.PHONE_TYPE_GSM, telephonyComponentFactory);
 
         doReturn(false).when(mSST).isDeviceShuttingDown();
+
+        new GsmCdmaPhoneTestHandler(TAG).start();
     }
 
     @After
@@ -132,32 +195,146 @@ public class GsmCdmaPhoneTest {
 
     @Test @SmallTest
     public void testPhoneTypeSwitch() {
+        waitUntilReady();
         assertTrue(mPhone.isPhoneTypeGsm());
-        mPhone.sendMessage(mPhone.obtainMessage(GsmCdmaPhone.EVENT_VOICE_RADIO_TECH_CHANGED,
-                new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_IS95A}, null)));
-        //wait for voice RAT to be updated
-        try {
-            Thread.sleep(50);
-        } catch (InterruptedException e) {
-            logd("InterruptedException while waiting for voice rat to change: " + e);
-        }
+        switchToCdma();
         assertTrue(mPhone.isPhoneTypeCdmaLte());
     }
 
     @Test @SmallTest
     public void testHandleActionCarrierConfigChanged() {
+        waitUntilReady();
         // set voice radio tech in RIL to 1xRTT. ACTION_CARRIER_CONFIG_CHANGED should trigger a
         // query and change phone type
         simulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
         assertTrue(mPhone.isPhoneTypeGsm());
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         contextFixture.sendBroadcast(intent);
-        try {
-            Thread.sleep(50);
-        } catch (InterruptedException e) {
-            logd("InterruptedException while waiting: " + e);
-        }
+        waitForMs(50);
         assertTrue(mPhone.isPhoneTypeCdmaLte());
+    }
+
+    @Test @SmallTest
+    public void testGetServiceState() {
+        waitUntilReady();
+        ServiceState serviceState = new ServiceState();
+        mSST.mSS = serviceState;
+        assertEquals(serviceState, mPhone.getServiceState());
+    }
+
+    @Test @SmallTest
+    public void testGetCellLocation() {
+        waitUntilReady();
+        // GSM
+        CellLocation cellLocation = new GsmCellLocation();
+        doReturn(cellLocation).when(mSST).getCellLocation();
+        assertEquals(cellLocation, mPhone.getCellLocation());
+
+        // Switch to CDMA
+        switchToCdma();
+
+        CdmaCellLocation cdmaCellLocation = new CdmaCellLocation();
+        cdmaCellLocation.setCellLocationData(0, 0, 0, 0, 0);
+        mSST.mCellLoc = cdmaCellLocation;
+
+        int origValue = Settings.Secure.getInt(TestApplication.getAppContext().getContentResolver(),
+                Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF);
+
+        // LOCATION_MODE_ON
+        Settings.Secure.putInt(TestApplication.getAppContext().getContentResolver(),
+                Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_HIGH_ACCURACY);
+        CdmaCellLocation actualCellLocation = (CdmaCellLocation)mPhone.getCellLocation();
+        assertEquals(0, actualCellLocation.getBaseStationLatitude());
+        assertEquals(0, actualCellLocation.getBaseStationLongitude());
+
+        // LOCATION_MODE_OFF
+        Settings.Secure.putInt(TestApplication.getAppContext().getContentResolver(),
+                Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF);
+        actualCellLocation = (CdmaCellLocation)mPhone.getCellLocation();
+        assertEquals(CdmaCellLocation.INVALID_LAT_LONG,
+                actualCellLocation.getBaseStationLatitude());
+        assertEquals(CdmaCellLocation.INVALID_LAT_LONG,
+                actualCellLocation.getBaseStationLongitude());
+
+        // reset to origValue
+        Settings.Secure.putInt(TestApplication.getAppContext().getContentResolver(),
+                Settings.Secure.LOCATION_MODE, origValue);
+    }
+
+    @Test @SmallTest
+    public void testGetPhoneType() {
+        waitUntilReady();
+        assertEquals(PhoneConstants.PHONE_TYPE_GSM, mPhone.getPhoneType());
+
+        // Switch to CDMA
+        switchToCdma();
+
+        assertEquals(PhoneConstants.PHONE_TYPE_CDMA, mPhone.getPhoneType());
+    }
+
+    @Test @SmallTest
+    public void testGetDataConnectionState() {
+        waitUntilReady();
+        // There are several cases possible. Testing few of them for now.
+        // 1. GSM, getCurrentDataConnectionState != STATE_IN_SERVICE, apn != APN_TYPE_EMERGENCY
+        doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mSST).getCurrentDataConnectionState();
+        assertEquals(PhoneConstants.DataState.DISCONNECTED, mPhone.getDataConnectionState(
+                PhoneConstants.APN_TYPE_ALL));
+
+        // 2. GSM, getCurrentDataConnectionState != STATE_IN_SERVICE, apn = APN_TYPE_EMERGENCY, apn
+        // not enabled and not active
+        assertEquals(PhoneConstants.DataState.DISCONNECTED, mPhone.getDataConnectionState(
+                PhoneConstants.APN_TYPE_EMERGENCY));
+
+        // 3. GSM, getCurrentDataConnectionState != STATE_IN_SERVICE, apn = APN_TYPE_EMERGENCY,
+        // APN enabled, active and CONNECTED, callTracker state = idle
+        doReturn(true).when(mDcTracker).isApnTypeEnabled(PhoneConstants.APN_TYPE_EMERGENCY);
+        doReturn(true).when(mDcTracker).isApnTypeActive(PhoneConstants.APN_TYPE_EMERGENCY);
+        doReturn(DctConstants.State.CONNECTED).when(mDcTracker).getState(
+                PhoneConstants.APN_TYPE_EMERGENCY);
+        mCT.mState = PhoneConstants.State.IDLE;
+        assertEquals(PhoneConstants.DataState.CONNECTED, mPhone.getDataConnectionState(
+                PhoneConstants.APN_TYPE_EMERGENCY));
+
+        // 3. GSM, getCurrentDataConnectionState != STATE_IN_SERVICE, apn = APN_TYPE_EMERGENCY,
+        // APN enabled and CONNECTED, callTracker state != idle, !isConcurrentVoiceAndDataAllowed
+        mCT.mState = PhoneConstants.State.RINGING;
+        doReturn(false).when(mSST).isConcurrentVoiceAndDataAllowed();
+        assertEquals(PhoneConstants.DataState.SUSPENDED, mPhone.getDataConnectionState(
+                PhoneConstants.APN_TYPE_EMERGENCY));
+    }
+
+    @Test @SmallTest
+    public void testHandleInCallMmiCommands() {
+        waitUntilReady();
+        try {
+            // Switch to CDMA
+            switchToCdma();
+
+            assertFalse(mPhone.handleInCallMmiCommands("0"));
+
+            // Switch to GSM
+            switchToGsm();
+
+            mCT.mForegroundCall = mGsmCdmaCall;
+            mCT.mBackgroundCall = mGsmCdmaCall;
+            mCT.mRingingCall = mGsmCdmaCall;
+            doReturn(GsmCdmaCall.State.IDLE).when(mGsmCdmaCall).getState();
+
+            // !isInCall
+            assertFalse(mPhone.handleInCallMmiCommands("0"));
+
+            // isInCall
+            doReturn(GsmCdmaCall.State.ACTIVE).when(mGsmCdmaCall).getState();
+            assertTrue(mPhone.handleInCallMmiCommands("0"));
+
+            // empty dialString
+            assertFalse(mPhone.handleInCallMmiCommands(""));
+            assertFalse(mPhone.handleInCallMmiCommands(null));
+
+        } catch (Exception e) {
+            fail(e.toString());
+        }
     }
 
     private static void logd(String s) {
