@@ -21,14 +21,18 @@ import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.os.RemoteException;
+import android.os.SystemProperties;
 import android.telephony.TelephonyManager;
 import android.util.Slog;
 
 import com.android.internal.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Utilities for handling carrier applications.
@@ -38,6 +42,15 @@ public final class CarrierAppUtils {
     private static final String TAG = "CarrierAppUtils";
 
     private static final boolean DEBUG = false; // STOPSHIP if true
+
+    public static enum CARRIER {
+        TELEPHONY_CARRIER_ONE
+    }
+
+    private static final Map<String, CARRIER> mCarriersMap = Collections.unmodifiableMap
+      (new HashMap<String, CARRIER>() {{
+        put("405854", CARRIER.TELEPHONY_CARRIER_ONE);
+    }});
 
     private CarrierAppUtils() {}
 
@@ -252,5 +265,14 @@ public final class CarrierAppUtils {
             Slog.w(TAG, "Could not reach PackageManager", e);
         }
         return apps;
+    }
+
+    public static CARRIER getCarrierId() {
+        String property = SystemProperties.get("persist.radio.atel.carrier");
+        if (mCarriersMap.containsKey(property)) {
+            return mCarriersMap.get(property);
+        } else {
+            return null;
+        }
     }
 }
