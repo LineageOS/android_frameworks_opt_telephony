@@ -20,6 +20,7 @@ package com.android.internal.telephony;
 
 import android.app.AppOpsManager;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.RemoteException;
 import android.os.ServiceManager;
@@ -35,6 +36,7 @@ import static android.Manifest.permission.CALL_PRIVILEGED;
 import static android.Manifest.permission.READ_PHONE_STATE;
 import static android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE;
 import static android.Manifest.permission.READ_SMS;
+import static android.telephony.TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
 
 public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     private static final String TAG = "PhoneSubInfoController";
@@ -275,6 +277,28 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
         return mPhone[phoneId];
     }
 
+    /**
+     * Make sure caller has either read privileged phone permission or carrier privilege.
+     *
+     * @throws SecurityException if the caller does not have the required permission/privilege
+     */
+    private void enforcePrivilegedPermissionOrCarrierPrivilege(Phone phone) {
+        int permissionResult = mContext.checkCallingOrSelfPermission(
+                READ_PRIVILEGED_PHONE_STATE);
+        if (permissionResult == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        log("No read privileged phone permission, check carrier privilege next.");
+        UiccCard uiccCard = phone.getUiccCard();
+        if (uiccCard == null) {
+            throw new SecurityException("No Carrier Privilege: No UICC");
+        }
+        if (uiccCard.getCarrierPrivilegeStatusForCurrentTransaction(
+                mContext.getPackageManager()) != CARRIER_PRIVILEGE_STATUS_HAS_ACCESS) {
+            throw new SecurityException("No Carrier Privilege.");
+        }
+    }
+
     private int getDefaultSubscription() {
         return  PhoneFactory.getDefaultSubscription();
     }
@@ -355,9 +379,7 @@ public class PhoneSubInfoController extends IPhoneSubInfo.Stub {
     public String getIccSimChallengeResponse(int subId, int appType, String data)
             throws RemoteException {
         Phone phone = getPhone(subId);
-        mContext.enforceCallingOrSelfPermission(READ_PRIVILEGED_PHONE_STATE,
-                "Requires READ_PRIVILEGED_PHONE_STATE");
-
+        enforcePrivilegedPermissionOrCarrierPrivilege(phone);
         UiccCard uiccCard = phone.getUiccCard();
         if (uiccCard == null) {
             loge("getIccSimChallengeResponse() UiccCard is null");
