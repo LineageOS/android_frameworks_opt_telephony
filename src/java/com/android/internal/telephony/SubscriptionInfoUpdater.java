@@ -115,6 +115,7 @@ public class SubscriptionInfoUpdater extends Handler {
     // The current foreground user ID.
     private int mCurrentlyActiveUserId;
     private CarrierServiceBindHelper mCarrierServiceBindHelper;
+    private boolean mIsShutdown;
 
     public SubscriptionInfoUpdater(Context context, Phone[] phone, CommandsInterface[] ci) {
         logd("Constructor invoked");
@@ -124,10 +125,12 @@ public class SubscriptionInfoUpdater extends Handler {
         mSubscriptionManager = SubscriptionManager.from(mContext);
         mPackageManager = IPackageManager.Stub.asInterface(ServiceManager.getService("package"));
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
+        mIsShutdown = false;
 
         IntentFilter intentFilter = new IntentFilter(TelephonyIntents.ACTION_SIM_STATE_CHANGED);
         intentFilter.addAction(IccCardProxy.ACTION_INTERNAL_SIM_STATE_CHANGED);
         intentFilter.addAction(Intent.ACTION_USER_UNLOCKED);
+        intentFilter.addAction(Intent.ACTION_SHUTDOWN);
         mContext.registerReceiver(sReceiver, intentFilter);
 
         mCarrierServiceBindHelper = new CarrierServiceBindHelper(mContext);
@@ -198,6 +201,11 @@ public class SubscriptionInfoUpdater extends Handler {
                             UserHandle.USER_ALL);
                 }
                 logd("[Receiver]-");
+                return;
+            }
+
+            if (action.equals(Intent.ACTION_SHUTDOWN)) {
+                mIsShutdown = true;
                 return;
             }
 
@@ -666,7 +674,7 @@ public class SubscriptionInfoUpdater extends Handler {
             }
         }
 
-        if (insertedSimCount == 1) {
+        if (!mIsShutdown && insertedSimCount == 1) {
             SubscriptionInfo sir = subInfos.get(0);
             int subId = sir.getSubscriptionId();
             mSubscriptionManager.setDefaultDataSubId(subId);
