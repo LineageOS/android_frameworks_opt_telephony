@@ -29,7 +29,8 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.android.frameworks.telresources" >
+    package="com.android.frameworks.telresources"
+    coreApp="true">
 
     <application android:process="com.qualcomm.telephony">
     </application>
