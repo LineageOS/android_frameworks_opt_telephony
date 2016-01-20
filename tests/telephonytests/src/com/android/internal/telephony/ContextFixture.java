@@ -38,6 +38,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.content.res.Resources;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IInterface;
@@ -60,6 +61,7 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -128,6 +130,8 @@ public class ContextFixture implements TestFixture<Context> {
                     return TestApplication.getAppContext().getSystemService(name);
                 case Context.TELEPHONY_SUBSCRIPTION_SERVICE:
                     return mSubscriptionManager;
+                case Context.WIFI_SERVICE:
+                    return mWifiManager;
                 default:
                     return null;
             }
@@ -217,6 +221,10 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public void sendStickyBroadcastAsUser(Intent intent, UserHandle user) {
+        }
+
+        @Override
         public Context createPackageContextAsUser(String packageName, int flags, UserHandle user)
                 throws PackageManager.NameNotFoundException {
             return this;
@@ -237,8 +245,8 @@ public class ContextFixture implements TestFixture<Context> {
             return "com.android.internal.telephony";
         }
 
-        public int testMethod() {
-            return 0;
+        public boolean testMethod() {
+            return true;
         }
     };
 
@@ -270,6 +278,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final UserManager mUserManager = mock(UserManager.class);
     private final CarrierConfigManager mCarrierConfigManager = mock(CarrierConfigManager.class);
     private final SubscriptionManager mSubscriptionManager = mock(SubscriptionManager.class);
+    private final WifiManager mWifiManager = mock(WifiManager.class);
     private final IContentProvider mContentProvider = mock(IContentProvider.class);
     private final SharedPreferences mSharedPreferences = mock(SharedPreferences.class);
 
@@ -323,6 +332,10 @@ public class ContextFixture implements TestFixture<Context> {
 
     public void putBooleanResource(int id, boolean value) {
         when(mResources.getBoolean(eq(id))).thenReturn(value);
+    }
+
+    public void putStringArrayResource(int id, String[] values) {
+        doReturn(values).when(mResources).getStringArray(eq(id));
     }
 
     private void addService(String action, ComponentName name, IInterface service) {
