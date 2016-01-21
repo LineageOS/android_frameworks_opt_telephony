@@ -48,6 +48,7 @@ import android.os.IInterface;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.provider.Settings;
 import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
 import android.telephony.SubscriptionManager;
@@ -102,6 +103,11 @@ public class ContextFixture implements TestFixture<Context> {
         @Override
         public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
                             String sortOrder) {
+            return null;
+        }
+
+        @Override
+        public Bundle call(String method, String request, Bundle args) {
             return null;
         }
     }
@@ -339,6 +345,7 @@ public class ContextFixture implements TestFixture<Context> {
         doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
 
         mContentResolver.addProvider(Telephony.Sms.CONTENT_URI.getAuthority(), mContentProvider);
+        mContentResolver.addProvider(Settings.System.CONTENT_URI.getAuthority(), mContentProvider);
     }
 
     @Override
