@@ -17,7 +17,6 @@
 package com.android.internal.telephony;
 
 import android.telephony.CellInfo;
-import android.telephony.DataConnectionRealTimeInfo;
 import android.telephony.VoLteServiceState;
 
 import java.util.List;
@@ -57,8 +56,6 @@ public interface PhoneNotifier {
 
     public void notifyPreciseDataConnectionFailed(Phone sender, String reason, String apnType,
             String apn, String failCause);
-
-    public void notifyDataConnectionRealTimeInfo(Phone sender, DataConnectionRealTimeInfo dcRtInfo);
 
     public void notifyVoLteServiceStateChanged(Phone sender, VoLteServiceState lteState);
 

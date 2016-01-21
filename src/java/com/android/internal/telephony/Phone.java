@@ -1997,10 +1997,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mNotifier.notifyCellInfo(this, privatizeCellInfoList(cellInfo));
     }
 
-    public void notifyDataConnectionRealTimeInfo(DataConnectionRealTimeInfo dcRtInfo) {
-        mNotifier.notifyDataConnectionRealTimeInfo(this, dcRtInfo);
-    }
-
     public void notifyVoLteServiceStateChanged(VoLteServiceState lteState) {
         mNotifier.notifyVoLteServiceStateChanged(this, lteState);
     }
