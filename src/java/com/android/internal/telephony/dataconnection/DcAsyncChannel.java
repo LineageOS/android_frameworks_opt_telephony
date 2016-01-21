@@ -361,23 +361,19 @@ public class DcAsyncChannel extends AsyncChannel {
      * as GSM networks.
      *
      * @param apnContext is the Access Point Name to bring up a connection to
-     * @param initialMaxRetry the number of retires for initial bringup.
      * @param profileId for the conneciton
      * @param onCompletedMsg is sent with its msg.obj as an AsyncResult object.
      *        With AsyncResult.userObj set to the original msg.obj,
      *        AsyncResult.result = FailCause and AsyncResult.exception = Exception().
      */
-    public void bringUp(ApnContext apnContext, int initialMaxRetry, int profileId,
-            int rilRadioTechnology, boolean retryWhenSSChange, Message onCompletedMsg,
-            int connectionGeneration) {
+    public void bringUp(ApnContext apnContext, int profileId, int rilRadioTechnology,
+                        Message onCompletedMsg, int connectionGeneration) {
         if (DBG) {
-            log("bringUp: apnContext=" + apnContext + " initialMaxRetry=" + initialMaxRetry
-                + " onCompletedMsg=" + onCompletedMsg);
+            log("bringUp: apnContext=" + apnContext + " onCompletedMsg=" + onCompletedMsg);
         }
         sendMessage(DataConnection.EVENT_CONNECT,
-                    new ConnectionParams(apnContext, initialMaxRetry, profileId,
-                            rilRadioTechnology, retryWhenSSChange, onCompletedMsg,
-                            connectionGeneration));
+                new ConnectionParams(apnContext, profileId, rilRadioTechnology, onCompletedMsg,
+                        connectionGeneration));
     }
 
     /**

@@ -19,6 +19,8 @@ package com.android.internal.telephony.dataconnection;
 import android.content.Intent;
 import android.telephony.Rlog;
 
+import com.android.internal.telephony.RILConstants;
+
 /**
  * A package visible class for supporting testing failing bringUp commands. This
  * saves the parameters from a action_fail_bringup intent. See
@@ -34,7 +36,7 @@ class DcFailBringUp {
 
     // counter with its --ei option name and default value
     static final String COUNTER = "counter";
-    static final int DEFAULT_COUNTER = 1;
+    static final int DEFAULT_COUNTER = 2;
     int mCounter;
 
     // failCause with its --ei option name and default value
@@ -44,7 +46,7 @@ class DcFailBringUp {
 
     // suggestedRetryTime with its --ei option name and default value
     static final String SUGGESTED_RETRY_TIME = "suggested_retry_time";
-    static final int DEFAULT_SUGGESTED_RETRY_TIME = -1;
+    static final int DEFAULT_SUGGESTED_RETRY_TIME = RILConstants.MAX_INT;
     int mSuggestedRetryTime;
 
     // Get the Extra Intent parameters

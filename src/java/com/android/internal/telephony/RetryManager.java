@@ -16,12 +16,21 @@
 
 package com.android.internal.telephony;
 
+import android.content.Context;
+import android.os.Build;
+import android.os.PersistableBundle;
+import android.os.SystemProperties;
+import android.telephony.CarrierConfigManager;
 import android.telephony.Rlog;
-import android.util.Pair;
 import android.text.TextUtils;
+import android.util.Pair;
 
-import java.util.Random;
+import com.android.internal.telephony.dataconnection.ApnSetting;
+
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Random;
 
 /**
  * Retry manager allows a simple way to declare a series of
@@ -73,9 +82,74 @@ import java.util.ArrayList;
  * {@hide}
  */
 public class RetryManager {
-    static public final String LOG_TAG = "RetryManager";
-    static public final boolean DBG = false;
-    static public final boolean VDBG = false;
+    public static final String LOG_TAG = "RetryManager";
+    public static final boolean DBG = true;
+    public static final boolean VDBG = false; // STOPSHIP if true
+
+    /**
+     * The default retry configuration for default type APN. See above for the syntax.
+     */
+    private static final String DEFAULT_DATA_RETRY_CONFIG = "default_randomization=2000,"
+            + "5000,10000,20000,40000,80000:5000,160000:5000,"
+            + "320000:5000,640000:5000,1280000:5000,1800000:5000";
+
+    /**
+     * Retry configuration for networks other than default type, for example, mms. See above
+     * for the syntax.
+     */
+    private static final String OTHERS_DATA_RETRY_CONFIG =
+            "max_retries=3, 5000, 5000, 5000";
+
+    /**
+     * The default value (in milliseconds) for delay between APN trying (mInterApnDelay)
+     * within the same round
+     */
+    private static final long DEFAULT_INTER_APN_DELAY = 20000;
+
+    /**
+     * The default value (in milliseconds) for delay between APN trying (mFailFastInterApnDelay)
+     * within the same round when we are in fail fast mode
+     */
+    private static final long DEFAULT_INTER_APN_DELAY_FOR_PROVISIONING = 3000;
+
+    /**
+     * The value indicating no retry is needed
+     */
+    public static final long NO_RETRY = -1;
+
+    /**
+     * The value indicating modem did not suggest any retry delay
+     */
+    public static final long NO_SUGGESTED_RETRY_DELAY = -2;
+
+    /**
+     * If the modem suggests a retry delay in the data call setup response, we will retry
+     * the current APN setting again. However, if the modem keeps suggesting retrying the same
+     * APN setting, we'll fall into an infinite loop. Therefore adding a counter to retry up to
+     * MAX_SAME_APN_RETRY times can avoid it.
+     */
+    private static final int MAX_SAME_APN_RETRY = 3;
+
+    /**
+     * The delay (in milliseconds) between APN trying within the same round
+     */
+    private long mInterApnDelay;
+
+    /**
+     * The delay (in milliseconds) between APN trying within the same round when we are in
+     * fail fast mode
+     */
+    private long mFailFastInterApnDelay;
+
+    /**
+     * Modem suggested delay for retrying the current APN
+     */
+    private long mModemSuggestedDelay = NO_SUGGESTED_RETRY_DELAY;
+
+    /**
+     * The counter for same APN retrying. See MAX_SAME_APN_RETRY for the details.
+     */
+    private int mSameApnRetryCount = 0;
 
     /**
      * Retry record with times in milli-seconds
@@ -90,82 +164,74 @@ public class RetryManager {
         int mRandomizationTime;
     }
 
-    /** The array of retry records */
+    /**
+     * The array of retry records
+     */
     private ArrayList<RetryRec> mRetryArray = new ArrayList<RetryRec>();
 
-    /** When true isRetryNeeded() will always return true */
-    private boolean mRetryForever;
+    private Phone mPhone;
 
     /**
-     * The maximum number of retries to attempt before
-     * isRetryNeeded returns false
+     * Flag indicating whether retrying forever regardless the maximum retry count mMaxRetryCount
+     */
+    private boolean mRetryForever = false;
+
+    /**
+     * The maximum number of retries to attempt
      */
     private int mMaxRetryCount;
 
-    private int mCurMaxRetryCount;
+    /**
+     * The current number of retries
+     */
+    private int mRetryCount = 0;
 
-    /** The current number of retries */
-    private int mRetryCount;
-
-    /** Random number generator */
+    /**
+     * Random number generator. The random delay will be added into retry timer to avoid all devices
+     * around retrying the APN at the same time.
+     */
     private Random mRng = new Random();
 
+    /**
+     * Retry manager configuration string. See top of the detailed explanation.
+     */
     private String mConfig;
 
-    /** Constructor */
-    public RetryManager() {
-        if (VDBG) log("constructor");
+    /**
+     * The list to store APN setting candidates for data call setup. Most of the carriers only have
+     * one APN, but few carriers have more than one.
+     */
+    private ArrayList<ApnSetting> mWaitingApns = null;
+
+    /**
+     * Index pointing to the current trying APN from mWaitingApns
+     */
+    private int mCurrentApnIndex = -1;
+
+    /**
+     * Apn context type. Could be "default, "mms", "supl", etc...
+     */
+    private String mApnType;
+
+    /**
+     * Retry manager constructor
+     * @param phone Phone object
+     * @param apnType APN type
+     */
+    public RetryManager(Phone phone, String apnType) {
+        mPhone = phone;
+        mApnType = apnType;
     }
 
     @Override
     public String toString() {
         String ret = "RetryManager: { forever=" + mRetryForever + " maxRetry=" + mMaxRetryCount
-                + " curMaxRetry=" + mCurMaxRetryCount + " retry=" + mRetryCount
-                + " config={" + mConfig + "} retryArray={";
+                + " retry=" + mRetryCount + " config={" + mConfig + "} retryArray={";
         for (RetryRec r : mRetryArray) {
             ret += r.mDelayTime + ":" + r.mRandomizationTime + " ";
         }
         ret += "}}";
         return ret;
-    }
-
-    /**
-     * Configure for a simple linear sequence of times plus
-     * a random value.
-     *
-     * @param maxRetryCount is the maximum number of retries
-     *        before isRetryNeeded returns false.
-     * @param retryTime is a time that will be returned by getRetryTime.
-     * @param randomizationTime a random value between 0 and
-     *        randomizationTime will be added to retryTime. this
-     *        parameter may be 0.
-     * @return true if successful
-     */
-    public boolean configure(int maxRetryCount, int retryTime, int randomizationTime) {
-        Pair<Boolean, Integer> value;
-
-        if (VDBG) log("configure: " + maxRetryCount + ", " + retryTime + "," + randomizationTime);
-
-        if (!validateNonNegativeInt("maxRetryCount", maxRetryCount)) {
-            return false;
-        }
-
-        if (!validateNonNegativeInt("retryTime", retryTime)) {
-            return false;
-        }
-
-        if (!validateNonNegativeInt("randomizationTime", randomizationTime)) {
-            return false;
-        }
-
-        mMaxRetryCount = maxRetryCount;
-        mCurMaxRetryCount = mMaxRetryCount;
-
-        resetRetryCount();
-        mRetryArray.clear();
-        mRetryArray.add(new RetryRec(retryTime, randomizationTime));
-
-        return true;
     }
 
     /**
@@ -175,22 +241,22 @@ public class RetryManager {
      *
      * @return true if successful
      */
-    public boolean configure(String configStr) {
+    private boolean configure(String configStr) {
         // Strip quotes if present.
         if ((configStr.startsWith("\"") && configStr.endsWith("\""))) {
-            configStr = configStr.substring(1, configStr.length()-1);
+            configStr = configStr.substring(1, configStr.length() - 1);
         }
-        if (VDBG) log("configure: '" + configStr + "'");
+
+        // Reset the retry manager since delay, max retry count, etc...will be reset.
+        reset();
+
+        if (DBG) log("configure: '" + configStr + "'");
         mConfig = configStr;
 
         if (!TextUtils.isEmpty(configStr)) {
             int defaultRandomization = 0;
 
             if (VDBG) log("configure: not empty");
-
-            mMaxRetryCount = 0;
-            resetRetryCount();
-            mRetryArray.clear();
 
             String strArray[] = configStr.split(",");
             for (int i = 0; i < strArray.length; i++) {
@@ -207,7 +273,7 @@ public class RetryManager {
                         if (!value.first) return false;
                         defaultRandomization = value.second;
                     } else if (TextUtils.equals(splitStr[0], "max_retries")) {
-                        if (TextUtils.equals("infinite",splitStr[1])) {
+                        if (TextUtils.equals("infinite", splitStr[1])) {
                             mRetryForever = true;
                         } else {
                             value = parseNonNegativeInt(splitStr[0], splitStr[1]);
@@ -248,31 +314,70 @@ public class RetryManager {
                 mMaxRetryCount = mRetryArray.size();
                 if (VDBG) log("configure: setting mMaxRetryCount=" + mMaxRetryCount);
             }
-            mCurMaxRetryCount = mMaxRetryCount;
-            if (VDBG) log("configure: true");
-            return true;
         } else {
-            if (VDBG) log("configure: false it's empty");
-            return false;
+            log("configure: cleared");
         }
+
+        if (VDBG) log("configure: true");
+        return true;
     }
 
     /**
-     * Report whether data reconnection should be retried
-     *
-     * @return {@code true} if the max retries has not been reached. {@code
-     *         false} otherwise.
+     * Configure the retry manager
+     * @param forDefault True if the APN support default type
      */
-    public boolean isRetryNeeded() {
-        boolean retVal = mRetryForever || (mRetryCount < mCurMaxRetryCount);
-        if (DBG) log("isRetryNeeded: " + retVal);
-        return retVal;
+    private void configureRetry(boolean forDefault) {
+        String configString = "";
+        try {
+            if (Build.IS_DEBUGGABLE) {
+                // Using system properties is easier for testing from command line.
+                String config = SystemProperties.get("test.data_retry_config");
+                if (!TextUtils.isEmpty(config)) {
+                    configure(config);
+                    return;
+                }
+            }
+
+            CarrierConfigManager configManager = (CarrierConfigManager)
+                    mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
+            PersistableBundle b = configManager.getConfigForSubId(mPhone.getSubId());
+
+            mInterApnDelay = b.getLong(
+                    CarrierConfigManager.KEY_CARRIER_DATA_CALL_APN_DELAY_DEFAULT_LONG,
+                    DEFAULT_INTER_APN_DELAY);
+            mFailFastInterApnDelay = b.getLong(
+                    CarrierConfigManager.KEY_CARRIER_DATA_CALL_APN_DELAY_FASTER_LONG,
+                    DEFAULT_INTER_APN_DELAY_FOR_PROVISIONING);
+
+            if (forDefault) {
+                configString = b.getString(
+                        CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_DEFAULT_STRING,
+                        DEFAULT_DATA_RETRY_CONFIG);
+            }
+            else {
+                configString = b.getString(
+                        CarrierConfigManager.KEY_CARRIER_DATA_CALL_RETRY_CONFIG_OTHERS_STRING,
+                        OTHERS_DATA_RETRY_CONFIG);
+            }
+        } catch (NullPointerException ex) {
+            log("Failed to read configuration! Use the hardcoded default value.");
+
+            mInterApnDelay = DEFAULT_INTER_APN_DELAY;
+            mFailFastInterApnDelay = DEFAULT_INTER_APN_DELAY_FOR_PROVISIONING;
+            configString = (forDefault) ? DEFAULT_DATA_RETRY_CONFIG : OTHERS_DATA_RETRY_CONFIG;
+        }
+
+        if (VDBG) {
+            log("mInterApnDelay = " + mInterApnDelay + ", mFailFastInterApnDelay = " + mFailFastInterApnDelay);
+        }
+
+        configure(configString);
     }
 
     /**
      * Return the timer that should be used to trigger the data reconnection
      */
-    public int getRetryTimer() {
+    private int getRetryTimer() {
         int index;
         if (mRetryCount < mRetryArray.size()) {
             index = mRetryCount;
@@ -292,105 +397,9 @@ public class RetryManager {
     }
 
     /**
-     * @return retry count
-     */
-    public int getRetryCount() {
-        if (DBG) log("getRetryCount: " + mRetryCount);
-        return mRetryCount;
-    }
-
-    /**
-     * Increase the retry counter, does not change retry forever.
-     */
-    public void increaseRetryCount() {
-        mRetryCount++;
-        if (mRetryCount > mCurMaxRetryCount) {
-            mRetryCount = mCurMaxRetryCount;
-        }
-        if (DBG) log("increaseRetryCount: " + mRetryCount);
-    }
-
-    /**
-     * Set retry count to the specified value
-     */
-    public void setRetryCount(int count) {
-        mRetryCount = count;
-        if (mRetryCount > mCurMaxRetryCount) {
-            mRetryCount = mCurMaxRetryCount;
-        }
-
-        if (mRetryCount < 0) {
-            mRetryCount = 0;
-        }
-
-        if (DBG) log("setRetryCount: " + mRetryCount);
-    }
-
-    /**
-     * Set current maximum retry count to the specified value
-     */
-    public void setCurMaxRetryCount(int count) {
-        mCurMaxRetryCount = count;
-
-        // Make sure it's not negative
-        if (mCurMaxRetryCount < 0) {
-            mCurMaxRetryCount = 0;
-        }
-
-        // Make sure mRetryCount is within range
-        setRetryCount(mRetryCount);
-
-        if (DBG) log("setCurMaxRetryCount: " + mCurMaxRetryCount);
-    }
-
-    /**
-     * Restore CurMaxRetryCount
-     */
-    public void restoreCurMaxRetryCount() {
-        mCurMaxRetryCount = mMaxRetryCount;
-
-        // Make sure mRetryCount is within range
-        setRetryCount(mRetryCount);
-    }
-
-    /**
-     * Set retry forever to the specified value
-     */
-    public void setRetryForever(boolean retryForever) {
-        mRetryForever = retryForever;
-        if (DBG) log("setRetryForever: " + mRetryForever);
-    }
-
-    /**
-     * Clear the data-retry counter
-     */
-    public void resetRetryCount() {
-        mRetryCount = 0;
-        if (DBG) log("resetRetryCount: " + mRetryCount);
-    }
-
-    /**
-     * Retry forever using last timeout time.
-     */
-    public void retryForeverUsingLastTimeout() {
-        mRetryCount = mCurMaxRetryCount;
-        mRetryForever = true;
-        if (DBG) log("retryForeverUsingLastTimeout: " + mRetryForever + ", " + mRetryCount);
-    }
-
-    /**
-     * @return true if retrying forever
-     */
-    public boolean isRetryForever() {
-        if (DBG) log("isRetryForever: " + mRetryForever);
-        return mRetryForever;
-    }
-
-    /**
      * Parse an integer validating the value is not negative.
-     *
-     * @param name
-     * @param stringValue
+     * @param name Name
+     * @param stringValue Value
      * @return Pair.first == true if stringValue an integer >= 0
      */
     private Pair<Boolean, Integer> parseNonNegativeInt(String name, String stringValue) {
@@ -403,16 +412,17 @@ public class RetryManager {
             Rlog.e(LOG_TAG, name + " bad value: " + stringValue, e);
             retVal = new Pair<Boolean, Integer>(false, 0);
         }
-        if (VDBG) log("parseNonNetativeInt: " + name + ", " + stringValue + ", "
+        if (VDBG) {
+            log("parseNonNetativeInt: " + name + ", " + stringValue + ", "
                     + retVal.first + ", " + retVal.second);
+        }
         return retVal;
     }
 
     /**
      * Validate an integer is >= 0 and logs an error if not
-     *
-     * @param name
-     * @param value
+     * @param name Name
+     * @param value Value
      * @return Pair.first
      */
     private boolean validateNonNegativeInt(String name, int value) {
@@ -429,6 +439,7 @@ public class RetryManager {
 
     /**
      * Return next random number for the index
+     * @param index Retry index
      */
     private int nextRandomizationTime(int index) {
         int randomTime = mRetryArray.get(index).mRandomizationTime;
@@ -439,7 +450,206 @@ public class RetryManager {
         }
     }
 
+    /**
+     * Get the next APN setting for data call setup.
+     * @return APN setting to try
+     */
+    public ApnSetting getNextApnSetting() {
+
+        if (mWaitingApns == null || mWaitingApns.size() == 0) {
+            log("Waiting APN list is null or empty.");
+            return null;
+        }
+
+        // If the modem had suggested a retry delay, we should retry the current APN again
+        // (up to MAX_SAME_APN_RETRY times) instead of getting the next APN setting from
+        // our own list.
+        if (mModemSuggestedDelay != NO_SUGGESTED_RETRY_DELAY &&
+                mSameApnRetryCount < MAX_SAME_APN_RETRY) {
+            mSameApnRetryCount++;
+            return mWaitingApns.get(mCurrentApnIndex);
+        }
+
+        mSameApnRetryCount = 0;
+
+        int index = mCurrentApnIndex;
+        // Loop through the APN list to find out the index of next non-permanent failed APN.
+        while (true) {
+            if (++index == mWaitingApns.size()) index = 0;
+
+            // Stop if we find the non-failed APN.
+            if (mWaitingApns.get(index).permanentFailed == false) break;
+
+            // If we've already cycled through all the APNs, that means there is no APN we can try
+            if (index == mCurrentApnIndex) return null;
+        }
+
+        mCurrentApnIndex = index;
+        return mWaitingApns.get(mCurrentApnIndex);
+    }
+
+    /**
+     * Get the delay for trying the next waiting APN from the list.
+     * @param failFastEnabled True if fail fast mode enabled. In this case we'll use a shorter
+     *                        delay.
+     * @return delay in milliseconds
+     */
+    public long getDelayForNextApn(boolean failFastEnabled) {
+
+        if (mWaitingApns == null || mWaitingApns.size() == 0) {
+            log("Waiting APN list is null or empty.");
+            return NO_RETRY;
+        }
+
+        if (mModemSuggestedDelay != NO_SUGGESTED_RETRY_DELAY &&
+                mSameApnRetryCount < MAX_SAME_APN_RETRY) {
+            // If the modem explicitly suggests a retry delay, we should use it, even in fail fast
+            // mode.
+            return mModemSuggestedDelay;
+        }
+
+        // In order to determine the delay to try next APN, we need to peek the next available APN.
+        // Case 1 - If we will start the next round of APN trying,
+        //    we use the exponential-growth delay. (e.g. 5s, 10s, 30s...etc.)
+        // Case 2 - If we are still within the same round of APN trying,
+        //    we use the fixed standard delay between APNs. (e.g. 20s)
+
+        int index = mCurrentApnIndex;
+        while (true) {
+            if (++index >= mWaitingApns.size()) index = 0;
+
+            // Stop if we find the non-failed APN.
+            if (mWaitingApns.get(index).permanentFailed == false) break;
+
+            // If we've already cycled through all the APNs, that means all APNs have
+            // permanently failed
+            if (index == mCurrentApnIndex) return NO_RETRY;
+        }
+
+        long delay;
+        if (index <= mCurrentApnIndex) {
+            // Case 1, if the next APN is in the next round.
+            if (!mRetryForever && mRetryCount + 1 > mMaxRetryCount) {
+                log("Reached maximum retry count " + mMaxRetryCount + ".");
+                return NO_RETRY;
+            }
+            delay = getRetryTimer();
+            ++mRetryCount;
+        } else {
+            // Case 2, if the next APN is still in the same round.
+            delay = mInterApnDelay;
+        }
+
+        if (failFastEnabled && delay > mFailFastInterApnDelay) {
+            // If we enable fail fast mode, and the delay we got is longer than
+            // fail-fast delay (mFailFastInterApnDelay), use the fail-fast delay. If the delay we calculated
+            // is already shorter than fail-fast delay, then ignore fail-fast delay.
+            delay = mFailFastInterApnDelay;
+        }
+
+        return delay;
+    }
+
+    /**
+     * Mark the APN setting permanently failed.
+     * @param apn APN setting to be marked as permanently failed
+     * */
+    public void markApnPermanentFailed(ApnSetting apn) {
+        if (apn != null) {
+            apn.permanentFailed = true;
+        }
+    }
+
+    /**
+     * Reset the retry manager.
+     */
+    private void reset() {
+        mMaxRetryCount = 0;
+        mRetryCount = 0;
+        mCurrentApnIndex = -1;
+        mSameApnRetryCount = 0;
+        mModemSuggestedDelay = NO_SUGGESTED_RETRY_DELAY;
+        mRetryArray.clear();
+    }
+
+    /**
+     * Set waiting APNs for retrying in case needed.
+     * @param waitingApns Waiting APN list
+     */
+    public void setWaitingApns(ArrayList<ApnSetting> waitingApns) {
+
+        if (waitingApns == null) {
+            log("No waiting APNs provided");
+            return;
+        }
+
+        mWaitingApns = waitingApns;
+
+        // Since we replace the entire waiting APN list, we need to re-config this retry manager.
+        configureRetry(mApnType.equals(PhoneConstants.APN_TYPE_DEFAULT));
+
+        for (ApnSetting apn : mWaitingApns) {
+            apn.permanentFailed = false;
+        }
+
+        log("Setting " + mWaitingApns.size() + " waiting APNs.");
+
+        if (VDBG) {
+            for (int i = 0; i < mWaitingApns.size(); i++) {
+                log("  [" + i + "]:" + mWaitingApns.get(i));
+            }
+        }
+    }
+
+    /**
+     * Get the list of waiting APNs.
+     * @return the list of waiting APNs
+     */
+    public ArrayList<ApnSetting> getWaitingApns() {
+        return mWaitingApns;
+    }
+
+    /**
+     * Save the modem suggested delay for retrying the current APN.
+     * This method is called when we get the suggested delay from RIL.
+     * @param delay The delay in milliseconds
+     */
+    public void setModemSuggestedDelay(long delay) {
+        mModemSuggestedDelay = delay;
+    }
+
+    /**
+     * Get the delay between APN setting trying. This is the fixed delay used for APN setting trying
+     * within the same round, comparing to the exponential delay used for different rounds.
+     * @param failFastEnabled True if fail fast mode enabled, which a shorter delay will be used
+     * @return The delay in milliseconds
+     */
+    public long getInterApnDelay(boolean failFastEnabled) {
+        return (failFastEnabled) ? mFailFastInterApnDelay : mInterApnDelay;
+    }
+
+    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
+        pw.println("  RetryManager");
+        pw.println("  ***************************************");
+
+        pw.println("    config = " + mConfig);
+        pw.println("    mApnType = " + mApnType);
+        pw.println("    mCurrentApnIndex = " + mCurrentApnIndex);
+        pw.println("    mRetryCount = " + mRetryCount);
+        pw.println("    mMaxRetryCount = " + mMaxRetryCount);
+        pw.println("    mSameApnRetryCount = " + mSameApnRetryCount);
+        pw.println("    mModemSuggestedDelay = " + mModemSuggestedDelay);
+
+        pw.println("    APN list: ");
+        for (int i = 0; i < mWaitingApns.size(); i++) {
+            pw.println("      [" + i + "]=" + mWaitingApns.get(i));
+        }
+
+        pw.println("  ***************************************");
+        pw.flush();
+    }
+
     private void log(String s) {
-        Rlog.d(LOG_TAG, "[RM] " + s);
+        Rlog.d(LOG_TAG, "[" + mApnType + "] " + s);
     }
 }

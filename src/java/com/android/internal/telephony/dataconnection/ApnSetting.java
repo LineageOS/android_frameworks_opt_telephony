@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony.dataconnection;
 
+import android.telephony.Rlog;
 import android.telephony.ServiceState;
 import android.text.TextUtils;
 
@@ -24,6 +25,7 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.uicc.IccRecords;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -95,6 +97,12 @@ public class ApnSetting {
       */
     public final String mvnoMatchData;
 
+    /**
+     * Indicates this APN setting is permanently failed and cannot be
+     * retried by the retry manager anymore.
+     * */
+    public boolean permanentFailed = false;
+
     public ApnSetting(int id, String numeric, String carrier, String apn,
             String proxy, String port,
             String mmsc, String mmsProxy, String mmsPort,
@@ -132,6 +140,14 @@ public class ApnSetting {
         this.mvnoType = mvnoType;
         this.mvnoMatchData = mvnoMatchData;
 
+    }
+
+    public ApnSetting(ApnSetting apn) {
+        this(apn.id, apn.numeric, apn.carrier, apn.apn, apn.proxy, apn.port, apn.mmsc, apn.mmsProxy,
+                apn.mmsPort, apn.user, apn.password, apn.authType, apn.types, apn.protocol,
+                apn.roamingProtocol, apn.carrierEnabled, apn.bearer, apn.bearerBitmask,
+                apn.profileId, apn.modemCognitive, apn.maxConns, apn.waitTime, apn.maxConnsTime,
+                apn.mtu, apn.mvnoType, apn.mvnoMatchData);
     }
 
     /**
@@ -302,6 +318,7 @@ public class ApnSetting {
         sb.append(", ").append(mtu);
         sb.append(", ").append(mvnoType);
         sb.append(", ").append(mvnoMatchData);
+        sb.append(", ").append(permanentFailed);
         return sb.toString();
     }
 
@@ -376,7 +393,34 @@ public class ApnSetting {
     // Also should handle changes in type order and perhaps case-insensitivity
     @Override
     public boolean equals(Object o) {
-        if (o instanceof ApnSetting == false) return false;
-        return (toString().equals(o.toString()));
+        if (o instanceof ApnSetting == false) {
+            return false;
+        }
+
+        ApnSetting other = (ApnSetting) o;
+
+        return carrier.equals(other.carrier) &&
+                id == other.id &&
+                numeric.equals(other.numeric) &&
+                apn.equals(other.apn) &&
+                proxy.equals(other.proxy) &&
+                mmsc.equals(other.mmsc) &&
+                mmsProxy.equals(other.mmsProxy) &&
+                port.equals(other.port) &&
+                authType == other.authType &&
+                Arrays.deepEquals(types, other.types) &&
+                protocol.equals(other.protocol) &&
+                roamingProtocol.equals(other.roamingProtocol) &&
+                carrierEnabled == other.carrierEnabled &&
+                bearer == other.bearer &&
+                bearerBitmask == other.bearerBitmask &&
+                profileId == other.profileId &&
+                modemCognitive == other.modemCognitive &&
+                maxConns == other.maxConns &&
+                waitTime == other.waitTime &&
+                maxConnsTime == other.maxConnsTime &&
+                mtu == other.mtu &&
+                mvnoType.equals(other.mvnoType) &&
+                mvnoMatchData.equals(other.mvnoMatchData);
     }
 }

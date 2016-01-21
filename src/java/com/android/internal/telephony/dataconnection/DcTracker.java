@@ -76,6 +76,7 @@ import com.android.internal.telephony.EventLogTags;
 import com.android.internal.telephony.ITelephony;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
+import com.android.internal.telephony.RetryManager;
 import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.AsyncChannel;
@@ -109,23 +110,7 @@ public class DcTracker extends Handler {
     private static final boolean VDBG_STALL = false; // STOPSHIP if true
     private static final boolean RADIO_TESTS = false;
 
-    AtomicBoolean isCleanupRequired = new AtomicBoolean(false);
-
-    /**
-     * Constants for the data connection activity:
-     * physical link down/up
-     */
-    private static final int DATA_CONNECTION_ACTIVE_PH_LINK_INACTIVE = 0;
-    private static final int DATA_CONNECTION_ACTIVE_PH_LINK_DOWN = 1;
-    private static final int DATA_CONNECTION_ACTIVE_PH_LINK_UP = 2;
-
-    /** Delay between APN attempts.
-     *  Note the property override mechanism is there just for testing purpose only.
-     */
-    private static final int APN_DELAY_DEFAULT_MILLIS = 20000;
-
-    /** Delay between APN attempts when in fail fast mode */
-    private static final int APN_FAIL_FAST_DELAY_DEFAULT_MILLIS = 3000;
+    public AtomicBoolean isCleanupRequired = new AtomicBoolean(false);
 
     private final AlarmManager mAlarmManager;
 
@@ -174,11 +159,6 @@ public class DcTracker extends Handler {
     private static final String INTENT_RECONNECT_ALARM_EXTRA_TYPE = "reconnect_alarm_extra_type";
     private static final String INTENT_RECONNECT_ALARM_EXTRA_REASON =
             "reconnect_alarm_extra_reason";
-
-    private static final String INTENT_RESTART_TRYSETUP_ALARM =
-            "com.android.internal.telephony.data-restart-trysetup";
-    private static final String INTENT_RESTART_TRYSETUP_ALARM_EXTRA_TYPE =
-            "restart_trysetup_alarm_extra_type";
 
     private static final String INTENT_DATA_STALL_ALARM =
             "com.android.internal.telephony.data-stall";
@@ -260,9 +240,6 @@ public class DcTracker extends Handler {
             } else if (action.startsWith(INTENT_RECONNECT_ALARM)) {
                 if (DBG) log("Reconnect alarm. Previous state was " + mState);
                 onActionIntentReconnectAlarm(intent);
-            } else if (action.startsWith(INTENT_RESTART_TRYSETUP_ALARM)) {
-                if (DBG) log("Restart trySetup alarm");
-                onActionIntentRestartTrySetupAlarm(intent);
             } else if (action.equals(INTENT_DATA_STALL_ALARM)) {
                 if (DBG) log("Data stall alarm");
                 onActionIntentDataStallAlarm(intent);
@@ -377,30 +354,6 @@ public class DcTracker extends Handler {
     private DataRoamingSettingObserver mDataRoamingSettingObserver;
 
     /**
-     * The Initial MaxRetry sent to a DataConnection as a parameter
-     * to DataConnectionAc.bringUp. This value can be defined at compile
-     * time using the SystemProperty Settings.Global.DCT_INITIAL_MAX_RETRY
-     * and at runtime using gservices to change Settings.Global.DCT_INITIAL_MAX_RETRY.
-     */
-    private static final int DEFAULT_MDC_INITIAL_RETRY = 1;
-    private int getInitialMaxRetry() {
-        if (mFailFast) {
-            return 0;
-        }
-        // Get default value from system property or use DEFAULT_MDC_INITIAL_RETRY
-        int value = SystemProperties.getInt(
-                Settings.Global.MDC_INITIAL_MAX_RETRY, DEFAULT_MDC_INITIAL_RETRY);
-        if (value == DEFAULT_MDC_INITIAL_RETRY) {
-            value = mPhone.getContext().getResources().getInteger(
-                R.integer.config_mdc_initial_max_retry);
-        }
-
-        // Check if its been overridden
-        return Settings.Global.getInt(mResolver,
-                Settings.Global.MDC_INITIAL_MAX_RETRY, value);
-    }
-
-    /**
      * Maintain the sum of transmit and receive packets.
      *
      * The packet counts are initialized and reset to -1 and
@@ -494,17 +447,6 @@ public class DcTracker extends Handler {
         }
     }
 
-    private void onActionIntentRestartTrySetupAlarm(Intent intent) {
-        String apnType = intent.getStringExtra(INTENT_RESTART_TRYSETUP_ALARM_EXTRA_TYPE);
-        ApnContext apnContext = mApnContexts.get(apnType);
-        if (DBG) {
-            log("onActionIntentRestartTrySetupAlarm: mState=" + mState +
-                    " apnType=" + apnType + " apnContext=" + apnContext +
-                    " mDataConnectionAsyncChannels=" + mDataConnectionAcHashMap);
-        }
-        sendMessage(obtainMessage(DctConstants.EVENT_TRY_SETUP_DATA, apnContext));
-    }
-
     private void onActionIntentDataStallAlarm(Intent intent) {
         if (VDBG_STALL) log("onActionIntentDataStallAlarm: action=" + intent.getAction());
         Message msg = obtainMessage(DctConstants.EVENT_DATA_STALL_ALARM,
@@ -545,7 +487,7 @@ public class DcTracker extends Handler {
     private long mSentSinceLastRecv;
     // Controls when a simple recovery attempt it to be tried
     private int mNoRecvPollCount = 0;
-    // Refrence counter for enabling fail fast
+    // Reference counter for enabling fail fast
     private static int sEnableFailFastRefCounter = 0;
     // True if data stall detection is enabled
     private volatile boolean mDataStallDetectionEnabled = true;
@@ -638,9 +580,6 @@ public class DcTracker extends Handler {
     private ProgressDialog mProvisioningSpinner;
 
     public boolean mImsRegistrationState = false;
-    private ApnContext mWaitCleanUpApnContext = null;
-    private boolean mDeregistrationAlarmState = false;
-    private PendingIntent mImsDeregistrationDelayIntent = null;
 
     //***** Constructor
     public DcTracker(Phone phone) {
@@ -658,7 +597,6 @@ public class DcTracker extends Handler {
                 Context.CONNECTIVITY_SERVICE);
 
 
-        int phoneSubId = mPhone.getSubId();
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SCREEN_ON);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
@@ -696,7 +634,6 @@ public class DcTracker extends Handler {
             // Register the reconnect and restart actions.
             filter = new IntentFilter();
             filter.addAction(INTENT_RECONNECT_ALARM + '.' + apnContext.getApnType());
-            filter.addAction(INTENT_RESTART_TRYSETUP_ALARM + '.' + apnContext.getApnType());
             mPhone.getContext().registerReceiver(mIntentReceiver, filter, null, mPhone);
         }
 
@@ -1022,8 +959,7 @@ public class DcTracker extends Handler {
     }
 
     private ApnContext addApnContext(String type, NetworkConfig networkConfig) {
-        ApnContext apnContext = new ApnContext(mPhone.getContext(), type, LOG_TAG, networkConfig,
-                this);
+        ApnContext apnContext = new ApnContext(mPhone, type, LOG_TAG, networkConfig, this);
         mApnContexts.put(type, apnContext);
         mPrioritySortedApnContexts.add(apnContext);
         return apnContext;
@@ -1422,7 +1358,7 @@ public class DcTracker extends Handler {
     private enum RetryFailures {
         // retry failed networks always (the old default)
         ALWAYS,
-        // retry only when a substantial change has occured.  Either:
+        // retry only when a substantial change has occurred.  Either:
         // 1) we were restricted by voice/data concurrency and aren't anymore
         // 2) our apn list has change
         ONLY_ON_CHANGE
@@ -1454,17 +1390,17 @@ public class DcTracker extends Handler {
             if (VDBG) log("setupDataOnConnectableApns: apnContext " + apnContext);
 
             if (apnContext.getState() == DctConstants.State.FAILED
-                    || apnContext.getState() == DctConstants.State.RETRYING) {
+                    || apnContext.getState() == DctConstants.State.SCANNING) {
                 if (retryFailures == RetryFailures.ALWAYS) {
                     apnContext.releaseDataConnection(reason);
                 } else if (apnContext.isConcurrentVoiceAndDataAllowed() == false &&
-                         mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
+                        mPhone.getServiceStateTracker().isConcurrentVoiceAndDataAllowed()) {
                     // RetryFailures.ONLY_ON_CHANGE - check if voice concurrency has changed
                     apnContext.releaseDataConnection(reason);
                 } else {
                     // RetryFailures.ONLY_ON_CHANGE - check if the apns have changed
                     int radioTech = mPhone.getServiceState().getRilDataRadioTechnology();
-                    ArrayList<ApnSetting> originalApns = apnContext.getOriginalWaitingApns();
+                    ArrayList<ApnSetting> originalApns = apnContext.getWaitingApns();
                     if (originalApns != null && originalApns.isEmpty() == false) {
                         waitingApns = buildWaitingApns(apnContext.getApnType(), radioTech);
                         if (originalApns.size() != waitingApns.size() ||
@@ -1521,7 +1457,7 @@ public class DcTracker extends Handler {
         // and MOBILE DATA On/Off cases as well.
         boolean isEmergencyApn = apnContext.getApnType().equals(PhoneConstants.APN_TYPE_EMERGENCY);
         final ServiceStateTracker sst = mPhone.getServiceStateTracker();
-        boolean desiredPowerState = sst.getDesiredPowerState();
+
         boolean checkUserDataEnabled =
                     !(apnContext.getApnType().equals(PhoneConstants.APN_TYPE_IMS));
 
@@ -1585,7 +1521,7 @@ public class DcTracker extends Handler {
         }
     }
 
-    // Disabled apn's still need avail/unavail notificiations - send them out
+    // Disabled apn's still need avail/unavail notifications - send them out
     private void notifyOffApnsOfAvailability(String reason) {
         for (ApnContext apnContext : mApnContexts.values()) {
             if (!mAttached.get() || !apnContext.isReady()) {
@@ -1692,7 +1628,7 @@ public class DcTracker extends Handler {
                 apnContext.setState(DctConstants.State.IDLE);
                 if (!apnContext.isReady()) {
                     if (dcac != null) {
-                        str = "cleanUpConnection: teardown, disconnectd, !ready";
+                        str = "cleanUpConnection: teardown, disconnected, !ready";
                         if (DBG) log(str + " apnContext=" + apnContext);
                         apnContext.requestLog(str);
                         dcac.tearDown(apnContext, "", null);
@@ -1985,7 +1921,8 @@ public class DcTracker extends Handler {
         ApnSetting apnSetting;
         DcAsyncChannel dcac = null;
 
-        apnSetting = apnContext.getNextWaitingApn();
+        apnSetting = apnContext.getNextApnSetting();
+
         if (apnSetting == null) {
             if (DBG) log("setupData: return for no apn found!");
             return false;
@@ -2023,7 +1960,7 @@ public class DcTracker extends Handler {
 
                 // Only lower priority calls left.  Disconnect them all in this single PDP case
                 // so that we can bring up the requested higher priority call (once we receive
-                // repsonse for deactivate request for the calls we are about to disconnect
+                // response for deactivate request for the calls we are about to disconnect
                 if (cleanUpAllConnections(true, Phone.REASON_SINGLE_PDN_ARBITRATION)) {
                     // If any call actually requested to be disconnected, means we can't
                     // bring up this connection yet as we need to wait for those data calls
@@ -2060,8 +1997,7 @@ public class DcTracker extends Handler {
         Message msg = obtainMessage();
         msg.what = DctConstants.EVENT_DATA_SETUP_COMPLETE;
         msg.obj = new Pair<ApnContext, Integer>(apnContext, generation);
-        dcac.bringUp(apnContext, getInitialMaxRetry(), profileId, radioTech,
-                mAutoAttachOnCreation.get(), msg, generation);
+        dcac.bringUp(apnContext, profileId, radioTech, msg, generation);
 
         if (DBG) log("setupData: initing!");
         return true;
@@ -2097,7 +2033,7 @@ public class DcTracker extends Handler {
         }
 
         // The priority of apn candidates from highest to lowest is:
-        //   1) APN_TYPE_IA (Inital Attach)
+        //   1) APN_TYPE_IA (Initial Attach)
         //   2) mPreferredApn, i.e. the current preferred apn
         //   3) The first apn that than handle APN_TYPE_DEFAULT
         //   4) The first APN we can find.
@@ -2231,14 +2167,14 @@ public class DcTracker extends Handler {
          */
 
         int reset = Integer.parseInt(SystemProperties.get("net.ppp.reset-by-timeout", "0"));
-        SystemProperties.set("net.ppp.reset-by-timeout", String.valueOf(reset+1));
+        SystemProperties.set("net.ppp.reset-by-timeout", String.valueOf(reset + 1));
     }
 
     /**
      * Return true if data connection need to be setup after disconnected due to
      * reason.
      *
-     * @param reason the reason why data is disconnected
+     * @param apnContext APN context
      * @return true if try setup data connection is need for this reason
      */
     private boolean retryAfterDisconnected(ApnContext apnContext) {
@@ -2253,7 +2189,7 @@ public class DcTracker extends Handler {
         return retry;
     }
 
-    private void startAlarmForReconnect(int delay, ApnContext apnContext) {
+    private void startAlarmForReconnect(long delay, ApnContext apnContext) {
         String apnType = apnContext.getApnType();
 
         Intent intent = new Intent(INTENT_RECONNECT_ALARM + "." + apnType);
@@ -2270,23 +2206,7 @@ public class DcTracker extends Handler {
                     + " apn=" + apnContext);
         }
 
-        PendingIntent alarmIntent = PendingIntent.getBroadcast (mPhone.getContext(), 0,
-                                        intent, PendingIntent.FLAG_UPDATE_CURRENT);
-        apnContext.setReconnectIntent(alarmIntent);
-        mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                SystemClock.elapsedRealtime() + delay, alarmIntent);
-    }
-
-    private void startAlarmForRestartTrySetup(int delay, ApnContext apnContext) {
-        String apnType = apnContext.getApnType();
-        Intent intent = new Intent(INTENT_RESTART_TRYSETUP_ALARM + "." + apnType);
-        intent.putExtra(INTENT_RESTART_TRYSETUP_ALARM_EXTRA_TYPE, apnType);
-
-        if (DBG) {
-            log("startAlarmForRestartTrySetup: delay=" + delay + " action=" + intent.getAction()
-                    + " apn=" + apnContext);
-        }
-        PendingIntent alarmIntent = PendingIntent.getBroadcast (mPhone.getContext(), 0,
+        PendingIntent alarmIntent = PendingIntent.getBroadcast(mPhone.getContext(), 0,
                                         intent, PendingIntent.FLAG_UPDATE_CURRENT);
         apnContext.setReconnectIntent(alarmIntent);
         mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
@@ -2691,7 +2611,6 @@ public class DcTracker extends Handler {
     }
 
     private void completeConnection(ApnContext apnContext) {
-        boolean isProvApn = apnContext.isProvisioningApn();
 
         if (DBG) log("completeConnection: successful, notify the world apnContext=" + apnContext);
 
@@ -2782,7 +2701,7 @@ public class DcTracker extends Handler {
                 if(TextUtils.equals(apnContext.getApnType(),PhoneConstants.APN_TYPE_DEFAULT)) {
                     SystemProperties.set(PUPPET_MASTER_RADIO_STRESS_TEST, "true");
                     if (mCanSetPreferApn && mPreferredApn == null) {
-                        if (DBG) log("onDataSetupComplete: PREFERED APN is null");
+                        if (DBG) log("onDataSetupComplete: PREFERRED APN is null");
                         mPreferredApn = apn;
                         if (mPreferredApn != null) {
                             setPreferredApn(mPreferredApn.id);
@@ -2794,6 +2713,7 @@ public class DcTracker extends Handler {
 
                 // A connection is setup
                 apnContext.setState(DctConstants.State.CONNECTED);
+
                 boolean isProvApn = apnContext.isProvisioningApn();
                 final ConnectivityManager cm = ConnectivityManager.from(mPhone.getContext());
                 if (mProvisionBroadcastReceiver != null) {
@@ -2856,16 +2776,18 @@ public class DcTracker extends Handler {
             mPhone.notifyPreciseDataConnectionFailed(apnContext.getReason(),
                     apnContext.getApnType(), apn != null ? apn.apn : "unknown", cause.toString());
 
-            // Count permanent failures and remove the APN we just tried
-            if (isPermanentFail(cause)) apnContext.decWaitingApnsPermFailCount();
-
-            apnContext.removeWaitingApn(apnContext.getApnSetting());
-            if (DBG) {
-                log(String.format("onDataSetupComplete: WaitingApns.size=%d" +
-                        " WaitingApnsPermFailureCountDown=%d",
-                        apnContext.getWaitingApns().size(),
-                        apnContext.getWaitingApnsPermFailCount()));
+            if (cause.isRestartRadioFail() || apnContext.restartOnError(cause.getErrorCode())) {
+                if (DBG) log("Modem restarted.");
+                sendRestartRadio();
             }
+
+            // If the data call failure cause is a permanent failure, we mark the APN as permanent
+            // failed.
+            if (isPermanentFail(cause)) {
+                log("cause = " + cause + ", mark apn as permanent failed. apn = " + apn);
+                apnContext.markApnPermanentFailed(apn);
+            }
+
             handleError = true;
         }
 
@@ -2880,18 +2802,6 @@ public class DcTracker extends Handler {
             cleanUpAllConnections(null);
         }
 
-    }
-
-    /**
-     * @return number of milli-seconds to delay between trying apns'
-     */
-    private int getApnDelay() {
-        if (mFailFast) {
-            return SystemProperties.getInt("persist.radio.apn_ff_delay",
-                    APN_FAIL_FAST_DELAY_DEFAULT_MILLIS);
-        } else {
-            return SystemProperties.getInt("persist.radio.apn_delay", APN_DELAY_DEFAULT_MILLIS);
-        }
     }
 
     /**
@@ -2918,8 +2828,6 @@ public class DcTracker extends Handler {
         throw new RuntimeException(logString + ": No apnContext");
     }
 
-
-
     /**
      * Error has occurred during the SETUP {aka bringUP} request and the DCT
      * should either try the next waiting APN or start over from the
@@ -2927,36 +2835,27 @@ public class DcTracker extends Handler {
      * be a delay defined by {@link #getApnDelay()}.
      */
     private void onDataSetupCompleteError(AsyncResult ar) {
-        String reason = "";
+
         ApnContext apnContext = getValidApnContext(ar, "onDataSetupCompleteError");
 
         if (apnContext == null) return;
 
-        // See if there are more APN's to try
-        if (apnContext.getWaitingApns().isEmpty()) {
-            apnContext.setState(DctConstants.State.FAILED);
-            mPhone.notifyDataConnection(Phone.REASON_APN_FAILED, apnContext.getApnType());
+        long delay = apnContext.getDelayForNextApn(mFailFast);
 
-            apnContext.setDataConnectionAc(null);
-
-            if (apnContext.getWaitingApnsPermFailCount() == 0) {
-                if (DBG) {
-                    log("onDataSetupCompleteError: All APN's had permanent failures, stop retrying");
-                }
-            } else {
-                int delay = getApnDelay();
-                if (DBG) {
-                    log("onDataSetupCompleteError: Not all APN's had permanent failures delay="
-                            + delay);
-                }
-                startAlarmForRestartTrySetup(delay, apnContext);
-            }
-        } else {
-            if (DBG) log("onDataSetupCompleteError: Try next APN");
+        // Check if we need to retry or not.
+        if (delay > 0) {
+            if (DBG) log("onDataSetupCompleteError: Try next APN. delay = " + delay);
             apnContext.setState(DctConstants.State.SCANNING);
             // Wait a bit before trying the next APN, so that
             // we're not tying up the RIL command channel
-            startAlarmForReconnect(getApnDelay(), apnContext);
+            startAlarmForReconnect(delay, apnContext);
+        } else {
+            // If we are not going to retry any APN, set this APN context to failed state.
+            // This would be the final state of a data connection.
+            apnContext.setState(DctConstants.State.FAILED);
+            mPhone.notifyDataConnection(Phone.REASON_APN_FAILED, apnContext.getApnType());
+            apnContext.setDataConnectionAc(null);
+            log("onDataSetupCompleteError: Stop retrying APNs.");
         }
     }
 
@@ -2983,8 +2882,9 @@ public class DcTracker extends Handler {
 
                 // Need to notify disconnect as well, in the case of switching Airplane mode.
                 // Otherwise, it would cause 30s delayed to turn on Airplane mode.
-                if (mDisconnectPendingCount > 0)
+                if (mDisconnectPendingCount > 0) {
                     mDisconnectPendingCount--;
+                }
 
                 if (mDisconnectPendingCount == 0) {
                     notifyDataDisconnectComplete();
@@ -3000,8 +2900,13 @@ public class DcTracker extends Handler {
             // Wait a bit before trying the next APN, so that
             // we're not tying up the RIL command channel.
             // This also helps in any external dependency to turn off the context.
-            if(DBG) log("onDisconnectDone: attached, ready and retry after disconnect");
-            startAlarmForReconnect(getApnDelay(), apnContext);
+            if (DBG) log("onDisconnectDone: attached, ready and retry after disconnect");
+            long delay = apnContext.getInterApnDelay(mFailFast);
+            if (delay > 0) {
+                // Data connection is in IDLE state, so when we reconnect later, we'll rebuild
+                // the waiting APN list, which will also reset/reconfigure the retry manager.
+                startAlarmForReconnect(delay, apnContext);
+            }
         } else {
             boolean restartRadioAfterProvisioning = mPhone.getContext().getResources().getBoolean(
                     com.android.internal.R.bool.config_restartRadioAfterProvisioning);
@@ -3422,7 +3327,7 @@ public class DcTracker extends Handler {
         } else {
             loge("mAllApnSettings is null!");
         }
-        if (DBG) log("buildWaitingApns: X apnList=" + apnList);
+        if (DBG) log("buildWaitingApns: " + apnList.size() + " APNs in the list: " + apnList);
         return apnList;
     }
 
@@ -3720,6 +3625,7 @@ public class DcTracker extends Handler {
                 }
                 if (mFailFast != enabled) {
                     mFailFast = enabled;
+
                     mDataStallDetectionEnabled = !enabled;
                     if (mDataStallDetectionEnabled
                             && (getOverallState() == DctConstants.State.CONNECTED)
@@ -4515,7 +4421,7 @@ public class DcTracker extends Handler {
 
         if (mDataStallDetectionEnabled && getOverallState() == DctConstants.State.CONNECTED) {
             // If screen is on or data stall is currently suspected, set the alarm
-            // with an aggresive timeout.
+            // with an aggressive timeout.
             if (mIsScreenOn || suspectedStall || RecoveryAction.isAggressiveRecovery(nextAction)) {
                 delayInMs = Settings.Global.getInt(mResolver,
                         Settings.Global.DATA_STALL_ALARM_AGGRESSIVE_DELAY_IN_MS,
@@ -4622,3 +4528,4 @@ public class DcTracker extends Handler {
     }
 
 }
+

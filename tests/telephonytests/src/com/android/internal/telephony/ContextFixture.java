@@ -45,6 +45,7 @@ import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IInterface;
+import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Telephony;
@@ -269,7 +270,7 @@ public class ContextFixture implements TestFixture<Context> {
         public boolean testMethod1() {
             return true;
         }
-    };
+    }
 
     private final Multimap<String, ComponentName> mComponentNamesByAction =
             ArrayListMultimap.create();
@@ -303,6 +304,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());
     private final SharedPreferences mSharedPreferences = mock(SharedPreferences.class);
     private final MockContentResolver mContentResolver = new MockContentResolver();
+    private final PersistableBundle mBundle = new PersistableBundle();
 
     public ContextFixture() {
         MockitoAnnotations.initMocks(this);
@@ -334,6 +336,8 @@ public class ContextFixture implements TestFixture<Context> {
             }
         }).when(mSharedPreferences).getBoolean(anyString(), anyBoolean());
 
+        doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
+
         mContentResolver.addProvider(Telephony.Sms.CONTENT_URI.getAuthority(), mContentProvider);
     }
 
@@ -360,6 +364,10 @@ public class ContextFixture implements TestFixture<Context> {
 
     public void putStringArrayResource(int id, String[] values) {
         doReturn(values).when(mResources).getStringArray(eq(id));
+    }
+
+    public PersistableBundle getCarrierConfigBundle() {
+        return mBundle;
     }
 
     private void addService(String action, ComponentName name, IInterface service) {
