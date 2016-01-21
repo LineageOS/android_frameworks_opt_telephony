@@ -242,6 +242,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static final int RADIO_SCREEN_OFF = 0;
     static final int RADIO_SCREEN_ON = 1;
 
+    private boolean setPreferredNetworkTypeSeen = false;
 
     /**
      * Wake lock timeout should be longer than the longest timeout in
@@ -2302,6 +2303,13 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void setPreferredNetworkType(int networkType , Message response) {
+
+        if (!setPreferredNetworkTypeSeen) {
+            riljLog("Need to reboot modem!");
+            setRadioPower(false, null);
+            setPreferredNetworkTypeSeen = true;
+        }
+
         RILRequest rr = RILRequest.obtain(
                 RILConstants.RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE, response);
 
