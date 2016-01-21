@@ -16,11 +16,15 @@
 
 package com.android.internal.telephony;
 
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
+import android.os.UserHandle;
 import android.provider.Telephony;
 import android.telephony.Rlog;
 
@@ -31,13 +35,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 /**
- * Called at boot time to clean out the raw table, collecting all acknowledged messages and
- * deleting any partial message segments older than 30 days. Called from a worker thread to
- * avoid delaying phone app startup. The last step is to broadcast the first pending message
- * from the main thread, then the remaining pending messages will be broadcast after the
- * previous ordered broadcast completes.
+ * Called when the credential-encrypted storage is unlocked, collecting all acknowledged messages
+ * and deleting any partial message segments older than 30 days. Called from a worker thread to
+ * avoid delaying phone app startup. The last step is to broadcast the first pending message from
+ * the main thread, then the remaining pending messages will be broadcast after the previous
+ * ordered broadcast completes.
  */
-public class SmsBroadcastUndelivered implements Runnable {
+public class SmsBroadcastUndelivered {
     private static final String TAG = "SmsBroadcastUndelivered";
     private static final boolean DBG = InboundSmsHandler.DBG;
 
@@ -61,6 +65,7 @@ public class SmsBroadcastUndelivered implements Runnable {
 
     /** URI for raw table from SmsProvider. */
     private static final Uri sRawUri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw");
+    private static SmsBroadcastUndelivered instance;
 
     /** Content resolver to use to access raw table from SmsProvider. */
     private final ContentResolver mResolver;
@@ -71,17 +76,43 @@ public class SmsBroadcastUndelivered implements Runnable {
     /** Handler for 3GPP2-format messages (may be null). */
     private final CdmaInboundSmsHandler mCdmaInboundSmsHandler;
 
-    public SmsBroadcastUndelivered(Context context, GsmInboundSmsHandler gsmInboundSmsHandler,
+    /** Broadcast receiver that processes the raw table when the user unlocks the phone for the
+     *  first time after reboot and the credential-encrypted storage is available.
+     */
+    private final BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Rlog.d(TAG, "Received broadcast " + intent.getAction());
+            if (Intent.ACTION_USER_UNLOCKED.equals(intent.getAction())) {
+                Thread t = new Thread() {
+                    @Override
+                    public void run() {
+                        scanRawTable();
+                    }
+                };
+                t.start();
+            }
+        }
+    };
+
+    public static void initialize(Context context, GsmInboundSmsHandler gsmInboundSmsHandler,
+        CdmaInboundSmsHandler cdmaInboundSmsHandler) {
+        if (instance == null) {
+            instance = new SmsBroadcastUndelivered(
+                context, gsmInboundSmsHandler, cdmaInboundSmsHandler);
+        }
+    }
+
+    private SmsBroadcastUndelivered(Context context, GsmInboundSmsHandler gsmInboundSmsHandler,
             CdmaInboundSmsHandler cdmaInboundSmsHandler) {
         mResolver = context.getContentResolver();
         mGsmInboundSmsHandler = gsmInboundSmsHandler;
         mCdmaInboundSmsHandler = cdmaInboundSmsHandler;
-    }
 
-    @Override
-    public void run() {
-        if (DBG) Rlog.d(TAG, "scanning raw table for undelivered messages");
-        scanRawTable();
+        IntentFilter userFilter = new IntentFilter();
+        userFilter.addAction(Intent.ACTION_USER_UNLOCKED);
+        context.registerReceiverAsUser(mBroadcastReceiver, UserHandle.ALL, userFilter, null, null);
+
         // tell handlers to start processing new messages
         if (mGsmInboundSmsHandler != null) {
             mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_START_ACCEPTING_SMS);
@@ -95,6 +126,7 @@ public class SmsBroadcastUndelivered implements Runnable {
      * Scan the raw table for complete SMS messages to broadcast, and old PDUs to delete.
      */
     private void scanRawTable() {
+        if (DBG) Rlog.d(TAG, "scanning raw table for undelivered messages");
         long startTime = System.nanoTime();
         HashMap<SmsReferenceKey, Integer> multiPartReceivedCount =
                 new HashMap<SmsReferenceKey, Integer>(4);

@@ -62,9 +62,8 @@ public class ImsSMSDispatcher extends SMSDispatcher {
         mCdmaInboundSmsHandler = CdmaInboundSmsHandler.makeInboundSmsHandler(phone.getContext(),
                 storageMonitor, phone, (CdmaSMSDispatcher) mCdmaDispatcher);
         mGsmDispatcher = new GsmSMSDispatcher(phone, usageMonitor, this, mGsmInboundSmsHandler);
-        Thread broadcastThread = new Thread(new SmsBroadcastUndelivered(phone.getContext(),
-                mGsmInboundSmsHandler, mCdmaInboundSmsHandler));
-        broadcastThread.start();
+        SmsBroadcastUndelivered.initialize(phone.getContext(),
+            mGsmInboundSmsHandler, mCdmaInboundSmsHandler);
 
         mCi.registerForOn(this, EVENT_RADIO_ON, null);
         mCi.registerForImsNetworkStateChanged(this, EVENT_IMS_STATE_CHANGED, null);

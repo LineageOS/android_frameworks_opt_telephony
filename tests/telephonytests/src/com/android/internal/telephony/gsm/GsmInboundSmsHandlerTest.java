@@ -164,9 +164,8 @@ public class GsmInboundSmsHandlerTest {
         assertEquals("StartupState", getCurrentState().getName());
 
         // start SmsBroadcastUndelivered thread to trigger transition to IdleState
-        Thread broadcastThread = new Thread(new SmsBroadcastUndelivered(
-                mContextFixture.getTestDouble(), mGsmInboundSmsHandler, null));
-        broadcastThread.start();
+        SmsBroadcastUndelivered.initialize(
+                mContextFixture.getTestDouble(), mGsmInboundSmsHandler, null);
         TelephonyTestUtils.waitForMs(50);
 
         assertEquals("IdleState", getCurrentState().getName());
