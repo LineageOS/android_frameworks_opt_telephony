@@ -18,7 +18,9 @@ package com.android.internal.telephony;
 
 import android.content.Context;
 import android.os.Handler;
+import android.os.IDeviceIdleController;
 import android.os.PowerManager;
+import android.os.ServiceManager;
 
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
@@ -81,5 +83,10 @@ public class TelephonyComponentFactory {
     getCdmaSubscriptionSourceManagerInstance(Context context, CommandsInterface ci, Handler h,
                                              int what, Object obj) {
         return CdmaSubscriptionSourceManager.getInstance(context, ci, h, what, obj);
+    }
+
+    public IDeviceIdleController getIDeviceIdleController() {
+        return IDeviceIdleController.Stub.asInterface(
+                ServiceManager.getService(Context.DEVICE_IDLE_CONTROLLER));
     }
 }

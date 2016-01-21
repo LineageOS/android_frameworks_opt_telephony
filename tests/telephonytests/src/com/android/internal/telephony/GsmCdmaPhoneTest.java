@@ -19,9 +19,7 @@ package com.android.internal.telephony;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
-import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.Message;
 import android.os.RegistrantList;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
@@ -45,13 +43,10 @@ import static org.mockito.Mockito.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.mockito.Spy;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 
 public class GsmCdmaPhoneTest {
@@ -66,15 +61,15 @@ public class GsmCdmaPhoneTest {
     @Mock
     private IccCardProxy mIccCardProxy;
     @Mock
-    private CallManager callManager;
+    private CallManager mCallManager;
     @Mock
     private PhoneNotifier mNotifier;
     @Mock
-    private TelephonyComponentFactory telephonyComponentFactory;
+    private TelephonyComponentFactory mTelephonyComponentFactory;
     @Mock
-    CdmaSubscriptionSourceManager cdmaSSM;
+    CdmaSubscriptionSourceManager mCdmaSSM;
     @Mock
-    RegistrantList registrantList;
+    RegistrantList mRegistrantList;
     @Mock
     IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
     @Mock
@@ -86,8 +81,8 @@ public class GsmCdmaPhoneTest {
     @Mock
     SubscriptionController mSubscriptionController;
 
-    private SimulatedCommands simulatedCommands;
-    private ContextFixture contextFixture;
+    private SimulatedCommands mSimulatedCommands;
+    private ContextFixture mContextFixture;
     private GsmCdmaPhone mPhone;
     private Object mLock = new Object();
     private boolean mReady;
@@ -100,8 +95,8 @@ public class GsmCdmaPhoneTest {
 
         @Override
         public void onLooperPrepared() {
-            mPhone = new GsmCdmaPhone(contextFixture.getTestDouble(), simulatedCommands, mNotifier,
-                    true, 0, PhoneConstants.PHONE_TYPE_GSM, telephonyComponentFactory);
+            mPhone = new GsmCdmaPhone(mContextFixture.getTestDouble(), mSimulatedCommands, mNotifier,
+                    true, 0, PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory);
             synchronized (mLock) {
                 mReady = true;
             }
@@ -120,7 +115,7 @@ public class GsmCdmaPhoneTest {
 
     private void waitForMs(long ms) {
         try {
-            Thread.sleep(50);
+            Thread.sleep(ms);
         } catch (InterruptedException e) {
             logd("InterruptedException while waiting for voice rat to change: " + e);
         }
@@ -148,7 +143,7 @@ public class GsmCdmaPhoneTest {
         //Use reflection to mock singleton
         Field field = CallManager.class.getDeclaredField("INSTANCE");
         field.setAccessible(true);
-        field.set(null, callManager);
+        field.set(null, mCallManager);
 
         //Use reflection to mock singleton
         field = UiccController.class.getDeclaredField("mInstance");
@@ -158,7 +153,7 @@ public class GsmCdmaPhoneTest {
         //Use reflection to mock singleton
         field = CdmaSubscriptionSourceManager.class.getDeclaredField("sInstance");
         field.setAccessible(true);
-        field.set(null, cdmaSSM);
+        field.set(null, mCdmaSSM);
 
         //Use reflection to mock singleton
         field = ImsManager.class.getDeclaredField("sImsManagerInstances");
@@ -173,22 +168,22 @@ public class GsmCdmaPhoneTest {
         field = CdmaSubscriptionSourceManager.class.getDeclaredField(
                 "mCdmaSubscriptionSourceChangedRegistrants");
         field.setAccessible(true);
-        field.set(cdmaSSM, registrantList);
+        field.set(mCdmaSSM, mRegistrantList);
 
-        doReturn(mSST).when(telephonyComponentFactory).
+        doReturn(mSST).when(mTelephonyComponentFactory).
                 makeServiceStateTracker(any(GsmCdmaPhone.class), any(CommandsInterface.class));
-        doReturn(mIccCardProxy).when(telephonyComponentFactory).
+        doReturn(mIccCardProxy).when(mTelephonyComponentFactory).
                 makeIccCardProxy(any(Context.class), any(CommandsInterface.class), anyInt());
-        doReturn(mCT).when(telephonyComponentFactory).
+        doReturn(mCT).when(mTelephonyComponentFactory).
                 makeGsmCdmaCallTracker(any(GsmCdmaPhone.class));
-        doReturn(mIccPhoneBookIntManager).when(telephonyComponentFactory).
+        doReturn(mIccPhoneBookIntManager).when(mTelephonyComponentFactory).
                 makeIccPhoneBookInterfaceManager(any(Phone.class));
-        doReturn(mDcTracker).when(telephonyComponentFactory).
+        doReturn(mDcTracker).when(mTelephonyComponentFactory).
                 makeDcTracker(any(Phone.class));
         doReturn(true).when(mImsManagerInstances).containsKey(anyInt());
 
-        simulatedCommands = new SimulatedCommands();
-        contextFixture = new ContextFixture();
+        mSimulatedCommands = new SimulatedCommands();
+        mContextFixture = new ContextFixture();
 
         doReturn(false).when(mSST).isDeviceShuttingDown();
 
@@ -213,10 +208,10 @@ public class GsmCdmaPhoneTest {
         waitUntilReady();
         // set voice radio tech in RIL to 1xRTT. ACTION_CARRIER_CONFIG_CHANGED should trigger a
         // query and change phone type
-        simulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
+        mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
         assertTrue(mPhone.isPhoneTypeGsm());
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        contextFixture.sendBroadcast(intent);
+        mContextFixture.getTestDouble().sendBroadcast(intent);
         waitForMs(50);
         assertTrue(mPhone.isPhoneTypeCdmaLte());
     }

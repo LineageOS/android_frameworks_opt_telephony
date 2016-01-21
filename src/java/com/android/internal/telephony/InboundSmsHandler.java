@@ -46,7 +46,6 @@ import android.os.IDeviceIdleController;
 import android.os.Message;
 import android.os.PowerManager;
 import android.os.RemoteException;
-import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.preference.PreferenceManager;
@@ -216,8 +215,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, name);
         mWakeLock.acquire();    // wake lock released after we enter idle state
         mUserManager = (UserManager) mContext.getSystemService(Context.USER_SERVICE);
-        mDeviceIdleController = IDeviceIdleController.Stub.asInterface(
-                ServiceManager.getService(Context.DEVICE_IDLE_CONTROLLER));
+        mDeviceIdleController = TelephonyComponentFactory.getInstance().getIDeviceIdleController();
 
         addState(mDefaultState);
         addState(mStartupState, mDefaultState);
@@ -483,7 +481,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
     }
 
-    void handleNewSms(AsyncResult ar) {
+    private void handleNewSms(AsyncResult ar) {
         if (ar.exception != null) {
             loge("Exception processing incoming SMS: " + ar.exception);
             return;
@@ -541,7 +539,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @return a result code from {@link android.provider.Telephony.Sms.Intents},
      *  or {@link Activity#RESULT_OK} for delayed acknowledgment to SMSC
      */
-    public int dispatchMessage(SmsMessageBase smsb) {
+    private int dispatchMessage(SmsMessageBase smsb) {
         // If sms is null, there was a parsing error.
         if (smsb == null) {
             loge("dispatchSmsMessage: message is null");
