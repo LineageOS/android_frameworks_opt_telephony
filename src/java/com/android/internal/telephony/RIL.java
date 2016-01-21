@@ -242,6 +242,7 @@ public class RIL extends BaseCommands implements CommandsInterface {
     static final int RADIO_SCREEN_OFF = 0;
     static final int RADIO_SCREEN_ON = 1;
 
+    private boolean setPreferredNetworkTypeSeen = false;
 
     /**
      * Wake lock timeout should be longer than the longest timeout in
@@ -2302,6 +2303,11 @@ public class RIL extends BaseCommands implements CommandsInterface {
      */
     @Override
     public void setPreferredNetworkType(int networkType , Message response) {
+
+        if (!setPreferredNetworkTypeSeen) {
+            setPreferredNetworkTypeSeen = true;
+        }
+
         RILRequest rr = RILRequest.obtain(
                 RILConstants.RIL_REQUEST_SET_PREFERRED_NETWORK_TYPE, response);
 
@@ -3444,6 +3450,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
                 // Initial conditions
                 setRadioPower(false, null);
+                if (!setPreferredNetworkTypeSeen) {
+                    setPreferredNetworkType(mPreferredNetworkType, null);
+                }
                 setCdmaSubscriptionSource(mCdmaSubscription, null);
                 setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
