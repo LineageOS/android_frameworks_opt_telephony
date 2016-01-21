@@ -87,11 +87,22 @@ public final class CarrierAppUtils {
             return;
         }
 
+        HashSet<String> enabledCarrierAppsSet = new HashSet<>(systemCarrierAppsEnabled.length);
+        for (String packageName : systemCarrierAppsEnabled) {
+            enabledCarrierAppsSet.add(packageName);
+        }
+
         List<String> enabledCarrierPackages = new ArrayList<>();
 
         try {
             for (ApplicationInfo ai : candidates) {
                 String packageName = ai.packageName;
+
+                // Enabled carrier apps are already enabled, so continue
+                if (enabledCarrierAppsSet.contains(ai.packageName)) {
+                    continue;
+                }
+
                 boolean hasPrivileges =
                         telephonyManager.checkCarrierPrivilegesForPackageAnyPhone(packageName) ==
                                 TelephonyManager.CARRIER_PRIVILEGE_STATUS_HAS_ACCESS;
