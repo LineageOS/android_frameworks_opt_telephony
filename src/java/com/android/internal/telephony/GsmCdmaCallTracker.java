@@ -1034,8 +1034,13 @@ public class GsmCdmaCallTracker extends CallTracker {
         for (Iterator<Connection> it = mHandoverConnections.iterator();
                 it.hasNext();) {
             Connection hoConnection = it.next();
-            log("handlePollCalls - disconnect hoConn= " + hoConnection);
-            hoConnection.onDisconnect(DisconnectCause.NOT_VALID);
+            log("handlePollCalls - disconnect hoConn= " + hoConnection +
+                    " hoConn.State= " + hoConnection.getState());
+            if (hoConnection.getState().isRinging()) {
+                hoConnection.onDisconnect(DisconnectCause.INCOMING_MISSED);
+            } else {
+                hoConnection.onDisconnect(DisconnectCause.NOT_VALID);
+            }
             it.remove();
         }
 
