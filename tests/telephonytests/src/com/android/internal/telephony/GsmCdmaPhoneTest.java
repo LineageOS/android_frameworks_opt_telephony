@@ -113,27 +113,19 @@ public class GsmCdmaPhoneTest {
         }
     }
 
-    private void waitForMs(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            logd("InterruptedException while waiting for voice rat to change: " + e);
-        }
-    }
-
     private void switchToGsm() {
         mPhone.sendMessage(mPhone.obtainMessage(GsmCdmaPhone.EVENT_VOICE_RADIO_TECH_CHANGED,
                 new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_GSM},
                         null)));
         //wait for voice RAT to be updated
-        waitForMs(50);
+        TelephonyTestUtils.waitForMs(50);
     }
 
     private void switchToCdma() {
         mPhone.sendMessage(mPhone.obtainMessage(GsmCdmaPhone.EVENT_VOICE_RADIO_TECH_CHANGED,
                 new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_IS95A}, null)));
         //wait for voice RAT to be updated
-        waitForMs(50);
+        TelephonyTestUtils.waitForMs(50);
     }
 
     @Before
@@ -187,6 +179,7 @@ public class GsmCdmaPhoneTest {
 
         doReturn(false).when(mSST).isDeviceShuttingDown();
 
+        mReady = false;
         new GsmCdmaPhoneTestHandler(TAG).start();
     }
 
@@ -212,7 +205,7 @@ public class GsmCdmaPhoneTest {
         assertTrue(mPhone.isPhoneTypeGsm());
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mContextFixture.getTestDouble().sendBroadcast(intent);
-        waitForMs(50);
+        TelephonyTestUtils.waitForMs(50);
         assertTrue(mPhone.isPhoneTypeCdmaLte());
     }
 

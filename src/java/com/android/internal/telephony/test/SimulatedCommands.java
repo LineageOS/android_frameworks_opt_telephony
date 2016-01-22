@@ -1124,6 +1124,8 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void acknowledgeLastIncomingGsmSms(boolean success, int cause, Message result) {
         unimplemented(result);
+        SimulatedCommandsVerifier.getInstance().
+                acknowledgeLastIncomingGsmSms(success, cause, result);
     }
 
     @Override
@@ -1140,7 +1142,7 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void iccIO(int command, int fileid, String path, int p1, int p2, int p3, String data,
             String pin2, Message response) {
-        iccIOForApp(command, fileid, path, p1, p2, p3, data,pin2, null, response);
+        iccIOForApp(command, fileid, path, p1, p2, p3, data, pin2, null, response);
     }
 
     /**
@@ -1800,5 +1802,11 @@ public class SimulatedCommands extends BaseCommands
 
     public void setVoiceRadioTech(int voiceRadioTech) {
         mVoiceRadioTech = voiceRadioTech;
+    }
+
+    public void notifySmsStatus(Object result) {
+        if (mSmsStatusRegistrant != null) {
+            mSmsStatusRegistrant.notifyRegistrant(new AsyncResult(null, result, null));
+        }
     }
 }

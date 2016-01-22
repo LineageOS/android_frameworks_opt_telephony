@@ -35,7 +35,7 @@ import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public final class ImsSMSDispatcher extends SMSDispatcher {
+public class ImsSMSDispatcher extends SMSDispatcher {
     private static final String TAG = "RIL_ImsSms";
 
     private SMSDispatcher mCdmaDispatcher;
