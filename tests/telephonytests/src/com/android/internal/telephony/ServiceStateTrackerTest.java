@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.os.HandlerThread;
+import android.telephony.SubscriptionManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
 import android.util.SparseArray;
@@ -51,6 +52,8 @@ public class ServiceStateTrackerTest {
     private TelephonyEventLog mTelephonyEventLog;
     @Mock
     private DcTracker mDct;
+    @Mock
+    private ProxyController mProxyController;
 
     private SimulatedCommands simulatedCommands;
     private ContextFixture contextFixture;
@@ -84,6 +87,14 @@ public class ServiceStateTrackerTest {
         }
     }
 
+    private void waitForMs(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            logd("InterruptedException while waiting for voice rat to change: " + e);
+        }
+    }
+
     @Before
     public void setUp() throws Exception {
 
@@ -95,6 +106,7 @@ public class ServiceStateTrackerTest {
         doReturn(contextFixture.getTestDouble()).when(mPhone).getContext();
         doReturn(true).when(mPhone).getUnitTestMode();
         doReturn(true).when(mPhone).isPhoneTypeGsm();
+        doReturn(true).when(mDct).isDisconnected();
         mPhone.mDcTracker = mDct;
 
         //Use reflection to mock singleton
@@ -113,6 +125,10 @@ public class ServiceStateTrackerTest {
         field = TelephonyEventLog.class.getDeclaredField("sInstances");
         field.setAccessible(true);
         field.set(null, mLogInstances);
+
+        field = ProxyController.class.getDeclaredField("sProxyController");
+        field.setAccessible(true);
+        field.set(null, mProxyController);
 
         contextFixture.putStringArrayResource(
                 com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming,
@@ -133,9 +149,14 @@ public class ServiceStateTrackerTest {
 
     @Test @SmallTest
     public void testSetRadioPower() {
+
+        int dds = SubscriptionManager.getDefaultDataSubId();
+        doReturn(dds).when(mPhone).getSubId();
+
         waitUntilReady();
         boolean oldState = simulatedCommands.getRadioState().isOn();
         sst.setRadioPower(!oldState);
+        waitForMs(100);
         assertTrue(oldState != simulatedCommands.getRadioState().isOn());
     }
 
