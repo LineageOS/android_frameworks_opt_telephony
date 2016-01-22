@@ -25,6 +25,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.IDeviceIdleController;
+import android.os.Message;
 import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.provider.Telephony;
@@ -35,14 +36,17 @@ import android.util.Log;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.ContextFixture;
 import com.android.internal.telephony.GsmCdmaPhone;
+import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.SmsBroadcastUndelivered;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsStorageMonitor;
+import com.android.internal.telephony.SmsUsageMonitor;
 import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.TelephonyTestUtils;
 import com.android.internal.telephony.test.SimulatedCommands;
+import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
@@ -63,11 +67,13 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 
-public class GsmInboundSmsHandlerTest {
-    private static final String TAG = "GsmInboundSmsHandlerTest";
+public class GsmSmsDispatcherTest {
+    private static final String TAG = "GsmSmsDispatcherTest";
 
     @Mock
     private SmsStorageMonitor mSmsStorageMonitor;
+    @Mock
+    private SmsUsageMonitor mSmsUsageMonitor;
     @Mock
     private Phone mPhone;
     @Mock
@@ -80,25 +86,31 @@ public class GsmInboundSmsHandlerTest {
     private IDeviceIdleController mIDeviceIdleController;
     @Mock
     private TelephonyComponentFactory mTelephonyComponentFactory;
-
+    @Mock
+    private ImsSMSDispatcher mImsSmsDispatcher;
+    @Mock
     private GsmInboundSmsHandler mGsmInboundSmsHandler;
+    @Mock
+    private SimulatedCommandsVerifier mSimulatedCommandsVerifier;
+
+    private GsmSMSDispatcher mGsmSmsDispatcher;
     private ContextFixture mContextFixture;
     private SimulatedCommands mSimulatedCommands;
     private TelephonyManager mTelephonyManager;
     private Object mLock = new Object();
     private boolean mReady;
 
-    private class GsmInboundSmsHandlerTestHandler extends HandlerThread {
+    private class GsmSmsDispatcherTestHandler extends HandlerThread {
 
-        private GsmInboundSmsHandlerTestHandler(String name) {
+        private GsmSmsDispatcherTestHandler(String name) {
             super(name);
         }
 
         @Override
         public void onLooperPrepared() {
             synchronized (mLock) {
-                mGsmInboundSmsHandler = GsmInboundSmsHandler.makeInboundSmsHandler(
-                        mContextFixture.getTestDouble(), mSmsStorageMonitor, mPhone);
+                mGsmSmsDispatcher = new GsmSMSDispatcher(mPhone, mSmsUsageMonitor,
+                        mImsSmsDispatcher, mGsmInboundSmsHandler);
                 mReady = true;
             }
         }
@@ -111,17 +123,6 @@ public class GsmInboundSmsHandlerTest {
                     break;
                 }
             }
-        }
-    }
-
-    private IState getCurrentState() {
-        try {
-            Method method = StateMachine.class.getDeclaredMethod("getCurrentState");
-            method.setAccessible(true);
-            return (IState) method.invoke(mGsmInboundSmsHandler);
-        } catch (Exception e) {
-            fail(e.toString());
-            return null;
         }
     }
 
@@ -138,6 +139,10 @@ public class GsmInboundSmsHandlerTest {
         field.setAccessible(true);
         field.set(null, mTelephonyComponentFactory);
 
+        field = SimulatedCommandsVerifier.class.getDeclaredField("sInstance");
+        field.setAccessible(true);
+        field.set(null, mSimulatedCommandsVerifier);
+
         mContextFixture = new ContextFixture();
         mSimulatedCommands = new SimulatedCommands();
         mPhone.mCi = mSimulatedCommands;
@@ -147,54 +152,23 @@ public class GsmInboundSmsHandlerTest {
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
         doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory).
                 getIDeviceIdleController();
+        doReturn(mContextFixture.getTestDouble()).when(mPhone).getContext();
 
-        new GsmInboundSmsHandlerTestHandler(TAG).start();
+        new GsmSmsDispatcherTestHandler(TAG).start();
     }
 
     @After
     public void tearDown() throws Exception {
-        mGsmInboundSmsHandler = null;
+        mGsmSmsDispatcher = null;
     }
 
     @Test @SmallTest
     public void testNewSms() {
         waitUntilReady();
-        // verify initially in StartupState
-        assertEquals("StartupState", getCurrentState().getName());
-
-        // start SmsBroadcastUndelivered thread to trigger transition to IdleState
-        Thread broadcastThread = new Thread(new SmsBroadcastUndelivered(
-                mContextFixture.getTestDouble(), mGsmInboundSmsHandler, null));
-        broadcastThread.start();
+        mSimulatedCommands.notifySmsStatus("0123056789ABCDEF");
         TelephonyTestUtils.waitForMs(50);
-
-        assertEquals("IdleState", getCurrentState().getName());
-
-        // send new SMS to state machine and verify that triggers SMS_DELIVER_ACTION
-        byte[] smsPdu = new byte[]{(byte)0xFF, (byte)0xFF, (byte)0xFF};
-        mSmsMessage.mWrappedSmsMessage = mGsmSmsMessage;
-        doReturn(smsPdu).when(mGsmSmsMessage).getPdu();
-        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS,
-                new AsyncResult(null, mSmsMessage, null));
-        TelephonyTestUtils.waitForMs(50);
-
-        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContextFixture.getTestDouble(), times(2)).
-                sendBroadcast(intentArgumentCaptor.capture());
-
-        List<Intent> list = intentArgumentCaptor.getAllValues();
-        logd("list.size() " + list.size());
-        for (int i = 0; i < list.size(); i++) {
-            logd("list.get(i) " + list.get(i));
-        }
-        //todo: seems to be some issue with ArgumentCaptor. Both DELIVER and RECEIVED broadcasts
-        //can be seen in logs but according to list both are RECEIVED
-        //assertEquals(Telephony.Sms.Intents.SMS_DELIVER_ACTION,
-        //                list.get(0).getAction());
-        assertEquals(Telephony.Sms.Intents.SMS_RECEIVED_ACTION,
-                list.get(list.size() - 1).getAction());
-
-        assertEquals("IdleState", getCurrentState().getName());
+        verify(mSimulatedCommandsVerifier).acknowledgeLastIncomingGsmSms(true,
+                Telephony.Sms.Intents.RESULT_SMS_HANDLED, null);
     }
 
     private static void logd(String s) {
