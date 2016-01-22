@@ -149,7 +149,7 @@ public class ImsPhone extends ImsPhoneBase {
     private boolean mImsRegistered = false;
 
     // List of Registrants to send supplementary service notifications to.
-    RegistrantList mSsnRegistrants = new RegistrantList();
+    private RegistrantList mSsnRegistrants = new RegistrantList();
 
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
@@ -265,14 +265,16 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     public boolean getCallForwardingIndicator() {
-        boolean cf = false;
+        int callForwardingIndicator = IccRecords.CALL_FORWARDING_STATUS_UNKNOWN;
         IccRecords r = getIccRecords();
         if (r != null && r.isCallForwardStatusStored()) {
-            cf = r.getVoiceCallForwardingFlag() == IccRecords.CALL_FORWARDING_STATUS_ENABLED;
-        } else {
-            cf = getCallForwardingPreference();
+            callForwardingIndicator = r.getVoiceCallForwardingFlag();
         }
-        return cf;
+
+        if (callForwardingIndicator == IccRecords.CALL_FORWARDING_STATUS_UNKNOWN) {
+            callForwardingIndicator = getVoiceCallForwardingFlag();
+        }
+        return (callForwardingIndicator == IccRecords.CALL_FORWARDING_STATUS_ENABLED);
     }
 
     /**
@@ -1153,7 +1155,8 @@ public class ImsPhone extends ImsPhoneBase {
     }
 
     @Override
-    public void registerForSuppServiceNotification(Handler h, int what, Object obj) {
+    public void registerForSuppServiceNotification(
+            Handler h, int what, Object obj) {
         mSsnRegistrants.addUnique(h, what, obj);
     }
 

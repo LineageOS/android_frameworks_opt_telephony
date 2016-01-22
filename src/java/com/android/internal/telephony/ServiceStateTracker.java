@@ -1144,6 +1144,11 @@ public abstract class ServiceStateTracker extends Handler {
         return isInNetwork(b, network, CarrierConfigManager.KEY_CDMA_NONROAMING_NETWORKS_STRING_ARRAY);
     }
 
+    /** Check if the device is shutting down. */
+    public final boolean isDeviceShuttingDown() {
+        return mDeviceShuttingDown;
+    }
+
     /**
      * Consider dataRegState if voiceRegState is OOS to determine SPN to be
      * displayed
@@ -1167,11 +1172,6 @@ public abstract class ServiceStateTracker extends Handler {
     public boolean isRatLte(int rat) {
         return (rat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE ||
             rat == ServiceState.RIL_RADIO_TECHNOLOGY_LTE_CA);
-    }
-
-    /** Check if the device is shutting down. */
-    public final boolean isDeviceShuttingDown() {
-        return mDeviceShuttingDown;
     }
 
     protected String maybeUpdateHDTagForSpn(boolean showSpn, String spn) {

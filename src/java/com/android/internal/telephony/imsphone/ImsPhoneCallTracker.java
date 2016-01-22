@@ -90,7 +90,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
     //Indices map to ImsConfig.FeatureConstants
     private boolean[] mImsFeatureEnabled = {false, false, false, false, false, false};
     private final String[] mImsFeatureStrings = {"VoLTE", "ViLTE", "VoWiFi", "ViWiFi",
-            "UTLTE", "UTWiFi"};
+            "UtLTE", "UtWiFi"};
 
     private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
@@ -1409,24 +1409,15 @@ public final class ImsPhoneCallTracker extends CallTracker {
             }
             foregroundImsPhoneCall.merge(peerImsPhoneCall, ImsPhoneCall.State.ACTIVE);
 
-            // TODO Temporary code. Remove the try-catch block from the runnable once thread
-            // synchronization is fixed.
-            Runnable r = new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        final ImsPhoneConnection conn = findConnection(call);
-                        log("onCallMerged: ImsPhoneConnection=" + conn);
-                        log("onCallMerged: CurrentVideoProvider=" + conn.getVideoProvider());
-                        setVideoCallProvider(conn, call);
-                        log("onCallMerged: CurrentVideoProvider=" + conn.getVideoProvider());
-                    } catch (Exception e) {
-                        loge("onCallMerged: exception " + e);
-                    }
-                }
-            };
-
-            ImsPhoneCallTracker.this.post(r);
+            try {
+                final ImsPhoneConnection conn = findConnection(call);
+                log("onCallMerged: ImsPhoneConnection=" + conn);
+                log("onCallMerged: CurrentVideoProvider=" + conn.getVideoProvider());
+                setVideoCallProvider(conn, call);
+                log("onCallMerged: CurrentVideoProvider=" + conn.getVideoProvider());
+            } catch (Exception e) {
+                loge("onCallMerged: exception " + e);
+            }
 
             // After merge complete, update foreground as Active
             // and background call as Held, if background call exists
@@ -1461,7 +1452,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
             // Start plumbing this even through Telecom so other components can take
             // appropriate action.
-            ImsPhoneConnection conn = findConnection(call);
+            ImsPhoneConnection conn = findConnection(mForegroundCall.getImsCall());
             if (conn != null) {
                 conn.onConferenceMergeFailed();
             }
@@ -1764,7 +1755,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 }
                 break;
             case EVENT_DIAL_PENDINGMO:
-                dialInternal(mPendingMO, mClirMode, mPendingCallVideoState, mPendingIntentExtras);
                 mPendingIntentExtras = null;
                 break;
 

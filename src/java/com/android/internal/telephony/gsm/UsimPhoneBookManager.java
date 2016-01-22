@@ -149,6 +149,10 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
         mRefreshCache = false;
     }
 
+    public boolean isPbrFilePresent() {
+        return mIsPbrPresent;
+    }
+
     public ArrayList<AdnRecord> loadEfFilesFromUsim() {
         synchronized (mLock) {
             if (!mPhoneBookRecords.isEmpty()) {
@@ -947,6 +951,8 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
                 ar = (AsyncResult) msg.obj;
                 if (ar.exception == null) {
                     createPbrFile((ArrayList<byte[]>) ar.result);
+                } else {
+                    mIsPbrPresent = false;
                 }
                 synchronized (mLock) {
                     mLock.notify();

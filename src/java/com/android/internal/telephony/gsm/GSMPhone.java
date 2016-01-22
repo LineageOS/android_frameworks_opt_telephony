@@ -38,6 +38,7 @@ import android.telephony.TelephonyManager;
 
 import com.android.internal.telephony.CallTracker;
 import com.android.internal.telephony.ConfigResourceUtil;
+import com.android.internal.telephony.PhoneFactory;
 
 import android.text.TextUtils;
 import android.telephony.Rlog;
@@ -156,7 +157,7 @@ public class GSMPhone extends PhoneBase {
         mCi.setPhoneType(PhoneConstants.PHONE_TYPE_GSM);
         mCT = new GsmCallTracker(this);
 
-        mSST = new GsmServiceStateTracker(this);
+        mSST = TelephonyPluginDelegate.getInstance().makeGsmServiceStateTracker(this);
         mDcTracker = TelephonyPluginDelegate.getInstance().makeDcTracker(this);
 
         if (!unitTestMode) {
@@ -172,6 +173,7 @@ public class GSMPhone extends PhoneBase {
         mSST.registerForNetworkAttached(this, EVENT_REGISTERED_TO_NETWORK, null);
         mCi.setOnSs(this, EVENT_SS, null);
         setProperties();
+        notifyPhoneStateChanged();
     }
 
     public
@@ -191,7 +193,7 @@ public class GSMPhone extends PhoneBase {
         mCi.setPhoneType(PhoneConstants.PHONE_TYPE_GSM);
         mCT = new GsmCallTracker(this);
 
-        mSST = new GsmServiceStateTracker(this);
+        mSST = TelephonyPluginDelegate.getInstance().makeGsmServiceStateTracker(this);
         mDcTracker = TelephonyPluginDelegate.getInstance().makeDcTracker(this);
 
         if (!unitTestMode) {
@@ -211,6 +213,7 @@ public class GSMPhone extends PhoneBase {
         log("GSMPhone: constructor: sub = " + mPhoneId);
 
         setProperties();
+        notifyPhoneStateChanged();
     }
 
     protected void setProperties() {
@@ -328,14 +331,16 @@ public class GSMPhone extends PhoneBase {
     }
 
     public boolean getCallForwardingIndicator() {
-        boolean cf = false;
-        IccRecords r = mIccRecords.get();
+        int callForwardingIndicator = IccRecords.CALL_FORWARDING_STATUS_UNKNOWN;
+        IccRecords r = getIccRecords();
         if (r != null && r.isCallForwardStatusStored()) {
-            cf = r.getVoiceCallForwardingFlag() == IccRecords.CALL_FORWARDING_STATUS_ENABLED;
-        } else {
-            cf = getCallForwardingPreference();
+            callForwardingIndicator = r.getVoiceCallForwardingFlag();
         }
-        return cf;
+
+        if (callForwardingIndicator == IccRecords.CALL_FORWARDING_STATUS_UNKNOWN) {
+            callForwardingIndicator = getVoiceCallForwardingFlag();
+        }
+        return (callForwardingIndicator == IccRecords.CALL_FORWARDING_STATUS_ENABLED);
     }
 
     @Override
@@ -1293,9 +1298,6 @@ public class GSMPhone extends PhoneBase {
             obtainMessage(EVENT_SET_CLIR_COMPLETE, commandInterfaceCLIRMode, 0, onComplete));
             return;
         }
-        // Packing CLIR value in the message. This will be required for
-        // SharedPreference caching, if the message comes back as part of
-        // a success response.
         mCi.setCLIR(commandInterfaceCLIRMode,
                 obtainMessage(EVENT_SET_CLIR_COMPLETE, commandInterfaceCLIRMode, 0, onComplete));
     }
@@ -1892,9 +1894,7 @@ public class GSMPhone extends PhoneBase {
         int nwMode = Phone.PREFERRED_NT_MODE;
         int subId = getSubId();
 
-        nwMode = android.provider.Settings.Global.getInt(mContext.getContentResolver(),
-                    android.provider.Settings.Global.PREFERRED_NETWORK_MODE + subId, nwMode);
-
+        nwMode = PhoneFactory.calculatePreferredNetworkType(mContext, subId);
         Rlog.d(LOG_TAG, "isManualNetSelAllowed in mode = " + nwMode);
         /*
          *  For multimode targets in global mode manual network

@@ -1048,10 +1048,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 */
                 if ((ar.exception == null) && (msg.arg1 == 1)) {
                     boolean cffEnabled = (msg.arg2 == 1);
-                    if (mIccRecords != null) {
-                        mPhone.setVoiceCallForwardingFlag(1, cffEnabled, mDialingNumber);
-                        mPhone.setCallForwardingPreference(cffEnabled);
-                    }
+                    mPhone.setVoiceCallForwardingFlag(1, cffEnabled, mDialingNumber);
+                    mPhone.setCallForwardingPreference(cffEnabled);
                 }
 
                 onSetComplete(msg, ar);
@@ -1302,11 +1300,9 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 (info.serviceClass & serviceClassMask)
                         == CommandsInterface.SERVICE_CLASS_VOICE) {
             boolean cffEnabled = (info.status == 1);
-            if (mIccRecords != null) {
-                mPhone.setVoiceCallForwardingFlag(1, cffEnabled, info.number);
-                Rlog.d(LOG_TAG, "makeCFQueryResultMessage cffEnabled  = "+cffEnabled);
-                mPhone.setCallForwardingPreference(cffEnabled);
-            }
+            mPhone.setVoiceCallForwardingFlag(1, cffEnabled, info.number);
+            Rlog.d(LOG_TAG, "makeCFQueryResultMessage cffEnabled  = "+cffEnabled);
+            mPhone.setCallForwardingPreference(cffEnabled);
         }
 
         return TextUtils.replace(template, sources, destinations);
@@ -1342,10 +1338,8 @@ public final class ImsPhoneMmiCode extends Handler implements MmiCode {
                 sb.append(mContext.getText(com.android.internal.R.string.serviceDisabled));
 
                 // Set unconditional CFF in SIM to false
-                if (mIccRecords != null) {
-                    mPhone.setCallForwardingPreference(false);
-                    mPhone.setVoiceCallForwardingFlag(1, false, null);
-                }
+                mPhone.setCallForwardingPreference(false);
+                mPhone.setVoiceCallForwardingFlag(1, false, null);
             } else {
 
                 SpannableStringBuilder tb = new SpannableStringBuilder();

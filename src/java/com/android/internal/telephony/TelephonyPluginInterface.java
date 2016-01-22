@@ -31,6 +31,10 @@ import android.content.Context;
 
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.dataconnection.DctController;
+import com.android.internal.telephony.gsm.GSMPhone;
+import com.android.internal.telephony.gsm.GsmServiceStateTracker;
+import com.android.internal.telephony.uicc.SIMRecords;
+import com.android.internal.telephony.uicc.UiccCardApplication;
 
 public interface TelephonyPluginInterface {
 
@@ -49,9 +53,16 @@ public interface TelephonyPluginInterface {
     public PhoneBase makeGSMPhone(Context context, CommandsInterface ci,
             PhoneNotifier notifier, int phoneId);
 
+    public PhoneProxy makePhoneProxy(PhoneBase phone);
+
     public PhoneBase makeCDMALTEPhone(Context context, CommandsInterface ci,
             PhoneNotifier notifier, int phoneId);
 
     public void initExtTelephonyClasses(Context context,
             Phone[] phoneProxy, CommandsInterface[] commandsInterfaces);
+
+    public GsmServiceStateTracker makeGsmServiceStateTracker(GSMPhone phone);
+
+    public SIMRecords makeSIMRecords (UiccCardApplication app, Context c,
+            CommandsInterface ci);
 }

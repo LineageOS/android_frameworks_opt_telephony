@@ -489,6 +489,9 @@ public class GsmConnection extends Connection {
             case CallFailCause.EMERGENCY_PERM_FAILURE:
                 return DisconnectCause.EMERGENCY_PERM_FAILURE;
 
+            case CallFailCause.NON_SELECTED_USER_CLEARING:
+                return DisconnectCause.NON_SELECTED_USER_CLEARING;
+
             case CallFailCause.ERROR_UNSPECIFIED:
             case CallFailCause.NORMAL_CLEARING:
             default:

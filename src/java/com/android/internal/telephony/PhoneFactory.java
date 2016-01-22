@@ -195,7 +195,7 @@ public class PhoneFactory {
                     }
                     Rlog.i(LOG_TAG, "Creating Phone with type = " + phoneType + " sub = " + i);
 
-                    sProxyPhones[i] = new PhoneProxy(phone);
+                    sProxyPhones[i] = TelephonyPluginDelegate.getInstance().makePhoneProxy(phone);
                 }
                 mProxyController = ProxyController.getInstance(context, sProxyPhones,
                         mUiccController, sCommandsInterfaces);

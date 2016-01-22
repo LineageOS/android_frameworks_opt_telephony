@@ -153,6 +153,7 @@ public class CDMAPhone extends PhoneBase {
         super("CDMA", notifier, context, ci, false, phoneId);
         initSstIcc();
         init(context, notifier);
+        notifyPhoneStateChanged();
     }
 
     protected void initSstIcc() {
@@ -1175,7 +1176,7 @@ public class CDMAPhone extends PhoneBase {
             mIsPhoneInEcmState = true;
             // notify change
             sendEmergencyCallbackModeChange();
-            setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "true");
+            super.setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "true");
 
             // Post this runnable so we will automatically exit
             // if no one invokes exitEmergencyCallbackMode() directly.
@@ -1203,7 +1204,7 @@ public class CDMAPhone extends PhoneBase {
         if (ar.exception == null) {
             if (mIsPhoneInEcmState) {
                 mIsPhoneInEcmState = false;
-                setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
+                super.setSystemProperty(TelephonyProperties.PROPERTY_INECM_MODE, "false");
             }
             // send an Intent
             sendEmergencyCallbackModeChange();
