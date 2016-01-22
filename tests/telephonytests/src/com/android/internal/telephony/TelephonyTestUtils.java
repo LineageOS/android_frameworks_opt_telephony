@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.telephony.SmsCbMessage;
+import android.util.Log;
 
 import com.android.internal.telephony.cdma.SmsMessage;
 
@@ -30,6 +31,7 @@ import junit.framework.Assert;
  * Convention for helper function naming is: classNameFunctionName()
  */
 public class TelephonyTestUtils {
+    private static final String TAG = "TelephonyTestUtils";
 
     /**
      * This function calls constructor that takes in params.
@@ -149,5 +151,17 @@ public class TelephonyTestUtils {
             Assert.fail(e.toString());
             return null;
         }
+    }
+
+    public static void waitForMs(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            logd("InterruptedException while waiting: " + e);
+        }
+    }
+
+    private static void logd(String s) {
+        Log.d(TAG, s);
     }
 }
