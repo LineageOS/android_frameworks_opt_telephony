@@ -61,6 +61,9 @@ public class SimulatedCommands extends BaseCommands
     private final static SimFdnState INITIAL_FDN_STATE = SimFdnState.NONE;
     private final static String DEFAULT_SIM_PIN2_CODE = "5678";
     private final static String SIM_PUK2_CODE = "87654321";
+    public final static String FAKE_LONG_NAME = "Fake long name";
+    public final static String FAKE_SHORT_NAME = "Fake short name";
+    public final static String FAKE_MCC_MNC = "123456";
 
     //***** Instance Variables
 
@@ -946,9 +949,9 @@ public class SimulatedCommands extends BaseCommands
     public void getOperator(Message result) {
         String[] ret = new String[3];
 
-        ret[0] = "El Telco Loco";
-        ret[1] = "Telco Loco";
-        ret[2] = "001001";
+        ret[0] = FAKE_LONG_NAME;
+        ret[1] = FAKE_SHORT_NAME;
+        ret[2] = FAKE_MCC_MNC;
 
         resultSuccess(result, ret);
     }
