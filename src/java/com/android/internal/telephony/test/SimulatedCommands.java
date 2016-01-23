@@ -1809,4 +1809,10 @@ public class SimulatedCommands extends BaseCommands
             mSmsStatusRegistrant.notifyRegistrant(new AsyncResult(null, result, null));
         }
     }
+
+    public void notifyGsmBroadcastSms(Object result) {
+        if (mGsmBroadcastSmsRegistrant != null) {
+            mGsmBroadcastSmsRegistrant.notifyRegistrant(new AsyncResult(null, result, null));
+        }
+    }
 }

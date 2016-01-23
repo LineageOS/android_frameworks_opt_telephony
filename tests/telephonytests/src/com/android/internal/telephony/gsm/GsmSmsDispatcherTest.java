@@ -154,6 +154,7 @@ public class GsmSmsDispatcherTest {
                 getIDeviceIdleController();
         doReturn(mContextFixture.getTestDouble()).when(mPhone).getContext();
 
+        mReady = false;
         new GsmSmsDispatcherTestHandler(TAG).start();
     }
 
@@ -163,7 +164,7 @@ public class GsmSmsDispatcherTest {
     }
 
     @Test @SmallTest
-    public void testNewSms() {
+    public void testSmsStatus() {
         waitUntilReady();
         mSimulatedCommands.notifySmsStatus("0123056789ABCDEF");
         TelephonyTestUtils.waitForMs(50);

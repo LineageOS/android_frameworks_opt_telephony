@@ -122,6 +122,7 @@ public class ServiceStateTrackerTest {
                 com.android.internal.R.array.config_operatorConsideredNonRoaming,
                 new String[]{"123456"});
 
+        mReady = false;
         new ServiceStateTrackerTestHandler(TAG).start();
         logd("ServiceStateTrackerTest -Setup!");
     }

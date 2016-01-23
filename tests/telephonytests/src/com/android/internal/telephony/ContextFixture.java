@@ -223,13 +223,22 @@ public class ContextFixture implements TestFixture<Context> {
         public void sendOrderedBroadcastAsUser(Intent intent, UserHandle user,
                 String receiverPermission, BroadcastReceiver resultReceiver, Handler scheduler,
                 int initialCode, String initialData, Bundle initialExtras) {
-            // TODO -- need to ensure this is captured
+            logd("sendOrderedBroadcastAsUser called for " + intent.getAction());
+            sendBroadcast(intent);
+            if (resultReceiver != null) {
+                resultReceiver.onReceive(this, intent);
+            }
         }
 
         @Override
         public void sendOrderedBroadcastAsUser(Intent intent, UserHandle user,
                 String receiverPermission, int appOp, BroadcastReceiver resultReceiver,
                 Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
+            logd("sendOrderedBroadcastAsUser called for " + intent.getAction());
+            sendBroadcast(intent);
+            if (resultReceiver != null) {
+                resultReceiver.onReceive(this, intent);
+            }
         }
 
         @Override
