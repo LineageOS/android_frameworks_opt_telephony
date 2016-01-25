@@ -163,7 +163,7 @@ public class ServiceStateTrackerTest {
                 com.android.internal.R.array.config_operatorConsideredNonRoaming,
                 new String[]{"123456"});
 
-        int dds = SubscriptionManager.getDefaultDataSubId();
+        int dds = SubscriptionManager.getDefaultDataSubscriptionId();
         doReturn(dds).when(mPhone).getSubId();
 
         mReady = false;

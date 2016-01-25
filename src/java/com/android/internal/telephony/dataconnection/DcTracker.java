@@ -1307,7 +1307,7 @@ public class DcTracker extends Handler {
             if (DBG && !recordsLoaded) log("isDataAllowed getRecordsLoaded=" + recordsLoaded);
         }
 
-        int dataSub = SubscriptionManager.getDefaultDataSubId();
+        int dataSub = SubscriptionManager.getDefaultDataSubscriptionId();
         boolean defaultDataSelected = SubscriptionManager.isValidSubscriptionId(dataSub);
         PhoneConstants.State state = PhoneConstants.State.IDLE;
         // Note this is explicitly not using mPhone.getState.  See b/19090488.
@@ -2085,7 +2085,7 @@ public class DcTracker extends Handler {
         cleanUpConnectionsOnUpdatedApns(!isDisconnected);
 
         // FIXME: See bug 17426028 maybe no conditional is needed.
-        if (mPhone.getSubId() == SubscriptionManager.getDefaultDataSubId()) {
+        if (mPhone.getSubId() == SubscriptionManager.getDefaultDataSubscriptionId()) {
             setupDataOnConnectableApns(Phone.REASON_APN_CHANGED);
         }
     }
@@ -2198,7 +2198,7 @@ public class DcTracker extends Handler {
         intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
 
         // Get current sub id.
-        int subId = SubscriptionManager.getDefaultDataSubId();
+        int subId = SubscriptionManager.getDefaultDataSubscriptionId();
         intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, subId);
 
         if (DBG) {
