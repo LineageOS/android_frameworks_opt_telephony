@@ -89,15 +89,6 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
     }
 
     /**
-     * Return whether the device is in Emergency Call Mode (only for 3GPP2).
-     * @return true if the device is in ECM; false otherwise
-     */
-    private static boolean isInEmergencyCallMode() {
-        String inEcm = SystemProperties.get(TelephonyProperties.PROPERTY_INECM_MODE, "false");
-        return "true".equals(inEcm);
-    }
-
-    /**
      * Return true if this handler is for 3GPP2 messages; false for 3GPP format.
      * @return true (3GPP2)
      */
@@ -113,10 +104,6 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      */
     @Override
     protected int dispatchMessageRadioSpecific(SmsMessageBase smsb) {
-        if (isInEmergencyCallMode()) {
-            return Activity.RESULT_OK;
-        }
-
         SmsMessage sms = (SmsMessage) smsb;
         boolean isBroadcastType = (SmsEnvelope.MESSAGE_TYPE_BROADCAST == sms.getMessageType());
 
@@ -207,10 +194,6 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
      */
     @Override
     protected void acknowledgeLastIncomingSms(boolean success, int result, Message response) {
-        if (isInEmergencyCallMode()) {
-            return;
-        }
-
         int causeCode = resultToCause(result);
         mPhone.mCi.acknowledgeLastIncomingCdmaSms(success, causeCode, response);
 
