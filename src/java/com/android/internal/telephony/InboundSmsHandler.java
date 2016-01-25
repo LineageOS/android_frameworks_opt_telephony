@@ -96,7 +96,7 @@ import java.util.List;
  */
 public abstract class InboundSmsHandler extends StateMachine {
     protected static final boolean DBG = true;
-    private static final boolean VDBG = false;  // STOPSHIP if true, logs user data
+    private static final boolean VDBG = false; // STOPSHIP if true, logs user data
 
     /** Query projection for checking for duplicate message segments. */
     private static final String[] PDU_PROJECTION = {
@@ -636,7 +636,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
 
             tracker = new InboundSmsTracker(sms.getPdu(), sms.getTimestampMillis(), destPort,
-                    is3gpp2(), false);
+                    is3gpp2(), false, sms.getDisplayOriginatingAddress());
         } else {
             // Create a tracker for this message segment.
             SmsHeader.ConcatRef concatRef = smsHeader.concatRef;
@@ -644,7 +644,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             int destPort = (portAddrs != null ? portAddrs.destPort : -1);
 
             tracker = new InboundSmsTracker(sms.getPdu(), sms.getTimestampMillis(), destPort,
-                    is3gpp2(), sms.getOriginatingAddress(), concatRef.refNumber,
+                    is3gpp2(), sms.getDisplayOriginatingAddress(), concatRef.refNumber,
                     concatRef.seqNumber, concatRef.msgCount, false);
         }
 
@@ -764,6 +764,12 @@ public abstract class InboundSmsHandler extends StateMachine {
                 deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs());
                 return false;
             }
+        }
+
+        if (BlockChecker.isBlocked(mContext,
+                tracker.getAddress())) {
+            deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs());
+            return false;
         }
 
         List<String> carrierPackages = null;

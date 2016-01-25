@@ -37,9 +37,10 @@ public final class InboundSmsTracker {
     private final int mDestPort;
     private final boolean mIs3gpp2;
     private final boolean mIs3gpp2WapPdu;
+    // Copied from SmsMessageBase#getDisplayOriginatingAddress used for blocking messages.
+    private final String mAddress;
 
     // Fields for concatenating multi-part SMS messages
-    private final String mAddress;
     private final int mReferenceNumber;
     private final int mSequenceNumber;
     private final int mMessageCount;
@@ -65,21 +66,23 @@ public final class InboundSmsTracker {
 
     /**
      * Create a tracker for a single-part SMS.
+     *
      * @param pdu the message PDU
      * @param timestamp the message timestamp
      * @param destPort the destination port
      * @param is3gpp2 true for 3GPP2 format; false for 3GPP format
      * @param is3gpp2WapPdu true for 3GPP2 format WAP PDU; false otherwise
+     * @param address originating address, or email if this message was from an email gateway
      */
     InboundSmsTracker(byte[] pdu, long timestamp, int destPort, boolean is3gpp2,
-            boolean is3gpp2WapPdu) {
+            boolean is3gpp2WapPdu, String address) {
         mPdu = pdu;
         mTimestamp = timestamp;
         mDestPort = destPort;
         mIs3gpp2 = is3gpp2;
         mIs3gpp2WapPdu = is3gpp2WapPdu;
+        mAddress = address;
         // fields for multi-part SMS
-        mAddress = null;
         mReferenceNumber = -1;
         mSequenceNumber = getIndexOffset();     // 0 or 1, depending on type
         mMessageCount = 1;
@@ -87,16 +90,16 @@ public final class InboundSmsTracker {
 
     /**
      * Create a tracker for a multi-part SMS. Sequence numbers start at 1 for 3GPP and regular
-     * concatenated 3GPP2 messages, but CDMA WAP push sequence numbers start at 0. The caller
-     * will subtract 1 if necessary so that the sequence number is always 0-based. When loading
-     * and saving to the raw table, the sequence number is adjusted if necessary for backwards
+     * concatenated 3GPP2 messages, but CDMA WAP push sequence numbers start at 0. The caller will
+     * subtract 1 if necessary so that the sequence number is always 0-based. When loading and
+     * saving to the raw table, the sequence number is adjusted if necessary for backwards
      * compatibility.
      *
      * @param pdu the message PDU
      * @param timestamp the message timestamp
      * @param destPort the destination port
      * @param is3gpp2 true for 3GPP2 format; false for 3GPP format
-     * @param address the originating address
+     * @param address originating address, or email if this message was from an email gateway
      * @param referenceNumber the concatenated reference number
      * @param sequenceNumber the sequence number of this segment (0-based)
      * @param messageCount the total number of segments

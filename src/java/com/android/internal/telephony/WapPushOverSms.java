@@ -204,14 +204,25 @@ public class WapPushOverSms implements ServiceConnection {
                 System.arraycopy(pdu, dataIndex, intentData, 0, intentData.length);
             }
 
+            int[] subIds = SubscriptionManager.getSubId(phoneId);
+            int subId = (subIds != null) && (subIds.length > 0) ? subIds[0]
+                    : SmsManager.getDefaultSmsSubscriptionId();
+            final GenericPdu parsedPdu = new PduParser(intentData,
+                    shouldParseContentDisposition(subId)).parse();
+
+            // Do not abort if parsedPdu is null: the default messaging app may successfully parse
+            // the same PDU.
+            if (parsedPdu != null && parsedPdu.getMessageType() == MESSAGE_TYPE_NOTIFICATION_IND) {
+                final NotificationInd nInd = (NotificationInd) parsedPdu;
+                if (nInd.getFrom() != null
+                        && BlockChecker.isBlocked(mContext, nInd.getFrom().getString())) {
+                    return Intents.RESULT_SMS_HANDLED;
+                }
+            }
+
             if (SmsManager.getDefault().getAutoPersisting()) {
                 // Store the wap push data in telephony
-                int [] subIds = SubscriptionManager.getSubId(phoneId);
-                // FIXME (tomtaylor) - when we've updated SubscriptionManager, change
-                // SubscriptionManager.DEFAULT_SUB_ID to SubscriptionManager.getDefaultSmsSubId()
-                int subId = (subIds != null) && (subIds.length > 0) ? subIds[0] :
-                    SmsManager.getDefaultSmsSubscriptionId();
-                writeInboxMessage(subId, intentData);
+                writeInboxMessage(subId, parsedPdu);
             }
 
             /**
@@ -318,9 +329,7 @@ public class WapPushOverSms implements ServiceConnection {
                 .getBoolean(SmsManager.MMS_CONFIG_SUPPORT_MMS_CONTENT_DISPOSITION, true);
     }
 
-    private void writeInboxMessage(int subId, byte[] pushData) {
-        final GenericPdu pdu =
-                new PduParser(pushData, shouldParseContentDisposition(subId)).parse();
+    private void writeInboxMessage(int subId, GenericPdu pdu) {
         if (pdu == null) {
             Rlog.e(TAG, "Invalid PUSH PDU");
         }
