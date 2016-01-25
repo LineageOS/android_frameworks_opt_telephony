@@ -2367,7 +2367,7 @@ public class GsmCdmaPhone extends Phone {
     @Override
     public boolean updateCurrentCarrierInProvider() {
         if (isPhoneTypeGsm() || isPhoneTypeCdmaLte()) {
-            long currentDds = SubscriptionManager.getDefaultDataSubId();
+            long currentDds = SubscriptionManager.getDefaultDataSubscriptionId();
             String operatorNumeric = getOperatorNumeric();
 
             logd("updateCurrentCarrierInProvider: mSubId = " + getSubId()

@@ -1149,7 +1149,7 @@ public class ServiceStateTracker extends Handler {
                 break;
 
             case EVENT_ALL_DATA_DISCONNECTED:
-                int dds = SubscriptionManager.getDefaultDataSubId();
+                int dds = SubscriptionManager.getDefaultDataSubscriptionId();
                 ProxyController.getInstance().unregisterForAllDataDisconnected(dds, this);
                 synchronized(this) {
                     if (mPendingRadioPowerOffAfterDataOff) {
@@ -4037,7 +4037,7 @@ public class ServiceStateTracker extends Handler {
 
         switch (notifyType) {
             case PS_ENABLED:
-                long dataSubId = SubscriptionManager.getDefaultDataSubId();
+                long dataSubId = SubscriptionManager.getDefaultDataSubscriptionId();
                 if (dataSubId != mPhone.getSubId()) {
                     return;
                 }
@@ -4232,7 +4232,7 @@ public class ServiceStateTracker extends Handler {
         synchronized (this) {
             if (!mPendingRadioPowerOffAfterDataOff) {
                 if (mPhone.isPhoneTypeGsm() || mPhone.isPhoneTypeCdmaLte()) {
-                    int dds = SubscriptionManager.getDefaultDataSubId();
+                    int dds = SubscriptionManager.getDefaultDataSubscriptionId();
                     // To minimize race conditions we call cleanUpAllConnections on
                     // both if else paths instead of before this isDisconnected test.
                     if (dcTracker.isDisconnected()

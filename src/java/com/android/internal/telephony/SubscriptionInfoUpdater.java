@@ -391,7 +391,7 @@ public class SubscriptionInfoUpdater extends Handler {
                 logd("EVENT_RECORDS_LOADED Operator name is null");
             }
             TelephonyManager tm = TelephonyManager.getDefault();
-            String msisdn = tm.getLine1NumberForSubscriber(subId);
+            String msisdn = tm.getLine1Number(subId);
             ContentResolver contentResolver = mContext.getContentResolver();
 
             if (msisdn != null) {
@@ -404,7 +404,7 @@ public class SubscriptionInfoUpdater extends Handler {
 
             SubscriptionInfo subInfo = mSubscriptionManager.getActiveSubscriptionInfo(subId);
             String nameToSet;
-            String simCarrierName = tm.getSimOperatorNameForSubscription(subId);
+            String simCarrierName = tm.getSimOperatorName(subId);
             ContentValues name = new ContentValues(1);
 
             if (subInfo != null && subInfo.getNameSource() !=
@@ -601,7 +601,7 @@ public class SubscriptionInfoUpdater extends Handler {
         for (int i=0; i < nSubCount; i++) {
             SubscriptionInfo temp = subInfos.get(i);
 
-            String msisdn = TelephonyManager.getDefault().getLine1NumberForSubscriber(
+            String msisdn = TelephonyManager.getDefault().getLine1Number(
                     temp.getSubscriptionId());
 
             if (msisdn != null) {
@@ -614,7 +614,8 @@ public class SubscriptionInfoUpdater extends Handler {
         }
 
         // Ensure the modems are mapped correctly
-        mSubscriptionManager.setDefaultDataSubId(mSubscriptionManager.getDefaultDataSubId());
+        mSubscriptionManager.setDefaultDataSubId(
+                mSubscriptionManager.getDefaultDataSubscriptionId());
 
         SubscriptionController.getInstance().notifySubscriptionInfoChanged();
         logd("updateSubscriptionInfoByIccId:- SsubscriptionInfo update complete");
