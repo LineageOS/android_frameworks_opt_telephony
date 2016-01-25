@@ -1073,6 +1073,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
         // State updates will be triggered through individual callbacks
         // i.e. onCallHeld, onCallResume, etc and conn.update will be responsible for the update
         if (ignoreState) {
+            conn.updateAddressDisplay(imsCall);
             conn.updateMediaCapabilities(imsCall);
             conn.updateExtras(imsCall);
             return;
