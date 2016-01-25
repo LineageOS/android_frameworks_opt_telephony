@@ -16,9 +16,13 @@
 
 package com.android.internal.telephony;
 
+import android.content.Context;
 import android.content.Intent;
+import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.HandlerThread;
+import android.os.IBinder;
+import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.telephony.SubscriptionManager;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -43,9 +47,13 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.lang.reflect.Field;
+import java.util.HashMap;
 
 public class ServiceStateTrackerTest {
     private static final String TAG = "ServiceStateTrackerTest";
+
+    private static final String AMERICA_LA_TIME_ZONE = "America/Los_Angeles";
+    private static final String KEY_TIME_ZONE = "time-zone";
 
     @Mock
     private GsmCdmaPhone mPhone;
@@ -65,6 +73,10 @@ public class ServiceStateTrackerTest {
     private DcTracker mDct;
     @Mock
     private ProxyController mProxyController;
+    @Mock
+    HashMap<String, IBinder> mServiceCache;
+    @Mock
+    IBinder mBinder;
 
     private SimulatedCommands simulatedCommands;
     private ContextFixture mContextFixture;
@@ -125,7 +137,14 @@ public class ServiceStateTrackerTest {
         field.setAccessible(true);
         field.set(null, mUiccController);
 
+        // Replace ServiceManager.sCache so ServiceManager.getService can return a mocked
+        // IBinder.
+        field = ServiceManager.class.getDeclaredField("sCache");
+        field.setAccessible(true);
+        field.set(null, mServiceCache);
+
         doReturn(mTelephonyEventLog).when(mLogInstances).get(anyInt());
+        doReturn(mBinder).when(mServiceCache).get(Context.ALARM_SERVICE);
 
         // Use reflection to replace TelephonyEventLog.sInstances with our mocked mLogInstances
         field = TelephonyEventLog.class.getDeclaredField("sInstances");
@@ -202,6 +221,32 @@ public class ServiceStateTrackerTest {
         assertTrue(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN));
 
         assertEquals(SimulatedCommands.FAKE_LONG_NAME, b.getString(TelephonyIntents.EXTRA_PLMN));
+    }
+
+    @Test @SmallTest
+    public void testNITZupdate() {
+        waitUntilReady();
+
+        doReturn(0x02).when(mSimRecords).getDisplayRule(anyString());
+
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_NITZ_TIME,
+                new AsyncResult(null,
+                        new Object[]{"16/01/22,23:24:44-32,00", Long.valueOf(41824)}, null)));
+
+        waitForMs(100);
+
+        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContextFixture.getTestDouble(), times(3)).
+                sendStickyBroadcastAsUser(intentArgumentCaptor.capture(), eq(UserHandle.ALL));
+
+        // The last intent should be NETWORK_SET_TIMEZONE.
+        Intent intent = intentArgumentCaptor.getAllValues().get(2);
+        assertEquals(TelephonyIntents.ACTION_NETWORK_SET_TIMEZONE, intent.getAction());
+        assertEquals(Intent.FLAG_RECEIVER_REPLACE_PENDING, intent.getFlags());
+
+        Bundle b = intent.getExtras();
+
+        assertEquals(AMERICA_LA_TIME_ZONE, b.getString(KEY_TIME_ZONE));
     }
 
     private static void logd(String s) {

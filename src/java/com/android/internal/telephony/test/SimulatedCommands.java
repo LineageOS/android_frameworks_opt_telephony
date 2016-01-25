@@ -63,7 +63,7 @@ public class SimulatedCommands extends BaseCommands
     private final static String SIM_PUK2_CODE = "87654321";
     public final static String FAKE_LONG_NAME = "Fake long name";
     public final static String FAKE_SHORT_NAME = "Fake short name";
-    public final static String FAKE_MCC_MNC = "123456";
+    public final static String FAKE_MCC_MNC = "310260";
 
     //***** Instance Variables
 
