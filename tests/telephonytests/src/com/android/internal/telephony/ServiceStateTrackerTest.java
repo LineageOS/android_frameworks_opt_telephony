@@ -147,6 +147,7 @@ public class ServiceStateTrackerTest {
         int dds = SubscriptionManager.getDefaultDataSubId();
         doReturn(dds).when(mPhone).getSubId();
 
+        mReady = false;
         new ServiceStateTrackerTestHandler(TAG).start();
         logd("ServiceStateTrackerTest -Setup!");
     }
