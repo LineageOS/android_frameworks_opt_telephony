@@ -331,12 +331,14 @@ public class SmsMessage extends SmsMessageBase {
                                 + smsHeader.languageShiftTable + " -> " + languageShiftTable);
                         smsHeader.languageTable = languageTable;
                         smsHeader.languageShiftTable = languageShiftTable;
+                           System.out.println("Encoding " + encoding + " " + smsHeader);
                         header = SmsHeader.toByteArray(smsHeader);
                     }
                 } else {
                     SmsHeader smsHeader = new SmsHeader();
                     smsHeader.languageTable = languageTable;
                     smsHeader.languageShiftTable = languageShiftTable;
+                    System.out.println("Encoding " + encoding + " " + smsHeader);
                     header = SmsHeader.toByteArray(smsHeader);
                 }
             }
@@ -360,6 +362,7 @@ public class SmsMessage extends SmsMessageBase {
                 scAddress, destinationAddress, mtiByte,
                 statusReportRequested, ret);
 
+
         // User Data (and length)
         byte[] userData;
         try {
@@ -377,6 +380,7 @@ public class SmsMessage extends SmsMessageBase {
                 }
             }
         } catch (EncodeException ex) {
+            System.out.println("Encoding failed");
             // Encoding to the 7-bit alphabet failed. Let's see if we can
             // send it as a UCS-2 encoded message
             try {
@@ -830,7 +834,7 @@ public class SmsMessage extends SmsMessageBase {
 
             ret = GsmAlphabet.gsm7BitPackedToString(mPdu, mCur, septetCount,
                     mUserDataSeptetPadding, languageTable, languageShiftTable);
-
+            System.out.println("getUserDataGSM7Bit " + septetCount + " " + languageTable + " " + languageShiftTable + " " + ret);
             mCur += (septetCount * 7) / 8;
 
             return ret;
@@ -1414,6 +1418,7 @@ public class SmsMessage extends SmsMessageBase {
             } // end of for
         } // end of if UDH
 
+        System.out.println("SmsMessage " + encodingType);
         switch (encodingType) {
         case ENCODING_UNKNOWN:
             mMessageBody = null;
