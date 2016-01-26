@@ -258,6 +258,7 @@ public class ContextFixture implements TestFixture<Context> {
 
         @Override
         public void sendStickyBroadcastAsUser(Intent intent, UserHandle user) {
+            logd("sendStickyBroadcastAsUser called for " + intent.getAction());
         }
 
         @Override
