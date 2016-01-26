@@ -1359,6 +1359,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                         sendEmptyMessageDelayed(EVENT_HANGUP_PENDINGMO, TIMEOUT_HANGUP_PENDINGMO);
                     }
                 }
+                mPhone.notifySuppServiceFailed(Phone.SuppService.HOLD);
             }
             mEventLog.writeOnImsCallHoldFailed(imsCall.getCallSession(), reasonInfo);
         }
