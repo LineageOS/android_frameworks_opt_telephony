@@ -95,7 +95,7 @@ import com.android.internal.telephony.uicc.UiccController;
 public class ServiceStateTracker extends Handler {
     private static final String LOG_TAG = "SST";
     private static final boolean DBG = true;
-    private static final boolean VDBG = false;
+    private static final boolean VDBG = false;  // STOPSHIP if true
 
     private static final String PROP_FORCE_ROAMING = "telephony.test.forceRoaming";
 
@@ -2312,11 +2312,11 @@ public class ServiceStateTracker extends Handler {
 
     protected void setPowerStateToDesired() {
         if (DBG) {
-            log("mDeviceShuttingDown = " + mDeviceShuttingDown);
-            log("mDesiredPowerState = " + mDesiredPowerState);
-            log("getRadioState = " + mCi.getRadioState());
-            log("mPowerOffDelayNeed = " + mPowerOffDelayNeed);
-            log("mAlarmSwitch = " + mAlarmSwitch);
+            log("mDeviceShuttingDown=" + mDeviceShuttingDown +
+                    ", mDesiredPowerState=" + mDesiredPowerState +
+                    ", getRadioState=" + mCi.getRadioState() +
+                    ", mPowerOffDelayNeed=" + mPowerOffDelayNeed +
+                    ", mAlarmSwitch=" + mAlarmSwitch);
         }
 
         if (mPhone.isPhoneTypeGsm() && mAlarmSwitch) {

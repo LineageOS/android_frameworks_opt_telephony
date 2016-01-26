@@ -393,7 +393,7 @@ public final class DataConnection extends StateMachine {
         super(name, dcc.getHandler());
         setLogRecSize(300);
         setLogOnlyTransitions(true);
-        if (DBG) log("DataConnection constructor E");
+        if (DBG) log("DataConnection created");
 
         mPhone = phone;
         mDct = dct;
@@ -419,7 +419,6 @@ public final class DataConnection extends StateMachine {
         setInitialState(mInactiveState);
 
         mApnContexts = new HashMap<ApnContext, ConnectionParams>();
-        if (DBG) log("DataConnection constructor X");
     }
 
     /**
