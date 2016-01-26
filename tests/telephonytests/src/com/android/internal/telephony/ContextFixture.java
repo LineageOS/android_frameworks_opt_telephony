@@ -195,6 +195,10 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
+        public void unregisterReceiver(BroadcastReceiver receiver) {
+        }
+
+        @Override
         public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter) {
             for (int i = 0 ; i < filter.countActions(); i++) {
                 mBroadcastReceiversByAction.put(filter.getAction(i), receiver);
