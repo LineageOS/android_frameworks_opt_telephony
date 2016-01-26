@@ -31,6 +31,7 @@ import android.util.SparseArray;
 
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
@@ -176,7 +177,8 @@ public class ServiceStateTrackerTest {
         sst = null;
     }
 
-    @Test @SmallTest
+    @Test
+    @SmallTest
     public void testSetRadioPower() {
         waitUntilReady();
 
@@ -186,20 +188,20 @@ public class ServiceStateTrackerTest {
         assertTrue(oldState != simulatedCommands.getRadioState().isOn());
     }
 
-    @Test @SmallTest
+    @Test
+    @SmallTest
     public void testSpnUpdateShowPlmnOnly() {
         waitUntilReady();
 
         doReturn(0x02).when(mSimRecords).getDisplayRule(anyString());
+        doReturn(IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN).when(m3GPPUiccApp).getState();
 
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_NETWORK_STATE_CHANGED, null));
 
         waitForMs(100);
 
-        // There should be two sticky broadcasts. The first one is SPN_STRINGS_UPDATED_ACTION,
-        // and the second one is NETWORK_SET_TIMEZONE.
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContextFixture.getTestDouble(), times(2)).
+        verify(mContextFixture.getTestDouble(), times(1)).
                 sendStickyBroadcastAsUser(intentArgumentCaptor.capture(), eq(UserHandle.ALL));
 
         // We only want to verify the intent SPN_STRINGS_UPDATED_ACTION.
@@ -223,7 +225,9 @@ public class ServiceStateTrackerTest {
         assertEquals(SimulatedCommands.FAKE_LONG_NAME, b.getString(TelephonyIntents.EXTRA_PLMN));
     }
 
-    @Test @SmallTest
+
+    @Test
+    @SmallTest
     public void testNITZupdate() {
         waitUntilReady();
 
@@ -236,17 +240,18 @@ public class ServiceStateTrackerTest {
         waitForMs(100);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContextFixture.getTestDouble(), times(3)).
+        verify(mContextFixture.getTestDouble(), atLeast(1)).
                 sendStickyBroadcastAsUser(intentArgumentCaptor.capture(), eq(UserHandle.ALL));
 
-        // The last intent should be NETWORK_SET_TIMEZONE.
-        Intent intent = intentArgumentCaptor.getAllValues().get(2);
-        assertEquals(TelephonyIntents.ACTION_NETWORK_SET_TIMEZONE, intent.getAction());
-        assertEquals(Intent.FLAG_RECEIVER_REPLACE_PENDING, intent.getFlags());
-
-        Bundle b = intent.getExtras();
-
-        assertEquals(AMERICA_LA_TIME_ZONE, b.getString(KEY_TIME_ZONE));
+        boolean receivedExpectedIntent = false;
+        for(Intent intent : intentArgumentCaptor.getAllValues()) {
+            if(intent.getAction().equals(TelephonyIntents.ACTION_NETWORK_SET_TIMEZONE)) {
+                assertEquals(Intent.FLAG_RECEIVER_REPLACE_PENDING, intent.getFlags());
+                assertEquals(AMERICA_LA_TIME_ZONE, intent.getExtras().getString(KEY_TIME_ZONE));
+                receivedExpectedIntent = true;
+            }
+        }
+        assertTrue(receivedExpectedIntent);
     }
 
     private static void logd(String s) {
