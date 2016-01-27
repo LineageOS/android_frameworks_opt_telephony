@@ -92,19 +92,22 @@ public class IccProvider extends ContentProvider {
 
         switch (URL_MATCHER.match(url)) {
             case ADN:
-                return loadFromEf(IccConstants.EF_ADN, SubscriptionManager.getDefaultSubId());
+                return loadFromEf(IccConstants.EF_ADN,
+                        SubscriptionManager.getDefaultSubscriptionId());
 
             case ADN_SUB:
                 return loadFromEf(IccConstants.EF_ADN, getRequestSubId(url));
 
             case FDN:
-                return loadFromEf(IccConstants.EF_FDN, SubscriptionManager.getDefaultSubId());
+                return loadFromEf(IccConstants.EF_FDN,
+                        SubscriptionManager.getDefaultSubscriptionId());
 
             case FDN_SUB:
                 return loadFromEf(IccConstants.EF_FDN, getRequestSubId(url));
 
             case SDN:
-                return loadFromEf(IccConstants.EF_SDN, SubscriptionManager.getDefaultSubId());
+                return loadFromEf(IccConstants.EF_SDN,
+                        SubscriptionManager.getDefaultSubscriptionId());
 
             case SDN_SUB:
                 return loadFromEf(IccConstants.EF_SDN, getRequestSubId(url));
@@ -168,7 +171,7 @@ public class IccProvider extends ContentProvider {
         switch (match) {
             case ADN:
                 efType = IccConstants.EF_ADN;
-                subId = SubscriptionManager.getDefaultSubId();
+                subId = SubscriptionManager.getDefaultSubscriptionId();
                 break;
 
             case ADN_SUB:
@@ -178,7 +181,7 @@ public class IccProvider extends ContentProvider {
 
             case FDN:
                 efType = IccConstants.EF_FDN;
-                subId = SubscriptionManager.getDefaultSubId();
+                subId = SubscriptionManager.getDefaultSubscriptionId();
                 pin2 = initialValues.getAsString("pin2");
                 break;
 
@@ -261,7 +264,7 @@ public class IccProvider extends ContentProvider {
         switch (match) {
             case ADN:
                 efType = IccConstants.EF_ADN;
-                subId = SubscriptionManager.getDefaultSubId();
+                subId = SubscriptionManager.getDefaultSubscriptionId();
                 break;
 
             case ADN_SUB:
@@ -271,7 +274,7 @@ public class IccProvider extends ContentProvider {
 
             case FDN:
                 efType = IccConstants.EF_FDN;
-                subId = SubscriptionManager.getDefaultSubId();
+                subId = SubscriptionManager.getDefaultSubscriptionId();
                 break;
 
             case FDN_SUB:
@@ -345,7 +348,7 @@ public class IccProvider extends ContentProvider {
         switch (match) {
             case ADN:
                 efType = IccConstants.EF_ADN;
-                subId = SubscriptionManager.getDefaultSubId();
+                subId = SubscriptionManager.getDefaultSubscriptionId();
                 break;
 
             case ADN_SUB:
@@ -355,7 +358,7 @@ public class IccProvider extends ContentProvider {
 
             case FDN:
                 efType = IccConstants.EF_FDN;
-                subId = SubscriptionManager.getDefaultSubId();
+                subId = SubscriptionManager.getDefaultSubscriptionId();
                 pin2 = values.getAsString("pin2");
                 break;
 

@@ -294,7 +294,7 @@ public class SubscriptionController extends ISub.Stub {
         }
 
         // If line1number has been set to a different number, use it instead.
-        String line1Number = mTelephonyManager.getLine1NumberForSubscriber(id);
+        String line1Number = mTelephonyManager.getLine1Number(id);
         if (!TextUtils.isEmpty(line1Number) && !line1Number.equals(number)) {
             number = line1Number;
         }
@@ -792,7 +792,7 @@ public class SubscriptionController extends ISub.Stub {
                 return -1;
             }
             if (setDisplayName) {
-                String simCarrierName = mTelephonyManager.getSimOperatorNameForSubscription(subIds[0]);
+                String simCarrierName = mTelephonyManager.getSimOperatorName(subIds[0]);
                 String nameToSet;
 
                 if (!TextUtils.isEmpty(simCarrierName)) {
