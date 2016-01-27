@@ -22,8 +22,11 @@ import android.os.AsyncResult;
 import android.os.Bundle;
 import android.os.HandlerThread;
 import android.os.IBinder;
+import android.os.Parcel;
 import android.os.ServiceManager;
 import android.os.UserHandle;
+import android.telephony.CellInfo;
+import android.telephony.CellInfoGsm;
 import android.telephony.SubscriptionManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
@@ -31,6 +34,7 @@ import android.util.SparseArray;
 
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
+import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
@@ -48,7 +52,9 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 public class ServiceStateTrackerTest {
     private static final String TAG = "ServiceStateTrackerTest";
@@ -78,8 +84,10 @@ public class ServiceStateTrackerTest {
     HashMap<String, IBinder> mServiceCache;
     @Mock
     IBinder mBinder;
+    @Mock
+    SimulatedCommandsVerifier mSimulatedCommandsVerifier;
 
-    private SimulatedCommands simulatedCommands;
+    private SimulatedCommands mSimulatedCommands;
     private ContextFixture mContextFixture;
     private ServiceStateTracker sst;
 
@@ -94,7 +102,7 @@ public class ServiceStateTrackerTest {
 
         @Override
         public void onLooperPrepared() {
-            sst = new ServiceStateTracker(mPhone, simulatedCommands);
+            sst = new ServiceStateTracker(mPhone, mSimulatedCommands);
             synchronized (mLock) {
                 mReady = true;
             }
@@ -117,7 +125,7 @@ public class ServiceStateTrackerTest {
         logd("ServiceStateTrackerTest +Setup!");
         MockitoAnnotations.initMocks(this);
         mContextFixture = new ContextFixture();
-        simulatedCommands = new SimulatedCommands();
+        mSimulatedCommands = new SimulatedCommands();
 
         doReturn(mContextFixture.getTestDouble()).when(mPhone).getContext();
         doReturn(true).when(mPhone).getUnitTestMode();
@@ -156,6 +164,10 @@ public class ServiceStateTrackerTest {
         field.setAccessible(true);
         field.set(null, mProxyController);
 
+        field = SimulatedCommandsVerifier.class.getDeclaredField("sInstance");
+        field.setAccessible(true);
+        field.set(null, mSimulatedCommandsVerifier);
+
         mContextFixture.putStringArrayResource(
                 com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming,
                 new String[]{"123456"});
@@ -182,10 +194,10 @@ public class ServiceStateTrackerTest {
     public void testSetRadioPower() {
         waitUntilReady();
 
-        boolean oldState = simulatedCommands.getRadioState().isOn();
+        boolean oldState = mSimulatedCommands.getRadioState().isOn();
         sst.setRadioPower(!oldState);
         waitForMs(100);
-        assertTrue(oldState != simulatedCommands.getRadioState().isOn());
+        assertTrue(oldState != mSimulatedCommands.getRadioState().isOn());
     }
 
     @Test
@@ -198,7 +210,7 @@ public class ServiceStateTrackerTest {
 
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_NETWORK_STATE_CHANGED, null));
 
-        waitForMs(100);
+        waitForMs(500);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mContextFixture.getTestDouble(), times(1)).
@@ -225,7 +237,6 @@ public class ServiceStateTrackerTest {
         assertEquals(SimulatedCommands.FAKE_LONG_NAME, b.getString(TelephonyIntents.EXTRA_PLMN));
     }
 
-
     @Test
     @SmallTest
     public void testNITZupdate() {
@@ -237,7 +248,7 @@ public class ServiceStateTrackerTest {
                 new AsyncResult(null,
                         new Object[]{"16/01/22,23:24:44-32,00", Long.valueOf(41824)}, null)));
 
-        waitForMs(100);
+        waitForMs(500);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mContextFixture.getTestDouble(), atLeast(1)).
@@ -252,6 +263,35 @@ public class ServiceStateTrackerTest {
             }
         }
         assertTrue(receivedExpectedIntent);
+    }
+
+    @Test
+    @SmallTest
+    public void testCellInfoList() {
+        waitUntilReady();
+        waitForMs(100);
+
+        Parcel p = Parcel.obtain();
+        p.writeInt(1);
+        p.writeInt(1);
+        p.writeInt(2);
+        p.writeLong(1453510289108L);
+        p.writeInt(310);
+        p.writeInt(260);
+        p.writeInt(123);
+        p.writeInt(456);
+        p.writeInt(99);
+        p.writeInt(3);
+        p.setDataPosition(0);
+
+        CellInfoGsm cellInfo = CellInfoGsm.CREATOR.createFromParcel(p);
+
+        ArrayList<CellInfo> list = new ArrayList();
+        list.add(cellInfo);
+
+        doReturn(list).when(mSimulatedCommandsVerifier).getCellInfoList();
+
+        assertEquals(sst.getAllCellInfo(), list);
     }
 
     private static void logd(String s) {
