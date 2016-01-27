@@ -20,6 +20,9 @@ import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.os.Parcel;
+import android.telephony.CellInfo;
+import android.telephony.CellInfoGsm;
 import android.telephony.Rlog;
 import android.telephony.SignalStrength;
 
@@ -1697,7 +1700,12 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getCellInfoList(Message response) {
-        unimplemented(response);
+        resultSuccess(response, SimulatedCommandsVerifier.getInstance().getCellInfoList());
+    }
+
+    @Override
+    public int getRilVersion() {
+        return 11;
     }
 
     @Override
