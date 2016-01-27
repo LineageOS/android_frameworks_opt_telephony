@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.telephony.gsm;
+package com.android.internal.telephony.cdma;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -25,6 +25,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.IDeviceIdleController;
+import android.os.Message;
 import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.provider.Telephony;
@@ -35,14 +36,18 @@ import android.util.Log;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.ContextFixture;
 import com.android.internal.telephony.GsmCdmaPhone;
+import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.Phone;
+import com.android.internal.telephony.SMSDispatcher;
 import com.android.internal.telephony.SmsBroadcastUndelivered;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsStorageMonitor;
+import com.android.internal.telephony.SmsUsageMonitor;
 import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.TelephonyTestUtils;
 import com.android.internal.telephony.test.SimulatedCommands;
+import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
@@ -63,42 +68,52 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 
-public class GsmCellBroadcastHandlerTest {
-    private static final String TAG = "GsmCellBroadcastHandlerTest";
+public class CdmaSmsDispatcherTest {
+    private static final String TAG = "CdmaSmsDispatcherTest";
 
     @Mock
     private SmsStorageMonitor mSmsStorageMonitor;
+    @Mock
+    private SmsUsageMonitor mSmsUsageMonitor;
     @Mock
     private Phone mPhone;
     @Mock
     private android.telephony.SmsMessage mSmsMessage;
     @Mock
-    private SmsMessage mGsmSmsMessage;
+    private SmsMessage mCdmaSmsMessage;
     @Mock
     private UiccController mUiccController;
     @Mock
     private IDeviceIdleController mIDeviceIdleController;
     @Mock
     private TelephonyComponentFactory mTelephonyComponentFactory;
+    @Mock
+    private ImsSMSDispatcher mImsSmsDispatcher;
+    @Mock
+    private SimulatedCommandsVerifier mSimulatedCommandsVerifier;
+    @Mock
+    private SMSDispatcher.SmsTracker mSmsTracker;
+    @Mock
+    private ServiceState mServiceState;
 
-    private GsmCellBroadcastHandler mGsmCellBroadcastHandler;
+    private CdmaSMSDispatcher mCdmaSmsDispatcher;
     private ContextFixture mContextFixture;
     private SimulatedCommands mSimulatedCommands;
     private TelephonyManager mTelephonyManager;
     private Object mLock = new Object();
     private boolean mReady;
 
-    private class GsmCellBroadcastHandlerTestHandler extends HandlerThread {
+    private class CdmaSmsDispatcherTestHandler extends HandlerThread {
 
-        private GsmCellBroadcastHandlerTestHandler(String name) {
+        private CdmaSmsDispatcherTestHandler(String name) {
             super(name);
         }
 
         @Override
         public void onLooperPrepared() {
             synchronized (mLock) {
-                mGsmCellBroadcastHandler = GsmCellBroadcastHandler.makeGsmCellBroadcastHandler(
-                        mContextFixture.getTestDouble(), mPhone);
+                mCdmaSmsDispatcher = new CdmaSMSDispatcher(mPhone, mSmsUsageMonitor,
+                        mImsSmsDispatcher);
                 mReady = true;
             }
         }
@@ -127,6 +142,10 @@ public class GsmCellBroadcastHandlerTest {
         field.setAccessible(true);
         field.set(null, mTelephonyComponentFactory);
 
+        field = SimulatedCommandsVerifier.class.getDeclaredField("sInstance");
+        field.setAccessible(true);
+        field.set(null, mSimulatedCommandsVerifier);
+
         mContextFixture = new ContextFixture();
         mSimulatedCommands = new SimulatedCommands();
         mPhone.mCi = mSimulatedCommands;
@@ -136,34 +155,23 @@ public class GsmCellBroadcastHandlerTest {
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
         doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory).
                 getIDeviceIdleController();
+        doReturn(mContextFixture.getTestDouble()).when(mPhone).getContext();
 
         mReady = false;
-        new GsmCellBroadcastHandlerTestHandler(TAG).start();
+        new CdmaSmsDispatcherTestHandler(TAG).start();
         waitUntilReady();
     }
 
     @After
     public void tearDown() throws Exception {
-        mGsmCellBroadcastHandler = null;
+        mCdmaSmsDispatcher = null;
     }
 
     @Test @SmallTest
-    public void testBroadcastSms() {
-        mSimulatedCommands.notifyGsmBroadcastSms(new byte[] {
-                (byte)0xc0, //geographical scope
-                (byte)0x01, //serial number
-                (byte)0x01, //serial number
-                (byte)0x01, //message identifier
-                (byte)0x01, //message identifier
-                (byte)0x01
-        });
-        TelephonyTestUtils.waitForMs(50);
-        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContextFixture.getTestDouble()).sendBroadcast(intentArgumentCaptor.capture());
-        assertTrue(intentArgumentCaptor.getValue().getAction().equals(
-                Telephony.Sms.Intents.SMS_EMERGENCY_CB_RECEIVED_ACTION) ||
-                intentArgumentCaptor.getValue().getAction().equals(
-                        Telephony.Sms.Intents.SMS_CB_RECEIVED_ACTION));
+    public void testSendSms() {
+        doReturn(mServiceState).when(mPhone).getServiceState();
+        mCdmaSmsDispatcher.sendSms(mSmsTracker);
+        verify(mSimulatedCommandsVerifier).sendCdmaSms(any(byte[].class), any(Message.class));
     }
 
     private static void logd(String s) {

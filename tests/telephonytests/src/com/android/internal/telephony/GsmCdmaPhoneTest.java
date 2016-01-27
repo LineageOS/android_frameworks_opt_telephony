@@ -181,6 +181,7 @@ public class GsmCdmaPhoneTest {
 
         mReady = false;
         new GsmCdmaPhoneTestHandler(TAG).start();
+        waitUntilReady();
     }
 
     @After
@@ -190,7 +191,6 @@ public class GsmCdmaPhoneTest {
 
     @Test @SmallTest
     public void testPhoneTypeSwitch() {
-        waitUntilReady();
         assertTrue(mPhone.isPhoneTypeGsm());
         switchToCdma();
         assertTrue(mPhone.isPhoneTypeCdmaLte());
@@ -198,7 +198,6 @@ public class GsmCdmaPhoneTest {
 
     @Test @SmallTest
     public void testHandleActionCarrierConfigChanged() {
-        waitUntilReady();
         // set voice radio tech in RIL to 1xRTT. ACTION_CARRIER_CONFIG_CHANGED should trigger a
         // query and change phone type
         mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
@@ -211,7 +210,6 @@ public class GsmCdmaPhoneTest {
 
     @Test @SmallTest
     public void testGetServiceState() {
-        waitUntilReady();
         ServiceState serviceState = new ServiceState();
         mSST.mSS = serviceState;
         assertEquals(serviceState, mPhone.getServiceState());
@@ -219,7 +217,6 @@ public class GsmCdmaPhoneTest {
 
     @Test @SmallTest
     public void testGetCellLocation() {
-        waitUntilReady();
         // GSM
         CellLocation cellLocation = new GsmCellLocation();
         doReturn(cellLocation).when(mSST).getCellLocation();
@@ -258,7 +255,6 @@ public class GsmCdmaPhoneTest {
 
     @Test @SmallTest
     public void testGetPhoneType() {
-        waitUntilReady();
         assertEquals(PhoneConstants.PHONE_TYPE_GSM, mPhone.getPhoneType());
 
         // Switch to CDMA
@@ -269,7 +265,6 @@ public class GsmCdmaPhoneTest {
 
     @Test @SmallTest
     public void testGetDataConnectionState() {
-        waitUntilReady();
         // There are several cases possible. Testing few of them for now.
         // 1. GSM, getCurrentDataConnectionState != STATE_IN_SERVICE, apn != APN_TYPE_EMERGENCY
         doReturn(ServiceState.STATE_OUT_OF_SERVICE).when(mSST).getCurrentDataConnectionState();
@@ -301,7 +296,6 @@ public class GsmCdmaPhoneTest {
 
     @Test @SmallTest
     public void testHandleInCallMmiCommands() {
-        waitUntilReady();
         try {
             // Switch to CDMA
             switchToCdma();

@@ -56,7 +56,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
     }
 
     @Override
-    protected String getFormat() {
+    public String getFormat() {
         return SmsConstants.FORMAT_3GPP2;
     }
 
@@ -64,7 +64,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
      * Send the SMS status report to the dispatcher thread to process.
      * @param sms the CDMA SMS message containing the status report
      */
-    void sendStatusReportMessage(SmsMessage sms) {
+    public void sendStatusReportMessage(SmsMessage sms) {
         if (VDBG) Rlog.d(TAG, "sending EVENT_HANDLE_STATUS_REPORT message");
         sendMessage(obtainMessage(EVENT_HANDLE_STATUS_REPORT, sms));
     }
@@ -83,7 +83,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
      * Called from parent class to handle status report from {@code CdmaInboundSmsHandler}.
      * @param sms the CDMA SMS message to process
      */
-    void handleCdmaStatusReport(SmsMessage sms) {
+    private void handleCdmaStatusReport(SmsMessage sms) {
         for (int i = 0, count = deliveryPendingList.size(); i < count; i++) {
             SmsTracker tracker = deliveryPendingList.get(i);
             if (tracker.mMessageRef == sms.mMessageRef) {
@@ -106,7 +106,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     @Override
-    protected void sendData(String destAddr, String scAddr, int destPort,
+    public void sendData(String destAddr, String scAddr, int destPort,
             byte[] data, PendingIntent sentIntent, PendingIntent deliveryIntent) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
                 scAddr, destAddr, destPort, data, (deliveryIntent != null));
@@ -139,7 +139,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     @Override
-    protected void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
+    public void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
             PendingIntent deliveryIntent, Uri messageUri, String callingPkg,
             boolean persistMessage) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
@@ -229,12 +229,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
 
     /** {@inheritDoc} */
     @Override
-    protected void sendSms(SmsTracker tracker) {
-        HashMap<String, Object> map = tracker.mData;
-
-        // byte[] smsc = (byte[]) map.get("smsc");  // unused for CDMA
-        byte[] pdu = (byte[]) map.get("pdu");
-
+    public void sendSms(SmsTracker tracker) {
         Rlog.d(TAG, "sendSms: "
                 + " isIms()=" + isIms()
                 + " mRetryCount=" + tracker.mRetryCount
@@ -256,7 +251,7 @@ public class CdmaSMSDispatcher extends SMSDispatcher {
         }
 
         Message reply = obtainMessage(EVENT_SEND_SMS_COMPLETE, tracker);
-        byte[] pdu = (byte[]) tracker.mData.get("pdu");
+        byte[] pdu = (byte[]) tracker.getData().get("pdu");
 
         int currentDataNetwork = mPhone.getServiceState().getDataNetworkType();
         boolean imsSmsDisabled = (currentDataNetwork == TelephonyManager.NETWORK_TYPE_EHRPD

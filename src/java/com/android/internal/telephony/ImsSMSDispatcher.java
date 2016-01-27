@@ -274,7 +274,7 @@ public class ImsSMSDispatcher extends SMSDispatcher {
         }
 
         // format didn't match, need to re-encode.
-        HashMap map = tracker.mData;
+        HashMap map = tracker.getData();
 
         // to re-encode, fields needed are:  scAddr, destAddr, and
         //   text if originally sent as sendText or

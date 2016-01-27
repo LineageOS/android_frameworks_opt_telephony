@@ -150,6 +150,7 @@ public class GsmInboundSmsHandlerTest {
 
         mReady = false;
         new GsmInboundSmsHandlerTestHandler(TAG).start();
+        waitUntilReady();
     }
 
     @After
@@ -159,7 +160,6 @@ public class GsmInboundSmsHandlerTest {
 
     @Test @SmallTest
     public void testNewSms() {
-        waitUntilReady();
         // verify initially in StartupState
         assertEquals("StartupState", getCurrentState().getName());
 
@@ -184,16 +184,22 @@ public class GsmInboundSmsHandlerTest {
                 sendBroadcast(intentArgumentCaptor.capture());
 
         List<Intent> list = intentArgumentCaptor.getAllValues();
-        logd("list.size() " + list.size());
+        /* logd("list.size() " + list.size());
         for (int i = 0; i < list.size(); i++) {
             logd("list.get(i) " + list.get(i));
-        }
+        } */
         //todo: seems to be some issue with ArgumentCaptor. Both DELIVER and RECEIVED broadcasts
         //can be seen in logs but according to list both are RECEIVED
         //assertEquals(Telephony.Sms.Intents.SMS_DELIVER_ACTION,
         //                list.get(0).getAction());
-        assertEquals(Telephony.Sms.Intents.SMS_RECEIVED_ACTION,
-                list.get(list.size() - 1).getAction());
+        boolean smsReceivedAction = false;
+        for (Intent i : list) {
+            if (Telephony.Sms.Intents.SMS_RECEIVED_ACTION.equals(i.getAction())) {
+                smsReceivedAction = true;
+                break;
+            }
+        }
+        assertTrue(smsReceivedAction);
 
         assertEquals("IdleState", getCurrentState().getName());
     }

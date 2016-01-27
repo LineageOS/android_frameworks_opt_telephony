@@ -156,6 +156,7 @@ public class GsmSmsDispatcherTest {
 
         mReady = false;
         new GsmSmsDispatcherTestHandler(TAG).start();
+        waitUntilReady();
     }
 
     @After
@@ -165,7 +166,6 @@ public class GsmSmsDispatcherTest {
 
     @Test @SmallTest
     public void testSmsStatus() {
-        waitUntilReady();
         mSimulatedCommands.notifySmsStatus("0123056789ABCDEF");
         TelephonyTestUtils.waitForMs(50);
         verify(mSimulatedCommandsVerifier).acknowledgeLastIncomingGsmSms(true,
