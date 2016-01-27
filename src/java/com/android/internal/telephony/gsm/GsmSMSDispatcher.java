@@ -244,7 +244,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     /** {@inheritDoc} */
     @Override
     protected void sendSms(SmsTracker tracker) {
-        HashMap<String, Object> map = tracker.mData;
+        HashMap<String, Object> map = tracker.getData();
 
         byte pdu[] = (byte[]) map.get("pdu");
 
@@ -282,7 +282,7 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
             return;
         }
 
-        HashMap<String, Object> map = tracker.mData;
+        HashMap<String, Object> map = tracker.getData();
 
         byte smsc[] = (byte[]) map.get("smsc");
         byte[] pdu = (byte[]) map.get("pdu");

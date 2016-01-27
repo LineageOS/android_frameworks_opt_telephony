@@ -1609,7 +1609,8 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void sendCdmaSms(byte[] pdu, Message response){
-       Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
+        Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
+        SimulatedCommandsVerifier.getInstance().sendCdmaSms(pdu, response);
     }
 
     @Override

@@ -367,7 +367,7 @@ public abstract class SMSDispatcher extends Handler {
 
         @Override
         protected void onServiceReady(ICarrierMessagingService carrierMessagingService) {
-            HashMap<String, Object> map = mTracker.mData;
+            HashMap<String, Object> map = mTracker.getData();
             String text = (String) map.get("text");
 
             if (text != null) {
@@ -399,7 +399,7 @@ public abstract class SMSDispatcher extends Handler {
 
         @Override
         protected void onServiceReady(ICarrierMessagingService carrierMessagingService) {
-            HashMap<String, Object> map = mTracker.mData;
+            HashMap<String, Object> map = mTracker.getData();
             byte[] data = (byte[]) map.get("data");
             int destPort = (int) map.get("destPort");
 
@@ -948,7 +948,7 @@ public abstract class SMSDispatcher extends Handler {
      * -param destAddr the destination phone number (for short code confirmation)
      */
     protected void sendRawPdu(SmsTracker tracker) {
-        HashMap map = tracker.mData;
+        HashMap map = tracker.getData();
         byte pdu[] = (byte[]) map.get("pdu");
 
         if (mSmsSendDisabled) {
@@ -1248,7 +1248,7 @@ public abstract class SMSDispatcher extends Handler {
         ArrayList<PendingIntent> sentIntents;
         ArrayList<PendingIntent> deliveryIntents;
 
-        HashMap<String, Object> map = tracker.mData;
+        HashMap<String, Object> map = tracker.getData();
 
         String destinationAddress = (String) map.get("destination");
         String scAddress = (String) map.get("scaddress");
@@ -1279,9 +1279,9 @@ public abstract class SMSDispatcher extends Handler {
      * Keeps track of an SMS that has been sent to the RIL, until it has
      * successfully been sent, or we're done trying.
      */
-    protected static final class SmsTracker {
+    public static class SmsTracker {
         // fields need to be public for derived SmsDispatchers
-        public final HashMap<String, Object> mData;
+        private final HashMap<String, Object> mData;
         public int mRetryCount;
         public int mImsRetry; // nonzero indicates initial message was sent over Ims
         public int mMessageRef;
@@ -1344,6 +1344,10 @@ public abstract class SMSDispatcher extends Handler {
          */
         boolean isMultipart() {
             return mData.containsKey("parts");
+        }
+
+        public HashMap<String, Object> getData() {
+            return mData;
         }
 
         /**

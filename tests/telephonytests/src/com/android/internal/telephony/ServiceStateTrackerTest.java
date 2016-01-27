@@ -181,6 +181,7 @@ public class ServiceStateTrackerTest {
 
         mReady = false;
         new ServiceStateTrackerTestHandler(TAG).start();
+        waitUntilReady();
         logd("ServiceStateTrackerTest -Setup!");
     }
 
@@ -192,8 +193,6 @@ public class ServiceStateTrackerTest {
     @Test
     @SmallTest
     public void testSetRadioPower() {
-        waitUntilReady();
-
         boolean oldState = mSimulatedCommands.getRadioState().isOn();
         sst.setRadioPower(!oldState);
         waitForMs(100);
@@ -203,8 +202,6 @@ public class ServiceStateTrackerTest {
     @Test
     @SmallTest
     public void testSpnUpdateShowPlmnOnly() {
-        waitUntilReady();
-
         doReturn(0x02).when(mSimRecords).getDisplayRule(anyString());
         doReturn(IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN).when(m3GPPUiccApp).getState();
 
@@ -240,8 +237,6 @@ public class ServiceStateTrackerTest {
     @Test
     @SmallTest
     public void testNITZupdate() {
-        waitUntilReady();
-
         doReturn(0x02).when(mSimRecords).getDisplayRule(anyString());
 
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_NITZ_TIME,
@@ -268,7 +263,6 @@ public class ServiceStateTrackerTest {
     @Test
     @SmallTest
     public void testCellInfoList() {
-        waitUntilReady();
         waitForMs(100);
 
         Parcel p = Parcel.obtain();
