@@ -199,7 +199,9 @@ public class GsmCdmaPhone extends Phone {
         super(precisePhoneType == PhoneConstants.PHONE_TYPE_GSM ? "GSM" : "CDMA",
                 notifier, context, ci, unitTestMode, phoneId, telephonyComponentFactory);
 
-        initOnce(ci, unitTestMode);
+        // phone type needs to be set before other initialization as other objects rely on it
+        mPrecisePhoneType = precisePhoneType;
+        initOnce(ci);
         initRatSpecific(precisePhoneType);
         mSST = mTelephonyComponentFactory.makeServiceStateTracker(this, this.mCi);
         // DcTracker uses SST so needs to be created after it is instantiated
@@ -218,7 +220,7 @@ public class GsmCdmaPhone extends Phone {
         }
     };
 
-    private void initOnce(CommandsInterface ci, boolean unitTestMode) {
+    private void initOnce(CommandsInterface ci) {
         if (ci instanceof SimulatedRadioControl) {
             mSimulatedRadioControl = (SimulatedRadioControl) ci;
         }
@@ -269,7 +271,6 @@ public class GsmCdmaPhone extends Phone {
         mEsn = null;
         mMeid = null;
 
-        //setName gsm/cdma
         mPrecisePhoneType = precisePhoneType;
 
         TelephonyManager tm = TelephonyManager.from(mContext);
