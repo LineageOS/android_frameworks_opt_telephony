@@ -275,6 +275,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
     static final int EVENT_SEND                 = 1;
     static final int EVENT_WAKE_LOCK_TIMEOUT    = 2;
+    static final int EVENT_SEND_ACK             = 3;
 
     //***** Constants
 
@@ -282,6 +283,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     static final int RIL_MAX_COMMAND_BYTES = (8 * 1024);
     static final int RESPONSE_SOLICITED = 0;
     static final int RESPONSE_UNSOLICITED = 1;
+    static final int RESPONSE_SOLICITED_ACK = 2;
+    static final int RESPONSE_SOLICITED_ACK_EXP = 3;
 
     static final String[] SOCKET_NAME_RIL = {"rild", "rild2", "rild3"};
 
@@ -349,6 +352,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
             switch (msg.what) {
                 case EVENT_SEND:
+                case EVENT_SEND_ACK:
                     try {
                         LocalSocket s;
 
@@ -361,8 +365,11 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                             return;
                         }
 
-                        synchronized (mRequestList) {
-                            mRequestList.append(rr.mSerial, rr);
+                        // Acks should not be stored in list before sending
+                        if (msg.what != EVENT_SEND_ACK) {
+                            synchronized (mRequestList) {
+                                mRequestList.append(rr.mSerial, rr);
+                            }
                         }
 
                         byte[] data;
@@ -2408,10 +2415,22 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (type == RESPONSE_UNSOLICITED) {
             processUnsolicited (p);
-        } else if (type == RESPONSE_SOLICITED) {
-            RILRequest rr = processSolicited (p);
+        } else if (type == RESPONSE_SOLICITED || type == RESPONSE_SOLICITED_ACK_EXP) {
+            RILRequest rr = processSolicited (p, type);
             if (rr != null) {
                 rr.release();
+            }
+        } else if (type == RESPONSE_SOLICITED_ACK) {
+            int serial;
+            serial = p.readInt();
+
+            RILRequest rr;
+            synchronized (mRequestList) {
+                rr = mRequestList.get(serial);
+            }
+            if (rr == null) {
+                Rlog.w(RILJ_LOG_TAG, "Unexpected solicited ack response! sn: " + serial);
+            } else {
                 decrementWakeLock();
             }
         }
@@ -2459,7 +2478,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private RILRequest
-    processSolicited (Parcel p) {
+    processSolicited (Parcel p, int type) {
         int serial, error;
         boolean found = false;
 
@@ -2475,6 +2494,16 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                             + serial + " error: " + error);
             return null;
         }
+
+        if (getRilVersion() >= 13 && type == RESPONSE_SOLICITED_ACK_EXP) {
+            Message msg;
+            RILRequest response = RILRequest.obtain(RIL_RESPONSE_ACKNOWLEDGEMENT, null);
+            msg = mSender.obtainMessage(EVENT_SEND_ACK, response);
+            acquireWakeLock();
+            msg.sendToTarget();
+            response.release();
+        }
+
 
         Object ret = null;
 
@@ -2828,6 +2857,16 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         Object ret;
 
         response = p.readInt();
+
+        // Follow new symantics of sending an Ack starting from RIL version 13
+        if (getRilVersion() >= 13) {
+            Message msg;
+            RILRequest rr = RILRequest.obtain(RIL_RESPONSE_ACKNOWLEDGEMENT, null);
+            msg = mSender.obtainMessage(EVENT_SEND_ACK, rr);
+            acquireWakeLock();
+            msg.sendToTarget();
+            rr.release();
+        }
 
         try {switch(response) {
 /*
@@ -4232,6 +4271,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             case RIL_REQUEST_STOP_LCE: return "RIL_REQUEST_STOP_LCE";
             case RIL_REQUEST_PULL_LCEDATA: return "RIL_REQUEST_PULL_LCEDATA";
             case RIL_REQUEST_GET_ACTIVITY_INFO: return "RIL_REQUEST_GET_ACTIVITY_INFO";
+            case RIL_RESPONSE_ACKNOWLEDGEMENT: return "RIL_RESPONSE_ACKNOWLEDGEMENT";
             default: return "<unknown request>";
         }
     }
