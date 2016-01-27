@@ -22,6 +22,8 @@ import android.app.Activity;
 import android.app.ActivityManagerNative;
 import android.app.AppOpsManager;
 import android.app.BroadcastOptions;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.PendingIntent.CanceledException;
 import android.content.BroadcastReceiver;
@@ -32,9 +34,9 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.UserInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.pm.UserInfo;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.net.Uri;
@@ -63,6 +65,7 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
+import com.android.internal.R;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.HexDump;
@@ -70,8 +73,8 @@ import com.android.internal.util.State;
 import com.android.internal.util.StateMachine;
 
 import java.io.ByteArrayOutputStream;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -148,6 +151,11 @@ public abstract class InboundSmsHandler extends StateMachine {
 
     /** Wakelock release delay when returning to idle state. */
     private static final int WAKELOCK_TIMEOUT = 3000;
+
+    // The notitfication tag used when showing a notification. The combination of notification tag
+    // and notification id should be unique within the phone app.
+    private static final String NOTIFICATION_TAG = "InboundSmsHandler";
+    private static final int NOTIFICATION_ID_NEW_MESSAGE = 1;
 
     /** URI for raw table of SMS provider. */
     private static final Uri sRawUri = Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw");
@@ -742,6 +750,10 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
         }
 
+        if (!mUserManager.isUserUnlocked()) {
+            return processMessagePartWithUserLocked(tracker, pdus, destPort);
+        }
+
         SmsBroadcastReceiver resultReceiver = new SmsBroadcastReceiver(tracker);
 
         if (destPort == SmsHeader.PORT_WAP_PUSH) {
@@ -772,6 +784,72 @@ public abstract class InboundSmsHandler extends StateMachine {
             return false;
         }
 
+        boolean carrierAppInvoked = filterSmsWithCarrierOrSystemApp(
+            pdus, destPort, tracker, resultReceiver, true /* userUnlocked */);
+
+        if (!carrierAppInvoked) {
+            dispatchSmsDeliveryIntent(pdus, tracker.getFormat(), destPort, resultReceiver);
+        }
+
+        return true;
+    }
+
+    /**
+     * Processes the message part while the credential-encrypted storage is still locked.
+     *
+     * <p>If the message is a regular MMS, show a new message notification. If the message is a
+     * SMS, ask the carrier app to filter it and show the new message notification if the carrier
+     * app asks to keep the message.
+     *
+     * @return true if an ordered broadcast was sent to the carrier app; false otherwise.
+     */
+    private boolean processMessagePartWithUserLocked(InboundSmsTracker tracker,
+            byte[][] pdus, int destPort) {
+        log("Credential-encrypted storage not available. Port: " + destPort);
+        if (destPort == SmsHeader.PORT_WAP_PUSH) {
+            // TODO - for wap push, check whether it's for MMS.
+            showNewMessageNotification();
+            return false;
+        }
+        if (destPort == -1) {
+            // This is a regular SMS - hand it to the carrier or system app for filtering.
+            boolean carrierAppInvoked = filterSmsWithCarrierOrSystemApp(
+                pdus, destPort, tracker, null, false /* userUnlocked */);
+            if (carrierAppInvoked) {
+                // Carrier app invoked, wait for it to return the result.
+                return true;
+            } else {
+                // Carrier app not invoked, show the notification and do nothing further.
+                showNewMessageNotification();
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private void showNewMessageNotification() {
+        log("Show new message notification.");
+        Intent intent = Intent.makeMainSelectorActivity(
+            Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING);
+        Notification.Builder mBuilder = new Notification.Builder(mContext)
+                .setSmallIcon(com.android.internal.R.drawable.sym_action_chat)
+                .setAutoCancel(true)
+                .setDefaults(Notification.DEFAULT_ALL)
+                .setContentTitle(mContext.getString(R.string.new_sms_notification_title))
+                .setContentText(mContext.getString(R.string.new_sms_notification_content))
+                .setContentIntent(PendingIntent.getActivity(mContext, 1, intent, 0));
+        NotificationManager mNotificationManager =
+            (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager.notify(
+            NOTIFICATION_TAG, NOTIFICATION_ID_NEW_MESSAGE, mBuilder.build());
+    }
+
+    /**
+     * Filters the SMS with carrier or system app.
+     * @return true if the carrier or system app is invoked, false otherwise.
+     */
+    private boolean filterSmsWithCarrierOrSystemApp(byte[][] pdus, int destPort,
+        InboundSmsTracker tracker, SmsBroadcastReceiver resultReceiver, boolean userUnlocked) {
         List<String> carrierPackages = null;
         UiccCard card = UiccController.getInstance().getUiccCard(mPhone.getPhoneId());
         if (card != null) {
@@ -781,29 +859,27 @@ public abstract class InboundSmsHandler extends StateMachine {
         } else {
             loge("UiccCard not initialized.");
         }
-
         List<String> systemPackages =
-                getSystemAppForIntent(new Intent(CarrierMessagingService.SERVICE_INTERFACE));
+            getSystemAppForIntent(new Intent(CarrierMessagingService.SERVICE_INTERFACE));
 
         if (carrierPackages != null && carrierPackages.size() == 1) {
             log("Found carrier package.");
             CarrierSmsFilter smsFilter = new CarrierSmsFilter(pdus, destPort,
                     tracker.getFormat(), resultReceiver);
-            CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter);
+            CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter, userUnlocked);
             smsFilter.filterSms(carrierPackages.get(0), smsFilterCallback);
+            return true;
         } else if (systemPackages != null && systemPackages.size() == 1) {
             log("Found system package.");
             CarrierSmsFilter smsFilter = new CarrierSmsFilter(pdus, destPort,
                     tracker.getFormat(), resultReceiver);
-            CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter);
+            CarrierSmsFilterCallback smsFilterCallback = new CarrierSmsFilterCallback(smsFilter, userUnlocked);
             smsFilter.filterSms(systemPackages.get(0), smsFilterCallback);
-        } else {
-            logv("Unable to find carrier package: " + carrierPackages
-                    + ", nor systemPackages: " + systemPackages);
-            dispatchSmsDeliveryIntent(pdus, tracker.getFormat(), destPort, resultReceiver);
+            return true;
         }
-
-        return true;
+        logv("Unable to find carrier package: " + carrierPackages
+                  + ", nor systemPackages: " + systemPackages);
+        return false;
     }
 
     private List<String> getSystemAppForIntent(Intent intent) {
@@ -1196,9 +1272,11 @@ public abstract class InboundSmsHandler extends StateMachine {
      */
     private final class CarrierSmsFilterCallback extends ICarrierMessagingCallback.Stub {
         private final CarrierSmsFilter mSmsFilter;
+        private final boolean mUserUnlocked;
 
-        CarrierSmsFilterCallback(CarrierSmsFilter smsFilter) {
+        CarrierSmsFilterCallback(CarrierSmsFilter smsFilter, boolean userUnlocked) {
             mSmsFilter = smsFilter;
+            mUserUnlocked = userUnlocked;
         }
 
         /**
@@ -1210,8 +1288,15 @@ public abstract class InboundSmsHandler extends StateMachine {
 
             logv("onFilterComplete: keepMessage is "+ keepMessage);
             if (keepMessage) {
-                dispatchSmsDeliveryIntent(mSmsFilter.mPdus, mSmsFilter.mSmsFormat,
-                        mSmsFilter.mDestPort, mSmsFilter.mSmsBroadcastReceiver);
+                if (mUserUnlocked) {
+                    dispatchSmsDeliveryIntent(mSmsFilter.mPdus, mSmsFilter.mSmsFormat,
+                            mSmsFilter.mDestPort, mSmsFilter.mSmsBroadcastReceiver);
+                } else {
+                    // Don't do anything further, show the new message notification and leave the
+                    // message in the raw table if the credential-encrypted storage is still locked.
+                    showNewMessageNotification();
+                    sendMessage(EVENT_BROADCAST_COMPLETE);
+                }
             } else {
                 // Drop this SMS.
                 final long token = Binder.clearCallingIdentity();
