@@ -3193,44 +3193,59 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         pw.flush();
         pw.println("++++++++++++++++++++++++++++++++");
 
-        try {
-            mImsPhone.dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
+        if (mImsPhone != null) {
+            try {
+                mImsPhone.dump(fd, pw, args);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
 
-        try {
-            mDcTracker.dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
         }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
 
-        try {
-            getServiceStateTracker().dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
+        if (mDcTracker != null) {
+            try {
+                mDcTracker.dump(fd, pw, args);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
 
-        try {
-            getCallTracker().dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
         }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
 
-        try {
-            ((RIL)mCi).dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (getServiceStateTracker() != null) {
+            try {
+                getServiceStateTracker().dump(fd, pw, args);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
         }
-        pw.flush();
-        pw.println("++++++++++++++++++++++++++++++++");
+
+        if (getCallTracker() != null) {
+            try {
+                getCallTracker().dump(fd, pw, args);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
+        }
+
+        if (mCi != null && mCi instanceof RIL) {
+            try {
+                ((RIL)mCi).dump(fd, pw, args);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
+        }
     }
 }
