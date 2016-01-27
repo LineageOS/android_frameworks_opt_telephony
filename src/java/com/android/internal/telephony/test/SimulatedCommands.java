@@ -39,6 +39,7 @@ import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class SimulatedCommands extends BaseCommands
         implements CommandsInterface, SimulatedRadioControl {
@@ -85,6 +86,9 @@ public class SimulatedCommands extends BaseCommands
     String mPin2Code;
     boolean mSsnNotifyOn = false;
     int mVoiceRadioTech;
+    private SignalStrength mSignalStrength;
+    private List<CellInfo> mCellInfoList;
+    private int[] mImsRegState;
 
     int mPausedResponseCount;
     ArrayList<Message> mPausedResponses = new ArrayList<Message>();
@@ -796,11 +800,16 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getMute (Message result) {unimplemented(result);}
-    
+
+    public void setSignalStrength(SignalStrength signalStrength) {
+        mSignalStrength = signalStrength;
+    }
+
     @Override
     public void getSignalStrength (Message result) {
 
-        SignalStrength ss = new SignalStrength(
+        if (mSignalStrength == null) {
+            mSignalStrength = new SignalStrength(
                 20, // gsmSignalStrength
                 0,  // gsmBitErrorRate
                 -1, // cdmaDbm
@@ -815,9 +824,10 @@ public class SimulatedCommands extends BaseCommands
                 SignalStrength.INVALID,     // lteCqi
                 SignalStrength.INVALID,     // tdScdmaRscp
                 true                        // gsmFlag
-        );
+            );
+        }
 
-        resultSuccess(result, ss);
+        resultSuccess(result, mSignalStrength);
     }
 
      /**
@@ -1699,9 +1709,33 @@ public class SimulatedCommands extends BaseCommands
         resultSuccess(response, ret);
     }
 
+    public void setCellInfoList(List<CellInfo> list) {
+        mCellInfoList = list;
+    }
+
     @Override
     public void getCellInfoList(Message response) {
-        resultSuccess(response, SimulatedCommandsVerifier.getInstance().getCellInfoList());
+        if (mCellInfoList == null) {
+            Parcel p = Parcel.obtain();
+            p.writeInt(1);
+            p.writeInt(1);
+            p.writeInt(2);
+            p.writeLong(1453510289108L);
+            p.writeInt(310);
+            p.writeInt(260);
+            p.writeInt(123);
+            p.writeInt(456);
+            p.writeInt(99);
+            p.writeInt(3);
+            p.setDataPosition(0);
+
+            CellInfoGsm cellInfo = CellInfoGsm.CREATOR.createFromParcel(p);
+
+            ArrayList<CellInfo> mCellInfoList = new ArrayList();
+            mCellInfoList.add(cellInfo);
+        }
+
+        resultSuccess(response, mCellInfoList);
     }
 
     @Override
@@ -1723,9 +1757,17 @@ public class SimulatedCommands extends BaseCommands
     public void setDataProfile(DataProfile[] dps, Message result) {
     }
 
+    public void setImsRegistrationState(int[] regState) {
+        mImsRegState = regState;
+    }
+
     @Override
     public void getImsRegistrationState(Message response) {
-        unimplemented(response);
+        if (mImsRegState == null) {
+            mImsRegState = new int[]{1};
+        }
+
+        resultSuccess(response, mImsRegState);
     }
 
     @Override

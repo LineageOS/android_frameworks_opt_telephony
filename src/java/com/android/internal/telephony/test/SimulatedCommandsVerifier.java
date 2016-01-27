@@ -18,7 +18,6 @@ package com.android.internal.telephony.test;
 
 import android.os.Handler;
 import android.os.Message;
-import android.telephony.CellInfo;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.RadioCapability;
@@ -26,8 +25,6 @@ import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataProfile;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
-
-import java.util.List;
 
 public class SimulatedCommandsVerifier implements CommandsInterface {
     private static SimulatedCommandsVerifier sInstance;
@@ -1203,10 +1200,6 @@ public class SimulatedCommandsVerifier implements CommandsInterface {
     @Override
     public void getCellInfoList(Message result) {
 
-    }
-
-    public List<CellInfo> getCellInfoList() {
-        return null;
     }
 
     @Override
