@@ -27,6 +27,7 @@ import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
+import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
@@ -34,7 +35,6 @@ import android.util.SparseArray;
 
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
-import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
@@ -42,7 +42,14 @@ import com.android.internal.telephony.uicc.UiccController;
 
 import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import org.junit.After;
 import org.junit.Before;
@@ -54,7 +61,6 @@ import org.mockito.MockitoAnnotations;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
 public class ServiceStateTrackerTest {
     private static final String TAG = "ServiceStateTrackerTest";
@@ -84,8 +90,6 @@ public class ServiceStateTrackerTest {
     HashMap<String, IBinder> mServiceCache;
     @Mock
     IBinder mBinder;
-    @Mock
-    SimulatedCommandsVerifier mSimulatedCommandsVerifier;
 
     private SimulatedCommands mSimulatedCommands;
     private ContextFixture mContextFixture;
@@ -163,10 +167,6 @@ public class ServiceStateTrackerTest {
         field = ProxyController.class.getDeclaredField("sProxyController");
         field.setAccessible(true);
         field.set(null, mProxyController);
-
-        field = SimulatedCommandsVerifier.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        field.set(null, mSimulatedCommandsVerifier);
 
         mContextFixture.putStringArrayResource(
                 com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming,
@@ -263,8 +263,6 @@ public class ServiceStateTrackerTest {
     @Test
     @SmallTest
     public void testCellInfoList() {
-        waitForMs(100);
-
         Parcel p = Parcel.obtain();
         p.writeInt(1);
         p.writeInt(1);
@@ -282,10 +280,55 @@ public class ServiceStateTrackerTest {
 
         ArrayList<CellInfo> list = new ArrayList();
         list.add(cellInfo);
-
-        doReturn(list).when(mSimulatedCommandsVerifier).getCellInfoList();
+        mSimulatedCommands.setCellInfoList(list);
 
         assertEquals(sst.getAllCellInfo(), list);
+    }
+
+    @Test
+    @SmallTest
+    public void testImsRegState() {
+        // Simulate IMS registered
+        mSimulatedCommands.setImsRegistrationState(new int[]{1});
+
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_IMS_STATE_CHANGED, null));
+        waitForMs(200);
+
+        assertTrue(sst.isImsRegistered());
+
+        // Simulate IMS unregistered
+        mSimulatedCommands.setImsRegistrationState(new int[]{0});
+
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_IMS_STATE_CHANGED, null));
+        waitForMs(200);
+
+        assertFalse(sst.isImsRegistered());
+    }
+
+    @Test
+    @SmallTest
+    public void testSignalStrength() {
+        SignalStrength ss = new SignalStrength(
+                30, // gsmSignalStrength
+                0,  // gsmBitErrorRate
+                -1, // cdmaDbm
+                -1, // cdmaEcio
+                -1, // evdoDbm
+                -1, // evdoEcio
+                -1, // evdoSnr
+                99, // lteSignalStrength
+                SignalStrength.INVALID,     // lteRsrp
+                SignalStrength.INVALID,     // lteRsrq
+                SignalStrength.INVALID,     // lteRssnr
+                SignalStrength.INVALID,     // lteCqi
+                SignalStrength.INVALID,     // tdScdmaRscp
+                true                        // gsmFlag
+        );
+
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_SIGNAL_STRENGTH_UPDATE,
+                new AsyncResult(null, ss, null)));
+        waitForMs(200);
+        assertEquals(sst.getSignalStrength(), ss);
     }
 
     private static void logd(String s) {
