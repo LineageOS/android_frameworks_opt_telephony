@@ -806,8 +806,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     private boolean processMessagePartWithUserLocked(InboundSmsTracker tracker,
             byte[][] pdus, int destPort) {
         log("Credential-encrypted storage not available. Port: " + destPort);
-        if (destPort == SmsHeader.PORT_WAP_PUSH) {
-            // TODO - for wap push, check whether it's for MMS.
+        if (destPort == SmsHeader.PORT_WAP_PUSH && mWapPush.isWapPushForMms(pdus[0], this)) {
             showNewMessageNotification();
             return false;
         }
