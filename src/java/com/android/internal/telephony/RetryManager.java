@@ -630,7 +630,7 @@ public class RetryManager {
 
     public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("  RetryManager");
-        pw.println("  ***************************************");
+        pw.println("***************************************");
 
         pw.println("    config = " + mConfig);
         pw.println("    mApnType = " + mApnType);
@@ -640,12 +640,14 @@ public class RetryManager {
         pw.println("    mSameApnRetryCount = " + mSameApnRetryCount);
         pw.println("    mModemSuggestedDelay = " + mModemSuggestedDelay);
 
-        pw.println("    APN list: ");
-        for (int i = 0; i < mWaitingApns.size(); i++) {
-            pw.println("      [" + i + "]=" + mWaitingApns.get(i));
+        if (mWaitingApns != null) {
+            pw.println("    APN list: ");
+            for (int i = 0; i < mWaitingApns.size(); i++) {
+                pw.println("      [" + i + "]=" + mWaitingApns.get(i));
+            }
         }
 
-        pw.println("  ***************************************");
+        pw.println("***************************************");
         pw.flush();
     }
 
