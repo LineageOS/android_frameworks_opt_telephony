@@ -43,6 +43,7 @@ import android.util.Log;
 
 import com.android.internal.content.PackageMonitor;
 import com.android.internal.logging.MetricsLogger;
+import com.android.internal.logging.MetricsProto.MetricsEvent;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -589,7 +590,7 @@ public final class SmsApplication {
                 }
                 context.sendBroadcast(intent);
             }
-            MetricsLogger.action(context, MetricsLogger.ACTION_DEFAULT_SMS_APP_CHANGED,
+            MetricsLogger.action(context, MetricsEvent.ACTION_DEFAULT_SMS_APP_CHANGED,
                     applicationData.mPackageName);
         }
     }
