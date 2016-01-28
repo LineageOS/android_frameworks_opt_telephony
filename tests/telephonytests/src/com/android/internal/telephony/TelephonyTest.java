@@ -92,6 +92,10 @@ public abstract class TelephonyTest {
     protected SimulatedCommandsVerifier mSimulatedCommandsVerifier;
     @Mock
     protected IDeviceIdleController mIDeviceIdleController;
+    @Mock
+    protected InboundSmsHandler mInboundSmsHandler;
+    @Mock
+    protected WspTypeDecoder mWspTypeDecoder;
 
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
@@ -170,10 +174,16 @@ public abstract class TelephonyTest {
                 makeIccPhoneBookInterfaceManager(any(Phone.class));
         doReturn(mDcTracker).when(mTelephonyComponentFactory).
                 makeDcTracker(any(Phone.class));
-        doReturn(true).when(mImsManagerInstances).containsKey(anyInt());
         doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory).
                 getIDeviceIdleController();
+        doReturn(mWspTypeDecoder).when(mTelephonyComponentFactory).
+                makeWspTypeDecoder(any(byte[].class));
+
         doReturn(mContextFixture.getTestDouble()).when(mPhone).getContext();
+
+        doReturn(true).when(mImsManagerInstances).containsKey(anyInt());
+
+        doReturn(mPhone).when(mInboundSmsHandler).getPhone();
 
         setReady(false);
     }

@@ -79,6 +79,10 @@ public class TelephonyComponentFactory {
         return new EriManager(phone, context, eriFileSource);
     }
 
+    public WspTypeDecoder makeWspTypeDecoder(byte[] pdu) {
+        return new WspTypeDecoder(pdu);
+    }
+
     public CdmaSubscriptionSourceManager
     getCdmaSubscriptionSourceManagerInstance(Context context, CommandsInterface ci, Handler h,
                                              int what, Object obj) {
