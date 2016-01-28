@@ -2419,6 +2419,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             RILRequest rr = processSolicited (p, type);
             if (rr != null) {
                 rr.release();
+                if (type == RESPONSE_SOLICITED) {
+                    decrementWakeLock();
+                }
             }
         } else if (type == RESPONSE_SOLICITED_ACK) {
             int serial;
