@@ -18,6 +18,7 @@ package com.android.internal.telephony.dataconnection;
 
 import android.app.PendingIntent;
 import android.content.res.Resources;
+import android.net.ConnectivityManager;
 import android.net.NetworkConfig;
 import android.telephony.Rlog;
 import android.text.TextUtils;
@@ -505,6 +506,31 @@ public class ApnContext {
 
     public long getInterApnDelay(boolean failFastEnabled) {
         return mRetryManager.getInterApnDelay(failFastEnabled);
+    }
+
+    public static int apnIdForType(int networkType) {
+        switch (networkType) {
+        case ConnectivityManager.TYPE_MOBILE:
+            return DctConstants.APN_DEFAULT_ID;
+        case ConnectivityManager.TYPE_MOBILE_MMS:
+            return DctConstants.APN_MMS_ID;
+        case ConnectivityManager.TYPE_MOBILE_SUPL:
+            return DctConstants.APN_SUPL_ID;
+        case ConnectivityManager.TYPE_MOBILE_DUN:
+            return DctConstants.APN_DUN_ID;
+        case ConnectivityManager.TYPE_MOBILE_FOTA:
+            return DctConstants.APN_FOTA_ID;
+        case ConnectivityManager.TYPE_MOBILE_IMS:
+            return DctConstants.APN_IMS_ID;
+        case ConnectivityManager.TYPE_MOBILE_CBS:
+            return DctConstants.APN_CBS_ID;
+        case ConnectivityManager.TYPE_MOBILE_IA:
+            return DctConstants.APN_IA_ID;
+        case ConnectivityManager.TYPE_MOBILE_EMERGENCY:
+            return DctConstants.APN_EMERGENCY_ID;
+        default:
+            return DctConstants.APN_INVALID_ID;
+        }
     }
 
     @Override

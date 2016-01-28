@@ -28,6 +28,7 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.IccOpenLogicalChannelResponse;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
@@ -44,6 +45,7 @@ import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.IccIoResult;
 
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
 
 public class SimulatedCommands extends BaseCommands
@@ -126,6 +128,10 @@ public class SimulatedCommands extends BaseCommands
         mSimFdnEnabledState = INITIAL_FDN_STATE;
         mSimFdnEnabled = (mSimFdnEnabledState != SimFdnState.NONE);
         mPin2Code = DEFAULT_SIM_PIN2_CODE;
+    }
+
+    private void log(String str) {
+        Rlog.d(LOG_TAG, str);
     }
 
     //***** CommandsInterface implementation
@@ -1922,5 +1928,18 @@ public class SimulatedCommands extends BaseCommands
 
     public void setOpenChannelId(int channelId) {
         mChannelId = channelId;
+    }
+
+    private AtomicBoolean mAllowed = new AtomicBoolean(false);
+    @Override
+    public void setDataAllowed(boolean allowed, Message result) {
+        log("setDataAllowed = " + allowed);
+        mAllowed.set(allowed);
+        resultSuccess(result, null);
+    }
+
+    @VisibleForTesting
+    public boolean isDataAllowed() {
+        return mAllowed.get();
     }
 }

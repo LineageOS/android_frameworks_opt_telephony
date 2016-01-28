@@ -71,12 +71,6 @@ public class SubscriptionControllerMock extends SubscriptionController {
         mContext = c;
     }
 
-    private void validateSlotId(int slotId) {
-        if (slotId < 0 || slotId > mSlotIdxToSubId.length) {
-            throw new RuntimeException("Invalid slotId " + slotId);
-        }
-    }
-
     @Override
     public int getDefaultDataSubId() {
         return mDefaultDataSubId.get();
@@ -184,13 +178,23 @@ public class SubscriptionControllerMock extends SubscriptionController {
     public int getSlotId(int subId) {
         throw new RuntimeException("not implemented");
     }
+
+    private boolean isInvalidSlotId(int slotIdx) {
+        if (slotIdx < 0 || slotIdx >= mSlotIdxToSubId.length) return true;
+        return false;
+    }
+
     @Override
     public int[] getSubId(int slotIdx) {
-        validateSlotId(slotIdx);
+        if (isInvalidSlotId(slotIdx)) {
+            return null;
+        }
         return mSlotIdxToSubId[slotIdx];
     }
     public void setSlotSubId(int slotIdx, int subId) {
-        validateSlotId(slotIdx);
+        if (isInvalidSlotId(slotIdx)) {
+            throw new RuntimeException("invalid slot specified" + slotIdx);
+        }
         if (mSlotIdxToSubId[slotIdx][0] != subId) {
             mSlotIdxToSubId[slotIdx][0] = subId;
             try {
