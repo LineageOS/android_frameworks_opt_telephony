@@ -145,6 +145,12 @@ public class GsmCdmaCallTracker extends CallTracker {
         mCi.registerForCallStateChanged(this, EVENT_CALL_STATE_CHANGE, null);
         mCi.registerForOn(this, EVENT_RADIO_AVAILABLE, null);
         mCi.registerForNotAvailable(this, EVENT_RADIO_NOT_AVAILABLE, null);
+
+        // Register receiver for ECM exit
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
+        mPhone.getContext().registerReceiver(mEcmExitReceiver, filter);
+
         updatePhoneType();
     }
 
@@ -152,7 +158,6 @@ public class GsmCdmaCallTracker extends CallTracker {
         if (mPhone.isPhoneTypeGsm()) {
             mConnections = new GsmCdmaConnection[MAX_CONNECTIONS_GSM];
             mCi.unregisterForCallWaitingInfo(this);
-            mPhone.getContext().unregisterReceiver(mEcmExitReceiver);
         } else {
             mConnections = new GsmCdmaConnection[MAX_CONNECTIONS_CDMA];
             mPendingCallInEcm = false;
@@ -161,11 +166,6 @@ public class GsmCdmaCallTracker extends CallTracker {
             mIsEcmTimerCanceled = false;
             m3WayCallFlashDelay = 0;
             mCi.registerForCallWaitingInfo(this, EVENT_CALL_WAITING_INFO_CDMA, null);
-
-            // Register receiver for ECM exit
-            IntentFilter filter = new IntentFilter();
-            filter.addAction(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED);
-            mPhone.getContext().registerReceiver(mEcmExitReceiver, filter);
         }
     }
 
