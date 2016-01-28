@@ -596,7 +596,7 @@ public class GsmCdmaConnection extends Connection {
     }
 
     // Returns true if state has changed, false if nothing changed
-    /*package*/ boolean
+    public boolean
     update (DriverCall dc) {
         GsmCdmaCall newParent;
         boolean changed = false;
