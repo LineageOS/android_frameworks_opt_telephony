@@ -115,6 +115,14 @@ public class ContextFixture implements TestFixture<Context> {
         }
     }
 
+    private final HashMap<String, Object> mSystemServices = new HashMap<String, Object>();
+
+    public void setSystemService(String name, Object service) {
+        synchronized(mSystemServices) {
+            mSystemServices.put(name, service);
+        }
+    }
+
     public class FakeContext extends MockContext {
         @Override
         public PackageManager getPackageManager() {
@@ -174,7 +182,9 @@ public class ContextFixture implements TestFixture<Context> {
                 case Context.CONNECTIVITY_SERVICE:
                     return mConnectivityManager;
                 default:
-                    return null;
+                    synchronized(mSystemServices) {
+                        return mSystemServices.get(name);
+                    }
             }
         }
 
@@ -288,6 +298,7 @@ public class ContextFixture implements TestFixture<Context> {
 
         @Override
         public void sendStickyBroadcast(Intent intent) {
+            logd("sendStickyBroadcast called for " + intent.getAction());
             synchronized (mBroadcastReceiversByAction) {
                 sendBroadcast(intent);
                 mStickyBroadcastByAction.put(intent.getAction(), intent);
@@ -296,6 +307,7 @@ public class ContextFixture implements TestFixture<Context> {
 
         @Override
         public void sendStickyBroadcastAsUser(Intent intent, UserHandle ignored) {
+            logd("sendStickyBroadcastAsUser called for " + intent.getAction());
             sendStickyBroadcast(intent);
         }
 

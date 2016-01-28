@@ -22,6 +22,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.LocalServerSocket;
+import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.UserHandle;
@@ -73,8 +75,12 @@ public class PhoneFactory {
     static private boolean sMadeDefaults = false;
     static private PhoneNotifier sPhoneNotifier;
     static private Context sContext;
+    //static private PhoneSwitcher mPhoneSwitcher;
 
     static private final HashMap<String, LocalLog>sLocalLogs = new HashMap<String, LocalLog>();
+
+    // TODO - make this a dynamic property read from the modem
+    public static final int MAX_ACTIVE_PHONES = 1;
 
     //***** Class Methods
 
@@ -202,11 +208,16 @@ public class PhoneFactory {
                     sPhones[i].startMonitoringImsService();
                 }
 
-                SubscriptionMonitor subscriptionMonitor = new SubscriptionMonitor(
-                        ITelephonyRegistry.Stub.asInterface(
-                        ServiceManager.getService("telephony.registry")),
-                        sContext,
-                        SubscriptionController.getInstance(), numPhones);
+                ITelephonyRegistry tr = ITelephonyRegistry.Stub.asInterface(
+                        ServiceManager.getService("telephony.registry"));
+                SubscriptionController sc = SubscriptionController.getInstance();
+
+                SubscriptionMonitor subscriptionMonitor = new SubscriptionMonitor(tr,
+                        sContext, sc, numPhones);
+
+                //mPhoneSwitcher = new PhoneSwitcher(MAX_ACTIVE_PHONES, numPhones,
+                //        sContext, sc, Looper.myLooper(), tr, sCommandsInterfaces,
+                //        sPhones);
             }
         }
     }
@@ -452,6 +463,10 @@ public class PhoneFactory {
     public static void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
         pw.println("PhoneFactory:");
         pw.println(" sMadeDefaults=" + sMadeDefaults);
+
+        //mPhoneSwitcher.dump(fd, pw, args);
+        //pw.println();
+
         Phone[] phones = (Phone[])PhoneFactory.getPhones();
         int i = -1;
         for(Phone phone : phones) {
