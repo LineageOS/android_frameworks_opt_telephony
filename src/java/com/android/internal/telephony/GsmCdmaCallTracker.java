@@ -90,6 +90,8 @@ public class GsmCdmaCallTracker extends CallTracker {
 
     Call.SrvccState mSrvccState = Call.SrvccState.NONE;
 
+    private TelephonyEventLog mEventLog;
+
     // Following member variables are for CDMA only
     RegistrantList mCallWaitingRegistrants = new RegistrantList();
     boolean mPendingCallInEcm;
@@ -146,6 +148,8 @@ public class GsmCdmaCallTracker extends CallTracker {
         mCi.registerForOn(this, EVENT_RADIO_AVAILABLE, null);
         mCi.registerForNotAvailable(this, EVENT_RADIO_NOT_AVAILABLE, null);
         updatePhoneType();
+
+        mEventLog = TelephonyEventLog.getInstance(mPhone.getContext(), mPhone.getPhoneId());
     }
 
     public void updatePhoneType() {
@@ -725,6 +729,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
         if (mState != oldState) {
             mPhone.notifyPhoneStateChanged();
+            mEventLog.writePhoneState(mState);
         }
     }
 

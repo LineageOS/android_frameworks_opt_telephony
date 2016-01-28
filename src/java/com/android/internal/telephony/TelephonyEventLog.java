@@ -1,5 +1,6 @@
 package com.android.internal.telephony;
 
+import com.android.ims.ImsConfig;
 import com.android.ims.ImsReasonInfo;
 import com.android.ims.internal.ImsCallSession;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
@@ -38,7 +39,6 @@ public class TelephonyEventLog {
     public static final int TAG_DATA_CALL_LIST = 5;
 
     public static final int TAG_PHONE_STATE = 8;
-    public static final int TAG_SMS = 10;
 
     public static final int TAG_RIL_REQUEST = 1001;
     public static final int TAG_RIL_RESPONSE = 1002;
@@ -80,6 +80,17 @@ public class TelephonyEventLog {
     public static final int TAG_IMS_MULTIPARTY_STATE_CHANGED = 2029;
 
     public static final int TAG_IMS_CALL_STATE = 2030;
+
+    public static final int SETTING_AIRPLANE_MODE = 1;
+    public static final int SETTING_CELL_DATA_ENABLED = 2;
+    public static final int SETTING_DATA_ROAMING_ENABLED = 3;
+    public static final int SETTING_PREFERRED_NETWORK_MODE = 4;
+    public static final int SETTING_WIFI_ENABLED = 5;
+    public static final int SETTING_VO_LTE_ENABLED = 6;
+    public static final int SETTING_VO_WIFI_ENABLED = 7;
+    public static final int SETTING_WFC_MODE = 8;
+    public static final int SETTING_VI_LTE_ENABLED = 9;
+    public static final int SETTING_VI_WIFI_ENABLED = 10;
 
     public static final int IMS_CONNECTION_STATE_CONNECTED = 1;
     public static final int IMS_CONNECTION_STATE_PROGRESSING = 2;
@@ -147,7 +158,7 @@ public class TelephonyEventLog {
         final Intent intent = new Intent();
         intent.setClassName(context, "com.android.phone.TelephonyDebugService");
 
-        ServiceConnection mConnection = new ServiceConnection() {
+        ServiceConnection connection = new ServiceConnection() {
             public void onServiceConnected(ComponentName className, IBinder service) {
                 if (DBG) Log.d(TAG, "onServiceConnected()");
                 mService = ITelephonyDebug.Stub.asInterface(service);
@@ -159,7 +170,7 @@ public class TelephonyEventLog {
             }
         };
 
-        context.bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+        context.bindService(intent, connection, Context.BIND_AUTO_CREATE);
     }
 
     private void writeEvent(int tag, Bundle data) {
@@ -196,6 +207,47 @@ public class TelephonyEventLog {
         writeEvent(TAG_SERVICE_STATE, b);
     }
 
+    public void writeSetAirplaneMode(boolean enabled) {
+        writeEvent(TAG_SETTINGS, SETTING_AIRPLANE_MODE, enabled ? 1 : 0);
+    }
+
+    public void writeSetCellDataEnabled(boolean enabled) {
+        writeEvent(TAG_SETTINGS, SETTING_CELL_DATA_ENABLED, enabled ? 1 : 0);
+    }
+
+    public void writeSetDataRoamingEnabled(boolean enabled) {
+        writeEvent(TAG_SETTINGS, SETTING_DATA_ROAMING_ENABLED, enabled ? 1 : 0);
+    }
+
+    public void writeSetPreferredNetworkType(int mode) {
+        writeEvent(TAG_SETTINGS, SETTING_PREFERRED_NETWORK_MODE, mode);
+    }
+
+    public void writeSetWifiEnabled(boolean enabled) {
+        writeEvent(TAG_SETTINGS, SETTING_WIFI_ENABLED, enabled ? 1 : 0);
+    }
+
+    public void writeSetWfcMode(int mode) {
+        writeEvent(TAG_SETTINGS, SETTING_WFC_MODE, mode);
+    }
+
+    public void writeImsSetFeatureValue(int feature, int network, int value, int status) {
+        switch (feature) {
+            case ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_LTE:
+                writeEvent(TAG_SETTINGS, SETTING_VO_LTE_ENABLED, value);
+                break;
+            case ImsConfig.FeatureConstants.FEATURE_TYPE_VOICE_OVER_WIFI:
+                writeEvent(TAG_SETTINGS, SETTING_VO_WIFI_ENABLED, value);
+                break;
+            case ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_LTE:
+                writeEvent(TAG_SETTINGS, SETTING_VI_LTE_ENABLED, value);
+                break;
+            case ImsConfig.FeatureConstants.FEATURE_TYPE_VIDEO_OVER_WIFI:
+                writeEvent(TAG_SETTINGS, SETTING_VI_WIFI_ENABLED, value);
+                break;
+        }
+    }
+
     public void writeOnImsConnectionState(int state, ImsReasonInfo reasonInfo) {
         writeEvent(TAG_IMS_CONNECTION_STATE, state, -1, imsReasonInfoToBundle(reasonInfo));
     }
@@ -212,11 +264,11 @@ public class TelephonyEventLog {
     }
 
     public void writeRilSetupDataCall(int rilSerial,
-            String radioTechnology, String profile, String apn,
-            String user, String password, String authType, String protocol) {
+            int radioTechnology, int profile, String apn,
+            String user, String password, int authType, String protocol) {
         Bundle b = new Bundle();
-        b.putString(DATA_KEY_RAT, radioTechnology);
-        b.putString(DATA_KEY_DATA_PROFILE, profile);
+        b.putInt(DATA_KEY_RAT, radioTechnology);
+        b.putInt(DATA_KEY_DATA_PROFILE, profile);
         b.putString(DATA_KEY_APN, apn);
         b.putString(DATA_KEY_PROTOCOL, protocol);
         writeEvent(TAG_RIL_REQUEST, RIL_REQUEST_SETUP_DATA_CALL, rilSerial, b);
@@ -289,7 +341,8 @@ public class TelephonyEventLog {
         writeEvent(TAG_RIL_UNSOL_RESPONSE, response, -1, null);
     }
 
-    public void writeOnRilSolicitedResponse(int rilSerial, int rilError, int rilRequest, Object ret) {
+    public void writeOnRilSolicitedResponse(int rilSerial, int rilError, int rilRequest,
+            Object ret) {
         Bundle b = new Bundle();
         if (rilError != 0) b.putInt(DATA_KEY_RIL_ERROR, rilError);
         switch (rilRequest) {
@@ -326,7 +379,7 @@ public class TelephonyEventLog {
         }
     }
 
-    public void writeImsPhoneState(PhoneConstants.State phoneState) {
+    public void writePhoneState(PhoneConstants.State phoneState) {
         int state;
         switch (phoneState) {
             case IDLE: state = 0; break;

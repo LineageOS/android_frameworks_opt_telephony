@@ -1549,8 +1549,16 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 + profile + " " + apn + " " + user + " "
                 + password + " " + authType + " " + protocol);
 
-        mEventLog.writeRilSetupDataCall(rr.mSerial, radioTechnology, profile, apn,
-                user, password, authType, protocol);
+        // The first parameter passed to RIL_REQUEST_SETUP_DATA_CALL can be:
+        //     0 - for CDMA
+        //     1 - for GSM/UMTS
+        //   >=2 - RIL_RadioTechnology+2
+        // The framework never passes 0 or 1, so by subtracting 2 we convert this parameter
+        // to RIL_RadioTechnology.
+        final int rilRat = Integer.parseInt(radioTechnology) - 2;
+
+        mEventLog.writeRilSetupDataCall(rr.mSerial, rilRat, Integer.parseInt(profile), apn,
+                user, password, Integer.parseInt(authType), protocol);
 
         send(rr);
     }
@@ -2117,6 +2125,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest)
                 + " : " + networkType);
+
+        mEventLog.writeSetPreferredNetworkType(networkType);
 
         send(rr);
     }
