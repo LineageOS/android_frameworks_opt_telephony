@@ -51,6 +51,7 @@ import android.telephony.SubscriptionManager;
 import com.android.ims.ImsCall;
 import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsConfig;
+import com.android.ims.ImsConfigListener;
 import com.android.ims.ImsConnectionStateListener;
 import com.android.ims.ImsEcbm;
 import com.android.ims.ImsException;
@@ -253,6 +254,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
             mServiceId = mImsManager.open(ImsServiceClass.MMTEL,
                     createIncomingCallPendingIntent(),
                     mImsConnectionStateListener);
+
+            mImsManager.setImsConfigListener(mImsConfigListener);
 
             // Get the ECBM interface and set IMSPhone's listener object for notifications
             getEcbmInterface().setEcbmStateListener(mPhone.mImsEcbmStateListener);
@@ -750,7 +753,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
         if (mState != oldState) {
             mPhone.notifyPhoneStateChanged();
-            mEventLog.writeImsPhoneState(mState);
+            mEventLog.writePhoneState(mState);
         }
     }
 
@@ -1271,6 +1274,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 cause = DisconnectCause.IMS_MERGED_SUCCESSFULLY;
             }
 
+            mEventLog.writeOnImsCallTerminated(imsCall.getCallSession(), reasonInfo);
+
             processCallStateChange(imsCall, ImsPhoneCall.State.DISCONNECTED, cause);
             if (mForegroundCall.getState() != ImsPhoneCall.State.ACTIVE) {
                 if (mRingingCall.getState().isRinging()) {
@@ -1304,8 +1309,6 @@ public final class ImsPhoneCallTracker extends CallTracker {
                     mCallExpectedToResume = null;
                 }
             }
-
-            mEventLog.writeOnImsCallTerminated(imsCall.getCallSession(), reasonInfo);
         }
 
         @Override
@@ -1792,6 +1795,23 @@ public final class ImsPhoneCallTracker extends CallTracker {
             if (DBG) log("onVoiceMessageCountChanged :: count=" + count);
             mPhone.mDefaultPhone.setVoiceMessageCount(count);
         }
+    };
+
+    private ImsConfigListener.Stub mImsConfigListener = new ImsConfigListener.Stub() {
+        @Override
+        public void onGetFeatureResponse(int feature, int network, int value, int status) {}
+
+        @Override
+        public void onSetFeatureResponse(int feature, int network, int value, int status) {
+            mEventLog.writeImsSetFeatureValue(feature, network, value, status);
+        }
+
+        @Override
+        public void onGetVideoQuality(int status, int quality) {}
+
+        @Override
+        public void onSetVideoQuality(int status) {}
+
     };
 
     /* package */
