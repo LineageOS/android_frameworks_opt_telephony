@@ -58,7 +58,7 @@ public class DcSwitchStateMachine extends StateMachine {
 
     protected DcSwitchStateMachine(Phone phone, String name, int id) {
         super(name);
-        if (DBG) log("DcSwitchState constructor E");
+        if (VDBG) log("DcSwitchState created");
         mPhone = phone;
         mId = id;
 
@@ -69,7 +69,6 @@ public class DcSwitchStateMachine extends StateMachine {
         addState(mAttachedState, mDefaultState);
         addState(mDetachingState, mDefaultState);
         setInitialState(mIdleState);
-        if (DBG) log("DcSwitchState constructor X");
     }
 
 //    public void notifyDataConnection(int phoneId, String state, String reason,

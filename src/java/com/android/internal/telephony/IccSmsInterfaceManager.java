@@ -651,7 +651,6 @@ public class IccSmsInterfaceManager {
     }
 
     synchronized public boolean enableGsmBroadcastRange(int startMessageId, int endMessageId) {
-        if (DBG) log("enableGsmBroadcastRange");
 
         Context context = mPhone.getContext();
 
