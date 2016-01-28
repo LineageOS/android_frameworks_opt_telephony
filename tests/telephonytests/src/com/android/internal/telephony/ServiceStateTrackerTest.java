@@ -27,8 +27,10 @@ import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
+import android.telephony.CellLocation;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
+import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
 import android.util.SparseArray;
@@ -182,6 +184,7 @@ public class ServiceStateTrackerTest {
         mReady = false;
         new ServiceStateTrackerTestHandler(TAG).start();
         waitUntilReady();
+        waitForMs(500);
         logd("ServiceStateTrackerTest -Setup!");
     }
 
@@ -210,11 +213,11 @@ public class ServiceStateTrackerTest {
         waitForMs(500);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContextFixture.getTestDouble(), times(1)).
+        verify(mContextFixture.getTestDouble(), times(3)).
                 sendStickyBroadcastAsUser(intentArgumentCaptor.capture(), eq(UserHandle.ALL));
 
         // We only want to verify the intent SPN_STRINGS_UPDATED_ACTION.
-        Intent intent = intentArgumentCaptor.getAllValues().get(0);
+        Intent intent = intentArgumentCaptor.getAllValues().get(2);
         assertEquals(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION, intent.getAction());
         assertEquals(Intent.FLAG_RECEIVER_REPLACE_PENDING, intent.getFlags());
 
@@ -246,18 +249,14 @@ public class ServiceStateTrackerTest {
         waitForMs(500);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContextFixture.getTestDouble(), atLeast(1)).
+        verify(mContextFixture.getTestDouble(), times(4)).
                 sendStickyBroadcastAsUser(intentArgumentCaptor.capture(), eq(UserHandle.ALL));
 
-        boolean receivedExpectedIntent = false;
-        for(Intent intent : intentArgumentCaptor.getAllValues()) {
-            if(intent.getAction().equals(TelephonyIntents.ACTION_NETWORK_SET_TIMEZONE)) {
-                assertEquals(Intent.FLAG_RECEIVER_REPLACE_PENDING, intent.getFlags());
-                assertEquals(AMERICA_LA_TIME_ZONE, intent.getExtras().getString(KEY_TIME_ZONE));
-                receivedExpectedIntent = true;
-            }
-        }
-        assertTrue(receivedExpectedIntent);
+
+        Intent intent = intentArgumentCaptor.getAllValues().get(1);
+        assertEquals(intent.getAction(), TelephonyIntents.ACTION_NETWORK_SET_TIMEZONE);
+        assertEquals(Intent.FLAG_RECEIVER_REPLACE_PENDING, intent.getFlags());
+        assertEquals(AMERICA_LA_TIME_ZONE, intent.getExtras().getString(KEY_TIME_ZONE));
     }
 
     @Test
@@ -329,6 +328,20 @@ public class ServiceStateTrackerTest {
                 new AsyncResult(null, ss, null)));
         waitForMs(200);
         assertEquals(sst.getSignalStrength(), ss);
+    }
+
+    @Test
+    @SmallTest
+    public void testGsmCellLocation() {
+
+        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_GET_LOC_DONE,
+                new AsyncResult(null, new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9",
+                        "10", "11", "12", "13", "14", "15"}, null)));
+
+        waitForMs(200);
+        GsmCellLocation cl = (GsmCellLocation) sst.getCellLocation();
+        assertEquals(2, cl.getLac());
+        assertEquals(3, cl.getCid());
     }
 
     private static void logd(String s) {
