@@ -16,6 +16,24 @@
       "revId": "81c5d8c1a91608447ca811c60cf8abb1b0a4cde1",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fcbff3d_6a4f64bd",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-01-29T05:51:32Z",
+      "side": 1,
+      "message": "Don\u0027t you want to return here? This is the only thing that should happen if you get a shutdown intent, no?",
+      "parentUuid": "1fcbff3d_ea5b5484",
+      "revId": "81c5d8c1a91608447ca811c60cf8abb1b0a4cde1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
