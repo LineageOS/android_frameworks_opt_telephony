@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1fcbff3d_ea5b5484",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 9813
+      },
+      "writtenOn": "2016-01-29T05:48:44Z",
+      "side": 1,
+      "message": "do you want to return here?, especially since ACTION_INTERNAL_SIM_STATE_CHANGED is handled below.",
+      "revId": "81c5d8c1a91608447ca811c60cf8abb1b0a4cde1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
