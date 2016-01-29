@@ -16,7 +16,6 @@
 
 package com.android.internal.telephony;
 
-import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Bundle;
@@ -27,10 +26,10 @@ import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
-import android.telephony.CellLocation;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
 import android.telephony.gsm.GsmCellLocation;
+import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.util.Log;
 import android.util.SparseArray;
@@ -47,7 +46,6 @@ import static org.junit.Assert.*;
 
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
@@ -159,7 +157,7 @@ public class ServiceStateTrackerTest {
         field.set(null, mServiceCache);
 
         doReturn(mTelephonyEventLog).when(mLogInstances).get(anyInt());
-        doReturn(mBinder).when(mServiceCache).get(Context.ALARM_SERVICE);
+        doReturn(mBinder).when(mServiceCache).get(anyString());
 
         // Use reflection to replace TelephonyEventLog.sInstances with our mocked mLogInstances
         field = TelephonyEventLog.class.getDeclaredField("sInstances");
@@ -184,7 +182,7 @@ public class ServiceStateTrackerTest {
         mReady = false;
         new ServiceStateTrackerTestHandler(TAG).start();
         waitUntilReady();
-        waitForMs(500);
+        waitForMs(600);
         logd("ServiceStateTrackerTest -Setup!");
     }
 
@@ -194,7 +192,7 @@ public class ServiceStateTrackerTest {
     }
 
     @Test
-    @SmallTest
+    @MediumTest
     public void testSetRadioPower() {
         boolean oldState = mSimulatedCommands.getRadioState().isOn();
         sst.setRadioPower(!oldState);
@@ -203,14 +201,14 @@ public class ServiceStateTrackerTest {
     }
 
     @Test
-    @SmallTest
+    @MediumTest
     public void testSpnUpdateShowPlmnOnly() {
         doReturn(0x02).when(mSimRecords).getDisplayRule(anyString());
         doReturn(IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN).when(m3GPPUiccApp).getState();
 
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_NETWORK_STATE_CHANGED, null));
 
-        waitForMs(500);
+        waitForMs(750);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mContextFixture.getTestDouble(), times(3)).
@@ -238,7 +236,7 @@ public class ServiceStateTrackerTest {
     }
 
     @Test
-    @SmallTest
+    @MediumTest
     public void testNITZupdate() {
         doReturn(0x02).when(mSimRecords).getDisplayRule(anyString());
 
@@ -246,7 +244,7 @@ public class ServiceStateTrackerTest {
                 new AsyncResult(null,
                         new Object[]{"16/01/22,23:24:44-32,00", Long.valueOf(41824)}, null)));
 
-        waitForMs(500);
+        waitForMs(750);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mContextFixture.getTestDouble(), times(4)).
@@ -260,7 +258,7 @@ public class ServiceStateTrackerTest {
     }
 
     @Test
-    @SmallTest
+    @MediumTest
     public void testCellInfoList() {
         Parcel p = Parcel.obtain();
         p.writeInt(1);
@@ -285,7 +283,7 @@ public class ServiceStateTrackerTest {
     }
 
     @Test
-    @SmallTest
+    @MediumTest
     public void testImsRegState() {
         // Simulate IMS registered
         mSimulatedCommands.setImsRegistrationState(new int[]{1});
@@ -305,7 +303,7 @@ public class ServiceStateTrackerTest {
     }
 
     @Test
-    @SmallTest
+    @MediumTest
     public void testSignalStrength() {
         SignalStrength ss = new SignalStrength(
                 30, // gsmSignalStrength
@@ -331,7 +329,7 @@ public class ServiceStateTrackerTest {
     }
 
     @Test
-    @SmallTest
+    @MediumTest
     public void testGsmCellLocation() {
 
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_GET_LOC_DONE,

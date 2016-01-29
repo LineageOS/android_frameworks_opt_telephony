@@ -2093,8 +2093,8 @@ public class ServiceStateTracker extends Handler {
             // Save the roaming state before carrier config possibly overrides it.
             mNewSS.setDataRoamingFromRegistration(mNewSS.getDataRoaming());
 
-            ICarrierConfigLoader configLoader =
-                    (ICarrierConfigLoader) ServiceManager.getService(Context.CARRIER_CONFIG_SERVICE);
+            CarrierConfigManager configLoader = (CarrierConfigManager)
+                    mPhone.getContext().getSystemService(Context.CARRIER_CONFIG_SERVICE);
             if (configLoader != null) {
                 try {
                     PersistableBundle b = configLoader.getConfigForSubId(mPhone.getSubId());
@@ -2114,7 +2114,7 @@ public class ServiceStateTracker extends Handler {
                                 + mNewSS.getOperatorNumeric() + ", " + systemId);
                         setRoamingOn();
                     }
-                } catch (RemoteException e) {
+                } catch (Exception e) {
                     loge("updateRoamingState: unable to access carrier config service");
                 }
             } else {
