@@ -219,7 +219,8 @@ public class ContextFixture implements TestFixture<Context> {
 
         @Override
         public void sendBroadcast(Intent intent, String receiverPermission) {
-            // TODO -- need to ensure this is captured
+            logd("sendBroadcast called for " + intent.getAction());
+            sendBroadcast(intent);
         }
 
         @Override
