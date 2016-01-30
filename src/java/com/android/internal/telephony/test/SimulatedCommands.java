@@ -1107,7 +1107,8 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void reportSmsMemoryStatus(boolean available, Message result) {
-        unimplemented(result);
+        resultSuccess(result, null);
+        SimulatedCommandsVerifier.getInstance().reportSmsMemoryStatus(available, result);
     }
 
     @Override
@@ -1868,5 +1869,15 @@ public class SimulatedCommands extends BaseCommands
         if (mGsmBroadcastSmsRegistrant != null) {
             mGsmBroadcastSmsRegistrant.notifyRegistrant(new AsyncResult(null, result, null));
         }
+    }
+
+    public void notifyIccSmsFull() {
+        if (mIccSmsFullRegistrant != null) {
+            mIccSmsFullRegistrant.notifyRegistrant();
+        }
+    }
+
+    public void notifyRadioOn() {
+        mOnRegistrants.notifyRegistrants();
     }
 }
