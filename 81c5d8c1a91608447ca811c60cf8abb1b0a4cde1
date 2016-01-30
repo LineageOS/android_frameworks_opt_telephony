@@ -52,6 +52,24 @@
       "revId": "81c5d8c1a91608447ca811c60cf8abb1b0a4cde1",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fcbff3d_80e1519d",
+        "filename": "src/java/com/android/internal/telephony/SubscriptionInfoUpdater.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-01-30T00:32:19Z",
+      "side": 1,
+      "message": "You\u0027d probably want to add !action.equals(Intent.ACTION_SHUTDOWN) to that if statement, and check for action.equals(Intent.ACTION_SHUTDOWN) if you did that.",
+      "parentUuid": "1fcbff3d_6d2e9ea6",
+      "revId": "81c5d8c1a91608447ca811c60cf8abb1b0a4cde1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
