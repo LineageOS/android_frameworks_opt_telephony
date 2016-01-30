@@ -1056,8 +1056,8 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void setupDataCall(String radioTechnology, String profile,
-            String apn, String user, String password, String authType,
+    public void setupDataCall(int radioTechnology, int profile,
+            String apn, String user, String password, int authType,
             String protocol, Message result) {
         unimplemented(result);
     }

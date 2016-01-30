@@ -1595,10 +1595,9 @@ public interface CommandsInterface {
      * object containing the connection information.
      *
      * @param radioTechnology
-     *            indicates whether to setup connection on radio technology CDMA
-     *            (0) or GSM/UMTS (1)
+     *            Radio technology to use. Values is one of RIL_RADIO_TECHNOLOGY_*
      * @param profile
-     *            Profile Number or NULL to indicate default profile
+     *            Profile Number. Values is one of DATA_PROFILE_*
      * @param apn
      *            the APN to connect to if radio technology is GSM/UMTS.
      *            Otherwise null for CDMA.
@@ -1614,8 +1613,8 @@ public interface CommandsInterface {
      * @param result
      *            Callback message
      */
-    public void setupDataCall(String radioTechnology, String profile,
-            String apn, String user, String password, String authType,
+    public void setupDataCall(int radioTechnology, int profile,
+            String apn, String user, String password, int authType,
             String protocol, Message result);
 
     /**
