@@ -46,6 +46,7 @@ import static org.junit.Assert.*;
 
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
@@ -211,11 +212,11 @@ public class ServiceStateTrackerTest {
         waitForMs(750);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContextFixture.getTestDouble(), times(3)).
+        verify(mContextFixture.getTestDouble(), atLeast(2)).
                 sendStickyBroadcastAsUser(intentArgumentCaptor.capture(), eq(UserHandle.ALL));
 
         // We only want to verify the intent SPN_STRINGS_UPDATED_ACTION.
-        Intent intent = intentArgumentCaptor.getAllValues().get(2);
+        Intent intent = intentArgumentCaptor.getValue();
         assertEquals(TelephonyIntents.SPN_STRINGS_UPDATED_ACTION, intent.getAction());
         assertEquals(Intent.FLAG_RECEIVER_REPLACE_PENDING, intent.getFlags());
 
