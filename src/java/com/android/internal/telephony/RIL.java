@@ -3549,8 +3549,16 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
     protected Object
     responseFailCause(Parcel p) {
+        int numInts;
+        int response[];
+
+        numInts = p.readInt();
+        response = new int[numInts];
+        for (int i = 0 ; i < numInts ; i++) {
+            response[i] = p.readInt();
+        }
         LastCallFailCause failCause = new LastCallFailCause();
-        failCause.causeCode = p.readInt();
+        failCause.causeCode = response[0];
         if (p.dataAvail() > 0) {
           failCause.vendorCause = p.readString();
         }
