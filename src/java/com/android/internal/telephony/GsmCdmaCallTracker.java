@@ -475,7 +475,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         return null;
     }
 
-    Connection
+    public Connection
     dial(String dialString) throws CallStateException {
         if (isPhoneTypeGsm()) {
             return dial(dialString, CommandsInterface.CLIR_DEFAULT, null);
@@ -496,7 +496,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         return dial(dialString, clirMode, null, intentExtras);
     }
 
-    void
+    public void
     acceptCall () throws CallStateException {
         // FIXME if SWITCH fails, should retry with ANSWER
         // in case the active/holding call disappeared and this
@@ -527,7 +527,7 @@ public class GsmCdmaCallTracker extends CallTracker {
         }
     }
 
-    void
+    public void
     rejectCall () throws CallStateException {
         // AT+CHLD=0 means "release held or UDUB"
         // so if the phone isn't ringing, this could hang up held
