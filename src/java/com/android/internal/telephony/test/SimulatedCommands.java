@@ -25,6 +25,7 @@ import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.Rlog;
 import android.telephony.SignalStrength;
+import android.telephony.IccOpenLogicalChannelResponse;
 
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandException;
@@ -38,6 +39,8 @@ import com.android.internal.telephony.CallFailCause;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
 import com.android.internal.telephony.LastCallFailCause;
+import com.android.internal.telephony.uicc.IccCardStatus;
+import com.android.internal.telephony.uicc.IccIoResult;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -90,6 +93,9 @@ public class SimulatedCommands extends BaseCommands
     private SignalStrength mSignalStrength;
     private List<CellInfo> mCellInfoList;
     private int[] mImsRegState;
+    private IccCardStatus mIccCardStatus;
+    private IccIoResult mIccIoResultForApduLogicalChannel;
+    private int mChannelId = IccOpenLogicalChannelResponse.INVALID_CHANNEL;
 
     int mPausedResponseCount;
     ArrayList<Message> mPausedResponses = new ArrayList<Message>();
@@ -120,7 +126,11 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getIccCardStatus(Message result) {
-        unimplemented(result);
+        if(mIccCardStatus!=null) {
+            resultSuccess(result, mIccCardStatus);
+        } else {
+            resultFail(result, new RuntimeException("IccCardStatus not set"));
+        }
     }
 
     @Override
@@ -1788,7 +1798,9 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void iccOpenLogicalChannel(String AID, Message response) {
-        unimplemented(response);
+        SimulatedCommandsVerifier.getInstance().iccOpenLogicalChannel(AID, response);
+        Object result = new int[]{mChannelId};
+        resultSuccess(response, result);
     }
 
     @Override
@@ -1798,8 +1810,15 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void iccTransmitApduLogicalChannel(int channel, int cla, int instruction,
-            int p1, int p2, int p3, String data, Message response) {
-        unimplemented(response);
+                                              int p1, int p2, int p3, String data,
+                                              Message response) {
+        SimulatedCommandsVerifier.getInstance().iccTransmitApduLogicalChannel(channel, cla,
+                                                 instruction, p1, p2, p3, data, response);
+        if(mIccIoResultForApduLogicalChannel!=null) {
+            resultSuccess(response, mIccIoResultForApduLogicalChannel);
+        }else {
+            resultFail(response, new RuntimeException("IccIoResult not set"));
+        }
     }
 
     @Override
@@ -1882,5 +1901,17 @@ public class SimulatedCommands extends BaseCommands
 
     public void notifyRadioOn() {
         mOnRegistrants.notifyRegistrants();
+    }
+
+    public void setIccCardStatus(IccCardStatus iccCardStatus){
+        mIccCardStatus = iccCardStatus;
+    }
+
+    public void setIccIoResultForApduLogicalChannel(IccIoResult iccIoResult) {
+        mIccIoResultForApduLogicalChannel = iccIoResult;
+    }
+
+    public void setOpenChannelId(int channelId) {
+        mChannelId = channelId;
     }
 }
