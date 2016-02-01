@@ -37,6 +37,7 @@ import com.android.internal.telephony.UUSInfo;
 import com.android.internal.telephony.CallFailCause;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.gsm.SuppServiceNotification;
+import com.android.internal.telephony.LastCallFailCause;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -511,6 +512,7 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void dial (String address, int clirMode, Message result) {
+        SimulatedCommandsVerifier.getInstance().dial(address, clirMode, result);
         simulatedCallState.onDial(address);
 
         resultSuccess(result, null);
@@ -529,6 +531,7 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void dial(String address, int clirMode, UUSInfo uusInfo, Message result) {
+        SimulatedCommandsVerifier.getInstance().dial(address, clirMode, uusInfo, result);
         simulatedCallState.onDial(address);
 
         resultSuccess(result, null);
@@ -736,6 +739,7 @@ public class SimulatedCommands extends BaseCommands
     public void acceptCall (Message result) {
         boolean success;
 
+        SimulatedCommandsVerifier.getInstance().acceptCall(result);
         success = simulatedCallState.onAnswer();
 
         if (!success){
@@ -774,10 +778,9 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void getLastCallFailCause (Message result) {
-        int[] ret = new int[1];
-
-        ret[0] = mNextCallFailCause;
-        resultSuccess(result, ret);
+        LastCallFailCause mFailCause = new LastCallFailCause();
+        mFailCause.causeCode = mNextCallFailCause;
+        resultSuccess(result, mFailCause);
     }
 
     /**
