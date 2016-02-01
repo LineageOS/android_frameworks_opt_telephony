@@ -110,38 +110,38 @@ public abstract class InboundSmsHandler extends StateMachine {
             "destination_port"
     };
 
-    static final int PDU_COLUMN = 0;
-    static final int SEQUENCE_COLUMN = 1;
-    static final int DESTINATION_PORT_COLUMN = 2;
-    static final int DATE_COLUMN = 3;
-    static final int REFERENCE_NUMBER_COLUMN = 4;
-    static final int COUNT_COLUMN = 5;
-    static final int ADDRESS_COLUMN = 6;
-    static final int ID_COLUMN = 7;
+    public static final int PDU_COLUMN = 0;
+    public static final int SEQUENCE_COLUMN = 1;
+    public static final int DESTINATION_PORT_COLUMN = 2;
+    public static final int DATE_COLUMN = 3;
+    public static final int REFERENCE_NUMBER_COLUMN = 4;
+    public static final int COUNT_COLUMN = 5;
+    public static final int ADDRESS_COLUMN = 6;
+    public static final int ID_COLUMN = 7;
 
-    static final String SELECT_BY_ID = "_id=?";
-    static final String SELECT_BY_REFERENCE = "address=? AND reference_number=? AND count=?";
+    public static final String SELECT_BY_ID = "_id=?";
+    public static final String SELECT_BY_REFERENCE = "address=? AND reference_number=? AND count=?";
 
     /** New SMS received as an AsyncResult. */
     public static final int EVENT_NEW_SMS = 1;
 
     /** Message type containing a {@link InboundSmsTracker} ready to broadcast to listeners. */
-    static final int EVENT_BROADCAST_SMS = 2;
+    public static final int EVENT_BROADCAST_SMS = 2;
 
     /** Message from resultReceiver notifying {@link WaitingState} of a completed broadcast. */
-    static final int EVENT_BROADCAST_COMPLETE = 3;
+    private static final int EVENT_BROADCAST_COMPLETE = 3;
 
     /** Sent on exit from {@link WaitingState} to return to idle after sending all broadcasts. */
-    static final int EVENT_RETURN_TO_IDLE = 4;
+    private static final int EVENT_RETURN_TO_IDLE = 4;
 
     /** Release wakelock after a short timeout when returning to idle state. */
-    static final int EVENT_RELEASE_WAKELOCK = 5;
+    private static final int EVENT_RELEASE_WAKELOCK = 5;
 
     /** Sent by {@link SmsBroadcastUndelivered} after cleaning the raw table. */
-    static final int EVENT_START_ACCEPTING_SMS = 6;
+    public static final int EVENT_START_ACCEPTING_SMS = 6;
 
     /** Update phone object */
-    static final int EVENT_UPDATE_PHONE_OBJECT = 7;
+    private static final int EVENT_UPDATE_PHONE_OBJECT = 7;
 
     /** New SMS received as an AsyncResult. */
     public static final int EVENT_INJECT_SMS = 8;
@@ -159,22 +159,22 @@ public abstract class InboundSmsHandler extends StateMachine {
     private final WapPushOverSms mWapPush;
 
     /** Wake lock to ensure device stays awake while dispatching the SMS intents. */
-    final PowerManager.WakeLock mWakeLock;
+    private final PowerManager.WakeLock mWakeLock;
 
     /** DefaultState throws an exception or logs an error for unhandled message types. */
-    final DefaultState mDefaultState = new DefaultState();
+    private final DefaultState mDefaultState = new DefaultState();
 
     /** Startup state. Waiting for {@link SmsBroadcastUndelivered} to complete. */
-    final StartupState mStartupState = new StartupState();
+    private final StartupState mStartupState = new StartupState();
 
     /** Idle state. Waiting for messages to process. */
-    final IdleState mIdleState = new IdleState();
+    private final IdleState mIdleState = new IdleState();
 
     /** Delivering state. Saves the PDU in the raw table and acknowledges to SMSC. */
-    final DeliveringState mDeliveringState = new DeliveringState();
+    private final DeliveringState mDeliveringState = new DeliveringState();
 
     /** Broadcasting state. Waits for current broadcast to complete before delivering next. */
-    final WaitingState mWaitingState = new WaitingState();
+    private final WaitingState mWaitingState = new WaitingState();
 
     /** Helper class to check whether storage is available for incoming messages. */
     protected SmsStorageMonitor mStorageMonitor;
@@ -830,7 +830,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param appOp app op that is being performed when dispatching to a receiver
      * @param user user to deliver the intent to
      */
-    protected void dispatchIntent(Intent intent, String permission, int appOp,
+    public void dispatchIntent(Intent intent, String permission, int appOp,
             Bundle opts, BroadcastReceiver resultReceiver, UserHandle user) {
         intent.addFlags(Intent.FLAG_RECEIVER_NO_ABORT);
         SubscriptionManager.putPhoneIdAndSubIdExtra(intent, mPhone.getPhoneId());

@@ -71,7 +71,7 @@ public final class InboundSmsTracker {
      * @param is3gpp2 true for 3GPP2 format; false for 3GPP format
      * @param is3gpp2WapPdu true for 3GPP2 format WAP PDU; false otherwise
      */
-    InboundSmsTracker(byte[] pdu, long timestamp, int destPort, boolean is3gpp2,
+    public InboundSmsTracker(byte[] pdu, long timestamp, int destPort, boolean is3gpp2,
             boolean is3gpp2WapPdu) {
         mPdu = pdu;
         mTimestamp = timestamp;
@@ -122,7 +122,7 @@ public final class InboundSmsTracker {
      * Since this constructor is used only for recovery during startup, the Dispatcher is null.
      * @param cursor a Cursor pointing to the row to construct this SmsTracker for
      */
-    InboundSmsTracker(Cursor cursor, boolean isCurrentFormat3gpp2) {
+    public InboundSmsTracker(Cursor cursor, boolean isCurrentFormat3gpp2) {
         mPdu = HexDump.hexStringToByteArray(cursor.getString(InboundSmsHandler.PDU_COLUMN));
 
         if (cursor.isNull(InboundSmsHandler.DESTINATION_PORT_COLUMN)) {
@@ -174,7 +174,7 @@ public final class InboundSmsTracker {
         }
     }
 
-    ContentValues getContentValues() {
+    public ContentValues getContentValues() {
         ContentValues values = new ContentValues();
         values.put("pdu", HexDump.toHexString(mPdu));
         values.put("date", mTimestamp);
@@ -209,7 +209,7 @@ public final class InboundSmsTracker {
      * @param destPort the destination port value, with flags
      * @return the real destination port, or -1 for no port
      */
-    static int getRealDestPort(int destPort) {
+    public static int getRealDestPort(int destPort) {
         if ((destPort & DEST_PORT_FLAG_NO_PORT) != 0) {
             return -1;
         } else {
@@ -222,7 +222,7 @@ public final class InboundSmsTracker {
      * @param deleteWhere the selection to use
      * @param deleteWhereArgs the selection args to use
      */
-    void setDeleteWhere(String deleteWhere, String[] deleteWhereArgs) {
+    public void setDeleteWhere(String deleteWhere, String[] deleteWhereArgs) {
         mDeleteWhere = deleteWhere;
         mDeleteWhereArgs = deleteWhereArgs;
     }
@@ -247,23 +247,23 @@ public final class InboundSmsTracker {
         return builder.toString();
     }
 
-    byte[] getPdu() {
+    public byte[] getPdu() {
         return mPdu;
     }
 
-    long getTimestamp() {
+    public long getTimestamp() {
         return mTimestamp;
     }
 
-    int getDestPort() {
+    public int getDestPort() {
         return mDestPort;
     }
 
-    boolean is3gpp2() {
+    public boolean is3gpp2() {
         return mIs3gpp2;
     }
 
-    String getFormat() {
+    public String getFormat() {
         return mIs3gpp2 ? SmsConstants.FORMAT_3GPP2 : SmsConstants.FORMAT_3GPP;
     }
 
@@ -272,31 +272,31 @@ public final class InboundSmsTracker {
      * messages, which use a 0-based index.
      * @return the offset to use to convert between mIndex and the sequence number
      */
-    int getIndexOffset() {
+    public int getIndexOffset() {
         return (mIs3gpp2 && mIs3gpp2WapPdu) ? 0 : 1;
     }
 
-    String getAddress() {
+    public String getAddress() {
         return mAddress;
     }
 
-    int getReferenceNumber() {
+    public int getReferenceNumber() {
         return mReferenceNumber;
     }
 
-    int getSequenceNumber() {
+    public int getSequenceNumber() {
         return mSequenceNumber;
     }
 
-    int getMessageCount() {
+    public int getMessageCount() {
         return mMessageCount;
     }
 
-    String getDeleteWhere() {
+    public String getDeleteWhere() {
         return mDeleteWhere;
     }
 
-    String[] getDeleteWhereArgs() {
+    public String[] getDeleteWhereArgs() {
         return mDeleteWhereArgs;
     }
 }
