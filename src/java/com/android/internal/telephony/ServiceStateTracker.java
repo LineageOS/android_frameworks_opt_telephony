@@ -546,6 +546,7 @@ public class ServiceStateTracker extends Handler {
         mMin = null;
         mPrlVersion = null;
         mIsMinInfoReady = false;
+        mNitzUpdatedTime = false;
 
         onUpdateIccAvailability();
 
@@ -2472,9 +2473,7 @@ public class ServiceStateTracker extends Handler {
                 mNewCellLoc.setStateInvalid();
                 setSignalStrengthDefaultValues();
                 mGotCountryCode = false;
-                if (mPhone.isPhoneTypeGsm()) {
-                    mNitzUpdatedTime = false;
-                }
+                mNitzUpdatedTime = false;
                 pollStateDone();
                 break;
 
@@ -2483,9 +2482,7 @@ public class ServiceStateTracker extends Handler {
                 mNewCellLoc.setStateInvalid();
                 setSignalStrengthDefaultValues();
                 mGotCountryCode = false;
-                if (mPhone.isPhoneTypeGsm()) {
-                    mNitzUpdatedTime = false;
-                }
+                mNitzUpdatedTime = false;
                 if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
                         != mSS.getRilDataRadioTechnology()) {
                     pollStateDone();
@@ -3912,9 +3909,7 @@ public class ServiceStateTracker extends Handler {
                 }
                 SystemProperties.set("gsm.nitz.time", String.valueOf(c.getTimeInMillis()));
                 saveNitzTime(c.getTimeInMillis());
-                if (mPhone.isPhoneTypeGsm()) {
-                    mNitzUpdatedTime = true;
-                }
+                mNitzUpdatedTime = true;
             } finally {
                 if (DBG) {
                     long end = SystemClock.elapsedRealtime();

@@ -104,33 +104,33 @@ public class GsmCdmaPhone extends Phone {
 
     //GSM
     // Key used to read/write voice mail number
-    public static final String VM_NUMBER = "vm_number_key";
+    private static final String VM_NUMBER = "vm_number_key";
     // Key used to read/write the SIM IMSI used for storing the voice mail
-    public static final String VM_SIM_IMSI = "vm_sim_imsi_key";
+    private static final String VM_SIM_IMSI = "vm_sim_imsi_key";
     /** List of Registrants to receive Supplementary Service Notifications. */
-    RegistrantList mSsnRegistrants = new RegistrantList();
+    private RegistrantList mSsnRegistrants = new RegistrantList();
 
     //CDMA
     // Default Emergency Callback Mode exit timer
     private static final int DEFAULT_ECM_EXIT_TIMER_VALUE = 300000;
     private static final String VM_NUMBER_CDMA = "vm_number_key_cdma";
-    static final int RESTART_ECM_TIMER = 0; // restart Ecm timer
-    static final int CANCEL_ECM_TIMER = 1; // cancel Ecm timer
-    CdmaSubscriptionSourceManager mCdmaSSM;
-    int mCdmaSubscriptionSource = CdmaSubscriptionSourceManager.SUBSCRIPTION_SOURCE_UNKNOWN;
+    public static final int RESTART_ECM_TIMER = 0; // restart Ecm timer
+    public static final int CANCEL_ECM_TIMER = 1; // cancel Ecm timer
+    private CdmaSubscriptionSourceManager mCdmaSSM;
+    public int mCdmaSubscriptionSource = CdmaSubscriptionSourceManager.SUBSCRIPTION_SOURCE_UNKNOWN;
     public EriManager mEriManager;
-    PowerManager.WakeLock mWakeLock;
+    private PowerManager.WakeLock mWakeLock;
     // mEriFileLoadedRegistrants are informed after the ERI text has been loaded
     private final RegistrantList mEriFileLoadedRegistrants = new RegistrantList();
     // mEcmExitRespRegistrant is informed after the phone has been exited
     //the emergency callback mode
     //keep track of if phone is in emergency callback mode
-    protected boolean mIsPhoneInEcmState;
+    private boolean mIsPhoneInEcmState;
     private Registrant mEcmExitRespRegistrant;
     private String mEsn;
     private String mMeid;
     // string to define how the carrier specifies its own ota sp number
-    protected String mCarrierOtaSpNumSchema;
+    private String mCarrierOtaSpNumSchema;
     // A runnable which is used to automatically exit from Ecm after a period of time.
     private Runnable mExitEcmRunnable = new Runnable() {
         @Override
@@ -138,7 +138,8 @@ public class GsmCdmaPhone extends Phone {
             exitEmergencyCallbackMode();
         }
     };
-    public static String PROPERTY_CDMA_HOME_OPERATOR_NUMERIC = "ro.cdma.home.operator.numeric";
+    public static final String PROPERTY_CDMA_HOME_OPERATOR_NUMERIC =
+            "ro.cdma.home.operator.numeric";
 
     //CDMALTE
     /** PHONE_TYPE_CDMA_LTE in addition to RuimRecords needs access to SIMRecords and
@@ -150,13 +151,13 @@ public class GsmCdmaPhone extends Phone {
     // Instance Variables
     private IsimUiccRecords mIsimUiccRecords;
     public GsmCdmaCallTracker mCT;
-    ServiceStateTracker mSST;
-    ArrayList <MmiCode> mPendingMMIs = new ArrayList<MmiCode>();
-    IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
+    public ServiceStateTracker mSST;
+    private ArrayList <MmiCode> mPendingMMIs = new ArrayList<MmiCode>();
+    private IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
 
     private int mPrecisePhoneType;
 
-    Registrant mPostDialHandler;
+    public Registrant mPostDialHandler;
 
     // mEcmTimerResetRegistrants are informed after Ecm timer is canceled or re-started
     private final RegistrantList mEcmTimerResetRegistrants = new RegistrantList();
@@ -1044,7 +1045,7 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public Connection dial (String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
+    public Connection dial(String dialString, UUSInfo uusInfo, int videoState, Bundle intentExtras)
             throws CallStateException {
         if (!isPhoneTypeGsm() && uusInfo != null) {
             throw new CallStateException("Sending UUS information NOT supported in CDMA!");
@@ -1119,8 +1120,8 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    protected Connection dialInternal (String dialString, UUSInfo uusInfo, int videoState,
-                                       Bundle intentExtras)
+    protected Connection dialInternal(String dialString, UUSInfo uusInfo, int videoState,
+                                      Bundle intentExtras)
             throws CallStateException {
 
         // Need to make sure dialString gets parsed properly
@@ -2275,7 +2276,7 @@ public class GsmCdmaPhone extends Phone {
         }
     }
 
-    protected UiccCardApplication getUiccCardApplication() {
+    public UiccCardApplication getUiccCardApplication() {
         if (isPhoneTypeGsm()) {
             return mUiccController.getUiccCardApplication(mPhoneId, UiccController.APP_FAM_3GPP);
         } else {
