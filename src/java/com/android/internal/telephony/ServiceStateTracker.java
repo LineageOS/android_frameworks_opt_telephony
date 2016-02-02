@@ -397,9 +397,9 @@ public class ServiceStateTracker extends Handler {
     /** Boolean is true is setTimeFromNITZString was called */
     private boolean mNitzUpdatedTime = false;
     /** Started the recheck process after finding gprs should registered but not. */
-    private boolean mStartedGprsRegCheck = false;
+    private boolean mStartedGprsRegCheck;
     /** Already sent the event-log for no gprs register. */
-    private boolean mReportedGprsNoReg = false;
+    private boolean mReportedGprsNoReg;
     /**
      * The Notification object given to the NotificationManager.
      */
@@ -541,6 +541,7 @@ public class ServiceStateTracker extends Handler {
         mLastCellInfoList = null;
         mSignalStrength = new SignalStrength();
         mRestrictedState = new RestrictedState();
+        mStartedGprsRegCheck = false;
         mReportedGprsNoReg = false;
         mMdn = null;
         mMin = null;
@@ -1125,7 +1126,8 @@ public class ServiceStateTracker extends Handler {
                 break;
 
             case EVENT_CHECK_REPORT_GPRS:
-                if (mSS != null && !isGprsConsistent(mSS.getDataRegState(), mSS.getVoiceRegState())) {
+                if (mPhone.isPhoneTypeGsm() && mSS != null &&
+                        !isGprsConsistent(mSS.getDataRegState(), mSS.getVoiceRegState())) {
 
                     // Can't register data service while voice service is ok
                     // i.e. CREG is ok while CGREG is not
