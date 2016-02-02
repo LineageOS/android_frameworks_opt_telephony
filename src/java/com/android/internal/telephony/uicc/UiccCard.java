@@ -26,6 +26,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.content.res.Resources;
+import android.net.Uri;
 import android.os.AsyncResult;
 import android.os.Binder;
 import android.os.Handler;
@@ -34,6 +35,7 @@ import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.RegistrantList;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -51,6 +53,9 @@ import com.android.internal.R;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -397,9 +402,76 @@ public class UiccCard {
         }
     };
 
+    private boolean isPackageInstalled(String pkgName) {
+        PackageManager pm = mContext.getPackageManager();
+        try {
+            pm.getPackageInfo(pkgName, PackageManager.GET_ACTIVITIES);
+            if (DBG) log(pkgName + " is installed.");
+            return true;
+        } catch (PackageManager.NameNotFoundException e) {
+            if (DBG) log(pkgName + " is not installed.");
+            return false;
+        }
+    }
+
+    private class ClickListener implements DialogInterface.OnClickListener {
+        String pkgName;
+        public ClickListener(String pkgName) {
+            this.pkgName = pkgName;
+        }
+        @Override
+        public void onClick(DialogInterface dialog, int which) {
+            synchronized (mLock) {
+                if (which == DialogInterface.BUTTON_POSITIVE) {
+                    Intent market = new Intent(Intent.ACTION_VIEW);
+                    market.setData(Uri.parse("market://details?id=" + pkgName));
+                    market.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    mContext.startActivity(market);
+                } else if (which == DialogInterface.BUTTON_NEGATIVE) {
+                    if (DBG) log("Not now clicked for carrier app dialog.");
+                }
+            }
+        }
+    }
+
+    private void promptInstallCarrierApp(String pkgName) {
+        DialogInterface.OnClickListener listener = new ClickListener(pkgName);
+
+        Resources r = Resources.getSystem();
+        String message = r.getString(R.string.carrier_app_dialog_message);
+        String buttonTxt = r.getString(R.string.carrier_app_dialog_button);
+        String notNowTxt = r.getString(R.string.carrier_app_dialog_not_now);
+
+        AlertDialog dialog = new AlertDialog.Builder(mContext)
+        .setMessage(message)
+        .setNegativeButton(notNowTxt, listener)
+        .setPositiveButton(buttonTxt, listener)
+        .create();
+        dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
+        dialog.show();
+    }
+
     private void onCarrierPriviligesLoadedMessage() {
         synchronized (mLock) {
             mCarrierPrivilegeRegistrants.notifyRegistrants();
+            String whitelistSetting = Settings.Global.getString(mContext.getContentResolver(),
+                    Settings.Global.CARRIER_APP_WHITELIST);
+            if (TextUtils.isEmpty(whitelistSetting)) {
+                return;
+            }
+            HashSet<String> carrierAppSet = new HashSet<String>(
+                    Arrays.asList(whitelistSetting.split("\\s*;\\s*")));
+            if (carrierAppSet.isEmpty()) {
+                return;
+            }
+
+            List<String> pkgNames = mCarrierPrivilegeRules.getPackageNames();
+            for (String pkgName : pkgNames) {
+                if (!TextUtils.isEmpty(pkgName) && carrierAppSet.contains(pkgName)
+                        && !isPackageInstalled(pkgName)) {
+                    promptInstallCarrierApp(pkgName);
+                }
+            }
         }
     }
 

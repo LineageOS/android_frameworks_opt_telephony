@@ -28,6 +28,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
@@ -245,6 +246,22 @@ public class UiccCarrierPrivilegeRules extends Handler {
      */
     public boolean areCarrierPriviligeRulesLoaded() {
         return mState.get() != STATE_LOADING;
+    }
+
+    /**
+     * Returns package names for privilege rules.
+     * Return empty list if no rules defined or package name is empty string.
+     */
+    public List<String> getPackageNames() {
+        List<String> pkgNames = new ArrayList<String>();
+        if (mAccessRules != null) {
+            for (AccessRule ar : mAccessRules) {
+                if(!TextUtils.isEmpty(ar.packageName)) {
+                    pkgNames.add(ar.packageName);
+                }
+            }
+        }
+        return pkgNames;
     }
 
     /**
