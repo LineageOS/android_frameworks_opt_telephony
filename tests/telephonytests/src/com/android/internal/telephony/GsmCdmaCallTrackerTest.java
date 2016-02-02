@@ -32,6 +32,8 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.ArgumentCaptor;
 import android.os.Handler;
+import android.util.SparseArray;
+
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.doReturn;
 import static org.junit.Assert.assertEquals;
@@ -61,6 +63,8 @@ public class GsmCdmaCallTrackerTest {
     private SimulatedCommandsVerifier mSimulatedCommandsVerifier;
     @Mock
     private Handler mHandler;
+    @Mock
+    private TelephonyEventLog mTelephonyEventLog;
 
     private class GsmCdmaCTHandlerThread extends HandlerThread {
 
@@ -98,11 +102,17 @@ public class GsmCdmaCallTrackerTest {
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
         doReturn(true).when(mPhone).isPhoneTypeGsm();
         mcontextFixture.putStringArrayResource(com.android.internal.R.array.dial_string_replace,
-                                               new String[]{});
+                new String[]{});
         Field field = SimulatedCommandsVerifier.class.getDeclaredField("sInstance");
         field.setAccessible(true);
         field.set(null, mSimulatedCommandsVerifier);
         mReady = false;
+
+        field = TelephonyEventLog.class.getDeclaredField("sInstances");
+        field.setAccessible(true);
+        SparseArray<TelephonyEventLog> mTelephonyEventArr = new SparseArray<TelephonyEventLog>();
+        mTelephonyEventArr.put(mPhone.getPhoneId(), mTelephonyEventLog);
+        field.set(null,mTelephonyEventArr);
 
         new GsmCdmaCTHandlerThread(TAG).start();
 
