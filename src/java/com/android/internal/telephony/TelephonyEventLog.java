@@ -409,16 +409,15 @@ public class TelephonyEventLog {
             case DISCONNECTING: state = 8; break;
             default: state = -1; break;
         }
-        writeEvent(TAG_IMS_CALL_STATE, Integer.parseInt(session.getCallId()), state);
+        writeEvent(TAG_IMS_CALL_STATE, getCallId(session), state);
     }
 
     private void writeImsCallEvent(int tag, ImsCallSession session) {
-        writeEvent(tag, Integer.parseInt(session.getCallId()), -1);
+        writeEvent(tag, getCallId(session), -1);
     }
 
     private void writeImsCallEvent(int tag, ImsCallSession session, ImsReasonInfo reasonInfo) {
-        writeEvent(tag, Integer.parseInt(session.getCallId()), -1,
-                imsReasonInfoToBundle(reasonInfo));
+        writeEvent(tag, getCallId(session), -1,imsReasonInfoToBundle(reasonInfo));
     }
 
     private Bundle imsReasonInfoToBundle(ImsReasonInfo reasonInfo) {
@@ -435,13 +434,13 @@ public class TelephonyEventLog {
     public void writeOnImsCallStart(ImsCallSession session, String callee) {
         Bundle b = new Bundle();
         b.putString(DATA_KEY_CALLEE, callee);
-        writeEvent(TAG_IMS_CALL_START, Integer.parseInt(session.getCallId()), -1, b);
+        writeEvent(TAG_IMS_CALL_START, getCallId(session), -1, b);
     }
 
     public void writeOnImsCallStartConference(ImsCallSession session, String[] participants) {
         Bundle b = new Bundle();
         b.putStringArray(DATA_KEY_PARTICIPANTS, participants);
-        writeEvent(TAG_IMS_CALL_START_CONFERENCE, Integer.parseInt(session.getCallId()), -1, b);
+        writeEvent(TAG_IMS_CALL_START_CONFERENCE, getCallId(session), -1, b);
     }
 
     public void writeOnImsCallReceive(ImsCallSession session) {
@@ -511,14 +510,31 @@ public class TelephonyEventLog {
     public void writeOnImsCallHandover(ImsCallSession session,
             int srcAccessTech, int targetAccessTech, ImsReasonInfo reasonInfo) {
         Bundle b = imsHandoverToBundle(srcAccessTech, targetAccessTech, reasonInfo);
-        writeEvent(TAG_IMS_CALL_HANDOVER, Integer.parseInt(session.getCallId()), -1, b);
+        writeEvent(TAG_IMS_CALL_HANDOVER, getCallId(session), -1, b);
     }
 
     public void writeOnImsCallHandoverFailed(ImsCallSession session,
             int srcAccessTech, int targetAccessTech, ImsReasonInfo reasonInfo) {
         Bundle b = imsHandoverToBundle(srcAccessTech, targetAccessTech, reasonInfo);
-        writeEvent(TAG_IMS_CALL_HANDOVER_FAILED,
-                Integer.parseInt(session.getCallId()), -1, b);
+        writeEvent(TAG_IMS_CALL_HANDOVER_FAILED, getCallId(session), -1, b);
+    }
+
+    /**
+     * Extracts the call ID from an ImsSession.
+     *
+     * @param session The session.
+     * @return The call ID for the session, or -1 if none was found.
+     */
+    private int getCallId(ImsCallSession session) {
+        if (session == null) {
+            return -1;
+        }
+
+        try {
+            return Integer.parseInt(session.getCallId());
+        } catch (NumberFormatException nfe) {
+            return -1;
+        }
     }
 
     private Bundle imsHandoverToBundle(int srcAccessTech, int targetAccessTech,
