@@ -27,13 +27,14 @@ import android.database.SQLException;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.TelephonyManager;
 import android.telephony.Rlog;
+
 import com.android.internal.telephony.HbpcdLookup.MccIdd;
 import com.android.internal.telephony.HbpcdLookup.MccLookup;
 
 
  /**
  * This class implements handle the MO SMS target address before sending.
- * This is special for VZW requirement. Follow the specificaitons of assisted dialing
+ * This is special for VZW requirement. Follow the specifications of assisted dialing
  * of MO SMS while traveling on VZW CDMA, international CDMA or GSM markets.
  * {@hide}
  */
@@ -109,13 +110,13 @@ public class SmsNumberUtils {
     }
 
     /* Breaks the given number down and formats it according to the rules
-     * for different number plans and differnt network.
+     * for different number plans and different network.
      *
-     * @param number destionation number which need to be format
+     * @param number destination number which need to be format
      * @param activeMcc current network's mcc
      * @param networkType current network type
      *
-     * @return the number after fromatting.
+     * @return the number after formatting.
      */
     private static String formatNumber(Context context, String number,
                                String activeMcc,
@@ -508,13 +509,13 @@ public class SmsNumberUtils {
         } else if (state == NP_NANP_NBPCD_HOMEIDD_CC_AREA_LOCAL) {
             numberPlanType = "NP_NANP_NBPCD_HOMEIDD_CC_AREA_LOCAL";
         } else if (state == NP_NBPCD_HOMEIDD_CC_AREA_LOCAL) {
-            numberPlanType = "NP_NBPCD_IDD_CC_AREA_LOCAL";
+            numberPlanType = "NP_NBPCD_HOMEIDD_CC_AREA_LOCAL";
         } else if (state == NP_HOMEIDD_CC_AREA_LOCAL) {
-            numberPlanType = "NP_IDD_CC_AREA_LOCAL";
+            numberPlanType = "NP_HOMEIDD_CC_AREA_LOCAL";
         } else if (state == NP_NBPCD_CC_AREA_LOCAL) {
             numberPlanType = "NP_NBPCD_CC_AREA_LOCAL";
         } else if (state == NP_LOCALIDD_CC_AREA_LOCAL) {
-            numberPlanType = "NP_IDD_CC_AREA_LOCAL";
+            numberPlanType = "NP_LOCALIDD_CC_AREA_LOCAL";
         } else if (state == NP_CC_AREA_LOCAL) {
             numberPlanType = "NP_CC_AREA_LOCAL";
         } else {
@@ -534,7 +535,8 @@ public class SmsNumberUtils {
             return destAddr;
         }
 
-        final String networkOperator = TelephonyManager.getDefault().getNetworkOperator();
+        final String networkOperator = TelephonyManager.from(phone.getContext()).
+                getNetworkOperator(phone.getSubId());
         String result = null;
 
         if (needToConvert(phone)) {
@@ -559,11 +561,11 @@ public class SmsNumberUtils {
      */
     private static int getNetworkType(Phone phone) {
         int networkType = -1;
-        int phoneType = TelephonyManager.getDefault().getPhoneType();
+        int phoneType = phone.getPhoneType();
 
-        if (phoneType == TelephonyManager.PHONE_TYPE_GSM) {
+        if (phoneType == PhoneConstants.PHONE_TYPE_GSM) {
             networkType = GSM_UMTS_NETWORK;
-        } else if (phoneType == TelephonyManager.PHONE_TYPE_CDMA) {
+        } else if (phoneType == PhoneConstants.PHONE_TYPE_CDMA) {
             if (isInternationalRoaming(phone)) {
                 networkType = CDMA_ROAMING_NETWORK;
             } else {
@@ -577,9 +579,9 @@ public class SmsNumberUtils {
     }
 
     private static boolean isInternationalRoaming(Phone phone) {
-        String operatorIsoCountry = TelephonyManager.getDefault().getNetworkCountryIsoForPhone(
-                phone.getPhoneId());
-        String simIsoCountry = TelephonyManager.getDefault().getSimCountryIsoForPhone(
+        String operatorIsoCountry = TelephonyManager.from(phone.getContext()).
+                getNetworkCountryIsoForPhone(phone.getPhoneId());
+        String simIsoCountry = TelephonyManager.from(phone.getContext()).getSimCountryIsoForPhone(
                 phone.getPhoneId());
         boolean internationalRoaming = !TextUtils.isEmpty(operatorIsoCountry)
                 && !TextUtils.isEmpty(simIsoCountry)
