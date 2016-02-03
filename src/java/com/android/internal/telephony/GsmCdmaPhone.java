@@ -1235,7 +1235,7 @@ public class GsmCdmaPhone extends Phone {
                     break;
                 }
             }
-            if (mCT.mState ==  PhoneConstants.State.OFFHOOK && check) {
+            if (mCT.mState == PhoneConstants.State.OFFHOOK && check) {
                 mCi.sendBurstDtmf(dtmfString, on, off, onComplete);
             }
         }

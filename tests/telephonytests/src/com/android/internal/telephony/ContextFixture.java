@@ -39,6 +39,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.database.Cursor;
 import android.net.Uri;
@@ -63,6 +64,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static org.mockito.Matchers.anyBoolean;
@@ -291,8 +293,8 @@ public class ContextFixture implements TestFixture<Context> {
             return 0;
         }
 
-        public boolean testMethod1() {
-            return true;
+        public int testMethod1() {
+            return 0;
         }
     }
 
@@ -317,6 +319,7 @@ public class ContextFixture implements TestFixture<Context> {
     // when(...) logic to be used to add specific little responses where needed.
 
     private final Resources mResources = mock(Resources.class);
+    private final Configuration mConfiguration = new Configuration();
     private final PackageManager mPackageManager = mock(PackageManager.class);
     private final TelephonyManager mTelephonyManager = mock(TelephonyManager.class);
     private final AppOpsManager mAppOpsManager = mock(AppOpsManager.class);
@@ -362,6 +365,9 @@ public class ContextFixture implements TestFixture<Context> {
         }).when(mSharedPreferences).getBoolean(anyString(), anyBoolean());
 
         doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
+
+        mConfiguration.locale = Locale.getDefaultLocaleFromSystemProperties();
+        doReturn(mConfiguration).when(mResources).getConfiguration();
 
         mContentResolver.addProvider(Telephony.Sms.CONTENT_URI.getAuthority(), mContentProvider);
         mContentResolver.addProvider(Settings.System.CONTENT_URI.getAuthority(), mContentProvider);
