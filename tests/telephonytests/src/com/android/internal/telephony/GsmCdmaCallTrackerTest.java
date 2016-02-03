@@ -122,7 +122,7 @@ public class GsmCdmaCallTrackerTest {
         /* Make sure radio state is power on before dial.
          * When radio state changed from off to on, CallTracker
          * will poll result from RIL. Avoid dialing triggered at the same*/
-        TelephonyTestUtils.waitForMs(50);
+        TelephonyTestUtils.waitForMs(100);
     }
 
     @After
@@ -160,10 +160,10 @@ public class GsmCdmaCallTrackerTest {
     public void testMOCallPickUp() {
         testMOCallDial();
         logd("Waiting for POLL CALL response from RIL");
-        TelephonyTestUtils.waitForMs(50);
+        TelephonyTestUtils.waitForMs(100);
         logd("Pick Up MO call, expecting call state change event ");
         mCi.progressConnectingToActive();
-        TelephonyTestUtils.waitForMs(100);
+        TelephonyTestUtils.waitForMs(200);
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.ACTIVE);
         assertEquals(mCT.mBackgroundCall.getState(), GsmCdmaCall.State.IDLE);
     }
@@ -173,7 +173,7 @@ public class GsmCdmaCallTrackerTest {
     public void testMOCallHangup() {
         testMOCallDial();
         logd("Waiting for POLL CALL response from RIL ");
-        TelephonyTestUtils.waitForMs(50);
+        TelephonyTestUtils.waitForMs(100);
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.DIALING);
         assertEquals(mCT.getState(), PhoneConstants.State.OFFHOOK);
         assertEquals(mCT.mForegroundCall.getConnections().size(), 1);
@@ -186,7 +186,7 @@ public class GsmCdmaCallTrackerTest {
         }
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.DISCONNECTING);
         /* request send to RIL still in disconnecting state */
-        TelephonyTestUtils.waitForMs(50);
+        TelephonyTestUtils.waitForMs(100);
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.IDLE);
         assertEquals(mCT.mForegroundCall.getConnections().size(),0);
         assertEquals(mCT.getState(), PhoneConstants.State.IDLE);
@@ -211,7 +211,7 @@ public class GsmCdmaCallTrackerTest {
         }
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.DISCONNECTING);
         /* request send to RIL still in disconnecting state */
-        TelephonyTestUtils.waitForMs(50);
+        TelephonyTestUtils.waitForMs(100);
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.IDLE);
         assertEquals(mCT.mForegroundCall.getConnections().size(), 0);
         assertEquals(mCT.getState(), PhoneConstants.State.IDLE);
@@ -232,7 +232,7 @@ public class GsmCdmaCallTrackerTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getCause());
         }
-        TelephonyTestUtils.waitForMs(50);
+        TelephonyTestUtils.waitForMs(100);
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.IDLE);
         assertEquals(mCT.mForegroundCall.getConnections().size(),0);
         assertEquals(mCT.getState(), PhoneConstants.State.IDLE);
@@ -255,7 +255,7 @@ public class GsmCdmaCallTrackerTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getCause());
         }
-        TelephonyTestUtils.waitForMs(100);
+        TelephonyTestUtils.waitForMs(200);
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.DIALING);
         assertEquals(mCT.mBackgroundCall.getState(), GsmCdmaCall.State.HOLDING);
         assertEquals(mCT.mForegroundCall.getConnections().size(), 1);
@@ -274,7 +274,7 @@ public class GsmCdmaCallTrackerTest {
         String mDialString = PhoneNumberUtils.stripSeparators("+17005554141");
         logd("MT call Ringing");
         mCi.triggerRing(mDialString);
-        TelephonyTestUtils.waitForMs(50);
+        TelephonyTestUtils.waitForMs(100);
         assertEquals(mCT.getState(), PhoneConstants.State.RINGING);
         assertEquals(mCT.mRingingCall.getConnections().size(), 1);
     }
@@ -293,7 +293,7 @@ public class GsmCdmaCallTrackerTest {
         }
         verify(mSimulatedCommandsVerifier).acceptCall(isA(Message.class));
         /* send to the RIL */
-        TelephonyTestUtils.waitForMs(50);
+        TelephonyTestUtils.waitForMs(100);
         assertEquals(mCT.getState(), PhoneConstants.State.OFFHOOK);
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.ACTIVE);
         assertEquals(mCT.mForegroundCall.getConnections().size(),1);
@@ -315,7 +315,7 @@ public class GsmCdmaCallTrackerTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getCause());
         }
-        TelephonyTestUtils.waitForMs(50);
+        TelephonyTestUtils.waitForMs(100);
         assertEquals(mCT.getState(), PhoneConstants.State.IDLE);
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.IDLE);
         assertEquals(mCT.mForegroundCall.getConnections().size(), 0);
@@ -335,7 +335,7 @@ public class GsmCdmaCallTrackerTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getCause());
         }
-        TelephonyTestUtils.waitForMs(100);
+        TelephonyTestUtils.waitForMs(200);
         logd(" Foreground Call is IDLE and BackGround Call is still HOLDING ");
         /* if we want to hang up foreground call which is alerting state, hangup all */
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.IDLE);
@@ -354,7 +354,7 @@ public class GsmCdmaCallTrackerTest {
             Assert.fail("unexpected exception thrown" + ex.getCause());
         }
 
-        TelephonyTestUtils.waitForMs(100);
+        TelephonyTestUtils.waitForMs(200);
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.ACTIVE);
         assertEquals(mCT.mBackgroundCall.getState(), GsmCdmaCall.State.HOLDING);
 
@@ -366,7 +366,7 @@ public class GsmCdmaCallTrackerTest {
             Assert.fail("unexpected exception thrown" + ex.getCause());
         }
 
-        TelephonyTestUtils.waitForMs(100);
+        TelephonyTestUtils.waitForMs(200);
         logd(" BackGround Call switch to ForeGround Call ");
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.ACTIVE);
         assertEquals(mCT.mBackgroundCall.getState(), GsmCdmaCall.State.IDLE);
