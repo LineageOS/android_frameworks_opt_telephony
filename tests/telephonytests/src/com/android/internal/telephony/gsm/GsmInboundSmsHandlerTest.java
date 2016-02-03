@@ -177,7 +177,7 @@ public class GsmInboundSmsHandlerTest {
         doReturn(smsPdu).when(mGsmSmsMessage).getPdu();
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS,
                 new AsyncResult(null, mSmsMessage, null));
-        TelephonyTestUtils.waitForMs(50);
+        TelephonyTestUtils.waitForMs(100);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mContextFixture.getTestDouble(), times(2)).
