@@ -270,7 +270,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * This parent state throws an exception (for debug builds) or prints an error for unhandled
      * message types.
      */
-    class DefaultState extends State {
+    private class DefaultState extends State {
         @Override
         public boolean processMessage(Message msg) {
             switch (msg.what) {
@@ -304,7 +304,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * The Startup state waits for {@link SmsBroadcastUndelivered} to process the raw table and
      * notify the state machine to broadcast any complete PDUs that might not have been broadcast.
      */
-    class StartupState extends State {
+    private class StartupState extends State {
         @Override
         public boolean processMessage(Message msg) {
             log("StartupState.processMessage:" + msg.what);
@@ -333,7 +333,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * In the idle state the wakelock is released until a new SM arrives, then we transition
      * to Delivering mode to handle it, acquiring the wakelock on exit.
      */
-    class IdleState extends State {
+    private class IdleState extends State {
         @Override
         public void enter() {
             if (DBG) log("entering Idle state");
@@ -389,7 +389,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * transition to {@link WaitingState} state to send the ordered broadcast and wait for the
      * results. When all messages have been processed, the halting state will release the wakelock.
      */
-    class DeliveringState extends State {
+    private class DeliveringState extends State {
         @Override
         public void enter() {
             if (DBG) log("entering Delivering state");
@@ -462,7 +462,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * {@link DeliveringState}, {@link #EVENT_RETURN_TO_IDLE} is sent to transition to
      * {@link IdleState} after any deferred {@link #EVENT_BROADCAST_SMS} messages are handled.
      */
-    class WaitingState extends State {
+    private class WaitingState extends State {
         @Override
         public boolean processMessage(Message msg) {
             log("WaitingState.processMessage:" + msg.what);
@@ -516,7 +516,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * This method is called when a new SMS PDU is injected into application framework.
      * @param ar is the AsyncResult that has the SMS PDU to be injected.
      */
-    void handleInjectSms(AsyncResult ar) {
+    private void handleInjectSms(AsyncResult ar) {
         int result;
         PendingIntent receivedIntent = null;
         try {
@@ -604,7 +604,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param result result code indicating any error
      * @param response callback message sent when operation completes.
      */
-    void notifyAndAcknowledgeLastIncomingSms(boolean success,
+    private void notifyAndAcknowledgeLastIncomingSms(boolean success,
             int result, Message response) {
         if (!success) {
             // broadcast SMS_REJECTED_ACTION intent
@@ -689,7 +689,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param tracker the tracker containing the message segment to process
      * @return true if an ordered broadcast was sent; false if waiting for more message segments
      */
-    boolean processMessagePart(InboundSmsTracker tracker) {
+    private boolean processMessagePart(InboundSmsTracker tracker) {
         int messageCount = tracker.getMessageCount();
         byte[][] pdus;
         int destPort = tracker.getDestPort();
@@ -954,7 +954,7 @@ public abstract class InboundSmsHandler extends StateMachine {
     /**
      * Helper for {@link SmsBroadcastUndelivered} to delete an old message in the raw table.
      */
-    void deleteFromRawTable(String deleteWhere, String[] deleteWhereArgs) {
+    private void deleteFromRawTable(String deleteWhere, String[] deleteWhereArgs) {
         int rows = mResolver.delete(sRawUri, deleteWhere, deleteWhereArgs);
         if (rows == 0) {
             loge("No rows were deleted from raw table!");
@@ -963,7 +963,7 @@ public abstract class InboundSmsHandler extends StateMachine {
         }
     }
 
-    Bundle handleSmsWhitelisting(ComponentName target) {
+    private Bundle handleSmsWhitelisting(ComponentName target) {
         String pkgName;
         String reason;
         if (target != null) {
@@ -993,7 +993,7 @@ public abstract class InboundSmsHandler extends StateMachine {
      * @param destPort the destination port
      * @param resultReceiver the receiver handling the delivery result
      */
-    void dispatchSmsDeliveryIntent(byte[][] pdus, String format, int destPort,
+    private void dispatchSmsDeliveryIntent(byte[][] pdus, String format, int destPort,
             BroadcastReceiver resultReceiver) {
         Intent intent = new Intent();
         intent.putExtra("pdus", pdus);

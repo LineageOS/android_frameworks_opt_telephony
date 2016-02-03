@@ -483,7 +483,7 @@ public class SmsMessage extends SmsMessageBase {
      *  {@link com.android.internal.telephony.cdma.sms.SmsEnvelope#TELESERVICE_VMN},
      *  {@link com.android.internal.telephony.cdma.sms.SmsEnvelope#TELESERVICE_WAP}
     */
-    /* package */ int getTeleService() {
+    public int getTeleService() {
         return mEnvelope.teleService;
     }
 
@@ -494,7 +494,7 @@ public class SmsMessage extends SmsMessageBase {
      *  {@link com.android.internal.telephony.cdma.sms.SmsEnvelope#MESSAGE_TYPE_BROADCAST},
      *  {@link com.android.internal.telephony.cdma.sms.SmsEnvelope#MESSAGE_TYPE_ACKNOWLEDGE},
     */
-    /* package */ int getMessageType() {
+    public int getMessageType() {
         // NOTE: mEnvelope.messageType is not set correctly for cell broadcasts with some RILs.
         // Use the service category parameter to detect CMAS and other cell broadcast messages.
         if (mEnvelope.serviceCategory != 0) {
@@ -830,7 +830,7 @@ public class SmsMessage extends SmsMessageBase {
      * binder-call, and hence should be thread-safe, it has been
      * synchronized.
      */
-    synchronized static int getNextMessageId() {
+    public synchronized static int getNextMessageId() {
         // Testing and dialog with partners has indicated that
         // msgId==0 is (sometimes?) treated specially by lower levels.
         // Specifically, the ID is not preserved for delivery ACKs.
@@ -1019,7 +1019,7 @@ public class SmsMessage extends SmsMessageBase {
     /** This function  shall be called to get the number of voicemails.
      * @hide
      */
-    /*package*/ int getNumOfVoicemails() {
+    public int getNumOfVoicemails() {
         return mBearerData.numberOfMessages;
     }
 
@@ -1030,7 +1030,7 @@ public class SmsMessage extends SmsMessageBase {
      * @return byte array uniquely identifying the message.
      * @hide
      */
-    /* package */ byte[] getIncomingSmsFingerprint() {
+    public byte[] getIncomingSmsFingerprint() {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
 
         output.write(mEnvelope.serviceCategory);
