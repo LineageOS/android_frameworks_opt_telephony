@@ -238,28 +238,6 @@ public class ServiceStateTrackerTest {
 
     @Test
     @MediumTest
-    public void testNITZupdate() {
-        doReturn(0x02).when(mSimRecords).getDisplayRule(anyString());
-
-        sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_NITZ_TIME,
-                new AsyncResult(null,
-                        new Object[]{"16/01/22,23:24:44-32,00", Long.valueOf(41824)}, null)));
-
-        waitForMs(750);
-
-        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContextFixture.getTestDouble(), times(4)).
-                sendStickyBroadcastAsUser(intentArgumentCaptor.capture(), eq(UserHandle.ALL));
-
-
-        Intent intent = intentArgumentCaptor.getAllValues().get(1);
-        assertEquals(intent.getAction(), TelephonyIntents.ACTION_NETWORK_SET_TIMEZONE);
-        assertEquals(Intent.FLAG_RECEIVER_REPLACE_PENDING, intent.getFlags());
-        assertEquals(AMERICA_LA_TIME_ZONE, intent.getExtras().getString(KEY_TIME_ZONE));
-    }
-
-    @Test
-    @MediumTest
     public void testCellInfoList() {
         Parcel p = Parcel.obtain();
         p.writeInt(1);
