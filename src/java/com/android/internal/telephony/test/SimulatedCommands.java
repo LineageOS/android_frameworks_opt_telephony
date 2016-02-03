@@ -1009,6 +1009,7 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void sendBurstDtmf(String dtmfString, int on, int off, Message result) {
+        SimulatedCommandsVerifier.getInstance().sendBurstDtmf(dtmfString, on, off, result);
         resultSuccess(result, null);
     }
 
@@ -1529,51 +1530,43 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void
     getDeviceIdentity(Message response) {
-        Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
     }
 
     @Override
     public void
     getCDMASubscription(Message response) {
-        Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
     }
 
     @Override
     public void
     setCdmaSubscriptionSource(int cdmaSubscriptionType, Message response) {
-        Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
     }
 
     @Override
     public void queryCdmaRoamingPreference(Message response) {
-        Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
     }
 
     @Override
     public void setCdmaRoamingPreference(int cdmaRoamingType, Message response) {
-        Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
     }
 
     @Override
     public void
     setPhoneType(int phoneType) {
-        Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
     }
 
     @Override
     public void getPreferredVoicePrivacy(Message result) {
-        Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(result);
     }
 
     @Override
     public void setPreferredVoicePrivacy(boolean enable, Message result) {
-        Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(result);
     }
 
@@ -1605,7 +1598,6 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void queryTTYMode(Message response) {
-        Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
     }
 
@@ -1614,7 +1606,6 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void sendCDMAFeatureCode(String FeatureCode, Message response) {
-        Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         unimplemented(response);
     }
 
@@ -1623,8 +1614,8 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void sendCdmaSms(byte[] pdu, Message response){
-        Rlog.w(LOG_TAG, "CDMA not implemented in SimulatedCommands");
         SimulatedCommandsVerifier.getInstance().sendCdmaSms(pdu, response);
+        resultSuccess(response, null);
     }
 
     @Override

@@ -2766,7 +2766,7 @@ public class ServiceStateTracker extends Handler {
             mPhone.notifyLocationChanged();
         }
 
-        if (! isGprsConsistent(mSS.getDataRegState(), mSS.getVoiceRegState())) {
+        if (!isGprsConsistent(mSS.getDataRegState(), mSS.getVoiceRegState())) {
             if (!mStartedGprsRegCheck && !mReportedGprsNoReg) {
                 mStartedGprsRegCheck = true;
 
