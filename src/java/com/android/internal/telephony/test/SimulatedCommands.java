@@ -24,6 +24,7 @@ import android.os.Parcel;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
 import android.telephony.Rlog;
+import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 
 import com.android.internal.telephony.BaseCommands;
@@ -86,7 +87,10 @@ public class SimulatedCommands extends BaseCommands
     int mNetworkType;
     String mPin2Code;
     boolean mSsnNotifyOn = false;
-    int mVoiceRadioTech;
+    private int mVoiceRegState = ServiceState.RIL_REG_STATE_HOME;
+    private int mVoiceRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_UMTS;
+    private int mDataRegState = ServiceState.RIL_REG_STATE_HOME;
+    private int mDataRadioTech = ServiceState.RIL_RADIO_TECHNOLOGY_UMTS;
     private SignalStrength mSignalStrength;
     private List<CellInfo> mCellInfoList;
     private int[] mImsRegState;
@@ -453,7 +457,7 @@ public class SimulatedCommands extends BaseCommands
     }
 
     @Override
-    public void supplyNetworkDepersonalization(String netpin, Message result)  {
+    public void supplyNetworkDepersonalization(String netpin, Message result) {
         unimplemented(result);
     }
 
@@ -897,6 +901,14 @@ public class SimulatedCommands extends BaseCommands
         resultSuccess(response, null);
     }
 
+    public void setVoiceRadioTech(int voiceRadioTech) {
+        mVoiceRadioTech = voiceRadioTech;
+    }
+
+    public void setVoiceRegState(int voiceRegState) {
+        mVoiceRegState = voiceRegState;
+    }
+
     /**
      * response.obj.result is an String[14]
      * See ril.h for details
@@ -905,52 +917,29 @@ public class SimulatedCommands extends BaseCommands
      * as "out of service" above
      */
     @Override
-    public void getVoiceRegistrationState (Message result) {
+    public void getVoiceRegistrationState(Message result) {
         String ret[] = new String[14];
 
-        ret[0] = "5"; // registered roam
-        ret[1] = null;
-        ret[2] = null;
-        ret[3] = null;
-        ret[4] = null;
-        ret[5] = null;
-        ret[6] = null;
-        ret[7] = null;
-        ret[8] = null;
-        ret[9] = null;
-        ret[10] = null;
-        ret[11] = null;
-        ret[12] = null;
-        ret[13] = null;
+        ret[0] = Integer.toString(mVoiceRegState);
+        ret[3] = Integer.toString(mVoiceRadioTech);
 
         resultSuccess(result, ret);
     }
 
-    /**
-     * response.obj.result is an String[4]
-     * response.obj.result[0] is registration state 0-5 from TS 27.007 7.2
-     * response.obj.result[1] is LAC if registered or NULL if not
-     * response.obj.result[2] is CID if registered or NULL if not
-     * response.obj.result[3] indicates the available radio technology, where:
-     *      0 == unknown
-     *      1 == GPRS only
-     *      2 == EDGE
-     *      3 == UMTS
-     *
-     * valid LAC are 0x0000 - 0xffff
-     * valid CID are 0x00000000 - 0xffffffff
-     *
-     * Please note that registration state 4 ("unknown") is treated
-     * as "out of service" in the Android telephony system
-     */
+    public void setDataRadioTech(int radioTech) {
+        mDataRadioTech = radioTech;
+    }
+
+    public void setDataRegState(int dataRegState) {
+        mDataRegState = dataRegState;
+    }
+
     @Override
     public void getDataRegistrationState (Message result) {
-        String ret[] = new String[4];
+        String ret[] = new String[11];
 
-        ret[0] = "5"; // registered roam
-        ret[1] = null;
-        ret[2] = null;
-        ret[3] = "2";
+        ret[0] = Integer.toString(mDataRegState);
+        ret[3] = Integer.toString(mDataRadioTech);
 
         resultSuccess(result, ret);
     }
@@ -1847,10 +1836,6 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void getModemActivityInfo(Message result) {
         unimplemented(result);
-    }
-
-    public void setVoiceRadioTech(int voiceRadioTech) {
-        mVoiceRadioTech = voiceRadioTech;
     }
 
     public void notifySmsStatus(Object result) {

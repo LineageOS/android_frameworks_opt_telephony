@@ -2633,7 +2633,7 @@ public class ServiceStateTracker extends Handler {
         }
 
         if (hasRilDataRadioTechnologyChanged) {
-            tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), mSS.getRilVoiceRadioTechnology());
+            tm.setDataNetworkTypeForPhone(mPhone.getPhoneId(), mSS.getRilDataRadioTechnology());
 
             if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
                     == mSS.getRilDataRadioTechnology()) {
