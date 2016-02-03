@@ -16,6 +16,7 @@
 
 package com.android.internal.telephony;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.Bundle;
@@ -26,8 +27,10 @@ import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoGsm;
+import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
 import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -95,6 +98,7 @@ public class ServiceStateTrackerTest {
     private SimulatedCommands mSimulatedCommands;
     private ContextFixture mContextFixture;
     private ServiceStateTracker sst;
+    private TelephonyManager mTelephonyManager;
 
     private Object mLock = new Object();
     private boolean mReady = false;
@@ -140,6 +144,8 @@ public class ServiceStateTrackerTest {
                 anyInt(), eq(UiccController.APP_FAM_3GPP));
         doReturn(mSimRecords).when(m3GPPUiccApp).getIccRecords();
         mPhone.mDcTracker = mDct;
+        mTelephonyManager = (TelephonyManager) mContextFixture.getTestDouble().
+                getSystemService(Context.TELEPHONY_SERVICE);
 
         //Use reflection to mock singleton
         Field field = SubscriptionController.class.getDeclaredField("sInstance");
@@ -176,6 +182,11 @@ public class ServiceStateTrackerTest {
         mContextFixture.putStringArrayResource(
                 com.android.internal.R.array.config_operatorConsideredNonRoaming,
                 new String[]{"123456"});
+
+        mSimulatedCommands.setVoiceRegState(ServiceState.RIL_REG_STATE_HOME);
+        mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_HSPA);
+        mSimulatedCommands.setDataRegState(ServiceState.RIL_REG_STATE_HOME);
+        mSimulatedCommands.setDataRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_HSPA);
 
         int dds = SubscriptionManager.getDefaultDataSubscriptionId();
         doReturn(dds).when(mPhone).getSubId();
@@ -234,6 +245,11 @@ public class ServiceStateTrackerTest {
         assertTrue(b.getBoolean(TelephonyIntents.EXTRA_SHOW_PLMN));
 
         assertEquals(SimulatedCommands.FAKE_LONG_NAME, b.getString(TelephonyIntents.EXTRA_PLMN));
+
+        ArgumentCaptor<Integer> intArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(mTelephonyManager).setDataNetworkTypeForPhone(anyInt(), intArgumentCaptor.capture());
+        assertEquals(ServiceState.RIL_RADIO_TECHNOLOGY_HSPA,
+                intArgumentCaptor.getValue().intValue());
     }
 
     @Test
