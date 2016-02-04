@@ -54,6 +54,28 @@ public class CommandException extends RuntimeException {
         SS_MODIFIED_TO_DIAL,
         SS_MODIFIED_TO_USSD,
         SS_MODIFIED_TO_SS,
+        SIM_ALREADY_POWERED_OFF,
+        SIM_ALREADY_POWERED_ON,
+        SIM_DATA_NOT_AVAILABLE,
+        SIM_SAP_CONNECT_FAILURE,
+        SIM_SAP_MSG_SIZE_TOO_LARGE,
+        SIM_SAP_MSG_SIZE_TOO_SMALL,
+        SIM_SAP_CONNECT_OK_CALL_ONGOING,
+        LCE_NOT_SUPPORTED,
+        NO_MEMORY,
+        INTERNAL_ERR,
+        SYSTEM_ERR,
+        MODEM_ERR,
+        INVALID_STATE,
+        NO_RESOURCES,
+        SIM_ERR,
+        INVALID_ARGUMENTS,
+        INVALID_SIM_STATE,
+        INVALID_MODEM_STATE,
+        INVALID_CALL_ID,
+        NO_SMS_TO_ACK,
+        NETWORK_ERR,
+        REQUEST_RATE_LIMITED,
     }
 
     public CommandException(Error e) {
@@ -124,6 +146,51 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.SS_MODIFIED_TO_USSD);
             case RILConstants.SS_MODIFIED_TO_SS:
                 return new CommandException(Error.SS_MODIFIED_TO_SS);
+            case RILConstants.SIM_ALREADY_POWERED_OFF:
+                return new CommandException(Error.SIM_ALREADY_POWERED_OFF);
+            case RILConstants.SIM_ALREADY_POWERED_ON:
+                return new CommandException(Error.SIM_ALREADY_POWERED_ON);
+            case RILConstants.SIM_DATA_NOT_AVAILABLE:
+                return new CommandException(Error.SIM_DATA_NOT_AVAILABLE);
+            case RILConstants.SIM_SAP_CONNECT_FAILURE:
+                return new CommandException(Error.SIM_SAP_CONNECT_FAILURE);
+            case RILConstants.SIM_SAP_MSG_SIZE_TOO_LARGE:
+                return new CommandException(Error.SIM_SAP_MSG_SIZE_TOO_LARGE);
+            case RILConstants.SIM_SAP_MSG_SIZE_TOO_SMALL:
+                return new CommandException(Error.SIM_SAP_MSG_SIZE_TOO_SMALL);
+            case RILConstants.SIM_SAP_CONNECT_OK_CALL_ONGOING:
+                return new CommandException(Error.SIM_SAP_CONNECT_OK_CALL_ONGOING);
+            case RILConstants.LCE_NOT_SUPPORTED:
+                return new CommandException(Error.LCE_NOT_SUPPORTED);
+            case RILConstants.NO_MEMORY:
+                return new CommandException(Error.NO_MEMORY);
+            case RILConstants.INTERNAL_ERR:
+                return new CommandException(Error.INTERNAL_ERR);
+            case RILConstants.SYSTEM_ERR:
+                return new CommandException(Error.SYSTEM_ERR);
+            case RILConstants.MODEM_ERR:
+                return new CommandException(Error.MODEM_ERR);
+            case RILConstants.INVALID_STATE:
+                return new CommandException(Error.INVALID_STATE);
+            case RILConstants.NO_RESOURCES:
+                return new CommandException(Error.NO_RESOURCES);
+            case RILConstants.SIM_ERR:
+                return new CommandException(Error.SIM_ERR);
+            case RILConstants.INVALID_ARGUMENTS:
+                return new CommandException(Error.INVALID_ARGUMENTS);
+            case RILConstants.INVALID_SIM_STATE:
+                return new CommandException(Error.INVALID_SIM_STATE);
+            case RILConstants.INVALID_MODEM_STATE:
+                return new CommandException(Error.INVALID_MODEM_STATE);
+            case RILConstants.INVALID_CALL_ID:
+                return new CommandException(Error.INVALID_CALL_ID);
+            case RILConstants.NO_SMS_TO_ACK:
+                return new CommandException(Error.NO_SMS_TO_ACK);
+            case RILConstants.NETWORK_ERR:
+                return new CommandException(Error.NETWORK_ERR);
+            case RILConstants.REQUEST_RATE_LIMITED:
+                return new CommandException(Error.REQUEST_RATE_LIMITED);
+
             default:
                 Rlog.e("GSM", "Unrecognized RIL errno " + ril_errno);
                 return new CommandException(Error.INVALID_RESPONSE);
