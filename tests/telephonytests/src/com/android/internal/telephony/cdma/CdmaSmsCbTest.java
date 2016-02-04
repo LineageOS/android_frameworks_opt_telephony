@@ -22,6 +22,7 @@ import android.telephony.SmsCbMessage;
 import android.telephony.cdma.CdmaSmsCbProgramData;
 import android.test.AndroidTestCase;
 import android.telephony.Rlog;
+import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.cdma.sms.BearerData;
@@ -30,6 +31,8 @@ import com.android.internal.telephony.cdma.sms.SmsEnvelope;
 import com.android.internal.telephony.cdma.sms.UserData;
 import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.util.BitwiseOutputStream;
+
+import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
@@ -364,18 +367,22 @@ public class CdmaSmsCbTest extends AndroidTestCase {
         assertEquals(false, cbMessage.isCmasMessage());
     }
 
+    @Test @SmallTest
     public void testNonEmergencyBroadcast7bitAscii() throws Exception {
         doTestNonEmergencyBroadcast(UserData.ENCODING_7BIT_ASCII);
     }
 
+    @Test @SmallTest
     public void testNonEmergencyBroadcast7bitGsm() throws Exception {
         doTestNonEmergencyBroadcast(UserData.ENCODING_GSM_7BIT_ALPHABET);
     }
 
+    @Test @SmallTest
     public void testNonEmergencyBroadcast16bitUnicode() throws Exception {
         doTestNonEmergencyBroadcast(UserData.ENCODING_UNICODE_16);
     }
 
+    @Test @SmallTest
     public void testNonEmergencyBroadcastIs91Extended() throws Exception {
         // IS-91 doesn't support language or priority subparameters, max 14 chars text
         SmsMessage msg = createBroadcastSmsMessage(987, 654, -1, -1,
@@ -416,31 +423,37 @@ public class CdmaSmsCbTest extends AndroidTestCase {
         assertEquals(SmsCbCmasInfo.CMAS_CERTAINTY_UNKNOWN, cmasInfo.getCertainty());
     }
 
+    @Test @SmallTest
     public void testCmasPresidentialAlert() throws Exception {
         doTestCmasBroadcast(SmsEnvelope.SERVICE_CATEGORY_CMAS_PRESIDENTIAL_LEVEL_ALERT,
                 SmsCbCmasInfo.CMAS_CLASS_PRESIDENTIAL_LEVEL_ALERT, PRES_ALERT);
     }
 
+    @Test @SmallTest
     public void testCmasExtremeAlert() throws Exception {
         doTestCmasBroadcast(SmsEnvelope.SERVICE_CATEGORY_CMAS_EXTREME_THREAT,
                 SmsCbCmasInfo.CMAS_CLASS_EXTREME_THREAT, EXTREME_ALERT);
     }
 
+    @Test @SmallTest
     public void testCmasSevereAlert() throws Exception {
         doTestCmasBroadcast(SmsEnvelope.SERVICE_CATEGORY_CMAS_SEVERE_THREAT,
                 SmsCbCmasInfo.CMAS_CLASS_SEVERE_THREAT, SEVERE_ALERT);
     }
 
+    @Test @SmallTest
     public void testCmasAmberAlert() throws Exception {
         doTestCmasBroadcast(SmsEnvelope.SERVICE_CATEGORY_CMAS_CHILD_ABDUCTION_EMERGENCY,
                 SmsCbCmasInfo.CMAS_CLASS_CHILD_ABDUCTION_EMERGENCY, AMBER_ALERT);
     }
 
+    @Test @SmallTest
     public void testCmasTestMessage() throws Exception {
         doTestCmasBroadcast(SmsEnvelope.SERVICE_CATEGORY_CMAS_TEST_MESSAGE,
                 SmsCbCmasInfo.CMAS_CLASS_REQUIRED_MONTHLY_TEST, MONTHLY_TEST_ALERT);
     }
 
+    @Test @SmallTest
     public void testCmasExtremeAlertType1Elements() throws Exception {
         SmsMessage msg = createCmasSmsMessage(SmsEnvelope.SERVICE_CATEGORY_CMAS_EXTREME_THREAT,
                 5678, BearerData.PRIORITY_EMERGENCY, BearerData.LANGUAGE_ENGLISH,
@@ -469,6 +482,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
 
     // VZW requirement is to discard message with unsupported charset. Verify that we return null
     // for this unsupported character set.
+    @Test @SmallTest
     public void testCmasUnsupportedCharSet() throws Exception {
         SmsMessage msg = createCmasSmsMessage(SmsEnvelope.SERVICE_CATEGORY_CMAS_EXTREME_THREAT,
                 12345, BearerData.PRIORITY_EMERGENCY, BearerData.LANGUAGE_ENGLISH,
@@ -480,6 +494,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
 
     // VZW requirement is to discard message with unsupported charset. Verify that we return null
     // for this unsupported character set.
+    @Test @SmallTest
     public void testCmasUnsupportedCharSet2() throws Exception {
         SmsMessage msg = createCmasSmsMessage(SmsEnvelope.SERVICE_CATEGORY_CMAS_EXTREME_THREAT,
                 67890, BearerData.PRIORITY_EMERGENCY, BearerData.LANGUAGE_ENGLISH,
@@ -491,6 +506,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
 
     // VZW requirement is to discard message without record type 0. The framework will decode it
     // and the app will discard it.
+    @Test @SmallTest
     public void testCmasNoRecordType0() throws Exception {
         SmsMessage msg = createCmasSmsMessage(
                 SmsEnvelope.SERVICE_CATEGORY_CMAS_PRESIDENTIAL_LEVEL_ALERT, 1234,
@@ -517,6 +533,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
     }
 
     // Make sure we don't throw an exception if we feed completely random data to BearerStream.
+    @Test @SmallTest
     public void testRandomBearerStreamData() {
         Random r = new Random(54321);
         for (int run = 0; run < 1000; run++) {
@@ -543,6 +560,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
     }
 
     // Make sure we don't throw an exception if we put random data in the UserData subparam.
+    @Test @SmallTest
     public void testRandomUserData() {
         Random r = new Random(94040);
         for (int run = 0; run < 1000; run++) {
@@ -599,6 +617,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
     private static final String CAT_SEVERE_THREAT = "Severe Threat to Life and Property";
     private static final String CAT_AMBER_ALERTS = "AMBER Alerts";
 
+    @Test @SmallTest
     public void testServiceCategoryProgramDataAddCategory() throws Exception {
         Parcel p = createServiceCategoryProgramDataParcel();
         BitwiseOutputStream bos = createBearerDataStream(123, -1, -1);
@@ -640,6 +659,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
         assertEquals(CdmaSmsCbProgramData.ALERT_OPTION_DEFAULT_ALERT, programData.getAlertOption());
     }
 
+    @Test @SmallTest
     public void testServiceCategoryProgramDataDeleteTwoCategories() throws Exception {
         Parcel p = createServiceCategoryProgramDataParcel();
         BitwiseOutputStream bos = createBearerDataStream(456, -1, -1);
@@ -721,6 +741,7 @@ public class CdmaSmsCbTest extends AndroidTestCase {
     };
 
     // Test case for CMAS test message received on the Sprint network.
+    @Test @SmallTest
     public void testDecodeRawBearerData() throws Exception {
         Parcel p = createBroadcastParcel(SmsEnvelope.SERVICE_CATEGORY_CMAS_TEST_MESSAGE);
         SmsMessage msg = createMessageFromParcel(p, CMAS_TEST_BEARER_DATA);

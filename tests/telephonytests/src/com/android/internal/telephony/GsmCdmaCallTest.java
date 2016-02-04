@@ -50,7 +50,7 @@ public class GsmCdmaCallTest {
         mCallUnderTest = null;
     }
 
-    @SmallTest
+    @Test @SmallTest
     public void testAttachDetach() {
         //verify mConnections has 0 connections and is in IDLE state
         assertEquals(0, mCallUnderTest.mConnections.size());
@@ -72,7 +72,7 @@ public class GsmCdmaCallTest {
         assertEquals(Call.State.IDLE, mCallUnderTest.getState());
     }
 
-    @SmallTest
+    @Test @SmallTest
     public void testMultiparty() {
         //verify mConnections has 0 connections and is in IDLE state
         assertEquals(0, mCallUnderTest.mConnections.size());
@@ -95,7 +95,7 @@ public class GsmCdmaCallTest {
         assertEquals(true, mCallUnderTest.isMultiparty());
     }
 
-    @SmallTest
+    @Test @SmallTest
     public void testHangup() {
         //verify hangup calls mCallTracker.hangup
         try {
