@@ -214,11 +214,16 @@ public class WapPushOverSms implements ServiceConnection {
             int[] subIds = SubscriptionManager.getSubId(phoneId);
             int subId = (subIds != null) && (subIds.length > 0) ? subIds[0]
                     : SmsManager.getDefaultSmsSubscriptionId();
-            final GenericPdu parsedPdu = new PduParser(intentData,
-                    shouldParseContentDisposition(subId)).parse();
 
-            // Do not abort if parsedPdu is null: the default messaging app may successfully parse
-            // the same PDU.
+            // Continue if PDU parsing fails: the default messaging app may successfully parse the
+            // same PDU.
+            GenericPdu parsedPdu = null;
+            try {
+                parsedPdu = new PduParser(intentData, shouldParseContentDisposition(subId)).parse();
+            } catch (Exception e) {
+                Rlog.e(TAG, "Unable to parse PDU: " + e.toString());
+            }
+
             if (parsedPdu != null && parsedPdu.getMessageType() == MESSAGE_TYPE_NOTIFICATION_IND) {
                 final NotificationInd nInd = (NotificationInd) parsedPdu;
                 if (nInd.getFrom() != null
