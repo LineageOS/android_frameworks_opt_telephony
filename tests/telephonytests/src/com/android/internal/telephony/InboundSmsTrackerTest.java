@@ -19,6 +19,8 @@ package com.android.internal.telephony;
 import android.database.MatrixCursor;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.util.HexDump;
+
 import java.util.Arrays;
 
 import static org.junit.Assert.*;
@@ -68,7 +70,7 @@ public class InboundSmsTrackerTest {
     public void testInitializationFromDb() {
         MatrixCursor mc = new MatrixCursor(
                 new String[]{"pdu", "seq", "dest", "date", "ref", "cnt", "addr", "id"});
-        mc.addRow(new Object[]{IntegralToString.bytesToHexString(FAKE_PDU, false),
+        mc.addRow(new Object[]{HexDump.toHexString(FAKE_PDU),
                 FAKE_SEQUENCE_NUMBER, FAKE_DEST_PORT, FAKE_TIMESTAMP,
                 FAKE_REFERENCE_NUMBER, FAKE_MESSAGE_COUNT, FAKE_ADDRESS, 1});
         mc.moveToFirst();
