@@ -145,14 +145,15 @@ public class GsmCdmaCallTrackerTest {
         assertTrue(mPhone.getServiceState().getState() != ServiceState.STATE_POWER_OFF);
         assertFalse(mCT.mRingingCall.isRinging());
         assertFalse(mCT.mForegroundCall.getState().isAlive());
-        assertFalse(!SystemProperties.get(
+        assertFalse(mCT.mBackgroundCall.getState().isAlive());
+        assertFalse(SystemProperties.get(
                 TelephonyProperties.PROPERTY_DISABLE_CALL, "false").equals("true"));
 
         try {
             mCT.dial(mDialString);
         } catch(Exception ex) {
             ex.printStackTrace();
-            Assert.fail("unexpected exception thrown"+ex.getMessage());
+            Assert.fail("unexpected exception thrown"+ex.getMessage()+ex.getStackTrace());
         }
 
         assertEquals(mCT.getState(), PhoneConstants.State.OFFHOOK);
