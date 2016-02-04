@@ -27,6 +27,7 @@ import android.os.IBinder;
 import android.os.IDeviceIdleController;
 import android.os.ServiceManager;
 import android.os.UserHandle;
+import android.os.UserManager;
 import android.provider.Telephony;
 import android.telephony.*;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -182,6 +183,9 @@ public class CdmaInboundSmsHandlerTest {
         mSmsMessage.mWrappedSmsMessage = mCdmaSmsMessage;
         doReturn(smsPdu).when(mCdmaSmsMessage).getPdu();
         doReturn(SmsEnvelope.TELESERVICE_WMT).when(mCdmaSmsMessage).getTeleService();
+        UserManager userManager = (UserManager) mContextFixture.getTestDouble().
+                getSystemService(Context.USER_SERVICE);
+        doReturn(true).when(userManager).isUserUnlocked();
         mCdmaInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS,
                 new AsyncResult(null, mSmsMessage, null));
         TelephonyTestUtils.waitForMs(100);
