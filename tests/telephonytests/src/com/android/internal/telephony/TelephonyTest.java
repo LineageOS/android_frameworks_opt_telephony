@@ -27,6 +27,7 @@ import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -154,6 +155,11 @@ public abstract class TelephonyTest {
         mSimulatedCommands = new SimulatedCommands();
         mContextFixture = new ContextFixture();
         mPhone.mCi = mSimulatedCommands;
+
+        field = TelephonyManager.class.getDeclaredField("sInstance");
+        field.setAccessible(true);
+        field.set(null, mContextFixture.getTestDouble().
+                getSystemService(Context.TELEPHONY_SERVICE));
 
         doReturn(mSST).when(mTelephonyComponentFactory).
                 makeServiceStateTracker(any(GsmCdmaPhone.class), any(CommandsInterface.class));
