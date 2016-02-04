@@ -202,24 +202,39 @@ public class ContextFixture implements TestFixture<Context> {
 
         @Override
         public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter) {
-            for (int i = 0 ; i < filter.countActions(); i++) {
-                mBroadcastReceiversByAction.put(filter.getAction(i), receiver);
+            Intent result = null;
+            synchronized (mBroadcastReceiversByAction) {
+                for (int i = 0 ; i < filter.countActions(); i++) {
+                    mBroadcastReceiversByAction.put(filter.getAction(i), receiver);
+                    if (result == null) {
+                        result = mStickyBroadcastByAction.get(filter.getAction(i));
+                    }
+                }
             }
-            return null;
+
+            return result;
         }
 
         @Override
         public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter,
                 String broadcastPermission, Handler scheduler) {
-            return null;
+            return registerReceiver(receiver, filter);
+        }
+
+        @Override
+        public Intent registerReceiverAsUser(BroadcastReceiver receiver, UserHandle user,
+                IntentFilter filter, String broadcastPermission, Handler scheduler) {
+            return registerReceiver(receiver, filter);
         }
 
         @Override
         public void sendBroadcast(Intent intent) {
             logd("sendBroadcast called for " + intent.getAction());
-            for (BroadcastReceiver broadcastReceiver :
-                    mBroadcastReceiversByAction.get(intent.getAction())) {
-                broadcastReceiver.onReceive(mContext, intent);
+            synchronized (mBroadcastReceiversByAction) {
+                for (BroadcastReceiver broadcastReceiver :
+                        mBroadcastReceiversByAction.get(intent.getAction())) {
+                    broadcastReceiver.onReceive(mContext, intent);
+                }
             }
         }
 
@@ -264,8 +279,16 @@ public class ContextFixture implements TestFixture<Context> {
         }
 
         @Override
-        public void sendStickyBroadcastAsUser(Intent intent, UserHandle user) {
-            logd("sendStickyBroadcastAsUser called for " + intent.getAction());
+        public void sendStickyBroadcast(Intent intent) {
+            synchronized (mBroadcastReceiversByAction) {
+                sendBroadcast(intent);
+                mStickyBroadcastByAction.put(intent.getAction(), intent);
+            }
+        }
+
+        @Override
+        public void sendStickyBroadcastAsUser(Intent intent, UserHandle ignored) {
+            sendStickyBroadcast(intent);
         }
 
         @Override
@@ -310,6 +333,8 @@ public class ContextFixture implements TestFixture<Context> {
             new HashMap<ServiceConnection, IInterface>();
     private final Multimap<String, BroadcastReceiver> mBroadcastReceiversByAction =
             ArrayListMultimap.create();
+    private final HashMap<String, Intent> mStickyBroadcastByAction =
+            new HashMap<String, Intent>();
 
     // The application context is the most important object this class provides to the system
     // under test.
