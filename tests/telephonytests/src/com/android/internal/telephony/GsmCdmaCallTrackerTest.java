@@ -37,6 +37,7 @@ import android.util.SparseArray;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
@@ -135,12 +136,13 @@ public class GsmCdmaCallTrackerTest {
     @Test
     @SmallTest
     public void testMOCallDial() {
+        doReturn(ServiceState.STATE_IN_SERVICE).when(mServiceState).getState();
         assertEquals(mCT.getState(), PhoneConstants.State.IDLE);
         assertEquals(mCT.mForegroundCall.getState(), GsmCdmaCall.State.IDLE);
         assertEquals(mCT.mBackgroundCall.getState(), GsmCdmaCall.State.IDLE);
         assertEquals(mCT.mForegroundCall.getConnections().size(), 0);
         /* debug */
-        assertFalse(mPhone.getServiceState().getState()!= ServiceState.STATE_POWER_OFF);
+        assertTrue(mPhone.getServiceState().getState() != ServiceState.STATE_POWER_OFF);
         assertFalse(mCT.mRingingCall.isRinging());
         assertFalse(mCT.mForegroundCall.getState().isAlive());
         assertFalse(!SystemProperties.get(
