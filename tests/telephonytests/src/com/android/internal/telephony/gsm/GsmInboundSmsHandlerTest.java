@@ -27,6 +27,7 @@ import android.os.IBinder;
 import android.os.IDeviceIdleController;
 import android.os.ServiceManager;
 import android.os.UserHandle;
+import android.os.UserManager;
 import android.provider.Telephony;
 import android.telephony.*;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -174,6 +175,9 @@ public class GsmInboundSmsHandlerTest {
         byte[] smsPdu = new byte[]{(byte)0xFF, (byte)0xFF, (byte)0xFF};
         mSmsMessage.mWrappedSmsMessage = mGsmSmsMessage;
         doReturn(smsPdu).when(mGsmSmsMessage).getPdu();
+        UserManager userManager = (UserManager) mContextFixture.getTestDouble().
+                getSystemService(Context.USER_SERVICE);
+        doReturn(true).when(userManager).isUserUnlocked();
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS,
                 new AsyncResult(null, mSmsMessage, null));
         TelephonyTestUtils.waitForMs(100);
