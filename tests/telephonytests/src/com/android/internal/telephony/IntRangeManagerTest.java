@@ -17,8 +17,11 @@
 package com.android.internal.telephony;
 
 import android.test.AndroidTestCase;
+import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+
+import org.junit.Test;
 
 import java.util.ArrayList;
 
@@ -95,6 +98,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
         }
     }
 
+    @Test @SmallTest
     public void testEmptyRangeManager() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("expecting empty configlist", 0, testManager.mConfigList.size());
@@ -109,6 +113,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertEquals("selected", selected, info.isSelected());
     }
 
+    @Test @SmallTest
     public void testAddSingleChannel() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -125,6 +130,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
                 SMS_CB_CODE_SCHEME_MAX, true);
     }
 
+    @Test @SmallTest
     public void testRemoveSingleChannel() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertTrue("enabling range", testManager.enableRange(123, 123, "client1"));
@@ -142,6 +148,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertEquals("configlist size", 0, testManager.mConfigList.size());
     }
 
+    @Test @SmallTest
     public void testRemoveBadChannel() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertFalse("disabling missing range", testManager.disableRange(123, 123, "client1"));
@@ -149,6 +156,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertEquals("configlist size", 0, testManager.mConfigList.size());
     }
 
+    @Test @SmallTest
     public void testAddTwoChannels() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -173,6 +181,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
                 SMS_CB_CODE_SCHEME_MAX, true);
     }
 
+    @Test @SmallTest
     public void testOverlappingChannels() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -211,6 +220,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertEquals("configlist size", 0, testManager.mConfigList.size());
     }
 
+    @Test @SmallTest
     public void testOverlappingChannels2() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -245,6 +255,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
     }
 
     // new [3, 6]  existing [1, 2] [5, 7]
+    @Test @SmallTest
     public void testOverlappingChannels3() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -285,6 +296,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
 
     }
 
+    @Test @SmallTest
     public void testMultipleOverlappingChannels() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -431,6 +443,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertEquals("configlist size", 0, testManager.mConfigList.size());
     }
 
+    @Test @SmallTest
     public void testAddSingleDigitChannels() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -503,6 +516,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertEquals("configlist size", 0, testManager.mConfigList.size());
     }
 
+    @Test @SmallTest
     public void testAddSingleDigitChannels2() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -525,6 +539,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
                 SMS_CB_CODE_SCHEME_MAX, true);
     }
 
+    @Test @SmallTest
     public void testAddSingleDigitChannels3() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -560,6 +575,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
                 SMS_CB_CODE_SCHEME_MAX, true);
     }
 
+    @Test @SmallTest
     public void testAddSingleDigitChannels4() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -598,6 +614,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
                 SMS_CB_CODE_SCHEME_MAX, true);
     }
 
+    @Test @SmallTest
     public void testAddSingleDigitChannels5() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         for (int i = 0; i <= 10; i++) {
@@ -647,6 +664,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
     }
 
     // new [1, 5] existing [1, 2] [1, 4] [1, 7] [2, 5]
+    @Test @SmallTest
     public void testClientInsert() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -691,6 +709,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
         testManager.reset();
     }
 
+    @Test @SmallTest
     public void testAddTwoSameChannelsDifferentClient() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -723,6 +742,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
                 SMS_CB_CODE_SCHEME_MAX, true);
     }
 
+    @Test @SmallTest
     public void testAddTwoSameChannelsSameClient() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -761,6 +781,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertEquals("configlist size", 0, testManager.mConfigList.size());
     }
 
+    @Test @SmallTest
     public void testAddTwoChannels2() {
         // test non contiguous case where 2nd range precedes 2nd range
         TestIntRangeManager testManager = new TestIntRangeManager();
@@ -787,6 +808,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
     }
 
     // new [2, 10] existing [1, 4] [7, 15]
+    @Test @SmallTest
     public void testAddThreeChannels() {
         // 3rd range can include first two ranges.  Test combine case.
         TestIntRangeManager testManager = new TestIntRangeManager();
@@ -835,6 +857,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertEquals("configlist size", 0, testManager.mConfigList.size());
     }
 
+    @Test @SmallTest
     public void testAddThreeChannels2() {
         // 3rd range can include first two ranges.  Test combine case.
         TestIntRangeManager testManager = new TestIntRangeManager();
@@ -884,6 +907,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
 
     }
 
+    @Test @SmallTest
     public void testAddChannels() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -931,6 +955,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
                 SMS_CB_CODE_SCHEME_MAX, true);
     }
 
+    @Test @SmallTest
     public void testAddChannels2() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -975,7 +1000,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertEquals("configlist size", 0, testManager.mConfigList.size());
     }
 
-
+    @Test @SmallTest
     public void testAddChannels3() {
         TestIntRangeManager testManager = new TestIntRangeManager();
         assertEquals("flags before test", 0, testManager.flags);
@@ -1011,6 +1036,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
         assertEquals("configlist size", 0, testManager.mConfigList.size());
     }
 
+    @Test @SmallTest
     public void testAddChannels4() {
         // new [2, 10] existing [1, 4] [6, 6] [8, 9] [12, 14]
         TestIntRangeManager testManager = new TestIntRangeManager();
@@ -1091,6 +1117,7 @@ public class IntRangeManagerTest extends AndroidTestCase {
                 SMS_CB_CODE_SCHEME_MAX, true);
     }
 
+    @Test @SmallTest
     public void testAddChannels5() {
         // range already enclosed in existing: new [3, 3], [1,3]
         TestIntRangeManager testManager = new TestIntRangeManager();

@@ -17,12 +17,16 @@ package com.android.internal.telephony;
 
 import android.telephony.PhoneNumberFormattingTextWatcher;
 import android.test.AndroidTestCase;
+import android.test.suitebuilder.annotation.SmallTest;
 import android.text.Editable;
 import android.text.Selection;
 import android.text.SpannableStringBuilder;
 import android.text.TextWatcher;
 
+import org.junit.Test;
+
 public class PhoneNumberWatcherTest extends AndroidTestCase {
+    @Test @SmallTest
     public void testAppendChars() {
         final String multiChars = "65012345";
         final String formatted1 = "(650) 123-45";
@@ -49,6 +53,7 @@ public class PhoneNumberWatcherTest extends AndroidTestCase {
         assertEquals(formatted2.length(), Selection.getSelectionEnd(number));
     }
 
+    @Test @SmallTest
     public void testRemoveLastChars() {
         final String init = "65012345678";
         final String result1 = "(650) 123-4567";
@@ -74,6 +79,7 @@ public class PhoneNumberWatcherTest extends AndroidTestCase {
         assertEquals(result2.length(), Selection.getSelectionEnd(number));
     }
 
+    @Test @SmallTest
     public void testInsertChars() {
         final String init = "650-23";
         final String expected1 = "650-123";
@@ -102,6 +108,7 @@ public class PhoneNumberWatcherTest extends AndroidTestCase {
         assertEquals(12, Selection.getSelectionEnd(number));
     }
 
+    @Test @SmallTest
     public void testStopFormatting() {
         final String init = "(650) 123";
         final String expected1 = "(650) 123 4";
@@ -145,6 +152,7 @@ public class PhoneNumberWatcherTest extends AndroidTestCase {
         assertEquals(9, Selection.getSelectionEnd(number));
     }
 
+    @Test @SmallTest
     public void testRestartFormatting() {
         final String init = "(650) 123";
         final String expected1 = "(650) 123 4";
@@ -180,6 +188,7 @@ public class PhoneNumberWatcherTest extends AndroidTestCase {
         assertEquals(expected2.length(), Selection.getSelectionEnd(number));
     }
 
+    @Test @SmallTest
     public void testTextChangedByOtherTextWatcher() {
         final TextWatcher cleanupTextWatcher = new TextWatcher() {
             @Override
@@ -214,6 +223,7 @@ public class PhoneNumberWatcherTest extends AndroidTestCase {
     /**
      * Test the case where some other component is auto-completing what the user is typing
      */
+    @Test @SmallTest
     public void testAutoCompleteWithFormattedNumber() {
         String init = "650-1";
         String expected = "+1-650-123-4567"; // Different formatting than ours
@@ -223,6 +233,7 @@ public class PhoneNumberWatcherTest extends AndroidTestCase {
     /**
      * Test the case where some other component is auto-completing what the user is typing
      */
+    @Test @SmallTest
     public void testAutoCompleteWithFormattedNameAndNumber() {
         String init = "650-1";
         String expected = "Test User <650-123-4567>";
@@ -232,6 +243,7 @@ public class PhoneNumberWatcherTest extends AndroidTestCase {
     /**
      * Test the case where some other component is auto-completing what the user is typing
      */
+    @Test @SmallTest
     public void testAutoCompleteWithNumericNameAndNumber() {
         String init = "650";
         String expected = "2nd Test User <650-123-4567>";
@@ -241,6 +253,7 @@ public class PhoneNumberWatcherTest extends AndroidTestCase {
     /**
      * Test the case where some other component is auto-completing what the user is typing
      */
+    @Test @SmallTest
     public void testAutoCompleteWithUnformattedNumber() {
         String init = "650-1";
         String expected = "6501234567";
@@ -252,6 +265,7 @@ public class PhoneNumberWatcherTest extends AndroidTestCase {
      * the deleted text doesn't have any formatting and neither does the replacement text: in this
      * case the replacement text should be formatted by the PhoneNumberFormattingTextWatcher.
      */
+    @Test @SmallTest
     public void testAutoCompleteUnformattedWithUnformattedNumber() {
         String init = "650";
         String replacement = "6501234567";
@@ -286,6 +300,7 @@ public class PhoneNumberWatcherTest extends AndroidTestCase {
         assertEquals(expected.length(), Selection.getSelectionEnd(number));
     }
 
+    @Test @SmallTest
     private TextWatcher getTextWatcher() {
         return new PhoneNumberFormattingTextWatcher("US");
     }
