@@ -21,8 +21,11 @@ import android.telephony.SmsCbEtwsInfo;
 import android.telephony.SmsCbLocation;
 import android.telephony.SmsCbMessage;
 import android.test.AndroidTestCase;
+import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.uicc.IccUtils;
+
+import org.junit.Test;
 
 import java.util.Random;
 
@@ -54,11 +57,13 @@ public class GsmSmsCbTest extends AndroidTestCase {
                 .getGeographicalScope());
     }
 
+    @Test @SmallTest
     public void testCreateNullPdu() {
         SmsCbMessage msg = createFromPdu(null);
         assertNull("createFromPdu(byte[] with null pdu should return null", msg);
     }
 
+    @Test @SmallTest
     public void testCreateTooShortPdu() {
         byte[] pdu = new byte[4];
         SmsCbMessage msg = createFromPdu(pdu);
@@ -66,6 +71,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
         assertNull("createFromPdu(byte[] with too short pdu should return null", msg);
     }
 
+    @Test @SmallTest
     public void testGetGeographicalScope() {
         byte[] pdu = {
                 (byte)0xC0, (byte)0x00, (byte)0x00, (byte)0x32, (byte)0x40, (byte)0x11, (byte)0x41,
@@ -90,6 +96,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
         doTestGeographicalScopeValue(pdu, (byte)0xC0, SmsCbMessage.GEOGRAPHICAL_SCOPE_CELL_WIDE);
     }
 
+    @Test @SmallTest
     public void testGetGeographicalScopeUmts() {
         byte[] pdu = {
                 (byte)0x01, (byte)0x00, (byte)0x32, (byte)0xC0, (byte)0x00, (byte)0x40,
@@ -120,6 +127,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
                 SmsCbMessage.GEOGRAPHICAL_SCOPE_CELL_WIDE, msg.getGeographicalScope());
     }
 
+    @Test @SmallTest
     public void testGetMessageBody7Bit() {
         byte[] pdu = {
                 (byte)0xC0, (byte)0x00, (byte)0x00, (byte)0x32, (byte)0x40, (byte)0x11, (byte)0x41,
@@ -143,6 +151,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
                 msg.getMessageBody());
     }
 
+    @Test @SmallTest
     public void testGetMessageBody7BitUmts() {
         byte[] pdu = {
                 (byte)0x01, (byte)0x00, (byte)0x32, (byte)0xC0, (byte)0x00, (byte)0x40,
@@ -173,6 +182,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
                 msg.getMessageBody());
     }
 
+    @Test @SmallTest
     public void testGetMessageBody7BitMultipageUmts() {
         byte[] pdu = {
                 (byte)0x01, (byte)0x00, (byte)0x01, (byte)0xC0, (byte)0x00, (byte)0x40,
@@ -220,6 +230,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
                 msg.getMessageBody());
     }
 
+    @Test @SmallTest
     public void testGetMessageBody7BitFull() {
         byte[] pdu = {
                 (byte)0xC0, (byte)0x00, (byte)0x00, (byte)0x32, (byte)0x40, (byte)0x11, (byte)0x41,
@@ -245,6 +256,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
                 msg.getMessageBody());
     }
 
+    @Test @SmallTest
     public void testGetMessageBody7BitFullUmts() {
         byte[] pdu = {
                 (byte)0x01, (byte)0x00, (byte)0x32, (byte)0xC0, (byte)0x00, (byte)0x40,
@@ -277,6 +289,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
                 msg.getMessageBody());
     }
 
+    @Test @SmallTest
     public void testGetMessageBody7BitWithLanguage() {
         byte[] pdu = {
                 (byte)0xC0, (byte)0x00, (byte)0x00, (byte)0x32, (byte)0x04, (byte)0x11, (byte)0x41,
@@ -302,6 +315,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
         assertEquals("Unexpected language indicator decoded", "es", msg.getLanguageCode());
     }
 
+    @Test @SmallTest
     public void testGetMessageBody7BitWithLanguageInBody() {
         byte[] pdu = {
                 (byte)0xC0, (byte)0x00, (byte)0x00, (byte)0x32, (byte)0x10, (byte)0x11, (byte)0x73,
@@ -327,6 +341,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
         assertEquals("Unexpected language indicator decoded", "sv", msg.getLanguageCode());
     }
 
+    @Test @SmallTest
     public void testGetMessageBody7BitWithLanguageInBodyUmts() {
         byte[] pdu = {
                 (byte)0x01, (byte)0x00, (byte)0x32, (byte)0xC0, (byte)0x00, (byte)0x10,
@@ -359,6 +374,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
         assertEquals("Unexpected language indicator decoded", "sv", msg.getLanguageCode());
     }
 
+    @Test @SmallTest
     public void testGetMessageBody8Bit() {
         byte[] pdu = {
                 (byte)0xC0, (byte)0x00, (byte)0x00, (byte)0x32, (byte)0x44, (byte)0x11, (byte)0x41,
@@ -380,6 +396,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
         assertEquals("8-bit message body should be empty", "", msg.getMessageBody());
     }
 
+    @Test @SmallTest
     public void testGetMessageBodyUcs2() {
         byte[] pdu = {
                 (byte)0xC0, (byte)0x00, (byte)0x00, (byte)0x32, (byte)0x48, (byte)0x11, (byte)0x00,
@@ -402,6 +419,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
                 "A UCS2 message containing a \u0434 character", msg.getMessageBody());
     }
 
+    @Test @SmallTest
     public void testGetMessageBodyUcs2Umts() {
         byte[] pdu = {
                 (byte)0x01, (byte)0x00, (byte)0x32, (byte)0xC0, (byte)0x00, (byte)0x48,
@@ -431,6 +449,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
                 "A UCS2 message containing a \u0434 character", msg.getMessageBody());
     }
 
+    @Test @SmallTest
     public void testGetMessageBodyUcs2MultipageUmts() {
         byte[] pdu = {
                 (byte)0x01, (byte)0x00, (byte)0x32, (byte)0xC0, (byte)0x00, (byte)0x48,
@@ -477,6 +496,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
                 "AAABBB", msg.getMessageBody());
     }
 
+    @Test @SmallTest
     public void testGetMessageBodyUcs2WithLanguageInBody() {
         byte[] pdu = {
                 (byte)0xC0, (byte)0x00, (byte)0x00, (byte)0x32, (byte)0x11, (byte)0x11, (byte)0x78,
@@ -501,6 +521,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
         assertEquals("Unexpected language indicator decoded", "xx", msg.getLanguageCode());
     }
 
+    @Test @SmallTest
     public void testGetMessageBodyUcs2WithLanguageInBodyUmts() {
         byte[] pdu = {
                 (byte)0x01, (byte)0x00, (byte)0x32, (byte)0xC0, (byte)0x00, (byte)0x11,
@@ -532,6 +553,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
         assertEquals("Unexpected language indicator decoded", "xx", msg.getLanguageCode());
     }
 
+    @Test @SmallTest
     public void testGetMessageIdentifier() {
         byte[] pdu = {
                 (byte)0xC0, (byte)0x00, (byte)0x30, (byte)0x39, (byte)0x40, (byte)0x11, (byte)0x41,
@@ -554,6 +576,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
         assertEquals("Unexpected message identifier decoded", 12345, msg.getServiceCategory());
     }
 
+    @Test @SmallTest
     public void testGetMessageIdentifierUmts() {
         byte[] pdu = {
                 (byte)0x01, (byte)0x30, (byte)0x39, (byte)0x2A, (byte)0xA5, (byte)0x40,
@@ -583,6 +606,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
         assertEquals("Unexpected message identifier decoded", 12345, msg.getServiceCategory());
     }
 
+    @Test @SmallTest
     public void testGetMessageCode() {
         byte[] pdu = {
                 (byte)0x2A, (byte)0xA5, (byte)0x30, (byte)0x39, (byte)0x40, (byte)0x11, (byte)0x41,
@@ -606,6 +630,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
         assertEquals("Unexpected message code decoded", 682, messageCode);
     }
 
+    @Test @SmallTest
     public void testGetMessageCodeUmts() {
         byte[] pdu = {
                 (byte)0x01, (byte)0x30, (byte)0x39, (byte)0x2A, (byte)0xA5, (byte)0x40,
@@ -636,6 +661,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
         assertEquals("Unexpected message code decoded", 682, messageCode);
     }
 
+    @Test @SmallTest
     public void testGetUpdateNumber() {
         byte[] pdu = {
                 (byte)0x2A, (byte)0xA5, (byte)0x30, (byte)0x39, (byte)0x40, (byte)0x11, (byte)0x41,
@@ -659,6 +685,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
         assertEquals("Unexpected update number decoded", 5, updateNumber);
     }
 
+    @Test @SmallTest
     public void testGetUpdateNumberUmts() {
         byte[] pdu = {
                 (byte)0x01, (byte)0x30, (byte)0x39, (byte)0x2A, (byte)0xA5, (byte)0x40,
@@ -707,6 +734,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
 
     // FIXME: add example of ETWS primary notification PDU
 
+    @Test @SmallTest
     public void testEtwsMessageNormal() {
         SmsCbMessage msg = createFromPdu(etwsMessageNormal);
         Rlog.d(TAG, msg.toString());
@@ -717,6 +745,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
                 msg.getEtwsWarningInfo().getWarningType());
     }
 
+    @Test @SmallTest
     public void testEtwsMessageCancel() {
         SmsCbMessage msg = createFromPdu(etwsMessageCancel);
         Rlog.d(TAG, msg.toString());
@@ -727,6 +756,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
                 msg.getEtwsWarningInfo().getWarningType());
     }
 
+    @Test @SmallTest
     public void testEtwsMessageTest() {
         SmsCbMessage msg = createFromPdu(etwsMessageTest);
         Rlog.d(TAG, msg.toString());
@@ -738,6 +768,7 @@ public class GsmSmsCbTest extends AndroidTestCase {
     }
 
     // Make sure we don't throw an exception if we feed random data to the PDU parser.
+    @Test @SmallTest
     public void testRandomPdus() {
         Random r = new Random(94040);
         for (int run = 0; run < 10000; run++) {

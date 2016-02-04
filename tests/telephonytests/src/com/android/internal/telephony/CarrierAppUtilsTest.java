@@ -21,7 +21,9 @@ import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
 import android.telephony.TelephonyManager;
 import android.test.InstrumentationTestCase;
+import android.test.suitebuilder.annotation.SmallTest;
 
+import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -45,6 +47,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** No apps configured - should do nothing. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_EmptyList() {
         CarrierAppUtils.disableCarrierAppsUntilPrivileged(CALLING_PACKAGE, mPackageManager,
                 mTelephonyManager, USER_ID, new String[0]);
@@ -52,6 +55,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** Configured app is missing - should do nothing. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_MissingApp() throws Exception {
         Mockito.when(mPackageManager.getApplicationInfo("com.example.missing.app",
                 PackageManager.GET_DISABLED_UNTIL_USED_COMPONENTS, USER_ID)).thenReturn(null);
@@ -67,6 +71,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** Configured app is not bundled with the system - should do nothing. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_NonSystemApp() throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
         Mockito.when(mPackageManager.getApplicationInfo(CARRIER_APP,
@@ -86,6 +91,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
      * Configured app has privileges, but was disabled by the user - should only grant
      * permissions.
      */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_HasPrivileges_DisabledUser()
             throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
@@ -106,6 +112,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** Configured app has privileges, but was disabled - should only grant permissions. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_HasPrivileges_Disabled() throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
         appInfo.packageName = CARRIER_APP;
@@ -125,6 +132,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** Configured app has privileges, and is already enabled - should only grant permissions. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_HasPrivileges_Enabled() throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
         appInfo.packageName = CARRIER_APP;
@@ -144,6 +152,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** Configured /data app has privileges - should only grant permissions. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_HasPrivileges_UpdatedApp() throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
         appInfo.packageName = CARRIER_APP;
@@ -163,6 +172,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** Configured app has privileges, and is in the default state - should enable. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_HasPrivileges_Default() throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
         appInfo.packageName = CARRIER_APP;
@@ -182,6 +192,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** Configured app has privileges, and is disabled until used - should enable. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_HasPrivileges_DisabledUntilUsed()
             throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
@@ -202,6 +213,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** Configured app has no privileges, and was disabled by the user - should do nothing. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_NoPrivileges_DisabledUser() throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
         appInfo.packageName = CARRIER_APP;
@@ -222,6 +234,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** Configured app has no privileges, and was disabled - should do nothing. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_NoPrivileges_Disabled() throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
         appInfo.packageName = CARRIER_APP;
@@ -242,6 +255,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** Configured app has no privileges, and is explicitly enabled - should do nothing. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_NoPrivileges_Enabled() throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
         appInfo.packageName = CARRIER_APP;
@@ -262,6 +276,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** Configured /data app has no privileges - should do nothing. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_NoPrivileges_UpdatedApp() throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
         appInfo.packageName = CARRIER_APP;
@@ -282,6 +297,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** Configured app has no privileges, and is in the default state - should disable until use. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_NoPrivileges_Default() throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
         appInfo.packageName = CARRIER_APP;
@@ -302,6 +318,7 @@ public class CarrierAppUtilsTest extends InstrumentationTestCase {
     }
 
     /** Configured app has no privileges, and is disabled until used - should do nothing. */
+    @Test @SmallTest
     public void testDisableCarrierAppsUntilPrivileged_NoPrivileges_DisabledUntilUsed()
             throws Exception {
         ApplicationInfo appInfo = new ApplicationInfo();
