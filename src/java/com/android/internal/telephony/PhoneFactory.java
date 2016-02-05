@@ -36,6 +36,7 @@ import android.util.LocalLog;
 
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.DctController;
+import com.android.internal.telephony.dataconnection.TelephonyNetworkFactory;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
 import com.android.internal.telephony.sip.SipPhone;
@@ -66,8 +67,8 @@ public class PhoneFactory {
 
     static private CommandsInterface[] sCommandsInterfaces = null;
 
-    static private ProxyController mProxyController;
-    static private UiccController mUiccController;
+    static private ProxyController sProxyController;
+    static private UiccController sUiccController;
 
     static private CommandsInterface sCommandsInterface = null;
     static private SubscriptionInfoUpdater sSubInfoRecordUpdater = null;
@@ -75,7 +76,8 @@ public class PhoneFactory {
     static private boolean sMadeDefaults = false;
     static private PhoneNotifier sPhoneNotifier;
     static private Context sContext;
-    //static private PhoneSwitcher mPhoneSwitcher;
+    static private PhoneSwitcher sPhoneSwitcher;
+    static private TelephonyNetworkFactory[] sTelephonyNetworkFactories;
 
     static private final HashMap<String, LocalLog>sLocalLogs = new HashMap<String, LocalLog>();
 
@@ -137,6 +139,7 @@ public class PhoneFactory {
                 int[] networkModes = new int[numPhones];
                 sPhones = new Phone[numPhones];
                 sCommandsInterfaces = new RIL[numPhones];
+                sTelephonyNetworkFactories = new TelephonyNetworkFactory[numPhones];
 
                 for (int i = 0; i < numPhones; i++) {
                     // reads the system properties and makes commandsinterface
@@ -152,7 +155,7 @@ public class PhoneFactory {
 
                 // Instantiate UiccController so that all other classes can just
                 // call getInstance()
-                mUiccController = UiccController.make(context, sCommandsInterfaces);
+                sUiccController = UiccController.make(context, sCommandsInterfaces);
 
                 for (int i = 0; i < numPhones; i++) {
                     Phone phone = null;
@@ -172,8 +175,6 @@ public class PhoneFactory {
 
                     sPhones[i] = phone;
                 }
-                mProxyController = ProxyController.getInstance(context, sPhones,
-                        mUiccController, sCommandsInterfaces);
 
                 // Set the default phone in base class.
                 // FIXME: This is a first best guess at what the defaults will be. It
@@ -215,9 +216,18 @@ public class PhoneFactory {
                 SubscriptionMonitor subscriptionMonitor = new SubscriptionMonitor(tr,
                         sContext, sc, numPhones);
 
-                //mPhoneSwitcher = new PhoneSwitcher(MAX_ACTIVE_PHONES, numPhones,
+                //sPhoneSwitcher = new PhoneSwitcher(MAX_ACTIVE_PHONES, numPhones,
                 //        sContext, sc, Looper.myLooper(), tr, sCommandsInterfaces,
                 //        sPhones);
+
+                sProxyController = ProxyController.getInstance(context, sPhones,
+                        sUiccController, sCommandsInterfaces, sPhoneSwitcher);
+
+                //for (int i = 0; i < numPhones; i++) {
+                //    sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
+                //            sPhoneSwitcher, sc, subscriptionMonitor, Looper.myLooper(),
+                //            sContext, i, sPhones[i].mDcTracker);
+                //}
             }
         }
     }
@@ -464,13 +474,12 @@ public class PhoneFactory {
         pw.println("PhoneFactory:");
         pw.println(" sMadeDefaults=" + sMadeDefaults);
 
-        //mPhoneSwitcher.dump(fd, pw, args);
+        //sPhoneSwitcher.dump(fd, pw, args);
         //pw.println();
 
         Phone[] phones = (Phone[])PhoneFactory.getPhones();
-        int i = -1;
-        for(Phone phone : phones) {
-            i += 1;
+        for (int i = 0; i < phones.length; i++) {
+            Phone phone = phones[i];
 
             try {
                 phone.dump(fd, pw, args);
@@ -478,6 +487,11 @@ public class PhoneFactory {
                 pw.println("Telephony DebugService: Could not get Phone[" + i + "] e=" + e);
                 continue;
             }
+
+            pw.flush();
+            pw.println("++++++++++++++++++++++++++++++++");
+
+            sTelephonyNetworkFactories[i].dump(fd, pw, args);
 
             pw.flush();
             pw.println("++++++++++++++++++++++++++++++++");
@@ -498,7 +512,7 @@ public class PhoneFactory {
         }
 
         try {
-            mUiccController.dump(fd, pw, args);
+            sUiccController.dump(fd, pw, args);
         } catch (Exception e) {
             e.printStackTrace();
         }
