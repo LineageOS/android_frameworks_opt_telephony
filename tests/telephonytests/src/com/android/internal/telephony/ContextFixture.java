@@ -391,7 +391,7 @@ public class ContextFixture implements TestFixture<Context> {
 
         doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
 
-        mConfiguration.locale = Locale.getDefault();
+        mConfiguration.locale = Locale.US;
         doReturn(mConfiguration).when(mResources).getConfiguration();
 
         mContentResolver.addProvider(Telephony.Sms.CONTENT_URI.getAuthority(), mContentProvider);
