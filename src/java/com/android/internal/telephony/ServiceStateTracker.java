@@ -285,6 +285,7 @@ public class ServiceStateTracker extends Handler {
                 if (SubscriptionManager.isValidSubscriptionId(subId)) {
                     Context context = mPhone.getContext();
 
+                    mPhone.notifyPhoneStateChanged();
                     mPhone.notifyCallForwardingIndicator();
 
                     // update voicemail count and notify message waiting changed
