@@ -83,6 +83,8 @@ public abstract class TelephonyTest {
     @Mock
     protected DcTracker mDcTracker;
     @Mock
+    protected GsmCdmaCall mGsmCdmaCall;
+    @Mock
     protected SubscriptionController mSubscriptionController;
     @Mock
     protected ServiceState mServiceState;
