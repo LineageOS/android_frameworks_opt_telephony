@@ -33,6 +33,7 @@ import android.text.BidiFormatter;
 import android.text.TextDirectionHeuristics;
 import android.text.TextUtils;
 import android.telephony.Rlog;
+import android.util.Log;
 
 import static com.android.internal.telephony.CommandsInterface.*;
 import com.android.internal.telephony.gsm.SsData;
@@ -1121,8 +1122,15 @@ public final class GsmMmiCode extends Handler implements MmiCode {
 
                 if (ar.exception != null) {
                     mState = State.FAILED;
-                    mMessage = getErrorMessage(ar);
-
+                    // suppress error pop-up for single dialed digits
+                    if (mDialingNumber.length() == 1) {
+                        Log.w(
+                            LOG_TAG,
+                            mContext.getText(com.android.internal.R.string.mmiError).toString()
+                            );
+                    } else {
+                        mMessage = getErrorMessage(ar);
+                    }
                     mPhone.onMMIDone(this);
                 }
 
