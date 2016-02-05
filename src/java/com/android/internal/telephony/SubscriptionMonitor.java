@@ -31,6 +31,7 @@ import android.os.ServiceManager;
 import android.telephony.Rlog;
 import android.telephony.SubscriptionManager;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.ISub;
 import com.android.internal.telephony.IOnSubscriptionsChangedListener;
 import com.android.internal.telephony.ITelephonyRegistry;
@@ -86,6 +87,15 @@ public class SubscriptionMonitor {
 
         mContext.registerReceiver(mDefaultDataSubscriptionChangedReceiver,
                 new IntentFilter(TelephonyIntents.ACTION_DEFAULT_DATA_SUBSCRIPTION_CHANGED));
+    }
+
+    @VisibleForTesting
+    public SubscriptionMonitor() {
+        mSubscriptionsChangedRegistrants = null;
+        mDefaultDataSubChangedRegistrants = null;
+        mSubscriptionController = null;
+        mContext = null;
+        mPhoneSubId = null;
     }
 
     private final IOnSubscriptionsChangedListener mSubscriptionsChangedListener =

@@ -36,6 +36,7 @@ import android.telephony.Rlog;
 import android.text.TextUtils;
 import android.util.LocalLog;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.IOnSubscriptionsChangedListener;
 import com.android.internal.telephony.ITelephonyRegistry;
@@ -81,8 +82,24 @@ public class PhoneSwitcher extends Handler {
     private final static int EVENT_REQUEST_NETWORK              = 103;
     private final static int EVENT_RELEASE_NETWORK              = 104;
     private final static int EVENT_EMERGENCY_TOGGLE             = 105;
+    private final static int EVENT_RESEND_DATA_ALLOWED          = 106;
 
     private final static int MAX_LOCAL_LOG_LINES = 30;
+
+    @VisibleForTesting
+    public PhoneSwitcher(Looper looper) {
+        super(looper);
+        mMaxActivePhones = 0;
+        mSubscriptionController = null;
+        mPhoneSubscriptions = null;
+        mCommandsInterfaces = null;
+        mContext = null;
+        mPhoneStates = null;
+        mPhones = null;
+        mLocalLog = null;
+        mActivePhoneRegistrants = null;
+        mNumPhones = 0;
+    }
 
     public PhoneSwitcher(int maxActivePhones, int numPhones, Context context,
             SubscriptionController subscriptionController, Looper looper, ITelephonyRegistry tr,
@@ -179,6 +196,10 @@ public class PhoneSwitcher extends Handler {
             }
             case EVENT_EMERGENCY_TOGGLE: {
                 onEvaluate(REQUESTS_CHANGED, "emergencyToggle");
+                break;
+            }
+            case EVENT_RESEND_DATA_ALLOWED: {
+                onResendDataAllowed(msg);
                 break;
             }
         }
@@ -322,6 +343,20 @@ public class PhoneSwitcher extends Handler {
         state.lastRequested = System.currentTimeMillis();
         mCommandsInterfaces[phoneId].setDataAllowed(true, null);
         mActivePhoneRegistrants[phoneId].notifyRegistrants();
+    }
+
+    // used when the modem may have been rebooted and we want to resend
+    // setDataAllowed
+    public void resendDataAllowed(int phoneId) {
+        validatePhoneId(phoneId);
+        Message msg = obtainMessage(EVENT_RESEND_DATA_ALLOWED);
+        msg.arg1 = phoneId;
+        msg.sendToTarget();
+    }
+
+    private void onResendDataAllowed(Message msg) {
+        final int phoneId = msg.arg1;
+        mCommandsInterfaces[phoneId].setDataAllowed(mPhoneStates[phoneId].active, null);
     }
 
     private int phoneIdForRequest(NetworkRequest netRequest) {
