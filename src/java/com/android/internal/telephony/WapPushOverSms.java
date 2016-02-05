@@ -69,7 +69,7 @@ public class WapPushOverSms implements ServiceConnection {
     private static final boolean DBG = false;
 
     private final Context mContext;
-    IDeviceIdleController mDeviceIdleController;
+    private IDeviceIdleController mDeviceIdleController;
 
     private String mWapPushManagerPackage;
 
@@ -90,8 +90,7 @@ public class WapPushOverSms implements ServiceConnection {
 
     public WapPushOverSms(Context context) {
         mContext = context;
-        mDeviceIdleController = IDeviceIdleController.Stub.asInterface(
-                ServiceManager.getService(Context.DEVICE_IDLE_CONTROLLER));
+        mDeviceIdleController = TelephonyComponentFactory.getInstance().getIDeviceIdleController();
         Intent intent = new Intent(IWapPushManager.class.getName());
         ComponentName comp = intent.resolveSystemService(context.getPackageManager(), 0);
         intent.setComponent(comp);
@@ -103,7 +102,7 @@ public class WapPushOverSms implements ServiceConnection {
         }
     }
 
-    void dispose() {
+    public void dispose() {
         if (mWapPushManager != null) {
             if (DBG) Rlog.v(TAG, "dispose: unbind wappush manager");
             mContext.unbindService(this);
@@ -158,7 +157,8 @@ public class WapPushOverSms implements ServiceConnection {
                 }
             }
 
-            WspTypeDecoder pduDecoder = new WspTypeDecoder(pdu);
+            WspTypeDecoder pduDecoder =
+                    TelephonyComponentFactory.getInstance().makeWspTypeDecoder(pdu);
 
             /**
              * Parse HeaderLen(unsigned integer).
@@ -551,7 +551,7 @@ public class WapPushOverSms implements ServiceConnection {
         return false;
     }
 
-    protected static String getPermissionForType(String mimeType) {
+    public static String getPermissionForType(String mimeType) {
         String permission;
         if (WspTypeDecoder.CONTENT_TYPE_B_MMS.equals(mimeType)) {
             permission = android.Manifest.permission.RECEIVE_MMS;
@@ -561,7 +561,7 @@ public class WapPushOverSms implements ServiceConnection {
         return permission;
     }
 
-    protected static int getAppOpsPermissionForIntent(String mimeType) {
+    public static int getAppOpsPermissionForIntent(String mimeType) {
         int appOp;
         if (WspTypeDecoder.CONTENT_TYPE_B_MMS.equals(mimeType)) {
             appOp = AppOpsManager.OP_RECEIVE_MMS;
