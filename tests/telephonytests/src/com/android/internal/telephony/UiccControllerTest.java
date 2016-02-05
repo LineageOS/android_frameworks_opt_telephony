@@ -20,18 +20,15 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
-import android.util.Log;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccController;
 
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import java.lang.reflect.Field;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -40,23 +37,16 @@ import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
-public class UiccControllerTest {
-    private Context mContext;
-    private SimulatedCommands mSimulatedCommands;
-    private UiccController mUiccController;
+public class UiccControllerTest extends TelephonyTest{
+    private UiccController mUiccControllerUT;
     private static final int PHONE_COUNT = 1;
     private static int ICC_CHANGED_EVENT = 0;
-    private static final String TAG = "UiccControllerTest";
-    private boolean mReady;
-    private Object mLock = new Object();
-    @Mock
     private TelephonyManager mTelephonyManager;
-    @Mock
-    private SubscriptionController mSubscriptionController;
+    private Context mContext;
     @Mock
     private Handler mMockedHandler;
     @Mock
-    private  IccCardStatus mIccCardStatus;
+    private IccCardStatus mIccCardStatus;
 
     private class UiccControllerHandlerThread extends HandlerThread {
 
@@ -67,23 +57,12 @@ public class UiccControllerTest {
         public void onLooperPrepared() {
             synchronized (mLock) {
                 /* create a new UICC Controller associated with the simulated Commands */
-                mUiccController = UiccController.make(mContext,
+                mUiccControllerUT = UiccController.make(mContext,
                                   new CommandsInterface[]{mSimulatedCommands});
                 /* expected to get new UiccCards being created
                 wait till the async result and message delay */
-                TelephonyTestUtils.waitForMs(300);
-                mReady = true;
-                logd("create UiccCardController");
-            }
-        }
-    }
-
-    private void waitUntilReady() {
-        while (true) {
-            synchronized (mLock) {
-                if (mReady) {
-                    break;
-                }
+                TelephonyTestUtils.waitForMs(500);
+                setReady(true);
             }
         }
     }
@@ -102,22 +81,15 @@ public class UiccControllerTest {
 
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
-        mContext = new ContextFixture().getTestDouble();
-        /* Radio state UNAVAIL->OFF when initialize new simulated commands*/
-        mSimulatedCommands = new SimulatedCommands();
+        super.setUp("UiccControllerTest");
+        mContext = mContextFixture.getTestDouble();
+        mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
 
-        Field field = TelephonyManager.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        field.set(null, mTelephonyManager);
-        field = SubscriptionController.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        field.set(null, mSubscriptionController);
         doReturn(PHONE_COUNT).when(mTelephonyManager).getPhoneCount();
         doReturn(PHONE_COUNT).when(mTelephonyManager).getSimCount();
 
         /* create a new UiccCard Controller, avoid make called multiple times */
-        field = UiccController.class.getDeclaredField("mInstance");
+        Field field = UiccController.class.getDeclaredField("mInstance");
         field.setAccessible(true);
         field.set(null, null);
 
@@ -135,21 +107,21 @@ public class UiccControllerTest {
     public void tearDown() throws Exception {
         mContext = null;
         mSimulatedCommands = null;
-        mUiccController = null;
+        mUiccControllerUT = null;
         mTelephonyManager = null;
     }
 
     @Test @SmallTest
     public void testSanity() {
 
-        assertEquals(PHONE_COUNT, mUiccController.getUiccCards().length);
-        assertNotNull(mUiccController.getUiccCard(0));
-        assertNull(mUiccController.getIccRecords(0, UiccController.APP_FAM_3GPP));
-        assertNull(mUiccController.getIccRecords(0, UiccController.APP_FAM_3GPP2));
-        assertNull(mUiccController.getIccRecords(0, UiccController.APP_FAM_IMS));
-        assertNull(mUiccController.getIccFileHandler(0, UiccController.APP_FAM_3GPP));
-        assertNull(mUiccController.getIccFileHandler(0, UiccController.APP_FAM_3GPP2));
-        assertNull(mUiccController.getIccFileHandler(0, UiccController.APP_FAM_IMS));
+        assertEquals(PHONE_COUNT, mUiccControllerUT.getUiccCards().length);
+        assertNotNull(mUiccControllerUT.getUiccCard(0));
+        assertNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP));
+        assertNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP2));
+        assertNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_IMS));
+        assertNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_3GPP));
+        assertNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_3GPP2));
+        assertNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_IMS));
     }
 
     @Test @SmallTest
@@ -159,7 +131,7 @@ public class UiccControllerTest {
         testSanity();
         mSimulatedCommands.requestShutdown(null);
         TelephonyTestUtils.waitForMs(50);
-        assertNull(mUiccController.getUiccCard(0));
+        assertNull(mUiccControllerUT.getUiccCard(0));
         assertEquals(mSimulatedCommands.getRadioState(),
                 CommandsInterface.RadioState.RADIO_UNAVAILABLE);
     }
@@ -168,7 +140,7 @@ public class UiccControllerTest {
     public void testPowerOn() {
         mSimulatedCommands.setRadioPower(true, null);
         TelephonyTestUtils.waitForMs(500);
-        assertNotNull(mUiccController.getUiccCard(0));
+        assertNotNull(mUiccControllerUT.getUiccCard(0));
         assertEquals(mSimulatedCommands.getRadioState(), CommandsInterface.RadioState.RADIO_ON);
     }
 
@@ -197,27 +169,23 @@ public class UiccControllerTest {
         testPowerOn();
 
         logd("validate Card status with Applications on it followed by Power on");
-        assertNotNull(mUiccController.getUiccCard(0));
-        assertNotNull(mUiccController.getIccRecords(0, UiccController.APP_FAM_3GPP));
-        assertNotNull(mUiccController.getIccRecords(0, UiccController.APP_FAM_3GPP2));
-        assertNotNull(mUiccController.getIccRecords(0, UiccController.APP_FAM_IMS));
-        assertNotNull(mUiccController.getIccFileHandler(0, UiccController.APP_FAM_3GPP));
-        assertNotNull(mUiccController.getIccFileHandler(0, UiccController.APP_FAM_3GPP2));
-        assertNotNull(mUiccController.getIccFileHandler(0, UiccController.APP_FAM_IMS));
+        assertNotNull(mUiccControllerUT.getUiccCard(0));
+        assertNotNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP));
+        assertNotNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP2));
+        assertNotNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_IMS));
+        assertNotNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_3GPP));
+        assertNotNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_3GPP2));
+        assertNotNull(mUiccControllerUT.getIccFileHandler(0, UiccController.APP_FAM_IMS));
     }
 
     @Test @SmallTest
     public void testIccChangedListener() {
-        mUiccController.registerForIccChanged(mMockedHandler, ICC_CHANGED_EVENT, null);
+        mUiccControllerUT.registerForIccChanged(mMockedHandler, ICC_CHANGED_EVENT, null);
         testPowerOff();
         ArgumentCaptor<Message> mCaptorMessage = ArgumentCaptor.forClass(Message.class);
-        ArgumentCaptor<Long>    mCaptorLong = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Long> mCaptorLong = ArgumentCaptor.forClass(Long.class);
         verify(mMockedHandler, atLeast(1)).sendMessageDelayed(mCaptorMessage.capture(),
                 mCaptorLong.capture());
         assertEquals(ICC_CHANGED_EVENT, mCaptorMessage.getValue().what);
-    }
-
-    private static void logd(String s) {
-        Log.d(TAG, s);
     }
 }
