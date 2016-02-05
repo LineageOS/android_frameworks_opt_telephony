@@ -665,7 +665,8 @@ public class SubscriptionController extends ISub.Stub {
      */
     @Override
     public int addSubInfoRecord(String iccId, int slotId) {
-        if (DBG) logdl("[addSubInfoRecord]+ iccId:" + iccId + " slotId:" + slotId);
+        if (DBG) logdl("[addSubInfoRecord]+ iccId:" + SubscriptionInfo.givePrintableIccid(iccId) +
+                " slotId:" + slotId);
 
         enforceModifyPhoneState("addSubInfoRecord");
 
