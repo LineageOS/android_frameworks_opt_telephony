@@ -16,35 +16,18 @@
 
 package com.android.internal.telephony.cdma;
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
-import android.os.Bundle;
-import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.IBinder;
-import android.os.IDeviceIdleController;
-import android.os.ServiceManager;
-import android.os.UserHandle;
 import android.provider.Telephony;
 import android.telephony.*;
 import android.test.suitebuilder.annotation.SmallTest;
-import android.util.Log;
 
-import com.android.internal.telephony.CommandsInterface;
-import com.android.internal.telephony.ContextFixture;
-import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.InboundSmsHandler;
-import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.SmsBroadcastUndelivered;
-import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsStorageMonitor;
-import com.android.internal.telephony.TelephonyComponentFactory;
+import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.TelephonyTestUtils;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
-import com.android.internal.telephony.test.SimulatedCommands;
-import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
 
@@ -55,7 +38,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
@@ -64,32 +46,17 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 
-public class CdmaInboundSmsHandlerTest {
-    private static final String TAG = "CdmaInboundSmsHandlerTest";
-
+public class CdmaInboundSmsHandlerTest extends TelephonyTest {
     @Mock
     private SmsStorageMonitor mSmsStorageMonitor;
-    @Mock
-    private Phone mPhone;
     @Mock
     private android.telephony.SmsMessage mSmsMessage;
     @Mock
     private SmsMessage mCdmaSmsMessage;
-    @Mock
-    private UiccController mUiccController;
-    @Mock
-    private IDeviceIdleController mIDeviceIdleController;
-    @Mock
-    private TelephonyComponentFactory mTelephonyComponentFactory;
 
     private CdmaInboundSmsHandler mCdmaInboundSmsHandler;
-    private ContextFixture mContextFixture;
-    private SimulatedCommands mSimulatedCommands;
     private TelephonyManager mTelephonyManager;
     private SmsEnvelope mSmsEnvelope = new SmsEnvelope();
-
-    private Object mLock = new Object();
-    private boolean mReady;
 
     private class CdmaInboundSmsHandlerTestHandler extends HandlerThread {
 
@@ -99,21 +66,9 @@ public class CdmaInboundSmsHandlerTest {
 
         @Override
         public void onLooperPrepared() {
-            synchronized (mLock) {
-                mCdmaInboundSmsHandler = CdmaInboundSmsHandler.makeInboundSmsHandler(
-                        mContextFixture.getTestDouble(), mSmsStorageMonitor, mPhone, null);
-                mReady = true;
-            }
-        }
-    }
-
-    private void waitUntilReady() {
-        while(true) {
-            synchronized (mLock) {
-                if (mReady) {
-                    break;
-                }
-            }
+            mCdmaInboundSmsHandler = CdmaInboundSmsHandler.makeInboundSmsHandler(mContext,
+                    mSmsStorageMonitor, mPhone, null);
+            setReady(true);
         }
     }
 
@@ -130,32 +85,18 @@ public class CdmaInboundSmsHandlerTest {
 
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
+        super.setUp("CdmaInboundSmsHandlerTest");
 
-        //Use reflection to mock singletons
-        Field field = UiccController.class.getDeclaredField("mInstance");
-        field.setAccessible(true);
-        field.set(null, mUiccController);
-
-        field = TelephonyComponentFactory.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        field.set(null, mTelephonyComponentFactory);
-
-        field = SmsMessage.class.getDeclaredField("mEnvelope");
+        Field field = SmsMessage.class.getDeclaredField("mEnvelope");
         field.setAccessible(true);
         field.set(mCdmaSmsMessage, mSmsEnvelope);
 
-        mContextFixture = new ContextFixture();
-        mSimulatedCommands = new SimulatedCommands();
-        mPhone.mCi = mSimulatedCommands;
-
-        mTelephonyManager = TelephonyManager.from(mContextFixture.getTestDouble());
+        mTelephonyManager = TelephonyManager.from(mContext);
         doReturn(true).when(mTelephonyManager).getSmsReceiveCapableForPhone(anyInt(), anyBoolean());
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
         doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory).
                 getIDeviceIdleController();
 
-        mReady = false;
         new CdmaInboundSmsHandlerTestHandler(TAG).start();
         waitUntilReady();
     }
@@ -163,6 +104,7 @@ public class CdmaInboundSmsHandlerTest {
     @After
     public void tearDown() throws Exception {
         mCdmaInboundSmsHandler = null;
+        super.tearDown();
     }
 
     @Test @SmallTest
@@ -170,10 +112,8 @@ public class CdmaInboundSmsHandlerTest {
         // verify initially in StartupState
         assertEquals("StartupState", getCurrentState().getName());
 
-        // start SmsBroadcastUndelivered thread to trigger transition to IdleState
-        Thread broadcastThread = new Thread(new SmsBroadcastUndelivered(
-                mContextFixture.getTestDouble(), null, mCdmaInboundSmsHandler));
-        broadcastThread.start();
+        // trigger transition to IdleState
+        mCdmaInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_START_ACCEPTING_SMS);
         TelephonyTestUtils.waitForMs(50);
 
         assertEquals("IdleState", getCurrentState().getName());
@@ -188,8 +128,7 @@ public class CdmaInboundSmsHandlerTest {
         TelephonyTestUtils.waitForMs(100);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContextFixture.getTestDouble(), times(2)).
-                sendBroadcast(intentArgumentCaptor.capture());
+        verify(mContext, times(2)).sendBroadcast(intentArgumentCaptor.capture());
 
         List<Intent> list = intentArgumentCaptor.getAllValues();
         /* logd("list.size() " + list.size());
@@ -210,9 +149,5 @@ public class CdmaInboundSmsHandlerTest {
         assertTrue(smsReceivedAction);
 
         assertEquals("IdleState", getCurrentState().getName());
-    }
-
-    private static void logd(String s) {
-        Log.d(TAG, s);
     }
 }

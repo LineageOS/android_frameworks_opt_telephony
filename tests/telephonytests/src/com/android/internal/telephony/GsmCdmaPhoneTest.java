@@ -47,8 +47,9 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         @Override
         public void onLooperPrepared() {
-            mPhoneUT = new GsmCdmaPhone(mContextFixture.getTestDouble(), mSimulatedCommands,
-                    mNotifier, true, 0, PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory);
+            mPhoneUT = new GsmCdmaPhone(mContext, mSimulatedCommands, mNotifier, true, 0,
+                    PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory);
+            TelephonyTestUtils.waitForMs(50);
             setReady(true);
         }
     }
@@ -81,7 +82,9 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        mPhoneUT.removeCallbacksAndMessages(null);
         mPhoneUT = null;
+        super.tearDown();
     }
 
     @Test @SmallTest
@@ -98,7 +101,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_1xRTT);
         assertTrue(mPhoneUT.isPhoneTypeGsm());
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
-        mContextFixture.getTestDouble().sendBroadcast(intent);
+        mContext.sendBroadcast(intent);
         TelephonyTestUtils.waitForMs(50);
         assertTrue(mPhoneUT.isPhoneTypeCdmaLte());
     }

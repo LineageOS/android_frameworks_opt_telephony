@@ -72,7 +72,7 @@ public class CdmaSmsDispatcherTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp("CdmaSmsDispatcherTest");
 
-        mTelephonyManager = TelephonyManager.from(mContextFixture.getTestDouble());
+        mTelephonyManager = TelephonyManager.from(mContext);
         doReturn(true).when(mTelephonyManager).getSmsReceiveCapableForPhone(anyInt(), anyBoolean());
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
 
@@ -83,6 +83,7 @@ public class CdmaSmsDispatcherTest extends TelephonyTest {
     @After
     public void tearDown() throws Exception {
         mCdmaSmsDispatcher = null;
+        super.tearDown();
     }
 
     @Test @SmallTest

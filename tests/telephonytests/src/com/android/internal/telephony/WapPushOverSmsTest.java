@@ -40,12 +40,13 @@ public class WapPushOverSmsTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp("WapPushOverSmsTest");
 
-        mWapPushOverSmsUT = new WapPushOverSms(mContextFixture.getTestDouble());
+        mWapPushOverSmsUT = new WapPushOverSms(mContext);
     }
 
     @After
     public void tearDown() throws Exception {
         mWapPushOverSmsUT = null;
+        super.tearDown();
     }
 
     @Test @SmallTest

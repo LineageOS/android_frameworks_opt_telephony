@@ -66,26 +66,14 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class ServiceStateTrackerTest {
-    private static final String TAG = "ServiceStateTrackerTest";
-
+public class ServiceStateTrackerTest extends TelephonyTest {
     private static final String AMERICA_LA_TIME_ZONE = "America/Los_Angeles";
     private static final String KEY_TIME_ZONE = "time-zone";
 
     @Mock
-    private GsmCdmaPhone mPhone;
-    @Mock
-    private UiccController mUiccController;
-    @Mock
     private UiccCardApplication m3GPPUiccApp;
     @Mock
     private SIMRecords mSimRecords;
-    @Mock
-    private SubscriptionController mSubscriptionController;
-    @Mock
-    private SparseArray<TelephonyEventLog> mLogInstances;
-    @Mock
-    private TelephonyEventLog mTelephonyEventLog;
     @Mock
     private DcTracker mDct;
     @Mock
@@ -95,13 +83,8 @@ public class ServiceStateTrackerTest {
     @Mock
     IBinder mBinder;
 
-    private SimulatedCommands mSimulatedCommands;
-    private ContextFixture mContextFixture;
     private ServiceStateTracker sst;
     private TelephonyManager mTelephonyManager;
-
-    private Object mLock = new Object();
-    private boolean mReady = false;
 
     private class ServiceStateTrackerTestHandler extends HandlerThread {
 
@@ -112,19 +95,7 @@ public class ServiceStateTrackerTest {
         @Override
         public void onLooperPrepared() {
             sst = new ServiceStateTracker(mPhone, mSimulatedCommands);
-            synchronized (mLock) {
-                mReady = true;
-            }
-        }
-    }
-
-    private void waitUntilReady() {
-        while(true) {
-            synchronized (mLock) {
-                if (mReady) {
-                    break;
-                }
-            }
+            setReady(true);
         }
     }
 
@@ -132,12 +103,8 @@ public class ServiceStateTrackerTest {
     public void setUp() throws Exception {
 
         logd("ServiceStateTrackerTest +Setup!");
-        MockitoAnnotations.initMocks(this);
-        mContextFixture = new ContextFixture();
-        mSimulatedCommands = new SimulatedCommands();
+        super.setUp("ServiceStateTrackerTest");
 
-        doReturn(mContextFixture.getTestDouble()).when(mPhone).getContext();
-        doReturn(true).when(mPhone).getUnitTestMode();
         doReturn(true).when(mPhone).isPhoneTypeGsm();
         doReturn(true).when(mDct).isDisconnected();
         doReturn(m3GPPUiccApp).when(mUiccController).getUiccCardApplication(
@@ -148,28 +115,11 @@ public class ServiceStateTrackerTest {
                 getSystemService(Context.TELEPHONY_SERVICE);
 
         //Use reflection to mock singleton
-        Field field = SubscriptionController.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        field.set(null, mSubscriptionController);
-
-        //Use reflection to mock singleton
-        field = UiccController.class.getDeclaredField("mInstance");
-        field.setAccessible(true);
-        field.set(null, mUiccController);
-
-        // Replace ServiceManager.sCache so ServiceManager.getService can return a mocked
-        // IBinder.
-        field = ServiceManager.class.getDeclaredField("sCache");
+        Field field = ServiceManager.class.getDeclaredField("sCache");
         field.setAccessible(true);
         field.set(null, mServiceCache);
 
-        doReturn(mTelephonyEventLog).when(mLogInstances).get(anyInt());
         doReturn(mBinder).when(mServiceCache).get(anyString());
-
-        // Use reflection to replace TelephonyEventLog.sInstances with our mocked mLogInstances
-        field = TelephonyEventLog.class.getDeclaredField("sInstances");
-        field.setAccessible(true);
-        field.set(null, mLogInstances);
 
         field = ProxyController.class.getDeclaredField("sProxyController");
         field.setAccessible(true);
@@ -191,7 +141,6 @@ public class ServiceStateTrackerTest {
         int dds = SubscriptionManager.getDefaultDataSubscriptionId();
         doReturn(dds).when(mPhone).getSubId();
 
-        mReady = false;
         new ServiceStateTrackerTestHandler(TAG).start();
         waitUntilReady();
         waitForMs(600);
@@ -201,6 +150,7 @@ public class ServiceStateTrackerTest {
     @After
     public void tearDown() throws Exception {
         sst = null;
+        super.tearDown();
     }
 
     @Test
@@ -335,9 +285,5 @@ public class ServiceStateTrackerTest {
         GsmCellLocation cl = (GsmCellLocation) sst.getCellLocation();
         assertEquals(2, cl.getLac());
         assertEquals(3, cl.getCid());
-    }
-
-    private static void logd(String s) {
-        Log.d(TAG, s);
     }
 }

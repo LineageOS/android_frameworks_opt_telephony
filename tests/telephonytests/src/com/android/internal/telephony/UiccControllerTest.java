@@ -37,12 +37,11 @@ import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
-public class UiccControllerTest extends TelephonyTest{
+public class UiccControllerTest extends TelephonyTest {
     private UiccController mUiccControllerUT;
     private static final int PHONE_COUNT = 1;
     private static int ICC_CHANGED_EVENT = 0;
     private TelephonyManager mTelephonyManager;
-    private Context mContext;
     @Mock
     private Handler mMockedHandler;
     @Mock
@@ -55,15 +54,13 @@ public class UiccControllerTest extends TelephonyTest{
         }
         @Override
         public void onLooperPrepared() {
-            synchronized (mLock) {
-                /* create a new UICC Controller associated with the simulated Commands */
-                mUiccControllerUT = UiccController.make(mContext,
-                                  new CommandsInterface[]{mSimulatedCommands});
-                /* expected to get new UiccCards being created
-                wait till the async result and message delay */
-                TelephonyTestUtils.waitForMs(500);
-                setReady(true);
-            }
+            /* create a new UICC Controller associated with the simulated Commands */
+            mUiccControllerUT = UiccController.make(mContext,
+                    new CommandsInterface[]{mSimulatedCommands});
+            /* expected to get new UiccCards being created
+            wait till the async result and message delay */
+            TelephonyTestUtils.waitForMs(500);
+            setReady(true);
         }
     }
 
@@ -82,9 +79,8 @@ public class UiccControllerTest extends TelephonyTest{
     @Before
     public void setUp() throws Exception {
         super.setUp("UiccControllerTest");
-        mContext = mContextFixture.getTestDouble();
-        mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
 
+        mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         doReturn(PHONE_COUNT).when(mTelephonyManager).getPhoneCount();
         doReturn(PHONE_COUNT).when(mTelephonyManager).getSimCount();
 
@@ -105,10 +101,7 @@ public class UiccControllerTest extends TelephonyTest{
 
     @After
     public void tearDown() throws Exception {
-        mContext = null;
-        mSimulatedCommands = null;
-        mUiccControllerUT = null;
-        mTelephonyManager = null;
+        super.tearDown();
     }
 
     @Test @SmallTest
