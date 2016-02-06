@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1fcbff3d_16c5955b",
+        "filename": "src/java/com/android/internal/telephony/gsm/GsmMmiCode.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1131,
+      "author": {
+        "id": 14096
+      },
+      "writtenOn": "2016-02-06T03:33:22Z",
+      "side": 1,
+      "message": "I see that onMMIDone() notifies all the registrants and sends the message to those registrants. In case of mmi code 0 and 7 case, whats mMessage set to? What do we think its value should be?.",
+      "range": {
+        "startLine": 1131,
+        "startChar": 24,
+        "endLine": 1131,
+        "endChar": 27
+      },
+      "revId": "ea3a5dcf8021c248a99899fef1ef1592a36f4924",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
