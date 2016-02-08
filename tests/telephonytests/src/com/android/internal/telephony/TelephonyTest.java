@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
+import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IDeviceIdleController;
 import android.os.Message;
@@ -180,6 +181,10 @@ public abstract class TelephonyTest {
                 makeWspTypeDecoder(any(byte[].class));
 
         doReturn(mContextFixture.getTestDouble()).when(mPhone).getContext();
+        doReturn(mCdmaSSM).when(mTelephonyComponentFactory).
+                getCdmaSubscriptionSourceManagerInstance(any(Context.class),
+                        any(CommandsInterface.class), any(Handler.class),
+                        anyInt(), any(Object.class) );
 
         doReturn(true).when(mImsManagerInstances).containsKey(anyInt());
 
