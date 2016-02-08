@@ -3499,6 +3499,9 @@ public class RIL extends BaseCommands implements CommandsInterface {
 
                 // Initial conditions
                 setRadioPower(false, null);
+                if (needsOldRilFeature("setPrefNwTypeOnUnsolConnected")) {
+                    setPreferredNetworkType(mPreferredNetworkType, null);
+                }
                 setCdmaSubscriptionSource(mCdmaSubscription, null);
                 setCellInfoListRate(Integer.MAX_VALUE, null);
                 notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
