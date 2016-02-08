@@ -22,6 +22,8 @@ import android.test.suitebuilder.annotation.SmallTest;
 import java.io.UnsupportedEncodingException;
 import static org.mockito.Mockito.doReturn;
 import static org.junit.Assert.*;
+
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -31,6 +33,11 @@ public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
         logd("+Setup!");
         super.setUp(getClass().getSimpleName());
         logd("-Setup!");
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        super.tearDown();
     }
 
     @Test
@@ -69,7 +76,7 @@ public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
     @SmallTest
     public void testCdmaTranslate() {
 
-        TelephonyManager telephonyManager = TelephonyManager.from(mContextFixture.getTestDouble());
+        TelephonyManager telephonyManager = TelephonyManager.from(mContext);
         doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(telephonyManager).getCurrentPhoneType();
 
         String s = null;

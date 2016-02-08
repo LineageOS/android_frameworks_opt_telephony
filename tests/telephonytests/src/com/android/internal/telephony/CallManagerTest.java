@@ -42,7 +42,7 @@ import android.telephony.ServiceState;
 import android.telephony.PhoneNumberUtils;
 import java.lang.reflect.Field;
 
-public class CallManagerTest extends TelephonyTest{
+public class CallManagerTest extends TelephonyTest {
     private CallManager mCallManager = CallManager.getInstance();
     @Mock
     GsmCdmaCall mFgCall;
@@ -92,6 +92,7 @@ public class CallManagerTest extends TelephonyTest{
     @After
     public void tearDown() throws Exception {
         CallManager.getInstance().unregisterPhone(mPhone);
+        super.tearDown();
     }
 
     @SmallTest @Test
