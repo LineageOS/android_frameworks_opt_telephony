@@ -54,6 +54,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     }
 
     private void switchToGsm() {
+        mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_GSM);
         mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_VOICE_RADIO_TECH_CHANGED,
                 new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_GSM}, null)));
         //wait for voice RAT to be updated
@@ -61,6 +62,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
     }
 
     private void switchToCdma() {
+        mSimulatedCommands.setVoiceRadioTech(ServiceState.RIL_RADIO_TECHNOLOGY_IS95A);
         mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_VOICE_RADIO_TECH_CHANGED,
                 new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_IS95A}, null)));
         //wait for voice RAT to be updated

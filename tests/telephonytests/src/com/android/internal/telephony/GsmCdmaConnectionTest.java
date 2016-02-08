@@ -147,7 +147,7 @@ public class GsmCdmaConnectionTest {
         logd("process post dail sequence with pause");
         assertEquals(connection.getPostDialState(), Connection.PostDialState.PAUSE);
         /* pause for 2000 ms + 50ms margin */
-        TelephonyTestUtils.waitForMs(GsmCdmaConnection.PAUSE_DELAY_MILLIS_CDMA + 50);
+        TelephonyTestUtils.waitForMs(GsmCdmaConnection.PAUSE_DELAY_MILLIS_CDMA + 100);
         assertEquals(connection.getPostDialState(), Connection.PostDialState.COMPLETE);
     }
 
@@ -163,7 +163,7 @@ public class GsmCdmaConnectionTest {
         logd("process post dail sequence with pause");
         assertEquals(connection.getPostDialState(), Connection.PostDialState.STARTED);
         /* pause for 2000 ms + 50ms margin */
-        TelephonyTestUtils.waitForMs(GsmCdmaConnection.PAUSE_DELAY_MILLIS_GSM + 50);
+        TelephonyTestUtils.waitForMs(GsmCdmaConnection.PAUSE_DELAY_MILLIS_GSM + 100);
         assertEquals(connection.getPostDialState(), Connection.PostDialState.COMPLETE);
     }
 

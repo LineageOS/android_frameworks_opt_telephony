@@ -117,7 +117,7 @@ public class SimulatedCommands extends BaseCommands
 
         simulatedCallState = new SimulatedGsmCallState(looper);
 
-        setRadioState(RadioState.RADIO_OFF);
+        setRadioState(RadioState.RADIO_ON);
         mSimLockedState = INITIAL_LOCK_STATE;
         mSimLockEnabled = (mSimLockedState != SimLockState.NONE);
         mPinCode = DEFAULT_SIM_PIN_CODE;
