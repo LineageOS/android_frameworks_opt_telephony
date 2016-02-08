@@ -847,6 +847,8 @@ public final class Telephony {
              * {@link android.Manifest.permission#BROADCAST_SMS} as a required permission in
              * the <a href="{@docRoot}guide/topics/manifest/receiver-element.html">{@code
              * <receiver>}</a> tag.
+             *
+             * <p>Requires {@link android.Manifest.permission#RECEIVE_SMS} to receive.</p>
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SMS_DELIVER_ACTION =
@@ -869,6 +871,8 @@ public final class Telephony {
              *
              * <p>If a BroadcastReceiver encounters an error while processing
              * this intent it should set the result code appropriately.</p>
+             *
+             * <p>Requires {@link android.Manifest.permission#RECEIVE_SMS} to receive.</p>
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SMS_RECEIVED_ACTION =
@@ -890,6 +894,8 @@ public final class Telephony {
              *
              * <p>If a BroadcastReceiver encounters an error while processing
              * this intent it should set the result code appropriately.</p>
+             *
+             * <p>Requires {@link android.Manifest.permission#RECEIVE_SMS} to receive.</p>
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String DATA_SMS_RECEIVED_ACTION =
@@ -927,6 +933,10 @@ public final class Telephony {
              * be 'unassigned/0x...', where '...' is the hex value of the unassigned parameter.  If
              * a parameter has No-Value the value in the map will be null.</p>
              *
+             * <p>Requires {@link android.Manifest.permission#RECEIVE_MMS} or
+             * {@link android.Manifest.permission#RECEIVE_WAP_PUSH} (depending on WAP PUSH type) to
+             * receive.</p>
+             *
              * <p class="note"><strong>Note:</strong>
              * The broadcast receiver that filters for this intent must declare
              * {@link android.Manifest.permission#BROADCAST_WAP_PUSH} as a required permission in
@@ -963,6 +973,10 @@ public final class Telephony {
              * <p>If any unassigned well-known parameters are encountered, the key of the map will
              * be 'unassigned/0x...', where '...' is the hex value of the unassigned parameter.  If
              * a parameter has No-Value the value in the map will be null.</p>
+             *
+             * <p>Requires {@link android.Manifest.permission#RECEIVE_MMS} or
+             * {@link android.Manifest.permission#RECEIVE_WAP_PUSH} (depending on WAP PUSH type) to
+             * receive.</p>
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String WAP_PUSH_RECEIVED_ACTION =
@@ -983,6 +997,8 @@ public final class Telephony {
              *
              * <p>If a BroadcastReceiver encounters an error while processing
              * this intent it should set the result code appropriately.</p>
+             *
+             * <p>Requires {@link android.Manifest.permission#RECEIVE_SMS} to receive.</p>
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SMS_CB_RECEIVED_ACTION =
@@ -1013,6 +1029,9 @@ public final class Telephony {
              *
              * <p>If a BroadcastReceiver encounters an error while processing
              * this intent it should set the result code appropriately.</p>
+
+             * <p>Requires {@link android.Manifest.permission#RECEIVE_EMERGENCY_BROADCAST} to
+             * receive.</p>
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SMS_EMERGENCY_CB_RECEIVED_ACTION =
@@ -1033,6 +1052,8 @@ public final class Telephony {
              *
              * <p>If a BroadcastReceiver encounters an error while processing
              * this intent it should set the result code appropriately.</p>
+             *
+             * <p>Requires {@link android.Manifest.permission#RECEIVE_SMS} to receive.</p>
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SMS_SERVICE_CATEGORY_PROGRAM_DATA_RECEIVED_ACTION =
@@ -1042,6 +1063,8 @@ public final class Telephony {
              * Broadcast Action: The SIM storage for SMS messages is full.  If
              * space is not freed, messages targeted for the SIM (class 2) may
              * not be saved.
+             *
+             * <p>Requires {@link android.Manifest.permission#RECEIVE_SMS} to receive.</p>
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SIM_FULL_ACTION =
@@ -1057,6 +1080,8 @@ public final class Telephony {
              *   <li><em>"result"</em> - An int result code, e.g. {@link #RESULT_SMS_OUT_OF_MEMORY}
              *   indicating the error returned to the network.</li>
              * </ul>
+             *
+             * <p>Requires {@link android.Manifest.permission#RECEIVE_SMS} to receive.</p>
              */
             @SdkConstant(SdkConstantType.BROADCAST_INTENT_ACTION)
             public static final String SMS_REJECTED_ACTION =
