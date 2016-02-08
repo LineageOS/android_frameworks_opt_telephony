@@ -107,6 +107,8 @@ public final class GsmMmiCode extends Handler implements MmiCode {
     static final String SC_PUK          = "05";
     static final String SC_PUK2         = "052";
 
+    static final int SINGLE_DIGIT_DIALED =    1;
+
     //***** Event Constants
 
     static final int EVENT_SET_COMPLETE         = 1;
@@ -1123,7 +1125,7 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 if (ar.exception != null) {
                     mState = State.FAILED;
                     // suppress error pop-up for single dialed digits
-                    if (mDialingNumber.length() == 1) {
+                    if (mDialingNumber.length() == SINGLE_DIGIT_DIALED) {
                         Log.w(
                             LOG_TAG,
                             mContext.getText(com.android.internal.R.string.mmiError).toString()
