@@ -1509,10 +1509,7 @@ public class GsmCdmaPhone extends Phone {
     }
 
     @Override
-    public void setVoiceMailNumber(String alphaTag,
-                            String voiceMailNumber,
-                            Message onComplete) {
-
+    public void setVoiceMailNumber(String alphaTag, String voiceMailNumber, Message onComplete) {
         Message resp;
         mVmNumber = voiceMailNumber;
         resp = obtainMessage(EVENT_SET_VM_NUMBER_DONE, 0, 0, onComplete);
@@ -1524,15 +1521,15 @@ public class GsmCdmaPhone extends Phone {
 
     private boolean isValidCommandInterfaceCFReason (int commandInterfaceCFReason) {
         switch (commandInterfaceCFReason) {
-        case CF_REASON_UNCONDITIONAL:
-        case CF_REASON_BUSY:
-        case CF_REASON_NO_REPLY:
-        case CF_REASON_NOT_REACHABLE:
-        case CF_REASON_ALL:
-        case CF_REASON_ALL_CONDITIONAL:
-            return true;
-        default:
-            return false;
+            case CF_REASON_UNCONDITIONAL:
+            case CF_REASON_BUSY:
+            case CF_REASON_NO_REPLY:
+            case CF_REASON_NOT_REACHABLE:
+            case CF_REASON_ALL:
+            case CF_REASON_ALL_CONDITIONAL:
+                return true;
+            default:
+                return false;
         }
     }
 
@@ -1550,13 +1547,13 @@ public class GsmCdmaPhone extends Phone {
 
     private boolean isValidCommandInterfaceCFAction (int commandInterfaceCFAction) {
         switch (commandInterfaceCFAction) {
-        case CF_ACTION_DISABLE:
-        case CF_ACTION_ENABLE:
-        case CF_ACTION_REGISTRATION:
-        case CF_ACTION_ERASURE:
-            return true;
-        default:
-            return false;
+            case CF_ACTION_DISABLE:
+            case CF_ACTION_ENABLE:
+            case CF_ACTION_REGISTRATION:
+            case CF_ACTION_ERASURE:
+                return true;
+            default:
+                return false;
         }
     }
 

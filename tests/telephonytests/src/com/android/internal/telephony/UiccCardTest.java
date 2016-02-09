@@ -231,9 +231,7 @@ public class UiccCardTest {
         /* wait till the async result and message delay */
         waitUntilReady();
 
-        assertFalse(mUicccard.areCarrierPriviligeRulesLoaded());
-        assertEquals(mUicccard.getCardState(),
-                IccCardStatus.CardState.CARDSTATE_PRESENT);
+        assertEquals(mUicccard.getCardState(), IccCardStatus.CardState.CARDSTATE_PRESENT);
 
         TelephonyTestUtils.waitForMs(50);
 
