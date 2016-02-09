@@ -1606,8 +1606,12 @@ public class PduPersister {
      * Remove all objects in the temporary path.
      */
     public void release() {
-        Uri uri = Uri.parse(TEMPORARY_DRM_OBJECT_URI);
-        SqliteWrapper.delete(mContext, mContentResolver, uri, null, null);
+        try {
+            Uri uri = Uri.parse(TEMPORARY_DRM_OBJECT_URI);
+            SqliteWrapper.delete(mContext, mContentResolver, uri, null, null);
+        } catch (android.database.sqlite.SQLiteDiskIOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
