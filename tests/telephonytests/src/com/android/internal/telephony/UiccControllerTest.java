@@ -57,9 +57,6 @@ public class UiccControllerTest extends TelephonyTest {
             /* create a new UICC Controller associated with the simulated Commands */
             mUiccControllerUT = UiccController.make(mContext,
                     new CommandsInterface[]{mSimulatedCommands});
-            /* expected to get new UiccCards being created
-            wait till the async result and message delay */
-            TelephonyTestUtils.waitForMs(500);
             setReady(true);
         }
     }
@@ -97,6 +94,9 @@ public class UiccControllerTest extends TelephonyTest {
         mSimulatedCommands.setIccCardStatus(mIccCardStatus);
         new UiccControllerHandlerThread(TAG).start();
         waitUntilReady();
+        /* expected to get new UiccCards being created
+        wait till the async result and message delay */
+        TelephonyTestUtils.waitForMs(50);
     }
 
     @After
