@@ -49,7 +49,6 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         public void onLooperPrepared() {
             mPhoneUT = new GsmCdmaPhone(mContext, mSimulatedCommands, mNotifier, true, 0,
                     PhoneConstants.PHONE_TYPE_GSM, mTelephonyComponentFactory);
-            TelephonyTestUtils.waitForMs(50);
             setReady(true);
         }
     }
@@ -78,6 +77,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         new GsmCdmaPhoneTestHandler(TAG).start();
         waitUntilReady();
+        TelephonyTestUtils.waitForMs(50);
     }
 
     @After
