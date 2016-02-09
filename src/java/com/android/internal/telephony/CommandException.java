@@ -76,6 +76,31 @@ public class CommandException extends RuntimeException {
         NO_SMS_TO_ACK,
         NETWORK_ERR,
         REQUEST_RATE_LIMITED,
+        OEM_ERROR_1,
+        OEM_ERROR_2,
+        OEM_ERROR_3,
+        OEM_ERROR_4,
+        OEM_ERROR_5,
+        OEM_ERROR_6,
+        OEM_ERROR_7,
+        OEM_ERROR_8,
+        OEM_ERROR_9,
+        OEM_ERROR_10,
+        OEM_ERROR_11,
+        OEM_ERROR_12,
+        OEM_ERROR_13,
+        OEM_ERROR_14,
+        OEM_ERROR_15,
+        OEM_ERROR_16,
+        OEM_ERROR_17,
+        OEM_ERROR_18,
+        OEM_ERROR_19,
+        OEM_ERROR_20,
+        OEM_ERROR_21,
+        OEM_ERROR_22,
+        OEM_ERROR_23,
+        OEM_ERROR_24,
+        OEM_ERROR_25,
     }
 
     public CommandException(Error e) {
@@ -190,6 +215,56 @@ public class CommandException extends RuntimeException {
                 return new CommandException(Error.NETWORK_ERR);
             case RILConstants.REQUEST_RATE_LIMITED:
                 return new CommandException(Error.REQUEST_RATE_LIMITED);
+            case RILConstants.OEM_ERROR_1:
+                return new CommandException(Error.OEM_ERROR_1);
+            case RILConstants.OEM_ERROR_2:
+                return new CommandException(Error.OEM_ERROR_2);
+            case RILConstants.OEM_ERROR_3:
+                return new CommandException(Error.OEM_ERROR_3);
+            case RILConstants.OEM_ERROR_4:
+                return new CommandException(Error.OEM_ERROR_4);
+            case RILConstants.OEM_ERROR_5:
+                return new CommandException(Error.OEM_ERROR_5);
+            case RILConstants.OEM_ERROR_6:
+                return new CommandException(Error.OEM_ERROR_6);
+            case RILConstants.OEM_ERROR_7:
+                return new CommandException(Error.OEM_ERROR_7);
+            case RILConstants.OEM_ERROR_8:
+                return new CommandException(Error.OEM_ERROR_8);
+            case RILConstants.OEM_ERROR_9:
+                return new CommandException(Error.OEM_ERROR_9);
+            case RILConstants.OEM_ERROR_10:
+                return new CommandException(Error.OEM_ERROR_10);
+            case RILConstants.OEM_ERROR_11:
+                return new CommandException(Error.OEM_ERROR_11);
+            case RILConstants.OEM_ERROR_12:
+                return new CommandException(Error.OEM_ERROR_12);
+            case RILConstants.OEM_ERROR_13:
+                return new CommandException(Error.OEM_ERROR_13);
+            case RILConstants.OEM_ERROR_14:
+                return new CommandException(Error.OEM_ERROR_14);
+            case RILConstants.OEM_ERROR_15:
+                return new CommandException(Error.OEM_ERROR_15);
+            case RILConstants.OEM_ERROR_16:
+                return new CommandException(Error.OEM_ERROR_16);
+            case RILConstants.OEM_ERROR_17:
+                return new CommandException(Error.OEM_ERROR_17);
+            case RILConstants.OEM_ERROR_18:
+                return new CommandException(Error.OEM_ERROR_18);
+            case RILConstants.OEM_ERROR_19:
+                return new CommandException(Error.OEM_ERROR_19);
+            case RILConstants.OEM_ERROR_20:
+                return new CommandException(Error.OEM_ERROR_20);
+            case RILConstants.OEM_ERROR_21:
+                return new CommandException(Error.OEM_ERROR_21);
+            case RILConstants.OEM_ERROR_22:
+                return new CommandException(Error.OEM_ERROR_22);
+            case RILConstants.OEM_ERROR_23:
+                return new CommandException(Error.OEM_ERROR_23);
+            case RILConstants.OEM_ERROR_24:
+                return new CommandException(Error.OEM_ERROR_24);
+            case RILConstants.OEM_ERROR_25:
+                return new CommandException(Error.OEM_ERROR_25);
 
             default:
                 Rlog.e("GSM", "Unrecognized RIL errno " + ril_errno);
