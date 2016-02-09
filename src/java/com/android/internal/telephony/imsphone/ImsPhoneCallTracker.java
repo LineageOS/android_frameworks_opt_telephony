@@ -1395,12 +1395,22 @@ public final class ImsPhoneCallTracker extends CallTracker {
             // If we are the in midst of swapping FG and BG calls and the call we end up resuming
             // is not the one we expected, we likely had a resume failure and we need to swap the
             // FG and BG calls back.
-            if (mSwitchingFgAndBgCalls && imsCall != mCallExpectedToResume) {
-                if (DBG) {
-                    log("onCallResumed : switching " + mForegroundCall + " with "
-                            + mBackgroundCall);
+            if (mSwitchingFgAndBgCalls) {
+                if (imsCall != mCallExpectedToResume) {
+                    // If the call which resumed isn't as expected, we need to swap back to the
+                    // previous configuration; the swap has failed.
+                    if (DBG) {
+                        log("onCallResumed : switching " + mForegroundCall + " with "
+                                + mBackgroundCall);
+                    }
+                    mForegroundCall.switchWith(mBackgroundCall);
+                } else {
+                    // The call which resumed is the one we expected to resume, so we can clear out
+                    // the mSwitchingFgAndBgCalls flag.
+                    if (DBG) {
+                        log("onCallResumed : expected call resumed.");
+                    }
                 }
-                mForegroundCall.switchWith(mBackgroundCall);
                 mSwitchingFgAndBgCalls = false;
                 mCallExpectedToResume = null;
             }
