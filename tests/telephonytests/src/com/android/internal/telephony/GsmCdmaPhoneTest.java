@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.Message;
@@ -59,6 +60,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_GSM}, null)));
         //wait for voice RAT to be updated
         TelephonyTestUtils.waitForMs(50);
+        assertTrue(PhoneConstants.PHONE_TYPE_GSM == mPhoneUT.getPhoneType());
     }
 
     private void switchToCdma() {
@@ -67,6 +69,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_IS95A}, null)));
         //wait for voice RAT to be updated
         TelephonyTestUtils.waitForMs(50);
+        assertTrue(PhoneConstants.PHONE_TYPE_CDMA == mPhoneUT.getPhoneType());
     }
 
     @Before
@@ -275,5 +278,33 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mCT.mState = PhoneConstants.State.OFFHOOK;
         mPhoneUT.sendBurstDtmf("1234567890", 0, 0, null);
         verify(mSimulatedCommandsVerifier).sendBurstDtmf("1234567890", 0, 0, null);
+    }
+
+    @Test @SmallTest
+    public void testVoiceMailNumber() {
+        String voiceMailNumber = "1234567890";
+        // first test for GSM
+        assertEquals(PhoneConstants.PHONE_TYPE_GSM, mPhoneUT.getPhoneType());
+
+        mPhoneUT.setVoiceMailNumber("alphaTag", voiceMailNumber, null);
+        verify(mIccRecords).setVoiceMailNumber(eq("alphaTag"), voiceMailNumber,
+                any(Message.class));
+
+        doReturn(voiceMailNumber).when(mIccRecords).getVoiceMailNumber();
+        assertTrue(voiceMailNumber.equals(mPhoneUT.getVoiceMailNumber()));
+
+        // test for CDMA
+        switchToCdma();
+        voiceMailNumber = "9876543210";
+
+        mPhoneUT.setVoiceMailNumber("alphaTag", voiceMailNumber, null);
+        verify(mIccRecords).setVoiceMailNumber(eq("alphaTag"), voiceMailNumber,
+                any(Message.class));
+
+        // todo: trigger code that writes to shared preference
+        SharedPreferences sharedPreferences = mContext.getSharedPreferences(null, 0);
+        doReturn(voiceMailNumber).when(sharedPreferences).getString(anyString(), anyString());
+
+        assertTrue(voiceMailNumber.equals(mPhoneUT.getVoiceMailNumber()));
     }
 }
