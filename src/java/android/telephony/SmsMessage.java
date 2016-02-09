@@ -786,16 +786,14 @@ public class SmsMessage {
             Binder.restoreCallingIdentity(identity);
         }
 
-        if (!TextUtils.isEmpty(simOperator)) {
-            for (NoEmsSupportConfig currentConfig : mNoEmsSupportConfigList) {
-                if (simOperator.startsWith(currentConfig.mOperatorNumber) &&
-                        (TextUtils.isEmpty(currentConfig.mGid1) ||
-                                (!TextUtils.isEmpty(currentConfig.mGid1) &&
-                                        currentConfig.mGid1.equalsIgnoreCase(gid)))) {
-                    return false;
-                }
+        for (NoEmsSupportConfig currentConfig : mNoEmsSupportConfigList) {
+            if (simOperator.startsWith(currentConfig.mOperatorNumber) &&
+                (TextUtils.isEmpty(currentConfig.mGid1) ||
+                (!TextUtils.isEmpty(currentConfig.mGid1)
+                && currentConfig.mGid1.equalsIgnoreCase(gid)))) {
+                return false;
             }
-        }
+         }
         return true;
     }
 

@@ -96,7 +96,7 @@ public class UiccControllerTest extends TelephonyTest {
         waitUntilReady();
         /* expected to get new UiccCards being created
         wait till the async result and message delay */
-        TelephonyTestUtils.waitForMs(100);
+        TelephonyTestUtils.waitForMs(50);
     }
 
     @After
