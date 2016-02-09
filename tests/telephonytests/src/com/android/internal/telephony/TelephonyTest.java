@@ -31,6 +31,8 @@ import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardProxy;
+import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 
 import static org.mockito.Mockito.*;
@@ -85,9 +87,13 @@ public abstract class TelephonyTest {
     @Mock
     protected WspTypeDecoder mWspTypeDecoder;
     @Mock
-    private SparseArray<TelephonyEventLog> mTelephonyEventLogInstances;
+    protected SparseArray<TelephonyEventLog> mTelephonyEventLogInstances;
     @Mock
-    private TelephonyEventLog mTelephonyEventLog;
+    protected TelephonyEventLog mTelephonyEventLog;
+    @Mock
+    protected UiccCardApplication mUiccCardApplication;
+    @Mock
+    protected IccRecords mIccRecords;
 
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
@@ -192,19 +198,24 @@ public abstract class TelephonyTest {
                 getIDeviceIdleController();
         doReturn(mWspTypeDecoder).when(mTelephonyComponentFactory).
                 makeWspTypeDecoder(any(byte[].class));
-
-        doReturn(mContext).when(mPhone).getContext();
-        doReturn(true).when(mPhone).getUnitTestMode();
         doReturn(mCdmaSSM).when(mTelephonyComponentFactory).
                 getCdmaSubscriptionSourceManagerInstance(any(Context.class),
                         any(CommandsInterface.class), any(Handler.class),
-                        anyInt(), any(Object.class) );
+                        anyInt(), any(Object.class));
+
+        doReturn(mContext).when(mPhone).getContext();
+        doReturn(true).when(mPhone).getUnitTestMode();
 
         doReturn(true).when(mImsManagerInstances).containsKey(anyInt());
 
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
 
         doReturn(mTelephonyEventLog).when(mTelephonyEventLogInstances).get(anyInt());
+
+        doReturn(mUiccCardApplication).when(mUiccController).getUiccCardApplication(anyInt(),
+                anyInt());
+
+        doReturn(mIccRecords).when(mUiccCardApplication).getIccRecords();
 
         setReady(false);
     }
