@@ -903,18 +903,22 @@ public class SubscriptionController extends ISub.Stub {
 
         // Now that all security checks passes, perform the operation as ourselves.
         final long identity = Binder.clearCallingIdentity();
+        int result = -1;
         try {
             ContentValues value = new ContentValues(1);
             value.put(SubscriptionManager.CARRIER_NAME, text);
 
-            int result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
+            result = mContext.getContentResolver().update(SubscriptionManager.CONTENT_URI,
                     value, SubscriptionManager.UNIQUE_KEY_SUBSCRIPTION_ID + "=" +
                     Long.toString(subId), null);
             notifySubscriptionInfoChanged();
 
             return result;
+        } catch (android.database.sqlite.SQLiteDiskIOException e) {
+            e.printStackTrace();
         } finally {
             Binder.restoreCallingIdentity(identity);
+            return result;
         }
     }
 
