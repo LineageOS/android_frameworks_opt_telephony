@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2015 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,9 @@ import android.test.suitebuilder.annotation.SmallTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
+import android.util.Log;
 import com.android.internal.telephony.cat.CatService;
+import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import com.android.internal.telephony.uicc.UiccCard;
@@ -32,14 +33,18 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import static org.mockito.Mockito.*;
 
+import org.mockito.MockitoAnnotations;
+
+import java.lang.reflect.Field;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccIoResult;
 
-public class UiccCardTest extends TelephonyTest {
+public class UiccCardTest {
     private UiccCard mUicccard;
 
     public UiccCardTest() {
@@ -47,7 +52,10 @@ public class UiccCardTest extends TelephonyTest {
     }
 
     private IccIoResult mIccIoResult;
-
+    private SimulatedCommands mSimulatedCommands;
+    private ContextFixture mContextFixture;
+    private Object mLock = new Object();
+    private boolean mReady;
     private UiccCardHandlerThread mTestHandlerThread;
     private Handler mHandler;
     private static final String TAG = "UiccCardTest";
@@ -58,6 +66,10 @@ public class UiccCardTest extends TelephonyTest {
 
     @Mock
     private CatService mCAT;
+    @Mock
+    private SubscriptionController mSubscriptionController;
+    @Mock
+    private SimulatedCommandsVerifier mSimulatedCommandsVerifier;
     @Mock
     private IccCardStatus mIccCardStatus;
     @Mock
@@ -85,13 +97,13 @@ public class UiccCardTest extends TelephonyTest {
                             logd("Update UICC Card State");
                             mUicccard.update(mContextFixture.getTestDouble(),
                                     mSimulatedCommands, mIccCardStatus);
-                            setReady(true);
+                            setReadyFlag(true);
                             break;
                         case UICCCARD_UPDATE_CARD_APPLICATION_EVENT:
                             logd("Update UICC Card Applications");
                             mUicccard.update(mContextFixture.getTestDouble(),
                                     mSimulatedCommands, mIccCardStatus);
-                            setReady(true);
+                            setReadyFlag(true);
                             break;
                         default:
                             logd("Unknown Event " + msg.what);
@@ -99,8 +111,24 @@ public class UiccCardTest extends TelephonyTest {
                 }
             };
 
-            setReady(true);
+            setReadyFlag(true);
             logd("create UiccCard");
+        }
+    }
+
+    private void waitUntilReady() {
+        while (true) {
+            synchronized (mLock) {
+                if (mReady) {
+                    break;
+                }
+            }
+        }
+    }
+
+    private void setReadyFlag(boolean val) {
+        synchronized (mLock) {
+            mReady = val;
         }
     }
 
@@ -118,28 +146,31 @@ public class UiccCardTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-
-        super.setUp(getClass().getSimpleName());
+        MockitoAnnotations.initMocks(this);
+        mContextFixture = new ContextFixture();
         /* initially there are no application available */
         mIccCardStatus.mApplications = new IccCardApplicationStatus[]{};
         mIccCardStatus.mCdmaSubscriptionAppIndex =
                 mIccCardStatus.mImsSubscriptionAppIndex =
                         mIccCardStatus.mGsmUmtsSubscriptionAppIndex = -1;
-
+        mSimulatedCommands = new SimulatedCommands();
+        Field field = SubscriptionController.class.getDeclaredField("sInstance");
+        field.setAccessible(true);
+        field.set(null, mSubscriptionController);
+        field = SimulatedCommandsVerifier.class.getDeclaredField("sInstance");
+        field.setAccessible(true);
+        field.set(null, mSimulatedCommandsVerifier);
         mIccIoResult = new IccIoResult(0x90, 0x00, IccUtils.hexStringToBytes("FF40"));
         mSimulatedCommands.setIccIoResultForApduLogicalChannel(mIccIoResult);
         /* starting the Handler Thread */
+        setReadyFlag(false);
         mTestHandlerThread = new UiccCardHandlerThread(TAG);
         mTestHandlerThread.start();
 
         waitUntilReady();
-        replaceInstance(UiccCard.class, "mCatService", mUicccard, mCAT);
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        mTestHandlerThread = null;
-        super.tearDown();
+        field = UiccCard.class.getDeclaredField("mCatService");
+        field.setAccessible(true);
+        field.set(mUicccard, mCAT);
     }
 
     @Test
@@ -175,7 +206,7 @@ public class UiccCardTest extends TelephonyTest {
         mIccCardStatus.mImsSubscriptionAppIndex = 1;
         mIccCardStatus.mGsmUmtsSubscriptionAppIndex = 2;
         Message mCardUpdate = mHandler.obtainMessage(UICCCARD_UPDATE_CARD_APPLICATION_EVENT);
-        setReady(false);
+        setReadyFlag(false);
         mCardUpdate.sendToTarget();
 
         waitUntilReady();
@@ -194,7 +225,7 @@ public class UiccCardTest extends TelephonyTest {
         /* Mock open Channel ID 1 */
         mSimulatedCommands.setOpenChannelId(mChannelId);
         Message mCardUpdate = mHandler.obtainMessage(UICCCARD_UPDATE_CARD_STATE_EVENT);
-        setReady(false);
+        setReadyFlag(false);
         mCardUpdate.sendToTarget();
         /* try to create a new CarrierPrivilege, loading state -> loaded state */
         /* wait till the async result and message delay */
@@ -226,7 +257,7 @@ public class UiccCardTest extends TelephonyTest {
         mUicccard.registerForCarrierPrivilegeRulesLoaded(mMockedHandler,
                 UICCCARD_CARRIER_PRIVILEDGE_LOADED_EVENT, null);
         ArgumentCaptor<Message> mCaptorMessage = ArgumentCaptor.forClass(Message.class);
-        ArgumentCaptor<Long> mCaptorLong = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Long>    mCaptorLong = ArgumentCaptor.forClass(Long.class);
         testUpdateUiccCardState();
         verify(mMockedHandler, atLeast(1)).sendMessageDelayed(mCaptorMessage.capture(),
                 mCaptorLong.capture());
@@ -253,9 +284,14 @@ public class UiccCardTest extends TelephonyTest {
         TelephonyTestUtils.waitForMs(50);
 
         ArgumentCaptor<Message> mCaptorMessage = ArgumentCaptor.forClass(Message.class);
-        ArgumentCaptor<Long> mCaptorLong = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Long>    mCaptorLong = ArgumentCaptor.forClass(Long.class);
         verify(mMockedHandler, atLeast(1)).sendMessageDelayed(mCaptorMessage.capture(),
                                                              mCaptorLong.capture());
         assertEquals(UICCCARD_ABSENT, mCaptorMessage.getValue().what);
     }
+
+    private static void logd(String s) {
+        Log.d(TAG, s);
+    }
+
 }
