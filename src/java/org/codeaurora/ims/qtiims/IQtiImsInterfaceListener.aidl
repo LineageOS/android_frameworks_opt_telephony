@@ -115,4 +115,26 @@ oneway interface IQtiImsInterfaceListener {
      * @return void.
      */
     void receiveCallTransferResponse(int result);
+
+    /**
+     * Notifies Vops value to the clients
+     *
+     * @param vopsStatus
+     *        if true  : Voice is supported on LTE
+     *        if false : Voice is not supported on LTE
+     * @return void.
+     */
+    void notifyVopsStatus(boolean vopsStatus);
+
+    /**
+     * Notifies Ssac value to the clients
+     *
+     * @param ssacStatusResponse
+     *        if true  : Access barring factor for voice calls is 0
+     *        if false : Access barring factor for voice calls is non-zero
+     *                   Range: 0 to 100. Value 100 is used when
+     *                   the UE goes to the LTE Connected state
+     * @return void.
+     */
+    void notifySsacStatus(boolean ssacStatusResponse);
 }
