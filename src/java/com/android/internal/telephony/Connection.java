@@ -20,6 +20,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.telecom.ConferenceParticipant;
+import android.telephony.DisconnectCause;
 import android.telephony.Rlog;
 import android.util.Log;
 
@@ -152,6 +153,12 @@ public abstract class Connection {
 
     protected boolean mNumberConverted = false;
     protected String mConvertedNumber;
+
+    protected String mPostDialString;      // outgoing calls only
+    protected int mNextPostDialChar;       // index into postDialString
+
+    protected int mCause = DisconnectCause.NOT_DISCONNECTED;
+    protected PostDialState mPostDialState = PostDialState.NOT_STARTED;
 
     private static String LOG_TAG = "Connection";
 
@@ -314,7 +321,9 @@ public abstract class Connection {
      * {@link android.telephony.DisconnectCause}. If the call is not yet
      * disconnected, NOT_DISCONNECTED is returned.
      */
-    public abstract int getDisconnectCause();
+    public int getDisconnectCause() {
+        return mCause;
+    }
 
     /**
      * Returns a string disconnect cause which is from vendor.
@@ -472,13 +481,24 @@ public abstract class Connection {
         }
     }
 
-    public abstract PostDialState getPostDialState();
+    public PostDialState getPostDialState() {
+        return mPostDialState;
+    }
 
     /**
      * Returns the portion of the post dial string that has not
      * yet been dialed, or "" if none
      */
-    public abstract String getRemainingPostDialString();
+    public String getRemainingPostDialString() {
+        if (mPostDialState == PostDialState.CANCELLED
+                || mPostDialState == PostDialState.COMPLETE
+                || mPostDialString == null
+                || mPostDialString.length() <= mNextPostDialChar) {
+            return "";
+        }
+
+        return mPostDialString.substring(mNextPostDialChar);
+    }
 
     /**
      * See Phone.setOnPostDialWaitCharacter()
@@ -565,6 +585,8 @@ public abstract class Connection {
         mConnectTimeReal = c.getConnectTimeReal();
         mHoldingStartTime = c.getHoldingStartTime();
         mOrigConnection = c.getOrigConnection();
+        mPostDialString = c.mPostDialString;
+        mNextPostDialChar = c.mNextPostDialChar;
     }
 
     /**
