@@ -46,7 +46,7 @@ import com.android.internal.util.BitwiseInputStream;
 /**
  * {@hide}
  */
-public final class RuimRecords extends IccRecords {
+public class RuimRecords extends IccRecords {
     static final String LOG_TAG = "RuimRecords";
 
     private boolean  mOtaCommited=false;

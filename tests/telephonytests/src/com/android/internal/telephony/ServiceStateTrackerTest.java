@@ -71,10 +71,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     private static final String KEY_TIME_ZONE = "time-zone";
 
     @Mock
-    private UiccCardApplication m3GPPUiccApp;
-    @Mock
-    private SIMRecords mSimRecords;
-    @Mock
     private DcTracker mDct;
     @Mock
     private ProxyController mProxyController;
@@ -107,9 +103,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
         doReturn(true).when(mPhone).isPhoneTypeGsm();
         doReturn(true).when(mDct).isDisconnected();
-        doReturn(m3GPPUiccApp).when(mUiccController).getUiccCardApplication(
-                anyInt(), eq(UiccController.APP_FAM_3GPP));
-        doReturn(mSimRecords).when(m3GPPUiccApp).getIccRecords();
         mPhone.mDcTracker = mDct;
         mTelephonyManager = (TelephonyManager) mContextFixture.getTestDouble().
                 getSystemService(Context.TELEPHONY_SERVICE);
@@ -166,7 +159,8 @@ public class ServiceStateTrackerTest extends TelephonyTest {
     @MediumTest
     public void testSpnUpdateShowPlmnOnly() {
         doReturn(0x02).when(mSimRecords).getDisplayRule(anyString());
-        doReturn(IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN).when(m3GPPUiccApp).getState();
+        doReturn(IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN).
+                when(mUiccCardApplication3gpp).getState();
 
         sst.sendMessage(sst.obtainMessage(ServiceStateTracker.EVENT_NETWORK_STATE_CHANGED, null));
 
