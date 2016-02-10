@@ -50,7 +50,6 @@ public class GsmCdmaConnection extends Connection {
     GsmCdmaCallTracker mOwner;
     GsmCdmaCall mParent;
 
-    String mPostDialString;      // outgoing calls only
     boolean mDisconnected;
 
     int mIndex;          // index in GsmCdmaCallTracker.connections[], -1 if unassigned
@@ -62,10 +61,6 @@ public class GsmCdmaConnection extends Connection {
      */
     long mDisconnectTime;
 
-    int mNextPostDialChar;       // index into postDialString
-
-    int mCause = DisconnectCause.NOT_DISCONNECTED;
-    PostDialState mPostDialState = PostDialState.NOT_STARTED;
     UUSInfo mUusInfo;
     int mPreciseCause = 0;
     String mVendorCause;
@@ -331,11 +326,6 @@ public class GsmCdmaConnection extends Connection {
     }
 
     @Override
-    public int getDisconnectCause() {
-        return mCause;
-    }
-
-    @Override
     public GsmCdmaCall.State getState() {
         if (mDisconnected) {
             return GsmCdmaCall.State.DISCONNECTED;
@@ -360,11 +350,6 @@ public class GsmCdmaConnection extends Connection {
         } else {
             throw new CallStateException ("disconnected");
         }
-    }
-
-    @Override
-    public PostDialState getPostDialState() {
-        return mPostDialState;
     }
 
     @Override
@@ -784,24 +769,15 @@ public class GsmCdmaConnection extends Connection {
     @Override
     public String
     getRemainingPostDialString() {
-        if (mPostDialState == PostDialState.CANCELLED
-            || mPostDialState == PostDialState.COMPLETE
-            || mPostDialString == null
-            || mPostDialString.length() <= mNextPostDialChar) {
-            return "";
-        }
+        String subStr = super.getRemainingPostDialString();
+        if (!isPhoneTypeGsm() && !TextUtils.isEmpty(subStr)) {
+            int wIndex = subStr.indexOf(PhoneNumberUtils.WAIT);
+            int pIndex = subStr.indexOf(PhoneNumberUtils.PAUSE);
 
-        String subStr = mPostDialString.substring(mNextPostDialChar);
-        if (!isPhoneTypeGsm()) {
-            if (subStr != null) {
-                int wIndex = subStr.indexOf(PhoneNumberUtils.WAIT);
-                int pIndex = subStr.indexOf(PhoneNumberUtils.PAUSE);
-
-                if (wIndex > 0 && (wIndex < pIndex || pIndex <= 0)) {
-                    subStr = subStr.substring(0, wIndex);
-                } else if (pIndex > 0) {
-                    subStr = subStr.substring(0, pIndex);
-                }
+            if (wIndex > 0 && (wIndex < pIndex || pIndex <= 0)) {
+                subStr = subStr.substring(0, wIndex);
+            } else if (pIndex > 0) {
+                subStr = subStr.substring(0, pIndex);
             }
         }
         return subStr;
