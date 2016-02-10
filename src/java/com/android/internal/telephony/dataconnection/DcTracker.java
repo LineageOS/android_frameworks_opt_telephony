@@ -832,23 +832,6 @@ public class DcTracker extends Handler {
         mPhone.notifyDataActivity();
     }
 
-    // TODO - remove
-    void incApnRefCount(String name, LocalLog log) {
-        ApnContext apnContext = mApnContexts.get(name);
-        log.log("DcTracker.incApnRefCount on " + name + " found " + apnContext);
-        if (apnContext != null) {
-            apnContext.incRefCount(log);
-        }
-    }
-
-    void decApnRefCount(String name, LocalLog log) {
-        ApnContext apnContext = mApnContexts.get(name);
-        log.log("DcTracker.decApnRefCount on " + name + " found " + apnContext);
-        if (apnContext != null) {
-            apnContext.decRefCount(log);
-        }
-    }
-
     public void requestNetwork(NetworkRequest networkRequest, LocalLog log) {
         final int apnId = ApnContext.apnIdForNetworkRequest(networkRequest);
         final ApnContext apnContext = mApnContextsById.get(apnId);
