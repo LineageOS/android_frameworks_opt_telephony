@@ -21,22 +21,34 @@ import android.telephony.CarrierConfigManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.dataconnection.ApnSetting;
+import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.UiccController;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+
+import junit.framework.TestCase;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
-import java.util.ArrayList;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.doReturn;
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 /**
  * APN retry manager tests
  */
-public class TelephonyUtilsTest extends TelephonyTest {
+public class TelephonyUtilsTest extends TestCase {
+
+    @Mock
+    private GsmCdmaPhone mPhone;
+    @Mock
+    private UiccController mUiccController;
+    @Mock
+    private SubscriptionController mSubscriptionController;
 
     // This is the real APN data for the Japanese carrier NTT Docomo.
     private ApnSetting mApn1 = new ApnSetting(
@@ -123,28 +135,35 @@ public class TelephonyUtilsTest extends TelephonyTest {
             "",                     // mvno_type
             "");                    // mnvo_match_data
 
+    private SimulatedCommands mSimulatedCommands;
+    private ContextFixture mContextFixture;
     private PersistableBundle mBundle;
 
     @Before
     public void setUp() throws Exception {
-        super.setUp(getClass().getSimpleName());
+        MockitoAnnotations.initMocks(this);
+        mContextFixture = new ContextFixture();
+        mSimulatedCommands = new SimulatedCommands();
         mBundle = mContextFixture.getCarrierConfigBundle();
 
+        doReturn(mContextFixture.getTestDouble()).when(mPhone).getContext();
+        doReturn(true).when(mPhone).getUnitTestMode();
         doReturn(true).when(mPhone).isPhoneTypeGsm();
 
-        replaceInstance(SubscriptionController.class, "sInstance", null, mSubscriptionController);
-        replaceInstance(UiccController.class, "mInstance", null, mUiccController);
-    }
+        //Use reflection to mock singleton
+        Field field = SubscriptionController.class.getDeclaredField("sInstance");
+        field.setAccessible(true);
+        field.set(null, mSubscriptionController);
 
-    @After
-    public void tearDown() throws Exception {
-        super.tearDown();
+        //Use reflection to mock singleton
+        field = UiccController.class.getDeclaredField("mInstance");
+        field.setAccessible(true);
+        field.set(null, mUiccController);
     }
 
     /**
      * Test the behavior of a retry manager with no waiting APNs set.
      */
-    @Test
     @SmallTest
     public void testRetryManagerEmpty() throws Exception {
 
@@ -165,7 +184,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the basic retry scenario where only one APN and no retry configured.
      */
-    @Test
     @SmallTest
     public void testRetryManagerOneApnNoRetry() throws Exception {
 
@@ -187,7 +205,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the basic retry scenario where only one APN with two retries configured.
      */
-    @Test
     @SmallTest
     public void testRetryManagerOneApnTwoRetries() throws Exception {
 
@@ -241,7 +258,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the basic retry scenario where two waiting APNs with one retry configured.
      */
-    @Test
     @SmallTest
     public void testRetryManagerTwoApnsOneRetry() throws Exception {
 
@@ -279,7 +295,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the basic retry scenario where two waiting APNs with two retries configured.
      */
-    @Test
     @SmallTest
     public void testRetryManagerTwoApnsTwoRetries() throws Exception {
 
@@ -327,7 +342,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the basic retry scenario where two mms (non-default) APNs with two retries configured.
      */
-    @Test
     @SmallTest
     public void testRetryManagerTwoMmsApnsTwoRetries() throws Exception {
 
@@ -375,7 +389,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the permanent fail scenario with one APN configured.
      */
-    @Test
     @SmallTest
     public void testRetryManagerApnPermanentFailed() throws Exception {
 
@@ -408,7 +421,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the permanent fail scenario with two APNs configured.
      */
-    @Test
     @SmallTest
     public void testRetryManagerApnPermanentFailedWithTwoApns() throws Exception {
 
@@ -465,7 +477,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the permanent fail scenario with three APNs configured.
      */
-    @Test
     @SmallTest
     public void testRetryManagerApnPermanentFailedWithThreeApns() throws Exception {
 
@@ -524,7 +535,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the permanent fail scenario with two APN all failed
      */
-    @Test
     @SmallTest
     public void testRetryManagerApnPermanentFailedAll() throws Exception {
 
@@ -579,7 +589,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the randomized delay scenario.
      */
-    @Test
     @SmallTest
     public void testRetryManagerDelayWithRandomization() throws Exception {
 
@@ -616,7 +625,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the retry forever scenario
      */
-    @Test
     @SmallTest
     public void testRetryManagerRetryForever() throws Exception {
 
@@ -674,7 +682,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the explicit max retry scenario.
      */
-    @Test
     @SmallTest
     public void testRetryManagerExplicitMaxRetry() throws Exception {
 
@@ -742,7 +749,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the fail fast scenario.
      */
-    @Test
     @SmallTest
     public void testRetryManagerFailFast() throws Exception {
 
@@ -792,7 +798,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the permanent fail scenario with two APN all failed and then reset
      */
-    @Test
     @SmallTest
     public void testRetryManagerApnPermanentFailedAllAndThenReset() throws Exception {
 
@@ -873,7 +878,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the scenario where modem suggests retry the current APN once
      */
-    @Test
     @SmallTest
     public void testRetryManagerModemSuggestedRetryOnce() throws Exception {
 
@@ -929,7 +933,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     /**
      * Test the scenario where modem suggests the same retry for too many times
      */
-    @Test
     @SmallTest
     public void testRetryManagerModemSuggestedRetryTooManyTimes() throws Exception {
 

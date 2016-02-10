@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2015 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,9 @@ import android.telephony.SubscriptionManager;
 import android.telephony.TelephonyManager;
 import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.MediumTest;
+import android.test.suitebuilder.annotation.SmallTest;
+import android.util.Log;
+import android.util.SparseArray;
 
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
@@ -49,6 +52,7 @@ import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import org.junit.After;
@@ -56,11 +60,15 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 public class ServiceStateTrackerTest extends TelephonyTest {
+    private static final String AMERICA_LA_TIME_ZONE = "America/Los_Angeles";
+    private static final String KEY_TIME_ZONE = "time-zone";
 
     @Mock
     private DcTracker mDct;
@@ -99,10 +107,16 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         mTelephonyManager = (TelephonyManager) mContextFixture.getTestDouble().
                 getSystemService(Context.TELEPHONY_SERVICE);
 
+        //Use reflection to mock singleton
+        Field field = ServiceManager.class.getDeclaredField("sCache");
+        field.setAccessible(true);
+        field.set(null, mServiceCache);
+
         doReturn(mBinder).when(mServiceCache).get(anyString());
 
-        replaceInstance(ServiceManager.class, "sCache", null, mServiceCache);
-        replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
+        field = ProxyController.class.getDeclaredField("sProxyController");
+        field.setAccessible(true);
+        field.set(null, mProxyController);
 
         mContextFixture.putStringArrayResource(
                 com.android.internal.R.array.config_sameNamedOperatorConsideredRoaming,
@@ -120,7 +134,7 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         int dds = SubscriptionManager.getDefaultDataSubscriptionId();
         doReturn(dds).when(mPhone).getSubId();
 
-        new ServiceStateTrackerTestHandler(getClass().getSimpleName()).start();
+        new ServiceStateTrackerTestHandler(TAG).start();
         waitUntilReady();
         waitForMs(600);
         logd("ServiceStateTrackerTest -Setup!");
