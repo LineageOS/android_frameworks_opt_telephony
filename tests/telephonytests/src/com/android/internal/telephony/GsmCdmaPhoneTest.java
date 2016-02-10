@@ -29,12 +29,16 @@ import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.telephony.uicc.IccException;
+
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 public class GsmCdmaPhoneTest extends TelephonyTest {
     //mPhoneUnderTest
@@ -59,8 +63,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_VOICE_RADIO_TECH_CHANGED,
                 new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_GSM}, null)));
         //wait for voice RAT to be updated
-        TelephonyTestUtils.waitForMs(50);
-        assertTrue(PhoneConstants.PHONE_TYPE_GSM == mPhoneUT.getPhoneType());
+        waitForMs(50);
+        assertEquals(PhoneConstants.PHONE_TYPE_GSM, mPhoneUT.getPhoneType());
     }
 
     private void switchToCdma() {
@@ -68,8 +72,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mPhoneUT.sendMessage(mPhoneUT.obtainMessage(GsmCdmaPhone.EVENT_VOICE_RADIO_TECH_CHANGED,
                 new AsyncResult(null, new int[]{ServiceState.RIL_RADIO_TECHNOLOGY_IS95A}, null)));
         //wait for voice RAT to be updated
-        TelephonyTestUtils.waitForMs(50);
-        assertTrue(PhoneConstants.PHONE_TYPE_CDMA == mPhoneUT.getPhoneType());
+        waitForMs(50);
+        assertEquals(PhoneConstants.PHONE_TYPE_CDMA, mPhoneUT.getPhoneType());
     }
 
     @Before
@@ -80,7 +84,13 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
         new GsmCdmaPhoneTestHandler(TAG).start();
         waitUntilReady();
-        TelephonyTestUtils.waitForMs(50);
+        ArgumentCaptor<Integer> integerArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(mUiccController).registerForIccChanged(eq(mPhoneUT), integerArgumentCaptor.capture(),
+                anyObject());
+        Message msg = Message.obtain();
+        msg.what = integerArgumentCaptor.getValue();
+        mPhoneUT.sendMessage(msg);
+        waitForMs(50);
     }
 
     @After
@@ -90,14 +100,16 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         super.tearDown();
     }
 
-    @Test @SmallTest
+    @Test
+    @SmallTest
     public void testPhoneTypeSwitch() {
         assertTrue(mPhoneUT.isPhoneTypeGsm());
         switchToCdma();
         assertTrue(mPhoneUT.isPhoneTypeCdmaLte());
     }
 
-    @Test @SmallTest
+    @Test
+    @SmallTest
     public void testHandleActionCarrierConfigChanged() {
         // set voice radio tech in RIL to 1xRTT. ACTION_CARRIER_CONFIG_CHANGED should trigger a
         // query and change phone type
@@ -105,18 +117,20 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertTrue(mPhoneUT.isPhoneTypeGsm());
         Intent intent = new Intent(CarrierConfigManager.ACTION_CARRIER_CONFIG_CHANGED);
         mContext.sendBroadcast(intent);
-        TelephonyTestUtils.waitForMs(50);
+        waitForMs(50);
         assertTrue(mPhoneUT.isPhoneTypeCdmaLte());
     }
 
-    @Test @SmallTest
+    @Test
+    @SmallTest
     public void testGetServiceState() {
         ServiceState serviceState = new ServiceState();
         mSST.mSS = serviceState;
         assertEquals(serviceState, mPhoneUT.getServiceState());
     }
 
-    @Test @SmallTest
+    @Test
+    @SmallTest
     public void testGetCellLocation() {
         // GSM
         CellLocation cellLocation = new GsmCellLocation();
@@ -154,7 +168,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 Settings.Secure.LOCATION_MODE, origValue);
     }
 
-    @Test @SmallTest
+    @Test
+    @SmallTest
     public void testGetPhoneType() {
         assertEquals(PhoneConstants.PHONE_TYPE_GSM, mPhoneUT.getPhoneType());
 
@@ -164,7 +179,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals(PhoneConstants.PHONE_TYPE_CDMA, mPhoneUT.getPhoneType());
     }
 
-    @Test @SmallTest
+    @Test
+    @SmallTest
     public void testGetDataConnectionState() {
         // There are several cases possible. Testing few of them for now.
         // 1. GSM, getCurrentDataConnectionState != STATE_IN_SERVICE, apn != APN_TYPE_EMERGENCY
@@ -195,7 +211,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 PhoneConstants.APN_TYPE_EMERGENCY));
     }
 
-    @Test @SmallTest
+    @Test
+    @SmallTest
     public void testHandleInCallMmiCommands() {
         try {
             // Switch to CDMA
@@ -227,7 +244,8 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         }
     }
 
-    @Test @SmallTest
+    @Test
+    @SmallTest
     public void testDial() {
         try {
             mSST.mSS = mServiceState;
@@ -240,17 +258,19 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
 
             Connection connection = mPhoneUT.dial("1234567890", 0);
             verify(mCT).dial("1234567890", null, null);
-        } catch(CallStateException e) {
+        } catch (CallStateException e) {
             fail();
         }
     }
 
-    @Test @SmallTest
+    @Test
+    @SmallTest
     public void testHandlePinMmi() {
         assertFalse(mPhoneUT.handlePinMmi("1234567890"));
     }
 
-    @Test @SmallTest
+    @Test
+    @SmallTest
     public void testSendBurstDtmf() {
         //Should do nothing for GSM
         mPhoneUT.sendBurstDtmf("1234567890", 0, 0, null);
@@ -280,31 +300,66 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         verify(mSimulatedCommandsVerifier).sendBurstDtmf("1234567890", 0, 0, null);
     }
 
-    @Test @SmallTest
-    public void testVoiceMailNumber() {
+    @Test
+    @SmallTest
+    public void testVoiceMailNumberGsm() {
         String voiceMailNumber = "1234567890";
         // first test for GSM
         assertEquals(PhoneConstants.PHONE_TYPE_GSM, mPhoneUT.getPhoneType());
 
+        // no resource or sharedPreference set -- should be null
+        assertEquals(null, mPhoneUT.getVoiceMailNumber());
+
+        // voicemail number from config
+        mContextFixture.putStringArrayResource(
+                com.android.internal.R.array.config_default_vm_number,
+                new String[]{voiceMailNumber});
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+
+        // voicemail number that is explicitly set
+        voiceMailNumber = "1234567891";
         mPhoneUT.setVoiceMailNumber("alphaTag", voiceMailNumber, null);
-        verify(mIccRecords).setVoiceMailNumber(eq("alphaTag"), voiceMailNumber,
+        verify(mSimRecords).setVoiceMailNumber(eq("alphaTag"), eq(voiceMailNumber),
                 any(Message.class));
 
-        doReturn(voiceMailNumber).when(mIccRecords).getVoiceMailNumber();
-        assertTrue(voiceMailNumber.equals(mPhoneUT.getVoiceMailNumber()));
+        doReturn(voiceMailNumber).when(mSimRecords).getVoiceMailNumber();
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+    }
 
-        // test for CDMA
+    @Test
+    @SmallTest
+    public void testVoiceMailNumberCdma() {
         switchToCdma();
-        voiceMailNumber = "9876543210";
+        String voiceMailNumber = "1234567890";
 
+        // no resource or sharedPreference set -- should be *86
+        assertEquals("*86", mPhoneUT.getVoiceMailNumber());
+
+        // config_telephony_use_own_number_for_voicemail
+        mContextFixture.putBooleanResource(
+                com.android.internal.R.bool.config_telephony_use_own_number_for_voicemail, true);
+        doReturn(voiceMailNumber).when(mSimRecords).getMsisdnNumber();
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+
+        // voicemail number from config
+        voiceMailNumber = "1234567891";
+        mContextFixture.putStringArrayResource(
+                com.android.internal.R.array.config_default_vm_number,
+                new String[]{voiceMailNumber});
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+
+        // voicemail number from sharedPreference
         mPhoneUT.setVoiceMailNumber("alphaTag", voiceMailNumber, null);
-        verify(mIccRecords).setVoiceMailNumber(eq("alphaTag"), voiceMailNumber,
-                any(Message.class));
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(mRuimRecords).setVoiceMailNumber(eq("alphaTag"), eq(voiceMailNumber),
+                messageArgumentCaptor.capture());
 
-        // todo: trigger code that writes to shared preference
-        SharedPreferences sharedPreferences = mContext.getSharedPreferences((String)null, 0);
-        doReturn(voiceMailNumber).when(sharedPreferences).getString(anyString(), anyString());
+        Message msg = messageArgumentCaptor.getValue();
+        AsyncResult.forMessage(msg).exception =
+                new IccException("setVoiceMailNumber not implemented");
+        msg.sendToTarget();
+        waitForMs(50);
 
-        assertTrue(voiceMailNumber.equals(mPhoneUT.getVoiceMailNumber()));
+        assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
     }
 }

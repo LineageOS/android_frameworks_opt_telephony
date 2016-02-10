@@ -43,7 +43,7 @@ import static com.android.internal.telephony.uicc.IccConstants.EF_PCSCF;
 /**
  * {@hide}
  */
-public final class IsimUiccRecords extends IccRecords implements IsimRecords {
+public class IsimUiccRecords extends IccRecords implements IsimRecords {
     protected static final String LOG_TAG = "IsimUiccRecords";
 
     private static final boolean DBG = true;
