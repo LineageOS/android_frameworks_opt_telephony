@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Android Open Source Project
+ * Copyright (C) 2016 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,21 +23,18 @@ import android.telephony.TelephonyManager;
 import android.test.mock.MockContentProvider;
 import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
-import android.util.Log;
 
-import org.mockito.MockitoAnnotations;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.util.Arrays;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Mockito.doReturn;
-import static org.junit.Assert.*;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mock;
 
-public class SmsNumberUtilsTest {
-    private static final String TAG = "SmsNumberUtilsTest";
+public class SmsNumberUtilsTest extends TelephonyTest {
 
     private static final String TMO_MCC_MNC = "310260";
     private static final String TAIWAN_FET_MCC_MNC = "46602";
@@ -47,7 +44,7 @@ public class SmsNumberUtilsTest {
     private TelephonyManager mTelephonyManager;
 
     // Simulate partial packages/providers/TelephonyProvider/res/xml/hbpcd_lookup_tables.xml
-    public class HbpcdContentProvider extends MockContentProvider {
+    private class HbpcdContentProvider extends MockContentProvider {
 
         public HbpcdContentProvider() {}
 
@@ -113,18 +110,13 @@ public class SmsNumberUtilsTest {
         }
     }
 
-    @Mock
-    GsmCdmaPhone mPhone;
-
-    ContextFixture mContextFixture;
     HbpcdContentProvider mHbpcdContentProvider;
 
     @Before
     public void setUp() throws Exception {
-
         logd("SmsNumberUtilsTest +Setup!");
-        MockitoAnnotations.initMocks(this);
-        mContextFixture = new ContextFixture();
+        super.setUp(getClass().getSimpleName());
+
         mHbpcdContentProvider = new HbpcdContentProvider();
 
         mTelephonyManager = TelephonyManager.from(mContextFixture.getTestDouble());
@@ -136,9 +128,13 @@ public class SmsNumberUtilsTest {
         mContextFixture.putStringArrayResource(
                 com.android.internal.R.array.config_sms_convert_destination_number_support,
                 new String[]{"true"});
-        doReturn(mContextFixture.getTestDouble()).when(mPhone).getContext();
 
         logd("SmsNumberUtilsTest -Setup!");
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        super.tearDown();
     }
 
     @Test
@@ -249,9 +245,5 @@ public class SmsNumberUtilsTest {
         // NP_NANP_NBPCD_HOMEIDD_CC_AREA_LOCAL
         assertEquals("01118582345678",
                 SmsNumberUtils.filterDestAddr(mPhone, "+011-1-858-234-5678"));
-    }
-
-    private static void logd(String s) {
-        Log.d(TAG, s);
     }
 }

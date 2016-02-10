@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Android Open Source Project
+ * Copyright (C) 2016 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,43 +21,27 @@ import android.os.Looper;
 import android.telephony.PhoneNumberUtils;
 import android.test.suitebuilder.annotation.SmallTest;
 import android.test.suitebuilder.annotation.MediumTest;
-import android.util.Log;
 import android.telephony.DisconnectCause;
-import com.android.internal.telephony.test.SimulatedCommands;
+
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import java.lang.reflect.Field;
 
-public class GsmCdmaConnectionTest {
-    private static final String TAG = "GsmCdmaConnectionTest";
-    private ContextFixture mContextFixture;
+public class GsmCdmaConnectionTest extends TelephonyTest {
+
     private GsmCdmaConnection connection;
-    private SimulatedCommands mCi;
 
-    @Mock
-    GsmCdmaPhone mPhone;
-    @Mock
-    GsmCdmaCallTracker mCT;
     @Mock
     DriverCall mDC;
 
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
-        mContextFixture = new ContextFixture();
-        mCi = new SimulatedCommands();
+        super.setUp(getClass().getSimpleName());
+        replaceInstance(Handler.class, "mLooper", mCT, Looper.getMainLooper());
 
-        Field field = Handler.class.getDeclaredField("mLooper");
-        field.setAccessible(true);
-        field.set(mCT, Looper.getMainLooper());
-        mCT.mCi = mCi;
-        doReturn(mContextFixture.getTestDouble()).when(mPhone).getContext();
-        doReturn(mPhone).when(mCT).getPhone();
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
         mCT.mForegroundCall = new GsmCdmaCall(mCT);
         mCT.mBackgroundCall = new GsmCdmaCall(mCT);
@@ -67,6 +51,7 @@ public class GsmCdmaConnectionTest {
     @After
     public void tearDown() throws Exception {
         connection = null;
+        super.tearDown();
     }
 
     @Test @SmallTest
@@ -107,7 +92,7 @@ public class GsmCdmaConnectionTest {
                 "+1 (700).555-41NN%c1234", PhoneNumberUtils.PAUSE), mCT, null);
         logd("Testing initial state of GsmCdmaConnection");
         assertEquals(connection.getState(), GsmCdmaCall.State.IDLE);
-        assertEquals(connection.getPostDialState(), Connection.PostDialState.NOT_STARTED );
+        assertEquals(connection.getPostDialState(), Connection.PostDialState.NOT_STARTED);
         assertEquals(DisconnectCause.NOT_DISCONNECTED, DisconnectCause.NOT_DISCONNECTED);
         assertEquals(connection.getDisconnectTime(), 0);
         assertEquals(connection.getHoldDurationMillis(), 0);
@@ -197,9 +182,5 @@ public class GsmCdmaConnectionTest {
         assertEquals(connection.getState(), GsmCdmaCall.State.DISCONNECTED);
         assertEquals(connection.getDisconnectCause(), DisconnectCause.LOCAL);
         assertTrue(connection.getDisconnectTime() <= System.currentTimeMillis());
-    }
-
-    private static void logd(String s) {
-        Log.d(TAG, s);
     }
 }
