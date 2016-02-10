@@ -101,6 +101,16 @@ public class SmsBroadcastUndelivered {
             instance = new SmsBroadcastUndelivered(
                 context, gsmInboundSmsHandler, cdmaInboundSmsHandler);
         }
+
+        // Tell handlers to start processing new messages and transit from the startup state to the
+        // idle state. This method may be called multiple times for multi-sim devices. We must make
+        // sure the state transition happen to all inbound sms handlers.
+        if (gsmInboundSmsHandler != null) {
+            gsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_START_ACCEPTING_SMS);
+        }
+        if (cdmaInboundSmsHandler != null) {
+            cdmaInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_START_ACCEPTING_SMS);
+        }
     }
 
     private SmsBroadcastUndelivered(Context context, GsmInboundSmsHandler gsmInboundSmsHandler,
@@ -112,14 +122,6 @@ public class SmsBroadcastUndelivered {
         IntentFilter userFilter = new IntentFilter();
         userFilter.addAction(Intent.ACTION_USER_UNLOCKED);
         context.registerReceiverAsUser(mBroadcastReceiver, UserHandle.ALL, userFilter, null, null);
-
-        // tell handlers to start processing new messages
-        if (mGsmInboundSmsHandler != null) {
-            mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_START_ACCEPTING_SMS);
-        }
-        if (mCdmaInboundSmsHandler != null) {
-            mCdmaInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_START_ACCEPTING_SMS);
-        }
     }
 
     /**
