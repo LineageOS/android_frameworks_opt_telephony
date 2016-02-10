@@ -55,7 +55,7 @@ import java.util.Map;
  * <p>For information about how to behave as the default SMS app on Android 4.4 (API level 19)
  * and higher, see {@link android.provider.Telephony}.
  */
-public final class SmsManager {
+public class SmsManager {
     private static final String TAG = "SmsManager";
     /**
      * A psuedo-subId that represents the default subId at any given time. The actual subId it

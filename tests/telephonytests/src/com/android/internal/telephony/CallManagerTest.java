@@ -15,17 +15,21 @@
  */
 package com.android.internal.telephony;
 
-import android.icu.impl.Assert;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.telephony.PhoneNumberUtils;
+import android.telephony.ServiceState;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.junit.Test;
+
+import java.lang.reflect.Field;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -38,12 +42,8 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import android.telephony.ServiceState;
-import android.telephony.PhoneNumberUtils;
-import java.lang.reflect.Field;
-
 public class CallManagerTest extends TelephonyTest {
-    private CallManager mCallManager = CallManager.getInstance();
+
     @Mock
     GsmCdmaCall mFgCall;
     @Mock
@@ -66,9 +66,7 @@ public class CallManagerTest extends TelephonyTest {
     @Before
     public void setUp() throws Exception {
         super.setUp(this.getClass().getSimpleName());
-        Field field = CallManager.class.getDeclaredField("INSTANCE");
-        field.setAccessible(true);
-        field.set(null, mCallManager);
+        restoreInstance(CallManager.class, "INSTANCE", null);
         /* Mock Phone and Call, initially all calls are idle */
         doReturn(ServiceState.STATE_IN_SERVICE).when(mServiceState).getState();
         doReturn(mServiceState).when(mPhone).getServiceState();

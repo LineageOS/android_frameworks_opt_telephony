@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Android Open Source Project
+ * Copyright (C) 2016 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,20 +38,9 @@ import java.lang.reflect.Field;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
-public class SmsStorageMonitorTest {
-    private static final String TAG = "SmsStorageMonitorTest";
+public class SmsStorageMonitorTest extends TelephonyTest {
 
-    @Mock
-    Phone mPhone;
-    @Mock
-    SimulatedCommandsVerifier mSimulatedCommandsVerifier;
-
-    private SimulatedCommands mSimulatedCommands;
-    private ContextFixture mContextFixture;
     private SmsStorageMonitor mSmsStorageMonitor;
-
-    private Object mLock = new Object();
-    private boolean mReady;
 
     private class SmsStorageMonitorTestHandler extends HandlerThread {
 
@@ -62,37 +51,13 @@ public class SmsStorageMonitorTest {
         @Override
         public void onLooperPrepared() {
             mSmsStorageMonitor = new SmsStorageMonitor(mPhone);
-            synchronized (mLock) {
-                mReady = true;
-            }
-        }
-    }
-
-    private void waitUntilReady() {
-        while(true) {
-            synchronized (mLock) {
-                if (mReady) {
-                    break;
-                }
-            }
+            setReady(true);
         }
     }
 
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
-
-        Field field = SimulatedCommandsVerifier.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        field.set(null, mSimulatedCommandsVerifier);
-
-        mSimulatedCommands = new SimulatedCommands();
-        mContextFixture = new ContextFixture();
-
-        doReturn(mContextFixture.getTestDouble()).when(mPhone).getContext();
-        mPhone.mCi = mSimulatedCommands;
-
-        mReady = false;
+        super.setUp(getClass().getSimpleName());
         new SmsStorageMonitorTestHandler(TAG).start();
         waitUntilReady();
     }
@@ -100,6 +65,7 @@ public class SmsStorageMonitorTest {
     @After
     public void tearDown() throws Exception {
         mSmsStorageMonitor = null;
+        super.tearDown();
     }
 
     @Test @SmallTest
@@ -149,11 +115,5 @@ public class SmsStorageMonitorTest {
         TelephonyTestUtils.waitForMs(50);
 
         verify(mSimulatedCommandsVerifier).reportSmsMemoryStatus(eq(true), any(Message.class));
-
-
-    }
-
-    private static void logd(String s) {
-        Log.d(TAG, s);
     }
 }
