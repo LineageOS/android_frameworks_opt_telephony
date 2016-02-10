@@ -62,7 +62,6 @@ public class ImsPhoneConnection extends Connection {
     private ImsCall mImsCall;
     private Bundle mExtras = new Bundle();
 
-    private String mPostDialString;      // outgoing calls only
     private boolean mDisconnected;
 
     /*
@@ -76,10 +75,6 @@ public class ImsPhoneConnection extends Connection {
      */
     private long mDisconnectTime;
 
-    private int mNextPostDialChar;       // index into postDialString
-
-    private int mCause = DisconnectCause.NOT_DISCONNECTED;
-    private PostDialState mPostDialState = PostDialState.NOT_STARTED;
     private UUSInfo mUusInfo;
     private Handler mHandler;
 
@@ -303,11 +298,6 @@ public class ImsPhoneConnection extends Connection {
         }
     }
 
-    @Override
-    public int getDisconnectCause() {
-        return mCause;
-    }
-
     public void setDisconnectCause(int cause) {
         mCause = cause;
     }
@@ -342,11 +332,6 @@ public class ImsPhoneConnection extends Connection {
     @Override
     public void separate() throws CallStateException {
         throw new CallStateException ("not supported");
-    }
-
-    @Override
-    public PostDialState getPostDialState() {
-        return mPostDialState;
     }
 
     @Override
@@ -493,22 +478,7 @@ public class ImsPhoneConnection extends Connection {
     }
 
     @Override
-    public String
-    getRemainingPostDialString() {
-        if (mPostDialState == PostDialState.CANCELLED
-            || mPostDialState == PostDialState.COMPLETE
-            || mPostDialString == null
-            || mPostDialString.length() <= mNextPostDialChar
-        ) {
-            return "";
-        }
-
-        return mPostDialString.substring(mNextPostDialChar);
-    }
-
-    @Override
-    protected void finalize()
-    {
+    protected void finalize() {
         releaseWakeLock();
     }
 
