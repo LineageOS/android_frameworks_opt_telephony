@@ -464,8 +464,8 @@ public class GsmCdmaPhone extends Phone {
         return mCT;
     }
 
-    // pending voice mail count updated after phone creation
-    private void updateVoiceMail() {
+    @Override
+    public void updateVoiceMail() {
         if (isPhoneTypeGsm()) {
             int countVoiceMessages = 0;
             IccRecords r = mIccRecords.get();
@@ -2003,10 +2003,6 @@ public class GsmCdmaPhone extends Phone {
             case EVENT_RUIM_RECORDS_LOADED:
                 logd("Event EVENT_RUIM_RECORDS_LOADED Received");
                 updateCurrentCarrierInProvider();
-                // Notify voicemails.
-                logd("notifyMessageWaitingChanged");
-                mNotifier.notifyMessageWaitingChanged(this);
-                updateVoiceMail();
                 break;
 
             case EVENT_RADIO_ON:
@@ -2087,10 +2083,6 @@ public class GsmCdmaPhone extends Phone {
             case EVENT_NV_READY:
                 logd("Event EVENT_NV_READY Received");
                 prepareEri();
-                // Notify voicemails.
-                logd("notifyMessageWaitingChanged");
-                mNotifier.notifyMessageWaitingChanged(this);
-                updateVoiceMail();
                 break;
 
             case EVENT_SIM_RECORDS_LOADED:
@@ -2108,10 +2100,6 @@ public class GsmCdmaPhone extends Phone {
                 }
 
                 mSimRecordsLoadedRegistrants.notifyRegistrants();
-
-                if (isPhoneTypeGsm()) {
-                    updateVoiceMail();
-                }
                 break;
 
             case EVENT_GET_BASEBAND_VERSION_DONE:

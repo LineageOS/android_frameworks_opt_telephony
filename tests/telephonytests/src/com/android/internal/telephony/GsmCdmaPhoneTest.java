@@ -21,6 +21,7 @@ import android.content.SharedPreferences;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
@@ -361,5 +362,56 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         waitForMs(50);
 
         assertEquals(voiceMailNumber, mPhoneUT.getVoiceMailNumber());
+    }
+
+    @Test
+    @SmallTest
+    public void testVoiceMailCount() {
+        // initial value
+        assertEquals(0, mPhoneUT.getVoiceMessageCount());
+
+        // old sharedPreference set (testing upgrade from M to N scenario)
+        SharedPreferences sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        String imsi = "1234567890";
+        editor.putString("vm_id_key", imsi);
+        editor.putInt("vm_count_key", 5);
+        editor.apply();
+        doReturn(imsi).when(mSimRecords).getIMSI();
+
+        // updateVoiceMail should read old shared pref and delete it and new sharedPref should be
+        // updated now
+        doReturn(-1).when(mSimRecords).getVoiceMessageCount();
+        mPhoneUT.updateVoiceMail();
+        assertEquals(5, mPhoneUT.getVoiceMessageCount());
+        assertEquals(null, sharedPreferences.getString("vm_id_key", null));
+        assertEquals(5, sharedPreferences.getInt("vm_count_key" + mPhoneUT.getSubId(), 0));
+
+        // sim records return count as 0, that overrides shared preference
+        doReturn(0).when(mSimRecords).getVoiceMessageCount();
+        mPhoneUT.updateVoiceMail();
+        assertEquals(0, mPhoneUT.getVoiceMessageCount());
+
+        // sim records return count as -1
+        doReturn(-1).when(mSimRecords).getVoiceMessageCount();
+        mPhoneUT.updateVoiceMail();
+        assertEquals(-1, mPhoneUT.getVoiceMessageCount());
+
+        // sim records return count as -1 and sharedPreference says 0
+        mPhoneUT.setVoiceMessageCount(0);
+        mPhoneUT.updateVoiceMail();
+        assertEquals(-1, mPhoneUT.getVoiceMessageCount());
+
+        // sim records return count as -1 and sharedPreference says 2
+        mPhoneUT.setVoiceMessageCount(2);
+        mPhoneUT.updateVoiceMail();
+        assertEquals(2, mPhoneUT.getVoiceMessageCount());
+
+        // sim records return count as 0 and sharedPreference says 2
+        doReturn(0).when(mSimRecords).getVoiceMessageCount();
+        mPhoneUT.setVoiceMessageCount(2);
+        mPhoneUT.updateVoiceMail();
+        assertEquals(0, mPhoneUT.getVoiceMessageCount());
     }
 }
