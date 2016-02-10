@@ -35,7 +35,6 @@ import android.telephony.TelephonyManager;
 import android.util.LocalLog;
 
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
-import com.android.internal.telephony.dataconnection.DctController;
 import com.android.internal.telephony.dataconnection.TelephonyNetworkFactory;
 import com.android.internal.telephony.imsphone.ImsPhone;
 import com.android.internal.telephony.imsphone.ImsPhoneFactory;
@@ -216,18 +215,19 @@ public class PhoneFactory {
                 SubscriptionMonitor subscriptionMonitor = new SubscriptionMonitor(tr,
                         sContext, sc, numPhones);
 
-                //sPhoneSwitcher = new PhoneSwitcher(MAX_ACTIVE_PHONES, numPhones,
-                //        sContext, sc, Looper.myLooper(), tr, sCommandsInterfaces,
-                //        sPhones);
+                sPhoneSwitcher = new PhoneSwitcher(MAX_ACTIVE_PHONES, numPhones,
+                        sContext, sc, Looper.myLooper(), tr, sCommandsInterfaces,
+                        sPhones);
 
                 sProxyController = ProxyController.getInstance(context, sPhones,
                         sUiccController, sCommandsInterfaces, sPhoneSwitcher);
 
-                //for (int i = 0; i < numPhones; i++) {
-                //    sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
-                //            sPhoneSwitcher, sc, subscriptionMonitor, Looper.myLooper(),
-                //            sContext, i, sPhones[i].mDcTracker);
-                //}
+                sTelephonyNetworkFactories = new TelephonyNetworkFactory[numPhones];
+                for (int i = 0; i < numPhones; i++) {
+                    sTelephonyNetworkFactories[i] = new TelephonyNetworkFactory(
+                            sPhoneSwitcher, sc, subscriptionMonitor, Looper.myLooper(),
+                            sContext, i, sPhones[i].mDcTracker);
+                }
             }
         }
     }
@@ -474,8 +474,8 @@ public class PhoneFactory {
         pw.println("PhoneFactory:");
         pw.println(" sMadeDefaults=" + sMadeDefaults);
 
-        //sPhoneSwitcher.dump(fd, pw, args);
-        //pw.println();
+        sPhoneSwitcher.dump(fd, pw, args);
+        pw.println();
 
         Phone[] phones = (Phone[])PhoneFactory.getPhones();
         for (int i = 0; i < phones.length; i++) {
@@ -503,12 +503,6 @@ public class PhoneFactory {
             }
             pw.flush();
             pw.println("++++++++++++++++++++++++++++++++");
-        }
-
-        try {
-            DctController.getInstance().dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
         }
 
         try {
