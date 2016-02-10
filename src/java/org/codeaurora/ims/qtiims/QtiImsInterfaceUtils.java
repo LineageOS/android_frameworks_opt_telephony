@@ -69,6 +69,24 @@ public class QtiImsInterfaceUtils {
     /* Call transfer extra key */
     public static final String QTI_IMS_TRANSFER_EXTRA_KEY = "transferType";
 
+    /* Constants used for VOPS and SSAC feature */
+    // Intent action
+    public static final String ACTION_VOPS_SSAC_STATUS =
+            "org.codeaurora.VOIP_VOPS_SSAC_STATUS";
+    /* Intent extra
+     * if true  : Voice is supported on LTE
+     * if false : Voice is not supported on LTE
+     */
+    public static final String EXTRA_VOPS = "Vops";
+    /* Intent extra
+     * if true  : Access barring factor for voice calls is 0
+     * if false : Access barring factor for voice calls is non-zero
+     *            Range: 0 to 100. Value 100 is used when
+     *            the UE goes to the LTE Connected state
+     */
+    public static final String EXTRA_SSAC = "Ssac";
+
+
     /**
      * Private constructor for QtiImsInterfaceUtils as we don't want to instantiate this class
      */

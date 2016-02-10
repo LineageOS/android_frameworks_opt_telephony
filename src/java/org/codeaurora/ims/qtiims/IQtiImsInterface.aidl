@@ -130,4 +130,21 @@ oneway interface IQtiImsInterface {
      */
     void sendCallTransferRequest(int phoneId, int type, String number,
             IQtiImsInterfaceListener listener);
+
+    /**
+     * Query Vops information
+     *
+     * @param listener an IQtiImsInterfaceListener instance to indicate the response
+     * @return void
+     */
+    void queryVopsStatus(IQtiImsInterfaceListener listener);
+
+   /**
+     * Query Ssac information
+     *
+     * @param listener an IQtiImsInterfaceListener instance to indicate the response
+     * @return void
+     */
+    void querySsacStatus(IQtiImsInterfaceListener listener);
+
 }
