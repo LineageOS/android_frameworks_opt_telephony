@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 The Android Open Source Project
+ * Copyright (C) 2016 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,10 +81,7 @@ public class UiccControllerTest extends TelephonyTest {
         doReturn(PHONE_COUNT).when(mTelephonyManager).getPhoneCount();
         doReturn(PHONE_COUNT).when(mTelephonyManager).getSimCount();
 
-        /* create a new UiccCard Controller, avoid make called multiple times */
-        Field field = UiccController.class.getDeclaredField("mInstance");
-        field.setAccessible(true);
-        field.set(null, null);
+        replaceInstance(UiccController.class, "mInstance", null, null);
 
         /* null Application associated with any FAM */
         mIccCardStatus.mApplications = new IccCardApplicationStatus[]{};
