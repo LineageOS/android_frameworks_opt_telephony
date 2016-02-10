@@ -39,13 +39,17 @@ import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 
-import static org.mockito.Mockito.*;
-
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.doReturn;
 
 public abstract class TelephonyTest {
     protected static String TAG;
@@ -113,14 +117,36 @@ public abstract class TelephonyTest {
     private Object mLock = new Object();
     private boolean mReady;
 
-    private Object mOrigCallManager;
-    private Object mOrigTelephonyComponentFactory;
-    private Object mOrigUiccController;
-    private Object mOrigCdmaSSM;
-    private Object mOrigImsManagerInstances;
-    private Object mOrigSubscriptionController;
-    private Object mOrigTelephonyEventLogInstances;
-    private Object mOrigTelephonyManager;
+    private HashMap<InstanceKey, Object> mOldInstances = new HashMap<InstanceKey, Object>();
+
+    private LinkedList<InstanceKey> mInstanceKeys = new LinkedList<InstanceKey>();
+
+    private class InstanceKey {
+        public final Class mClass;
+        public final String mInstName;
+        public final Object mObj;
+        InstanceKey(final Class c, final String instName, final Object obj) {
+            mClass = c;
+            mInstName = instName;
+            mObj = obj;
+        }
+
+        @Override
+        public int hashCode() {
+            return (mClass.getName().hashCode() * 31 + mInstName.hashCode()) * 31;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null || obj.getClass() != getClass()) {
+                return false;
+            }
+
+            InstanceKey other = (InstanceKey) obj;
+            return (other.mClass == mClass && other.mInstName.equals(mInstName) &&
+                    other.mObj == mObj);
+        }
+    }
 
     protected void waitUntilReady() {
         while(true) {
@@ -138,63 +164,72 @@ public abstract class TelephonyTest {
         }
     }
 
+    protected synchronized void replaceInstance(final Class c, final String instanceName,
+                                                final Object obj, final Object newValue)
+            throws Exception {
+        Field field = c.getDeclaredField(instanceName);
+        field.setAccessible(true);
+
+        InstanceKey key = new InstanceKey(c, instanceName, obj);
+        if (!mOldInstances.containsKey(key)) {
+            mOldInstances.put(key, field.get(obj));
+            mInstanceKeys.add(key);
+        }
+        field.set(obj, newValue);
+    }
+
+    protected synchronized void restoreInstance(final Class c, final String instanceName,
+                                                final Object obj) throws Exception {
+        InstanceKey key = new InstanceKey(c, instanceName, obj);
+        if (mOldInstances.containsKey(key)) {
+            Field field = c.getDeclaredField(instanceName);
+            field.setAccessible(true);
+            field.set(obj, mOldInstances.get(key));
+            mOldInstances.remove(key);
+            mInstanceKeys.remove(key);
+        }
+    }
+
+    protected synchronized void restoreInstances() throws Exception {
+        Iterator<InstanceKey> it = mInstanceKeys.descendingIterator();
+
+        while (it.hasNext()) {
+            InstanceKey key = it.next();
+            Field field = key.mClass.getDeclaredField(key.mInstName);
+            field.setAccessible(true);
+            field.set(key.mObj, mOldInstances.get(key));
+        }
+
+        mInstanceKeys.clear();
+        mOldInstances.clear();
+    }
+
     protected void setUp(String tag) throws Exception {
         TAG = tag;
         MockitoAnnotations.initMocks(this);
+
         //Use reflection to mock singletons
-        Field field = CallManager.class.getDeclaredField("INSTANCE");
-        field.setAccessible(true);
-        mOrigCallManager = field.get(null);
-        field.set(null, mCallManager);
-
-        field = TelephonyComponentFactory.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        mOrigTelephonyComponentFactory = field.get(null);
-        field.set(null, mTelephonyComponentFactory);
-
-        field = UiccController.class.getDeclaredField("mInstance");
-        field.setAccessible(true);
-        mOrigUiccController = field.get(null);
-        field.set(null, mUiccController);
-
-        field = CdmaSubscriptionSourceManager.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        mOrigCdmaSSM = field.get(null);
-        field.set(null, mCdmaSSM);
-
-        field = ImsManager.class.getDeclaredField("sImsManagerInstances");
-        field.setAccessible(true);
-        mOrigImsManagerInstances = field.get(null);
-        field.set(null, mImsManagerInstances);
-
-        field = SubscriptionController.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        mOrigSubscriptionController = field.get(null);
-        field.set(null, mSubscriptionController);
-
-        field = TelephonyEventLog.class.getDeclaredField("sInstances");
-        field.setAccessible(true);
-        mOrigTelephonyEventLogInstances = field.get(null);
-        field.set(null, mTelephonyEventLogInstances);
-
-        field = CdmaSubscriptionSourceManager.class.getDeclaredField(
-                "mCdmaSubscriptionSourceChangedRegistrants");
-        field.setAccessible(true);
-        field.set(mCdmaSSM, mRegistrantList);
-
-        field = SimulatedCommandsVerifier.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        field.set(null, mSimulatedCommandsVerifier);
+        replaceInstance(CallManager.class, "INSTANCE", null, mCallManager);
+        replaceInstance(TelephonyComponentFactory.class, "sInstance", null,
+                mTelephonyComponentFactory);
+        replaceInstance(UiccController.class, "mInstance", null, mUiccController);
+        replaceInstance(CdmaSubscriptionSourceManager.class, "sInstance", null, mCdmaSSM);
+        replaceInstance(ImsManager.class, "sImsManagerInstances", null, mImsManagerInstances);
+        replaceInstance(SubscriptionController.class, "sInstance", null, mSubscriptionController);
+        replaceInstance(TelephonyEventLog.class, "sInstances", null, mTelephonyEventLogInstances);
+        replaceInstance(CdmaSubscriptionSourceManager.class,
+                "mCdmaSubscriptionSourceChangedRegistrants", mCdmaSSM, mRegistrantList);
+        replaceInstance(SimulatedCommandsVerifier.class, "sInstance", null,
+                mSimulatedCommandsVerifier);
 
         mSimulatedCommands = new SimulatedCommands();
         mContextFixture = new ContextFixture();
         mContext = mContextFixture.getTestDouble();
         mPhone.mCi = mSimulatedCommands;
+        mCT.mCi = mSimulatedCommands;
 
-        field = TelephonyManager.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        mOrigTelephonyManager = field.get(null);
-        field.set(null, mContext.getSystemService(Context.TELEPHONY_SERVICE));
+        replaceInstance(TelephonyManager.class, "sInstance", null,
+                mContext.getSystemService(Context.TELEPHONY_SERVICE));
 
         doReturn(mSST).when(mTelephonyComponentFactory).
                 makeServiceStateTracker(any(GsmCdmaPhone.class), any(CommandsInterface.class));
@@ -202,6 +237,7 @@ public abstract class TelephonyTest {
                 makeIccCardProxy(any(Context.class), any(CommandsInterface.class), anyInt());
         doReturn(mCT).when(mTelephonyComponentFactory).
                 makeGsmCdmaCallTracker(any(GsmCdmaPhone.class));
+        doReturn(mPhone).when(mCT).getPhone();
         doReturn(mIccPhoneBookIntManager).when(mTelephonyComponentFactory).
                 makeIccPhoneBookInterfaceManager(any(Phone.class));
         doReturn(mDcTracker).when(mTelephonyComponentFactory).
@@ -239,41 +275,11 @@ public abstract class TelephonyTest {
     }
 
     protected void tearDown() throws Exception {
-        //Reset fields that were set using reflection
-        Field field = CallManager.class.getDeclaredField("INSTANCE");
-        field.setAccessible(true);
-        field.set(null, mOrigCallManager);
-
-        field = TelephonyComponentFactory.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        field.set(null, mOrigTelephonyComponentFactory);
-
-        field = UiccController.class.getDeclaredField("mInstance");
-        field.setAccessible(true);
-        field.set(null, mOrigUiccController);
-
-        field = CdmaSubscriptionSourceManager.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        field.set(null, mOrigCdmaSSM);
-
-        field = ImsManager.class.getDeclaredField("sImsManagerInstances");
-        field.setAccessible(true);
-        field.set(null, mOrigImsManagerInstances);
-
-        field = SubscriptionController.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        field.set(null, mOrigSubscriptionController);
-
-        field = TelephonyEventLog.class.getDeclaredField("sInstances");
-        field.setAccessible(true);
-        field.set(null, mOrigTelephonyEventLogInstances);
-
-        field = TelephonyManager.class.getDeclaredField("sInstance");
-        field.setAccessible(true);
-        field.set(null, mOrigTelephonyManager);
 
         SharedPreferences sharedPreferences = mContext.getSharedPreferences((String) null, 0);
         sharedPreferences.edit().clear().commit();
+
+        restoreInstances();
     }
 
     protected static void logd(String s) {
