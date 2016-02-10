@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2015 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,32 +30,19 @@ import org.junit.Test;
 public class InboundSmsTrackerTest {
     InboundSmsTracker mInboundSmsTracker;
 
-    private static final byte[] FAKE_PDU = new byte[]{1, 2, 3};
-    private static final long FAKE_TIMESTAMP = 123456L;
-    private static final int FAKE_DEST_PORT = 1234;
-    private static final String FAKE_ADDRESS = "address";
-    private static final int FAKE_REFERENCE_NUMBER = 345;
-    private static final int FAKE_SEQUENCE_NUMBER = 3;
-    private static final int FAKE_MESSAGE_COUNT = 5;
+    private final byte[] FAKE_PDU = new byte[]{1, 2, 3};
+    private final long FAKE_TIMESTAMP = 123456L;
+    private final int FAKE_DEST_PORT = 1234;
+    private final String FAKE_ADDRESS = "address";
+    private final int FAKE_REFERENCE_NUMBER = 345;
+    private final int FAKE_SEQUENCE_NUMBER = 3;
+    private final int FAKE_MESSAGE_COUNT = 5;
 
     @Before
     public void setUp() throws Exception {
         mInboundSmsTracker = new InboundSmsTracker(FAKE_PDU, FAKE_TIMESTAMP, FAKE_DEST_PORT, false,
                 FAKE_ADDRESS, FAKE_REFERENCE_NUMBER, FAKE_SEQUENCE_NUMBER, FAKE_MESSAGE_COUNT,
                 false);
-    }
-
-    public static MatrixCursor createFakeCursor() {
-        MatrixCursor mc = new MatrixCursor(
-                new String[]{"pdu", "seq", "dest", "date", "ref", "cnt", "addr", "id"});
-        mc.addRow(new Object[]{HexDump.toHexString(FAKE_PDU),
-                FAKE_SEQUENCE_NUMBER, FAKE_DEST_PORT, FAKE_TIMESTAMP,
-                FAKE_REFERENCE_NUMBER, FAKE_MESSAGE_COUNT, FAKE_ADDRESS, 1});
-        mc.addRow(new Object[]{HexDump.toHexString(FAKE_PDU),
-                FAKE_SEQUENCE_NUMBER, FAKE_DEST_PORT, FAKE_TIMESTAMP,
-                FAKE_REFERENCE_NUMBER, FAKE_MESSAGE_COUNT, FAKE_ADDRESS, 2});
-        mc.moveToFirst();
-        return mc;
     }
 
     @Test
@@ -81,7 +68,13 @@ public class InboundSmsTrackerTest {
     @Test
     @SmallTest
     public void testInitializationFromDb() {
-        mInboundSmsTracker = new InboundSmsTracker(createFakeCursor(), false);
+        MatrixCursor mc = new MatrixCursor(
+                new String[]{"pdu", "seq", "dest", "date", "ref", "cnt", "addr", "id"});
+        mc.addRow(new Object[]{HexDump.toHexString(FAKE_PDU),
+                FAKE_SEQUENCE_NUMBER, FAKE_DEST_PORT, FAKE_TIMESTAMP,
+                FAKE_REFERENCE_NUMBER, FAKE_MESSAGE_COUNT, FAKE_ADDRESS, 1});
+        mc.moveToFirst();
+        mInboundSmsTracker = new InboundSmsTracker(mc, false);
         testInitialization();
     }
 }

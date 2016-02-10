@@ -17,38 +17,36 @@
 package com.android.internal.telephony;
 
 import android.Manifest.permission;
+import com.android.internal.telephony.SmsApplication.SmsApplicationData;
+
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.pm.ServiceInfo;
+import android.provider.Telephony.Sms.Intents;
+
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.content.pm.ServiceInfo;
-import android.provider.Telephony.Sms.Intents;
 import android.telephony.TelephonyManager;
+
 import android.test.suitebuilder.annotation.SmallTest;
-
-import com.android.internal.telephony.SmsApplication.SmsApplicationData;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.junit.Assert.*;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 public class SmsApplicationTest extends TelephonyTest {
 
@@ -99,11 +97,6 @@ public class SmsApplicationTest extends TelephonyTest {
         doReturn(true).when(tm).isSmsCapable();
 
         logd("-Setup!");
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        super.tearDown();
     }
 
     private List<ResolveInfo> createFakeAppList(String permission) {
