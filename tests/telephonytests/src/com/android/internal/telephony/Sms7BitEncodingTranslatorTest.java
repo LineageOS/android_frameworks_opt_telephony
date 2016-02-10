@@ -19,15 +19,18 @@ package com.android.internal.telephony;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import java.io.UnsupportedEncodingException;
-import static org.mockito.Mockito.doReturn;
-import static org.junit.Assert.*;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.UnsupportedEncodingException;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doReturn;
+
 public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
+
     @Before
     public void setUp() throws Exception {
         logd("+Setup!");
