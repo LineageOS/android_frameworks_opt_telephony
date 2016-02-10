@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.IDeviceIdleController;
 import android.os.RegistrantList;
@@ -32,6 +33,9 @@ import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.IsimUiccRecords;
+import com.android.internal.telephony.uicc.RuimRecords;
+import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 
@@ -91,9 +95,17 @@ public abstract class TelephonyTest {
     @Mock
     protected TelephonyEventLog mTelephonyEventLog;
     @Mock
-    protected UiccCardApplication mUiccCardApplication;
+    protected UiccCardApplication mUiccCardApplication3gpp;
     @Mock
-    protected IccRecords mIccRecords;
+    protected UiccCardApplication mUiccCardApplication3gpp2;
+    @Mock
+    protected UiccCardApplication mUiccCardApplicationIms;
+    @Mock
+    protected SIMRecords mSimRecords;
+    @Mock
+    protected RuimRecords mRuimRecords;
+    @Mock
+    protected IsimUiccRecords mIsimUiccRecords;
 
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
@@ -212,10 +224,16 @@ public abstract class TelephonyTest {
 
         doReturn(mTelephonyEventLog).when(mTelephonyEventLogInstances).get(anyInt());
 
-        doReturn(mUiccCardApplication).when(mUiccController).getUiccCardApplication(anyInt(),
-                anyInt());
+        doReturn(mUiccCardApplication3gpp).when(mUiccController).getUiccCardApplication(anyInt(),
+                eq(UiccController.APP_FAM_3GPP));
+        doReturn(mUiccCardApplication3gpp2).when(mUiccController).getUiccCardApplication(anyInt(),
+                eq(UiccController.APP_FAM_3GPP2));
+        doReturn(mUiccCardApplicationIms).when(mUiccController).getUiccCardApplication(anyInt(),
+                eq(UiccController.APP_FAM_IMS));
 
-        doReturn(mIccRecords).when(mUiccCardApplication).getIccRecords();
+        doReturn(mSimRecords).when(mUiccCardApplication3gpp).getIccRecords();
+        doReturn(mRuimRecords).when(mUiccCardApplication3gpp2).getIccRecords();
+        doReturn(mIsimUiccRecords).when(mUiccCardApplicationIms).getIccRecords();
 
         setReady(false);
     }
@@ -253,6 +271,9 @@ public abstract class TelephonyTest {
         field = TelephonyManager.class.getDeclaredField("sInstance");
         field.setAccessible(true);
         field.set(null, mOrigTelephonyManager);
+
+        SharedPreferences sharedPreferences = mContext.getSharedPreferences((String) null, 0);
+        sharedPreferences.edit().clear().commit();
     }
 
     protected static void logd(String s) {

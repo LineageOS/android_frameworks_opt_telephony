@@ -50,6 +50,7 @@ import android.os.IInterface;
 import android.os.PersistableBundle;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.telephony.CarrierConfigManager;
@@ -344,7 +345,6 @@ public class ContextFixture implements TestFixture<Context> {
     // when(...) logic to be used to add specific little responses where needed.
 
     private final Resources mResources = mock(Resources.class);
-    private final Configuration mConfiguration = new Configuration();
     private final PackageManager mPackageManager = mock(PackageManager.class);
     private final TelephonyManager mTelephonyManager = mock(TelephonyManager.class);
     private final AppOpsManager mAppOpsManager = mock(AppOpsManager.class);
@@ -354,8 +354,12 @@ public class ContextFixture implements TestFixture<Context> {
     private final SubscriptionManager mSubscriptionManager = mock(SubscriptionManager.class);
     private final AlarmManager mAlarmManager = mock(AlarmManager.class);
     private final WifiManager mWifiManager = mock(WifiManager.class);
+
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());
-    private final SharedPreferences mSharedPreferences = mock(SharedPreferences.class);
+
+    private final Configuration mConfiguration = new Configuration();
+    private final SharedPreferences mSharedPreferences = PreferenceManager.
+            getDefaultSharedPreferences(TestApplication.getAppContext());
     private final MockContentResolver mContentResolver = new MockContentResolver();
     private final PersistableBundle mBundle = new PersistableBundle();
 
@@ -379,15 +383,6 @@ public class ContextFixture implements TestFixture<Context> {
                         (Integer) invocation.getArguments()[1]);
             }
         }).when(mPackageManager).queryIntentServicesAsUser((Intent) any(), anyInt(), anyInt());
-
-        // return default value unless overridden by test
-        doAnswer(new Answer() {
-            @Override
-            public Object answer(InvocationOnMock invocation) throws Throwable {
-                Object[] args = invocation.getArguments();
-                return args[1];
-            }
-        }).when(mSharedPreferences).getBoolean(anyString(), anyBoolean());
 
         doReturn(mBundle).when(mCarrierConfigManager).getConfigForSubId(anyInt());
 
