@@ -29,6 +29,7 @@ import android.telephony.SignalStrength;
 import android.telephony.IccOpenLogicalChannelResponse;
 
 import com.android.internal.telephony.BaseCommands;
+import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -1246,7 +1247,11 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void setCallForward(int action, int cfReason, int serviceClass,
-            String number, int timeSeconds, Message result) {unimplemented(result);}
+            String number, int timeSeconds, Message result) {
+        SimulatedCommandsVerifier.getInstance().setCallForward(action, cfReason, serviceClass,
+                number, timeSeconds, result);
+        resultSuccess(result, null);
+    }
 
     /**
      * cfReason is one of CF_REASON_*
@@ -1258,7 +1263,11 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void queryCallForwardStatus(int cfReason, int serviceClass,
-            String number, Message result) {unimplemented(result);}
+            String number, Message result) {
+        SimulatedCommandsVerifier.getInstance().queryCallForwardStatus(cfReason, serviceClass,
+                number, result);
+        resultSuccess(result, null);
+    }
 
     @Override
     public void setNetworkSelectionModeAutomatic(Message result) {unimplemented(result);}

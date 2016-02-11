@@ -31,15 +31,29 @@ import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.uicc.IccException;
-
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
+import com.android.internal.telephony.uicc.IccRecords;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+
+import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
+import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyObject;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 public class GsmCdmaPhoneTest extends TelephonyTest {
     //mPhoneUnderTest
@@ -413,5 +427,51 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         mPhoneUT.setVoiceMessageCount(2);
         mPhoneUT.updateVoiceMail();
         assertEquals(0, mPhoneUT.getVoiceMessageCount());
+    }
+
+    @Test
+    @SmallTest
+    public void testGetCallForwardingOption() {
+        // invalid reason (-1)
+        mPhoneUT.getCallForwardingOption(-1, null);
+        verify(mSimulatedCommandsVerifier, times(0)).queryCallForwardStatus(
+                anyInt(), anyInt(), anyString(), any(Message.class));
+
+        // valid reason
+        String imsi = "1234567890";
+        doReturn(imsi).when(mSimRecords).getIMSI();
+        mPhoneUT.getCallForwardingOption(CF_REASON_UNCONDITIONAL, null);
+        verify(mSimulatedCommandsVerifier).queryCallForwardStatus(
+                eq(CF_REASON_UNCONDITIONAL), anyInt(), anyString(), any(Message.class));
+        waitForMs(50);
+        verify(mSimRecords).setVoiceCallForwardingFlag(anyInt(), anyBoolean(), anyString());
+
+        // should have updated shared preferences
+        SharedPreferences sharedPreferences = PreferenceManager.
+                getDefaultSharedPreferences(mContext);
+        assertEquals(IccRecords.CALL_FORWARDING_STATUS_DISABLED,
+                sharedPreferences.getInt(Phone.CF_STATUS,
+                        IccRecords.CALL_FORWARDING_STATUS_ENABLED));
+        assertEquals(imsi, sharedPreferences.getString(Phone.CF_ID, null));
+    }
+
+    @Test
+    @SmallTest
+    public void testSetCallForwardingOption() {
+        String cfNumber = "1234567890";
+
+        // invalid action
+        mPhoneUT.setCallForwardingOption(-1, CF_REASON_UNCONDITIONAL,
+                cfNumber, 0, null);
+        verify(mSimulatedCommandsVerifier, times(0)).setCallForward(anyInt(), anyInt(), anyInt(),
+                anyString(), anyInt(), any(Message.class));
+
+        // valid action
+        mPhoneUT.setCallForwardingOption(CF_ACTION_ENABLE, CF_REASON_UNCONDITIONAL, cfNumber, 0,
+                null);
+        verify(mSimulatedCommandsVerifier).setCallForward(eq(CF_ACTION_ENABLE),
+                eq(CF_REASON_UNCONDITIONAL), anyInt(), eq(cfNumber), eq(0), any(Message.class));
+        waitForMs(50);
+        verify(mSimRecords).setVoiceCallForwardingFlag(anyInt(), anyBoolean(), eq(cfNumber));
     }
 }
