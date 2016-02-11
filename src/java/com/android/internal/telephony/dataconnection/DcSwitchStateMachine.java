@@ -288,7 +288,18 @@ public class DcSwitchStateMachine extends StateMachine {
                         loge("EVENT_DATA_ALLOWED ignored arg1=" + msg.arg1 + ", seq=" +
                                 mCurrentAllowedSequence);
                     } else {
+                        boolean dataAllowFailed = false;
+
                         if (ar.exception != null) {
+                            dataAllowFailed = true;
+                            if (ar.exception instanceof CommandException) {
+                                CommandException.Error err = ((CommandException)(ar.exception)).getCommandError();
+                                if (err == CommandException.Error.REQUEST_NOT_SUPPORTED) {
+                                    dataAllowFailed = false;
+                                }
+                            }
+                        }
+                        if (dataAllowFailed) {
                             loge("EVENT_DATA_ALLOWED failed, " + ar.exception);
                             if (mResponseMsg != null) {
                                 // Inform DctController about the failure.
