@@ -93,7 +93,6 @@ public class ServiceStateTrackerTest extends TelephonyTest {
         logd("ServiceStateTrackerTest +Setup!");
         super.setUp("ServiceStateTrackerTest");
 
-        doReturn(true).when(mPhone).isPhoneTypeGsm();
         doReturn(true).when(mDct).isDisconnected();
         mPhone.mDcTracker = mDct;
         mTelephonyManager = (TelephonyManager) mContextFixture.getTestDouble().

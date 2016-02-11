@@ -16,6 +16,8 @@
 
 package com.android.internal.telephony;
 
+import android.app.ActivityManagerNative;
+import android.app.IActivityManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
@@ -24,6 +26,7 @@ import android.os.RegistrantList;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.util.Singleton;
 import android.util.SparseArray;
 
 import com.android.ims.ImsManager;
@@ -33,10 +36,12 @@ import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardProxy;
 import com.android.internal.telephony.uicc.IsimUiccRecords;
+import com.android.internal.telephony.uicc.IccRecords;
 import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
+
 
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -49,7 +54,10 @@ import java.util.LinkedList;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.eq;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 public abstract class TelephonyTest {
     protected static String TAG;
@@ -110,6 +118,11 @@ public abstract class TelephonyTest {
     protected RuimRecords mRuimRecords;
     @Mock
     protected IsimUiccRecords mIsimUiccRecords;
+    @Mock
+    protected ProxyController mProxyController;
+    @Mock
+    protected Singleton<IActivityManager> mActivityManagerNative;
+
 
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
@@ -143,13 +156,13 @@ public abstract class TelephonyTest {
             }
 
             InstanceKey other = (InstanceKey) obj;
-            return (other.mClass == mClass && other.mInstName.equals(mInstName) &&
-                    other.mObj == mObj);
+            return (other.mClass == mClass && other.mInstName.equals(mInstName)
+                    && other.mObj == mObj);
         }
     }
 
     protected void waitUntilReady() {
-        while(true) {
+        while (true) {
             synchronized (mLock) {
                 if (mReady) {
                     break;
@@ -216,6 +229,8 @@ public abstract class TelephonyTest {
         replaceInstance(CdmaSubscriptionSourceManager.class, "sInstance", null, mCdmaSSM);
         replaceInstance(ImsManager.class, "sImsManagerInstances", null, mImsManagerInstances);
         replaceInstance(SubscriptionController.class, "sInstance", null, mSubscriptionController);
+        replaceInstance(ProxyController.class, "sProxyController", null, mProxyController);
+        replaceInstance(ActivityManagerNative.class, "gDefault", null, mActivityManagerNative);
         replaceInstance(TelephonyEventLog.class, "sInstances", null, mTelephonyEventLogInstances);
         replaceInstance(CdmaSubscriptionSourceManager.class,
                 "mCdmaSubscriptionSourceChangedRegistrants", mCdmaSSM, mRegistrantList);
@@ -231,23 +246,23 @@ public abstract class TelephonyTest {
         replaceInstance(TelephonyManager.class, "sInstance", null,
                 mContext.getSystemService(Context.TELEPHONY_SERVICE));
 
-        doReturn(mSST).when(mTelephonyComponentFactory).
-                makeServiceStateTracker(any(GsmCdmaPhone.class), any(CommandsInterface.class));
-        doReturn(mIccCardProxy).when(mTelephonyComponentFactory).
-                makeIccCardProxy(any(Context.class), any(CommandsInterface.class), anyInt());
-        doReturn(mCT).when(mTelephonyComponentFactory).
-                makeGsmCdmaCallTracker(any(GsmCdmaPhone.class));
+        doReturn(mSST).when(mTelephonyComponentFactory)
+                .makeServiceStateTracker(any(GsmCdmaPhone.class), any(CommandsInterface.class));
+        doReturn(mIccCardProxy).when(mTelephonyComponentFactory)
+                .makeIccCardProxy(any(Context.class), any(CommandsInterface.class), anyInt());
+        doReturn(mCT).when(mTelephonyComponentFactory)
+                .makeGsmCdmaCallTracker(any(GsmCdmaPhone.class));
         doReturn(mPhone).when(mCT).getPhone();
-        doReturn(mIccPhoneBookIntManager).when(mTelephonyComponentFactory).
-                makeIccPhoneBookInterfaceManager(any(Phone.class));
-        doReturn(mDcTracker).when(mTelephonyComponentFactory).
-                makeDcTracker(any(Phone.class));
-        doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory).
-                getIDeviceIdleController();
-        doReturn(mWspTypeDecoder).when(mTelephonyComponentFactory).
-                makeWspTypeDecoder(any(byte[].class));
-        doReturn(mCdmaSSM).when(mTelephonyComponentFactory).
-                getCdmaSubscriptionSourceManagerInstance(any(Context.class),
+        doReturn(mIccPhoneBookIntManager).when(mTelephonyComponentFactory)
+                .makeIccPhoneBookInterfaceManager(any(Phone.class));
+        doReturn(mDcTracker).when(mTelephonyComponentFactory)
+                .makeDcTracker(any(Phone.class));
+        doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory)
+                .getIDeviceIdleController();
+        doReturn(mWspTypeDecoder).when(mTelephonyComponentFactory)
+                .makeWspTypeDecoder(any(byte[].class));
+        doReturn(mCdmaSSM).when(mTelephonyComponentFactory)
+                .getCdmaSubscriptionSourceManagerInstance(any(Context.class),
                         any(CommandsInterface.class), any(Handler.class),
                         anyInt(), any(Object.class));
 
@@ -270,6 +285,16 @@ public abstract class TelephonyTest {
         doReturn(mSimRecords).when(mUiccCardApplication3gpp).getIccRecords();
         doReturn(mRuimRecords).when(mUiccCardApplication3gpp2).getIccRecords();
         doReturn(mIsimUiccRecords).when(mUiccCardApplicationIms).getIccRecords();
+        doReturn(mIccCardProxy).when(mPhone).getIccCard();
+        doReturn(mServiceState).when(mPhone).getServiceState();
+        doReturn(true).when(mPhone).isPhoneTypeGsm();
+        doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
+        doReturn(mSimRecords).when(mIccCardProxy).getIccRecords();
+        doAnswer(new Answer<IccRecords>() {
+            public IccRecords answer(InvocationOnMock invocation) {
+                return (mPhone.isPhoneTypeGsm()) ? mSimRecords : mRuimRecords;
+            }
+        }).when(mIccCardProxy).getIccRecords();
 
         setReady(false);
     }
