@@ -2636,9 +2636,9 @@ public abstract class PhoneBase extends Handler implements Phone {
         // Called when radios first become available or after a capability switch
         // Update the cached value
         mRadioCapability.set(rc);
+        updatePreferredType();
 
         if (SubscriptionManager.isValidSubscriptionId(getSubId())) {
-            updatePreferredType();
             sendSubscriptionSettings(true);
         }
     }
