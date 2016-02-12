@@ -160,6 +160,25 @@ public class SmsApplicationTest extends TelephonyTest {
                 mContextFixture.getTestDouble().getSystemService(Context.TELEPHONY_SERVICE);
         assertTrue(tm.isSmsCapable());
 
+        int id = -1;
+        try {
+            Method m = SmsApplication.class.getDeclaredMethod("getIncomingUserId", Context.class);
+            m.setAccessible(true);
+            id = (Integer) m.invoke(null, mContextFixture.getTestDouble());
+            logd("testGetDefaultMmsApplication: id = " + id);
+        } catch (Exception ex) {
+            fail("Failed to invoke getIncomingUserId(): " + ex);
+        }
+        assertEquals(0, id);
+
+        Intent intent = new Intent(Intents.SMS_DELIVER_ACTION);
+        List<ResolveInfo> smsReceivers = mContextFixture.getTestDouble().getPackageManager().
+                queryBroadcastReceivers(intent, 0, id);
+        assertEquals(1, smsReceivers.size());
+        assertEquals(FAKE_NAME, smsReceivers.get(0).activityInfo.name);
+        assertEquals(FAKE_PACKAGE_NAME, smsReceivers.get(0).activityInfo.packageName);
+        assertEquals(permission.BROADCAST_SMS, smsReceivers.get(0).activityInfo.permission);
+
         Collection<SmsApplicationData> apps = SmsApplication.getApplicationCollection(
                 mContextFixture.getTestDouble());
 
@@ -173,16 +192,6 @@ public class SmsApplicationTest extends TelephonyTest {
 
         logd("apps=" + apps.toString());
 
-        int id = -1;
-        try {
-            Method m = SmsApplication.class.getDeclaredMethod("getIncomingUserId", Context.class);
-            m.setAccessible(true);
-            id = (Integer) m.invoke(null, mContextFixture.getTestDouble());
-            logd("testGetDefaultMmsApplication: id = " + id);
-        } catch (Exception ex) {
-            fail("Failed to invoke getIncomingUserId(): " + ex);
-        }
-        assertEquals(0, id);
 
         String defApp = Settings.Secure.getStringForUser(
                 mContextFixture.getTestDouble().getContentResolver(),
