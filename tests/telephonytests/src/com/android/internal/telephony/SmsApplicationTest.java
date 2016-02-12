@@ -25,6 +25,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
+import android.provider.Settings;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -37,6 +38,7 @@ import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -44,6 +46,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
@@ -153,6 +156,60 @@ public class SmsApplicationTest extends TelephonyTest {
     @SmallTest
     public void testGetDefaultMmsApplication() {
 
+        TelephonyManager tm = (TelephonyManager)
+                mContextFixture.getTestDouble().getSystemService(Context.TELEPHONY_SERVICE);
+        assertTrue(tm.isSmsCapable());
+
+        Collection<SmsApplicationData> apps = SmsApplication.getApplicationCollection(
+                mContextFixture.getTestDouble());
+
+        assertTrue(apps.size() > 0);
+
+        assertEquals("[mApplicationName: fake messenger mPackageName: com.android.messaging " +
+                "mSmsReceiverClass: fake messenger mMmsReceiverClass: fake messenger " +
+                "mRespondViaMessageClass: fake messenger mSendToClass: fake messenger " +
+                "mSmsAppChangedClass: fake messenger mProviderChangedReceiverClass: " +
+                "fake messenger mUid: 0]", apps.toString());
+
+        logd("apps=" + apps.toString());
+
+        int id = -1;
+        try {
+            Method m = SmsApplication.class.getDeclaredMethod("getIncomingUserId", Context.class);
+            m.setAccessible(true);
+            id = (Integer) m.invoke(null, mContextFixture.getTestDouble());
+            logd("testGetDefaultMmsApplication: id = " + id);
+        } catch (Exception ex) {
+            fail("Failed to invoke getIncomingUserId(): " + ex);
+        }
+        assertEquals(0, id);
+
+        String defApp = Settings.Secure.getStringForUser(
+                mContextFixture.getTestDouble().getContentResolver(),
+                Settings.Secure.SMS_DEFAULT_APPLICATION, id);
+        logd("testGetDefaultMmsApplication: defApp = " + defApp);
+        assertEquals(FAKE_PACKAGE_NAME, defApp);
+
+        String ret = null;
+        try {
+            Method m = SmsApplication.class.getDeclaredMethod("getApplicationForPackage",
+                    Collection.class, String.class);
+            m.setAccessible(true);
+            ret = m.invoke(null, apps, FAKE_PACKAGE_NAME).toString();
+            logd(ret);
+        } catch (Exception ex) {
+            fail("Failed to invoke getApplicationForPackage(): " + ex);
+        }
+
+        assertEquals("mApplicationName: fake messenger mPackageName: com.android.messaging " +
+                        "mSmsReceiverClass: fake messenger mMmsReceiverClass: fake messenger " +
+                        "mRespondViaMessageClass: fake messenger mSendToClass: fake messenger " +
+                        "mSmsAppChangedClass: fake messenger mProviderChangedReceiverClass: " +
+                        "fake messenger mUid: 0",
+                ret);
+
+        assertTrue(android.os.Process.myUid() != 0);
+
         ComponentName name = SmsApplication.getDefaultMmsApplication(
                 mContextFixture.getTestDouble(), false);
         assertEquals(FAKE_PACKAGE_NAME, name.getPackageName());
@@ -197,7 +254,7 @@ public class SmsApplicationTest extends TelephonyTest {
                 mContextFixture.getTestDouble(), FAKE_PACKAGE_NAME));
     }
 
-    @Test
+    /*@Test
     @SmallTest
     public void testSetDefaultApplication() {
         SmsApplication.setDefaultApplication(FAKE_PACKAGE_NAME, mContextFixture.getTestDouble());
@@ -205,7 +262,7 @@ public class SmsApplicationTest extends TelephonyTest {
                 mContextFixture.getTestDouble(), false);
         assertEquals(FAKE_PACKAGE_NAME, name.getPackageName());
         assertEquals(FAKE_NAME, name.getClassName());
-    }
+    }*/
 
     @Test
     @SmallTest
