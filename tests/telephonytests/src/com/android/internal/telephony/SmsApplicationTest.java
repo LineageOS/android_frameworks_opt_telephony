@@ -25,10 +25,13 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
+import android.net.Uri;
 import android.provider.Settings;
+import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
+import android.util.Log;
 
 import com.android.internal.telephony.SmsApplication.SmsApplicationData;
 
@@ -41,6 +44,7 @@ import org.mockito.stubbing.Answer;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -278,5 +282,180 @@ public class SmsApplicationTest extends TelephonyTest {
     public void testShouldWriteMessageForPackage() {
         assertFalse(SmsApplication.shouldWriteMessageForPackage(
                 FAKE_PACKAGE_NAME, mContextFixture.getTestDouble()));
+    }
+
+    private static final String SCHEME_SMSTO = "smsto";
+
+    @Test
+    @SmallTest
+    public void testInternal() {
+
+        PackageManager packageManager = mContextFixture.getTestDouble().getPackageManager();
+
+        // Get the list of apps registered for SMS
+        Intent intent = new Intent(Intents.SMS_DELIVER_ACTION);
+        List<ResolveInfo> smsReceivers = packageManager.queryBroadcastReceivers(intent, 0, 0);
+
+        HashMap<String, SmsApplicationData> receivers = new HashMap<String, SmsApplicationData>();
+
+        // Add one entry to the map for every sms receiver (ignoring duplicate sms receivers)
+        for (ResolveInfo resolveInfo : smsReceivers) {
+            final ActivityInfo activityInfo = resolveInfo.activityInfo;
+            if (activityInfo == null) {
+                fail();
+                continue;
+            }
+            if (!permission.BROADCAST_SMS.equals(activityInfo.permission)) {
+                fail();
+                continue;
+            }
+            final String packageName = activityInfo.packageName;
+            if (!receivers.containsKey(packageName)) {
+                final String applicationName = resolveInfo.loadLabel(packageManager).toString();
+                final SmsApplicationData smsApplicationData = new SmsApplicationData(
+                        applicationName, packageName, activityInfo.applicationInfo.uid);
+                smsApplicationData.mSmsReceiverClass = activityInfo.name;
+                receivers.put(packageName, smsApplicationData);
+            }
+        }
+
+        // Update any existing entries with mms receiver class
+        intent = new Intent(Intents.WAP_PUSH_DELIVER_ACTION);
+        intent.setDataAndType(null, "application/vnd.wap.mms-message");
+        List<ResolveInfo> mmsReceivers = packageManager.queryBroadcastReceivers(intent, 0, 0);
+        for (ResolveInfo resolveInfo : mmsReceivers) {
+            final ActivityInfo activityInfo = resolveInfo.activityInfo;
+            if (activityInfo == null) {
+                fail();
+                continue;
+            }
+            if (!permission.BROADCAST_WAP_PUSH.equals(activityInfo.permission)) {
+                fail();
+                continue;
+            }
+            final String packageName = activityInfo.packageName;
+            final SmsApplicationData smsApplicationData = receivers.get(packageName);
+            if (smsApplicationData != null) {
+                smsApplicationData.mMmsReceiverClass = activityInfo.name;
+            } else {
+                fail();
+            }
+        }
+
+        // Update any existing entries with respond via message intent class.
+        intent = new Intent(TelephonyManager.ACTION_RESPOND_VIA_MESSAGE,
+                Uri.fromParts(SCHEME_SMSTO, "", null));
+        List<ResolveInfo> respondServices = packageManager.queryIntentServicesAsUser(intent, 0, 0);
+        for (ResolveInfo resolveInfo : respondServices) {
+            final ServiceInfo serviceInfo = resolveInfo.serviceInfo;
+            if (serviceInfo == null) {
+                fail();
+                continue;
+            }
+            if (!permission.SEND_RESPOND_VIA_MESSAGE.equals(serviceInfo.permission)) {
+                fail();
+                continue;
+            }
+            final String packageName = serviceInfo.packageName;
+            final SmsApplicationData smsApplicationData = receivers.get(packageName);
+            if (smsApplicationData != null) {
+                smsApplicationData.mRespondViaMessageClass = serviceInfo.name;
+            } else {
+                fail();
+            }
+        }
+
+        // Update any existing entries with supports send to.
+        intent = new Intent(Intent.ACTION_SENDTO,
+                Uri.fromParts(SCHEME_SMSTO, "", null));
+        List<ResolveInfo> sendToActivities = packageManager.queryIntentActivitiesAsUser(intent, 0,
+                0);
+        for (ResolveInfo resolveInfo : sendToActivities) {
+            final ActivityInfo activityInfo = resolveInfo.activityInfo;
+            if (activityInfo == null) {
+                fail();
+                continue;
+            }
+            final String packageName = activityInfo.packageName;
+            final SmsApplicationData smsApplicationData = receivers.get(packageName);
+            if (smsApplicationData != null) {
+                smsApplicationData.mSendToClass = activityInfo.name;
+            } else {
+                fail();
+            }
+        }
+
+        // Update any existing entries with the default sms changed handler.
+        intent = new Intent(Telephony.Sms.Intents.ACTION_DEFAULT_SMS_PACKAGE_CHANGED);
+        List<ResolveInfo> smsAppChangedReceivers = packageManager.queryBroadcastReceivers(intent, 0,
+                0);
+        logd("getApplicationCollectionInternal smsAppChangedActivities=" +
+                smsAppChangedReceivers);
+
+        for (ResolveInfo resolveInfo : smsAppChangedReceivers) {
+            final ActivityInfo activityInfo = resolveInfo.activityInfo;
+            if (activityInfo == null) {
+                continue;
+            }
+            final String packageName = activityInfo.packageName;
+            final SmsApplicationData smsApplicationData = receivers.get(packageName);
+            logd("getApplicationCollectionInternal packageName=" +
+                        packageName + " smsApplicationData: " + smsApplicationData +
+                        " activityInfo.name: " + activityInfo.name);
+            if (smsApplicationData != null) {
+                smsApplicationData.mSmsAppChangedReceiverClass = activityInfo.name;
+            } else {
+                fail();
+            }
+        }
+
+        // Update any existing entries with the external provider changed handler.
+        intent = new Intent(Telephony.Sms.Intents.ACTION_EXTERNAL_PROVIDER_CHANGE);
+        List<ResolveInfo> providerChangedReceivers = packageManager.queryBroadcastReceivers(intent,
+                0, 0);
+        logd("getApplicationCollectionInternal providerChangedActivities=" +
+                providerChangedReceivers);
+
+        for (ResolveInfo resolveInfo : providerChangedReceivers) {
+            final ActivityInfo activityInfo = resolveInfo.activityInfo;
+            if (activityInfo == null) {
+                continue;
+            }
+            final String packageName = activityInfo.packageName;
+            final SmsApplicationData smsApplicationData = receivers.get(packageName);
+            logd("getApplicationCollectionInternal packageName=" +
+                        packageName + " smsApplicationData: " + smsApplicationData +
+                        " activityInfo.name: " + activityInfo.name);
+            if (smsApplicationData != null) {
+                smsApplicationData.mProviderChangedReceiverClass = activityInfo.name;
+            }
+        }
+
+        assertTrue(receivers.values().size() > 0);
+
+        // Remove any entries for which we did not find all required intents.
+        for (ResolveInfo resolveInfo : smsReceivers) {
+            final ActivityInfo activityInfo = resolveInfo.activityInfo;
+            if (activityInfo == null) {
+                fail();
+                continue;
+            }
+            final String packageName = activityInfo.packageName;
+            final SmsApplicationData smsApplicationData = receivers.get(packageName);
+
+            assertTrue(smsApplicationData.mSmsReceiverClass != null);
+            assertTrue(smsApplicationData.mMmsReceiverClass != null);
+            assertTrue(smsApplicationData.mRespondViaMessageClass != null);
+            assertTrue(smsApplicationData.mSendToClass != null);
+
+            if (smsApplicationData != null) {
+                if (!smsApplicationData.isComplete()) {
+                    receivers.remove(packageName);
+                }
+            }
+        }
+
+        logd("receivers.values = " + receivers.values());
+        assertTrue(receivers.values().size() > 0);
     }
 }
