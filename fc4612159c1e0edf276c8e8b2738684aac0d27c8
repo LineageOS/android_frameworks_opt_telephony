@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ffb9cba7_1bcc2488",
+        "filename": "src/java/com/android/internal/telephony/dataconnection/DcSwitchStateMachine.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-02-12T05:09:21Z",
+      "side": 1,
+      "message": "You can probably simplify this logic a bit to check if the request was not supported and proceed if ar.exception !\u003d null \u0026\u0026 requestSupported. There\u0027s a lot of nested conditions here that combine essentially to \u0026\u0026.",
+      "revId": "fc4612159c1e0edf276c8e8b2738684aac0d27c8",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
