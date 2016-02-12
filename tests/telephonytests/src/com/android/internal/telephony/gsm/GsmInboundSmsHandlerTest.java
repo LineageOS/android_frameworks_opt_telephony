@@ -26,12 +26,13 @@ import android.telephony.*;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.InboundSmsHandler;
+import com.android.internal.telephony.InboundSmsTracker;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyTest;
-import com.android.internal.telephony.TelephonyTestUtils;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
 
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -40,12 +41,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.mockito.Spy;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.List;
 
 public class GsmInboundSmsHandlerTest extends TelephonyTest {
     @Mock
@@ -54,6 +51,8 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
     private android.telephony.SmsMessage mSmsMessage;
     @Mock
     private SmsMessage mGsmSmsMessage;
+    @Mock
+    private InboundSmsTracker mInboundSmsTracker;
 
     private GsmInboundSmsHandler mGsmInboundSmsHandler;
     private TelephonyManager mTelephonyManager;
@@ -103,16 +102,21 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         super.tearDown();
     }
 
-    @Test @SmallTest
-    public void testNewSms() {
+    private void transitionFromStartupToIdle() {
         // verify initially in StartupState
         assertEquals("StartupState", getCurrentState().getName());
 
         // trigger transition to IdleState
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_START_ACCEPTING_SMS);
-        TelephonyTestUtils.waitForMs(50);
+        waitForMs(50);
 
         assertEquals("IdleState", getCurrentState().getName());
+    }
+
+    @Test
+    @SmallTest
+    public void testNewSms() {
+        transitionFromStartupToIdle();
 
         // send new SMS to state machine and verify that triggers SMS_DELIVER_ACTION
         byte[] smsPdu = new byte[]{(byte)0xFF, (byte)0xFF, (byte)0xFF};
@@ -123,28 +127,50 @@ public class GsmInboundSmsHandlerTest extends TelephonyTest {
         doReturn(true).when(userManager).isUserUnlocked();
         mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS,
                 new AsyncResult(null, mSmsMessage, null));
-        TelephonyTestUtils.waitForMs(100);
+        waitForMs(50);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
-        verify(mContext, times(2)).sendBroadcast(intentArgumentCaptor.capture());
+        verify(mContext).sendBroadcast(intentArgumentCaptor.capture());
+        assertEquals(Telephony.Sms.Intents.SMS_DELIVER_ACTION,
+                intentArgumentCaptor.getValue().getAction());
+        assertEquals("WaitingState", getCurrentState().getName());
 
-        List<Intent> list = intentArgumentCaptor.getAllValues();
-        /* logd("list.size() " + list.size());
-        for (int i = 0; i < list.size(); i++) {
-            logd("list.get(i) " + list.get(i));
-        } */
-        //todo: seems to be some issue with ArgumentCaptor. Both DELIVER and RECEIVED broadcasts
-        //can be seen in logs but according to list both are RECEIVED
-        //assertEquals(Telephony.Sms.Intents.SMS_DELIVER_ACTION,
-        //                list.get(0).getAction());
-        boolean smsReceivedAction = false;
-        for (Intent i : list) {
-            if (Telephony.Sms.Intents.SMS_RECEIVED_ACTION.equals(i.getAction())) {
-                smsReceivedAction = true;
-                break;
-            }
-        }
-        assertTrue(smsReceivedAction);
+        mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
+        waitForMs(50);
+
+        intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext, times(2)).sendBroadcast(intentArgumentCaptor.capture());
+        assertEquals(Telephony.Sms.Intents.SMS_RECEIVED_ACTION,
+                intentArgumentCaptor.getAllValues().get(1).getAction());
+        assertEquals("WaitingState", getCurrentState().getName());
+
+        mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
+        waitForMs(50);
+
+        assertEquals("IdleState", getCurrentState().getName());
+    }
+
+    @Test
+    @SmallTest
+    public void testBroadcastSms() {
+        transitionFromStartupToIdle();
+
+        UserManager userManager = (UserManager)mContext.getSystemService(Context.USER_SERVICE);
+        doReturn(1).when(mInboundSmsTracker).getMessageCount();
+        doReturn(0).when(mInboundSmsTracker).getDestPort();
+        doReturn(true).when(userManager).isUserUnlocked();
+        mGsmInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_BROADCAST_SMS,
+                mInboundSmsTracker);
+        waitForMs(50);
+
+        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        verify(mContext).sendBroadcast(intentArgumentCaptor.capture());
+        assertEquals(Telephony.Sms.Intents.DATA_SMS_RECEIVED_ACTION,
+                intentArgumentCaptor.getValue().getAction());
+        assertEquals("WaitingState", getCurrentState().getName());
+
+        mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
+        waitForMs(50);
 
         assertEquals("IdleState", getCurrentState().getName());
     }

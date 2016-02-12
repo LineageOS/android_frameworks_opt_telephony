@@ -63,6 +63,7 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -252,7 +253,9 @@ public class ContextFixture implements TestFixture<Context> {
             logd("sendOrderedBroadcastAsUser called for " + intent.getAction());
             sendBroadcast(intent);
             if (resultReceiver != null) {
-                resultReceiver.onReceive(this, intent);
+                synchronized (mOrderedBroadcastReceivers) {
+                    mOrderedBroadcastReceivers.put(intent, resultReceiver);
+                }
             }
         }
 
@@ -263,7 +266,9 @@ public class ContextFixture implements TestFixture<Context> {
             logd("sendOrderedBroadcastAsUser called for " + intent.getAction());
             sendBroadcast(intent);
             if (resultReceiver != null) {
-                resultReceiver.onReceive(this, intent);
+                synchronized (mOrderedBroadcastReceivers) {
+                    mOrderedBroadcastReceivers.put(intent, resultReceiver);
+                }
             }
         }
 
@@ -275,7 +280,9 @@ public class ContextFixture implements TestFixture<Context> {
             logd("sendOrderedBroadcastAsUser called for " + intent.getAction());
             sendBroadcast(intent);
             if (resultReceiver != null) {
-                resultReceiver.onReceive(this, intent);
+                synchronized (mOrderedBroadcastReceivers) {
+                    mOrderedBroadcastReceivers.put(intent, resultReceiver);
+                }
             }
         }
 
@@ -336,6 +343,8 @@ public class ContextFixture implements TestFixture<Context> {
             ArrayListMultimap.create();
     private final HashMap<String, Intent> mStickyBroadcastByAction =
             new HashMap<String, Intent>();
+    private final Multimap<Intent, BroadcastReceiver> mOrderedBroadcastReceivers =
+            ArrayListMultimap.create();
 
     // The application context is the most important object this class provides to the system
     // under test.
@@ -436,6 +445,20 @@ public class ContextFixture implements TestFixture<Context> {
             result.add(resolveInfo);
         }
         return result;
+    }
+
+    public void sendBroadcastToOrderedBroadcastReceivers() {
+        synchronized (mOrderedBroadcastReceivers) {
+            // having a map separate from mOrderedBroadcastReceivers is helpful here as onReceive()
+            // call within the loop may lead to sendOrderedBroadcast() which can add to
+            // mOrderedBroadcastReceivers
+            Collection<Map.Entry<Intent, BroadcastReceiver>> map =
+                    mOrderedBroadcastReceivers.entries();
+            for (Map.Entry<Intent, BroadcastReceiver> entry : map) {
+                entry.getValue().onReceive(mContext, entry.getKey());
+                mOrderedBroadcastReceivers.remove(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     private static void logd(String s) {
