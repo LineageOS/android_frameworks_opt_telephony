@@ -166,7 +166,6 @@ public class GsmCdmaConnectionTest extends TelephonyTest {
         logd("Process the post dial sequence with wait ");
         assertEquals(Connection.PostDialState.WAIT, connection.getPostDialState());
         connection.proceedAfterWaitChar();
-        assertEquals(Connection.PostDialState.STARTED, connection.getPostDialState());
         waitForMs(50);
         assertEquals(Connection.PostDialState.COMPLETE, connection.getPostDialState());
     }
