@@ -170,7 +170,8 @@ public class SubscriptionController extends ISub.Stub {
         mContext = c;
         mCM = CallManager.getInstance();
         mTelephonyManager = TelephonyManager.from(mContext);
-        mAppOps = mContext.getSystemService(AppOpsManager.class);
+
+        mAppOps = (AppOpsManager)mContext.getSystemService(Context.APP_OPS_SERVICE);
 
         if(ServiceManager.getService("isub") == null) {
                 ServiceManager.addService("isub", this);
