@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ffb9cba7_7b043d7c",
+        "filename": "src/java/com/android/internal/telephony/CommandsInterface.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 2048,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-02-13T05:19:16Z",
+      "side": 1,
+      "message": "Don\u0027t you need a separate @hide?",
+      "revId": "b1332de4fbed76d718842a58550b59eff58fd16a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ffb9cba7_1bf9817f",
+        "filename": "src/java/com/android/internal/telephony/cat/CommandParamsFactory.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-02-13T05:19:16Z",
+      "side": 1,
+      "message": "Don\u0027t change the file mode.",
+      "revId": "b1332de4fbed76d718842a58550b59eff58fd16a",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
