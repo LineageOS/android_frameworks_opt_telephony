@@ -175,7 +175,6 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-        assertEquals(GsmCdmaCall.State.DISCONNECTING, mCTUT.mForegroundCall.getState());
         /* request send to RIL still in disconnecting state */
         waitForMs(50);
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mForegroundCall.getState());
@@ -345,7 +344,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         logd("voice call started");
         testMOCallPickUp();
         ArgumentCaptor<Message> mCaptorMessage = ArgumentCaptor.forClass(Message.class);
-        ArgumentCaptor<Long>    mCaptorLong = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Long> mCaptorLong = ArgumentCaptor.forClass(Long.class);
         verify(mHandler,times(1)).sendMessageAtTime(mCaptorMessage.capture(), mCaptorLong.capture());
         assertEquals(VOICE_CALL_STARTED_EVENT, mCaptorMessage.getValue().what);
 

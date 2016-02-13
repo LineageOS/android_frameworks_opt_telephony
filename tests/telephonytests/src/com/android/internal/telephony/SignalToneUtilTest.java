@@ -30,13 +30,13 @@ public class SignalToneUtilTest {
                 SignalToneUtil.IS95_CONST_IR_SIGNAL_IS54B,
                 SignalToneUtil.IS95_CONST_IR_ALERT_LOW,
                 SignalToneUtil.IS95_CONST_IR_SIG_IS54B_L);
-        assertEquals(audioToneResult, ToneGenerator.TONE_CDMA_LOW_L);
+        assertEquals(ToneGenerator.TONE_CDMA_LOW_L, audioToneResult);
 
         audioToneResult = SignalToneUtil.getAudioToneFromSignalInfo(
                 SignalToneUtil.IS95_CONST_IR_SIGNAL_TONE,
                 SignalToneUtil.IS95_CONST_IR_ALERT_LOW,
                 SignalToneUtil.IS95_CONST_IR_SIG_TONE_DIAL);
-        assertEquals(audioToneResult, ToneGenerator.TONE_CDMA_DIAL_TONE_LITE);
+        assertEquals(ToneGenerator.TONE_CDMA_DIAL_TONE_LITE, audioToneResult);
         /* if signal type is not IS54B, different alert pitch all map to
            SIGNAL_PITCH_UNKNOWN, expect get same result
          */
@@ -44,32 +44,33 @@ public class SignalToneUtilTest {
                 SignalToneUtil.IS95_CONST_IR_SIGNAL_TONE,
                 SignalToneUtil.IS95_CONST_IR_ALERT_HIGH,
                 SignalToneUtil.IS95_CONST_IR_SIG_TONE_DIAL);
-        assertEquals(audioToneResult, ToneGenerator.TONE_CDMA_DIAL_TONE_LITE);
+        assertEquals(ToneGenerator.TONE_CDMA_DIAL_TONE_LITE, audioToneResult);
         audioToneResult = SignalToneUtil.getAudioToneFromSignalInfo(
                 SignalToneUtil.IS95_CONST_IR_SIGNAL_TONE,
                 SignalToneUtil.TAPIAMSSCDMA_SIGNAL_PITCH_UNKNOWN,
                 SignalToneUtil.IS95_CONST_IR_SIG_TONE_DIAL);
-        assertEquals(audioToneResult, ToneGenerator.TONE_CDMA_DIAL_TONE_LITE);
+        assertEquals(ToneGenerator.TONE_CDMA_DIAL_TONE_LITE, audioToneResult);
     }
 
-    @SmallTest @Test
+    @SmallTest
+    @Test
     public void testSignalToneUtilInvalidInput() {
         int audioToneResult = SignalToneUtil.getAudioToneFromSignalInfo(
                 SignalToneUtil.CDMA_INVALID_TONE,
                 SignalToneUtil.IS95_CONST_IR_ALERT_HIGH,
                 SignalToneUtil.IS95_CONST_IR_SIG_TONE_DIAL);
-        assertEquals(audioToneResult, SignalToneUtil.CDMA_INVALID_TONE);
+        assertEquals(SignalToneUtil.CDMA_INVALID_TONE, audioToneResult);
 
         audioToneResult = SignalToneUtil.getAudioToneFromSignalInfo(
                 SignalToneUtil.IS95_CONST_IR_SIGNAL_TONE,
                 SignalToneUtil.CDMA_INVALID_TONE,
                 SignalToneUtil.IS95_CONST_IR_SIG_TONE_DIAL);
-        assertEquals(audioToneResult, SignalToneUtil.CDMA_INVALID_TONE);
+        assertEquals(SignalToneUtil.CDMA_INVALID_TONE, audioToneResult);
 
         audioToneResult = SignalToneUtil.getAudioToneFromSignalInfo(
                 SignalToneUtil.IS95_CONST_IR_SIGNAL_TONE,
                 SignalToneUtil.IS95_CONST_IR_ALERT_HIGH,
                 SignalToneUtil.CDMA_INVALID_TONE);
-        assertEquals(audioToneResult, SignalToneUtil.CDMA_INVALID_TONE);
+        assertEquals(SignalToneUtil.CDMA_INVALID_TONE, audioToneResult);
     }
 }
