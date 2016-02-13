@@ -121,7 +121,6 @@ public class SmsNumberUtilsTest extends TelephonyTest {
 
         mTelephonyManager = TelephonyManager.from(mContextFixture.getTestDouble());
         doReturn(TMO_MCC_MNC).when(mTelephonyManager).getNetworkOperator(anyInt());
-        doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
 
         ((MockContentResolver) mContextFixture.getTestDouble().getContentResolver())
                 .addProvider(HbpcdLookup.MccIdd.CONTENT_URI.getAuthority(), mHbpcdContentProvider);
