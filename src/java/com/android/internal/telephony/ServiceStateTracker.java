@@ -4029,7 +4029,7 @@ public class ServiceStateTracker extends Handler {
 
 
         CharSequence details = "";
-        CharSequence title = context.getText(com.android.internal.R.string.RestrictedChangedTitle);
+        CharSequence title = context.getText(com.android.internal.R.string.RestrictedOnData);
         int notificationId = CS_NOTIFICATION;
 
         switch (notifyType) {
