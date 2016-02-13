@@ -31,7 +31,6 @@ import java.util.ArrayList;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.doReturn;
 
 /**
  * APN retry manager tests
@@ -129,8 +128,6 @@ public class TelephonyUtilsTest extends TelephonyTest {
     public void setUp() throws Exception {
         super.setUp(getClass().getSimpleName());
         mBundle = mContextFixture.getCarrierConfigBundle();
-
-        doReturn(true).when(mPhone).isPhoneTypeGsm();
 
         replaceInstance(SubscriptionController.class, "sInstance", null, mSubscriptionController);
         replaceInstance(UiccController.class, "mInstance", null, mUiccController);
