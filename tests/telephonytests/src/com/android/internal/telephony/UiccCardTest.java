@@ -36,6 +36,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 import com.android.internal.telephony.uicc.IccIoResult;
 
@@ -50,7 +51,6 @@ public class UiccCardTest extends TelephonyTest {
 
     private UiccCardHandlerThread mTestHandlerThread;
     private Handler mHandler;
-    private static final String TAG = "UiccCardTest";
     private static final int UICCCARD_UPDATE_CARD_STATE_EVENT = 1;
     private static final int UICCCARD_UPDATE_CARD_APPLICATION_EVENT = 2;
     private static final int UICCCARD_CARRIER_PRIVILEDGE_LOADED_EVENT = 3;
@@ -146,7 +146,7 @@ public class UiccCardTest extends TelephonyTest {
     @SmallTest
     public void tesUiccCartdInfoSanity() {
         /* before update sanity test */
-        assertEquals(mUicccard.getNumApplications(), 0);
+        assertEquals(0, mUicccard.getNumApplications());
         assertNull(mUicccard.getCardState());
         assertNull(mUicccard.getUniversalPinState());
         assertNull(mUicccard.getOperatorBrandOverride());
@@ -180,7 +180,7 @@ public class UiccCardTest extends TelephonyTest {
 
         waitUntilReady();
 
-        assertEquals(mUicccard.getNumApplications(), 3);
+        assertEquals(3, mUicccard.getNumApplications());
         assertTrue(mUicccard.isApplicationOnIcc(IccCardApplicationStatus.AppType.APPTYPE_CSIM));
         assertTrue(mUicccard.isApplicationOnIcc(IccCardApplicationStatus.AppType.APPTYPE_ISIM));
         assertTrue(mUicccard.isApplicationOnIcc(IccCardApplicationStatus.AppType.APPTYPE_USIM));
@@ -200,9 +200,9 @@ public class UiccCardTest extends TelephonyTest {
         /* wait till the async result and message delay */
         waitUntilReady();
 
-        assertEquals(mUicccard.getCardState(), IccCardStatus.CardState.CARDSTATE_PRESENT);
+        assertEquals(IccCardStatus.CardState.CARDSTATE_PRESENT, mUicccard.getCardState());
 
-        TelephonyTestUtils.waitForMs(50);
+        waitForMs(50);
 
         assertTrue(mUicccard.areCarrierPriviligeRulesLoaded());
         verify(mSimulatedCommandsVerifier, times(1)).iccOpenLogicalChannel(isA(String.class),
@@ -217,8 +217,8 @@ public class UiccCardTest extends TelephonyTest {
     public void testUpdateUiccCardPinState() {
         mIccCardStatus.mUniversalPinState = IccCardStatus.PinState.PINSTATE_ENABLED_VERIFIED;
         mUicccard.update(mContextFixture.getTestDouble(), mSimulatedCommands, mIccCardStatus);
-        assertEquals(mUicccard.getUniversalPinState(),
-                IccCardStatus.PinState.PINSTATE_ENABLED_VERIFIED);
+        assertEquals(IccCardStatus.PinState.PINSTATE_ENABLED_VERIFIED,
+                mUicccard.getUniversalPinState());
     }
 
     @Test @SmallTest
@@ -245,12 +245,12 @@ public class UiccCardTest extends TelephonyTest {
         mIccCardStatus.mCardState = IccCardStatus.CardState.CARDSTATE_PRESENT;
         Message mCardUpdate = mHandler.obtainMessage(UICCCARD_UPDATE_CARD_STATE_EVENT);
         mCardUpdate.sendToTarget();
-        TelephonyTestUtils.waitForMs(50);
+        waitForMs(50);
 
         logd("UICC Card absent update");
         mIccCardStatus.mCardState = IccCardStatus.CardState.CARDSTATE_ABSENT;
         mUicccard.update(mContextFixture.getTestDouble(), mSimulatedCommands, mIccCardStatus);
-        TelephonyTestUtils.waitForMs(50);
+        waitForMs(50);
 
         ArgumentCaptor<Message> mCaptorMessage = ArgumentCaptor.forClass(Message.class);
         ArgumentCaptor<Long> mCaptorLong = ArgumentCaptor.forClass(Long.class);

@@ -29,13 +29,13 @@ import com.android.internal.telephony.uicc.UiccController;
 
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import java.lang.reflect.Field;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 
 public class UiccControllerTest extends TelephonyTest {
     private UiccController mUiccControllerUT;
@@ -75,7 +75,7 @@ public class UiccControllerTest extends TelephonyTest {
 
     @Before
     public void setUp() throws Exception {
-        super.setUp("UiccControllerTest");
+        super.setUp(this.getClass().getSimpleName());
 
         mTelephonyManager = (TelephonyManager) mContext.getSystemService(Context.TELEPHONY_SERVICE);
         doReturn(PHONE_COUNT).when(mTelephonyManager).getPhoneCount();
@@ -93,7 +93,7 @@ public class UiccControllerTest extends TelephonyTest {
         waitUntilReady();
         /* expected to get new UiccCards being created
         wait till the async result and message delay */
-        TelephonyTestUtils.waitForMs(100);
+        waitForMs(100);
     }
 
     @After
@@ -103,7 +103,6 @@ public class UiccControllerTest extends TelephonyTest {
 
     @Test @SmallTest
     public void testSanity() {
-
         assertEquals(PHONE_COUNT, mUiccControllerUT.getUiccCards().length);
         assertNotNull(mUiccControllerUT.getUiccCard(0));
         assertNull(mUiccControllerUT.getIccRecords(0, UiccController.APP_FAM_3GPP));
@@ -120,18 +119,18 @@ public class UiccControllerTest extends TelephonyTest {
         logd("radio power state transition from off to unavail, dispose UICC Card");
         testSanity();
         mSimulatedCommands.requestShutdown(null);
-        TelephonyTestUtils.waitForMs(50);
+        waitForMs(50);
         assertNull(mUiccControllerUT.getUiccCard(0));
-        assertEquals(mSimulatedCommands.getRadioState(),
-                CommandsInterface.RadioState.RADIO_UNAVAILABLE);
+        assertEquals(CommandsInterface.RadioState.RADIO_UNAVAILABLE,
+                mSimulatedCommands.getRadioState());
     }
 
     @Test@SmallTest
     public void testPowerOn() {
         mSimulatedCommands.setRadioPower(true, null);
-        TelephonyTestUtils.waitForMs(500);
+        waitForMs(500);
         assertNotNull(mUiccControllerUT.getUiccCard(0));
-        assertEquals(mSimulatedCommands.getRadioState(), CommandsInterface.RadioState.RADIO_ON);
+        assertEquals(CommandsInterface.RadioState.RADIO_ON, mSimulatedCommands.getRadioState());
     }
 
     @Test @SmallTest
