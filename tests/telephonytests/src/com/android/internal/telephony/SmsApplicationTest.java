@@ -26,6 +26,9 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.net.Uri;
+import android.os.Binder;
+import android.os.Debug;
+import android.os.UserHandle;
 import android.provider.Settings;
 import android.provider.Telephony;
 import android.provider.Telephony.Sms.Intents;
@@ -156,6 +159,31 @@ public class SmsApplicationTest extends TelephonyTest {
         assertEquals(FAKE_NAME, name.getClassName());
     }
 
+    private static int getIncomingUserId(Context context) {
+        int contextUserId = context.getUserId();
+        final int callingUid = Binder.getCallingUid();
+
+        logd("getIncomingUserHandle caller=" + callingUid + ", myuid="
+                + android.os.Process.myUid() + "\n\t" + Debug.getCallers(4));
+
+        if (UserHandle.getAppId(callingUid)
+                < android.os.Process.FIRST_APPLICATION_UID) {
+            return contextUserId;
+        } else {
+            return UserHandle.getUserId(callingUid);
+        }
+    }
+
+    public Collection<SmsApplicationData> getApplicationCollection(Context context) {
+        int userId = getIncomingUserId(context);
+        final long token = Binder.clearCallingIdentity();
+        try {
+            return testInternal();
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
     @Test
     @SmallTest
     public void testGetDefaultMmsApplication() {
@@ -183,7 +211,7 @@ public class SmsApplicationTest extends TelephonyTest {
         assertEquals(FAKE_PACKAGE_NAME, smsReceivers.get(0).activityInfo.packageName);
         assertEquals(permission.BROADCAST_SMS, smsReceivers.get(0).activityInfo.permission);
 
-        Collection<SmsApplicationData> apps = SmsApplication.getApplicationCollection(
+        Collection<SmsApplicationData> apps = getApplicationCollection(
                 mContextFixture.getTestDouble());
 
         assertTrue(apps.size() > 0);
@@ -286,9 +314,7 @@ public class SmsApplicationTest extends TelephonyTest {
 
     private static final String SCHEME_SMSTO = "smsto";
 
-    @Test
-    @SmallTest
-    public void testInternal() {
+    public Collection<SmsApplicationData> testInternal() {
 
         PackageManager packageManager = mContextFixture.getTestDouble().getPackageManager();
 
@@ -316,8 +342,12 @@ public class SmsApplicationTest extends TelephonyTest {
                         applicationName, packageName, activityInfo.applicationInfo.uid);
                 smsApplicationData.mSmsReceiverClass = activityInfo.name;
                 receivers.put(packageName, smsApplicationData);
+            } else {
+                fail();
             }
         }
+
+        assertTrue(receivers.values().size() > 0);
 
         // Update any existing entries with mms receiver class
         intent = new Intent(Intents.WAP_PUSH_DELIVER_ACTION);
@@ -457,5 +487,6 @@ public class SmsApplicationTest extends TelephonyTest {
 
         logd("receivers.values = " + receivers.values());
         assertTrue(receivers.values().size() > 0);
+        return receivers.values();
     }
 }
