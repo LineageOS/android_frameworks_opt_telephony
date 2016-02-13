@@ -95,14 +95,14 @@ public class CallManagerTest extends TelephonyTest {
 
     @SmallTest @Test
     public void testSanity() {
-        assertEquals(CallManager.getInstance().getDefaultPhone(), mPhone);
+        assertEquals(mPhone, CallManager.getInstance().getDefaultPhone());
         assertFalse(CallManager.getInstance().hasActiveBgCall());
         assertFalse(CallManager.getInstance().hasActiveRingingCall());
         assertFalse(CallManager.getInstance().hasActiveFgCall());
         /* return the default phone if there is no any active call */
-        assertEquals(CallManager.getInstance().getRingingPhone(), mPhone);
-        assertEquals(CallManager.getInstance().getBgPhone(), mPhone);
-        assertEquals(CallManager.getInstance().getFgPhone(), mPhone);
+        assertEquals(mPhone, CallManager.getInstance().getRingingPhone());
+        assertEquals(mPhone, CallManager.getInstance().getBgPhone());
+        assertEquals(mPhone, CallManager.getInstance().getFgPhone());
     }
 
     @SmallTest @Test
@@ -114,9 +114,9 @@ public class CallManagerTest extends TelephonyTest {
             ArgumentCaptor<String> mCaptorString = ArgumentCaptor.forClass(String.class);
             ArgumentCaptor<Integer> mCaptorInt = ArgumentCaptor.forClass(Integer.class);
             verify(mPhone, times(1)).dial(mCaptorString.capture(), mCaptorInt.capture());
-            assertEquals(mCaptorString.getValue(),
-                    PhoneNumberUtils.stripSeparators("+17005554141"));
-            assertEquals(mCaptorInt.getValue().intValue(), 0);
+            assertEquals(PhoneNumberUtils.stripSeparators("+17005554141"),
+                    mCaptorString.getValue());
+            assertEquals(0, mCaptorInt.getValue().intValue());
 
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -153,7 +153,7 @@ public class CallManagerTest extends TelephonyTest {
         CallManager.getInstance().sendDtmf('a');
         verify(mPhone, times(0)).sendDtmf(eq('a'));
         doReturn(false).when(mFgCall).isIdle();
-        assertEquals(CallManager.getInstance().getActiveFgCall(), mFgCall);
+        assertEquals(mFgCall, CallManager.getInstance().getActiveFgCall());
         CallManager.getInstance().sendDtmf('a');
         verify(mPhone, times(1)).sendDtmf(eq('a'));
     }
@@ -231,9 +231,9 @@ public class CallManagerTest extends TelephonyTest {
             ArgumentCaptor<Integer> mCaptorInt = ArgumentCaptor.forClass(Integer.class);
 
             verify(mPhone, times(1)).dial(mCaptorString.capture(), mCaptorInt.capture());
-            assertEquals(mCaptorString.getValue(),
-                    PhoneNumberUtils.stripSeparators("+17005554141"));
-            assertEquals(mCaptorInt.getValue().intValue(), 0);
+            assertEquals(PhoneNumberUtils.stripSeparators("+17005554141"),
+                    mCaptorString.getValue());
+            assertEquals(0, mCaptorInt.getValue().intValue());
 
         } catch (Exception ex) {
             ex.printStackTrace();

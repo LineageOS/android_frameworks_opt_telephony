@@ -32,8 +32,8 @@ public class CallStateExceptionTest {
     @SmallTest
     public void testCallStateExceptionDefault() {
         mCallStateException = new CallStateException("sanity test");
-        assertEquals(mCallStateException.getMessage(), "sanity test");
-        assertEquals(mCallStateException.getError(), mCallStateException.ERROR_INVALID);
+        assertEquals("sanity test", mCallStateException.getMessage());
+        assertEquals(mCallStateException.ERROR_INVALID, mCallStateException.getError());
     }
 
     @Test
@@ -41,7 +41,7 @@ public class CallStateExceptionTest {
     public void testCallStateExceptionWithErrCode() {
         mCallStateException = new CallStateException(mCallStateException.ERROR_DISCONNECTED,
                                                      "sanity test with err code");
-        assertEquals(mCallStateException.getMessage(), "sanity test with err code");
-        assertEquals(mCallStateException.getError(), mCallStateException.ERROR_DISCONNECTED);
+        assertEquals("sanity test with err code", mCallStateException.getMessage());
+        assertEquals(mCallStateException.ERROR_DISCONNECTED, mCallStateException.getError());
     }
 }
