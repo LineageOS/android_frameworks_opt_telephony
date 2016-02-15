@@ -1122,7 +1122,8 @@ public final class GsmMmiCode extends Handler implements MmiCode {
                 if (ar.exception != null) {
                     mState = State.FAILED;
                     // suppress error pop-up for single dialed digits
-                    if (mDialingNumber.length() == SINGLE_DIGIT_DIALED) {
+                    if (mDialingNumber != null &&
+                                mDialingNumber.length() == SINGLE_DIGIT_DIALED) {
                         Log.w(
                             LOG_TAG,
                             mContext.getText(com.android.internal.R.string.mmiError).toString()
