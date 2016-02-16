@@ -287,12 +287,16 @@ public class ServiceStateTracker extends Handler {
 
                     mPhone.notifyCallForwardingIndicator();
 
+                    // update voicemail count and notify message waiting changed
+                    mPhone.updateVoiceMail();
+
                     boolean restoreSelection = !context.getResources().getBoolean(
                             com.android.internal.R.bool.skip_restoring_network_selection);
                     mPhone.sendSubscriptionSettings(restoreSelection);
 
                     mPhone.setSystemProperty(TelephonyProperties.PROPERTY_DATA_NETWORK_TYPE,
-                            ServiceState.rilRadioTechnologyToString(mSS.getRilDataRadioTechnology()));
+                            ServiceState.rilRadioTechnologyToString(
+                                    mSS.getRilDataRadioTechnology()));
 
                     if (mSpnUpdatePending) {
                         mSubscriptionController.setPlmnSpn(mPhone.getPhoneId(), mCurShowPlmn,
