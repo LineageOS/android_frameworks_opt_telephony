@@ -191,9 +191,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public static final String CLIR_KEY = "clir_key";
 
     // Key used for storing voice mail count
-    public static final String VM_COUNT = "vm_count_key";
+    private static final String VM_COUNT = "vm_count_key";
     // Key used to read/write the ID for storing the voice mail
-    public static final String VM_ID = "vm_id_key";
+    private static final String VM_ID = "vm_id_key";
 
     // Key used for storing call forwarding status
     public static final String CF_STATUS = "cf_status_key";
@@ -1521,6 +1521,13 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         return null;
     }
 
+    /**
+     * Update voice mail count related fields and notify listeners
+     */
+    public void updateVoiceMail() {
+        Rlog.e(LOG_TAG, "updateVoiceMail() should be overridden");
+    }
+
     public AppType getCurrentUiccAppType() {
         UiccCardApplication currentApp = mUiccApplication.get();
         if (currentApp != null) {
@@ -2069,6 +2076,15 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /** sets the voice mail count of the phone and notifies listeners. */
     public void setVoiceMessageCount(int countWaiting) {
         mVmCount = countWaiting;
+
+        Rlog.d(LOG_TAG, "setVoiceMessageCount: Storing Voice Mail Count = " + countWaiting +
+                " for mVmCountKey = " + VM_COUNT + getSubId() + " in preferences.");
+
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
+        SharedPreferences.Editor editor = sp.edit();
+        editor.putInt(VM_COUNT + getSubId(), countWaiting);
+        editor.apply();
+
         // notify listeners of voice mail
         notifyMessageWaitingIndicator();
     }
@@ -2076,18 +2092,33 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /** gets the voice mail count from preferences */
     protected int getStoredVoiceMessageCount() {
         int countVoiceMessages = 0;
+        int invalidCount = -2;  //-1 is not really invalid. It is used for unknown number of vm
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        String subscriberId = sp.getString(VM_ID, null);
-        String currentSubscriberId = getSubscriberId();
-
-        if (currentSubscriberId != null && currentSubscriberId.equals(subscriberId)) {
-            // get voice mail count from preferences
-            countVoiceMessages = sp.getInt(VM_COUNT, 0);
-            Rlog.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages);
+        int countFromSP = sp.getInt(VM_COUNT + getSubId(), invalidCount);
+        if (countFromSP != invalidCount) {
+            countVoiceMessages = countFromSP;
         } else {
-            Rlog.d(LOG_TAG, "Voicemail count retrieval returning 0 as count for matching " +
-                    "subscriberId not found");
+            // Check for old preference if count not found for current subId. This part of the code
+            // is needed only when upgrading from M to N.
+            String subscriberId = sp.getString(VM_ID, null);
+            if (subscriberId != null) {
+                String currentSubscriberId = getSubscriberId();
 
+                if (currentSubscriberId != null && currentSubscriberId.equals(subscriberId)) {
+                    // get voice mail count from preferences
+                    countVoiceMessages = sp.getInt(VM_COUNT, 0);
+                    Rlog.d(LOG_TAG, "Voice Mail Count from preference = " + countVoiceMessages);
+                } else {
+                    Rlog.d(LOG_TAG, "Voicemail count retrieval returning 0 as count for matching " +
+                            "subscriberId not found");
+
+                }
+                // get rid of old preferences.
+                SharedPreferences.Editor editor = sp.edit();
+                editor.remove(VM_ID);
+                editor.remove(VM_COUNT);
+                editor.apply();
+            }
         }
         return countVoiceMessages;
     }

@@ -243,8 +243,6 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         }
         // update voice mail count in phone
         mPhone.setVoiceMessageCount(voicemailCount);
-        // store voice mail count in preferences
-        storeVoiceMailCount();
     }
 
     /**
