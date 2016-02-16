@@ -29,7 +29,7 @@ import java.util.Date;
  * This is similar to {@link com.android.internal.telephony.SMSDispatcher.SmsTracker} used for
  * outgoing messages.
  */
-public final class InboundSmsTracker {
+public class InboundSmsTracker {
 
     // Fields for single and multi-part messages
     private final byte[] mPdu;
