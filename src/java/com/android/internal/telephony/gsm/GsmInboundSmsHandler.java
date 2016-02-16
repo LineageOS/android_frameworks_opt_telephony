@@ -151,7 +151,6 @@ public class GsmInboundSmsHandler extends InboundSmsHandler {
         } else {
             log("updateMessageWaitingIndicator: SIM Records not found");
         }
-        storeVoiceMailCount();
     }
 
     /**

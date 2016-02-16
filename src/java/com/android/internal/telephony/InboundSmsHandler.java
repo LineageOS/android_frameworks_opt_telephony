@@ -1135,23 +1135,6 @@ public abstract class InboundSmsHandler extends StateMachine {
         return (PHONE_TYPE_CDMA == activePhone);
     }
 
-    protected void storeVoiceMailCount() {
-        // Store the voice mail count in persistent memory.
-        String imsi = mPhone.getSubscriberId();
-        int mwi = mPhone.getVoiceMessageCount();
-
-        log("Storing Voice Mail Count = " + mwi
-                    + " for mVmCountKey = " + mPhone.VM_COUNT
-                    + " vmId = " + mPhone.VM_ID
-                    + " in preferences.");
-
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mContext);
-        SharedPreferences.Editor editor = sp.edit();
-        editor.putInt(mPhone.VM_COUNT, mwi);
-        editor.putString(mPhone.VM_ID, imsi);
-        editor.commit();
-    }
-
     /**
      * Handler for an {@link InboundSmsTracker} broadcast. Deletes PDUs from the raw table and
      * logs the broadcast duration (as an error if the other receivers were especially slow).
