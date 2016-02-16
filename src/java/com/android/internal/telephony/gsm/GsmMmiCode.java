@@ -1119,11 +1119,11 @@ public final class GsmMmiCode extends Handler implements MmiCode {
             case EVENT_USSD_COMPLETE:
                 ar = (AsyncResult) (msg.obj);
 
-                if (ar.exception != null) {
+                mMessage = null;
+                if (ar.exception != null && mDialingNumber != null) {
                     mState = State.FAILED;
                     // suppress error pop-up for single dialed digits
-                    if (mDialingNumber != null &&
-                                mDialingNumber.length() == SINGLE_DIGIT_DIALED) {
+                    if (mDialingNumber.length() == SINGLE_DIGIT_DIALED) {
                         Log.w(
                             LOG_TAG,
                             mContext.getText(com.android.internal.R.string.mmiError).toString()
