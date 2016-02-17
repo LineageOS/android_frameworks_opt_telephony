@@ -15,7 +15,6 @@
  */
 package com.android.internal.telephony;
 
-import android.app.IActivityManager;
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.Context;
@@ -53,8 +52,6 @@ import java.util.HashMap;
 public class SubscriptionInfoUpdaterTest extends TelephonyTest {
     private SubscriptionInfoUpdater mSubscriptionInfoUpdaterUT;
     private IccRecords mIccRecord;
-    @Mock
-    private IActivityManager mActivityManager;
     @Mock
     private UserInfo mUserInfo;
     @Mock
@@ -110,8 +107,7 @@ public class SubscriptionInfoUpdaterTest extends TelephonyTest {
         doReturn(SubscriptionInfoUpdater.STATUS_SIM1_INSERTED)
                 .when(mTelephonyManager).getPhoneCount();
 
-        doReturn(mActivityManager).when(mActivityManagerNative).get();
-        doReturn(mUserInfo).when(mActivityManager).getCurrentUser();
+        doReturn(mUserInfo).when(mIActivityManager).getCurrentUser();
         mContentProvider = new FakeSubscriptionContentProvider();
         ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 SubscriptionManager.CONTENT_URI.getAuthority(),
