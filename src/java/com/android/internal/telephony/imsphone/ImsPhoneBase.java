@@ -205,7 +205,7 @@ abstract class ImsPhoneBase extends Phone {
         super.notifyPreciseCallStateChangedP();
     }
 
-    void notifyDisconnect(Connection cn) {
+    public void notifyDisconnect(Connection cn) {
         mDisconnectRegistrants.notifyResult(cn);
     }
 
