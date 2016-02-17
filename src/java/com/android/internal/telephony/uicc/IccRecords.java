@@ -26,6 +26,7 @@ import android.os.RegistrantList;
 import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
+import android.telephony.SubscriptionInfo;
 
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus.AppState;
@@ -115,7 +116,7 @@ public abstract class IccRecords extends Handler implements IccConstants {
 
     @Override
     public String toString() {
-        String iccIdToPrint = mIccId != null ? mIccId.substring(0, 9) + "XXXXXXXXXXX" : null;
+        String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mIccId);
         return "mDestroyed=" + mDestroyed
                 + " mContext=" + mContext
                 + " mCi=" + mCi
@@ -719,7 +720,8 @@ public abstract class IccRecords extends Handler implements IccConstants {
         pw.println(" mRecordsRequested=" + mRecordsRequested);
         pw.println(" mRecordsToLoad=" + mRecordsToLoad);
         pw.println(" mRdnCache=" + mAdnCache);
-        String iccIdToPrint = mIccId != null ? mIccId.substring(0, 9) + "XXXXXXXXXXX" : null;
+        String iccIdToPrint = SubscriptionInfo.givePrintableIccid(mIccId);
+
         pw.println(" iccid=" + iccIdToPrint);
         if (TextUtils.isEmpty(mMsisdn)) {
             pw.println(" mMsisdn=null");
