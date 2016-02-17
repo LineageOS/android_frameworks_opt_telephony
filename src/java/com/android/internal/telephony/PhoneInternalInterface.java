@@ -116,13 +116,26 @@ public interface PhoneInternalInterface {
     static final String REASON_CARRIER_CHANGE = "carrierChange";
 
     // Used for band mode selection methods
-    static final int BM_UNSPECIFIED = 0; // selected by baseband automatically
-    static final int BM_EURO_BAND   = 1; // GSM-900 / DCS-1800 / WCDMA-IMT-2000
-    static final int BM_US_BAND     = 2; // GSM-850 / PCS-1900 / WCDMA-850 / WCDMA-PCS-1900
-    static final int BM_JPN_BAND    = 3; // WCDMA-800 / WCDMA-IMT-2000
-    static final int BM_AUS_BAND    = 4; // GSM-900 / DCS-1800 / WCDMA-850 / WCDMA-IMT-2000
-    static final int BM_AUS2_BAND   = 5; // GSM-900 / DCS-1800 / WCDMA-850
-    static final int BM_BOUNDARY    = 6; // upper band boundary
+    static final int BM_UNSPECIFIED = RILConstants.BAND_MODE_UNSPECIFIED; // automatic
+    static final int BM_EURO_BAND   = RILConstants.BAND_MODE_EURO;
+    static final int BM_US_BAND     = RILConstants.BAND_MODE_USA;
+    static final int BM_JPN_BAND    = RILConstants.BAND_MODE_JPN;
+    static final int BM_AUS_BAND    = RILConstants.BAND_MODE_AUS;
+    static final int BM_AUS2_BAND   = RILConstants.BAND_MODE_AUS_2;
+    static final int BM_CELL_800    = RILConstants.BAND_MODE_CELL_800;
+    static final int BM_PCS         = RILConstants.BAND_MODE_PCS;
+    static final int BM_JTACS       = RILConstants.BAND_MODE_JTACS;
+    static final int BM_KOREA_PCS   = RILConstants.BAND_MODE_KOREA_PCS;
+    static final int BM_4_450M      = RILConstants.BAND_MODE_5_450M;
+    static final int BM_IMT2000     = RILConstants.BAND_MODE_IMT2000;
+    static final int BM_7_700M2     = RILConstants.BAND_MODE_7_700M_2;
+    static final int BM_8_1800M     = RILConstants.BAND_MODE_8_1800M;
+    static final int BM_9_900M      = RILConstants.BAND_MODE_9_900M;
+    static final int BM_10_800M_2   = RILConstants.BAND_MODE_10_800M_2;
+    static final int BM_EURO_PAMR   = RILConstants.BAND_MODE_EURO_PAMR_400M;
+    static final int BM_AWS         = RILConstants.BAND_MODE_AWS;
+    static final int BM_US_2500M    = RILConstants.BAND_MODE_USA_2500M;
+    static final int BM_NUM_BAND_MODES = 19; //Total number of band modes
 
     // Used for preferred network type
     // Note NT_* substitute RILConstants.NETWORK_MODE_* above the Phone
