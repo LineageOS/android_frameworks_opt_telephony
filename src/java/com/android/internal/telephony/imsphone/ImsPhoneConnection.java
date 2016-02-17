@@ -140,8 +140,7 @@ public class ImsPhoneConnection extends Connection {
     //***** Constructors
 
     /** This is probably an MT call */
-    /*package*/
-    ImsPhoneConnection(Phone phone, ImsCall imsCall, ImsPhoneCallTracker ct,
+    public ImsPhoneConnection(Phone phone, ImsCall imsCall, ImsPhoneCallTracker ct,
            ImsPhoneCall parent, boolean isUnknown) {
         super(PhoneConstants.PHONE_TYPE_IMS);
         createWakeLock(phone.getContext());
@@ -183,8 +182,7 @@ public class ImsPhoneConnection extends Connection {
     }
 
     /** This is an MO call, created when dialing */
-    /*package*/
-    ImsPhoneConnection(Phone phone, String dialString, ImsPhoneCallTracker ct,
+    public ImsPhoneConnection(Phone phone, String dialString, ImsPhoneCallTracker ct,
             ImsPhoneCall parent, boolean isEmergency) {
         super(PhoneConstants.PHONE_TYPE_IMS);
         createWakeLock(phone.getContext());
@@ -393,8 +391,7 @@ public class ImsPhoneConnection extends Connection {
         return onDisconnect();
     }
 
-    /*package*/ boolean
-    onDisconnect() {
+    public boolean onDisconnect() {
         boolean changed = false;
 
         if (!mDisconnected) {
@@ -632,15 +629,15 @@ public class ImsPhoneConnection extends Connection {
         return !isConferenceHost();
     }
 
-    /*package*/ ImsCall getImsCall() {
+    public ImsCall getImsCall() {
         return mImsCall;
     }
 
-    /*package*/ void setImsCall(ImsCall imsCall) {
+    public void setImsCall(ImsCall imsCall) {
         mImsCall = imsCall;
     }
 
-    /*package*/ void changeParent(ImsPhoneCall parent) {
+    public void changeParent(ImsPhoneCall parent) {
         mParent = parent;
     }
 
@@ -648,7 +645,7 @@ public class ImsPhoneConnection extends Connection {
      * @return {@code true} if the {@link ImsPhoneConnection} or its media capabilities have been
      *     changed, and {@code false} otherwise.
      */
-    /*package*/ boolean update(ImsCall imsCall, ImsPhoneCall.State state) {
+    public boolean update(ImsCall imsCall, ImsPhoneCall.State state) {
         if (state == ImsPhoneCall.State.ACTIVE) {
             // If the state of the call is active, but there is a pending request to the RIL to hold
             // the call, we will skip this update.  This is really a signalling delay or failure

@@ -77,7 +77,7 @@ import com.android.internal.telephony.gsm.SuppServiceNotification;
 /**
  * {@hide}
  */
-public final class ImsPhoneCallTracker extends CallTracker {
+public class ImsPhoneCallTracker extends CallTracker {
     static final String LOG_TAG = "ImsPhoneCallTracker";
 
     private static final boolean DBG = true;
@@ -814,7 +814,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
         return mDesiredMute;
     }
 
-    /* package */ void sendDtmf(char c, Message result) {
+    public void sendDtmf(char c, Message result) {
         if (DBG) log("sendDtmf");
 
         ImsCall imscall = mForegroundCall.getImsCall();
@@ -849,8 +849,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     //***** Called from ImsPhoneConnection
 
-    /*package*/ void
-    hangup (ImsPhoneConnection conn) throws CallStateException {
+    public void hangup (ImsPhoneConnection conn) throws CallStateException {
         if (DBG) log("hangup connection");
 
         if (conn.getOwner() != this) {
@@ -863,8 +862,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
 
     //***** Called from ImsPhoneCall
 
-    /* package */ void
-    hangup (ImsPhoneCall call) throws CallStateException {
+    public void hangup (ImsPhoneCall call) throws CallStateException {
         if (DBG) log("hangup call");
 
         if (call.getConnections().size() == 0) {
