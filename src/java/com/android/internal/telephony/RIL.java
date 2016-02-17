@@ -230,6 +230,8 @@ class RILRequest {
  */
 public final class RIL extends BaseCommands implements CommandsInterface {
     static final String RILJ_LOG_TAG = "RILJ";
+    // Have a separate wakelock instance for Ack
+    static final String RILJ_ACK_WAKELOCK_NAME = "RILJ_ACK_WL";
     static final boolean RILJ_LOGD = true;
     static final boolean RILJ_LOGV = false; // STOPSHIP if true
     static final int RADIO_SCREEN_UNSET = -1;
@@ -243,6 +245,13 @@ public final class RIL extends BaseCommands implements CommandsInterface {
      */
     private static final int DEFAULT_WAKE_LOCK_TIMEOUT = 60000;
 
+    // Wake lock default timeout associated with ack
+    private static final int DEFAULT_ACK_WAKE_LOCK_TIMEOUT = 20000;
+
+    // Variables used to differentiate ack messages from request while calling clearWakeLock()
+    private static final boolean FOR_ACK_WAKELOCK = true;
+    private static final boolean FOR_WAKELOCK = false;
+
     //***** Instance Variables
 
     LocalSocket mSocket;
@@ -254,11 +263,17 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     int mDefaultDisplayState = Display.STATE_UNKNOWN;
     int mRadioScreenState = RADIO_SCREEN_UNSET;
     boolean mIsDevicePlugged = false;
-    WakeLock mWakeLock;
-    final int mWakeLockTimeout;
+    final WakeLock mWakeLock;           // Wake lock associated with request/response
+    final WakeLock mAckWakeLock;        // Wake lock associated with ack sent
+    final int mWakeLockTimeout;         // Timeout associated with request/response
+    final int mAckWakeLockTimeout;      // Timeout associated with ack sent
     // The number of wakelock requests currently active.  Don't release the lock
     // until dec'd to 0
     int mWakeLockCount;
+
+    // Variables used to identify releasing of WL on wakelock timeouts
+    volatile int mWlSequenceNum = 0;
+    volatile int mAckWlSequenceNum = 0;
 
     SparseArray<RILRequest> mRequestList = new SparseArray<RILRequest>();
 
@@ -276,6 +291,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     static final int EVENT_SEND                 = 1;
     static final int EVENT_WAKE_LOCK_TIMEOUT    = 2;
     static final int EVENT_SEND_ACK             = 3;
+    static final int EVENT_ACK_WAKE_LOCK_TIMEOUT    = 4;
 
     //***** Constants
 
@@ -285,6 +301,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     static final int RESPONSE_UNSOLICITED = 1;
     static final int RESPONSE_SOLICITED_ACK = 2;
     static final int RESPONSE_SOLICITED_ACK_EXP = 3;
+    static final int RESPONSE_UNSOLICITED_ACK_EXP = 4;
 
     static final String[] SOCKET_NAME_RIL = {"rild", "rild2", "rild3"};
 
@@ -430,7 +447,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                     // can still be handled when response finally comes.
 
                     synchronized (mRequestList) {
-                        if (clearWakeLock()) {
+                        if (msg.arg1 == mWlSequenceNum && clearWakeLock(FOR_WAKELOCK)) {
                             if (RILJ_LOGD) {
                                 int count = mRequestList.size();
                                 Rlog.d(RILJ_LOG_TAG, "WAKE_LOCK_TIMEOUT " +
@@ -441,6 +458,14 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                                             + requestToString(rr.mRequest));
                                 }
                             }
+                        }
+                    }
+                    break;
+
+                case EVENT_ACK_WAKE_LOCK_TIMEOUT:
+                    if (msg.arg1 == mAckWlSequenceNum && clearWakeLock(FOR_ACK_WAKELOCK)) {
+                        if (RILJ_LOGD) {
+                            Rlog.d(RILJ_LOG_TAG, "ACK_WAKE_LOCK_TIMEOUT");
                         }
                     }
                     break;
@@ -653,8 +678,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
         PowerManager pm = (PowerManager)context.getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, RILJ_LOG_TAG);
         mWakeLock.setReferenceCounted(false);
+        mAckWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, RILJ_ACK_WAKELOCK_NAME);
+        mAckWakeLock.setReferenceCounted(false);
         mWakeLockTimeout = SystemProperties.getInt(TelephonyProperties.PROPERTY_WAKE_LOCK_TIMEOUT,
                 DEFAULT_WAKE_LOCK_TIMEOUT);
+        mAckWakeLockTimeout = SystemProperties.getInt(
+                TelephonyProperties.PROPERTY_WAKE_LOCK_TIMEOUT, DEFAULT_ACK_WAKE_LOCK_TIMEOUT);
         mWakeLockCount = 0;
 
         mSenderThread = new HandlerThread("RILSender" + mInstanceId);
@@ -2355,14 +2384,26 @@ public final class RIL extends BaseCommands implements CommandsInterface {
      */
 
     private void
-    acquireWakeLock() {
-        synchronized (mWakeLock) {
-            mWakeLock.acquire();
-            mWakeLockCount++;
+    acquireWakeLock(boolean whichWakeLock) {
+        if (whichWakeLock == FOR_WAKELOCK) {
+            synchronized (mWakeLock) {
+                mWakeLock.acquire();
+                mWakeLockCount++;
+                mWlSequenceNum++;
 
-            mSender.removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
-            Message msg = mSender.obtainMessage(EVENT_WAKE_LOCK_TIMEOUT);
-            mSender.sendMessageDelayed(msg, mWakeLockTimeout);
+                Message msg = mSender.obtainMessage(EVENT_WAKE_LOCK_TIMEOUT);
+                msg.arg1 = mWlSequenceNum;
+                mSender.sendMessageDelayed(msg, mWakeLockTimeout);
+            }
+        } else {
+            synchronized (mAckWakeLock) {
+                mAckWakeLock.acquire();
+                mAckWlSequenceNum++;
+
+                Message msg = mSender.obtainMessage(EVENT_ACK_WAKE_LOCK_TIMEOUT);
+                msg.arg1 = mAckWlSequenceNum;
+                mSender.sendMessageDelayed(msg, mAckWakeLockTimeout);
+            }
         }
     }
 
@@ -2374,21 +2415,27 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             } else {
                 mWakeLockCount = 0;
                 mWakeLock.release();
-                mSender.removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
             }
         }
     }
 
-    // true if we had the wakelock
     private boolean
-    clearWakeLock() {
-        synchronized (mWakeLock) {
-            if (mWakeLockCount == 0 && mWakeLock.isHeld() == false) return false;
-            Rlog.d(RILJ_LOG_TAG, "NOTE: mWakeLockCount is " + mWakeLockCount + "at time of clearing");
-            mWakeLockCount = 0;
-            mWakeLock.release();
-            mSender.removeMessages(EVENT_WAKE_LOCK_TIMEOUT);
-            return true;
+    clearWakeLock(boolean whichWakeLock) {
+        if (whichWakeLock == FOR_WAKELOCK) {
+            synchronized (mWakeLock) {
+                if (mWakeLockCount == 0 && mWakeLock.isHeld() == false) return false;
+                Rlog.d(RILJ_LOG_TAG, "NOTE: mWakeLockCount is " + mWakeLockCount
+                        + "at time of clearing");
+                mWakeLockCount = 0;
+                mWakeLock.release();
+                return true;
+            }
+        } else {
+            synchronized (mAckWakeLock) {
+                if (mAckWakeLock.isHeld() == false) return false;
+                mAckWakeLock.release();
+                return true;
+            }
         }
     }
 
@@ -2404,7 +2451,7 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         msg = mSender.obtainMessage(EVENT_SEND, rr);
 
-        acquireWakeLock();
+        acquireWakeLock(FOR_WAKELOCK);
 
         msg.sendToTarget();
     }
@@ -2415,8 +2462,8 @@ public final class RIL extends BaseCommands implements CommandsInterface {
 
         type = p.readInt();
 
-        if (type == RESPONSE_UNSOLICITED) {
-            processUnsolicited (p);
+        if (type == RESPONSE_UNSOLICITED || type == RESPONSE_UNSOLICITED_ACK_EXP) {
+            processUnsolicited (p, type);
         } else if (type == RESPONSE_SOLICITED || type == RESPONSE_SOLICITED_ACK_EXP) {
             RILRequest rr = processSolicited (p, type);
             if (rr != null) {
@@ -2437,6 +2484,9 @@ public final class RIL extends BaseCommands implements CommandsInterface {
                 Rlog.w(RILJ_LOG_TAG, "Unexpected solicited ack response! sn: " + serial);
             } else {
                 decrementWakeLock();
+                if (RILJ_LOGD) {
+                    riljLog(rr.serialString() + " Ack < " + requestToString(rr.mRequest));
+                }
             }
         }
     }
@@ -2504,8 +2554,12 @@ public final class RIL extends BaseCommands implements CommandsInterface {
             Message msg;
             RILRequest response = RILRequest.obtain(RIL_RESPONSE_ACKNOWLEDGEMENT, null);
             msg = mSender.obtainMessage(EVENT_SEND_ACK, response);
-            acquireWakeLock();
+            acquireWakeLock(FOR_ACK_WAKELOCK);
             msg.sendToTarget();
+            if (RILJ_LOGD) {
+                riljLog("Response received for " + rr.serialString() + " " +
+                        requestToString(rr.mRequest) + " Sending ack to ril.cpp");
+            }
             response.release();
         }
 
@@ -2857,19 +2911,23 @@ public final class RIL extends BaseCommands implements CommandsInterface {
     }
 
     private void
-    processUnsolicited (Parcel p) {
+    processUnsolicited (Parcel p, int type) {
         int response;
         Object ret;
 
         response = p.readInt();
 
         // Follow new symantics of sending an Ack starting from RIL version 13
-        if (getRilVersion() >= 13) {
+        if (getRilVersion() >= 13 && type == RESPONSE_UNSOLICITED_ACK_EXP) {
             Message msg;
             RILRequest rr = RILRequest.obtain(RIL_RESPONSE_ACKNOWLEDGEMENT, null);
             msg = mSender.obtainMessage(EVENT_SEND_ACK, rr);
-            acquireWakeLock();
+            acquireWakeLock(FOR_ACK_WAKELOCK);
             msg.sendToTarget();
+            if (RILJ_LOGD) {
+                riljLog("Unsol response received for " + responseToString(response) +
+                        " Sending ack to ril.cpp");
+            }
             rr.release();
         }
 
