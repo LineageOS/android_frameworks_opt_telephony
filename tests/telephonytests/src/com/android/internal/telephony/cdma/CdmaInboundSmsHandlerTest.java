@@ -21,6 +21,8 @@ import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
 import android.os.UserManager;
+import android.os.RemoteException;
+import android.os.UserHandle;
 import android.provider.Telephony;
 import android.telephony.*;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -140,6 +142,11 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
                 intentArgumentCaptor.getValue().getAction());
         assertEquals("WaitingState", getCurrentState().getName());
 
+        try {
+            doReturn(new int[]{UserHandle.USER_SYSTEM}).when(mIActivityManager).getRunningUserIds();
+        } catch (RemoteException re) {
+            fail("Unexpected RemoteException: " + re.getStackTrace());
+        }
         mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
         waitForMs(50);
 
