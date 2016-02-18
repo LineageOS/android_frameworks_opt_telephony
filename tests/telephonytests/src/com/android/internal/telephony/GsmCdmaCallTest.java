@@ -25,12 +25,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
-public class GsmCdmaCallTest {
+public class GsmCdmaCallTest extends TelephonyTest {
 
-    @Mock GsmCdmaCallTracker mCallTracker;
-    @Mock GsmCdmaPhone mPhone;
     @Mock GsmCdmaConnection mConnection1;
     @Mock GsmCdmaConnection mConnection2;
     @Mock DriverCall mDriverCall;
@@ -39,15 +36,14 @@ public class GsmCdmaCallTest {
 
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
-
-        doReturn(mPhone).when(mCallTracker).getPhone();
-        mCallUnderTest = new GsmCdmaCall(mCallTracker);
+        super.setUp(getClass().getSimpleName());
+        mCallUnderTest = new GsmCdmaCall(mCT);
     }
 
     @After
     public void tearDown() throws Exception {
         mCallUnderTest = null;
+        super.tearDown();
     }
 
     @Test @SmallTest
@@ -97,13 +93,34 @@ public class GsmCdmaCallTest {
 
     @Test @SmallTest
     public void testHangup() {
-        //verify hangup calls mCallTracker.hangup
+        //verify hangup calls mCT.hangup
         try {
             mCallUnderTest.hangup();
-            verify(mCallTracker).hangup(mCallUnderTest);
+            verify(mCT).hangup(mCallUnderTest);
         } catch (Exception e) {
             fail("Exception " + e + " not expected");
         }
+    }
+
+    @Test @SmallTest
+    public void testConnectionDisconnected() {
+        //attach
+        mDriverCall.state = DriverCall.State.ACTIVE;
+        mCallUnderTest.attach(mConnection1, mDriverCall);
+        mCallUnderTest.attach(mConnection2, mDriverCall);
+
+        //both connections are active, state not change
+        mCallUnderTest.connectionDisconnected(null);
+        assertEquals(Call.State.ACTIVE, mCallUnderTest.getState());
+
+        // only one attached connection get disconnected, state not changed
+        doReturn(Call.State.DISCONNECTED).when(mConnection1).getState();
+        mCallUnderTest.connectionDisconnected(null);
+        assertEquals(Call.State.ACTIVE, mCallUnderTest.getState());
+
+        doReturn(Call.State.DISCONNECTED).when(mConnection2).getState();
+        mCallUnderTest.connectionDisconnected(null);
+        assertEquals(Call.State.DISCONNECTED, mCallUnderTest.getState());
     }
 
 }
