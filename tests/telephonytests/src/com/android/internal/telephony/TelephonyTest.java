@@ -251,6 +251,8 @@ public abstract class TelephonyTest {
                 "mCdmaSubscriptionSourceChangedRegistrants", mCdmaSSM, mRegistrantList);
         replaceInstance(SimulatedCommandsVerifier.class, "sInstance", null,
                 mSimulatedCommandsVerifier);
+        replaceInstance(Singleton.class, "mInstance", mIActivityManagerSingleton,
+                mIActivityManager);
 
         mSimulatedCommands = new SimulatedCommands();
         mContextFixture = new ContextFixture();
@@ -315,7 +317,6 @@ public abstract class TelephonyTest {
         doReturn(true).when(mImsManagerInstances).containsKey(anyInt());
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
         doReturn(mTelephonyEventLog).when(mTelephonyEventLogInstances).get(anyInt());
-        doReturn(mIActivityManager).when(mIActivityManagerSingleton).get();
         doReturn(mImsCallProfile).when(mImsCall).getCallProfile();
 
         setReady(false);

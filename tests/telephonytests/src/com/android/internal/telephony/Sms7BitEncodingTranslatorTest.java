@@ -16,25 +16,40 @@
 
 package com.android.internal.telephony;
 
+import android.os.IBinder;
+import android.os.ServiceManager;
+import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
 
 import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doReturn;
 
 public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
+
+    @Mock
+    HashMap<String, IBinder> mServiceCache;
+    @Mock
+    IBinder mBinder;
 
     @Before
     public void setUp() throws Exception {
         logd("+Setup!");
         super.setUp(getClass().getSimpleName());
+
+        doReturn(mBinder).when(mServiceCache).get(anyString());
+        replaceInstance(ServiceManager.class, "sCache", null, mServiceCache);
         logd("-Setup!");
     }
 
@@ -80,6 +95,7 @@ public class Sms7BitEncodingTranslatorTest extends TelephonyTest {
     public void testCdmaTranslate() {
 
         TelephonyManager telephonyManager = TelephonyManager.from(mContext);
+
         doReturn(PhoneConstants.PHONE_TYPE_CDMA).when(telephonyManager).getCurrentPhoneType();
 
         String s = null;
