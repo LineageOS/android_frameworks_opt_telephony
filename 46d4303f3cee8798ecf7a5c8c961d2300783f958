@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ffb9cba7_b3897127",
+        "filename": "src/java/com/android/internal/telephony/gsm/GsmMmiCode.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1123,
+      "author": {
+        "id": 13513
+      },
+      "writtenOn": "2016-02-18T02:44:07Z",
+      "side": 1,
+      "message": "So does setting mMessage null help\u0027s fixing ur crash or does skipping mPhone.onMMiDone(this) help ur crash? I am getting confused if u skip this then how will this get done. Please send a full radio and system log and if possible screen shot of ur issue. We can not get a dialog with cancel button show up and we can not get 2 of these events triggered either. A full log will help. The other thing is the device u are using is it on CDMA or is the SIM GSM?",
+      "revId": "46d4303f3cee8798ecf7a5c8c961d2300783f958",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
