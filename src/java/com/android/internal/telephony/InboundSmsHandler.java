@@ -68,6 +68,7 @@ import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import com.android.internal.R;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.HexDump;
@@ -658,17 +659,19 @@ public abstract class InboundSmsHandler extends StateMachine {
                 if (DBG) log("destination port: " + destPort);
             }
 
-            tracker = new InboundSmsTracker(sms.getPdu(), sms.getTimestampMillis(), destPort,
-                    is3gpp2(), false, sms.getDisplayOriginatingAddress());
+            tracker = TelephonyComponentFactory.getInstance().makeInboundSmsTracker(sms.getPdu(),
+                    sms.getTimestampMillis(), destPort, is3gpp2(), false,
+                    sms.getDisplayOriginatingAddress());
         } else {
             // Create a tracker for this message segment.
             SmsHeader.ConcatRef concatRef = smsHeader.concatRef;
             SmsHeader.PortAddrs portAddrs = smsHeader.portAddrs;
             int destPort = (portAddrs != null ? portAddrs.destPort : -1);
 
-            tracker = new InboundSmsTracker(sms.getPdu(), sms.getTimestampMillis(), destPort,
-                    is3gpp2(), sms.getDisplayOriginatingAddress(), concatRef.refNumber,
-                    concatRef.seqNumber, concatRef.msgCount, false);
+            tracker = TelephonyComponentFactory.getInstance().makeInboundSmsTracker(sms.getPdu(),
+                    sms.getTimestampMillis(), destPort, is3gpp2(),
+                    sms.getDisplayOriginatingAddress(), concatRef.refNumber, concatRef.seqNumber,
+                    concatRef.msgCount, false);
         }
 
         if (VDBG) log("created tracker: " + tracker);
@@ -793,8 +796,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             }
         }
 
-        if (BlockChecker.isBlocked(mContext,
-                tracker.getAddress())) {
+        if (BlockChecker.isBlocked(mContext, tracker.getAddress())) {
             deleteFromRawTable(tracker.getDeleteWhere(), tracker.getDeleteWhereArgs());
             return false;
         }
@@ -1441,5 +1443,15 @@ public abstract class InboundSmsHandler extends StateMachine {
     // Some providers send formfeeds in their messages. Convert those formfeeds to newlines.
     private static String replaceFormFeeds(String s) {
         return s == null ? "" : s.replace('\f', '\n');
+    }
+
+    @VisibleForTesting
+    public PowerManager.WakeLock getWakeLock() {
+        return mWakeLock;
+    }
+
+    @VisibleForTesting
+    public int getWakeLockTimeout() {
+        return WAKELOCK_TIMEOUT;
     }
 }

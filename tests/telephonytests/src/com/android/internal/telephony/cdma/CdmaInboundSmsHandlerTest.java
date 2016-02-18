@@ -16,27 +16,26 @@
 
 package com.android.internal.telephony.cdma;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncResult;
 import android.os.HandlerThread;
-import android.os.UserManager;
 import android.os.RemoteException;
 import android.os.UserHandle;
+import android.os.UserManager;
 import android.provider.Telephony;
-import android.telephony.*;
+import android.telephony.TelephonyManager;
+import android.test.mock.MockContentResolver;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.InboundSmsHandler;
 import com.android.internal.telephony.SmsStorageMonitor;
 import com.android.internal.telephony.TelephonyTest;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
+import com.android.internal.telephony.gsm.GsmInboundSmsHandlerTest;
 import com.android.internal.util.IState;
 import com.android.internal.util.StateMachine;
-
-import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 
 import org.junit.After;
 import org.junit.Before;
@@ -46,6 +45,16 @@ import org.mockito.Mock;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+
+import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 public class CdmaInboundSmsHandlerTest extends TelephonyTest {
     @Mock
@@ -58,6 +67,7 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
     private CdmaInboundSmsHandler mCdmaInboundSmsHandler;
     private TelephonyManager mTelephonyManager;
     private SmsEnvelope mSmsEnvelope = new SmsEnvelope();
+    private ContentValues mInboundSmsTrackerCV = new ContentValues();
 
     private class CdmaInboundSmsHandlerTestHandler extends HandlerThread {
 
@@ -92,11 +102,31 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
         field.setAccessible(true);
         field.set(mCdmaSmsMessage, mSmsEnvelope);
 
+        UserManager userManager = (UserManager) mContextFixture.getTestDouble().
+                getSystemService(Context.USER_SERVICE);
+        doReturn(true).when(userManager).isUserUnlocked();
+
+        try {
+            doReturn(new int[]{UserHandle.USER_SYSTEM}).when(mIActivityManager).getRunningUserIds();
+        } catch (RemoteException re) {
+            fail("Unexpected RemoteException: " + re.getStackTrace());
+        }
+
+        byte[] smsPdu = new byte[]{(byte)0xFF, (byte)0xFF, (byte)0xFF};
+        mSmsMessage.mWrappedSmsMessage = mCdmaSmsMessage;
+        doReturn(smsPdu).when(mCdmaSmsMessage).getPdu();
+
         mTelephonyManager = TelephonyManager.from(mContext);
         doReturn(true).when(mTelephonyManager).getSmsReceiveCapableForPhone(anyInt(), anyBoolean());
         doReturn(true).when(mSmsStorageMonitor).isStorageAvailable();
-        doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory).
-                getIDeviceIdleController();
+        doReturn(1).when(mInboundSmsTracker).getMessageCount();
+        doReturn(-1).when(mInboundSmsTracker).getDestPort();
+        doReturn(mInboundSmsTrackerCV).when(mInboundSmsTracker).getContentValues();
+
+        GsmInboundSmsHandlerTest.FakeSmsContentProvider contentProvider =
+                new GsmInboundSmsHandlerTest.FakeSmsContentProvider();
+        ((MockContentResolver)mContext.getContentResolver()).addProvider(
+                Telephony.Sms.CONTENT_URI.getAuthority(), contentProvider);
 
         new CdmaInboundSmsHandlerTestHandler(TAG).start();
         waitUntilReady();
@@ -104,6 +134,10 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
 
     @After
     public void tearDown() throws Exception {
+        if (mCdmaInboundSmsHandler.getWakeLock().isHeld()) {
+            waitForMs(mCdmaInboundSmsHandler.getWakeLockTimeout() + 50);
+        }
+        assertFalse(mCdmaInboundSmsHandler.getWakeLock().isHeld());
         mCdmaInboundSmsHandler = null;
         super.tearDown();
     }
@@ -125,16 +159,10 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
         transitionFromStartupToIdle();
 
         // send new SMS to state machine and verify that triggers SMS_DELIVER_ACTION
-        byte[] smsPdu = new byte[]{(byte)0xFF, (byte)0xFF, (byte)0xFF};
-        mSmsMessage.mWrappedSmsMessage = mCdmaSmsMessage;
-        doReturn(smsPdu).when(mCdmaSmsMessage).getPdu();
         doReturn(SmsEnvelope.TELESERVICE_WMT).when(mCdmaSmsMessage).getTeleService();
-        UserManager userManager = (UserManager) mContextFixture.getTestDouble().
-                getSystemService(Context.USER_SERVICE);
-        doReturn(true).when(userManager).isUserUnlocked();
         mCdmaInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS,
                 new AsyncResult(null, mSmsMessage, null));
-        waitForMs(50);
+        waitForMs(100);
 
         ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mContext).sendBroadcast(intentArgumentCaptor.capture());
@@ -142,13 +170,7 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
                 intentArgumentCaptor.getValue().getAction());
         assertEquals("WaitingState", getCurrentState().getName());
 
-        try {
-            doReturn(new int[]{UserHandle.USER_SYSTEM}).when(mIActivityManager).getRunningUserIds();
-        } catch (RemoteException re) {
-            fail("Unexpected RemoteException: " + re.getStackTrace());
-        }
         mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
-        waitForMs(50);
 
         intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
         verify(mContext, times(2)).sendBroadcast(intentArgumentCaptor.capture());

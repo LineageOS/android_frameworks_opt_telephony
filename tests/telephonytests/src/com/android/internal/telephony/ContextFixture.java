@@ -99,9 +99,6 @@ public class ContextFixture implements TestFixture<Context> {
 
         @Override
         public Uri insert(Uri uri, ContentValues values) {
-            if (uri.compareTo(Uri.withAppendedPath(Telephony.Sms.CONTENT_URI, "raw")) == 0) {
-                return Uri.withAppendedPath(uri, "1");
-            }
             return null;
         }
 
@@ -398,7 +395,6 @@ public class ContextFixture implements TestFixture<Context> {
         mConfiguration.locale = Locale.US;
         doReturn(mConfiguration).when(mResources).getConfiguration();
 
-        mContentResolver.addProvider(Telephony.Sms.CONTENT_URI.getAuthority(), mContentProvider);
         mContentResolver.addProvider(Settings.System.CONTENT_URI.getAuthority(), mContentProvider);
     }
 
