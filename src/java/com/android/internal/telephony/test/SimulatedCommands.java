@@ -29,7 +29,6 @@ import android.telephony.SignalStrength;
 import android.telephony.IccOpenLogicalChannelResponse;
 
 import com.android.internal.telephony.BaseCommands;
-import com.android.internal.telephony.CallForwardInfo;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
@@ -106,6 +105,8 @@ public class SimulatedCommands extends BaseCommands
     ArrayList<Message> mPausedResponses = new ArrayList<Message>();
 
     int mNextCallFailCause = CallFailCause.NORMAL_CLEARING;
+
+    private DataCallResponse mDcResponse;
 
     //***** Constructor
 
@@ -1059,11 +1060,34 @@ public class SimulatedCommands extends BaseCommands
         unimplemented(response);
     }
 
+    public void setDataCallResponse(final DataCallResponse dcResponse) {
+        mDcResponse = dcResponse;
+    }
+
     @Override
     public void setupDataCall(int radioTechnology, int profile,
             String apn, String user, String password, int authType,
             String protocol, Message result) {
-        unimplemented(result);
+        SimulatedCommandsVerifier.getInstance().setupDataCall(radioTechnology, profile, apn, user,
+                password, authType, protocol, result);
+
+        if (mDcResponse == null) {
+            mDcResponse = new DataCallResponse();
+            mDcResponse.version = 11;
+            mDcResponse.status = 0;
+            mDcResponse.suggestedRetryTime = -1;
+            mDcResponse.cid = 1;
+            mDcResponse.active = 2;
+            mDcResponse.type = "IP";
+            mDcResponse.ifname = "rmnet_data7";
+            mDcResponse.mtu = 1440;
+            mDcResponse.addresses = new String[]{"12.34.56.78"};
+            mDcResponse.dnses = new String[]{"98.76.54.32"};
+            mDcResponse.gateways = new String[]{"11.22.33.44"};
+            mDcResponse.pcscf = new String[]{};
+        }
+
+        resultSuccess(result, mDcResponse);
     }
 
     @Override

@@ -42,6 +42,7 @@ import android.content.pm.ServiceInfo;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.database.Cursor;
+import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
@@ -173,6 +174,8 @@ public class ContextFixture implements TestFixture<Context> {
                     return mWifiManager;
                 case Context.ALARM_SERVICE:
                     return mAlarmManager;
+                case Context.CONNECTIVITY_SERVICE:
+                    return mConnectivityManager;
                 default:
                     return null;
             }
@@ -362,6 +365,7 @@ public class ContextFixture implements TestFixture<Context> {
     private final CarrierConfigManager mCarrierConfigManager = mock(CarrierConfigManager.class);
     private final SubscriptionManager mSubscriptionManager = mock(SubscriptionManager.class);
     private final AlarmManager mAlarmManager = mock(AlarmManager.class);
+    private final ConnectivityManager mConnectivityManager = mock(ConnectivityManager.class);
     private final WifiManager mWifiManager = mock(WifiManager.class);
 
     private final ContentProvider mContentProvider = spy(new FakeContentProvider());

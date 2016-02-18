@@ -266,10 +266,12 @@ public abstract class TelephonyTest {
         //mTelephonyComponentFactory
         doReturn(mSST).when(mTelephonyComponentFactory)
                 .makeServiceStateTracker(any(GsmCdmaPhone.class), any(CommandsInterface.class));
+
         doReturn(mIccCardProxy).when(mTelephonyComponentFactory)
                 .makeIccCardProxy(any(Context.class), any(CommandsInterface.class), anyInt());
         doReturn(mCT).when(mTelephonyComponentFactory)
                 .makeGsmCdmaCallTracker(any(GsmCdmaPhone.class));
+
         doReturn(mIccPhoneBookIntManager).when(mTelephonyComponentFactory)
                 .makeIccPhoneBookInterfaceManager(any(Phone.class));
         doReturn(mDcTracker).when(mTelephonyComponentFactory)
@@ -291,6 +293,8 @@ public abstract class TelephonyTest {
         doReturn(mServiceState).when(mPhone).getServiceState();
         doReturn(true).when(mPhone).isPhoneTypeGsm();
         doReturn(PhoneConstants.PHONE_TYPE_GSM).when(mPhone).getPhoneType();
+        doReturn(mCT).when(mPhone).getCallTracker();
+        doReturn(mSST).when(mPhone).getServiceStateTracker();
 
         //mUiccController
         doReturn(mUiccCardApplication3gpp).when(mUiccController).getUiccCardApplication(anyInt(),
@@ -299,6 +303,22 @@ public abstract class TelephonyTest {
                 eq(UiccController.APP_FAM_3GPP2));
         doReturn(mUiccCardApplicationIms).when(mUiccController).getUiccCardApplication(anyInt(),
                 eq(UiccController.APP_FAM_IMS));
+
+        doAnswer(new Answer<IccRecords>() {
+            public IccRecords answer(InvocationOnMock invocation) {
+                switch ((Integer) invocation.getArguments()[1]) {
+                    case UiccController.APP_FAM_3GPP:
+                        return mSimRecords;
+                    case UiccController.APP_FAM_3GPP2:
+                        return mRuimRecords;
+                    case UiccController.APP_FAM_IMS:
+                        return mIsimUiccRecords;
+                    default:
+                        logd("Unrecognized family " + invocation.getArguments()[1]);
+                        return null;
+                }
+            }
+        }).when(mUiccController).getIccRecords(anyInt(), anyInt());
 
         //UiccCardApplication
         doReturn(mSimRecords).when(mUiccCardApplication3gpp).getIccRecords();
@@ -313,6 +333,9 @@ public abstract class TelephonyTest {
             }
         }).when(mIccCardProxy).getIccRecords();
 
+        //Misc
+        doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS).when(mServiceState).
+                getRilDataRadioTechnology();
         doReturn(mPhone).when(mCT).getPhone();
         doReturn(true).when(mImsManagerInstances).containsKey(anyInt());
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
