@@ -48,6 +48,7 @@ import com.android.internal.telephony.uicc.IccIoResult;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SimulatedCommands extends BaseCommands
         implements CommandsInterface, SimulatedRadioControl {
@@ -119,7 +120,6 @@ public class SimulatedCommands extends BaseCommands
     private DataCallResponse mDcResponse;
 
     //***** Constructor
-
     public
     SimulatedCommands() {
         super(null);  // Don't log statistics
@@ -954,12 +954,20 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void getVoiceRegistrationState(Message result) {
+        mGetVoiceRegistrationStateCallCount.incrementAndGet();
         String ret[] = new String[14];
 
         ret[0] = Integer.toString(mVoiceRegState);
         ret[3] = Integer.toString(mVoiceRadioTech);
 
         resultSuccess(result, ret);
+    }
+
+    private final AtomicInteger mGetVoiceRegistrationStateCallCount = new AtomicInteger(0);
+
+    @VisibleForTesting
+    public int getGetVoiceRegistrationStateCallCount() {
+        return mGetVoiceRegistrationStateCallCount.get();
     }
 
     public void setDataRadioTech(int radioTech) {
@@ -972,12 +980,20 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getDataRegistrationState (Message result) {
+        mGetDataRegistrationStateCallCount.incrementAndGet();
         String ret[] = new String[11];
 
         ret[0] = Integer.toString(mDataRegState);
         ret[3] = Integer.toString(mDataRadioTech);
 
         resultSuccess(result, ret);
+    }
+
+    private final AtomicInteger mGetDataRegistrationStateCallCount = new AtomicInteger(0);
+
+    @VisibleForTesting
+    public int getGetDataRegistrationStateCallCount() {
+        return mGetDataRegistrationStateCallCount.get();
     }
 
     /**
@@ -988,6 +1004,7 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void getOperator(Message result) {
+        mGetOperatorCallCount.incrementAndGet();
         String[] ret = new String[3];
 
         ret[0] = FAKE_LONG_NAME;
@@ -995,6 +1012,14 @@ public class SimulatedCommands extends BaseCommands
         ret[2] = FAKE_MCC_MNC;
 
         resultSuccess(result, ret);
+    }
+
+    private final AtomicInteger mGetOperatorCallCount = new AtomicInteger(0);
+
+    @VisibleForTesting
+    public int getGetOperatorCallCount() {
+        final int count = mGetOperatorCallCount.get();
+        return mGetOperatorCallCount.get();
     }
 
     /**
@@ -1337,10 +1362,18 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void getNetworkSelectionMode(Message result) {
         SimulatedCommandsVerifier.getInstance().getNetworkSelectionMode(result);
+        getNetworkSelectionModeCallCount.incrementAndGet();
         int ret[] = new int[1];
 
         ret[0] = 0;
         resultSuccess(result, ret);
+    }
+
+    private final AtomicInteger getNetworkSelectionModeCallCount = new AtomicInteger(0);
+
+    @VisibleForTesting
+    public int getGetNetworkSelectionModeCallCount() {
+        return getNetworkSelectionModeCallCount.get();
     }
 
     /**

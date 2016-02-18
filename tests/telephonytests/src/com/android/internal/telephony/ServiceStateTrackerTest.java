@@ -142,6 +142,32 @@ public class ServiceStateTrackerTest extends TelephonyTest {
 
     @Test
     @MediumTest
+    public void testNoRilTrafficAfterSetRadioPower() {
+        sst.setRadioPower(true);
+        final int getOperatorCallCount = mSimulatedCommands.getGetOperatorCallCount();
+        final int getDataRegistrationStateCallCount =
+                mSimulatedCommands.getGetDataRegistrationStateCallCount();
+        final int getVoiceRegistrationStateCallCount =
+                mSimulatedCommands.getGetVoiceRegistrationStateCallCount();
+        final int getNetworkSelectionModeCallCount =
+                mSimulatedCommands.getGetNetworkSelectionModeCallCount();
+        sst.setRadioPower(false);
+
+        waitForMs(500);
+        sst.pollState();
+        waitForMs(250);
+
+        assertEquals(getOperatorCallCount, mSimulatedCommands.getGetOperatorCallCount());
+        assertEquals(getDataRegistrationStateCallCount,
+                mSimulatedCommands.getGetDataRegistrationStateCallCount());
+        assertEquals(getVoiceRegistrationStateCallCount,
+                mSimulatedCommands.getGetVoiceRegistrationStateCallCount());
+        assertEquals(getNetworkSelectionModeCallCount,
+                mSimulatedCommands.getGetNetworkSelectionModeCallCount());
+    }
+
+    @Test
+    @MediumTest
     public void testSpnUpdateShowPlmnOnly() {
         doReturn(0x02).when(mSimRecords).getDisplayRule(anyString());
         doReturn(IccCardApplicationStatus.AppState.APPSTATE_UNKNOWN).
