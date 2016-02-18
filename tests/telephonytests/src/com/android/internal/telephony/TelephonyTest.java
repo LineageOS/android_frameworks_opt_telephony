@@ -29,9 +29,14 @@ import android.util.Log;
 import android.util.Singleton;
 import android.util.SparseArray;
 
+import com.android.ims.ImsCall;
+import com.android.ims.ImsCallProfile;
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
+import com.android.internal.telephony.imsphone.ImsPhone;
+import com.android.internal.telephony.imsphone.ImsPhoneCall;
+import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardProxy;
@@ -65,9 +70,13 @@ public abstract class TelephonyTest {
     @Mock
     protected GsmCdmaPhone mPhone;
     @Mock
+    protected ImsPhone mImsPhone;
+    @Mock
     protected ServiceStateTracker mSST;
     @Mock
     protected GsmCdmaCallTracker mCT;
+    @Mock
+    protected ImsPhoneCallTracker mImsCT;
     @Mock
     protected UiccController mUiccController;
     @Mock
@@ -90,6 +99,10 @@ public abstract class TelephonyTest {
     protected DcTracker mDcTracker;
     @Mock
     protected GsmCdmaCall mGsmCdmaCall;
+    @Mock
+    protected ImsCall mImsCall;
+    @Mock
+    protected ImsCallProfile mImsCallProfile;
     @Mock
     protected SubscriptionController mSubscriptionController;
     @Mock
@@ -270,6 +283,7 @@ public abstract class TelephonyTest {
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();
+        doReturn(mContext).when(mImsPhone).getContext();
         doReturn(true).when(mPhone).getUnitTestMode();
         doReturn(mIccCardProxy).when(mPhone).getIccCard();
         doReturn(mServiceState).when(mPhone).getServiceState();
@@ -302,6 +316,7 @@ public abstract class TelephonyTest {
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
         doReturn(mTelephonyEventLog).when(mTelephonyEventLogInstances).get(anyInt());
         doReturn(mIActivityManager).when(mIActivityManagerSingleton).get();
+        doReturn(mImsCallProfile).when(mImsCall).getCallProfile();
 
         setReady(false);
     }

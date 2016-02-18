@@ -66,8 +66,7 @@ public class ImsPhoneCall extends Call {
         mCallContext = CONTEXT_UNKNOWN;
     }
 
-    /*package*/
-    ImsPhoneCall(ImsPhoneCallTracker owner, String context) {
+    public ImsPhoneCall(ImsPhoneCallTracker owner, String context) {
         mOwner = owner;
         mCallContext = context;
     }
@@ -151,8 +150,7 @@ public class ImsPhoneCall extends Call {
 
     //***** Called from ImsPhoneConnection
 
-    /*package*/ void
-    attach(Connection conn) {
+    public void attach(Connection conn) {
         if (VDBG) {
             Rlog.v(LOG_TAG, "attach : " + mCallContext + " conn = " + conn);
         }
@@ -162,8 +160,7 @@ public class ImsPhoneCall extends Call {
         mOwner.logState();
     }
 
-    /*package*/ void
-    attach(Connection conn, State state) {
+    public void attach(Connection conn, State state) {
         if (VDBG) {
             Rlog.v(LOG_TAG, "attach : " + mCallContext + " state = " +
                     state.toString());
@@ -172,16 +169,14 @@ public class ImsPhoneCall extends Call {
         mState = state;
     }
 
-    /*package*/ void
-    attachFake(Connection conn, State state) {
+    public void attachFake(Connection conn, State state) {
         attach(conn, state);
     }
 
     /**
      * Called by ImsPhoneConnection when it has disconnected
      */
-    boolean
-    connectionDisconnected(ImsPhoneConnection conn) {
+    public boolean connectionDisconnected(ImsPhoneConnection conn) {
         if (mState != State.DISCONNECTED) {
             /* If only disconnected connections remain, we are disconnected*/
 
@@ -203,8 +198,7 @@ public class ImsPhoneCall extends Call {
         return false;
     }
 
-    /*package*/ void
-    detach(ImsPhoneConnection conn) {
+    public void detach(ImsPhoneConnection conn) {
         if (VDBG) {
             Rlog.v(LOG_TAG, "detach : " + mCallContext + " conn = " + conn);
         }
@@ -305,8 +299,7 @@ public class ImsPhoneCall extends Call {
                 ? true : false;
     }
 
-    /*package*/ boolean
-    update (ImsPhoneConnection conn, ImsCall imsCall, State state) {
+    public boolean update (ImsPhoneConnection conn, ImsCall imsCall, State state) {
         State newState = state;
         boolean changed = false;
 
@@ -342,7 +335,7 @@ public class ImsPhoneCall extends Call {
         return (ImsPhoneConnection) getEarliestConnection();
     }
 
-    void switchWith(ImsPhoneCall that) {
+    public void switchWith(ImsPhoneCall that) {
         if (VDBG) {
             Rlog.v(LOG_TAG, "switchWith : switchCall = " + this + " withCall = " + that);
         }
