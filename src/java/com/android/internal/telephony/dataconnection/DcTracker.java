@@ -2447,7 +2447,7 @@ public class DcTracker extends Handler {
         return null;
     }
 
-    void setEnabled(int id, boolean enable) {
+    public void setEnabled(int id, boolean enable) {
         Message msg = obtainMessage(DctConstants.EVENT_ENABLE_NEW_APN);
         msg.arg1 = id;
         msg.arg2 = (enable ? DctConstants.ENABLED : DctConstants.DISABLED);
@@ -2716,7 +2716,11 @@ public class DcTracker extends Handler {
 
                 // everything is setup
                 if(TextUtils.equals(apnContext.getApnType(),PhoneConstants.APN_TYPE_DEFAULT)) {
-                    SystemProperties.set(PUPPET_MASTER_RADIO_STRESS_TEST, "true");
+                    try {
+                        SystemProperties.set(PUPPET_MASTER_RADIO_STRESS_TEST, "true");
+                    } catch (RuntimeException ex) {
+                        log("Failed to set PUPPET_MASTER_RADIO_STRESS_TEST to true");
+                    }
                     if (mCanSetPreferApn && mPreferredApn == null) {
                         if (DBG) log("onDataSetupComplete: PREFERRED APN is null");
                         mPreferredApn = apn;
@@ -2725,7 +2729,11 @@ public class DcTracker extends Handler {
                         }
                     }
                 } else {
-                    SystemProperties.set(PUPPET_MASTER_RADIO_STRESS_TEST, "false");
+                    try {
+                        SystemProperties.set(PUPPET_MASTER_RADIO_STRESS_TEST, "false");
+                    } catch (RuntimeException ex) {
+                        log("Failed to set PUPPET_MASTER_RADIO_STRESS_TEST to false");
+                    }
                 }
 
                 // A connection is setup
@@ -2913,7 +2921,11 @@ public class DcTracker extends Handler {
 
         // If APN is still enabled, try to bring it back up automatically
         if (mAttached.get() && apnContext.isReady() && retryAfterDisconnected(apnContext)) {
-            SystemProperties.set(PUPPET_MASTER_RADIO_STRESS_TEST, "false");
+            try {
+                SystemProperties.set(PUPPET_MASTER_RADIO_STRESS_TEST, "false");
+            } catch (RuntimeException ex) {
+                log("Failed to set PUPPET_MASTER_RADIO_STRESS_TEST to false");
+            }
             // Wait a bit before trying the next APN, so that
             // we're not tying up the RIL command channel.
             // This also helps in any external dependency to turn off the context.
@@ -3337,7 +3349,7 @@ public class DcTracker extends Handler {
                         }
                     }
                 } else if (DBG) {
-                    log("buildWaitingApns: couldn't handle requesedApnType="
+                    log("buildWaitingApns: couldn't handle requested ApnType="
                             + requestedApnType);
                 }
             }
