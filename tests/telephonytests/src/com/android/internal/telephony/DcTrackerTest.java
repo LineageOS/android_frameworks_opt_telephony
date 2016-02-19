@@ -24,7 +24,9 @@ import android.database.MatrixCursor;
 import android.net.LinkProperties;
 import android.net.Uri;
 import android.os.HandlerThread;
+import android.os.IBinder;
 import android.os.Message;
+import android.os.ServiceManager;
 import android.provider.Telephony;
 import android.telephony.ServiceState;
 import android.test.mock.MockContentProvider;
@@ -38,8 +40,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,6 +54,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
@@ -75,6 +80,14 @@ public class DcTrackerTest extends TelephonyTest {
     private final String FAKE_GATEWAY = "11.22.33.44";
     private final String FAKE_DNS = "55.66.77.88";
     private final String FAKE_ADDRESS = "99.88.77.66";
+
+    @Mock
+    ISub mIsub;
+    @Mock
+    HashMap<String, IBinder> mServiceCache;
+    @Mock
+    IBinder mBinder;
+
 
     private DcTracker mDct;
 
@@ -265,6 +278,11 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(true).when(mSimRecords).getRecordsLoaded();
         doReturn(PhoneConstants.State.IDLE).when(mCT).getState();
         doReturn(true).when(mSST).getDesiredPowerState();
+
+        doReturn(1).when(mIsub).getDefaultDataSubId();
+        doReturn(mIsub).when(mBinder).queryLocalInterface(anyString());
+        doReturn(mBinder).when(mServiceCache).get(anyString());
+        replaceInstance(ServiceManager.class, "sCache", null, mServiceCache);
 
         mAlarmManager = (AlarmManager) mContextFixture.getTestDouble().
                 getSystemService(Context.ALARM_SERVICE);
