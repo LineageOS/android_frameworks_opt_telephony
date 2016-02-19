@@ -56,6 +56,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -137,7 +140,8 @@ public abstract class TelephonyTest {
     protected Singleton<IActivityManager> mIActivityManagerSingleton;
     @Mock
     protected IActivityManager mIActivityManager;
-
+    @Mock
+    protected InboundSmsTracker mInboundSmsTracker;
 
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
@@ -272,14 +276,20 @@ public abstract class TelephonyTest {
                 .makeIccPhoneBookInterfaceManager(any(Phone.class));
         doReturn(mDcTracker).when(mTelephonyComponentFactory)
                 .makeDcTracker(any(Phone.class));
-        doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory)
-                .getIDeviceIdleController();
         doReturn(mWspTypeDecoder).when(mTelephonyComponentFactory)
                 .makeWspTypeDecoder(any(byte[].class));
+        doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(any(byte[].class), anyLong(), anyInt(), anyBoolean(),
+                        anyBoolean(), anyString());
+        doReturn(mInboundSmsTracker).when(mTelephonyComponentFactory)
+                .makeInboundSmsTracker(any(byte[].class), anyLong(), anyInt(), anyBoolean(),
+                        anyString(), anyInt(), anyInt(), anyInt(), anyBoolean());
         doReturn(mCdmaSSM).when(mTelephonyComponentFactory)
                 .getCdmaSubscriptionSourceManagerInstance(any(Context.class),
                         any(CommandsInterface.class), any(Handler.class),
                         anyInt(), any(Object.class));
+        doReturn(mIDeviceIdleController).when(mTelephonyComponentFactory)
+                .getIDeviceIdleController();
 
         //mPhone
         doReturn(mContext).when(mPhone).getContext();

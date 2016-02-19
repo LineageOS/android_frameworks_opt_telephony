@@ -83,6 +83,24 @@ public class TelephonyComponentFactory {
         return new WspTypeDecoder(pdu);
     }
 
+    /**
+     * Create a tracker for a single-part SMS.
+     */
+    public InboundSmsTracker makeInboundSmsTracker(byte[] pdu, long timestamp, int destPort,
+            boolean is3gpp2, boolean is3gpp2WapPdu, String address) {
+        return new InboundSmsTracker(pdu, timestamp, destPort, is3gpp2, is3gpp2WapPdu, address);
+    }
+
+    /**
+     * Create a tracker for a multi-part SMS.
+     */
+    public InboundSmsTracker makeInboundSmsTracker(byte[] pdu, long timestamp, int destPort,
+            boolean is3gpp2, String address, int referenceNumber, int sequenceNumber,
+            int messageCount, boolean is3gpp2WapPdu) {
+        return new InboundSmsTracker(pdu, timestamp, destPort, is3gpp2, address, referenceNumber,
+                sequenceNumber, messageCount, is3gpp2WapPdu);
+    }
+
     public CdmaSubscriptionSourceManager
     getCdmaSubscriptionSourceManagerInstance(Context context, CommandsInterface ci, Handler h,
                                              int what, Object obj) {

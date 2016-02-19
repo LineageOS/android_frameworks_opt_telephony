@@ -32,6 +32,7 @@ import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.SmsConstants;
 import com.android.internal.telephony.SmsMessageBase;
 import com.android.internal.telephony.SmsStorageMonitor;
+import com.android.internal.telephony.TelephonyComponentFactory;
 import com.android.internal.telephony.TelephonyProperties;
 import com.android.internal.telephony.WspTypeDecoder;
 import com.android.internal.telephony.cdma.sms.SmsEnvelope;
@@ -299,8 +300,9 @@ public class CdmaInboundSmsHandler extends InboundSmsHandler {
         byte[] userData = new byte[pdu.length - index];
         System.arraycopy(pdu, index, userData, 0, pdu.length - index);
 
-        InboundSmsTracker tracker = new InboundSmsTracker(userData, timestamp, destinationPort,
-                true, address, referenceNumber, segment, totalSegments, true);
+        InboundSmsTracker tracker = TelephonyComponentFactory.getInstance().makeInboundSmsTracker(
+                userData, timestamp, destinationPort, true, address, referenceNumber, segment,
+                totalSegments, true);
 
         return addTrackerToRawTableAndSendMessage(tracker);
     }
