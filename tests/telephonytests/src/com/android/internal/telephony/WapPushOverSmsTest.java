@@ -16,6 +16,15 @@
 
 package com.android.internal.telephony;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import android.app.AppOpsManager;
 import android.content.BroadcastReceiver;
 import android.content.Intent;
@@ -24,14 +33,10 @@ import android.os.UserHandle;
 import android.provider.Telephony;
 import android.test.suitebuilder.annotation.SmallTest;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.MockitoAnnotations;
 
 public class WapPushOverSmsTest extends TelephonyTest {
     private WapPushOverSms mWapPushOverSmsUT;
@@ -94,5 +99,36 @@ public class WapPushOverSmsTest extends TelephonyTest {
 
         assertEquals(mWspTypeDecoder.getContentParameters(),
                 intent.getSerializableExtra("contentTypeParameters"));
+    }
+
+    @Test @SmallTest
+    public void testDispatchWapPduFromBlockedNumber_noIntentsDispatched() {
+        mFakeBlockedNumberContentProvider.mBlockedNumbers.add("16178269168");
+
+        doReturn(true).when(mWspTypeDecoder).decodeUintvarInteger(anyInt());
+        doReturn(true).when(mWspTypeDecoder).decodeContentType(anyInt());
+        doReturn((long) 2).when(mWspTypeDecoder).getValue32();
+        doReturn(2).when(mWspTypeDecoder).getDecodedDataLength();
+        doReturn(WspTypeDecoder.CONTENT_TYPE_B_PUSH_CO).when(mWspTypeDecoder).getValueString();
+
+        byte pdu[] = {1, 6, 0, 97, 112, 112, 108, 105, 99, 97, 116, 105, 111, 110, 47,
+                118, 110, 100, 46, 119, 97, 112, 46, 109, 109, 115, 45, 109, 101, 115, 115,
+                97, 103, 101, 0, -116, -126, -104, 77, 109, 115, 84, 114, 97, 110, 115, 97,
+                99, 116, 105, 111, 110, 73, 68, 0, -115, 18, -119, 8, -128, 49, 54, 49, 55,
+                56, 50, 54, 57, 49, 54, 56, 47, 84, 89, 80, 69, 61, 80, 76, 77, 78, 0, -118,
+                -128, -114, 2, 3, -24, -120, 3, -127, 3, 3, -12, -128, -106, 84, 101, 115,
+                116, 32, 77, 109, 115, 32, 83, 117, 98, 106, 101, 99, 116, 0, -125, 104, 116,
+                116, 112, 58, 47, 47, 119, 119, 119, 46, 103, 111, 111, 103, 108, 101, 46, 99,
+                111, 109, 47, 115, 97, 100, 102, 100, 100, 0};
+
+        assertEquals(Telephony.Sms.Intents.RESULT_SMS_HANDLED,
+                mWapPushOverSmsUT.dispatchWapPdu(pdu, null, mInboundSmsHandler));
+        verify(mInboundSmsHandler, never()).dispatchIntent(
+                any(Intent.class),
+                any(String.class),
+                anyInt(),
+                any(Bundle.class),
+                any(BroadcastReceiver.class),
+                any(UserHandle.class));
     }
 }

@@ -16,15 +16,30 @@
 
 package com.android.internal.telephony;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.eq;
+
 import android.app.ActivityManagerNative;
 import android.app.IActivityManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IDeviceIdleController;
 import android.os.RegistrantList;
+import android.provider.BlockedNumberContract;
+import android.provider.Telephony;
 import android.telephony.ServiceState;
 import android.telephony.TelephonyManager;
+import android.test.mock.MockContentProvider;
+import android.test.mock.MockContentResolver;
 import android.util.Log;
 import android.util.Singleton;
 import android.util.SparseArray;
@@ -35,37 +50,28 @@ import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
 import com.android.internal.telephony.imsphone.ImsPhone;
-import com.android.internal.telephony.imsphone.ImsPhoneCall;
 import com.android.internal.telephony.imsphone.ImsPhoneCallTracker;
 import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.test.SimulatedCommandsVerifier;
 import com.android.internal.telephony.uicc.IccCardProxy;
-import com.android.internal.telephony.uicc.IsimUiccRecords;
 import com.android.internal.telephony.uicc.IccRecords;
+import com.android.internal.telephony.uicc.IsimUiccRecords;
 import com.android.internal.telephony.uicc.RuimRecords;
 import com.android.internal.telephony.uicc.SIMRecords;
 import com.android.internal.telephony.uicc.UiccCardApplication;
 import com.android.internal.telephony.uicc.UiccController;
 
-
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
-
-import static org.mockito.Matchers.anyBoolean;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.eq;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
+import java.util.Set;
 
 public abstract class TelephonyTest {
     protected static String TAG;
@@ -146,6 +152,7 @@ public abstract class TelephonyTest {
     protected SimulatedCommands mSimulatedCommands;
     protected ContextFixture mContextFixture;
     protected Context mContext;
+    protected FakeBlockedNumberContentProvider mFakeBlockedNumberContentProvider;
     private Object mLock = new Object();
     private boolean mReady;
 
@@ -261,6 +268,9 @@ public abstract class TelephonyTest {
         mSimulatedCommands = new SimulatedCommands();
         mContextFixture = new ContextFixture();
         mContext = mContextFixture.getTestDouble();
+        mFakeBlockedNumberContentProvider = new FakeBlockedNumberContentProvider();
+        ((MockContentResolver)mContext.getContentResolver()).addProvider(
+                BlockedNumberContract.AUTHORITY, mFakeBlockedNumberContentProvider);
         mPhone.mCi = mSimulatedCommands;
         mCT.mCi = mSimulatedCommands;
 
@@ -365,5 +375,19 @@ public abstract class TelephonyTest {
 
     protected static void logd(String s) {
         Log.d(TAG, s);
+    }
+
+    public static class FakeBlockedNumberContentProvider extends MockContentProvider {
+        public Set<String> mBlockedNumbers = new HashSet<>();
+
+        @Override
+        public Bundle call(String method, String arg, Bundle extras) {
+            assertEquals(BlockedNumberContract.SystemContract.METHOD_SHOULD_SYSTEM_BLOCK_NUMBER,
+                    method);
+            Bundle bundle = new Bundle();
+            bundle.putBoolean(
+                    BlockedNumberContract.RES_NUMBER_IS_BLOCKED, mBlockedNumbers.contains(arg));
+            return bundle;
+        }
     }
 }
