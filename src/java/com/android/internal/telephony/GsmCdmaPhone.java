@@ -1061,7 +1061,8 @@ public class GsmCdmaPhone extends Phone {
 
         boolean imsUseEnabled = isImsUseEnabled()
                  && imsPhone != null
-                 && (imsPhone.isVolteEnabled() || imsPhone.isWifiCallingEnabled())
+                 && (imsPhone.isVolteEnabled() || imsPhone.isWifiCallingEnabled() ||
+                 (imsPhone.isVideoEnabled() && VideoProfile.isVideo(videoState)))
                  && (imsPhone.getServiceState().getState() == ServiceState.STATE_IN_SERVICE);
 
         boolean useImsForEmergency = imsPhone != null
@@ -1085,6 +1086,8 @@ public class GsmCdmaPhone extends Phone {
                     + ((imsPhone != null) ? imsPhone.isVolteEnabled() : "N/A")
                     + ", imsPhone.isVowifiEnabled()="
                     + ((imsPhone != null) ? imsPhone.isWifiCallingEnabled() : "N/A")
+                    + ", imsPhone.isVideoEnabled()="
+                    + ((imsPhone != null) ? imsPhone.isVideoEnabled() : "N/A")
                     + ", imsPhone.getServiceState().getState()="
                     + ((imsPhone != null) ? imsPhone.getServiceState().getState() : "N/A"));
         }
