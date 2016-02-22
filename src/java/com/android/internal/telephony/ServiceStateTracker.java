@@ -185,6 +185,7 @@ public abstract class ServiceStateTracker extends Handler {
     protected static final int EVENT_IMS_STATE_CHANGED                 = 46;
     protected static final int EVENT_IMS_STATE_DONE                    = 47;
     protected static final int EVENT_IMS_CAPABILITY_CHANGED            = 48;
+    protected static final int EVENT_RADIO_POWER_OFF_DONE                  = 49;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -629,6 +630,16 @@ public abstract class ServiceStateTracker extends Handler {
                 if (ar.exception == null) {
                     int[] responseArray = (int[])ar.result;
                     mImsRegistered = (responseArray[0] == 1) ? true : false;
+                }
+                break;
+
+            case EVENT_RADIO_POWER_OFF_DONE:
+                if (DBG) log("EVENT_RADIO_POWER_OFF_DONE");
+                if (mDeviceShuttingDown && mCi.getRadioState().isAvailable()) {
+                    // during shutdown the modem may not send radio state changed event
+                    // as a result of radio power request
+                    // Hence, issuing shut down regardless of radio power response
+                    mCi.requestShutdown(null);
                 }
                 break;
 
