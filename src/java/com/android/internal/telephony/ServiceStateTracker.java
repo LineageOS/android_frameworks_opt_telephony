@@ -209,6 +209,7 @@ public class ServiceStateTracker extends Handler {
     protected static final int EVENT_IMS_CAPABILITY_CHANGED            = 48;
     protected static final int EVENT_ALL_DATA_DISCONNECTED             = 49;
     protected static final int EVENT_PHONE_TYPE_SWITCHED               = 50;
+    protected static final int EVENT_RADIO_POWER_OFF_DONE              = 51;
 
     protected static final String TIMEZONE_PROPERTY = "persist.sys.timezone";
 
@@ -911,6 +912,15 @@ public class ServiceStateTracker extends Handler {
                 }
                 break;
 
+            case EVENT_RADIO_POWER_OFF_DONE:
+                if (DBG) log("EVENT_RADIO_POWER_OFF_DONE");
+                if (mDeviceShuttingDown && mCi.getRadioState().isAvailable()) {
+                    // during shutdown the modem may not send radio state changed event
+                    // as a result of radio power request
+                    // Hence, issuing shut down regardless of radio power response
+                    mCi.requestShutdown(null);
+                }
+                break;
             //GSM
             case EVENT_RADIO_AVAILABLE:
                 //this is unnecessary
@@ -2309,8 +2319,6 @@ public class ServiceStateTracker extends Handler {
                 DcTracker dcTracker = mPhone.mDcTracker;
                 powerOffRadioSafely(dcTracker);
             }
-        } else if (mDeviceShuttingDown && mCi.getRadioState().isAvailable()) {
-            mCi.requestShutdown(null);
         }
     }
 
@@ -4347,7 +4355,7 @@ public class ServiceStateTracker extends Handler {
             mPhone.mCT.mForegroundCall.hangupIfAlive();
         }
 
-        mCi.setRadioPower(false, null);
+        mCi.setRadioPower(false, obtainMessage(EVENT_RADIO_POWER_OFF_DONE));
 
     }
 
