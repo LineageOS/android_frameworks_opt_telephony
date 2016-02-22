@@ -35,6 +35,7 @@ import android.net.LinkProperties;
 import android.net.NetworkCapabilities;
 import android.net.NetworkConfig;
 import android.net.NetworkInfo;
+import android.net.NetworkRequest;
 import android.net.NetworkUtils;
 import android.net.ProxyInfo;
 import android.net.TrafficStats;
@@ -45,6 +46,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.Message;
 import android.os.RegistrantList;
 import android.os.ServiceManager;
@@ -65,10 +67,12 @@ import android.text.TextUtils;
 import android.util.EventLog;
 import android.util.LocalLog;
 import android.util.Pair;
+import android.util.SparseArray;
 import android.view.WindowManager;
 import android.telephony.Rlog;
 
 import com.android.internal.R;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.GsmCdmaPhone;
 import com.android.internal.telephony.Phone;
 import com.android.internal.telephony.DctConstants;
@@ -533,6 +537,8 @@ public class DcTracker extends Handler {
     private final ConcurrentHashMap<String, ApnContext> mApnContexts =
             new ConcurrentHashMap<String, ApnContext>();
 
+    private final SparseArray<ApnContext> mApnContextsById = new SparseArray<ApnContext>();
+
     private int mDisconnectPendingCount = 0;
 
     /**
@@ -643,6 +649,16 @@ public class DcTracker extends Handler {
         mProvisionActionName = "com.android.internal.telephony.PROVISION" + phone.getPhoneId();
     }
 
+    @VisibleForTesting
+    public DcTracker() {
+        mAlarmManager = null;
+        mCm = null;
+        mPhone = null;
+        mUiccController = null;
+        mDataConnectionTracker = null;
+        mProvisionActionName = null;
+    }
+
     public void registerServiceStateTrackerEvents() {
         mPhone.getServiceStateTracker().registerForDataConnectionAttached(this,
                 DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null);
@@ -721,6 +737,7 @@ public class DcTracker extends Handler {
 
         mPhone.getContext().getContentResolver().unregisterContentObserver(mApnObserver);
         mApnContexts.clear();
+        mApnContextsById.clear();
         mPrioritySortedApnContexts.clear();
 
         destroyDataConnections();
@@ -815,20 +832,18 @@ public class DcTracker extends Handler {
         mPhone.notifyDataActivity();
     }
 
-    void incApnRefCount(String name, LocalLog log) {
-        ApnContext apnContext = mApnContexts.get(name);
-        log.log("DcTracker.incApnRefCount on " + name + " found " + apnContext);
-        if (apnContext != null) {
-            apnContext.incRefCount(log);
-        }
+    public void requestNetwork(NetworkRequest networkRequest, LocalLog log) {
+        final int apnId = ApnContext.apnIdForNetworkRequest(networkRequest);
+        final ApnContext apnContext = mApnContextsById.get(apnId);
+        log.log("DcTracker.requestNetwork for " + networkRequest + " found " + apnContext);
+        if (apnContext != null) apnContext.incRefCount(log);
     }
 
-    void decApnRefCount(String name, LocalLog log) {
-        ApnContext apnContext = mApnContexts.get(name);
-        log.log("DcTracker.decApnRefCount on " + name + " found " + apnContext);
-        if (apnContext != null) {
-            apnContext.decRefCount(log);
-        }
+    public void releaseNetwork(NetworkRequest networkRequest, LocalLog log) {
+        final int apnId = ApnContext.apnIdForNetworkRequest(networkRequest);
+        final ApnContext apnContext = mApnContextsById.get(apnId);
+        log.log("DcTracker.releaseNetwork for " + networkRequest + " found " + apnContext);
+        if (apnContext != null) apnContext.decRefCount(log);
     }
 
     public boolean isApnSupported(String name) {
@@ -960,64 +975,9 @@ public class DcTracker extends Handler {
     private ApnContext addApnContext(String type, NetworkConfig networkConfig) {
         ApnContext apnContext = new ApnContext(mPhone, type, LOG_TAG, networkConfig, this);
         mApnContexts.put(type, apnContext);
+        mApnContextsById.put(ApnContext.apnIdForApnName(type), apnContext);
         mPrioritySortedApnContexts.add(apnContext);
         return apnContext;
-    }
-
-    // TODO move to ApnContext or ApnSetting?  Better yet, converge on a single
-    // representation and deprecate the conversions..
-    int apnTypeToId(String type) {
-        if (TextUtils.equals(type, PhoneConstants.APN_TYPE_DEFAULT)) {
-            return DctConstants.APN_DEFAULT_ID;
-        } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_MMS)) {
-            return DctConstants.APN_MMS_ID;
-        } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_SUPL)) {
-            return DctConstants.APN_SUPL_ID;
-        } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_DUN)) {
-            return DctConstants.APN_DUN_ID;
-        } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_HIPRI)) {
-            return DctConstants.APN_HIPRI_ID;
-        } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_IMS)) {
-            return DctConstants.APN_IMS_ID;
-        } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_FOTA)) {
-            return DctConstants.APN_FOTA_ID;
-        } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_CBS)) {
-            return DctConstants.APN_CBS_ID;
-        } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_IA)) {
-            return DctConstants.APN_IA_ID;
-        } else if (TextUtils.equals(type, PhoneConstants.APN_TYPE_EMERGENCY)) {
-            return DctConstants.APN_EMERGENCY_ID;
-        } else {
-            return DctConstants.APN_INVALID_ID;
-        }
-    }
-
-    private String apnIdToType(int id) {
-        switch (id) {
-        case DctConstants.APN_DEFAULT_ID:
-            return PhoneConstants.APN_TYPE_DEFAULT;
-        case DctConstants.APN_MMS_ID:
-            return PhoneConstants.APN_TYPE_MMS;
-        case DctConstants.APN_SUPL_ID:
-            return PhoneConstants.APN_TYPE_SUPL;
-        case DctConstants.APN_DUN_ID:
-            return PhoneConstants.APN_TYPE_DUN;
-        case DctConstants.APN_HIPRI_ID:
-            return PhoneConstants.APN_TYPE_HIPRI;
-        case DctConstants.APN_IMS_ID:
-            return PhoneConstants.APN_TYPE_IMS;
-        case DctConstants.APN_FOTA_ID:
-            return PhoneConstants.APN_TYPE_FOTA;
-        case DctConstants.APN_CBS_ID:
-            return PhoneConstants.APN_TYPE_CBS;
-        case DctConstants.APN_IA_ID:
-            return PhoneConstants.APN_TYPE_IA;
-        case DctConstants.APN_EMERGENCY_ID:
-            return PhoneConstants.APN_TYPE_EMERGENCY;
-        default:
-            log("Unknown id (" + id + ") in apnIdToType");
-            return PhoneConstants.APN_TYPE_DEFAULT;
-        }
     }
 
     private void initApnContexts() {
@@ -2455,7 +2415,7 @@ public class DcTracker extends Handler {
     }
 
     private void onEnableApn(int apnId, int enabled) {
-        ApnContext apnContext = mApnContexts.get(apnIdToType(apnId));
+        ApnContext apnContext = mApnContextsById.get(apnId);
         if (apnContext == null) {
             loge("onEnableApn(" + apnId + ", " + enabled + "): NO ApnContext");
             return;
@@ -3010,7 +2970,7 @@ public class DcTracker extends Handler {
 
     private void onCleanUpConnection(boolean tearDown, int apnId, String reason) {
         if (DBG) log("onCleanUpConnection");
-        ApnContext apnContext = mApnContexts.get(apnIdToType(apnId));
+        ApnContext apnContext = mApnContextsById.get(apnId);
         if (apnContext != null) {
             apnContext.setReason(reason);
             cleanUpConnection(tearDown, apnContext);
@@ -3493,7 +3453,7 @@ public class DcTracker extends Handler {
                         cleanUpAllConnections(false, Phone.REASON_PS_RESTRICT_ENABLED);
                         mReregisterOnReconnectFailure = false;
                     }
-                    ApnContext apnContext = mApnContexts.get(PhoneConstants.APN_TYPE_DEFAULT);
+                    ApnContext apnContext = mApnContextsById.get(DctConstants.APN_DEFAULT_ID);
                     if (apnContext != null) {
                         apnContext.setReason(Phone.REASON_PS_RESTRICT_ENABLED);
                         trySetupData(apnContext);
@@ -3695,7 +3655,7 @@ public class DcTracker extends Handler {
             }
             case DctConstants.EVENT_PROVISIONING_APN_ALARM: {
                 if (DBG) log("EVENT_PROVISIONING_APN_ALARM");
-                ApnContext apnCtx = mApnContexts.get("default");
+                ApnContext apnCtx = mApnContextsById.get(DctConstants.APN_DEFAULT_ID);
                 if (apnCtx.isProvisioningApn() && apnCtx.isConnectedOrConnecting()) {
                     if (mProvisioningApnAlarmTag == msg.arg1) {
                         if (DBG) log("EVENT_PROVISIONING_APN_ALARM: Disconnecting");
@@ -4054,9 +4014,9 @@ public class DcTracker extends Handler {
         }
 
         if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_EMERGENCY)) {
-            apnContext = mApnContexts.get(PhoneConstants.APN_TYPE_EMERGENCY);
+            apnContext = mApnContextsById.get(DctConstants.APN_EMERGENCY_ID);
         } else if (TextUtils.equals(apnType, PhoneConstants.APN_TYPE_IMS)) {
-            apnContext = mApnContexts.get(PhoneConstants.APN_TYPE_IMS);
+            apnContext = mApnContextsById.get(DctConstants.APN_IMS_ID);
         } else {
             log("apnType is invalid, return null");
             return null;
@@ -4557,4 +4517,3 @@ public class DcTracker extends Handler {
     }
 
 }
-

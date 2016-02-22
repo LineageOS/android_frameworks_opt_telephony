@@ -31,7 +31,7 @@ import android.telephony.Rlog;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
-import com.android.internal.telephony.dataconnection.DctController;
+import com.android.internal.telephony.PhoneSwitcher;
 import com.android.internal.telephony.uicc.UiccController;
 
 import java.io.FileDescriptor;
@@ -71,7 +71,7 @@ public class ProxyController {
 
     private Context mContext;
 
-    private DctController mDctController;
+    private PhoneSwitcher mPhoneSwitcher;
 
     //UiccPhoneBookController to use proper IccPhoneBookInterfaceManagerProxy object
     private UiccPhoneBookController mUiccPhoneBookController;
@@ -107,9 +107,9 @@ public class ProxyController {
 
     //***** Class Methods
     public static ProxyController getInstance(Context context, Phone[] phone,
-            UiccController uiccController, CommandsInterface[] ci) {
+            UiccController uiccController, CommandsInterface[] ci, PhoneSwitcher ps) {
         if (sProxyController == null) {
-            sProxyController = new ProxyController(context, phone, uiccController, ci);
+            sProxyController = new ProxyController(context, phone, uiccController, ci, ps);
         }
         return sProxyController;
     }
@@ -119,15 +119,15 @@ public class ProxyController {
     }
 
     private ProxyController(Context context, Phone[] phone, UiccController uiccController,
-            CommandsInterface[] ci) {
+            CommandsInterface[] ci, PhoneSwitcher phoneSwitcher) {
         logd("Constructor - Enter");
 
         mContext = context;
         mPhones = phone;
         mUiccController = uiccController;
         mCi = ci;
+        mPhoneSwitcher = phoneSwitcher;
 
-        mDctController = DctController.makeDctController(phone);
         mUiccPhoneBookController = new UiccPhoneBookController(mPhones);
         mPhoneSubInfoController = new PhoneSubInfoController(mContext, mPhones);
         mUiccSmsController = new UiccSmsController(mPhones);
@@ -455,7 +455,7 @@ public class ProxyController {
                 logd("onNotificationRadioCapabilityChanged: phoneId=" + id + " status=SUCCESS");
                 mSetRadioAccessFamilyStatus[id] = SET_RC_STATUS_SUCCESS;
                 // The modems may have been restarted and forgotten this
-                mDctController.retryAttach(id);
+                mPhoneSwitcher.resendDataAllowed(id);
                 mPhones[id].radioCapabilityUpdated(rc);
             }
 
@@ -659,13 +659,5 @@ public class ProxyController {
 
     private void loge(String string) {
         Rlog.e(LOG_TAG, string);
-    }
-
-    public void dump(FileDescriptor fd, PrintWriter pw, String[] args) {
-        try {
-            mDctController.dump(fd, pw, args);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 }

@@ -125,7 +125,7 @@ public class SubscriptionController extends ISub.Stub {
     protected TelephonyManager mTelephonyManager;
     protected CallManager mCM;
 
-    private final AppOpsManager mAppOps;
+    private AppOpsManager mAppOps;
 
     // FIXME: Does not allow for multiple subs in a slot and change to SparseArray
     private static Map<Integer, Integer> sSlotIdxToSubId =
@@ -166,7 +166,11 @@ public class SubscriptionController extends ISub.Stub {
         return sInstance;
     }
 
-    private SubscriptionController(Context c) {
+    protected SubscriptionController(Context c) {
+        init(c);
+    }
+
+    protected void init(Context c) {
         mContext = c;
         mCM = CallManager.getInstance();
         mTelephonyManager = TelephonyManager.from(mContext);
