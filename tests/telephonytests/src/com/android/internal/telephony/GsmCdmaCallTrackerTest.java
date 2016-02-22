@@ -152,7 +152,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
         }
         //assertEquals(GsmCdmaCall.State.DISCONNECTING, mCTUT.mForegroundCall.getState());
         /* request send to RIL still in disconnecting state */
-        waitForMs(50);
+        waitForMs(100);
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mForegroundCall.getState());
         assertEquals(0, mCTUT.mForegroundCall.getConnections().size());
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
@@ -176,7 +176,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
         /* request send to RIL still in disconnecting state */
-        waitForMs(50);
+        waitForMs(100);
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mForegroundCall.getState());
         assertEquals(0, mCTUT.mForegroundCall.getConnections().size());
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
@@ -197,7 +197,7 @@ public class GsmCdmaCallTrackerTest extends TelephonyTest {
             ex.printStackTrace();
             Assert.fail("unexpected exception thrown" + ex.getMessage());
         }
-        waitForMs(50);
+        waitForMs(100);
         assertEquals(GsmCdmaCall.State.IDLE, mCTUT.mForegroundCall.getState());
         assertEquals(0, mCTUT.mForegroundCall.getConnections().size());
         assertEquals(PhoneConstants.State.IDLE, mCTUT.getState());
