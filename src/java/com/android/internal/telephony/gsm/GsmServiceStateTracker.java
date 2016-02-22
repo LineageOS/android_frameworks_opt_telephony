@@ -575,7 +575,7 @@ public class GsmServiceStateTracker extends ServiceStateTracker {
             mPhone.mCT.mForegroundCall.hangupIfAlive();
         }
 
-        mCi.setRadioPower(false, null);
+        mCi.setRadioPower(false, obtainMessage(EVENT_RADIO_POWER_OFF_DONE));
     }
 
     @Override
