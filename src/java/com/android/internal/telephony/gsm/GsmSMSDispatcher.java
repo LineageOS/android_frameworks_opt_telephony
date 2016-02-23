@@ -28,6 +28,7 @@ import android.provider.Telephony.Sms.Intents;
 import android.telephony.Rlog;
 import android.telephony.ServiceState;
 
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.GsmAlphabet;
 import com.android.internal.telephony.ImsSMSDispatcher;
 import com.android.internal.telephony.InboundSmsHandler;
@@ -174,8 +175,9 @@ public final class GsmSMSDispatcher extends SMSDispatcher {
     }
 
     /** {@inheritDoc} */
+    @VisibleForTesting
     @Override
-    protected void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
+    public void sendText(String destAddr, String scAddr, String text, PendingIntent sentIntent,
             PendingIntent deliveryIntent, Uri messageUri, String callingPkg,
             boolean persistMessage) {
         SmsMessage.SubmitPdu pdu = SmsMessage.getSubmitPdu(
