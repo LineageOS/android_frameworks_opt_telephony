@@ -27,6 +27,7 @@ import android.os.UserManager;
 import android.provider.Telephony;
 import android.telephony.TelephonyManager;
 import android.test.mock.MockContentResolver;
+import android.test.suitebuilder.annotation.MediumTest;
 import android.test.suitebuilder.annotation.SmallTest;
 
 import com.android.internal.telephony.InboundSmsHandler;
@@ -50,9 +51,11 @@ import static com.android.internal.telephony.TelephonyTestUtils.waitForMs;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -181,6 +184,24 @@ public class CdmaInboundSmsHandlerTest extends TelephonyTest {
         mContextFixture.sendBroadcastToOrderedBroadcastReceivers();
         waitForMs(50);
 
+        assertEquals("IdleState", getCurrentState().getName());
+    }
+
+    @Test
+    @MediumTest
+    public void testNewSmsFromBlockedNumber_noBroadcastsSent() {
+        String blockedNumber = "123456789";
+        doReturn(blockedNumber).when(mInboundSmsTracker).getAddress();
+        mFakeBlockedNumberContentProvider.mBlockedNumbers.add(blockedNumber);
+
+        transitionFromStartupToIdle();
+
+        doReturn(SmsEnvelope.TELESERVICE_WMT).when(mCdmaSmsMessage).getTeleService();
+        mCdmaInboundSmsHandler.sendMessage(InboundSmsHandler.EVENT_NEW_SMS,
+                new AsyncResult(null, mSmsMessage, null));
+        waitForMs(100);
+
+        verify(mContext, never()).sendBroadcast(any(Intent.class));
         assertEquals("IdleState", getCurrentState().getName());
     }
 }
