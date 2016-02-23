@@ -159,6 +159,10 @@ public class ContextFixture implements TestFixture<Context> {
 
         @Override
         public Object getSystemService(String name) {
+            synchronized (mSystemServices) {
+                Object service = mSystemServices.get(name);
+                if (service != null) return service;
+            }
             switch (name) {
                 case Context.TELEPHONY_SERVICE:
                     return mTelephonyManager;
@@ -182,9 +186,7 @@ public class ContextFixture implements TestFixture<Context> {
                 case Context.CONNECTIVITY_SERVICE:
                     return mConnectivityManager;
                 default:
-                    synchronized(mSystemServices) {
-                        return mSystemServices.get(name);
-                    }
+                    return null;
             }
         }
 
