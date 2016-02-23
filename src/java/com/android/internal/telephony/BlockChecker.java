@@ -22,8 +22,8 @@ public class BlockChecker {
         long startTimeNano = System.nanoTime();
 
         try {
-            if (BlockedNumberContract.isBlocked(context,
-                    phoneNumber)) {
+            if (BlockedNumberContract.SystemContract.shouldSystemBlockNumber(
+                    context, phoneNumber)) {
                 Rlog.d(TAG, phoneNumber + " is blocked.");
                 isBlocked = true;
             }
