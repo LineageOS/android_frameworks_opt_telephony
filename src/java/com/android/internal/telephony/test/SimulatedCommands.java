@@ -108,6 +108,7 @@ public class SimulatedCommands extends BaseCommands
 
     int mNextCallFailCause = CallFailCause.NORMAL_CLEARING;
 
+    private boolean mDcSuccess = true;
     private DataCallResponse mDcResponse;
 
     //***** Constructor
@@ -141,7 +142,7 @@ public class SimulatedCommands extends BaseCommands
         if(mIccCardStatus!=null) {
             resultSuccess(result, mIccCardStatus);
         } else {
-            resultFail(result, new RuntimeException("IccCardStatus not set"));
+            resultFail(result, null, new RuntimeException("IccCardStatus not set"));
         }
     }
 
@@ -494,9 +495,8 @@ public class SimulatedCommands extends BaseCommands
             resultSuccess(result, simulatedCallState.getDriverCalls());
         } else {
             //Rlog.i("GSM", "[SimCmds] getCurrentCalls: RADIO_OFF or SIM not ready!");
-            resultFail(result,
-                new CommandException(
-                    CommandException.Error.RADIO_NOT_AVAILABLE));
+            resultFail(result, null,
+                new CommandException(CommandException.Error.RADIO_NOT_AVAILABLE));
         }
     }
 
@@ -618,7 +618,7 @@ public class SimulatedCommands extends BaseCommands
 
         if (!success){
             Rlog.i("GSM", "[SimCmd] hangupConnection: resultFail");
-            resultFail(result, new RuntimeException("Hangup Error"));
+            resultFail(result, null, new RuntimeException("Hangup Error"));
         } else {
             Rlog.i("GSM", "[SimCmd] hangupConnection: resultSuccess");
             resultSuccess(result, null);
@@ -640,7 +640,7 @@ public class SimulatedCommands extends BaseCommands
         success = simulatedCallState.onChld('0', '\0');
 
         if (!success){
-            resultFail(result, new RuntimeException("Hangup Error"));
+            resultFail(result, null, new RuntimeException("Hangup Error"));
         } else {
             resultSuccess(result, null);
         }
@@ -662,7 +662,7 @@ public class SimulatedCommands extends BaseCommands
         success = simulatedCallState.onChld('1', '\0');
 
         if (!success){
-            resultFail(result, new RuntimeException("Hangup Error"));
+            resultFail(result, null, new RuntimeException("Hangup Error"));
         } else {
             resultSuccess(result, null);
         }
@@ -684,7 +684,7 @@ public class SimulatedCommands extends BaseCommands
         success = simulatedCallState.onChld('2', '\0');
 
         if (!success){
-            resultFail(result, new RuntimeException("Hangup Error"));
+            resultFail(result, null, new RuntimeException("Hangup Error"));
         } else {
             resultSuccess(result, null);
         }
@@ -705,7 +705,7 @@ public class SimulatedCommands extends BaseCommands
         success = simulatedCallState.onChld('3', '\0');
 
         if (!success){
-            resultFail(result, new RuntimeException("Hangup Error"));
+            resultFail(result, null, new RuntimeException("Hangup Error"));
         } else {
             resultSuccess(result, null);
         }
@@ -726,7 +726,7 @@ public class SimulatedCommands extends BaseCommands
         success = simulatedCallState.onChld('4', '\0');
 
         if (!success){
-            resultFail(result, new RuntimeException("Hangup Error"));
+            resultFail(result, null, new RuntimeException("Hangup Error"));
         } else {
             resultSuccess(result, null);
         }
@@ -745,7 +745,7 @@ public class SimulatedCommands extends BaseCommands
         success = simulatedCallState.onChld('2', ch);
 
         if (!success){
-            resultFail(result, new RuntimeException("Hangup Error"));
+            resultFail(result, null, new RuntimeException("Hangup Error"));
         } else {
             resultSuccess(result, null);
         }
@@ -765,7 +765,7 @@ public class SimulatedCommands extends BaseCommands
         success = simulatedCallState.onAnswer();
 
         if (!success){
-            resultFail(result, new RuntimeException("Hangup Error"));
+            resultFail(result, null, new RuntimeException("Hangup Error"));
         } else {
             resultSuccess(result, null);
         }
@@ -784,7 +784,7 @@ public class SimulatedCommands extends BaseCommands
         success = simulatedCallState.onChld('0', '\0');
 
         if (!success){
-            resultFail(result, new RuntimeException("Hangup Error"));
+            resultFail(result, null, new RuntimeException("Hangup Error"));
         } else {
             resultSuccess(result, null);
         }
@@ -1066,8 +1066,9 @@ public class SimulatedCommands extends BaseCommands
         unimplemented(response);
     }
 
-    public void setDataCallResponse(final DataCallResponse dcResponse) {
+    public void setDataCallResponse(final boolean success, final DataCallResponse dcResponse) {
         mDcResponse = dcResponse;
+        mDcSuccess = success;
     }
 
     @Override
@@ -1093,7 +1094,11 @@ public class SimulatedCommands extends BaseCommands
             mDcResponse.pcscf = new String[]{};
         }
 
-        resultSuccess(result, mDcResponse);
+        if (mDcSuccess) {
+            resultSuccess(result, mDcResponse);
+        } else {
+            resultFail(result, mDcResponse, new RuntimeException("Setup data call failed!"));
+        }
     }
 
     @Override
@@ -1553,9 +1558,9 @@ public class SimulatedCommands extends BaseCommands
         }
     }
 
-    private void resultFail(Message result, Throwable tr) {
+    private void resultFail(Message result, Object ret, Throwable tr) {
         if (result != null) {
-            AsyncResult.forMessage(result).exception = tr;
+            AsyncResult.forMessage(result, ret, tr);
             if (mPausedResponseCount > 0) {
                 mPausedResponses.add(result);
             } else {
@@ -1836,7 +1841,7 @@ public class SimulatedCommands extends BaseCommands
         if(mIccIoResultForApduLogicalChannel!=null) {
             resultSuccess(response, mIccIoResultForApduLogicalChannel);
         }else {
-            resultFail(response, new RuntimeException("IccIoResult not set"));
+            resultFail(response, null, new RuntimeException("IccIoResult not set"));
         }
     }
 

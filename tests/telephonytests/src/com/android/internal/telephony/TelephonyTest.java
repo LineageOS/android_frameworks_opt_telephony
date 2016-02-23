@@ -19,8 +19,12 @@ package com.android.internal.telephony;
 import android.app.ActivityManagerNative;
 import android.app.IActivityManager;
 import android.content.Context;
+import android.content.IIntentSender;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.IDeviceIdleController;
 import android.os.RegistrantList;
 import android.telephony.ServiceState;
@@ -56,6 +60,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -137,6 +142,10 @@ public abstract class TelephonyTest {
     protected Singleton<IActivityManager> mIActivityManagerSingleton;
     @Mock
     protected IActivityManager mIActivityManager;
+    @Mock
+    protected IIntentSender mIIntentSender;
+    @Mock
+    protected IBinder mIBinder;
 
 
     protected SimulatedCommands mSimulatedCommands;
@@ -341,6 +350,10 @@ public abstract class TelephonyTest {
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
         doReturn(mTelephonyEventLog).when(mTelephonyEventLogInstances).get(anyInt());
         doReturn(mImsCallProfile).when(mImsCall).getCallProfile();
+        doReturn(mIBinder).when(mIIntentSender).asBinder();
+        doReturn(mIIntentSender).when(mIActivityManager).getIntentSender(anyInt(),
+                anyString(), any(IBinder.class), anyString(), anyInt(), any(Intent[].class),
+                any(String[].class), anyInt(), any(Bundle.class), anyInt());
 
         setReady(false);
     }
