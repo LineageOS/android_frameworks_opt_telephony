@@ -202,7 +202,7 @@ abstract class ImsPhoneBase extends Phone {
      * Notify any interested party of a Phone state change
      * {@link com.android.internal.telephony.PhoneConstants.State}
      */
-    /* package */ void notifyPhoneStateChanged() {
+    public void notifyPhoneStateChanged() {
         mNotifier.notifyPhoneState(this);
     }
 
@@ -211,7 +211,7 @@ abstract class ImsPhoneBase extends Phone {
      * {@link com.android.internal.telephony.Call.State}. Use this when changes
      * in the precise call state are needed, else use notifyPhoneStateChanged.
      */
-    /* package */ void notifyPreciseCallStateChanged() {
+    public void notifyPreciseCallStateChanged() {
         /* we'd love it if this was package-scoped*/
         super.notifyPreciseCallStateChangedP();
     }

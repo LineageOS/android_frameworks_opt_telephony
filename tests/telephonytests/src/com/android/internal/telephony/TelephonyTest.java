@@ -46,6 +46,7 @@ import android.util.SparseArray;
 
 import com.android.ims.ImsCall;
 import com.android.ims.ImsCallProfile;
+import com.android.ims.ImsEcbm;
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.cdma.CdmaSubscriptionSourceManager;
 import com.android.internal.telephony.dataconnection.DcTracker;
@@ -103,7 +104,7 @@ public abstract class TelephonyTest {
     @Mock
     protected IccPhoneBookInterfaceManager mIccPhoneBookIntManager;
     @Mock
-    protected HashMap<Integer, ImsManager> mImsManagerInstances;
+    protected ImsManager mImsManager;
     @Mock
     protected DcTracker mDcTracker;
     @Mock
@@ -112,6 +113,8 @@ public abstract class TelephonyTest {
     protected ImsCall mImsCall;
     @Mock
     protected ImsCallProfile mImsCallProfile;
+    @Mock
+    protected ImsEcbm mImsEcbm;
     @Mock
     protected SubscriptionController mSubscriptionController;
     @Mock
@@ -156,6 +159,7 @@ public abstract class TelephonyTest {
     private Object mLock = new Object();
     private boolean mReady;
 
+    protected HashMap<Integer, ImsManager> mImsManagerInstances = new HashMap<>();
     private HashMap<InstanceKey, Object> mOldInstances = new HashMap<InstanceKey, Object>();
 
     private LinkedList<InstanceKey> mInstanceKeys = new LinkedList<InstanceKey>();
@@ -357,7 +361,8 @@ public abstract class TelephonyTest {
         doReturn(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS).when(mServiceState).
                 getRilDataRadioTechnology();
         doReturn(mPhone).when(mCT).getPhone();
-        doReturn(true).when(mImsManagerInstances).containsKey(anyInt());
+        mImsManagerInstances.put(mPhone.getPhoneId(), null);
+        doReturn(mImsEcbm).when(mImsManager).getEcbmInterface(anyInt());
         doReturn(mPhone).when(mInboundSmsHandler).getPhone();
         doReturn(mTelephonyEventLog).when(mTelephonyEventLogInstances).get(anyInt());
         doReturn(mImsCallProfile).when(mImsCall).getCallProfile();

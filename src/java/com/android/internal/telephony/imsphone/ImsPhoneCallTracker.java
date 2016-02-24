@@ -182,10 +182,12 @@ public class ImsPhoneCallTracker extends CallTracker {
     private RegistrantList mVoiceCallEndedRegistrants = new RegistrantList();
     private RegistrantList mVoiceCallStartedRegistrants = new RegistrantList();
 
-    final ImsPhoneCall mRingingCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_RINGING);
-    final ImsPhoneCall mForegroundCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_FOREGROUND);
-    final ImsPhoneCall mBackgroundCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_BACKGROUND);
-    final ImsPhoneCall mHandoverCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_HANDOVER);
+    public final ImsPhoneCall mRingingCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_RINGING);
+    public final ImsPhoneCall mForegroundCall = new ImsPhoneCall(this,
+            ImsPhoneCall.CONTEXT_FOREGROUND);
+    public final ImsPhoneCall mBackgroundCall = new ImsPhoneCall(this,
+            ImsPhoneCall.CONTEXT_BACKGROUND);
+    public final ImsPhoneCall mHandoverCall = new ImsPhoneCall(this, ImsPhoneCall.CONTEXT_HANDOVER);
 
     private ImsPhoneConnection mPendingMO;
     private int mClirMode = CommandsInterface.CLIR_DEFAULT;
@@ -222,7 +224,7 @@ public class ImsPhoneCallTracker extends CallTracker {
 
     //***** Constructors
 
-    ImsPhoneCallTracker(ImsPhone phone) {
+    public ImsPhoneCallTracker(ImsPhone phone) {
         this.mPhone = phone;
 
         mEventLog = TelephonyEventLog.getInstance(mPhone.getContext(), mPhone.getPhoneId());
@@ -318,8 +320,8 @@ public class ImsPhoneCallTracker extends CallTracker {
         mVoiceCallEndedRegistrants.remove(h);
     }
 
-    Connection
-    dial(String dialString, int videoState, Bundle intentExtras) throws CallStateException {
+    public Connection dial(String dialString, int videoState, Bundle intentExtras) throws
+            CallStateException {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(mPhone.getContext());
         int oirMode = sp.getInt(Phone.CLIR_KEY, CommandsInterface.CLIR_DEFAULT);
         return dial(dialString, oirMode, videoState, intentExtras);
@@ -533,7 +535,7 @@ public class ImsPhoneCallTracker extends CallTracker {
      * @param videoState The video State
      * @throws CallStateException
      */
-    void acceptCall (int videoState) throws CallStateException {
+    public void acceptCall (int videoState) throws CallStateException {
         if (DBG) log("acceptCall");
 
         if (mForegroundCall.getState().isAlive()
@@ -567,8 +569,7 @@ public class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    void
-    rejectCall () throws CallStateException {
+    public void rejectCall () throws CallStateException {
         if (DBG) log("rejectCall");
 
         if (mRingingCall.getState().isRinging()) {
@@ -589,8 +590,7 @@ public class ImsPhoneCallTracker extends CallTracker {
         }
     }
 
-    void
-    switchWaitingOrHoldingAndActive() throws CallStateException {
+    public void switchWaitingOrHoldingAndActive() throws CallStateException {
         if (DBG) log("switchWaitingOrHoldingAndActive");
 
         if (mRingingCall.getState() == ImsPhoneCall.State.INCOMING) {
