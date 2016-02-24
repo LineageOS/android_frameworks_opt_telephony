@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static android.telephony.TelephonyManager.PHONE_TYPE_CDMA;
+import static android.service.carrier.CarrierMessagingService.RECEIVE_OPTIONS_SKIP_NOTIFY_WHEN_CREDENTIAL_ENCRYPTED_STORAGE_UNAVAILABLE;
 
 import android.app.Activity;
 import android.app.ActivityManagerNative;
@@ -1242,7 +1243,7 @@ public abstract class InboundSmsHandler extends StateMachine {
             mSmsFilterCallback = smsFilterCallback;
             if (!bindToCarrierMessagingService(mContext, carrierPackageName)) {
                 loge("bindService() for carrier messaging service failed");
-                smsFilterCallback.onFilterComplete(true);
+                smsFilterCallback.onFilterComplete(CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
             } else {
                 logv("bindService() for carrier messaging service succeeded");
             }
@@ -1260,7 +1261,8 @@ public abstract class InboundSmsHandler extends StateMachine {
                         mPhone.getSubId(), mSmsFilterCallback);
             } catch (RemoteException e) {
                 loge("Exception filtering the SMS: " + e);
-                mSmsFilterCallback.onFilterComplete(true);
+                mSmsFilterCallback.onFilterComplete(
+                    CarrierMessagingService.RECEIVE_OPTIONS_DEFAULT);
             }
         }
     }
@@ -1282,18 +1284,21 @@ public abstract class InboundSmsHandler extends StateMachine {
          * This method should be called only once.
          */
         @Override
-        public void onFilterComplete(boolean keepMessage) {
+        public void onFilterComplete(int result) {
             mSmsFilter.disposeConnection(mContext);
 
-            logv("onFilterComplete: keepMessage is "+ keepMessage);
-            if (keepMessage) {
+            logv("onFilterComplete: result is "+ result);
+            if ((result & CarrierMessagingService.RECEIVE_OPTIONS_DROP) == 0) {
                 if (mUserUnlocked) {
                     dispatchSmsDeliveryIntent(mSmsFilter.mPdus, mSmsFilter.mSmsFormat,
                             mSmsFilter.mDestPort, mSmsFilter.mSmsBroadcastReceiver);
                 } else {
-                    // Don't do anything further, show the new message notification and leave the
-                    // message in the raw table if the credential-encrypted storage is still locked.
-                    showNewMessageNotification();
+                    // Don't do anything further, leave the message in the raw table if the
+                    // credential-encrypted storage is still locked and show the new message
+                    // notification if the message is visible to the user.
+                    if (!isSkipNotifyFlagSet(result)) {
+                        showNewMessageNotification();
+                    }
                     sendMessage(EVENT_BROADCAST_COMPLETE);
                 }
             } else {
@@ -1329,6 +1334,14 @@ public abstract class InboundSmsHandler extends StateMachine {
         public void onDownloadMmsComplete(int result) {
             loge("Unexpected onDownloadMmsComplete call with result: " + result);
         }
+    }
+
+    /** Checks whether the flag to skip new message notification is set in the bitmask returned
+     *  from the carrier app.
+     */
+    private boolean isSkipNotifyFlagSet(int callbackResult) {
+        return (callbackResult
+            & RECEIVE_OPTIONS_SKIP_NOTIFY_WHEN_CREDENTIAL_ENCRYPTED_STORAGE_UNAVAILABLE) > 0;
     }
 
     /**

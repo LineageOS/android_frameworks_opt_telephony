@@ -454,8 +454,8 @@ public abstract class SMSDispatcher extends Handler {
         }
 
         @Override
-        public void onFilterComplete(boolean keepMessage) {
-            Rlog.e(TAG, "Unexpected onFilterComplete call with result: " + keepMessage);
+        public void onFilterComplete(int result) {
+            Rlog.e(TAG, "Unexpected onFilterComplete call with result: " + result);
         }
 
         @Override
@@ -588,8 +588,8 @@ public abstract class SMSDispatcher extends Handler {
         }
 
         @Override
-        public void onFilterComplete(boolean keepMessage) {
-            Rlog.e(TAG, "Unexpected onFilterComplete call with result: " + keepMessage);
+        public void onFilterComplete(int result) {
+            Rlog.e(TAG, "Unexpected onFilterComplete call with result: " + result);
         }
 
         @Override
