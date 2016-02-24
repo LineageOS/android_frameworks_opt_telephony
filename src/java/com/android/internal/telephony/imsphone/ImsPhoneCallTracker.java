@@ -247,7 +247,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
                 mPhone.getContext().getContentResolver(),
                 Settings.Secure.PREFERRED_TTY_MODE,
                 Phone.TTY_MODE_OFF);
-           mImsManager.setUiTTYMode(mPhone.getContext(), mServiceId, mPreferredTtyMode, null);
+            mImsManager.setUiTTYMode(mPhone.getContext(), mServiceId, mPreferredTtyMode, null);
+            mImsManager.setVolteFeatureEnabled(isVolteEnabled());
 
         } catch (ImsException e) {
             loge("getImsService: " + e);
@@ -1668,6 +1669,8 @@ public final class ImsPhoneCallTracker extends CallTracker {
                         connection.updateWifiState();
                     }
                     mPhone.onFeatureCapabilityChanged();
+
+                    mImsManager.setVolteFeatureEnabled(isVolteEnabled());
                 }
 
                 if (tmpIsVideoCallEnabled != isVideoCallEnabled()) {
