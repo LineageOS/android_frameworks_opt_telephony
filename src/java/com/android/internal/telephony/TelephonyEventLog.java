@@ -30,6 +30,7 @@ import static com.android.internal.telephony.RILConstants.*;
 public class TelephonyEventLog {
     private static String TAG = "TelephonyEventLog";
     private static final boolean DBG = true;
+    private static final boolean VDBG = false; // STOPSHIP if true
 
     public static final int TAG_SETTINGS = 1;
     public static final int TAG_SERVICE_STATE = 2;
@@ -187,7 +188,7 @@ public class TelephonyEventLog {
 
     private void writeEvent(long timestamp, int tag, int param1, int param2, Bundle data) {
         if (mService == null) {
-            if (DBG) {
+            if (VDBG) {
                 Log.d(TAG, "writeEvent("+tag+","+param1+","+param2+","+data+")"
                         + " Service not ready");
             }
