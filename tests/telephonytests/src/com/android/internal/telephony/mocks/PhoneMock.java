@@ -64,16 +64,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class PhoneMock extends Phone {
     private static final String LOG_TAG = "PhoneMock";
 
-    public PhoneMock(Context context, CommandsInterface ci) {
-        super("PhoneMock", null, context, ci);
-    }
-
-    protected PhoneMock(String name, PhoneNotifier notifier, Context context,
-            CommandsInterface ci) {
-        super(name, notifier, context, ci);
-        throw new RuntimeException("not implemented");
-    }
-
     protected PhoneMock(String name, PhoneNotifier notifier, Context context, CommandsInterface ci,
             boolean unitTestMode) {
         super(name, notifier, context, ci, unitTestMode);
