@@ -1723,7 +1723,7 @@ public abstract class SMSDispatcher extends Handler {
     }
 
     protected int getSubId() {
-        return SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhone.mPhoneId);
+        return SubscriptionController.getInstance().getSubIdUsingPhoneId(mPhone.getPhoneId());
     }
 
     private void checkCallerIsPhoneOrCarrierApp() {
