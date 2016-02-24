@@ -2492,12 +2492,13 @@ public class ServiceStateTracker extends Handler {
                 if (ServiceState.RIL_RADIO_TECHNOLOGY_IWLAN
                         != mSS.getRilDataRadioTechnology()) {
                     pollStateDone();
+                    break;
                 }
+                // else fall through to query for the IWLAN info
 
             default:
                 // Issue all poll-related commands at once then count down the responses, which
                 // are allowed to arrive out-of-order
-
                 mPollingContext[0]++;
                 mCi.getOperator(obtainMessage(EVENT_POLL_STATE_OPERATOR, mPollingContext));
 
@@ -4587,7 +4588,8 @@ public class ServiceStateTracker extends Handler {
         pw.println(" mCellInfo=" + mCellInfo);
         pw.println(" mCellInfoLte=" + mCellInfoLte);
         pw.println(" mRestrictedState=" + mRestrictedState);
-        pw.println(" mPollingContext=" + mPollingContext);
+        pw.println(" mPollingContext=" + mPollingContext + " - " +
+                (mPollingContext != null ? mPollingContext[0] : ""));
         pw.println(" mDesiredPowerState=" + mDesiredPowerState);
         pw.println(" mDontPollSignalStrength=" + mDontPollSignalStrength);
         pw.println(" mSignalStrength=" + mSignalStrength);
