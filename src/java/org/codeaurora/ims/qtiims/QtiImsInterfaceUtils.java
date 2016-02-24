@@ -87,6 +87,9 @@ public class QtiImsInterfaceUtils {
     public static final String EXTRA_SSAC = "Ssac";
 
 
+    /* Call encryption status extra key. The value will be a boolean. */
+    public static final String QTI_IMS_CALL_ENCRYPTION_EXTRA_KEY = "CallEncryption";
+
     /**
      * Private constructor for QtiImsInterfaceUtils as we don't want to instantiate this class
      */
