@@ -774,7 +774,13 @@ public class GsmCdmaConnection extends Connection {
 
         if (Phone.DEBUG_PHONE) log("--dssds----"+mCnapName);
         mCnapNamePresentation = dc.namePresentation;
-        mNumberPresentation = dc.numberPresentation;
+
+        boolean connectedLineIdentification =
+                Settings.Global.getInt(mParent.getPhone().getContext().getContentResolver(),
+                        Settings.Global.CONNECTED_LINE_IDENTIFICATION, 1) != 0;
+        if (mIsIncoming || connectedLineIdentification) {
+            mNumberPresentation = dc.numberPresentation;
+        }
 
         if (newParent != mParent) {
             if (mParent != null) {
