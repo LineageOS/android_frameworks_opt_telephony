@@ -24,6 +24,7 @@ import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.os.Registrant;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.DisconnectCause;
 import android.telephony.Rlog;
@@ -774,7 +775,14 @@ public class GsmCdmaConnection extends Connection {
 
         if (Phone.DEBUG_PHONE) log("--dssds----"+mCnapName);
         mCnapNamePresentation = dc.namePresentation;
-        mNumberPresentation = dc.numberPresentation;
+
+        final Phone phone = mOwner.getPhone();
+        boolean connectedLineIdentification = Settings.Global.getInt(
+                phone.getContext().getContentResolver(),
+                Settings.Global.CONNECTED_LINE_IDENTIFICATION + phone.getSubId(), 1) != 0;
+        if (mIsIncoming || connectedLineIdentification) {
+            mNumberPresentation = dc.numberPresentation;
+        }
 
         if (newParent != mParent) {
             if (mParent != null) {
