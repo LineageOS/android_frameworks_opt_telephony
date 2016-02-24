@@ -598,7 +598,10 @@ public class GsmConnection extends Connection {
 
         if (Phone.DEBUG_PHONE) log("--dssds----"+mCnapName);
         mCnapNamePresentation = dc.namePresentation;
-        mNumberPresentation = dc.numberPresentation;
+
+        // Some networks set incorrect representation for outgoing calls
+        if (mIsIncoming)
+            mNumberPresentation = dc.numberPresentation;
 
         if (newParent != mParent) {
             if (mParent != null) {
