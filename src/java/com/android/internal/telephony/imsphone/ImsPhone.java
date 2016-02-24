@@ -496,7 +496,7 @@ public class ImsPhone extends ImsPhoneBase {
                ringingCallState.isAlive());
     }
 
-    void notifyNewRingingConnection(Connection c) {
+    public void notifyNewRingingConnection(Connection c) {
         mDefaultPhone.notifyNewRingingConnectionP(c);
     }
 
@@ -596,7 +596,7 @@ public class ImsPhone extends ImsPhoneBase {
         mPostDialHandler = new Registrant(h, what, obj);
     }
 
-    /*package*/ void notifyIncomingRing() {
+    public void notifyIncomingRing() {
         if (DBG) Rlog.d(LOG_TAG, "notifyIncomingRing");
         AsyncResult ar = new AsyncResult(null, null, null);
         sendMessage(obtainMessage(EVENT_CALL_RING, ar));
