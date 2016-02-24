@@ -249,6 +249,14 @@ public class UiccCarrierPrivilegeRules extends Handler {
     }
 
     /**
+     * Returns true if the carrier privilege rules have finished loading and some rules were
+     * specified.
+     */
+    public boolean hasCarrierPrivilegeRules() {
+        return mState.get() != STATE_LOADING && mAccessRules != null && mAccessRules.size() > 0;
+    }
+
+    /**
      * Returns package names for privilege rules.
      * Return empty list if no rules defined or package name is empty string.
      */
@@ -303,20 +311,42 @@ public class UiccCarrierPrivilegeRules extends Handler {
      */
     public int getCarrierPrivilegeStatus(PackageManager packageManager, String packageName) {
         try {
+            // Short-circuit if there are no rules to check against, so we don't need to fetch
+            // the package info with signatures.
+            if (!hasCarrierPrivilegeRules()) {
+                int state = mState.get();
+                if (state == STATE_LOADING) {
+                    return TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED;
+                } else if (state == STATE_ERROR) {
+                    return TelephonyManager.CARRIER_PRIVILEGE_STATUS_ERROR_LOADING_RULES;
+                }
+                return TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
+            }
             // Include DISABLED_UNTIL_USED components. This facilitates cases where a carrier app
             // is disabled by default, and some other component wants to enable it when it has
             // gained carrier privileges (as an indication that a matching SIM has been inserted).
             PackageInfo pInfo = packageManager.getPackageInfo(packageName,
                 PackageManager.GET_SIGNATURES | PackageManager.GET_DISABLED_UNTIL_USED_COMPONENTS);
-            Signature[] signatures = pInfo.signatures;
-            for (Signature sig : signatures) {
-                int accessStatus = getCarrierPrivilegeStatus(sig, pInfo.packageName);
-                if (accessStatus != TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS) {
-                    return accessStatus;
-                }
-            }
+            return getCarrierPrivilegeStatus(pInfo);
         } catch (PackageManager.NameNotFoundException ex) {
             Rlog.e(LOG_TAG, "NameNotFoundException", ex);
+        }
+        return TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
+    }
+
+    /**
+     * Returns the status of the carrier privileges for the input package info.
+     *
+     * @param packageInfo PackageInfo for the package, containing the package signatures.
+     * @return Access status.
+     */
+    public int getCarrierPrivilegeStatus(PackageInfo packageInfo) {
+        Signature[] signatures = packageInfo.signatures;
+        for (Signature sig : signatures) {
+            int accessStatus = getCarrierPrivilegeStatus(sig, packageInfo.packageName);
+            if (accessStatus != TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS) {
+                return accessStatus;
+            }
         }
         return TelephonyManager.CARRIER_PRIVILEGE_STATUS_NO_ACCESS;
     }

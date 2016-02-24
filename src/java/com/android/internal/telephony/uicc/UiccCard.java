@@ -17,12 +17,14 @@
 package com.android.internal.telephony.uicc;
 
 import android.app.AlertDialog;
+import android.app.usage.UsageStatsManager;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.content.res.Resources;
@@ -452,6 +454,10 @@ public class UiccCard {
     }
 
     private void onCarrierPriviligesLoadedMessage() {
+        UsageStatsManager usm = mContext.getSystemService(UsageStatsManager.class);
+        if (usm != null) {
+            usm.onCarrierPrivilegedAppsChanged();
+        }
         synchronized (mLock) {
             mCarrierPrivilegeRegistrants.notifyRegistrants();
             String whitelistSetting = Settings.Global.getString(mContext.getContentResolver(),
@@ -638,11 +644,19 @@ public class UiccCard {
     }
 
     /**
-     * Returns true iff carrier priveleges rules are null (dont need to be loaded) or loaded.
+     * Returns true iff carrier privileges rules are null (dont need to be loaded) or loaded.
      */
     public boolean areCarrierPriviligeRulesLoaded() {
         return mCarrierPrivilegeRules == null
             || mCarrierPrivilegeRules.areCarrierPriviligeRulesLoaded();
+    }
+
+    /**
+     * Returns true if there are some carrier privilege rules loaded and specified.
+     */
+    public boolean hasCarrierPrivilegeRules() {
+        return mCarrierPrivilegeRules != null
+                && mCarrierPrivilegeRules.hasCarrierPrivilegeRules();
     }
 
     /**
@@ -661,6 +675,15 @@ public class UiccCard {
         return mCarrierPrivilegeRules == null ?
             TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED :
             mCarrierPrivilegeRules.getCarrierPrivilegeStatus(packageManager, packageName);
+    }
+
+    /**
+     * Exposes {@link UiccCarrierPrivilegeRules.getCarrierPrivilegeStatus}.
+     */
+    public int getCarrierPrivilegeStatus(PackageInfo packageInfo) {
+        return mCarrierPrivilegeRules == null ?
+            TelephonyManager.CARRIER_PRIVILEGE_STATUS_RULES_NOT_LOADED :
+            mCarrierPrivilegeRules.getCarrierPrivilegeStatus(packageInfo);
     }
 
     /**
