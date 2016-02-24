@@ -1673,6 +1673,7 @@ public final class ImsPhoneCallTracker extends CallTracker {
                         connection.updateWifiState();
                     }
                     mPhone.onFeatureCapabilityChanged();
+                    mImsManager.setVolteCallCapability(isVolteEnabled());
                 }
 
                 if (tmpIsVideoCallEnabled != isVideoCallEnabled()) {
