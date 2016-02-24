@@ -32,6 +32,7 @@ import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.telephony.BaseCommands;
 import com.android.internal.telephony.CommandException;
 import com.android.internal.telephony.CommandsInterface;
+import com.android.internal.telephony.RadioCapability;
 import com.android.internal.telephony.cdma.CdmaSmsBroadcastConfigInfo;
 import com.android.internal.telephony.dataconnection.DataCallResponse;
 import com.android.internal.telephony.dataconnection.DataProfile;
@@ -75,6 +76,13 @@ public class SimulatedCommands extends BaseCommands
     public final static String FAKE_LONG_NAME = "Fake long name";
     public final static String FAKE_SHORT_NAME = "Fake short name";
     public final static String FAKE_MCC_MNC = "310260";
+    public final static String FAKE_IMEI = "012345678901234";
+    public final static String FAKE_IMEISV = "99";
+    public final static String FAKE_ESN = "1234";
+    public final static String FAKE_MEID = "1234";
+
+    private String mImei;
+    private String mImeiSv;
 
     //***** Instance Variables
 
@@ -575,6 +583,10 @@ public class SimulatedCommands extends BaseCommands
         resultSuccess(result, "012345678901234");
     }
 
+    public void setIMEI(String imei) {
+        mImei = imei;
+    }
+
     /**
      *  returned message
      *  retMsg.obj = AsyncResult ar
@@ -584,7 +596,12 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void getIMEI(Message result) {
-        resultSuccess(result, "012345678901234");
+        SimulatedCommandsVerifier.getInstance().getIMEI(result);
+        resultSuccess(result, mImei != null ? mImei : FAKE_IMEI);
+    }
+
+    public void setIMEISV(String imeisv) {
+        mImeiSv = imeisv;
     }
 
     /**
@@ -596,7 +613,8 @@ public class SimulatedCommands extends BaseCommands
      */
     @Override
     public void getIMEISV(Message result) {
-        resultSuccess(result, "99");
+        SimulatedCommandsVerifier.getInstance().getIMEISV(result);
+        resultSuccess(result, mImeiSv != null ? mImeiSv : FAKE_IMEISV);
     }
 
     /**
@@ -1101,6 +1119,7 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void setPreferredNetworkType(int networkType , Message result) {
+        SimulatedCommandsVerifier.getInstance().setPreferredNetworkType(networkType, result);
         mNetworkType = networkType;
         resultSuccess(result, null);
     }
@@ -1317,6 +1336,7 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getNetworkSelectionMode(Message result) {
+        SimulatedCommandsVerifier.getInstance().getNetworkSelectionMode(result);
         int ret[] = new int[1];
 
         ret[0] = 0;
@@ -1333,6 +1353,7 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getBasebandVersion (Message result) {
+        SimulatedCommandsVerifier.getInstance().getBasebandVersion(result);
         resultSuccess(result, "SimulatedCommands");
     }
 
@@ -1568,7 +1589,8 @@ public class SimulatedCommands extends BaseCommands
     @Override
     public void
     getDeviceIdentity(Message response) {
-        unimplemented(response);
+        SimulatedCommandsVerifier.getInstance().getDeviceIdentity(response);
+        resultSuccess(response, new String[] {FAKE_IMEI, FAKE_IMEISV, FAKE_ESN, FAKE_MEID});
     }
 
     @Override
@@ -1737,6 +1759,7 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void getVoiceRadioTechnology(Message response) {
+        SimulatedCommandsVerifier.getInstance().getVoiceRadioTechnology(response);
         int ret[] = new int[1];
         ret[0] = mVoiceRadioTech;
         resultSuccess(response, ret);
@@ -1832,7 +1855,7 @@ public class SimulatedCommands extends BaseCommands
                                               int p1, int p2, int p3, String data,
                                               Message response) {
         SimulatedCommandsVerifier.getInstance().iccTransmitApduLogicalChannel(channel, cla,
-                                                 instruction, p1, p2, p3, data, response);
+                instruction, p1, p2, p3, data, response);
         if(mIccIoResultForApduLogicalChannel!=null) {
             resultSuccess(response, mIccIoResultForApduLogicalChannel);
         }else {
@@ -1878,6 +1901,8 @@ public class SimulatedCommands extends BaseCommands
 
     @Override
     public void startLceService(int report_interval_ms, boolean pullMode, Message result) {
+        SimulatedCommandsVerifier.getInstance().startLceService(report_interval_ms, pullMode,
+                result);
         unimplemented(result);
     }
 
@@ -1896,6 +1921,11 @@ public class SimulatedCommands extends BaseCommands
         unimplemented(result);
     }
 
+    @Override
+    public void getRadioCapability(Message result) {
+        SimulatedCommandsVerifier.getInstance().getRadioCapability(result);
+        resultSuccess(result, new RadioCapability(0, 0, 0, 0xFFFF, null, 0));
+    }
     public void notifySmsStatus(Object result) {
         if (mSmsStatusRegistrant != null) {
             mSmsStatusRegistrant.notifyRegistrant(new AsyncResult(null, result, null));
@@ -1931,6 +1961,7 @@ public class SimulatedCommands extends BaseCommands
     }
 
     private AtomicBoolean mAllowed = new AtomicBoolean(false);
+
     @Override
     public void setDataAllowed(boolean allowed, Message result) {
         log("setDataAllowed = " + allowed);

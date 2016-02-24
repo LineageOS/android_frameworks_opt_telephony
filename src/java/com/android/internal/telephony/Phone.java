@@ -87,7 +87,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public abstract class Phone extends Handler implements PhoneInternalInterface {
     private static final String LOG_TAG = "Phone";
 
-    public final static Object lockForRadioTechnologyChange = new Object();
+    protected final static Object lockForRadioTechnologyChange = new Object();
 
     private BroadcastReceiver mImsIntentReceiver = new BroadcastReceiver() {
         @Override
@@ -132,23 +132,23 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /** Supplementary Service Notification received. */
     protected static final int EVENT_SSN                         = 2;
     protected static final int EVENT_SIM_RECORDS_LOADED          = 3;
-    protected static final int EVENT_MMI_DONE                    = 4;
+    private static final int EVENT_MMI_DONE                      = 4;
     protected static final int EVENT_RADIO_ON                    = 5;
     protected static final int EVENT_GET_BASEBAND_VERSION_DONE   = 6;
     protected static final int EVENT_USSD                        = 7;
     protected static final int EVENT_RADIO_OFF_OR_NOT_AVAILABLE  = 8;
     protected static final int EVENT_GET_IMEI_DONE               = 9;
     protected static final int EVENT_GET_IMEISV_DONE             = 10;
-    protected static final int EVENT_GET_SIM_STATUS_DONE         = 11;
+    private static final int EVENT_GET_SIM_STATUS_DONE           = 11;
     protected static final int EVENT_SET_CALL_FORWARD_DONE       = 12;
     protected static final int EVENT_GET_CALL_FORWARD_DONE       = 13;
     protected static final int EVENT_CALL_RING                   = 14;
-    protected static final int EVENT_CALL_RING_CONTINUE          = 15;
+    private static final int EVENT_CALL_RING_CONTINUE            = 15;
 
     // Used to intercept the carrier selection calls so that
     // we can save the values.
-    protected static final int EVENT_SET_NETWORK_MANUAL_COMPLETE    = 16;
-    protected static final int EVENT_SET_NETWORK_AUTOMATIC_COMPLETE = 17;
+    private static final int EVENT_SET_NETWORK_MANUAL_COMPLETE      = 16;
+    private static final int EVENT_SET_NETWORK_AUTOMATIC_COMPLETE   = 17;
     protected static final int EVENT_SET_CLIR_COMPLETE              = 18;
     protected static final int EVENT_REGISTERED_TO_NETWORK          = 19;
     protected static final int EVENT_SET_VM_NUMBER_DONE             = 20;
@@ -156,22 +156,22 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected static final int EVENT_GET_DEVICE_IDENTITY_DONE       = 21;
     protected static final int EVENT_RUIM_RECORDS_LOADED            = 22;
     protected static final int EVENT_NV_READY                       = 23;
-    protected static final int EVENT_SET_ENHANCED_VP                = 24;
+    private static final int EVENT_SET_ENHANCED_VP                  = 24;
     protected static final int EVENT_EMERGENCY_CALLBACK_MODE_ENTER  = 25;
     protected static final int EVENT_EXIT_EMERGENCY_CALLBACK_RESPONSE = 26;
     protected static final int EVENT_CDMA_SUBSCRIPTION_SOURCE_CHANGED = 27;
     // other
     protected static final int EVENT_SET_NETWORK_AUTOMATIC          = 28;
     protected static final int EVENT_ICC_RECORD_EVENTS              = 29;
-    protected static final int EVENT_ICC_CHANGED                    = 30;
+    private static final int EVENT_ICC_CHANGED                      = 30;
     // Single Radio Voice Call Continuity
-    protected static final int EVENT_SRVCC_STATE_CHANGED            = 31;
-    protected static final int EVENT_INITIATE_SILENT_REDIAL         = 32;
-    protected static final int EVENT_RADIO_NOT_AVAILABLE            = 33;
-    protected static final int EVENT_UNSOL_OEM_HOOK_RAW             = 34;
+    private static final int EVENT_SRVCC_STATE_CHANGED              = 31;
+    private static final int EVENT_INITIATE_SILENT_REDIAL           = 32;
+    private static final int EVENT_RADIO_NOT_AVAILABLE              = 33;
+    private static final int EVENT_UNSOL_OEM_HOOK_RAW               = 34;
     protected static final int EVENT_GET_RADIO_CAPABILITY           = 35;
     protected static final int EVENT_SS                             = 36;
-    protected static final int EVENT_CONFIG_LCE                     = 37;
+    private static final int EVENT_CONFIG_LCE                       = 37;
     private static final int EVENT_CHECK_FOR_NETWORK_AUTOMATIC      = 38;
     protected static final int EVENT_VOICE_RADIO_TECH_CHANGED       = 39;
     protected static final int EVENT_REQUEST_VOICE_RADIO_TECH_DONE  = 40;
@@ -201,7 +201,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public static final String CF_ID = "cf_id_key";
 
     // Key used to read/write "disable DNS server check" pref (used for testing)
-    public static final String DNS_SERVER_CHECK_DISABLED_KEY = "dns_server_check_disabled_key";
+    private static final String DNS_SERVER_CHECK_DISABLED_KEY = "dns_server_check_disabled_key";
 
     /**
      * Small container class used to hold information relevant to
@@ -209,7 +209,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * if we are looking for automatic selection. operatorAlphaLong is the
      * corresponding operator name.
      */
-    protected static class NetworkSelectMessage {
+    private static class NetworkSelectMessage {
         public Message message;
         public String operatorNumeric;
         public String operatorAlphaLong;
@@ -219,12 +219,12 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     /* Instance Variables */
     public CommandsInterface mCi;
     protected int mVmCount = 0;
-    boolean mDnsCheckDisabled;
+    private boolean mDnsCheckDisabled;
     public DcTracker mDcTracker;
-    boolean mDoesRilSendMultipleCallRing;
-    int mCallRingContinueToken;
-    int mCallRingDelay;
-    boolean mIsVoiceCapable = true;
+    private boolean mDoesRilSendMultipleCallRing;
+    private int mCallRingContinueToken;
+    private int mCallRingDelay;
+    private boolean mIsVoiceCapable = true;
 
     // Variable to cache the video capability. When RAT changes, we lose this info and are unable
     // to recover from the state. We cache it and notify listeners when they register.
@@ -249,10 +249,9 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     private final AtomicReference<RadioCapability> mRadioCapability =
             new AtomicReference<RadioCapability>();
 
-    protected static final int DEFAULT_REPORT_INTERVAL_MS = 200;
-    protected static final boolean LCE_PULL_MODE = true;
-    protected int mReportInterval = 0;  // ms
-    protected int mLceStatus = RILConstants.LCE_NOT_AVAILABLE;
+    private static final int DEFAULT_REPORT_INTERVAL_MS = 200;
+    private static final boolean LCE_PULL_MODE = true;
+    private int mLceStatus = RILConstants.LCE_NOT_AVAILABLE;
     protected TelephonyComponentFactory mTelephonyComponentFactory;
 
     //IMS
@@ -260,7 +259,64 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public static final String EXTRA_KEY_ALERT_TITLE = "alertTitle";
     public static final String EXTRA_KEY_ALERT_MESSAGE = "alertMessage";
     public static final String EXTRA_KEY_ALERT_SHOW = "alertShow";
-    public static final String EXTRA_KEY_NOTIFICATION_MESSAGE = "notificationMessage";
+    protected static final String EXTRA_KEY_NOTIFICATION_MESSAGE = "notificationMessage";
+
+    private final RegistrantList mPreciseCallStateRegistrants
+            = new RegistrantList();
+
+    private final RegistrantList mHandoverRegistrants
+            = new RegistrantList();
+
+    private final RegistrantList mNewRingingConnectionRegistrants
+            = new RegistrantList();
+
+    private final RegistrantList mIncomingRingRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mDisconnectRegistrants
+            = new RegistrantList();
+
+    private final RegistrantList mServiceStateRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mMmiCompleteRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mMmiRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mUnknownConnectionRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mSuppServiceFailedRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mRadioOffOrNotAvailableRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mSimRecordsLoadedRegistrants
+            = new RegistrantList();
+
+    private final RegistrantList mVideoCapabilityChangedRegistrants
+            = new RegistrantList();
+
+    protected final RegistrantList mEmergencyCallToggledRegistrants
+            = new RegistrantList();
+
+    private Looper mLooper; /* to insure registrants are in correct thread*/
+
+    protected final Context mContext;
+
+    /**
+     * PhoneNotifier is an abstraction for all system-wide
+     * state change notification. DefaultPhoneNotifier is
+     * used here unless running we're inside a unit test.
+     */
+    protected PhoneNotifier mNotifier;
+
+    protected SimulatedRadioControl mSimulatedRadioControl;
+
+    private boolean mUnitTestMode;
 
     /**
      * Returns a string identifier for this phone interface for parties
@@ -324,77 +380,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
             return null;
         }
         return SystemProperties.get(property, defValue);
-    }
-
-
-    protected final RegistrantList mPreciseCallStateRegistrants
-            = new RegistrantList();
-
-    protected final RegistrantList mHandoverRegistrants
-             = new RegistrantList();
-
-    protected final RegistrantList mNewRingingConnectionRegistrants
-            = new RegistrantList();
-
-    protected final RegistrantList mIncomingRingRegistrants
-            = new RegistrantList();
-
-    protected final RegistrantList mDisconnectRegistrants
-            = new RegistrantList();
-
-    protected final RegistrantList mServiceStateRegistrants
-            = new RegistrantList();
-
-    protected final RegistrantList mMmiCompleteRegistrants
-            = new RegistrantList();
-
-    protected final RegistrantList mMmiRegistrants
-            = new RegistrantList();
-
-    protected final RegistrantList mUnknownConnectionRegistrants
-            = new RegistrantList();
-
-    protected final RegistrantList mSuppServiceFailedRegistrants
-            = new RegistrantList();
-
-    protected final RegistrantList mRadioOffOrNotAvailableRegistrants
-            = new RegistrantList();
-
-    protected final RegistrantList mSimRecordsLoadedRegistrants
-            = new RegistrantList();
-
-    protected final RegistrantList mVideoCapabilityChangedRegistrants
-            = new RegistrantList();
-
-    protected final RegistrantList mEmergencyCallToggledRegistrants
-            = new RegistrantList();
-
-
-    protected Looper mLooper; /* to insure registrants are in correct thread*/
-
-    protected final Context mContext;
-
-    /**
-     * PhoneNotifier is an abstraction for all system-wide
-     * state change notification. DefaultPhoneNotifier is
-     * used here unless running we're inside a unit test.
-     */
-    protected PhoneNotifier mNotifier;
-
-    protected SimulatedRadioControl mSimulatedRadioControl;
-
-    boolean mUnitTestMode;
-
-    /**
-     * Constructs a Phone in normal (non-unit test) mode.
-     *
-     * @param notifier An instance of DefaultPhoneNotifier,
-     * @param context Context object from hosting application
-     * unless unit testing.
-     * @param ci the CommandsInterface
-     */
-    protected Phone(String name, PhoneNotifier notifier, Context context, CommandsInterface ci) {
-        this(name, notifier, context, ci, false);
     }
 
     /**
@@ -623,7 +608,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
                 } else {
                     final ArrayList<Integer> statusInfo = (ArrayList<Integer>)ar.result;
                     mLceStatus = statusInfo.get(0);
-                    mReportInterval = statusInfo.get(1);
                 }
                 break;
 
@@ -783,7 +767,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     protected void setIsInEmergencyCall() {
     }
 
-    public void migrateFrom(Phone from) {
+    protected void migrateFrom(Phone from) {
         migrate(mHandoverRegistrants, from.mHandoverRegistrants);
         migrate(mPreciseCallStateRegistrants, from.mPreciseCallStateRegistrants);
         migrate(mNewRingingConnectionRegistrants, from.mNewRingingConnectionRegistrants);
@@ -799,7 +783,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         }
     }
 
-    public void migrate(RegistrantList to, RegistrantList from) {
+    protected void migrate(RegistrantList to, RegistrantList from) {
         from.removeCleared();
         for (int i = 0, n = from.size(); i < n; i++) {
             Registrant r = (Registrant) from.get(i);
@@ -1095,7 +1079,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * @param response The message to dispatch when the network selection
      * is complete.
      *
-     * @see #selectNetworkManually(OperatorInfo, android.os.Message )
+     * @see #selectNetworkManually(OperatorInfo, boolean, android.os.Message)
      */
     public void setNetworkSelectionModeAutomatic(Message response) {
         Rlog.d(LOG_TAG, "setNetworkSelectionModeAutomatic, querying current mode");
@@ -1270,7 +1254,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * automatic selection, all depending upon the value in the shared
      * preferences.
      */
-    public void restoreSavedNetworkSelection(Message response) {
+    private void restoreSavedNetworkSelection(Message response) {
         // retrieve the operator
         OperatorInfo networkSelection = getSavedNetworkSelection();
 
@@ -1302,7 +1286,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
      * For unit tests; don't send notifications to "Phone"
      * mailbox registrants if true.
      */
-    public void setUnitTestMode(boolean f) {
+    private void setUnitTestMode(boolean f) {
         mUnitTestMode = f;
     }
 
@@ -1970,7 +1954,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         mNotifier.notifyDataActivity(this);
     }
 
-    public void notifyMessageWaitingIndicator() {
+    private void notifyMessageWaitingIndicator() {
         // Do not notify voice mail waiting if device doesn't support voice
         if (!mIsVoiceCapable)
             return;
@@ -2724,7 +2708,7 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
     public void dispose() {
     }
 
-    protected void updateImsPhone() {
+    private void updateImsPhone() {
         Rlog.d(LOG_TAG, "updateImsPhone"
                 + " mImsServiceReady=" + mImsServiceReady);
 
@@ -3004,7 +2988,6 @@ public abstract class Phone extends Handler implements PhoneInternalInterface {
         if (restoreNetworkSelection) {
             restoreSavedNetworkSelection(null);
         }
-        mDcTracker.setDataEnabled(getDataEnabled());
     }
 
     protected void setPreferredNetworkTypeIfSimLoaded() {

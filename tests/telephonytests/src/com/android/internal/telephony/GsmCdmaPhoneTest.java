@@ -26,10 +26,12 @@ import android.provider.Settings;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellLocation;
 import android.telephony.ServiceState;
+import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
 import android.telephony.gsm.GsmCellLocation;
 import android.test.suitebuilder.annotation.SmallTest;
 
+import com.android.internal.telephony.test.SimulatedCommands;
 import com.android.internal.telephony.uicc.IccException;
 import com.android.internal.telephony.uicc.IccRecords;
 
@@ -58,6 +60,8 @@ import static org.mockito.Mockito.verify;
 public class GsmCdmaPhoneTest extends TelephonyTest {
     //mPhoneUnderTest
     private GsmCdmaPhone mPhoneUT;
+
+    private TelephonyManager mTelephonyManager;
 
     private class GsmCdmaPhoneTestHandler extends HandlerThread {
 
@@ -96,6 +100,7 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         super.setUp("GsmCdmaPhoneTest");
 
         doReturn(false).when(mSST).isDeviceShuttingDown();
+        mTelephonyManager = TelephonyManager.from(mContext);
 
         new GsmCdmaPhoneTestHandler(TAG).start();
         waitUntilReady();
@@ -473,5 +478,62 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
                 eq(CF_REASON_UNCONDITIONAL), anyInt(), eq(cfNumber), eq(0), any(Message.class));
         waitForMs(50);
         verify(mSimRecords).setVoiceCallForwardingFlag(anyInt(), anyBoolean(), eq(cfNumber));
+    }
+
+    /**
+     * GsmCdmaPhone handles a lot of messages. This function verifies behavior for messages that are
+     * received when obj is created and that are received on phone type switch
+     */
+    @Test
+    @SmallTest
+    public void testHandleInitialMessages() {
+        // EVENT_RADIO_AVAILABLE
+        verify(mSimulatedCommandsVerifier).getBasebandVersion(any(Message.class));
+        verify(mSimulatedCommandsVerifier).getIMEI(any(Message.class));
+        verify(mSimulatedCommandsVerifier).getIMEISV(any(Message.class));
+        verify(mSimulatedCommandsVerifier).getRadioCapability(any(Message.class));
+        // once as part of constructor, and once on radio available
+        verify(mSimulatedCommandsVerifier, times(2)).startLceService(anyInt(), anyBoolean(),
+                any(Message.class));
+
+        // EVENT_RADIO_ON
+        verify(mSimulatedCommandsVerifier).getVoiceRadioTechnology(any(Message.class));
+        verify(mSimulatedCommandsVerifier).setPreferredNetworkType(
+                eq(RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA), any(Message.class));
+
+        // verify responses for above requests:
+        // baseband version
+        verify(mTelephonyManager).setBasebandVersionForPhone(eq(mPhoneUT.getPhoneId()),
+                anyString());
+        // IMEI
+        assertEquals(SimulatedCommands.FAKE_IMEI, mPhoneUT.getImei());
+        // IMEISV
+        assertEquals(SimulatedCommands.FAKE_IMEISV, mPhoneUT.getDeviceSvn());
+        // radio capability
+        verify(mSimulatedCommandsVerifier).getNetworkSelectionMode(any(Message.class));
+
+        switchToCdma(); // this leads to eventRadioAvailable handling on cdma
+
+        // EVENT_RADIO_AVAILABLE
+        verify(mSimulatedCommandsVerifier, times(2)).getBasebandVersion(any(Message.class));
+        verify(mSimulatedCommandsVerifier).getDeviceIdentity(any(Message.class));
+        verify(mSimulatedCommandsVerifier, times(3)).startLceService(anyInt(), anyBoolean(),
+                any(Message.class));
+
+        // EVENT_RADIO_ON
+        verify(mSimulatedCommandsVerifier, times(2)).getVoiceRadioTechnology(any(Message.class));
+        // once on radio on, and once on get baseband version
+        verify(mSimulatedCommandsVerifier, times(3)).setPreferredNetworkType(
+                eq(RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA), any(Message.class));
+
+        // verify responses for above requests:
+        // baseband version
+        verify(mTelephonyManager, times(2)).setBasebandVersionForPhone(eq(mPhoneUT.getPhoneId()),
+                anyString());
+        // device identity
+        assertEquals(SimulatedCommands.FAKE_IMEI, mPhoneUT.getImei());
+        assertEquals(SimulatedCommands.FAKE_IMEISV, mPhoneUT.getDeviceSvn());
+        assertEquals(SimulatedCommands.FAKE_ESN, mPhoneUT.getEsn());
+        assertEquals(SimulatedCommands.FAKE_MEID, mPhoneUT.getMeid());
     }
 }
