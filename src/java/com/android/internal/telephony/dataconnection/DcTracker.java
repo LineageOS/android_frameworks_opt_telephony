@@ -2186,7 +2186,10 @@ public class DcTracker extends Handler {
         PendingIntent alarmIntent = PendingIntent.getBroadcast(mPhone.getContext(), 0,
                                         intent, PendingIntent.FLAG_UPDATE_CURRENT);
         apnContext.setReconnectIntent(alarmIntent);
-        mAlarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+
+        // Use the exact timer instead of the inexact one to provide better user experience.
+        // In some extreme cases, we saw the retry was delayed for few minutes.
+        mAlarmManager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                 SystemClock.elapsedRealtime() + delay, alarmIntent);
     }
 
