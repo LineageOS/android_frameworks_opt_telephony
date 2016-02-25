@@ -1568,19 +1568,7 @@ public class ServiceStateTracker extends Handler {
      * @return true for roaming state set
      */
     private boolean isRoamingBetweenOperators(boolean cdmaRoaming, ServiceState s) {
-        String spn = ((TelephonyManager) mPhone.getContext().
-                getSystemService(Context.TELEPHONY_SERVICE)).
-                getSimOperatorNameForPhone(mPhone.getPhoneId());
-
-        // NOTE: in case of RUIM we should completely ignore the ERI data file and
-        // mOperatorAlphaLong is set from RIL_REQUEST_OPERATOR response 0 (alpha ONS)
-        String onsl = s.getVoiceOperatorAlphaLong();
-        String onss = s.getVoiceOperatorAlphaShort();
-
-        boolean equalsOnsl = onsl != null && spn != null && !spn.isEmpty() && spn.equals(onsl);
-        boolean equalsOnss = onss != null && spn != null && !spn.isEmpty() && spn.equals(onss);
-
-        return cdmaRoaming && !(equalsOnsl || equalsOnss);
+        return cdmaRoaming && !isSameOperatorNameFromSimAndSS(s);
     }
 
     void handlePollStateResultMessage(int what, AsyncResult ar) {
@@ -3472,25 +3460,31 @@ public class ServiceStateTracker extends Handler {
         return ServiceState.RIL_REG_STATE_ROAMING == code;
     }
 
+    private boolean isSameOperatorNameFromSimAndSS(ServiceState s) {
+        String spn = ((TelephonyManager) mPhone.getContext().
+                getSystemService(Context.TELEPHONY_SERVICE)).
+                getSimOperatorNameForPhone(getPhoneId());
+
+        // NOTE: in case of RUIM we should completely ignore the ERI data file and
+        // mOperatorAlphaLong is set from RIL_REQUEST_OPERATOR response 0 (alpha ONS)
+        String onsl = s.getOperatorAlphaLong();
+        String onss = s.getOperatorAlphaShort();
+
+        boolean equalsOnsl = !TextUtils.isEmpty(spn) && spn.equalsIgnoreCase(onsl);
+        boolean equalsOnss = !TextUtils.isEmpty(spn) && spn.equalsIgnoreCase(onss);
+
+        return (equalsOnsl || equalsOnss);
+    }
+
     /**
      * Set roaming state if operator mcc is the same as sim mcc
-     * and ons is different from spn
+     * and ons is not different from spn
      *
      * @param s ServiceState hold current ons
      * @return true if same operator
      */
     private boolean isSameNamedOperators(ServiceState s) {
-        String spn = ((TelephonyManager) mPhone.getContext().
-                getSystemService(Context.TELEPHONY_SERVICE)).
-                getSimOperatorNameForPhone(getPhoneId());
-
-        String onsl = s.getOperatorAlphaLong();
-        String onss = s.getOperatorAlphaShort();
-
-        boolean equalsOnsl = onsl != null && spn != null && !spn.isEmpty() && spn.equals(onsl);
-        boolean equalsOnss = onss != null && spn != null && !spn.isEmpty() && spn.equals(onss);
-
-        return currentMccEqualsSimMcc(s) && (equalsOnsl || equalsOnss);
+        return currentMccEqualsSimMcc(s) && isSameOperatorNameFromSimAndSS(s);
     }
 
     /**
