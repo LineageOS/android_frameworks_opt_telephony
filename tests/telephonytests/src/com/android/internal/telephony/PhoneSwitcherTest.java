@@ -533,7 +533,7 @@ public class PhoneSwitcherTest extends AndroidTestCase {
         if (commandsInterfaces[1].isDataAllowed()) fail("data allowed");
 
         connectivityServiceMock.setCurrentScoreForRequest(connectivityServiceMock.defaultRequest,
-                100);
+                0);
         waitABit();
 
         // should be no change
