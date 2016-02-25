@@ -1011,22 +1011,28 @@ public class ConnectivityServiceMock extends IConnectivityManager.Stub
         throw new RuntimeException("not implemented");
     }
 
-    private NetworkRequest mDefaultRequest = null;
+    @VisibleForTesting
+    public NetworkRequest defaultRequest = null;
     @VisibleForTesting
     public synchronized void addDefaultRequest() {
-        if (mDefaultRequest != null) return;
+        if (defaultRequest != null) return;
         NetworkCapabilities netCap = new NetworkCapabilities();
         netCap.addCapability(NET_CAPABILITY_INTERNET);
         netCap.addCapability(NET_CAPABILITY_NOT_RESTRICTED);
-        mDefaultRequest = requestNetwork(netCap, null, 0, new Binder(),
+        defaultRequest = requestNetwork(netCap, null, 0, new Binder(),
                 ConnectivityManager.TYPE_NONE);
     }
 
     @VisibleForTesting
+    public synchronized void setCurrentScoreForRequest(NetworkRequest nr, int score) {
+        sendUpdatedScoreToFactories(nr, score);
+    }
+
+    @VisibleForTesting
     public synchronized void removeDefaultRequest() {
-        if (mDefaultRequest == null) return;
-        releaseNetworkRequest(mDefaultRequest);
-        mDefaultRequest = null;
+        if (defaultRequest == null) return;
+        releaseNetworkRequest(defaultRequest);
+        defaultRequest = null;
     }
 
 
