@@ -17,6 +17,7 @@
 package com.android.internal.telephony;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.doReturn;
@@ -24,11 +25,14 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.app.AppOpsManager;
 import android.content.BroadcastReceiver;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.os.ServiceManager;
 import android.os.UserHandle;
 import android.provider.Telephony;
 import android.test.suitebuilder.annotation.SmallTest;
@@ -37,13 +41,26 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+
+import java.util.HashMap;
 
 public class WapPushOverSmsTest extends TelephonyTest {
+    @Mock
+    protected IMms.Stub mIMmsStub;
+    protected HashMap<String, IBinder> mServiceManagerMockedServices = new HashMap<>();
+
     private WapPushOverSms mWapPushOverSmsUT;
 
     @Before
     public void setUp() throws Exception {
         super.setUp("WapPushOverSmsTest");
+
+        // Note that this replaces only cached services in ServiceManager. If a service is not found
+        // in the cache, a real instance is used.
+        replaceInstance(ServiceManager.class, "sCache", null, mServiceManagerMockedServices);
+        mServiceManagerMockedServices.put("imms", mIMmsStub);
+        doReturn(mIMmsStub).when(mIMmsStub).queryLocalInterface(anyString());
 
         mWapPushOverSmsUT = new WapPushOverSms(mContext);
     }
@@ -102,7 +119,9 @@ public class WapPushOverSmsTest extends TelephonyTest {
     }
 
     @Test @SmallTest
-    public void testDispatchWapPduFromBlockedNumber_noIntentsDispatched() {
+    public void testDispatchWapPduFromBlockedNumber_noIntentsDispatched() throws Exception {
+        when(mIMmsStub.getCarrierConfigValues(anyInt())).thenReturn(new Bundle());
+
         mFakeBlockedNumberContentProvider.mBlockedNumbers.add("16178269168");
 
         doReturn(true).when(mWspTypeDecoder).decodeUintvarInteger(anyInt());
