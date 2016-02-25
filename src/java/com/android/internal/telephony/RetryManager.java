@@ -505,6 +505,7 @@ public class RetryManager {
                 mSameApnRetryCount < MAX_SAME_APN_RETRY) {
             // If the modem explicitly suggests a retry delay, we should use it, even in fail fast
             // mode.
+            log("Modem suggested retry in " + mModemSuggestedDelay + " ms.");
             return mModemSuggestedDelay;
         }
 
@@ -523,7 +524,10 @@ public class RetryManager {
 
             // If we've already cycled through all the APNs, that means all APNs have
             // permanently failed
-            if (index == mCurrentApnIndex) return NO_RETRY;
+            if (index == mCurrentApnIndex) {
+                log("All APNs have permanently failed.");
+                return NO_RETRY;
+            }
         }
 
         long delay;

@@ -19,6 +19,7 @@ package com.android.internal.telephony;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.LinkProperties;
@@ -57,6 +58,7 @@ import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -272,7 +274,7 @@ public class DcTrackerTest extends TelephonyTest {
                 "evdo:131072,262144,1048576,4096,16384,524288",
                 "lte:524288,1048576,8388608,262144,524288,4194304"});
 
-        ((MockContentResolver) mContextFixture.getTestDouble().getContentResolver()).addProvider(
+        ((MockContentResolver) mContext.getContentResolver()).addProvider(
                 Telephony.Carriers.CONTENT_URI.getAuthority(), mApnSettingContentProvider);
 
         doReturn(true).when(mSimRecords).getRecordsLoaded();
@@ -284,8 +286,7 @@ public class DcTrackerTest extends TelephonyTest {
         doReturn(mBinder).when(mServiceCache).get(anyString());
         replaceInstance(ServiceManager.class, "sCache", null, mServiceCache);
 
-        mAlarmManager = (AlarmManager) mContextFixture.getTestDouble().
-                getSystemService(Context.ALARM_SERVICE);
+        mAlarmManager = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
 
         new DcTrackerTestHandler(getClass().getSimpleName()).start();
         waitUntilReady();
@@ -301,18 +302,34 @@ public class DcTrackerTest extends TelephonyTest {
         super.tearDown();
     }
 
-    void verifyDataConnected() {
-        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
-                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), eq(0), eq(FAKE_APN1),
-                eq(""), eq(""), eq(0), eq("IP"), any(Message.class));
+    // Create a successful data response
+    private DataCallResponse createDataCallResponse() {
 
+        DataCallResponse dcResponse = new DataCallResponse();
+
+        dcResponse.version = 11;
+        dcResponse.status = 0;
+        dcResponse.suggestedRetryTime = RILConstants.MAX_INT; // No retry suggested by the modem
+        dcResponse.cid = 1;
+        dcResponse.active = 2;
+        dcResponse.type = "IP";
+        dcResponse.ifname = FAKE_IFNAME;
+        dcResponse.mtu = 1440;
+        dcResponse.addresses = new String[]{FAKE_ADDRESS};
+        dcResponse.dnses = new String[]{FAKE_DNS};
+        dcResponse.gateways = new String[]{FAKE_GATEWAY};
+        dcResponse.pcscf = new String[]{FAKE_PCSCF_ADDRESS};
+        return dcResponse;
+    }
+
+    private void verifyDataConnected(final String apnSetting) {
         verify(mPhone, times(1)).notifyDataConnection(eq(Phone.REASON_CONNECTED),
                 eq(PhoneConstants.APN_TYPE_DEFAULT));
 
         verify(mAlarmManager, times(1)).set(eq(AlarmManager.ELAPSED_REALTIME_WAKEUP), anyLong(),
                 any(PendingIntent.class));
 
-        assertEquals(FAKE_APN1, mDct.getActiveApnString(PhoneConstants.APN_TYPE_DEFAULT));
+        assertEquals(apnSetting, mDct.getActiveApnString(PhoneConstants.APN_TYPE_DEFAULT));
         assertArrayEquals(new String[]{PhoneConstants.APN_TYPE_DEFAULT}, mDct.getActiveApnTypes());
         assertTrue(mDct.getAnyDataEnabled());
         assertTrue(mDct.getDataEnabled());
@@ -329,25 +346,12 @@ public class DcTrackerTest extends TelephonyTest {
         assertEquals(FAKE_GATEWAY, linkProperties.getRoutes().get(0).getGateway().getHostAddress());
     }
 
+    // Test the normal data call setup scenario.
     @Test
     @MediumTest
     public void testDataSetup() {
 
-        DataCallResponse dcResponse = new DataCallResponse();
-        dcResponse.version = 11;
-        dcResponse.status = 0;
-        dcResponse.suggestedRetryTime = -1;
-        dcResponse.cid = 1;
-        dcResponse.active = 2;
-        dcResponse.type = "IP";
-        dcResponse.ifname = FAKE_IFNAME;
-        dcResponse.mtu = 1440;
-        dcResponse.addresses = new String[]{FAKE_ADDRESS};
-        dcResponse.dnses = new String[]{FAKE_DNS};
-        dcResponse.gateways = new String[]{FAKE_GATEWAY};
-        dcResponse.pcscf = new String[]{FAKE_PCSCF_ADDRESS};
-
-        mSimulatedCommands.setDataCallResponse(dcResponse);
+        mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
 
         logd("Sending EVENT_RECORDS_LOADED");
         mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
@@ -382,6 +386,89 @@ public class DcTrackerTest extends TelephonyTest {
         // APN id 0 is APN_TYPE_DEFAULT
         mDct.setEnabled(0, true);
         waitForMs(200);
-        verifyDataConnected();
+
+        // Verify if RIL command was sent properly.
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), eq(0), eq(FAKE_APN1),
+                eq(""), eq(""), eq(0), eq("IP"), any(Message.class));
+
+        verifyDataConnected(FAKE_APN1);
+    }
+
+    // Test the scenario where the first data call setup is failed, and then retry the setup later.
+    @Test
+    @MediumTest
+    public void testDataRetry() {
+        DataCallResponse dcResponse = createDataCallResponse();
+        // LOST_CONNECTION(0x10004) is a non-permanent failure, so we'll retry data setup later.
+        dcResponse.status = 0x10004;
+        // Simulate RIL fails the data call setup
+        mSimulatedCommands.setDataCallResponse(false, dcResponse);
+
+        logd("Sending EVENT_RECORDS_LOADED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_RECORDS_LOADED, null));
+        waitForMs(200);
+
+        ArgumentCaptor<String> apnTypeArgumentCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mPhone, times(sNetworkAttributes.length)).notifyDataConnection(
+                eq(Phone.REASON_SIM_LOADED), apnTypeArgumentCaptor.capture(),
+                eq(PhoneConstants.DataState.DISCONNECTED));
+
+        assertEquals(sApnTypes, apnTypeArgumentCaptor.getAllValues());
+
+        logd("Sending EVENT_DATA_CONNECTION_ATTACHED");
+        mDct.sendMessage(mDct.obtainMessage(DctConstants.EVENT_DATA_CONNECTION_ATTACHED, null));
+        waitForMs(200);
+
+        apnTypeArgumentCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mPhone, times(sNetworkAttributes.length)).notifyDataConnection(
+                eq(Phone.REASON_DATA_ATTACHED), apnTypeArgumentCaptor.capture(),
+                eq(PhoneConstants.DataState.DISCONNECTED));
+
+        assertEquals(sApnTypes, apnTypeArgumentCaptor.getAllValues());
+
+        apnTypeArgumentCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mPhone, times(sNetworkAttributes.length)).notifyDataConnection(
+                eq(Phone.REASON_DATA_ENABLED), apnTypeArgumentCaptor.capture(),
+                eq(PhoneConstants.DataState.DISCONNECTED));
+
+        assertEquals(sApnTypes, apnTypeArgumentCaptor.getAllValues());
+
+        logd("Sending EVENT_ENABLE_NEW_APN");
+        // APN id 0 is APN_TYPE_DEFAULT
+        mDct.setEnabled(0, true);
+        waitForMs(200);
+
+        // Verify if RIL command was sent properly.
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), eq(0), eq(FAKE_APN1),
+                eq(""), eq(""), eq(0), eq("IP"), any(Message.class));
+
+        // Make sure we never notify connected because the data call setup is supposed to fail.
+        verify(mPhone, never()).notifyDataConnection(eq(Phone.REASON_CONNECTED),
+                eq(PhoneConstants.APN_TYPE_DEFAULT));
+
+        // Verify the retry manger schedule another data call setup.
+        verify(mAlarmManager, times(1)).setExact(eq(AlarmManager.ELAPSED_REALTIME_WAKEUP),
+                anyLong(), any(PendingIntent.class));
+
+        // This time we'll let RIL command succeed.
+        mSimulatedCommands.setDataCallResponse(true, createDataCallResponse());
+
+        // Simulate the timer expires.
+        Intent intent = new Intent("com.android.internal.telephony.data-reconnect.default");
+        intent.putExtra("reconnect_alarm_extra_type", PhoneConstants.APN_TYPE_DEFAULT);
+        intent.putExtra(PhoneConstants.SUBSCRIPTION_KEY, 0);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        mContext.sendBroadcast(intent);
+        waitForMs(200);
+
+        // Verify if RIL command was sent properly.
+        verify(mSimulatedCommandsVerifier, times(1)).setupDataCall(
+                eq(ServiceState.RIL_RADIO_TECHNOLOGY_UMTS), eq(0), eq(FAKE_APN2),
+                eq(""), eq(""), eq(0), eq("IP"), any(Message.class));
+
+        // Verify connected with APN2 setting.
+        verifyDataConnected(FAKE_APN2);
     }
 }

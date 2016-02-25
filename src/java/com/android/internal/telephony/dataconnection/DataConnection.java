@@ -568,9 +568,7 @@ public final class DataConnection extends StateMachine {
             // Get the completed message but only use it once
             Message connectionCompletedMsg = cp.mOnCompletedMsg;
             cp.mOnCompletedMsg = null;
-            if (connectionCompletedMsg.obj instanceof ApnContext) {
-                alreadySent = (ApnContext)connectionCompletedMsg.obj;
-            }
+            alreadySent = cp.mApnContext;
 
             long timeStamp = System.currentTimeMillis();
             connectionCompletedMsg.arg1 = mCid;
