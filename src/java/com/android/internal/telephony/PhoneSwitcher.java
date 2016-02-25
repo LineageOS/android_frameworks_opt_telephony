@@ -264,7 +264,8 @@ public class PhoneSwitcher extends Handler {
      * phones that aren't in the active phone list.  Finally, activate all
      * phones in the active phone list.
      */
-    private void onEvaluate(boolean requestsChanged, String why) {
+    private void onEvaluate(boolean requestsChanged, String reason) {
+        StringBuilder sb = new StringBuilder(reason);
         if (isEmergency()) {
             log("onEvalute aborted due to Emergency");
             return;
@@ -273,20 +274,24 @@ public class PhoneSwitcher extends Handler {
         boolean diffDetected = requestsChanged;
         final int dataSub = mSubscriptionController.getDefaultDataSubId();
         if (dataSub != mDefaultDataSubscription) {
+            sb.append(" default ").append(mDefaultDataSubscription).append("->").append(dataSub);
             mDefaultDataSubscription = dataSub;
             diffDetected = true;
+
         }
 
         for (int i = 0; i < mNumPhones; i++) {
             int sub = mSubscriptionController.getSubIdUsingPhoneId(i);
             if (sub != mPhoneSubscriptions[i]) {
+                sb.append(" phone[").append(i).append("] ").append(mPhoneSubscriptions[i]);
+                sb.append("->").append(sub);
                 mPhoneSubscriptions[i] = sub;
                 diffDetected = true;
             }
         }
 
         if (diffDetected) {
-            log("evaluating due to " + why);
+            log("evaluating due to " + sb.toString());
 
             List<Integer> newActivePhones = new ArrayList<Integer>();
 
