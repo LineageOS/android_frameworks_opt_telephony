@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ffb9cba7_17761708",
+        "filename": "src/java/com/android/internal/telephony/imsphone/ImsPhoneCallTracker.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 1673,
+      "author": {
+        "id": 13513
+      },
+      "writtenOn": "2016-02-25T07:21:35Z",
+      "side": 1,
+      "message": "setVolteCallCapability",
+      "revId": "7c7e7f2a4e1bbfd4cfda5cbb99fa00e953546574",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
