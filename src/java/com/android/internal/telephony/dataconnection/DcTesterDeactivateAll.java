@@ -32,7 +32,7 @@ import com.android.internal.telephony.Phone;
  * adb shell am broadcast -a com.android.internal.telephony.dataconnection.action_deactivate_all
  */
 public class DcTesterDeactivateAll {
-    private static final String LOG_TAG = "DcTesterDeacativeAll";
+    private static final String LOG_TAG = "DcTesterDeacativateAll";
     private static final boolean DBG = true;
 
     private Phone mPhone;
