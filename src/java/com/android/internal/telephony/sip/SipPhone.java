@@ -26,7 +26,6 @@ import android.net.sip.SipManager;
 import android.net.sip.SipProfile;
 import android.net.sip.SipSession;
 import android.os.AsyncResult;
-import android.os.Bundle;
 import android.os.Message;
 import android.telephony.DisconnectCause;
 import android.telephony.PhoneNumberUtils;
@@ -55,6 +54,8 @@ public class SipPhone extends SipPhoneBase {
     private static final int TIMEOUT_MAKE_CALL = 15; // in seconds
     private static final int TIMEOUT_ANSWER_CALL = 8; // in seconds
     private static final int TIMEOUT_HOLD_CALL = 15; // in seconds
+    // Minimum time needed between hold/unhold requests.
+    private static final long TIMEOUT_HOLD_PROCESSING = 1000; // ms
 
     // A call that is ringing or (call) waiting
     private SipCall mRingingCall = new SipCall();
@@ -63,6 +64,8 @@ public class SipPhone extends SipPhoneBase {
 
     private SipManager mSipManager;
     private SipProfile mProfile;
+
+    private long mTimeOfLastValidHoldRequest = System.currentTimeMillis();
 
     SipPhone (Context context, PhoneNotifier notifier, SipProfile profile) {
         super("SIP:" + profile.getUriString(), context, notifier);
@@ -214,6 +217,13 @@ public class SipPhone extends SipPhoneBase {
 
     @Override
     public void switchHoldingAndActive() throws CallStateException {
+        // Wait for at least TIMEOUT_HOLD_PROCESSING ms to occur before sending hold/unhold requests
+        // to prevent spamming the SipAudioCall state machine and putting it into an invalid state.
+        if (!isHoldTimeoutExpired()) {
+            if (DBG) log("switchHoldingAndActive: Disregarded! Under " + TIMEOUT_HOLD_PROCESSING +
+                    " ms...");
+            return;
+        }
         if (DBG) log("switchHoldingAndActive: switch fg and bg");
         synchronized (SipPhone.class) {
             mForegroundCall.switchWith(mBackgroundCall);
@@ -410,6 +420,15 @@ public class SipPhone extends SipPhoneBase {
                 slog("illegal connection state: " + sessionState);
                 return Call.State.DISCONNECTED;
         }
+    }
+
+    private synchronized boolean isHoldTimeoutExpired() {
+        long currTime = System.currentTimeMillis();
+        if ((currTime - mTimeOfLastValidHoldRequest) > TIMEOUT_HOLD_PROCESSING) {
+            mTimeOfLastValidHoldRequest = currTime;
+            return true;
+        }
+        return false;
     }
 
     private void log(String s) {
