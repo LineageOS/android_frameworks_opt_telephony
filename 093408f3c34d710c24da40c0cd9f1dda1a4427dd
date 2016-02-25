@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ffb9cba7_17ab771d",
+        "filename": "src/java/com/android/internal/telephony/uicc/IccFileHandler.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 541,
+      "author": {
+        "id": 13513
+      },
+      "writtenOn": "2016-02-25T09:31:09Z",
+      "side": 1,
+      "message": "For sake of keeping this to the least amount of changes i would say do the change as if(tlv){new logic}else{current code} please dont change current lines of code since its not adding value to ur change.",
+      "revId": "093408f3c34d710c24da40c0cd9f1dda1a4427dd",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
