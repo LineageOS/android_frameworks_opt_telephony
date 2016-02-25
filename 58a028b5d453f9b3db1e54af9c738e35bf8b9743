@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ffb9cba7_577d6f1a",
+        "filename": "src/java/com/android/internal/telephony/RIL.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 3520,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-02-25T06:16:10Z",
+      "side": 1,
+      "message": "You might want to leave the changes in the RIL class to your device-specific RIL classes, that way you don\u0027t need to have this samsung_stk check.",
+      "revId": "58a028b5d453f9b3db1e54af9c738e35bf8b9743",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ffb9cba7_37747b35",
+        "filename": "src/java/com/android/internal/telephony/cat/CommandParamsFactory.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 694,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-02-25T06:16:10Z",
+      "side": 1,
+      "message": "I\u0027d restructure this so cmdType is within the isSamsungStk if block.",
+      "revId": "58a028b5d453f9b3db1e54af9c738e35bf8b9743",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ffb9cba7_777af324",
+        "filename": "src/java/com/android/internal/telephony/cat/CommandParamsFactory.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 719,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-02-25T06:16:10Z",
+      "side": 1,
+      "message": "Belongs on the line above with the }",
+      "revId": "58a028b5d453f9b3db1e54af9c738e35bf8b9743",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ffb9cba7_1777f73c",
+        "filename": "src/java/com/android/internal/telephony/cat/CommandParamsFactory.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 731,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2016-02-25T06:16:10Z",
+      "side": 1,
+      "message": "Belongs on the line above with the }",
+      "revId": "58a028b5d453f9b3db1e54af9c738e35bf8b9743",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
