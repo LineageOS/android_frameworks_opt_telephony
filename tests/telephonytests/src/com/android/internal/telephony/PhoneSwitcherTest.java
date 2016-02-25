@@ -436,7 +436,6 @@ public class PhoneSwitcherTest extends AndroidTestCase {
         final PhoneMock[] phones = new PhoneMock[numPhones];
         for (int i = 0; i < numPhones; i++) {
             commandsInterfaces[i] = new SimulatedCommands();
-            //    phones[i] = new PhoneMock(contextMock, commandsInterfaces[i]);
         }
 
         PhoneSwitcher phoneSwitcher = new PhoneSwitcher(maxActivePhones, numPhones,
@@ -472,15 +471,78 @@ public class PhoneSwitcherTest extends AndroidTestCase {
         if (commandsInterfaces[0].isDataAllowed()) fail("data allowed");
         if (commandsInterfaces[1].isDataAllowed() == false) fail("data not allowed");
 
-
-
-
-
         testHandler.die();
         handlerThread.quit();
     }
 
+    /**
+     * Verify we don't send spurious DATA_ALLOWED calls when another NetworkFactory
+     * wins (ie, switch to wifi).
+     */
+    @SmallTest
+    public void testHigherPriorityDefault() throws Exception {
+        mTestName = "testPrioritization";
+        final int numPhones = 2;
+        final int maxActivePhones = 1;
+        final HandlerThread handlerThread = new HandlerThread("PhoneSwitcherTestThread");
+        handlerThread.start();
+        final ContextFixture contextFixture = new ContextFixture();
+        String[] networkConfigString = getContext().getResources().getStringArray(
+                com.android.internal.R.array.networkAttributes);
+        contextFixture.putStringArrayResource(com.android.internal.R.array.networkAttributes,
+                networkConfigString);
+        final Context contextMock = contextFixture.getTestDouble();
+        final ConnectivityServiceMock connectivityServiceMock =
+                new ConnectivityServiceMock(contextMock);
+        final ConnectivityManager cm =
+                new ConnectivityManager(contextMock, connectivityServiceMock);
+        contextFixture.setSystemService(Context.CONNECTIVITY_SERVICE, cm);
+        final ITelephonyRegistry.Stub telRegistryMock = new TelephonyRegistryMock();
+        final SubscriptionControllerMock subControllerMock =
+                new SubscriptionControllerMock(contextMock, telRegistryMock, numPhones);
+        final SimulatedCommands[] commandsInterfaces = new SimulatedCommands[numPhones];
+        final PhoneMock[] phones = new PhoneMock[numPhones];
+        for (int i = 0; i < numPhones; i++) {
+            commandsInterfaces[i] = new SimulatedCommands();
+        }
 
+        PhoneSwitcher phoneSwitcher = new PhoneSwitcher(maxActivePhones, numPhones,
+                contextMock, subControllerMock, handlerThread.getLooper(), telRegistryMock,
+                commandsInterfaces, phones);
+
+        TestHandler testHandler = TestHandler.makeHandler();
+        Object activePhoneSwitchObject = new Object();
+        testHandler.setActivePhoneSwitchObject(activePhoneSwitchObject);
+
+        connectivityServiceMock.addDefaultRequest();
+        subControllerMock.setSlotSubId(0, 0);
+        subControllerMock.setSlotSubId(1, 1);
+        subControllerMock.setDefaultDataSubId(0);
+        waitABit();
+
+        // Phone 0 should be active
+        if (commandsInterfaces[0].isDataAllowed() == false) fail("data not allowed");
+        if (commandsInterfaces[1].isDataAllowed()) fail("data allowed");
+
+        connectivityServiceMock.setCurrentScoreForRequest(connectivityServiceMock.defaultRequest,
+                100);
+        waitABit();
+
+        // should be no change
+        if (commandsInterfaces[0].isDataAllowed() == false) fail("data not allowed");
+        if (commandsInterfaces[1].isDataAllowed()) fail("data allowed");
+
+        connectivityServiceMock.setCurrentScoreForRequest(connectivityServiceMock.defaultRequest,
+                100);
+        waitABit();
+
+        // should be no change
+        if (commandsInterfaces[0].isDataAllowed() == false) fail("data not allowed");
+        if (commandsInterfaces[1].isDataAllowed()) fail("data allowed");
+
+        testHandler.die();
+        handlerThread.quit();
+    }
 
     /**
      * Test MSMA testing prioritiziation
