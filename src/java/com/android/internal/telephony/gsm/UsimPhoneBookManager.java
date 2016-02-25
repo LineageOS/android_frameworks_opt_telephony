@@ -698,8 +698,14 @@ public class UsimPhoneBookManager extends Handler implements IccConstants {
             return null;
         }
 
-        // The length of the record is X+2 byte, where X bytes is the email address
-        String email = IccUtils.adnStringFieldToString(emailRec, 0, emailRec.length - 2);
+        String email;
+        if (mEmailPresentInIap) {
+            //3gpp 31.102 4.4.2.13, in non-type1 EF_EMAIL file,
+            //the length of the record is X+2 byte, where X bytes is the email address
+            email = IccUtils.adnStringFieldToString(emailRec, 0, emailRec.length - 2);
+        } else {
+            email = IccUtils.adnStringFieldToString(emailRec, 0, emailRec.length);
+        }
         return email;
     }
 
