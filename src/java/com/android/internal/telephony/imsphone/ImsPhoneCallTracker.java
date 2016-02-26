@@ -1426,14 +1426,22 @@ public class ImsPhoneCallTracker extends CallTracker {
 
         @Override
         public void onCallResumeFailed(ImsCall imsCall, ImsReasonInfo reasonInfo) {
-            // If we are in the midst of swapping the FG and BG calls and we got a resume fail, we
-            // need to swap back the FG and BG calls.
-            if (mSwitchingFgAndBgCalls && imsCall == mCallExpectedToResume) {
-                if (DBG) {
-                    log("onCallResumeFailed : switching " + mForegroundCall + " with "
-                            + mBackgroundCall);
+            if (mSwitchingFgAndBgCalls) {
+                // If we are in the midst of swapping the FG and BG calls and
+                // we got a resume fail, we need to swap back the FG and BG calls.
+                // Since the FG call was held, will also try to resume the same.
+                if (imsCall == mCallExpectedToResume) {
+                    if (DBG) {
+                        log("onCallResumeFailed : switching " + mForegroundCall + " with "
+                                + mBackgroundCall);
+                    }
+                    mForegroundCall.switchWith(mBackgroundCall);
+                    if (mForegroundCall.getState() == ImsPhoneCall.State.HOLDING) {
+                            sendEmptyMessage(EVENT_RESUME_BACKGROUND);
+                    }
                 }
-                mForegroundCall.switchWith(mBackgroundCall);
+
+                //Call swap is done, reset the relevant variables
                 mCallExpectedToResume = null;
                 mSwitchingFgAndBgCalls = false;
             }
