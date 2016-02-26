@@ -45,7 +45,7 @@ import java.util.HashMap;
  * multiple data connections. For instance listening for unsolicited messages
  * and then demultiplexing them to the appropriate DC.
  */
-class DcController extends StateMachine {
+public class DcController extends StateMachine {
     private static final boolean DBG = true;
     private static final boolean VDBG = false;
 
@@ -114,7 +114,7 @@ class DcController extends StateMachine {
         }
     }
 
-    static DcController makeDcc(Phone phone, DcTracker dct, Handler handler) {
+    public static DcController makeDcc(Phone phone, DcTracker dct, Handler handler) {
         DcController dcc = new DcController("Dcc", phone, dct, handler);
         dcc.start();
         return dcc;
@@ -135,7 +135,7 @@ class DcController extends StateMachine {
         mDcListAll.remove(dc);
     }
 
-    void addActiveDcByCid(DataConnection dc) {
+    public void addActiveDcByCid(DataConnection dc) {
         if (DBG && dc.mCid < 0) {
             log("addActiveDcByCid dc.mCid < 0 dc=" + dc);
         }
