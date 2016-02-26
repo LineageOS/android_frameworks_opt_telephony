@@ -16,9 +16,14 @@
 
 package com.android.internal.telephony;
 
+import android.app.Activity;
+import android.app.IApplicationThread;
+import android.content.IIntentReceiver;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncResult;
+import android.os.Bundle;
+import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
 import android.preference.PreferenceManager;
@@ -39,6 +44,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+
+import java.util.List;
 
 import static com.android.internal.telephony.CommandsInterface.CF_ACTION_ENABLE;
 import static com.android.internal.telephony.CommandsInterface.CF_REASON_UNCONDITIONAL;
@@ -47,21 +55,28 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Matchers.anyLong;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyObject;
 import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 public class GsmCdmaPhoneTest extends TelephonyTest {
+    @Mock
+    private Handler mTestHandler;
+
     //mPhoneUnderTest
     private GsmCdmaPhone mPhoneUT;
-
     private TelephonyManager mTelephonyManager;
+
+    private static final int EVENT_EMERGENCY_CALLBACK_MODE_EXIT = 1;
+    private static final int EVENT_EMERGENCY_CALL_TOGGLE = 2;
 
     private class GsmCdmaPhoneTestHandler extends HandlerThread {
 
@@ -535,5 +550,90 @@ public class GsmCdmaPhoneTest extends TelephonyTest {
         assertEquals(SimulatedCommands.FAKE_IMEISV, mPhoneUT.getDeviceSvn());
         assertEquals(SimulatedCommands.FAKE_ESN, mPhoneUT.getEsn());
         assertEquals(SimulatedCommands.FAKE_MEID, mPhoneUT.getMeid());
+    }
+
+    @Test
+    @SmallTest
+    public void testEmergencyCallbackMessages() {
+        verify(mSimulatedCommandsVerifier).setEmergencyCallbackMode(eq(mPhoneUT), anyInt(),
+                anyObject());
+        verify(mSimulatedCommandsVerifier).registerForExitEmergencyCallbackMode(eq(mPhoneUT),
+                anyInt(), anyObject());
+
+        // verify handling of emergency callback mode
+        mSimulatedCommands.notifyEmergencyCallbackMode();
+        waitForMs(50);
+
+        // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
+        ArgumentCaptor<Intent> intentArgumentCaptor = ArgumentCaptor.forClass(Intent.class);
+        try {
+            verify(mIActivityManager, atLeast(1)).broadcastIntent(eq((IApplicationThread)null),
+                    intentArgumentCaptor.capture(),
+                    eq((String)null),
+                    eq((IIntentReceiver)null),
+                    eq(Activity.RESULT_OK),
+                    eq((String)null),
+                    eq((Bundle)null),
+                    eq((String[])null),
+                    anyInt(),
+                    eq((Bundle)null),
+                    eq(false),
+                    eq(true),
+                    anyInt());
+        } catch(Exception e) {
+            fail("Unexpected exception: " + e.getStackTrace());
+        }
+
+        Intent intent = intentArgumentCaptor.getValue();
+        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
+        assertEquals(true, intent.getBooleanExtra(PhoneConstants.PHONE_IN_ECM_STATE, false));
+
+        // verify that wakeLock is acquired in ECM
+        assertEquals(true, mPhoneUT.getWakeLock().isHeld());
+
+        mPhoneUT.setOnEcbModeExitResponse(mTestHandler, EVENT_EMERGENCY_CALLBACK_MODE_EXIT, null);
+        mPhoneUT.registerForEmergencyCallToggle(mTestHandler, EVENT_EMERGENCY_CALL_TOGGLE, null);
+
+        // verify handling of emergency callback mode exit
+        mSimulatedCommands.notifyExitEmergencyCallbackMode();
+        waitForMs(50);
+
+        // verify ACTION_EMERGENCY_CALLBACK_MODE_CHANGED
+        try {
+            verify(mIActivityManager, atLeast(2)).broadcastIntent(eq((IApplicationThread)null),
+                    intentArgumentCaptor.capture(),
+                    eq((String)null),
+                    eq((IIntentReceiver)null),
+                    eq(Activity.RESULT_OK),
+                    eq((String)null),
+                    eq((Bundle)null),
+                    eq((String[])null),
+                    anyInt(),
+                    eq((Bundle)null),
+                    eq(false),
+                    eq(true),
+                    anyInt());
+        } catch(Exception e) {
+            fail("Unexpected exception: " + e.getStackTrace());
+        }
+
+        intent = intentArgumentCaptor.getValue();
+        assertEquals(TelephonyIntents.ACTION_EMERGENCY_CALLBACK_MODE_CHANGED, intent.getAction());
+        assertEquals(false, intent.getBooleanExtra(PhoneConstants.PHONE_IN_ECM_STATE, true));
+
+        ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
+
+        // verify EcmExitRespRegistrant and mEmergencyCallToggledRegistrants are notified
+        verify(mTestHandler, times(2)).sendMessageAtTime(messageArgumentCaptor.capture(),
+                anyLong());
+        List<Message> msgList = messageArgumentCaptor.getAllValues();
+        assertEquals(EVENT_EMERGENCY_CALLBACK_MODE_EXIT, msgList.get(0).what);
+        assertEquals(EVENT_EMERGENCY_CALL_TOGGLE, msgList.get(1).what);
+
+        // verify setInternalDataEnabled
+        verify(mDcTracker).setInternalDataEnabled(true);
+
+        // verify wakeLock released
+        assertEquals(false, mPhoneUT.getWakeLock().isHeld());
     }
 }
